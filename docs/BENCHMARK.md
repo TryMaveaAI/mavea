@@ -34,7 +34,7 @@ mechanically; the judge catches "technically valid but thin or ugly."
 
 ## The set
 
-**51 human-authored cases** — 25 core (`src/live/eval/golden.ts`) + 26 extended
+**54 human-authored cases** — 28 core (`src/live/eval/golden.ts`) + 26 extended
 (`src/live/eval/goldenExtra.ts`) — spanning money, health, travel, decisions, how-to, business, and
 learning, plus explicit-format ("make me a table", "show the code"), brevity ("in one line",
 "tl;dr"), and deep-dive asks that exercise `intentFit`. Each pins the acceptable primary block
@@ -77,7 +77,7 @@ maintainers decide whether to update the table.
 | _gemini-3.5-flash_      | —                 | —         | —         | —        | Gemini step-up         |
 | _claude-haiku-4-5_      | —                 | —         | —         | —        | Anthropic default      |
 | _claude-sonnet-5_       | —                 | —         | —         | —        | Anthropic step-up      |
-| _gpt-5.4-mini_          | —                 | —         | —         | —        | OpenAI default         |
+| _gpt-5.4-nano_          | —                 | —         | —         | —        | OpenAI default         |
 | _(local, user-set)_     | —                 | —         | —         | —        | No bundled local model |
 
 > Reproduce: each row is one `pnpm eval` run with `EVAL_MODEL` set to that id and `EVAL_JUDGE=1`.

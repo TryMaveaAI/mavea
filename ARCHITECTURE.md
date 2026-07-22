@@ -22,9 +22,9 @@ flowchart LR
 Live is also the stage for two key-free scripted experiences. Both replay REAL model output on
 the real surface — same chrome, same reveal walks, no provider call at play time:
 
-- **The first-run walkthrough** (`tour/`): ~20 chapters, each teaching one feature by driving
-  real controls. `useTourDriver` plays chapters through `TourOps` — a bag of closures LiveApp
-  passes in (type into the composer, show a frame, open Export, drag the bend dial, …).
+- **The first-run walkthrough** (`tour/`): 10 core chapters (41 in all, counting the deep-linkable
+  extras), each teaching one feature by driving real controls. `useTourDriver` plays chapters
+  through `TourOps` — a bag of closures LiveApp passes in (type into the composer, show a frame, open Export, drag the bend dial, …).
 - **The demo replays** (`demo/`): a cast of recorded persona sessions (`demo/cast.ts`), each a
   hand-authored script of asks + feature beats (`demo/scripts.ts`) whose answers were generated
   once against a real model and frozen. `useDemoDriver` is a thin sibling of the tour driver —
@@ -102,7 +102,7 @@ graph TD
 ### On-the-fly visuals
 
 When no library block fits an ask, Live can compose one rather than fall back to prose — without
-generating any code. Two primitives are available by default and can be removed from the model menu
+generating any code. Three primitives are available by default and can be removed from the model menu
 with the `generativeBlocks` setting:
 
 - **`diagramflow`** (`canvas/blocks/diagrams/`) — a freeform node/edge figure (cycles, state
@@ -112,6 +112,10 @@ with the `generativeBlocks` setting:
   a new component on the fly": a novel arrangement where every region is still a real typed `Block`
   rendered by the same path (recursive, depth-capped). It lives in the core union because it nests
   `Block`s, and `TopicCanvas` renders it directly.
+- **`svgblock`** (`canvas/blocks/media/SvgBlock.tsx`) — the Tier-3 escape hatch: the model draws raw
+  SVG for a visual no native component covers (a molecule, a circuit, a custom infographic). The
+  markup is untrusted, so it goes through the deny-by-default `sanitizeSvg` before it reaches the
+  DOM; design tokens still resolve by CSS inheritance, so it stays light/dark-aware.
 
 The model never emits component code — only a typed spec coerced by hand-written builders
 (`buildDiagramFlow` / `buildComposite` in `engine/liveSchema.ts`), so a generated visual is on-brand
@@ -128,7 +132,7 @@ there `pnpm gen:catalog` derives:
 
 - **`facts.generated.ts`** — one tuple per component (family, archetype, data shapes, tier, wow,
   required props…), with every repeated string interned into a shared table. This is what the
-  selector ranks over, and it is always resident: ~35 KB of source, ~13 KB gzipped, for 600
+  selector ranks over, and it is always resident: ~49 KB of source, ~13 KB gzipped, for 600
   components. Objects with repeated keys would be ~130 KB.
 - **`catalog/details/shard*.ts`** — the blurbs, optional props, item shapes and prop hints. These are
   ~70% of the catalog's bytes and are read by only two consumers: the prompt menu (for the ≤30
@@ -174,15 +178,15 @@ awaits fonts, Shiki/KaTeX, and Leaflet tiles before capture). `embedClass` decid
 one catalog capability (`fluid` viewBox SVG vs `flow` count-growing vs `none`); the same `figure`
 kind + `FigureEmbed` is reused by the slide layer below, so exports and decks render the real
 conversation instead of a flattened summary. A **skin** (`skins/`) is mostly
-data (palette + fonts + brand); the 12 shared, token-driven section components serve all 10, and a
-skin overrides only its bespoke masthead (`chrome/mastheads.tsx`) — so the design language is
+data (palette + fonts + brand); the 15 shared, token-driven section components serve all 10, and a
+skin overrides only its bespoke masthead (`skins/chrome/mastheads.tsx`) — so the design language is
 faithful without 10× duplication. Mastheads use only the answer's real metadata (title, sub, topic,
 date, sources); they never fabricate the demo content of the reference templates (real-data-only).
 
 Output is **pixel-perfect download** by default — a fresh, natural-size offscreen mount rasterized
 per page (`modern-screenshot`) and assembled into a PDF (`jspdf`), both **lazy-loaded, bundled**
-dependencies like the clip encoders (code-split, no CDN fetch) — plus a **vector Print** path (`printFallback.tsx`) that mounts
-the doc in a body-level `.mavea-export-doc` portal and `window.print()`s it, isolated from the legacy
+dependencies like the clip encoders (code-split, no CDN fetch) — plus a **vector Print** path
+(`pipeline/printFallback.tsx`) that mounts the doc in a body-level `.mavea-export-doc` portal and `window.print()`s it, isolated from the legacy
 canvas `print.css` by `export-print.css`.
 
 ### Presentation deck + the slide layer
@@ -192,17 +196,17 @@ answer composed into a **16:9 slide deck** in one of **10 styles** (Folio, Merid
 Lumen, Grid, Terra, Cobalt, Press, Sol). The shared **slide layer** lives in `src/slides/`:
 
 `Section[]` (reused from the export's `normalize`) **→ compose** (`model/compose.ts`: archetype →
-one of 14 **slide layouts** — cover, divider, agenda, key figure, comparison, table, roadmap,
-process, chart, quote, team grid, full-bleed, prose, closing — deriving cover/agenda/closing,
-labelling prose kickers with the running chapter title, and splitting over-long sections into
-bounded continuation slides; item caps rise for short single-line content and stay conservative
+one of 15 **slide layouts** — cover, divider, agenda, key figure, comparison, table, roadmap,
+process, chart, figure, quote, team grid, full-bleed, prose, closing — deriving
+cover/agenda/closing, labelling prose kickers with the running chapter title, and splitting
+over-long sections into bounded continuation slides; item caps rise for short single-line content and stay conservative
 for wordy content) **→ `SlideCanvas`** (a fixed 1920×1080 block; `SlideStage` wraps it in a
 scale-to-fit transform for previews/Present). Layouts are **density-aware fill-the-band**
 compositions: headings pin under the kicker rule, lists/tables/charts distribute their rows across
 the remaining band (thicker bars and larger type at low counts), short prose gets a standfirst-lede
 statement treatment, and small figures enlarge (bounded) via `FigureEmbed`'s stage-only upscale —
 so a three-item slide reads as designed scale, not leftover space. A
-**`SlideSkin`** (`skins/`) is mostly data (palette + Google fonts + decor mode); 14 token-driven
+**`SlideSkin`** (`skins/`) is mostly data (palette + Google fonts + decor mode); 15 token-driven
 shared layouts serve all 10, with a few structural overrides (`skins/layouts/overrides.tsx` — Noir's
 centred cover, North's full-colour statement, Press's drop-cap). Real-data-only holds: media slides
 (team/full-bleed) appear only with real images; nothing is fabricated.
@@ -233,7 +237,7 @@ server (`voice/kokoro.ts`) when one is reachable — captions carry the line whe
 ## Live mode
 
 Live mode (`live/`) is model-agnostic. The seam is `ProviderAdapter` (`live/providers/types.ts`):
-one interface with a `probe` and a `generate`. Six adapters implement it — Anthropic, OpenAI,
+one interface with a `probe` and a `generate`. Five adapters implement it — Anthropic, OpenAI,
 Gemini, OpenRouter, and xAI Grok — and `live/providers/index.ts` is a registry mapping a
 `ProviderId` to its adapter plus the UI metadata (label, default model, whether a key is needed).
 Adding a provider is one file and one registry entry.
@@ -301,8 +305,8 @@ A few ideas make it feel instant, stay safe, and stay cheap:
 
 Providers that support it use constrained decoding to guarantee the _structure_ — hosted models
 via tool-forcing / `json_schema` / `responseSchema`, each via a JSON schema
-passed as the sampler `format` with `minItems: 4` on `blocks` (so a small model can't short-circuit
-to a one-block or empty canvas). The validator always owns prop correctness, and `generateLive`
+passed as the sampler `format` with `minItems: 3` on `blocks` (1 for an explicitly brief ask), so a
+small model can't short-circuit to a one-block or empty canvas. The validator always owns prop correctness, and `generateLive`
 never throws.
 
 ### From tokens to a rendered canvas
@@ -364,7 +368,7 @@ Three things make the mapping work:
   system prompt, and `validateLiveResponse` gates on the **same** set — so the model can't reach for a
   type the prompt never taught, and nothing the prompt promised gets dropped. The opt-in generative
   family is excluded from this menu unless the user enabled it (see _On-the-fly visuals_ above).
-- **Rich by construction, not by hope.** The `minItems: 4` schema (local) / constrained decoding
+- **Rich by construction, not by hope.** The `minItems: 3` schema / constrained decoding
   (hosted) guarantees a well-formed object with several varied blocks every turn, which is what keeps
   Live answers feeling like the demos instead of a lone paragraph.
 
@@ -466,9 +470,10 @@ Ripple (`live/ripple/`) turns a pasted diff or a GitHub PR/repo/compare URL into
 impact map (what changed, what it touches, how risky) and a generated onboarding course for the
 whole repo. Entry points are the `#/ripple` route (`RippleApp.tsx`), the landing's Explore
 menu (`flagship/ExploreNav.tsx`), and a paste-diff/command-palette flow inside Live (`live/LiveApp.tsx`,
-`live/features/registry.ts`). Repo access is read-only end to end — the client (`ingest/github.ts`)
-talks to the same read-only actions gateway (`gateway/connectors.mjs`) every other MCP integration
-uses; Ripple never proposes a write.
+`live/features/registry.ts`). Repo access is read-only end to end — the client
+(`ingest/githubBrowser.ts`) talks straight to `api.github.com` from the browser (public repos need no setup; a private repo uses
+a device-encrypted token from `ingest/githubToken.ts`), and every call is a GET; Ripple never
+proposes a write.
 
 - **Course generation is cached by content, not by name.** `ingest/generate.ts`'s `enrichCourses`
   writes the syllabus outline (courses → lessons); each lesson's deep body — the real-code
@@ -497,12 +502,12 @@ uses; Ripple never proposes a write.
   regardless of lock state. A finished quiz can be pushed into the SRS deck in one click
   (`srs/store.ts`'s `addCards`, front = question, back = the canonical answer).
 - **The Ask rail answers by retrieval-then-ground**, the same shape as Prism's Ask It
-  (`ask/repoAsk.ts`'s `askRepo`, ported from `live/pdfworld/ask/ask.ts`'s pattern). The corpus is
+  (`ask/repoAsk.ts`'s `askRepo`, ported from `live/prism/ask/ask.ts`'s pattern). The corpus is
   whatever Ripple already holds in memory — the `ShipModel`'s own facts, the retained diff text, and
   any deep lesson bodies already written this session — plus, when a repo is connected, up to three
   more files chosen by free local keyword ranking over the file tree (`rankRepoFiles`, no model
-  call) and fetched through the same read-only gateway. One model call answers, at a depth shaped by
-  the reader's altitude (`ALTITUDE_GUIDANCE`); every proposed citation is then checked verbatim
+  call) and fetched through the same read-only `githubBrowser` client. One model call answers, at a
+  depth shaped by the reader's altitude (`ALTITUDE_GUIDANCE`); every proposed citation is then checked verbatim
   against the fetched file text or the diff (`gateCitations` → `isVerbatimOnPage`) — a quote that
   can't be verified is kept, never silently dropped, but flagged `unpinned` rather than presented as
   proven. `useRippleAsk` answers one question at a time (a second ask while one is in flight is a
@@ -571,6 +576,8 @@ interface LiveConfigV2 {
   explainLevel: 'standard' | 'simple';
   pttKey: string;
   pttSide: 'any' | 'left' | 'right';
+  fontScale: 'smaller' | 'normal' | 'larger'; // canvas reading text size
+  voiceSpeed: number; // spoken rate, 0.75×–2× (default 1×)
 }
 ```
 

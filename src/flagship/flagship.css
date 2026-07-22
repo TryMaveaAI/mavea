@@ -3106,6 +3106,12 @@
   .fl-nav {
     gap: 8px;
   }
+  /* Hug the corner tighter on phones: at 18px the fab's hit box rides within 6px of the hero
+     tour-invite's action row (the tap audit's adjacency floor); 8px clears both axes. */
+  .fl-theme-fab {
+    right: 8px;
+    bottom: 8px;
+  }
   .fl-window-body {
     grid-template-columns: 1fr;
   }
@@ -3165,11 +3171,12 @@
   }
 }
 
-/* Small phones: the nav's fixed-width entries (brand + theme + search + Explore + CTA) total
-   ~413px — tighten each so the CTA never clips off the bar. */
+/* Small phones: tighten the bar's fixed-width entries (brand + search + Explore + CTA — the theme
+   toggle lives in the corner fab) so the CTA never clips off the bar. The gap floor is 8px: two
+   adjacent hit boxes closer than 6px fail the tap audit, and the spacer still has slack to give. */
 @media (max-width: 430px) {
   .fl-nav {
-    gap: 2px;
+    gap: 8px;
   }
   .fl-instruments {
     grid-template-columns: repeat(2, 1fr);

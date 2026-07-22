@@ -5,6 +5,19 @@
 // GC, and comparing the browser's own heap/DOM/listener counters after the lazy chunks and module
 // caches have already been warmed. Growth after that baseline is the suspicious part.
 import { chromium, type CDPSession, type Page } from 'playwright';
+import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
+
+/** Connected-feature surfaces sit behind the one-time legal acknowledgement, so a fresh context
+ *  renders the gate instead of the route and every wait times out. Seed the acceptance before any
+ *  page script runs — this probe measures a returning user's mount/unmount churn, not consent. */
+const SEED_LEGAL_ACCEPTANCE = `
+  try {
+    localStorage.setItem(${JSON.stringify(LEGAL_ACCEPTANCE_STORAGE_KEY)}, JSON.stringify({
+      version: ${JSON.stringify(LEGAL_ACCEPTANCE_VERSION)},
+      acceptedAt: new Date(0).toISOString(),
+    }));
+  } catch { /* no storage: the landing route still measures */ }
+`;
 
 interface Route {
   name: string;
@@ -124,6 +137,7 @@ async function main(): Promise<void> {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
+  await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
   const cdp = await context.newCDPSession(page);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(`page: ${error.message}`));

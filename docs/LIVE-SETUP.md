@@ -15,7 +15,7 @@ provider accounts, usage charges, deployment security, and any action you confir
 
 ## Prerequisites
 
-**Node >= 20** (run `corepack enable` once to activate the pinned pnpm). That's enough for the app
+**Node >= 24.11** (run `corepack enable` once to activate the pinned pnpm). That's enough for the app
 and its local development proxies; Live requests still go onward to the provider you select.
 
 **Optional: Docker**, only if you want the natural voice (Kokoro TTS is the one containerized
@@ -44,13 +44,13 @@ quotas, and charges apply.
 Live is bring-your-own-key across five hosted providers. Defaults are deliberately the fast,
 low-cost tier — the model field accepts any id, so stronger models are always one paste away:
 
-| Provider   | Default model             | Notes                                                                             |
-| ---------- | ------------------------- | --------------------------------------------------------------------------------- |
-| Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; `claude-sonnet-5` is the suggested step-up                |
-| Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; `gemini-3.5-flash` is the suggested step-up               |
-| OpenAI     | `gpt-5.4-mini`            | Fast, low-cost default; `gpt-5.6-luna` steps up, `gpt-5.4-nano` is cheapest       |
-| Grok       | `grok-4.3`                | Fast, low-cost default; `grok-4.5` is the flagship step-up                        |
-| OpenRouter | _(none — paste your own)_ | One key, hundreds of models; `google/gemini-3.5-flash` is a current starting pick |
+| Provider   | Default model             | Notes                                                                                  |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------- |
+| Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; `claude-sonnet-5` is the suggested step-up                     |
+| Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; `gemini-3.5-flash` is the suggested step-up                    |
+| OpenAI     | `gpt-5.4-nano`            | Fastest, highest-throughput default; `gpt-5.4-mini` steps up, `gpt-5.6-luna` is newest |
+| Grok       | `grok-4.3`                | Fast, low-cost default; `grok-4.5` is the flagship step-up                             |
+| OpenRouter | _(none — paste your own)_ | One key, hundreds of models; `google/gemini-3.5-flash` is a current starting pick      |
 
 Each provider tile in the Connect step links to where you get a key, and the readiness strip
 verifies the key + model before you commit.

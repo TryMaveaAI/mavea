@@ -353,7 +353,7 @@ export const FINISH: Partial<Record<TemplateId, FinishDef>> = {
   wrapped: finish('stat', 'Wrapped', alternate('WrappedSlide'), DARK_BLEED),
   // levelUp + streak render the LIGHT card primitive, so they must stay on the light board surface —
   // a dark surface flips --reel-ink near-white, which then vanishes on their white card (per the
-  // FinishDef contract: "Card-based finishes leave this off"). Guarded by reel-card-surface.test.ts.
+  // FinishDef contract: "Card-based finishes leave this off"). Guarded by reel.test.ts.
   levelUp: finish('stat', 'Level up', alternate('LevelUpSlide')),
   countdown: finish('stat', 'Countdown', alternate('CountdownSlide'), DARK_BLEED),
   streak: finish('stat', 'Streak', alternate('StreakSlide')),

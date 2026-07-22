@@ -2,7 +2,8 @@
 
 ## Supported versions
 
-Mavéa is under active development; security fixes land on `main`.
+`main` is the supported line — security fixes land there. There are no maintenance branches and no
+backports to earlier releases; always run the latest `main`.
 
 | Version | Supported |
 | ------- | --------- |
@@ -20,9 +21,10 @@ Please **do not** open a public issue for security problems. Instead:
 Do not submit a public or external security pull request or attach exploit code unless a maintainer
 requests it through the private reporting channel.
 
-We will acknowledge your report within a few days, keep you updated as we work on a fix, and credit
-you (if you'd like) once it's resolved. Please give us a reasonable window to address the issue
-before any public disclosure.
+We take security reports seriously and review each one. Fixes are prioritised by severity and
+issued at the maintainers' discretion; response times are best-effort and not guaranteed under a
+service-level agreement (see [SUPPORT.md](./SUPPORT.md)). Please allow a reasonable window for a
+fix before any public disclosure.
 
 ## Scope & design notes
 

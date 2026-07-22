@@ -7,11 +7,15 @@
 // heavy assets (the voice model, the WASM, the block library) are being pulled down before anyone
 // asked for them.
 //
-// Requires a dev server already running:
-//   pnpm dev
-//   pnpm perf
-//   pnpm perf -- --throttle 4
+// Measure the SHIPPED artifact, not the dev server. The probe emulates a slow connection, and an
+// unbundled dev server answers hundreds of separate module requests under that emulation — every
+// surface then misses its budget while doing no actual work. The eager-asset check also matches
+// built chunk names. So build first and serve it with the real CLI:
+//   pnpm build && pnpm preview
+//   pnpm perf -- --url http://localhost:4173
+//   pnpm perf -- --url http://localhost:4173 --throttle 4
 import { chromium, type Page, type CDPSession } from 'playwright';
+import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
 
 interface Scenario {
   name: string;
@@ -74,6 +78,19 @@ function readFlag(name: string, fallback: string): string {
   return i !== -1 && argv[i + 1] ? argv[i + 1] : fallback;
 }
 
+/** Every connected-feature surface sits behind the one-time legal acknowledgement, so a fresh
+ *  browser context renders the gate instead of the surface and the ready selector never appears.
+ *  These budgets describe a returning user reaching a surface, not a first-run consent screen —
+ *  seed the acceptance the same way accepting it once would, before any script on the page runs. */
+const SEED_LEGAL_ACCEPTANCE = `
+  try {
+    localStorage.setItem(${JSON.stringify(LEGAL_ACCEPTANCE_STORAGE_KEY)}, JSON.stringify({
+      version: ${JSON.stringify(LEGAL_ACCEPTANCE_VERSION)},
+      acceptedAt: new Date(0).toISOString(),
+    }));
+  } catch { /* a context without storage still measures the landing route */ }
+`;
+
 /** Long tasks are what a stutter actually is: the main thread held for >50ms, unable to answer a click. */
 const OBSERVE = `
   window.__perf = { long: [], fcp: 0 };
@@ -88,6 +105,7 @@ const OBSERVE = `
 async function run(page: Page, cdp: CDPSession, s: Scenario, base: string, rate: number) {
   const requests: string[] = [];
   page.on('request', (r) => requests.push(r.url()));
+  await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
   await page.addInitScript(OBSERVE);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
   await cdp.send('Network.enable');
@@ -147,6 +165,7 @@ async function runWarmTransitions(base: string, rate: number) {
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
+  await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
   await page.goto(base + '/', { waitUntil: 'commit' });

@@ -71,21 +71,36 @@ green, you can trust that nothing broke and the app works.**
 ```mermaid
 graph BT
     UNIT["Unit — most numerous, deterministic\neval-score · streamParse · data-integrity\nleak-guard · Presence"]
-    INT["Seam tests — many, fast, no real I/O\nliveSchema · orchestration · engine\nproviders · actions-gateway · router"]
+    INT["Seam tests — many, fast, no real I/O\nliveSchema · settle-turn · live-turnstate-reducer\nproviders · actions-gateway · routes"]
     E2E["Smoke / integration — few, high-confidence\napp-smoke · live-smoke · canvas-render"]
     UNIT --> INT --> E2E
 ```
 
 - **Readable.** `describe` / `it` read like sentences; one behaviour per test; clear arrange–act–assert.
 - **Grows with the code.** A new feature or bug fix ships with a test that would have caught it. Run `pnpm test`, and `pnpm verify` before pushing.
+- **One file per family or feature, not per component.** A test _file_ is not free: each one boots
+  its own environment and module graph before a single assertion runs, and that fixed cost is paid
+  on every developer's machine and every CI run. Add a new block's regression test to its family's
+  file (`tests/canvas-<family>.test.tsx`) as a new `describe`, rather than creating
+  `tests/canvas-<family>-<component>.test.tsx`. Split a file only when it stops being readable
+  (~1,200 lines) or when it needs a `vi.mock` that must not apply to its neighbours.
+- **Assert over the data domain, not the fixture.** The most valuable tests here are parameterised
+  — `it.each([2, 4, 6, 10])` for label collision, the whole value range for axis containment. A
+  test pinned to one authored fixture breaks on content edits and catches no real bug.
+- **Don't re-prove what the gauntlet proves.** `tests/canvas-gauntlet.test.tsx` already mounts every
+  registered block at three fixture intensities and checks that it renders a card, emits no
+  `undefined`/`NaN` text, and leaks no overlay on unmount. A per-component "renders without
+  crashing" test adds nothing; spend the test on the behaviour that actually broke.
 
 ### Two things the unit suite cannot see
 
 A green suite proves the logic holds. It says nothing about whether a card is legible on a phone or
 whether the app is usable on a slow laptop — and both of those are how people actually meet Mavéa.
-Each has a script; both need a dev server running (`pnpm dev`).
+Each has a script. The layout audit runs against a dev server (`pnpm dev`); the two performance
+probes measure the shipped artifact, so build and serve it first (`pnpm build && pnpm preview`,
+then pass `--url http://localhost:4173`).
 
-- **`pnpm audit:ui`** — renders all 584 browsable block types in `#/gallery` across the full width range (a folded
+- **`pnpm audit:ui`** — renders all 600 browsable block types in `#/gallery` across the full width range (a folded
   phone at 280px through 4K) in both themes, and reports three faults: content **clipped** out of its
   card, text **overlapping** other text, and type shrunk **below legibility**. The clip check is the
   gallery's own; the other two exist because a collision clips nothing, so nothing else catches it —
@@ -104,9 +119,10 @@ Each has a script; both need a dev server running (`pnpm dev`).
 ## How the bar is enforced
 
 - **Automated** — CI runs `typecheck · lint · format · test · build` on every push and PR, and a
-  **pre-push hook** runs the same `pnpm verify` gate locally so red never reaches CI. Pre-commit
-  hooks format and lint staged files; commit messages are Conventional-Commit-linted; Dependabot
-  keeps dependencies fresh; `pnpm knip` flags unused files, exports, and dependencies; and a
+  **pre-push hook** runs `pnpm typecheck` and `pnpm lint` locally as a fast sanity check before
+  anything reaches CI. Pre-commit hooks format and lint staged files; commit messages are
+  Conventional-Commit-linted; Dependabot keeps dependencies fresh; `pnpm knip` flags unused
+  files, exports, and dependencies; and a
   leak-guard test mounts then unmounts every block under fake timers and fails if any timer is
   left pending — so an uncleaned `setTimeout`/`setInterval` can't merge.
 - **Human** — `CODEOWNERS` requests review, the pull-request template carries this checklist, and

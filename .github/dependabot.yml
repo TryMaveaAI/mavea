@@ -4,7 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    # Each open PR costs a full CI run, so keep the burst small — the runtime dependency list is
+    # deliberately just react + react-dom, and everything else lands in the grouped PRs below.
+    open-pull-requests-limit: 3
     # Lowercase Conventional-Commit prefixes so Dependabot PRs pass commitlint/CI.
     commit-message:
       prefix: chore
@@ -13,6 +15,8 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+      production:
+        dependency-type: production
 
   - package-ecosystem: github-actions
     directory: /
@@ -21,6 +25,13 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    # One PR for all action bumps, not one per action. Ungrouped, the five pinned actions could
+    # open five PRs a week, each triggering the whole CI gauntlet for a change that cannot alter a
+    # single byte of the built artifact. The diff is a handful of SHA lines and CI is its own test,
+    # so a grouped PR stays trivial to review and to bisect.
+    groups:
+      actions:
+        patterns: ['*']
     # Patch/minor only — major action bumps are reviewed and applied manually.
     ignore:
       - dependency-name: '*'

@@ -7,9 +7,9 @@ index, or open the **Explore** menu in the top bar.
 ## The canvas
 
 - 🎨 **A living canvas, not a chatbot** — ordinary Live selection uses **600 component contracts**;
-  `#/gallery` production-renders **all 600 types**, including gated/surface-owned types and
-  excluding two internal full-frame renderers. Charts, tables, flows, diagrams, documents, and the
-  UI kit are all rendered by the same canvas code used in answers.
+  `#/gallery` production-renders **all 600 types**, including gated/surface-owned types and the two
+  internal full-frame renderers. Charts, tables, flows, diagrams, documents, and the UI kit are all
+  rendered by the same canvas code used in answers.
 - 📰 **Voice-first design language** — the spoken answer leads as a serif headline above the
   evidence; data sits in mono; provenance reads as designed badges (LIVE / INFERRED / GROUNDED IN).
   Six **theme templates** (paper, daylight, ink, console, marquee, original), each a complete re-skin

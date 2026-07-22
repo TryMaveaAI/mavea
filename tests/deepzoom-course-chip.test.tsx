@@ -1,7 +1,7 @@
 // deepzoom-course-chip.test.tsx — the "Turn this into a course" one-way navigation chip: once
 // a real topic is loaded, DeepZoomApp's top bar stashes it (courseSeed.ts's stashCourseTopic,
 // the SAME handoff CoursesApp reads to auto-generate) and routes to #/courses. This is a simple
-// navigation hop, never an embedded course surface — see course-coursesapp.test.tsx for what
+// navigation hop, never an embedded course surface — see course-library.test.tsx for what
 // happens on the receiving end.
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';

@@ -100,10 +100,20 @@ describe('LegalGate', () => {
   });
 
   it('fails closed when acknowledgement cannot be persisted', async () => {
-    // jsdom's Storage is proxy-backed: defining a property on the INSTANCE records it as a
-    // stored string item instead of shadowing the method, so the spy must target the prototype.
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('storage blocked');
+    // Storage objects are spec-mandated proxies (assigning a property records it as a stored item
+    // rather than shadowing the method), and newer Node ships its own Web Storage whose methods
+    // aren't reachable through jsdom's Storage.prototype — method patching misses on one runtime
+    // or the other. Swap the whole global for a store whose writes always fail instead;
+    // afterEach's unstubAllGlobals restores the real one.
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('storage blocked');
+      },
+      removeItem: () => {},
+      clear: () => {},
+      key: () => null,
+      length: 0,
     });
     render(
       <LegalGate>

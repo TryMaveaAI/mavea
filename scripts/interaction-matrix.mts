@@ -5,6 +5,7 @@
 // shell, so this never needs a provider and must never make an LLM request.
 import { chromium, type Page } from 'playwright';
 import { FEATURES } from '../src/live/features/registry';
+import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
 
 const ACK_BUDGET_MS = 100;
 // Pointer intent warms the bytes, but each case deliberately starts from a fresh document, so the
@@ -179,10 +180,20 @@ async function main(): Promise<void> {
   const base = readFlag('url', 'http://127.0.0.1:5173').replace(/\/$/, '');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await context.addInitScript(() => {
-    localStorage.setItem('mavea-tour-seen-v1', '1');
-    localStorage.setItem('mavea-live-setup-v1', '1');
-  });
+  // Pre-accept the legal gate the same way ui-audit does: consent UI is not part of the
+  // interaction budgets being measured, and a fresh profile would otherwise stall every
+  // #/live-bound click at the acknowledgement screen instead of reaching the rail.
+  await context.addInitScript(
+    ({ legalKey, legalVersion }) => {
+      localStorage.setItem('mavea-tour-seen-v1', '1');
+      localStorage.setItem('mavea-live-setup-v1', '1');
+      localStorage.setItem(
+        legalKey,
+        JSON.stringify({ version: legalVersion, acceptedAt: '2026-07-16T00:00:00.000Z' }),
+      );
+    },
+    { legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY, legalVersion: LEGAL_ACCEPTANCE_VERSION },
+  );
   const page = await context.newPage();
   const pageErrors: string[] = [];
   const modelCalls: string[] = [];

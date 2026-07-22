@@ -23,7 +23,7 @@ body:
     id: env
     attributes:
       label: Environment
-      placeholder: 'macOS 15 · Node 20 + pnpm 9 · Chrome 125'
+      placeholder: 'macOS 15 · Node 24 + pnpm 11 · Chrome 125'
     validations:
       required: true
   - type: textarea

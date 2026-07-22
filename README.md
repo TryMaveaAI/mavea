@@ -73,7 +73,7 @@ labels its estimates honestly.
 
 ## Quick start
 
-Just want to run it? All you need is **Node 24.11+**:
+Just want to run it? All you need is **Node 20.19+**:
 
 ```sh
 npx mavea                # → http://localhost:4173 — tour + demo replays, no model key required
@@ -88,14 +88,14 @@ pnpm build                # → dist/ — production build
 pnpm preview              # → http://localhost:4173 — serves dist/ exactly as npx mavea does, voice included
 ```
 
-| Command        | What it does                                                                                                                                                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`     | Starts everything: brings up the Kokoro voice container, then Vite. If Docker isn't running, it says so and serves the app anyway — answers appear as captions instead of being spoken.                                                                  |
-| `pnpm dev:web` | Vite alone, no voice container. Faster to start if you don't need speech.                                                                                                                                                                                |
-| `pnpm build`   | Type-checks, then produces the production bundle in `dist/`.                                                                                                                                                                                             |
-| `pnpm preview` | Serves the `dist/` build with the exact server `npx mavea` runs: same-origin `/tts` + `/llm` proxies included, and it brings up the Kokoro voice container when Docker is present. Without Docker it says so in one line and answers appear as captions. |
-| `pnpm test`    | Runs the Vitest suite once.                                                                                                                                                                                                                              |
-| `pnpm verify`  | The full pre-push gate: typecheck → lint → format check → test → build → bundle-size budget. Run this before opening a PR.                                                                                                                               |
+| Command        | What it does                                                                                                                                                                                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`     | Starts everything: brings up the Kokoro voice container, then Vite. If Docker isn't running, it says so and serves the app anyway — answers appear as captions instead of being spoken.                                                                           |
+| `pnpm dev:web` | Vite alone, no voice container. Faster to start if you don't need speech.                                                                                                                                                                                         |
+| `pnpm build`   | Type-checks, then produces the production bundle in `dist/`.                                                                                                                                                                                                      |
+| `pnpm preview` | Serves the `dist/` build with the exact server `npx mavea` runs: same-origin `/tts` + `/llm` proxies included, and it offers to bring up the Kokoro voice container when Docker is present. Without Docker it says so in one line and answers appear as captions. |
+| `pnpm test`    | Runs the Vitest suite once.                                                                                                                                                                                                                                       |
+| `pnpm verify`  | The full pre-PR gate: reference-example + gallery-fixture freshness → typecheck → lint → format check → test → build → bundle-size budget → artifact + package boundary checks. Run this before opening a PR.                                                     |
 
 That's the everyday set. The rest of the scripts (linting, evals, one-off audits, internal tooling)
 are documented in full in [CONTRIBUTING.md](./CONTRIBUTING.md#scripts-reference).
@@ -136,9 +136,9 @@ on macOS, Windows, or Linux.
 
 For reference, Mavéa itself asks for far less, and it's worth knowing which part costs what.
 `npx mavea` serves a static build and the work happens in your browser tab: the page it loads
-is 68 kB over the wire, and every surface becomes usable in under half a second on a CPU throttled
+is 89 kB over the wire, and every surface becomes usable in under half a second on a CPU throttled
 6×. The toolchain is heavier and still modest — a production build peaks around 1.6 GB of memory and
-finishes in ~12 s, a full typecheck of all 2,400 TypeScript files peaks under 1 GB and takes ~3 s,
+finishes in ~12 s, a full typecheck of all 2,200 TypeScript files peaks under 1 GB and takes ~3 s,
 and a checkout with dependencies and a build output on disk comes to ~750 MB. Everything caches, so
 only the first run after a fresh clone is slow.
 
@@ -190,7 +190,7 @@ A deliberately small stack — React 19, TypeScript 6, Vite 8 — with no chart 
 framework beyond React: every chart, dial, diagram, and the face is hand-rolled SVG/CSS. Beyond
 `react`/`react-dom`, the runtime stays lean: `@ricky0123/vad-web` (Silero VAD for end-of-speech)
 plus a handful of feature-scoped libraries — KaTeX, Leaflet, jsPDF, pdfjs-dist, openchemlib,
-mediabunny, modern-screenshot, and Shiki — each lazy-loaded only when that feature is used and
+mediabunny, modern-screenshot, pptxgenjs, and Shiki — each lazy-loaded only when that feature is used and
 bundled rather than fetched from a CDN. JavaScript/TypeScript snippets run only after an explicit
 click in a bounded Worker; Python execution is disabled until it has an equally isolated runtime.
 The face is one hand-drawn SVG animated purely by CSS off `data-*` attributes — JS never transforms

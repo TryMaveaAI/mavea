@@ -459,6 +459,22 @@ describe('generateLive — narration length is specified exactly ONE way per tur
   });
 });
 
+describe('generateLive — the rhythm directive is gated to rich turns', () => {
+  // Cadence (never stack two text-heavy blocks, anchor with a bold visual) only matters when the
+  // canvas has several blocks; a lean turn's one block would just pay the prompt tax.
+  it('carries VISUAL RHYTHM on a rich ask', async () => {
+    fake.raw = OK_RESPONSE;
+    await generateLive('tell me about the history of jazz', [], cfg);
+    expect(fake.lastReq!.system).toContain('VISUAL RHYTHM');
+  });
+
+  it('omits VISUAL RHYTHM on a lean/trivial ask', async () => {
+    fake.raw = OK_RESPONSE;
+    await generateLive('what is 12*9', [], cfg);
+    expect(fake.lastReq!.system).not.toContain('VISUAL RHYTHM');
+  });
+});
+
 describe('generateLive — bend/track/tour directives are gated to plausible turns', () => {
   it('offers BENDABLE NUMBER on a budget/calculation ask', async () => {
     fake.raw = OK_RESPONSE;

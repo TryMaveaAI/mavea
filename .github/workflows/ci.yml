@@ -8,6 +8,11 @@ on:
       - 'CHANGELOG.md'
   pull_request:
     paths-ignore: *docs-only
+  # Forward-compatibility sweep (see the node-next job): the toolchain requires Node 24+, and
+  # re-running every gate on a second Node version per push bought no signal a browser-asset app
+  # can use. Once a week is the right cadence for "does the toolchain still build on Node 26".
+  schedule:
+    - cron: '0 6 * * 1'
 
 # Cancel superseded PR runs to save minutes, but NEVER cancel a push to main — a quick second
 # push must not kill the first run (and its uploaded artifact) mid-flight.
@@ -28,10 +33,6 @@ jobs:
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [24, 26]
     permissions:
       contents: read
     steps:
@@ -43,11 +44,23 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
+
+      # `cache: pnpm` above only restores the pnpm content-addressable STORE; node_modules is
+      # rebuilt by hardlink on every run, so eslint's --cache and tsc's tsBuildInfoFile (both
+      # configured to live under node_modules/.cache) started cold every time. Restore them
+      # keyed on the toolchain config, so any dep/config change busts a stale entry.
+      - name: Restore lint/typecheck caches
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.cache
+          key: toolcache-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.js', 'tsconfig.json') }}-${{ github.sha }}
+          restore-keys: |
+            toolcache-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.js', 'tsconfig.json') }}-
 
       - name: Typecheck
         run: pnpm typecheck
@@ -62,7 +75,9 @@ jobs:
         run: pnpm test
 
       - name: Build
-        run: pnpm build
+        # `pnpm build` is `tsc --noEmit && vite build`; the Typecheck step above already ran that
+        # tsc pass and gates this one, so call the bundler directly instead of typechecking twice.
+        run: pnpm exec vite build
 
       - name: Legal and package policy shape
         # Ordinary CI proves the files and package without granting permission to publish. The
@@ -78,7 +93,6 @@ jobs:
         run: pnpm check:artifact
 
       - name: Upload production build
-        if: matrix.node == 26
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dist
@@ -109,48 +123,97 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+      # The ~130MB Chromium download was repeated on every run. Cache the browser directory,
+      # keyed on the lockfile so a playwright bump fetches a matching browser. `--with-deps` stays
+      # unconditional: it installs apt system libraries that live in /usr, NOT in this cache, so
+      # skipping it on a cache hit would leave the browser unable to launch. The download itself is
+      # already a no-op when the binary is restored.
+      - name: Restore Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
+      # These gates are BREADTH sweeps over the whole 200-block library, not per-commit regression
+      # locks: the full pass is 10 widths × 2 themes of gallery mounts, ~500 reel tiles remounted
+      # 24×, 10 slide skins, and 6 memory cycles over 9 routes. Running all of it on every push was
+      # the second-largest line on the CI bill. A pull request gets the same gates at reduced
+      # breadth (the 3 widths that actually catch layout breaks, 2 memory cycles); push-to-main and
+      # the release workflow keep the exhaustive sweep, so nothing reaches a user unswept.
+      # The performance probes emulate a 150ms / 1.6Mbps connection and assert a 2s shell budget,
+      # and they check that no heavy asset is fetched eagerly by matching BUILT chunk names. Both
+      # only mean anything against the shipped artifact: an unbundled dev server answers hundreds
+      # of separate module requests under that emulation, so every surface missed its budget by
+      # ~5x while doing 0ms of actual work. Build once and serve it with the real CLI — the same
+      # server `npx mavea` runs — and point perf/perf:memory there. The DOM/layout audits keep
+      # using the dev server, which is what they are written against.
+      - name: Build the artifact the performance probes measure
+        run: pnpm exec vite build
       - name: Run real-browser release gates
         shell: bash
+        env:
+          FULL_SWEEP: ${{ github.event_name != 'pull_request' && '1' || '' }}
         run: |
           set -euo pipefail
           pnpm exec vite --host 127.0.0.1 > /tmp/mavea-vite.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..60}; do
-            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then break; fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:5173/ >/dev/null
-          pnpm audit:ui
-          pnpm audit:tap
-          pnpm audit:interactions
-          pnpm slides:gate
-          pnpm export:gate
-          pnpm audit:reel
-          pnpm perf -- --throttle 6
-          pnpm perf:memory -- --url http://127.0.0.1:5173 --cycles 6
+          vite_pid=$!
+          node bin/mavea.mjs > /tmp/mavea-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$vite_pid" "$preview_pid" 2>/dev/null || true' EXIT
+          wait_for() {
+            for attempt in {1..60}; do
+              if curl --fail --silent "$1" >/dev/null; then return 0; fi
+              if ! kill -0 "$2" 2>/dev/null; then cat "$3"; return 1; fi
+              sleep 1
+            done
+            cat "$3"; return 1
+          }
+          wait_for http://127.0.0.1:5173/ "$vite_pid" /tmp/mavea-vite.log
+          wait_for http://127.0.0.1:4173/ "$preview_pid" /tmp/mavea-preview.log
+          if [ -n "$FULL_SWEEP" ]; then
+            pnpm audit:ui
+            pnpm audit:tap
+            pnpm audit:interactions
+            pnpm slides:gate
+            pnpm export:gate
+            pnpm audit:reel
+            pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
+            pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
+          else
+            pnpm audit:ui -- --widths 320,768,1440
+            pnpm audit:tap
+            pnpm audit:interactions
+            pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
+            pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 2
+          fi
 
-  # The source toolchain intentionally requires Node 24+, but the packed CLI is dependency-free
-  # and supports Node 20.19+. Exercise that public runtime contract separately instead of asking
-  # modern build dependencies to pretend they support an older engine.
-  cli-node20:
-    name: Published CLI smoke (Node 20)
+  # Forward-compat only. `verify` runs every gate once, on the Node the project targets; running
+  # the identical gates a second time on Node 26 answered one question — "does the toolchain still
+  # work on the next major" — for the price of a full duplicate run. Ask just that question, weekly.
+  node-next:
+    name: Toolchain forward-compat (Node 26)
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 20.19
-      - name: Exercise the dependency-free CLI entry point
-        run: node bin/mavea.mjs --help
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm typecheck
+      - run: pnpm exec vite build
 
+  # Also carries the Node 20 CLI smoke. GitHub bills every job rounded up to a whole minute, and
+  # that check was a single `--help` invocation against a dependency-free entry point — its own
+  # checkout and billed minute bought nothing. This job installs no node dependencies either, so
+  # the two share a runner cleanly.
   security:
-    name: Secret scan · SAST
+    name: Secret scan · SAST · Published CLI smoke (Node 20)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -171,6 +234,15 @@ jobs:
         run: pipx install semgrep
       - name: SAST (Semgrep — curated CI ruleset)
         run: semgrep --config p/ci --error --quiet src gateway bin scripts vite.config.ts
+
+      # The source toolchain requires Node 24+, but the packed CLI is dependency-free and supports
+      # Node 20.19+. Exercise that public runtime contract rather than asking modern build
+      # dependencies to pretend they support an older engine.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 20.19
+      - name: Exercise the dependency-free CLI entry point
+        run: node bin/mavea.mjs --help
 
   # NOTE: Gates that are GitHub-native but need a PUBLIC repo or GitHub Advanced Security are
   # deliberately omitted on this private free-plan repo (they'd just error): CodeQL code scanning,

@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
+import { availableParallelism, totalmem } from 'node:os';
 // React via Babel + the React Compiler. babel-plugin-react-compiler (run through the
 // reactCompilerPreset helper + @rolldown/plugin-babel) auto-memoizes every component and hook at
 // build time, so manual memo/useMemo/useCallback are rarely needed and whole-subtree re-renders
@@ -286,6 +287,13 @@ function envFromDotenv(key: string): string {
 }
 const GEMINI_KEY = envFromDotenv('GEMINI_API_KEY');
 
+/** Worker budget for the test run — the lower of what the CPUs and the RAM can carry. Roughly 3GB
+ *  per worker covers a jsdom plus the block library with headroom; see `maxWorkers` below. */
+const TEST_WORKERS = Math.max(
+  1,
+  Math.min(availableParallelism() - 1, Math.floor(totalmem() / 1024 ** 3 / 3)),
+);
+
 // Single source of truth for build (Vite) + tests (Vitest).
 export default defineConfig({
   // Vite's dep scanner only follows STATIC imports from the entry, so a package that is reached
@@ -313,7 +321,12 @@ export default defineConfig({
     react(),
     // The React Compiler runs as a filtered Babel pass (the preset only touches React/hook files),
     // so SWC-speed isn't needed for the bulk — Babel handles the JSX + the compiler in one go.
-    babel({ presets: [reactCompilerPreset({ target: '19' })] }),
+    // Skipped under Vitest: auto-memoization is a runtime-performance transform with no effect on
+    // what a component renders, and paying it on every transform made it the single largest cost
+    // in the test run (measured: it dominated `transform`, which itself dwarfs actual test time).
+    // The shipped bundle is still compiled — `pnpm build`, the browser audits, and the release
+    // workflow all exercise the compiled output, so nothing ships untested by it.
+    ...(process.env.VITEST ? [] : [babel({ presets: [reactCompilerPreset({ target: '19' })] })]),
     pdfProxyPlugin(),
     vadAssetsPlugin(),
     legalDocsPlugin(),
@@ -489,5 +502,13 @@ export default defineConfig({
     // machine (parallel workers, other builds) they legitimately exceed the 5s default and
     // flake. Real regressions still fail — just with a longer leash.
     testTimeout: 20_000,
+    // Vitest sizes its worker pool from CPU count alone, but each worker here is a forked process
+    // holding a jsdom, React, and (for the gauntlets) the whole block library — call it ~1GB
+    // resident. On a small or old machine, CPU-derived parallelism therefore oversubscribes RAM
+    // and the run starts swapping, which is far slower than running fewer workers. Take the lower
+    // of the two budgets. On a large machine the RAM term never binds and nothing changes.
+    maxWorkers: TEST_WORKERS,
+    // Per-test stdout over hundreds of files is a surprising amount of I/O on a CI log stream.
+    reporters: process.env.CI ? ['dot'] : ['default'],
   },
 });

@@ -10,7 +10,7 @@
 // serves every format and the 1080px export identically. Ladders are calibrated against the
 // TIGHTEST stage band (1:1, ~35ru tall — it grew from the old ~32ru once .reel-stage reclaimed
 // some of the bottom inset) at each slot's coercion ceiling in reelScript.ts — that worst case is
-// what tests/reel-fit.test.ts renders. A grown band can only ease overflow risk, never worsen it,
+// what tests/reel.test.ts renders. A grown band can only ease overflow risk, never worsen it,
 // so ladders sized to the tighter figure stay a valid (if now slightly conservative) fit.
 import type { CSSProperties } from 'react';
 import { clampStyle, tierIndex, type Ladder } from '../../../slides/skins/layouts/fit';

@@ -220,7 +220,7 @@ export const SLOT_BUDGET = {
  * returns every slide already within budget → no truncation, no overflow. `SLOT_BUDGET` is the looser
  * hard-clamp safety net beneath this (always ≥ these), and every finish carries a fitText tier ladder
  * (templates/fitText.ts) calibrated to render its CLAMP ceiling cleanly — so even over-budget model
- * output lands well; FitScale is the last resort. tests/reel-fit.test.ts renders that worst case.
+ * output lands well; FitScale is the last resort. tests/reel.test.ts renders that worst case.
  */
 export const CHAR_BUDGET = {
   stat: { value: 9, unit: 6, label: 24, prior: 56 },

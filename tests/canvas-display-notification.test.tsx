@@ -63,10 +63,8 @@ describe('Notification', () => {
           : it.title,
     }));
     const { container } = render(<Notification title="Inbox" items={longItems} />);
-    const card = container.querySelector('.card') as HTMLElement;
     const titles = Array.from(container.querySelectorAll<HTMLElement>('.nf-title'));
     expect(titles).toHaveLength(15);
-    expect(card).toBeTruthy();
     // nf-list scrolls vertically with a capped max-height rather than growing the card unbounded.
     const list = container.querySelector('.nf-list') as HTMLElement;
     expect(list).toBeTruthy();

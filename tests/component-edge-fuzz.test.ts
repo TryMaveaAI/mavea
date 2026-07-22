@@ -79,6 +79,21 @@ function looksNumericProp(type: string, prop: string): boolean {
   if (NUMERIC_ARRAY_OVERRIDE.has(`${type}:${prop}`)) return true;
   return !SCALAR_STRING_OVERRIDE.has(`${type}:${prop}`) && NUMERIC_NAME.test(prop);
 }
+/** Does scale (b) say anything scale (a) doesn't? Only a meta with a declared item shape has an
+ *  array this file knows how to blow out to ~60 items. Single source of truth: the case is only
+ *  EMITTED when this holds, so the suite carries no permanently-skipped placeholders. */
+function hasItemShape(meta: ComponentMeta): boolean {
+  return (meta.itemShapes?.length ?? 0) > 0;
+}
+/** The optional props scale (c) pins to an extreme — every optional that reads as a number. */
+function numericOptionals(meta: ComponentMeta): string[] {
+  return meta.optional.filter((opt) => looksNumericProp(meta.type, opt));
+}
+/** Same emission gate as `hasItemShape`, for scale (c): without a numeric optional to pin, the
+ *  mount would be byte-identical to (a). */
+function hasNumericOptional(meta: ComponentMeta): boolean {
+  return numericOptionals(meta).length > 0;
+}
 /** A handful of props that read as plural (and so would trip `looksArrayName` below) but are
  *  genuinely scalar in the one component that declares them — found by checking the actual
  *  renderer once the naive plural guess produced a false-crash. Keep this list to CONFIRMED
@@ -186,13 +201,11 @@ function largeNProps(meta: ComponentMeta): Record<string, unknown> {
   return props;
 }
 /** Scale (c): the readable floor plus every numeric-looking OPTIONAL prop pinned to one
- *  extreme value. Returns null when the meta has no such prop — that mount would be identical
- *  to (a) and add nothing. */
-function numericExtremeProps(meta: ComponentMeta, extreme: number): Record<string, unknown> | null {
-  const numericOptional = meta.optional.filter((opt) => looksNumericProp(meta.type, opt));
-  if (numericOptional.length === 0) return null;
+ *  extreme value. Only called for a meta that passes `hasNumericOptional` — without such a prop
+ *  this mount would be identical to (a) and add nothing. */
+function numericExtremeProps(meta: ComponentMeta, extreme: number): Record<string, unknown> {
   const props = minimumProps(meta);
-  for (const opt of numericOptional) props[opt] = extreme;
+  for (const opt of numericOptionals(meta)) props[opt] = extreme;
   return props;
 }
 function specForBlock(block: Block): ConversationSpec {
@@ -514,6 +527,14 @@ function expectSafe(
   expect(result.crashed, `${label}: BlockBoundary caught a render crash on this input`).toBe(false);
   expect(result.leaked, `${label}: rendered the literal substring "${result.leaked}"`).toBeNull();
 }
+/** Scale (c)'s three mounts: [corpus-key suffix, the value pinned onto every numeric optional,
+ *  the value as it reads in a failure label]. The label is spelled out rather than interpolated
+ *  because `${-1e9}` stringifies to "-1000000000", which is far less readable in a report. */
+const EXTREMES = [
+  ['0', 0, '0'],
+  ['1e9', 1e9, '1e9'],
+  ['negative', -1e9, '-1e9'],
+] as const;
 describe('component edge fuzz — generic-coerced blocks under adversarial props', () => {
   it('covers the bulk of the catalog (guards against a silently-empty corpus)', () => {
     expect(GENERIC.length).toBeGreaterThan(300);
@@ -522,36 +543,21 @@ describe('component edge fuzz — generic-coerced blocks under adversarial props
     it('minimum: one item per array, no optionals', () => {
       expectSafe(meta, minimumProps(meta), `${type}:minimum`, `${type} (minimum)`);
     });
-    const hasItemShape = (meta.itemShapes?.length ?? 0) > 0;
-    (hasItemShape ? it : it.skip)('large-N: ~60 items in every described array', () => {
-      expectSafe(meta, largeNProps(meta), `${type}:large-N`, `${type} (large-N)`);
-    });
-    const numericOptional = meta.optional.filter((opt) => looksNumericProp(meta.type, opt));
-    const hasNumericOptional = numericOptional.length > 0;
-    (hasNumericOptional ? it : it.skip)('numeric-extreme: 0', () => {
-      expectSafe(
-        meta,
-        numericExtremeProps(meta, 0)!,
-        `${type}:numeric-extreme:0`,
-        `${type} (numeric=0)`,
-      );
-    });
-    (hasNumericOptional ? it : it.skip)('numeric-extreme: 1e9', () => {
-      expectSafe(
-        meta,
-        numericExtremeProps(meta, 1e9)!,
-        `${type}:numeric-extreme:1e9`,
-        `${type} (numeric=1e9)`,
-      );
-    });
-    (hasNumericOptional ? it : it.skip)('numeric-extreme: negative', () => {
-      expectSafe(
-        meta,
-        numericExtremeProps(meta, -1e9)!,
-        `${type}:numeric-extreme:negative`,
-        `${type} (numeric=-1e9)`,
-      );
-    });
+    if (hasItemShape(meta)) {
+      it('large-N: ~60 items in every described array', () => {
+        expectSafe(meta, largeNProps(meta), `${type}:large-N`, `${type} (large-N)`);
+      });
+    }
+    if (hasNumericOptional(meta)) {
+      it.each(EXTREMES)('numeric-extreme: %s', (name, extreme, label) => {
+        expectSafe(
+          meta,
+          numericExtremeProps(meta, extreme),
+          `${type}:numeric-extreme:${name}`,
+          `${type} (numeric=${label})`,
+        );
+      });
+    }
   });
 });
 describe('historical malformed-prop regression corpus', () => {
@@ -559,11 +565,9 @@ describe('historical malformed-prop regression corpus', () => {
     const validKeys = new Set<string>();
     for (const meta of GENERIC) {
       validKeys.add(`${meta.type}:minimum`);
-      if ((meta.itemShapes?.length ?? 0) > 0) validKeys.add(`${meta.type}:large-N`);
-      if (meta.optional.some((opt) => looksNumericProp(meta.type, opt))) {
-        validKeys.add(`${meta.type}:numeric-extreme:0`);
-        validKeys.add(`${meta.type}:numeric-extreme:1e9`);
-        validKeys.add(`${meta.type}:numeric-extreme:negative`);
+      if (hasItemShape(meta)) validKeys.add(`${meta.type}:large-N`);
+      if (hasNumericOptional(meta)) {
+        for (const [name] of EXTREMES) validKeys.add(`${meta.type}:numeric-extreme:${name}`);
       }
     }
     const stale = [...HISTORICAL_FUZZ_CASES].filter((k) => !validKeys.has(k));

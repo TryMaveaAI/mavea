@@ -59,56 +59,60 @@ describe('Gauntlet — fixture corpus', () => {
 });
 
 // ── per-fixture mount+unmount ─────────────────────────────────────────────────
+//
+// One render per fixture, three assertions. These properties are all readable from a single
+// mount, and rendering the corpus once per property (the shape this file used to have) tripled
+// the cost of the slowest file in the suite for no extra signal — and because vitest
+// parallelises at file granularity, this file alone sets the suite's critical path.
+
+/** Heading counts captured during the mount pass, keyed `type\0mode` — see the dangling-header
+ *  check below, which compares required-only against typical without re-rendering either. */
+const headingCounts = new Map<string, number>();
+const headingKey = (type: string, mode: string) => `${type}\0${mode}`;
+
+/** Text nodes only — attribute values (aria-labels etc.) intentionally excluded. */
+function undefinedOrNaNText(container: HTMLElement): string[] {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const bad: string[] = [];
+  let node: Node | null = walker.nextNode();
+  while (node) {
+    const trimmed = (node.textContent ?? '').trim();
+    if (trimmed === 'undefined' || trimmed === 'NaN') bad.push(`[${trimmed}]`);
+    node = walker.nextNode();
+  }
+  return bad;
+}
 
 describe('Canvas gauntlet — all types × 3 modes', () => {
   it.each(
     ALL_FIXTURES.map((f) => [`${f.type} [${f.mode}]`, f] as [string, (typeof ALL_FIXTURES)[0]]),
-  )('mounts/unmounts without crash: %s', (_label, { block }) => {
-    const { container, unmount } = render(
-      <TopicCanvas data={specForBlock(block)} spot={null} built={{}} onProve={() => {}} />,
-    );
+  )(
+    'mounts clean, renders no undefined/NaN, unmounts clean: %s',
+    (_label, { type, mode, block }) => {
+      const { container, unmount } = render(
+        <TopicCanvas data={specForBlock(block)} spot={null} built={{}} onProve={() => {}} />,
+      );
 
-    // Every block must produce at least a .card wrapper (or .card-grid for preview).
-    const hasCard =
-      block.type === 'preview'
-        ? container.querySelector('.card-grid') !== null
-        : container.querySelector('.card') !== null;
-    expect(hasCard).toBe(true);
+      // Every block must produce at least a .card wrapper (or .card-grid for preview).
+      const hasCard =
+        block.type === 'preview'
+          ? container.querySelector('.card-grid') !== null
+          : container.querySelector('.card') !== null;
+      expect(hasCard).toBe(true);
 
-    // No leaked overlays after unmount.
-    unmount();
-    expect(document.body.querySelector('.ov-root')).toBeNull();
-  });
-});
+      // A missing default or an absent optional commonly surfaces as literal "undefined"/"NaN".
+      expect(undefinedOrNaNText(container)).toEqual([]);
 
-// ── undefined/NaN text ────────────────────────────────────────────────────────
+      headingCounts.set(
+        headingKey(type, mode),
+        container.querySelectorAll('h1,h2,h3,h4,h5,h6').length,
+      );
 
-describe('Canvas gauntlet — no undefined or NaN in rendered text', () => {
-  it.each(
-    ALL_FIXTURES.map((f) => [`${f.type} [${f.mode}]`, f] as [string, (typeof ALL_FIXTURES)[0]]),
-  )('no "undefined" or "NaN" text nodes: %s', (_label, { block }) => {
-    const { container, unmount } = render(
-      <TopicCanvas data={specForBlock(block)} spot={null} built={{}} onProve={() => {}} />,
-    );
-
-    // Walk text nodes only — attribute values (aria-labels etc.) intentionally excluded.
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-    const bad: string[] = [];
-    let node: Node | null = walker.nextNode();
-    while (node) {
-      const text = node.textContent ?? '';
-      // Strip whitespace; skip empty / pure-whitespace nodes.
-      const trimmed = text.trim();
-      if (trimmed === 'undefined' || trimmed === 'NaN') {
-        bad.push(`[${trimmed}]`);
-      }
-      node = walker.nextNode();
-    }
-
-    unmount();
-
-    expect(bad).toEqual([]);
-  });
+      // No leaked overlays after unmount.
+      unmount();
+      expect(document.body.querySelector('.ov-root')).toBeNull();
+    },
+  );
 });
 
 // ── required-only: no dangling section headers ────────────────────────────────
@@ -138,8 +142,14 @@ describe('Canvas gauntlet — required-only renders no more headings than typica
 
   it.each(pairs)(
     'required-only has ≤ heading count of typical: %s',
-    (_type, { typical, requiredOnly }) => {
-      const countHeadings = (block: Block) => {
+    (type, { typical, requiredOnly }) => {
+      // The mount pass above already counted headings for every fixture. Reuse those counts
+      // rather than rendering both modes again; fall back to rendering only when this file is
+      // run under a `-t` filter that skipped the mount pass, so the check never silently
+      // degrades into a no-op.
+      const countHeadings = (block: Block, mode: string) => {
+        const recorded = headingCounts.get(headingKey(type, mode));
+        if (recorded !== undefined) return recorded;
         const { container, unmount } = render(
           <TopicCanvas data={specForBlock(block)} spot={null} built={{}} onProve={() => {}} />,
         );
@@ -148,8 +158,8 @@ describe('Canvas gauntlet — required-only renders no more headings than typica
         return n;
       };
 
-      const typicalH = countHeadings(typical!);
-      const roH = countHeadings(requiredOnly!);
+      const typicalH = countHeadings(typical!, 'typical');
+      const roH = countHeadings(requiredOnly!, 'required-only');
       expect(roH).toBeLessThanOrEqual(typicalH);
     },
   );

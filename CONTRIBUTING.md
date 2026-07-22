@@ -29,10 +29,10 @@ Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok).
 
 ## Before a maintainer opens a PR
 
-Run the same checks the pre-push hook does:
+Run the full gate before opening a PR (the pre-push hook only runs typecheck + lint):
 
 ```sh
-pnpm verify   # typecheck → lint → format:check → test → build → bundle-size budget
+pnpm verify   # reference/gallery fixture freshness → typecheck → lint → format:check → test → build → bundle-size budget → artifact + package boundary
 ```
 
 Or step by step:
@@ -50,9 +50,10 @@ pnpm size
 focused—one change per PR is much easier to review than a grab-bag.
 
 A **pre-commit hook** (Husky + lint-staged) auto-formats and lints your staged files, and a
-**pre-push hook** runs `pnpm verify` so that gate runs before anything reaches CI. CI re-runs the
+**pre-push hook** runs `pnpm typecheck` and `pnpm lint` as a fast local sanity check; the full gate
+runs in CI. CI re-runs the
 same checks on each push and pull request, plus a few gates that only run there: dead-code/dependency
-checks (`pnpm knip`, license + `pnpm audit`, all bundled in `pnpm verify:full`), a secret scan and
+checks (`pnpm knip`, `pnpm check:licenses` + `pnpm check:vulnerabilities`, all bundled in `pnpm verify:full`), a secret scan and
 Semgrep SAST pass, and — on pull requests — a Conventional Commits lint over the PR's commits.
 
 Changes are reviewed against our [**engineering standards**](./docs/ENGINEERING.md) — the
@@ -61,7 +62,8 @@ before opening a PR.
 
 ## Scripts reference
 
-Every `pnpm <script>` in the repo, grouped by when you'd reach for it.
+The `pnpm <script>`s you'll reach for most, grouped by when you'd use them (see `package.json` for
+the complete list).
 
 **Everyday dev loop**
 
@@ -74,22 +76,22 @@ Every `pnpm <script>` in the repo, grouped by when you'd reach for it.
 | `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                               |
 | `actions` | Starts the actions gateway (`:8910`) that proxies Live's confirm-to-execute actions (Calendar, Gmail, Slack, …) to third-party APIs.     |
 
-**Quality gates** (what CI and the pre-push hook run)
+**Quality gates** (what CI runs; the pre-push hook runs only `typecheck` and `lint`)
 
-| Script           | Does                                                                                                 |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| `typecheck`      | `tsc --noEmit` — type errors only, no build output.                                                  |
-| `lint`           | ESLint over the repo.                                                                                |
-| `lint:fix`       | ESLint with auto-fix.                                                                                |
-| `format`         | Prettier, writes changes in place.                                                                   |
-| `format:check`   | Prettier, fails if anything is unformatted (no writes) — what CI runs.                               |
-| `test`           | Vitest suite, once.                                                                                  |
-| `test:watch`     | Vitest in watch mode.                                                                                |
-| `size`           | Checks the landing page's eager (gzipped) bundle against the size budget.                            |
-| `knip`           | Finds unused files, exports, and dependencies.                                                       |
-| `check:licenses` | Verifies every dependency's license is on the allowed list.                                          |
-| `verify`         | The pre-push gate: `typecheck → lint → format:check → test → build → size`. Run before a PR.         |
-| `verify:full`    | `verify` plus `knip`, `check:licenses`, and `pnpm audit` — what a release should pass, not every PR. |
+| Script           | Does                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `typecheck`      | `tsc --noEmit` — type errors only, no build output.                                                                                                                 |
+| `lint`           | ESLint over the repo.                                                                                                                                               |
+| `lint:fix`       | ESLint with auto-fix.                                                                                                                                               |
+| `format`         | Prettier, writes changes in place.                                                                                                                                  |
+| `format:check`   | Prettier, fails if anything is unformatted (no writes) — what CI runs.                                                                                              |
+| `test`           | Vitest suite, once.                                                                                                                                                 |
+| `test:watch`     | Vitest in watch mode.                                                                                                                                               |
+| `size`           | Checks the landing page's eager (gzipped) bundle against the size budget.                                                                                           |
+| `knip`           | Finds unused files, exports, and dependencies.                                                                                                                      |
+| `check:licenses` | Verifies every dependency's license is on the allowed list.                                                                                                         |
+| `verify`         | The full pre-PR gate: `check:reference-examples → check:gallery-fixtures → typecheck → lint → format:check → test → build → size → check:artifact → check:package`. |
+| `verify:full`    | `verify` plus `knip`, `check:licenses`, and `check:vulnerabilities` (OSV.dev) — what a release should pass, not every PR.                                           |
 
 **Scaffolding**
 
@@ -351,7 +353,7 @@ reproduction is the fastest way to a fix.
 ## Troubleshooting
 
 **`pnpm install` fails — Node version mismatch**
-Mavéa requires Node ≥ 20. Check `node --version`. Then `corepack enable` to get the pinned pnpm.
+Mavéa requires Node ≥ 24.11 (the published `npx mavea` CLI runs on Node ≥ 20.19). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
 
 **TypeScript errors after adding a block**
 Check that (a) the `Block` union or extended-block union includes the new type, (b) the canvas renderer handles the new `type` key, and (c) `canvas/blocks/index.ts` imports the new family.
