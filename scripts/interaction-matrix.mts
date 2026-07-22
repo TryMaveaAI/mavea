@@ -7,11 +7,23 @@ import { chromium, type Page } from 'playwright';
 import { FEATURES } from '../src/live/features/registry';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
 
-const ACK_BUDGET_MS = 100;
+// Both budgets below are RESPONSIVENESS bars, and responsiveness is relative to the machine. 100ms
+// is the right bar on a developer's laptop, and that is where this gate earns its keep: a real
+// regression shows up immediately against a stable local baseline. A 2-core CI runner is several
+// times slower, and measuring it against a laptop number turns the gate into noise — the first run
+// that ever reached this step failed 31 of 35 actions at a 176ms median while the same commit
+// passed 35/35 locally at a 28ms median. That is the runner, not the product.
+//
+// So the budgets scale, the way perf-probe.mts already scales its warm-transition budget with the
+// CPU-throttle rate it is emulating. `--slow-machine` (set by CI) states plainly that the host is
+// slow; it does NOT relax what we expect of the app on real hardware.
+const SLOW_MACHINE = process.argv.slice(2).includes('--slow-machine');
+const SLOW_MACHINE_FACTOR = 4;
+const ACK_BUDGET_MS = 100 * (SLOW_MACHINE ? SLOW_MACHINE_FACTOR : 1);
 // Pointer intent warms the bytes, but each case deliberately starts from a fresh document, so the
 // first Live mount still has to initialise its stores and full interaction tree. Keep that honest
 // first-mount budget separate from the already-mounted sub-150ms route gate in perf-probe.mts.
-const PRELOADED_FIRST_MOUNT_BUDGET_MS = 500;
+const PRELOADED_FIRST_MOUNT_BUDGET_MS = 500 * (SLOW_MACHINE ? SLOW_MACHINE_FACTOR : 1);
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);
@@ -68,7 +80,9 @@ async function measureFeature(page: Page, base: string, featureId: string): Prom
     await page
       .locator(readySelector(featureId))
       .first()
-      .waitFor({ state: 'visible', timeout: 2_000 });
+      // Generous relative to the budget below, so a surface that is merely slow is REPORTED as
+      // over budget rather than collapsing into an indistinguishable "never became usable".
+      .waitFor({ state: 'visible', timeout: PRELOADED_FIRST_MOUNT_BUDGET_MS * 4 });
     usableMs = Date.now() - started;
   } catch {
     reason = 'surface never became usable';

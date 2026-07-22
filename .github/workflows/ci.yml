@@ -174,7 +174,7 @@ jobs:
           if [ -n "$FULL_SWEEP" ]; then
             pnpm audit:ui
             pnpm audit:tap
-            pnpm audit:interactions
+            pnpm audit:interactions -- --slow-machine
             pnpm slides:gate
             pnpm export:gate
             pnpm audit:reel
@@ -183,7 +183,7 @@ jobs:
           else
             pnpm audit:ui -- --widths 320,768,1440
             pnpm audit:tap
-            pnpm audit:interactions
+            pnpm audit:interactions -- --slow-machine
             pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
             pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 2
           fi
