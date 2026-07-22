@@ -1,0 +1,25 @@
+name: Commits
+
+# PR-only by nature — there is nothing to range-lint on a direct push — so it lives in its own
+# workflow rather than showing as a "Skipped" check on every push. No paths filter: commit
+# hygiene applies to docs-only PRs too, and the job costs well under a minute.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  commit-messages:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      # The dedicated action bundles its own commitlint install — no need to pnpm-install the
+      # whole monorepo just to lint commit message text.
+      - name: Lint the PR's commits
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6

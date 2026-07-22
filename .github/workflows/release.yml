@@ -132,7 +132,7 @@ jobs:
 
       - name: Re-run real-browser release gates
         shell: bash
-        # Mirrors ci.yml's browser-quality job exactly — same servers, same flags — so a release
+        # Mirrors weekly.yml's browser-quality job exactly — same servers, same flags — so a release
         # can never fail on a configuration the weekly sweep already proved green. The DOM/layout
         # audits drive the dev server (what they are written against); the perf/memory probes
         # measure the BUILT artifact via the real CLI server, unthrottled, because this 2-core

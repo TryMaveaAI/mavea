@@ -1,5 +1,9 @@
 name: CI
 
+# Every job in this file runs on every trigger of this file — that invariant is why the checks
+# list on a push shows only green rows, never "Skipped". Work with other cadences lives in its
+# own workflow: weekly.yml (browser gauntlet + Node-next forward-compat, schedule/manual),
+# commits.yml (Conventional Commits lint, PRs), release.yml (the exhaustive ship gate).
 on:
   push:
     branches: [main]
@@ -8,13 +12,6 @@ on:
       - 'CHANGELOG.md'
   pull_request:
     paths-ignore: *docs-only
-  # Weekly sweep: the node-next forward-compat check and the full real-browser gauntlet
-  # (browser-quality). Neither belongs on every push — see each job's own note.
-  schedule:
-    - cron: '0 6 * * 1'
-  # Run the browser gauntlet by hand when a change touches layout, reels, or the perf budgets:
-  # Actions tab → CI → Run workflow (or `gh workflow run ci.yml`).
-  workflow_dispatch:
 
 # Cancel superseded PR runs to save minutes, but NEVER cancel a push to main — a quick second
 # push must not kill the first run (and its uploaded artifact) mid-flight.
@@ -31,9 +28,6 @@ permissions:
 jobs:
   verify:
     name: Lint · Typecheck · Test · Build · Dead code · Dependency audit
-    # Push/PR only — the weekly schedule exists for node-next and browser-quality, and re-running
-    # this job then would re-verify a commit it already verified when it landed.
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     # Merged with the old standalone "quality" job: both need the full dependency install anyway,
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
@@ -114,147 +108,12 @@ jobs:
         # API against every exact package version in the installed graph instead.
         run: pnpm check:vulnerabilities
 
-  browser-quality:
-    name: Responsive · Touch · Artifacts · Slow CPU · Memory
-    # Weekly + on-demand, NOT per-push. Two reasons, both learned the expensive way:
-    #
-    # Cost — this is the longest job in the workflow (~9-15 min of Playwright driving 600 gallery
-    # tiles, ~500 reel remounts, and the perf/memory probes), and it was billed on every push of a
-    # metered private repo.
-    #
-    # Determinism — its checks measure RENDERED GEOMETRY, so a verdict can flip on a 1px platform
-    # font difference (claimgrid tripped at 390px on one run and passed the next, byte-identical
-    # tree). A gate that can go red without a code change cannot be a per-push gate; as a weekly
-    # sweep a marginal finding is a report to act on, not a blocked push.
-    #
-    # Nothing ships unswept: the release workflow runs this same gauntlet as a hard gate, the
-    # weekly run catches drift within days, and a layout-touching change can trigger it on demand
-    # (Actions tab → CI → Run workflow, or `gh workflow run ci.yml`).
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      # The ~130MB Chromium download was repeated on every run. Cache the browser directory,
-      # keyed on the lockfile so a playwright bump fetches a matching browser. `--with-deps` stays
-      # unconditional: it installs apt system libraries that live in /usr, NOT in this cache, so
-      # skipping it on a cache hit would leave the browser unable to launch. The download itself is
-      # already a no-op when the binary is restored.
-      - name: Restore Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
-      # `--throttle 1` here is not a relaxation. The flag simulates a slow DEVICE by dividing a
-      # developer laptop's CPU, and its budgets are calibrated for that. A 2-core cloud runner is
-      # already that slow device — throttling it a further 6x models hardware no user owns, and the
-      # numbers said exactly that: 2088ms to a 2000ms shell budget, with the same commit at 1513ms
-      # locally. Let the runner be the slow machine and keep the budgets meaningful.
-      #
-      # The performance probes emulate a 150ms / 1.6Mbps connection and assert a 2s shell budget,
-      # and they check that no heavy asset is fetched eagerly by matching BUILT chunk names. Both
-      # only mean anything against the shipped artifact: an unbundled dev server answers hundreds
-      # of separate module requests under that emulation, so every surface missed its budget by
-      # ~5x while doing 0ms of actual work. Build once and serve it with the real CLI — the same
-      # server `npx mavea` runs — and point perf/perf:memory there. The DOM/layout audits keep
-      # using the dev server, which is what they are written against.
-      - name: Build the artifact the performance probes measure
-        run: pnpm exec vite build
-      - name: Run real-browser release gates
-        shell: bash
-        run: |
-          # NOTE: deliberately not `set -e`. These gates are independent checks, and aborting at
-          # the first failure means one run can only ever reveal one problem — the next is hidden
-          # until the first is fixed and the whole job re-run. That is how five of these gates went
-          # years without executing at all: audit:ui failed first, every time, and masked the rest.
-          # Run them all, then fail once with the full list. One run, one complete picture.
-          set -uo pipefail
-          pnpm exec vite --host 127.0.0.1 > /tmp/mavea-vite.log 2>&1 &
-          vite_pid=$!
-          node bin/mavea.mjs > /tmp/mavea-preview.log 2>&1 &
-          preview_pid=$!
-          trap 'kill "$vite_pid" "$preview_pid" 2>/dev/null || true' EXIT
-          wait_for() {
-            for attempt in {1..60}; do
-              if curl --fail --silent "$1" >/dev/null; then return 0; fi
-              if ! kill -0 "$2" 2>/dev/null; then cat "$3"; return 1; fi
-              sleep 1
-            done
-            cat "$3"; return 1
-          }
-          # A server that never came up is different: nothing downstream can mean anything, so stop.
-          wait_for http://127.0.0.1:5173/ "$vite_pid" /tmp/mavea-vite.log || exit 1
-          wait_for http://127.0.0.1:4173/ "$preview_pid" /tmp/mavea-preview.log || exit 1
-
-          failed=()
-          gate() {
-            local name="$1"; shift
-            echo "::group::gate: $name"
-            if "$@"; then
-              echo "✓ $name"
-            else
-              echo "✗ $name"
-              failed+=("$name")
-            fi
-            echo "::endgroup::"
-          }
-
-          gate audit:ui           pnpm audit:ui
-          gate audit:tap          pnpm audit:tap
-          gate audit:interactions pnpm audit:interactions -- --slow-machine
-          gate slides:gate        pnpm slides:gate
-          gate export:gate        pnpm export:gate
-          gate audit:reel         pnpm audit:reel
-          gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
-          gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
-
-          if [ ${#failed[@]} -gt 0 ]; then
-            echo ""
-            echo "Failing gates (${#failed[@]}): ${failed[*]}"
-            exit 1
-          fi
-          echo ""
-          echo "All browser release gates passed."
-
-  # Forward-compat only. `verify` runs every gate once, on the Node the project targets; running
-  # the identical gates a second time on Node 26 answered one question — "does the toolchain still
-  # work on the next major" — for the price of a full duplicate run. Ask just that question, weekly.
-  node-next:
-    name: Toolchain forward-compat (Node 26)
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 26
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - run: pnpm typecheck
-      - run: pnpm exec vite build
-
   # Also carries the Node 20 CLI smoke. GitHub bills every job rounded up to a whole minute, and
   # that check was a single `--help` invocation against a dependency-free entry point — its own
   # checkout and billed minute bought nothing. This job installs no node dependencies either, so
   # the two share a runner cleanly.
   security:
     name: Secret scan · SAST · Published CLI smoke (Node 20)
-    # Push/PR only, like verify — the tree does not change between pushes, so a weekly rescan of
-    # the same commit finds nothing a push scan did not.
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -289,18 +148,3 @@ jobs:
   # deliberately omitted on this private free-plan repo (they'd just error): CodeQL code scanning,
   # dependency-review-action (needs the Dependency Graph), and OpenSSF Scorecard. Add them the day
   # the repo goes public — they're free then.
-
-  commit-messages:
-    name: Commit messages (Conventional Commits)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          fetch-depth: 0
-      # The dedicated action bundles its own commitlint install — no need to pnpm-install the
-      # whole monorepo just to lint commit message text.
-      - name: Lint the PR's commits
-        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6
