@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # commitlint-github-action calls the GitHub API to list the PR's commits
+      # (getPullRequestEventCommits) — without this it 403s ("Resource not accessible by
+      # integration") and then crashes ungracefully trying to render the empty result.
+      pull-requests: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
