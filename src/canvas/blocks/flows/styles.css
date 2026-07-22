@@ -2352,7 +2352,11 @@
   border-radius: var(--r-full);
   text-transform: none;
   letter-spacing: 0;
-  white-space: nowrap; /* a fixed framework name, never dynamic text */
+  /* `framework` is a prop, not a fixed string, and `nowrap` made it one unbreakable token: at the
+     narrowest breakpoint "Business Model Canvas" ran past the card edge even though the eyebrow
+     itself wraps. Let the chip break internally and shrink below its content width. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .fl-bc {
   display: grid;

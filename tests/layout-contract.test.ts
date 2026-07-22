@@ -102,3 +102,28 @@ describe('dynamic-text slots wrap rather than clip', () => {
     });
   }
 });
+
+// Two failures the browser audit caught at the narrowest breakpoint, where a card is only wide
+// enough for two or three words per line. Neither is visible to jsdom — it has no layout engine —
+// and both were invisible locally too, because macOS renders these faces narrower than CI's Linux
+// does. Pin the fixes at the source level so the next edit can't quietly undo them.
+describe('narrow-card layout fixes stay in place', () => {
+  const flows = readFileSync(join(__dirname, '../src/canvas/blocks/flows/styles.css'), 'utf8');
+  const docs = readFileSync(join(__dirname, '../src/canvas/blocks/docs/styles.css'), 'utf8');
+
+  it('the business-canvas framework chip can break — it holds a prop, not a fixed string', () => {
+    const rule = /\.fl-bc-variant\s*\{([^}]*)\}/s.exec(flows)?.[1] ?? '';
+    expect(rule).toBeTruthy();
+    // `nowrap` made "Business Model Canvas" one unbreakable token, wider than a 280px card.
+    expect(rule).not.toMatch(/white-space:\s*nowrap/);
+    expect(rule).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+
+  it('clinical-timeline events keep their natural height inside the scrolling column', () => {
+    const rule = /\.ct-event\s*\{([^}]*)\}/s.exec(docs)?.[1] ?? '';
+    expect(rule).toBeTruthy();
+    // `.ct-events` is a flex column with a max-height, so without this its children shrink below
+    // their own content and each event's text spills into the one below it.
+    expect(rule).toMatch(/flex-shrink:\s*0/);
+  });
+});

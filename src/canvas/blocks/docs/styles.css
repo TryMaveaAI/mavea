@@ -1743,6 +1743,11 @@
   gap: 12px;
   align-items: flex-start;
   min-height: 44px;
+  /* `.ct-events` is a flex column with a max-height, so its children shrink by default. Once the
+     entries are tall enough to exceed that height — a narrow card wraps every label onto three
+     lines — each event was squeezed below its own content and the text spilled into the next
+     event. Keep events at their natural height and let the container scroll instead. */
+  flex-shrink: 0;
 }
 .ct-rail {
   display: flex;
@@ -1771,6 +1776,10 @@
 .ct-body {
   flex: 1;
   padding-bottom: 14px;
+  /* Clinical labels are model-authored and full of long unbreakable tokens
+     ("amoxicillin-clavulanate"), which a flex item will not shrink below without this. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ct-header {
   display: flex;
