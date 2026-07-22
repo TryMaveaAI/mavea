@@ -126,4 +126,25 @@ describe('narrow-card layout fixes stay in place', () => {
     // their own content and each event's text spills into the one below it.
     expect(rule).toMatch(/flex-shrink:\s*0/);
   });
+
+  it('the banner row wraps so its call to action never overflows the card', () => {
+    const display = readFileSync(
+      join(__dirname, '../src/canvas/blocks/display/styles.css'),
+      'utf8',
+    );
+    const rule = /\.bn-banner\s*\{([^}]*)\}/s.exec(display)?.[1] ?? '';
+    expect(rule).toBeTruthy();
+    // `.bn-action` deliberately stays nowrap and does not shrink, so a long label would be pushed
+    // straight out of the card unless the row itself can wrap.
+    expect(rule).toMatch(/flex-wrap:\s*wrap/);
+  });
+
+  it('compare-bars rows keep their natural height inside the scrolling column', () => {
+    const tables = readFileSync(join(__dirname, '../src/canvas/blocks/tables/styles.css'), 'utf8');
+    const rule = /\.cb-row\s*\{([^}]*)\}/s.exec(tables)?.[1] ?? '';
+    expect(rule).toBeTruthy();
+    // Same shape as `.ct-event`: `.cb` is a flex column with a max-height, so without this its
+    // rows are squeezed below their own content and the labels are visually cut.
+    expect(rule).toMatch(/flex-shrink:\s*0/);
+  });
 });

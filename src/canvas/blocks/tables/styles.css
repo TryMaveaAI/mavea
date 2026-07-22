@@ -1037,6 +1037,13 @@ table.pv {
   max-height: 520px;
   overflow-y: auto;
 }
+/* `.cb` is a flex column with a max-height, so its rows shrink by default. On a narrow card every
+   label wraps onto more lines, the rows exceed that height, and each one is squeezed below its own
+   content until the label is visually cut. Keep rows at their natural height and let `.cb` scroll,
+   which is what its max-height is for. */
+.cb-row {
+  flex-shrink: 0;
+}
 .cb-row-label {
   font-size: 12.5px;
   font-weight: 600;

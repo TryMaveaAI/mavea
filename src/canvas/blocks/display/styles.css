@@ -862,6 +862,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  /* The action keeps its own label on one line (`.bn-action` is nowrap and does not shrink, so a
+     call to action never ellipsizes into "I und…"). On a narrow card that only works if the row
+     itself can wrap — otherwise the button is pushed past the card edge. Let it drop to its own
+     line instead, the same way `.card-eyebrow` handles a long model-written label. */
+  flex-wrap: wrap;
   padding: 13px 14px;
   border-radius: var(--r-md);
   background: color-mix(in oklab, var(--bn-c) 9%, var(--surface-glass));
