@@ -5,6 +5,7 @@ import { CastMap } from '../src/canvas/blocks/diagrams/CastMap';
 import { CausationChain } from '../src/canvas/blocks/diagrams/CausationChain';
 import { CircuitDiagram } from '../src/canvas/blocks/diagrams/CircuitDiagram';
 import { DataStructure } from '../src/canvas/blocks/diagrams/DataStructure';
+import { FiveWhyChain } from '../src/canvas/blocks/diagrams/FiveWhyChain';
 import { DpTable } from '../src/canvas/blocks/diagrams/DpTable';
 import { GraphTrace } from '../src/canvas/blocks/diagrams/GraphTrace';
 import { HashTable } from '../src/canvas/blocks/diagrams/HashTable';
@@ -1276,5 +1277,62 @@ describe('TournamentBracket', () => {
     expect(container.querySelector('.dg-tb-note')).toBeTruthy();
     // Still exactly one column's worth of boxes — `double` doesn't add a losers-bracket column.
     expect(container.querySelectorAll('.dg-tb-box-bg')).toHaveLength(1);
+  });
+});
+
+// Regression coverage for a real bug seen in an exported PDF: each card's badge ("Problem" /
+// "Why n" / "Root cause") was drawn at a baseline only 8px above the first content baseline —
+// less than a content line's ascent — so the label and the first line of text overlapped, most
+// visibly under export skins whose faces render taller. The layout must keep a clear band
+// between the badge and the content, and grow each card by the same amount so the bottom
+// padding survives, for whatever number of whys a real answer carries.
+describe('FiveWhyChain', () => {
+  const whys = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      question: `Why does stage ${i + 1} happen in this system?`,
+      answer: `Because component ${i + 1} exhausts its budget and falls back to the slow path.`,
+    }));
+
+  it.each([2, 3, 5, 8])('keeps every badge clear of its card content with %i whys', (n) => {
+    const { container } = render(
+      <FiveWhyChain
+        title="Root cause"
+        problem="Database memory is filling up with lock structures."
+        whys={whys(n)}
+        rootCause="The DBMS trades concurrency for stability."
+      />,
+    );
+    const rows = Array.from(container.querySelectorAll('svg g'));
+    expect(rows).toHaveLength(n + 2); // problem + whys + root cause
+    for (const g of rows) {
+      const badge = g.querySelector('text[class*="fwy-badge"]');
+      const firstContent = g.querySelector(
+        'text[class*="fwy-question"] tspan, text[class*="fwy-answer"] tspan',
+      );
+      expect(badge).toBeTruthy();
+      expect(firstContent).toBeTruthy();
+      const badgeY = Number(badge!.getAttribute('y'));
+      const contentY = Number(firstContent!.getAttribute('y'));
+      // The first content baseline must clear the badge by at least a full line's ascent plus
+      // the badge's descent (~12px at these sizes) — the overlap shipped at exactly 8px.
+      expect(contentY - badgeY).toBeGreaterThanOrEqual(14);
+    }
+  });
+
+  it.each([1, 3])('keeps every content line inside its card (%i-line answers)', (lines) => {
+    const filler = Array.from({ length: lines * 7 }, () => 'because the cache misses').join(' ');
+    const { container } = render(
+      <FiveWhyChain title="Root cause" problem={filler} whys={whys(3)} rootCause={filler} />,
+    );
+    for (const g of Array.from(container.querySelectorAll('svg g'))) {
+      const rect = g.querySelector('rect[class*="fwy-card"]');
+      const rectY = Number(rect!.getAttribute('y'));
+      const rectH = Number(rect!.getAttribute('height'));
+      const lastY = Math.max(
+        ...Array.from(g.querySelectorAll('tspan')).map((t) => Number(t.getAttribute('y'))),
+      );
+      // Last baseline plus a descent's worth of room stays above the card's bottom edge.
+      expect(lastY + 5).toBeLessThanOrEqual(rectY + rectH);
+    }
   });
 });

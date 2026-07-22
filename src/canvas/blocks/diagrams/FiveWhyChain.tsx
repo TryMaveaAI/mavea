@@ -23,6 +23,13 @@ const CARD_PAD_Y = 14;
 const Q_LINE_H = 13;
 const MIN_CARD_H = 56;
 const CHARS_PER_LINE = 46;
+/** Baseline of the badge ("Problem" / "Why n" / "Root cause") below the card top. */
+const BADGE_BASELINE = 15;
+/** Extra vertical room between the badge baseline and the first content baseline. Without it the
+ *  first line's ascent reached up through the badge's glyphs (the two baselines sat 8px apart —
+ *  less than a 12px line's ascent), which read as overlapping text; export skins with taller
+ *  faces made it worse. Sized so the fonts can grow ~20% and the bands still clear. */
+const BADGE_CLEARANCE = 8;
 
 /** Greedy word-wrap to `maxLines`, ellipsizing the last line if it still overflows. Pure and
  *  bounded — a pathological single long word is hard-truncated, never looped. Local copy of
@@ -69,7 +76,9 @@ interface Row {
 function rowHeight(questionLines: number, answerLines: number): number {
   const qh = questionLines ? questionLines * Q_LINE_H + 4 : 0;
   const ah = answerLines * LINE_H;
-  return Math.max(MIN_CARD_H, CARD_PAD_Y * 2 + qh + ah);
+  // The badge clearance shifts every content line down, so the card grows by the same amount —
+  // otherwise the last line would eat the bottom padding instead.
+  return Math.max(MIN_CARD_H, CARD_PAD_Y * 2 + BADGE_CLEARANCE + qh + ah);
 }
 
 export function FiveWhyChain({
@@ -191,8 +200,8 @@ export function FiveWhyChain({
 
           {rows.map((r, i) => {
             const textX = PAD_X + 16;
-            const badgeY = r.y + 15;
-            const qStartY = r.y + CARD_PAD_Y + 9;
+            const badgeY = r.y + BADGE_BASELINE;
+            const qStartY = r.y + CARD_PAD_Y + 9 + BADGE_CLEARANCE;
             const answerStartY =
               r.questionLines.length > 0
                 ? qStartY + r.questionLines.length * Q_LINE_H + 4
