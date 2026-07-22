@@ -155,7 +155,12 @@ jobs:
         env:
           FULL_SWEEP: ${{ github.event_name != 'pull_request' && '1' || '' }}
         run: |
-          set -euo pipefail
+          # NOTE: deliberately not `set -e`. These gates are independent checks, and aborting at
+          # the first failure means one run can only ever reveal one problem — the next is hidden
+          # until the first is fixed and the whole job re-run. That is how five of these gates went
+          # years without executing at all: audit:ui failed first, every time, and masked the rest.
+          # Run them all, then fail once with the full list. One run, one complete picture.
+          set -uo pipefail
           pnpm exec vite --host 127.0.0.1 > /tmp/mavea-vite.log 2>&1 &
           vite_pid=$!
           node bin/mavea.mjs > /tmp/mavea-preview.log 2>&1 &
@@ -169,24 +174,47 @@ jobs:
             done
             cat "$3"; return 1
           }
-          wait_for http://127.0.0.1:5173/ "$vite_pid" /tmp/mavea-vite.log
-          wait_for http://127.0.0.1:4173/ "$preview_pid" /tmp/mavea-preview.log
+          # A server that never came up is different: nothing downstream can mean anything, so stop.
+          wait_for http://127.0.0.1:5173/ "$vite_pid" /tmp/mavea-vite.log || exit 1
+          wait_for http://127.0.0.1:4173/ "$preview_pid" /tmp/mavea-preview.log || exit 1
+
+          failed=()
+          gate() {
+            local name="$1"; shift
+            echo "::group::gate: $name"
+            if "$@"; then
+              echo "✓ $name"
+            else
+              echo "✗ $name"
+              failed+=("$name")
+            fi
+            echo "::endgroup::"
+          }
+
           if [ -n "$FULL_SWEEP" ]; then
-            pnpm audit:ui
-            pnpm audit:tap
-            pnpm audit:interactions -- --slow-machine
-            pnpm slides:gate
-            pnpm export:gate
-            pnpm audit:reel
-            pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
-            pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
+            gate audit:ui           pnpm audit:ui
+            gate audit:tap          pnpm audit:tap
+            gate audit:interactions pnpm audit:interactions -- --slow-machine
+            gate slides:gate        pnpm slides:gate
+            gate export:gate        pnpm export:gate
+            gate audit:reel         pnpm audit:reel
+            gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
+            gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
           else
-            pnpm audit:ui -- --widths 320,768,1440
-            pnpm audit:tap
-            pnpm audit:interactions -- --slow-machine
-            pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
-            pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 2
+            gate audit:ui           pnpm audit:ui -- --widths 320,768,1440
+            gate audit:tap          pnpm audit:tap
+            gate audit:interactions pnpm audit:interactions -- --slow-machine
+            gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 6
+            gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 2
           fi
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo ""
+            echo "Failing gates (${#failed[@]}): ${failed[*]}"
+            exit 1
+          fi
+          echo ""
+          echo "All browser release gates passed."
 
   # Forward-compat only. `verify` runs every gate once, on the Node the project targets; running
   # the identical gates a second time on Node 26 answered one question — "does the toolchain still
