@@ -1,0 +1,68 @@
+/* Whisper mode — the room at midnight. Scoped under the root data-whisper attribute the
+   Live surface sets during quiet hours; everything dims a notch and the accents stop
+   glowing, so the screen matches a lowered voice. Tokens only; own file. */
+
+:root[data-whisper] .mavea-app.live-voice {
+  filter: brightness(0.82) saturate(0.78);
+}
+
+/* The face's halo and the dock accents drop to ember level. */
+:root[data-whisper] .mavea-app.live-voice .aura {
+  opacity: 0.4;
+}
+
+/* The "won't wake anyone" badge on the dock. */
+.whisper-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 9px/1 var(--font-data, var(--font));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.whisper-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+/* The dock's mode row — quiet-hours badge + think-out-loud chips, floating with the dock. */
+.dock-modes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.listen-mode-chip {
+  font: 600 10.5px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.listen-mode-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.listen-mode-chip.on {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+}
+.listen-mode-chip:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}

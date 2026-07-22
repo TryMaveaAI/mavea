@@ -1,0 +1,316 @@
+/*
+ * print.css — @media print rules for Mavéa's canvas (both the demo and Live export to PDF).
+ * Imported globally from main.tsx, not from a surface, so Export works anywhere that renders
+ * the shared `.mavea-app` / `.canvas-stage` structure — including the demo, which a user can
+ * export from without ever opening Live.
+ *
+ * Strategy: hide every shell element (dock, face, rail, overlays) and let the
+ * canvas-stage + its cards reflow as a static print document. The canvas-stage
+ * is normally position:absolute which breaks print; we override to static here.
+ */
+
+@media print {
+  /* ── Page geometry ──────────────────────────────────────────────────────── */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
+  }
+
+  /* ── Kill animations/transitions universally ────────────────────────────── */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    backdrop-filter: none !important;
+    /* Browsers drop background colors when printing by default — keep chart fills,
+       gauges, and token-driven backgrounds so visuals survive in the PDF. */
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* ── Root app: strip the full-height / overflow-hidden lock ─────────────── */
+  .mavea-app {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: static !important;
+    display: block !important;
+    /* .mavea-app paints a tinted radial gradient (styles.css) — flatten it to a clean white
+       sheet so the PDF reads as a document, not a screenshot of a dark/tinted app. */
+    background: #fff !important;
+  }
+
+  /* ── Hide everything that isn't the canvas ──────────────────────────────── */
+  .mavea-app > *:not(.canvas-stage) {
+    display: none !important;
+  }
+
+  /* Also hide any overlays or portals rendered outside the canvas */
+  .live-dock,
+  .dock-bar,
+  .dock-main,
+  .composer-root,
+  .topbar,
+  .live-topbar,
+  .presence-layer,
+  .presence-positioner,
+  .presence-stage,
+  .presence-scrim,
+  .center-caption,
+  .presence,
+  .side-rail,
+  .session-rail,
+  .live-nav,
+  .living-bar,
+  .scrub-fixed,
+  .speak-strip,
+  .voice-notice,
+  .answer-hero,
+  .answer-footer,
+  .pen-pill,
+  .pen-toggle-pill,
+  .ghost-row,
+  .filmstrip-rail,
+  .focus-stage-chrome,
+  .preso-style-picker,
+  .preso-menu,
+  .present-exit,
+  .recap-modal,
+  .atlas-modal,
+  .dlg-scrim,
+  .rehearsal-modal,
+  .replay-modal,
+  .settings-panel,
+  .key-wizard,
+  .user-ink-layer,
+  .live-error,
+  .live-error-stage,
+  .listen-mode-chip,
+  .whisper-badge,
+  .dock-modes,
+  .topbar-menu,
+  .live-welcome {
+    display: none !important;
+  }
+
+  /* Interactive-only Live affordances inside the canvas: the scrubbable voice
+     waveform and the editable "what I understood" chips invite a tap/drag that a
+     static PDF can't honour, so drop them from the printed document. */
+  .voice-scrub,
+  .understood {
+    display: none !important;
+  }
+
+  /* ── Canvas stage: lift from position:absolute so it flows in print ──────── */
+  .canvas-stage {
+    position: static !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    left: auto !important;
+    top: auto !important;
+    inset: auto !important;
+    display: block !important;
+  }
+
+  /* ── Canvas scroll: remove scroll constraints ───────────────────────────── */
+  .canvas-scroll {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  /* ── Topic canvas and grid: single-column document flow ─────────────────────
+     The screen lays cards on a 12-col grid (`.card-grid` with `.col-*` spans). On an A4
+     page those spans produce cramped, ragged columns, so collapse the whole thing to a
+     single stacked column: each card becomes a full-width section that reads top-to-bottom
+     like a report. The focus-mode variants (`.focus-stage`, hero + filmstrip rail) get the
+     same treatment so an export taken mid-focus still flows as a document. */
+  .topic-canvas,
+  .card-grid,
+  .focus-stage,
+  .focus-main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* ── Card print rules ───────────────────────────────────────────────────── */
+
+  /* Lift the reveal animation */
+  .card.reveal,
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Freeze the "answers bloom" choreography to its finished frame, so a PDF/print
+     snapshot never captures a half-drawn line, an empty bar, or the seed glow. Every
+     bloom rule already rests on its settled state, so killing the animation is enough. */
+  .bloom-on [data-kind],
+  .bloom-on [data-kind] *,
+  .bloom-on [data-kind] *::before,
+  .bloom-on [data-kind] *::after,
+  .bloom-on [data-kind]::before {
+    animation: none !important;
+  }
+  .bloom-on [data-kind] .tc-line {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* Light-mode card appearance for print — a clean, evenly-spaced document section. */
+  .card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 0 0 14pt !important;
+    padding: 16pt 18pt !important;
+    background: #fff !important;
+    border: 1px solid #e4e7ec !important;
+    border-radius: 6pt !important;
+    box-shadow: none !important;
+    color: #111 !important;
+  }
+
+  .card-eyebrow {
+    color: #667085 !important;
+    border-bottom-color: #eee !important;
+  }
+
+  /* Grid column wrappers → full-width stacked sections (the grid is `display:block` above, so
+     the spans no longer apply; force width to fill the page column and add even rhythm). */
+  .card-grid > [class*='col-'],
+  .focus-main > *,
+  .focus-stage > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Eyebrow labels — keep attached to their card */
+  .card-eyebrow {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* ── Frozen document: drop per-card INTERACTIVE chrome ──────────────────────
+     A printed PDF can't be clicked, so the "Ask" buttons, mark/pin badges, the
+     Track-it nudge, and fill-in controls make no sense. Hide the controls (the
+     filled-in VALUE stays — .blank-value / .blank-slot are kept), and drop raw
+     form inputs so blanks read as static text, not empty boxes. */
+  .block-ask,
+  .block-ask-label,
+  .mark-toggle-label,
+  /* The pen/ink affordances live INSIDE the canvas-stage, so the shell-hiding rule above misses
+     them — a printed PDF can't draw, so the "Draw to ask" coachmark and ink bar are noise. */
+  .ink-bar,
+  .ink-coach,
+  /* Generic in-card action buttons (Prove it, sort/volume toggles, wizard + flashcard nav). All
+     are interactive-only and inert in a PDF; hiding them keeps whatever state is shown, frozen. */
+  .mini-btn,
+  .ac-pin-ring,
+  .ac-pin-num,
+  .ad-mark-num,
+  .footer-track,
+  .blank-actions,
+  .blank-control,
+  .blank-input,
+  .blank-choices,
+  .blank-chip,
+  .blank-complete-btn,
+  .blank-complete-spinner,
+  .blank-drop-hint,
+  .card input,
+  .card textarea,
+  .card select {
+    display: none !important;
+  }
+
+  /* ── Canvas header (question text) ─────────────────────────────────────── */
+  .canvas-header,
+  .turn-header {
+    color: #111 !important;
+  }
+
+  /* The header's action cluster (Focus/Everything view switch, the Pen toggle, any header
+     buttons) is live-only chrome — a frozen PDF can't use it, so drop it while keeping the
+     question title/subtitle. */
+  .canvas-header-actions {
+    display: none !important;
+  }
+
+  /* ── Narration text ─────────────────────────────────────────────────────── */
+  .turn-narration,
+  .answer-narration {
+    color: #333 !important;
+  }
+
+  /* ── Generated page header ──────────────────────────────────────────────────
+     This reuses the SAME pseudo-element that styles.css uses for the ambient glow
+     (`.mavea-app::before { position: absolute; inset: 0 }`). We must reset that here —
+     otherwise the header text is absolutely positioned over inset:0 and overlaps the
+     whole canvas instead of sitting above it. Force normal-flow block at the top. */
+  .mavea-app::before {
+    content: 'Mavéa \2014 ' attr(data-title);
+    position: static !important;
+    inset: auto !important;
+    display: block;
+    background: none !important;
+    font-size: 21pt;
+    font-weight: 700;
+    font-family: system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    color: #0c111d;
+    margin: 0 0 16pt !important;
+    padding-bottom: 8pt;
+    border-bottom: 2pt solid #0c111d;
+  }
+
+  /* The provenance row ("Reading · <files>") reads as a tidy source caption under the masthead. */
+  .context-row {
+    margin: 0 0 14pt !important;
+    color: #475467 !important;
+  }
+
+  /* Mid-focus exports: drop the hero filmstrip rail / thumbnails — the hero card itself prints. */
+  .focus-rail,
+  .focus-thumbs,
+  .focus-thumb,
+  .focus-filmstrip {
+    display: none !important;
+  }
+
+  /* Keep the question/answer title with the content that follows it. */
+  .canvas-header,
+  .turn-header,
+  .canvas-title,
+  .focus-hero-title {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

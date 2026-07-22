@@ -1,0 +1,773 @@
+/* ── compose block family ── messagedraft · chatthread · dialogue · variants · verse · slidedeck */
+
+/* ── messagedraft ── email/letter draft card */
+.md-draft {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.md-header {
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 14px;
+}
+.md-field {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: var(--fs-xs, 12px);
+  padding: 2px 0;
+}
+.md-field-label {
+  color: var(--text-muted);
+  min-width: 48px;
+  flex-shrink: 0;
+}
+.md-field-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.md-subject {
+  font-size: var(--fs-md, 15px);
+  font-weight: 700;
+  color: var(--text-primary);
+  padding: 8px 14px 4px;
+}
+.md-body {
+  padding: 8px 14px 14px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.65;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+.md-closing {
+  padding: 0 14px 12px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+}
+.md-tone-chip {
+  display: inline-block;
+  font-size: var(--fs-xs, 11px);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  color: var(--presence);
+  margin-top: 10px;
+  font-weight: 600;
+}
+.md-copy-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── chatthread ── IM bubble conversation */
+.ct-thread {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+.ct-participants {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.ct-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.ct-row.ct-user {
+  flex-direction: row-reverse;
+}
+.ct-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 18%, var(--surface-elevated));
+  color: var(--presence);
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ct-row.ct-user .ct-avatar {
+  background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
+  color: var(--insight);
+}
+.ct-bubble {
+  max-width: 76%;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  border-bottom-left-radius: 4px;
+  padding: 8px 12px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+.ct-row.ct-user .ct-bubble {
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--presence) 20%, var(--line));
+  border-bottom-left-radius: var(--r-md);
+  border-bottom-right-radius: 4px;
+}
+.ct-name {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.ct-time {
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  margin-top: 3px;
+  text-align: right;
+}
+
+/* ── dialogue ── interview/Q&A format */
+.dg-ctx {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.dg-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.dg-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.dg-speaker {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--presence);
+  min-width: 60px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.dg-line:nth-child(even) .dg-speaker {
+  color: var(--text-secondary);
+}
+.dg-text {
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.6;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+.dg-note {
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* ── variants ── side-by-side text options */
+.vt-prompt {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 12px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background: var(--surface-glass);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.vt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.vt-item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.vt-label {
+  padding: 6px 12px;
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--line);
+}
+.vt-text {
+  padding: 10px 12px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.vt-note {
+  padding: 4px 12px 8px;
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── verse ── poem / lyrics */
+.vs-form {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+.vs-stanzas {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.vs-stanza-label {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.vs-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.vs-line {
+  font-size: var(--fs-sm, 14px);
+  line-height: 1.7;
+  color: var(--text-primary);
+  font-style: italic;
+}
+.vs-line.indent-1 {
+  padding-left: 24px;
+}
+.vs-line.indent-2 {
+  padding-left: 48px;
+}
+
+/* ── slidedeck ── slide-by-slide outline */
+.sd-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+.sd-slide {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  /* The slide is a flex item of the scrolling column; flex-shrink:0 stops it being
+     squeezed below its content height, which would clip the speaker note. The slide
+     stacks its rows and grows to fit them — overflow:hidden only clips the rounded
+     corners, never the note. */
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.sd-slide-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--line);
+}
+.sd-num {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--track);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+.sd-title {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+}
+.sd-layout-chip {
+  margin-left: auto;
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  background: var(--track);
+  border-radius: var(--r-full);
+  padding: 1px 6px;
+  text-transform: lowercase;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.sd-bullets {
+  padding: 8px 12px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+.sd-bullet {
+  padding-left: 14px;
+  position: relative;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.sd-bullet::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--text-faint);
+}
+.sd-note {
+  padding: 4px 12px 8px;
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  font-style: italic;
+  border-top: 1px solid var(--line);
+}
+
+/* ── copy button ── shared across compose family */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.copy-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+}
+.copy-btn.copied {
+  color: var(--insight);
+  border-color: var(--insight);
+}
+.copy-btn .ic {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── container query adjustments ── */
+@container (max-width: 320px) {
+  .ct-bubble {
+    max-width: 88%;
+  }
+  .dg-speaker {
+    min-width: 44px;
+  }
+  .sd-layout-chip {
+    display: none;
+  }
+}
+
+/* ── voicestyle ── capture & apply the user's personal writing voice (traits + before→after) */
+.vst-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vst-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: var(--r-full, 999px);
+  border: 1px solid color-mix(in oklab, var(--presence) 24%, var(--line));
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+}
+.vst-chip-label {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--presence);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vst-chip-ex {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vst-baf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.vst-side {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  overflow: hidden;
+}
+.vst-side--generic {
+  background: var(--surface-glass);
+}
+.vst-side--mine {
+  border-color: color-mix(in oklab, var(--presence) 38%, var(--line));
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--presence) 18%, transparent) inset;
+}
+.vst-side-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 5px;
+}
+.vst-side-tag--mine {
+  color: var(--presence);
+}
+.vst-generic-text {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.vst-mine-text {
+  margin: 0;
+  font-size: var(--fs-md, 15px);
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.vst-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in oklab, var(--presence) 70%, var(--text-faint));
+}
+
+/* ── screenplay ── industry-standard script formatting */
+.scp-caption {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.scp-page {
+  margin-top: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-primary);
+  max-height: 520px;
+  overflow-y: auto;
+}
+/* Every line wraps inside the page; no single token escapes the column. */
+.scp-el {
+  overflow-wrap: anywhere;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+.scp-el + .scp-el {
+  margin-top: 10px;
+}
+
+/* Slugline — INT./EXT. scene heading, flush left, bold caps */
+.scp-slug {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+/* Action — flush left, the author's own casing */
+.scp-action {
+  color: var(--text-secondary);
+}
+/* Character cue — centred caps column above the dialogue */
+.scp-character {
+  margin-inline: auto;
+  margin-top: 14px;
+  width: fit-content;
+  max-width: 100%;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-align: center;
+}
+/* Character cue immediately followed by its parenthetical/dialogue tightens the gap */
+.scp-character + .scp-parenthetical,
+.scp-character + .scp-dialogue {
+  margin-top: 2px;
+}
+/* Parenthetical — short indented aside, lowercase in parens */
+.scp-parenthetical {
+  margin-inline: 30% 18%;
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* Dialogue — indented spoken block, narrower than action */
+.scp-dialogue {
+  margin-inline: 22% 18%;
+  color: var(--text-primary);
+}
+/* Transition — CUT TO:, right-aligned caps */
+.scp-transition {
+  text-align: right;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+@container (max-width: 360px) {
+  /* On a narrow card the proportional indents would crush the text — relax them. */
+  .scp-parenthetical {
+    margin-inline: 16% 8%;
+  }
+  .scp-dialogue {
+    margin-inline: 10% 6%;
+  }
+}
+
+/* ── socialpost ── platform post preview (X · LinkedIn · Instagram · Threads · generic) */
+.sp-card--x {
+  --sp-accent: var(--text-primary);
+  --sp-bar: var(--text-primary);
+}
+.sp-card--linkedin {
+  --sp-accent: var(--insight);
+  --sp-bar: var(--insight);
+}
+.sp-card--instagram {
+  --sp-accent: var(--warning);
+  --sp-bar: linear-gradient(90deg, var(--presence), var(--warning), var(--danger));
+}
+.sp-card--threads {
+  --sp-accent: var(--text-primary);
+  --sp-bar: var(--text-primary);
+}
+.sp-card--generic {
+  --sp-accent: var(--text-muted);
+  --sp-bar: var(--text-muted);
+}
+
+.sp-platform-chip {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--sp-accent) 32%, var(--line));
+  color: var(--sp-accent);
+  background: color-mix(in oklab, var(--sp-accent) 10%, transparent);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sp-post {
+  position: relative;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-elevated);
+}
+/* Platform accent bar — a solid tone for the monochrome platforms, a soft multi-stop
+   gradient (built entirely from existing tokens, never raw hex) to read as Instagram's
+   warmth without hardcoding a brand color. */
+.sp-post::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: var(--sp-bar);
+}
+.sp-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px 0;
+}
+.sp-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  background: color-mix(in oklab, var(--sp-accent) 18%, var(--surface-elevated));
+  color: var(--sp-accent);
+}
+.sp-who {
+  min-width: 0;
+  flex: 1;
+}
+.sp-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sp-name {
+  font-weight: 700;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  min-width: 0;
+}
+.sp-handle {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sp-time {
+  font-size: var(--fs-2xs, 11px);
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+.sp-body {
+  padding: 8px 14px 4px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* LinkedIn's cap alone is 3000 characters — long enough to grow a card off-screen with
+     no scroll. Cap the body's own height and let it scroll, matching every other
+     long-text region in this family (ct-thread, dg-lines, vt-list, vs-stanzas, sd-slides,
+     scp-page all do the same). */
+  max-height: 260px;
+  overflow-y: auto;
+}
+.sp-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  padding: 6px 14px 4px;
+}
+.sp-media-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  color: var(--text-faint);
+  min-width: 0;
+}
+.sp-media-item .ic {
+  width: 16px;
+  height: 16px;
+}
+.sp-media-alt {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.sp-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+.sp-engagement {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-faint);
+}
+.sp-eng-icon {
+  width: 15px;
+  height: 15px;
+}
+.sp-charcount {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  background: var(--track);
+  flex-shrink: 0;
+}
+.sp-charcount[data-state='warning'] {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+}
+.sp-charcount[data-state='danger'] {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+}
+
+@container (max-width: 320px) {
+  .sp-engagement {
+    gap: 8px;
+  }
+  .sp-name {
+    max-width: 100px;
+  }
+}

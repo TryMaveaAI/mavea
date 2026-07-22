@@ -1,0 +1,130 @@
+/* shiprollout.css — the safe-rollout section. A horizontal grid of ordered deploy steps that wraps
+   on narrow widths, each separated by a thin left rule, with a danger-tinted "trap" callout below.
+   All color via tokens so light/dark is automatic; every box contains its overflow and text wraps. */
+
+.ripple-roll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+}
+
+.ripple-roll-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ripple-roll-lead {
+  margin: 0;
+  max-width: 64ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* The step grid: auto-fitting columns that wrap to new rows on narrow widths. Each step carries a
+   thin left rule as the visual separator; the first column's rule is hidden so it reads as a lead. */
+.ripple-roll-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s-md) 0;
+}
+.ripple-roll-step {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 2px var(--s-md);
+  border-left: 1px solid var(--line);
+}
+.ripple-roll-step:first-child {
+  border-left-color: transparent;
+}
+.ripple-roll-step[data-trap='true'] {
+  border-left-color: color-mix(in oklab, var(--warning) 42%, transparent);
+}
+
+.ripple-roll-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.ripple-roll-order {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--insight) 20%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 40%, transparent);
+}
+.ripple-roll-order[data-trap='true'] {
+  background: color-mix(in oklab, var(--warning) 20%, transparent);
+  border-color: color-mix(in oklab, var(--warning) 44%, transparent);
+}
+.ripple-roll-team {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ripple-roll-deploy {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-roll-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* ── the trap callout ── */
+.ripple-roll-trap {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: var(--s-md);
+  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--danger) 9%, transparent);
+}
+.ripple-roll-trap-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--danger);
+}
+.ripple-roll-tri {
+  flex: none;
+}
+.ripple-roll-trap-eyebrow {
+  color: var(--danger);
+}
+.ripple-roll-trap-body {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-roll-trap-body strong {
+  font-weight: 700;
+  color: var(--danger);
+}

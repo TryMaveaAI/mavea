@@ -1,0 +1,73 @@
+/* Shared axis / gridline / legend primitives (canvas/lib/axis.tsx).
+   Token-only; tick font uses the fluid scale so it shrinks with the card. */
+
+.cx-grid line {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+
+.cx-axis-line {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.cx-tick {
+  fill: var(--text-faint);
+  font-size: clamp(7.5px, 2.4cqi, 9.5px);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inline SVG gridline / axis / axis-label primitives, for charts that draw their own svg but
+   want the shared look. Stroke widths are in user units (small viewBoxes use ~0.3). */
+.cx-grid-l {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+
+.cx-axis-l {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+}
+
+.cx-axlbl {
+  fill: var(--text-secondary);
+  font-size: clamp(8px, 2.6cqi, 10.5px);
+  font-weight: 500;
+}
+
+.cx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+
+.cx-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: clamp(11px, 3cqi, 12.5px);
+  transition: color var(--m-fast);
+}
+
+.cx-leg i {
+  flex: none;
+  width: 11px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.cx-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cx-leg.off {
+  opacity: 0.4;
+}

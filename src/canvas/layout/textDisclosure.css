@@ -1,0 +1,30 @@
+/* A complete-text affordance for labels that must stay compact inside fixed chart/diagram geometry.
+   Unlike a native title, this works for touch, keyboard and pointer input. */
+[data-text-disclosure] {
+  cursor: help;
+}
+
+[data-text-disclosure]:focus-visible,
+[data-text-disclosure-active='true'] {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+
+.canvas-text-popover {
+  position: fixed;
+  z-index: 2147483646;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-lg);
+  font: 500 max(13px, var(--fs-sm, 13px)) / 1.4 var(--font-sans, system-ui, sans-serif);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.canvas-text-popover[hidden] {
+  display: none;
+}

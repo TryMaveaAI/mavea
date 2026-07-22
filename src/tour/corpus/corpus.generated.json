@@ -1,0 +1,4214 @@
+{
+  "v": 1,
+  "generatedAt": 1783000082821,
+  "model": "gemini-3.1-flash-lite",
+  "conversations": [
+    {
+      "id": "money",
+      "domain": "Money",
+      "emoji": "💰",
+      "question": "Chart how a $10,000 investment grows at 7% a year for 30 years — show the year-by-year total and break down principal vs. interest earned.",
+      "frames": [
+        {
+          "question": "Chart how a $10,000 investment grows at 7% a year for 30 years — show the year-by-year total and break down principal vs. interest earned.",
+          "narration": "Investing ten thousand dollars at a seven percent annual return transforms your money over thirty years. You'll see the principal stay steady while the interest compounds into a total of over seventy-six thousand dollars.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Investment Growth: $10,000 at 7%",
+            "sub": "30-year projection with annual compounding.",
+            "opener": "Investing ten thousand dollars at a seven percent annual return transforms your money over thirty years. You'll see the principal stay steady while the interest compounds into a total of over seventy-six thousand dollars.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 4,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "Total after 30 years",
+                  "summary": "Your initial $10,000 grows by more than 7.6x through the power of compounding interest.",
+                  "stat": "$76,123"
+                },
+                "note": "This is your final balance after three decades of steady seven percent growth."
+              },
+              {
+                "type": "plot",
+                "col": 8,
+                "delay": 70,
+                "props": {
+                  "title": "Growth trajectory",
+                  "curves": [
+                    {
+                      "label": "Total Value",
+                      "color": "var(--insight)",
+                      "points": [
+                        {
+                          "x": 0,
+                          "y": 10000
+                        },
+                        {
+                          "x": 10,
+                          "y": 19671
+                        },
+                        {
+                          "x": 20,
+                          "y": 38696
+                        },
+                        {
+                          "x": 30,
+                          "y": 76123
+                        }
+                      ]
+                    }
+                  ],
+                  "xLabel": "Year",
+                  "yLabel": "Total Value ($)",
+                  "xDomain": [
+                    0,
+                    30
+                  ],
+                  "yDomain": [
+                    0,
+                    80000
+                  ],
+                  "origin": true,
+                  "footer": "The curve steepens significantly after year 20 due to compounding."
+                },
+                "id": "live-2",
+                "note": "The chart shows how your money accelerates over time, with the steepest gains occurring in the final decade."
+              },
+              {
+                "type": "stack",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Principal vs. Interest",
+                  "segments": [
+                    {
+                      "value": 10000,
+                      "label": "Principal",
+                      "display": "$10k",
+                      "color": "var(--text-muted)"
+                    },
+                    {
+                      "value": 66123,
+                      "label": "Interest Earned",
+                      "display": "$66.1k",
+                      "color": "var(--insight)"
+                    }
+                  ],
+                  "total": "$76,123"
+                },
+                "id": "live-3",
+                "note": "Interest accounts for nearly 87% of your final total, showing why time is your greatest asset."
+              },
+              {
+                "type": "breakdown",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Milestone values",
+                  "rows": [
+                    {
+                      "name": "Year 5",
+                      "val": "$14,025",
+                      "pct": 9
+                    },
+                    {
+                      "name": "Year 10",
+                      "val": "$19,671",
+                      "pct": 13
+                    },
+                    {
+                      "name": "Year 20",
+                      "val": "$38,696",
+                      "pct": 26
+                    },
+                    {
+                      "name": "Year 30",
+                      "val": "$76,123",
+                      "pct": 52,
+                      "hot": true
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "Your money doubles roughly every ten years at a seven percent return rate."
+              }
+            ],
+            "proof": null,
+            "topic": "Finance",
+            "bend": {
+              "blockId": "live-1",
+              "label": "Initial Investment",
+              "param": {
+                "value": 10000,
+                "min": 1000,
+                "max": 50000,
+                "step": 1000,
+                "unit": "$"
+              },
+              "outputs": [
+                {
+                  "label": "Final Total",
+                  "formula": "x*7.6123",
+                  "unit": "$"
+                }
+              ]
+            },
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How does inflation affect this growth?",
+                "icon": "chat",
+                "route": "How does inflation affect this growth?"
+              },
+              {
+                "label": "What if I added $500 monthly?",
+                "icon": "chat",
+                "route": "What if I added $500 monthly?"
+              },
+              {
+                "label": "How do taxes impact these returns?",
+                "icon": "chat",
+                "route": "How do taxes impact these returns?"
+              },
+              {
+                "label": "Best low-cost index funds?",
+                "icon": "chat",
+                "route": "Best low-cost index funds?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928938795
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Chart how a $10,000 investment grows at 7% a year for 30 years — show the year-by-year total and break down principal vs. interest earned."
+        },
+        {
+          "role": "assistant",
+          "content": "Investing ten thousand dollars at a seven percent annual return transforms your money over thirty years. You'll see the principal stay steady while the interest compounds into a total of over seventy-six thousand dollars."
+        }
+      ]
+    },
+    {
+      "id": "monthly",
+      "domain": "Money",
+      "emoji": "💰",
+      "question": "Starting from a $10,000 investment growing at 7% a year for 30 years — what if I also added $500 every month? Chart both paths side by side and show how much of the final total comes from the monthly contributions.",
+      "frames": [
+        {
+          "question": "Starting from a $10,000 investment growing at 7% a year for 30 years — what if I also added $500 every month? Chart both paths side by side and show how much of the final total comes from the monthly contributions.",
+          "narration": "Adding just $500/mo to your initial $10,000 investment transforms your outcome over 30 years. You'll see how that consistent monthly habit builds a much larger final nest egg than the initial sum alone.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Investment Growth: Lump Sum vs. Monthly Contributions",
+            "sub": "Comparing a $10,000 start with and without $500 monthly additions over 30 years at 7% annual return.",
+            "opener": "Adding just $500/mo to your initial $10,000 investment transforms your outcome over 30 years. You'll see how that consistent monthly habit builds a much larger final nest egg than the initial sum alone.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 4,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The power of consistency",
+                  "summary": "Adding $500 monthly turns a $10,000 seed into a significant portfolio over three decades.",
+                  "stat": "$655,000+",
+                  "delta": "vs. $76,000",
+                  "deltaDir": "up"
+                },
+                "note": "The total difference is massive: your $10,000 alone grows to about $76,000, but adding $500 monthly pushes your total past $655,000."
+              },
+              {
+                "type": "chart",
+                "col": 8,
+                "delay": 70,
+                "props": {
+                  "title": "Growth over 30 years at 7% return",
+                  "labels": [
+                    "Year 0",
+                    "Year 5",
+                    "Year 10",
+                    "Year 15",
+                    "Year 20",
+                    "Year 25",
+                    "Year 30"
+                  ],
+                  "series": [
+                    {
+                      "name": "Lump Sum Only",
+                      "color": "var(--text-muted)",
+                      "data": [
+                        10000,
+                        14025,
+                        19671,
+                        27590,
+                        38704,
+                        54304,
+                        76122
+                      ]
+                    },
+                    {
+                      "name": "With $500/mo",
+                      "color": "var(--insight)",
+                      "data": [
+                        10000,
+                        51360,
+                        107600,
+                        185600,
+                        294000,
+                        445000,
+                        655000
+                      ]
+                    }
+                  ],
+                  "unit": "$",
+                  "footer": "The gap widens exponentially as time passes."
+                },
+                "id": "live-2",
+                "note": "This chart shows the lump sum growing steadily, while the monthly contribution path accelerates rapidly due to compounding."
+              },
+              {
+                "type": "stack",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Composition of the $655,000 total",
+                  "segments": [
+                    {
+                      "value": 10000,
+                      "label": "Initial Investment",
+                      "display": "1.5%",
+                      "color": "var(--text-muted)"
+                    },
+                    {
+                      "value": 180000,
+                      "label": "Total Contributions",
+                      "display": "27.5%",
+                      "color": "var(--presence-soft)"
+                    },
+                    {
+                      "value": 465000,
+                      "label": "Compound Interest",
+                      "display": "71%",
+                      "color": "var(--insight)"
+                    }
+                  ],
+                  "total": "$655,000"
+                },
+                "id": "live-3",
+                "note": "Over 30 years, your $180,000 in total contributions is dwarfed by the $465,000 earned in interest, showing the real engine of your growth."
+              },
+              {
+                "type": "kpi",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "30-Year Summary",
+                  "kpis": [
+                    {
+                      "val": "$190,000",
+                      "label": "Total Principal"
+                    },
+                    {
+                      "val": "$465,000",
+                      "label": "Total Interest"
+                    },
+                    {
+                      "val": "$655,000",
+                      "label": "Final Balance"
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "Your total principal includes the initial $10,000 plus $180,000 in monthly additions, resulting in a final balance of over $655,000."
+              }
+            ],
+            "proof": null,
+            "topic": "Finance",
+            "track": {
+              "score": 85,
+              "reason": "Personal investment growth tracking"
+            },
+            "bend": {
+              "blockId": "live-2",
+              "label": "Monthly Contribution",
+              "param": {
+                "value": 500,
+                "min": 0,
+                "max": 2000,
+                "step": 50,
+                "unit": "$"
+              },
+              "outputs": [
+                {
+                  "label": "Total Principal",
+                  "formula": "10000+(x*12*30)"
+                },
+                {
+                  "label": "Estimated Final",
+                  "formula": "(10000*7.61)+(x*1213)"
+                }
+              ]
+            },
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How does inflation affect these returns?",
+                "icon": "chat",
+                "route": "How does inflation affect these returns?"
+              },
+              {
+                "label": "What if I increase contributions over time?",
+                "icon": "chat",
+                "route": "What if I increase contributions over time?"
+              },
+              {
+                "label": "How do taxes impact this growth?",
+                "icon": "chat",
+                "route": "How do taxes impact this growth?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1783000082818
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Starting from a $10,000 investment growing at 7% a year for 30 years — what if I also added $500 every month? Chart both paths side by side and show how much of the final total comes from the monthly contributions."
+        },
+        {
+          "role": "assistant",
+          "content": "Adding just $500/mo to your initial $10,000 investment transforms your outcome over 30 years. You'll see how that consistent monthly habit builds a much larger final nest egg than the initial sum alone."
+        }
+      ]
+    },
+    {
+      "id": "space",
+      "domain": "Science",
+      "emoji": "🔭",
+      "question": "Explain how a black hole bends light around it",
+      "frames": [
+        {
+          "question": "Explain how a black hole bends light around it",
+          "narration": "Black holes are so dense they warp the very fabric of space, forcing light to follow curved paths instead of traveling in a straight line. This effect, called gravitational lensing, creates the iconic glowing ring you see in images of black holes.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Gravitational Lensing: How Black Holes Bend Light",
+            "sub": "General relativity in action: mass curves spacetime.",
+            "opener": "Black holes are so dense they warp the very fabric of space, forcing light to follow curved paths instead of traveling in a straight line. This effect, called gravitational lensing, creates the iconic glowing ring you see in images of black holes.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 5,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The core principle",
+                  "summary": "Massive objects like black holes create a 'gravity well' that curves spacetime. Light, which always follows the shortest path, must follow these curves, resulting in bent trajectories.",
+                  "conf": "strong"
+                },
+                "note": "Light doesn't actually 'bend' because of gravity's pull on the photons themselves; it follows the curvature of space created by the black hole's immense mass.",
+                "section": "The Mechanism",
+                "order": 1
+              },
+              {
+                "type": "vectorfield",
+                "col": 7,
+                "delay": 70,
+                "props": {
+                  "title": "Spacetime curvature near a singularity",
+                  "samples": [
+                    {
+                      "x": -2,
+                      "y": -2,
+                      "slope": 1
+                    },
+                    {
+                      "x": 0,
+                      "y": -2,
+                      "slope": 0
+                    },
+                    {
+                      "x": 2,
+                      "y": -2,
+                      "slope": -1
+                    },
+                    {
+                      "x": -2,
+                      "y": 0,
+                      "slope": 0
+                    },
+                    {
+                      "x": 2,
+                      "y": 0,
+                      "slope": 0
+                    },
+                    {
+                      "x": -2,
+                      "y": 2,
+                      "slope": -1
+                    },
+                    {
+                      "x": 0,
+                      "y": 2,
+                      "slope": 0
+                    },
+                    {
+                      "x": 2,
+                      "y": 2,
+                      "slope": 1
+                    }
+                  ],
+                  "curves": [
+                    {
+                      "label": "Light path (photon sphere)",
+                      "color": "var(--insight)",
+                      "points": [
+                        {
+                          "x": -2,
+                          "y": 0.5
+                        },
+                        {
+                          "x": -1,
+                          "y": 0.2
+                        },
+                        {
+                          "x": 0,
+                          "y": 0.1
+                        },
+                        {
+                          "x": 1,
+                          "y": 0.2
+                        },
+                        {
+                          "x": 2,
+                          "y": 0.5
+                        }
+                      ]
+                    }
+                  ],
+                  "footer": "The arrows represent the slope of spacetime; light follows the path of least resistance through this warped grid."
+                },
+                "id": "live-2",
+                "note": "This vector field shows how space is distorted near a massive object, forcing light to deviate from a straight line.",
+                "section": "The Mechanism",
+                "order": 1,
+                "depth": 2,
+                "facet": "derivation"
+              },
+              {
+                "type": "etymtree",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "word": "Lensing",
+                  "roots": [
+                    {
+                      "form": "lens",
+                      "lang": "Latin",
+                      "gloss": "lentil (shape similarity)"
+                    }
+                  ],
+                  "descendants": [
+                    {
+                      "form": "Gravitational Lensing",
+                      "lang": "Astrophysics",
+                      "gloss": "Bending of light by gravity"
+                    }
+                  ],
+                  "note": "The term 'lens' comes from the Latin word for lentil, describing the shape of glass lenses that also bend light."
+                },
+                "id": "live-3",
+                "note": "The term 'lens' comes from the Latin word for lentil, describing the shape of glass lenses that also bend light.",
+                "section": "Terminology",
+                "order": 2
+              },
+              {
+                "type": "evidencetrace",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Observational Proof",
+                  "claim": "Light from distant stars is visibly bent by massive objects.",
+                  "items": [
+                    {
+                      "text": "1919 Solar Eclipse: Eddington confirmed starlight shifted position near the Sun.",
+                      "source": "Arthur Eddington",
+                      "when": "1919"
+                    },
+                    {
+                      "text": "Event Horizon Telescope: Captured the 'shadow' of M87* with a bright photon ring.",
+                      "source": "EHT Collaboration",
+                      "when": "2019"
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "We don't just theorize this; we have observed it directly during solar eclipses and through modern radio telescopes.",
+                "section": "Observational Proof",
+                "order": 3
+              }
+            ],
+            "proof": null,
+            "topic": "Physics",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What is the Event Horizon?",
+                "icon": "chat",
+                "route": "What is the Event Horizon?"
+              },
+              {
+                "label": "Can light escape a black hole?",
+                "icon": "chat",
+                "route": "Can light escape a black hole?"
+              },
+              {
+                "label": "How do we detect black holes?",
+                "icon": "chat",
+                "route": "How do we detect black holes?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928850936
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Explain how a black hole bends light around it"
+        },
+        {
+          "role": "assistant",
+          "content": "Black holes are so dense they warp the very fabric of space, forcing light to follow curved paths instead of traveling in a straight line. This effect, called gravitational lensing, creates the iconic glowing ring you see in images of black holes."
+        }
+      ]
+    },
+    {
+      "id": "travel",
+      "domain": "Travel",
+      "emoji": "🗾",
+      "question": "Plan a 5-day first-timer trip to Japan",
+      "frames": [
+        {
+          "question": "Plan a 5-day first-timer trip to Japan",
+          "narration": "Welcome to Japan! For a five-day first trip, focus on Tokyo—it's the perfect mix of neon energy and quiet tradition. This plan balances the must-see sights with enough breathing room to actually enjoy the culture.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "First, keep it simple: stay in Tokyo for all five days. It's a massive city, and you won't run out of things to see.",
+              "mark": {
+                "kind": "highlight",
+                "at": "Tokyo as your base"
+              }
+            },
+            {
+              "index": 3,
+              "say": "Here is your flow: start with the neon energy of Shibuya, move to the traditional temples, and take a day trip to Hakone for nature.",
+              "mark": {
+                "kind": "circle",
+                "at": "Day 1"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Day 1"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Day 2"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Day 4"
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "say": "And remember, the train system is your best friend. Just tap your phone and go.",
+              "mark": {
+                "kind": "underline",
+                "at": "Suica or Pasmo card"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Tokyo: The 5-Day First-Timer's Guide",
+            "sub": "A balanced mix of neon, tradition, and nature.",
+            "opener": "Welcome to Japan! For a five-day first trip, focus on Tokyo—it's the perfect mix of neon energy and quiet tradition. This plan balances the must-see sights with enough breathing room to actually enjoy the culture.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 5,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The Strategy: Tokyo as your base",
+                  "summary": "Five days is short. Don't try to do Kyoto and Tokyo. Stay in Tokyo, explore its distinct neighborhoods, and take one day trip to see Mt. Fuji.",
+                  "stat": "5 Days",
+                  "conf": "inferred"
+                },
+                "note": "Focusing on one city lets you actually experience it rather than spending your whole trip on a bullet train."
+              },
+              {
+                "type": "factsheet",
+                "col": 7,
+                "delay": 70,
+                "props": {
+                  "title": "Japan Essentials",
+                  "subject": "Quick Prep",
+                  "facts": [
+                    {
+                      "label": "Connectivity",
+                      "value": "eSIM (Airalo/Ubigi)",
+                      "note": "Essential for Google Maps navigation."
+                    },
+                    {
+                      "label": "Payment",
+                      "value": "Cash is still king",
+                      "note": "Carry yen for small shops and temples."
+                    },
+                    {
+                      "label": "Transport",
+                      "value": "Suica/Pasmo card",
+                      "note": "Add to your Apple/Google Wallet."
+                    }
+                  ]
+                },
+                "id": "live-2",
+                "note": "Get these three things sorted before you land, and your trip will be ten times smoother."
+              },
+              {
+                "type": "maproute",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "waypoints": [
+                    {
+                      "lat": 35.6595,
+                      "lng": 139.7005,
+                      "label": "Shibuya Crossing",
+                      "leg": "Start · The world's busiest intersection"
+                    },
+                    {
+                      "lat": 35.6695,
+                      "lng": 139.7005,
+                      "label": "Harajuku (Takeshita St)",
+                      "leg": "1.5 km · 20 min · Youth culture & crepes"
+                    },
+                    {
+                      "lat": 35.6938,
+                      "lng": 139.7034,
+                      "label": "Shinjuku Omoide Yokocho",
+                      "leg": "2.5 km · 35 min · Yakitori alley dinner"
+                    }
+                  ],
+                  "title": "Day 1: The Neon Heart (Shibuya & Shinjuku)",
+                  "icon": "walk",
+                  "iconColor": "var(--presence)",
+                  "distanceKm": 4,
+                  "elevationGainM": 20,
+                  "caption": "A flat, high-energy walk through Tokyo's most iconic districts."
+                },
+                "id": "live-3",
+                "note": "This route hits the famous crossing, the quirky fashion streets, and ends in a classic, smoky alleyway for dinner."
+              },
+              {
+                "type": "timeline",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "events": [
+                    {
+                      "time": "Day 1",
+                      "title": "Shibuya & Shinjuku",
+                      "detail": "The neon lights, the crossing, and yakitori alleys."
+                    },
+                    {
+                      "time": "Day 2",
+                      "title": "Asakusa & Ueno",
+                      "detail": "Senso-ji Temple, traditional markets, and park strolls."
+                    },
+                    {
+                      "time": "Day 3",
+                      "title": "Meiji Shrine & Omotesando",
+                      "detail": "Forest serenity followed by high-end architecture."
+                    },
+                    {
+                      "time": "Day 4",
+                      "title": "Hakone Day Trip",
+                      "detail": "Hot springs, pirate ship cruise, and Mt. Fuji views."
+                    },
+                    {
+                      "time": "Day 5",
+                      "title": "Akihabara & Departure",
+                      "detail": "Electronics, anime culture, and last-minute gifts."
+                    }
+                  ],
+                  "eyebrow": "Your 5-Day Itinerary"
+                },
+                "id": "live-4",
+                "note": "This flow moves from the modern city to traditional roots, then out to nature, and finally back for pop culture."
+              },
+              {
+                "type": "carousel",
+                "col": 12,
+                "delay": 280,
+                "props": {
+                  "title": "Visual Highlights",
+                  "slides": [
+                    {
+                      "label": "Shibuya Crossing",
+                      "caption": "The iconic scramble at night.",
+                      "from": "var(--presence-deep)",
+                      "to": "var(--presence)",
+                      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg"
+                    },
+                    {
+                      "label": "Senso-ji Temple",
+                      "caption": "The red lantern gate in Asakusa.",
+                      "from": "var(--warning)",
+                      "to": "var(--warning-soft)",
+                      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Lantern_of_Kaminarimon_Gate.JPG/960px-Lantern_of_Kaminarimon_Gate.JPG"
+                    },
+                    {
+                      "label": "Mt. Fuji from Hakone",
+                      "caption": "The classic view across Lake Ashi.",
+                      "from": "var(--insight)",
+                      "to": "var(--presence)",
+                      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/View_of_Mount_Fuji_from_Lake_Ashi.jpg/960px-View_of_Mount_Fuji_from_Lake_Ashi.jpg"
+                    }
+                  ],
+                  "icon": "image",
+                  "iconColor": "var(--insight)"
+                },
+                "id": "live-5",
+                "note": "These are the frames you'll want to capture—the crossing, the temple, and the mountain."
+              },
+              {
+                "type": "talktrack",
+                "col": 12,
+                "delay": 350,
+                "props": {
+                  "title": "How to handle the trains",
+                  "lines": [
+                    {
+                      "say": "Don't stress about the train maps; they look like spaghetti, but they're logical.",
+                      "beat": "warm, steady",
+                      "note": "The system is complex but very well-signed."
+                    },
+                    {
+                      "say": "Just add a Suica or Pasmo card to your phone's wallet. Tap in, tap out, and you're done.",
+                      "beat": "pause here",
+                      "note": "This is the single most important tip for getting around."
+                    },
+                    {
+                      "say": "If you get lost, just look for the station staff—they are incredibly helpful, even if your Japanese is zero.",
+                      "beat": "reassuring",
+                      "note": "Don't be afraid to ask for help."
+                    }
+                  ],
+                  "icon": "mic",
+                  "totalTime": "~45s"
+                },
+                "id": "live-6",
+                "note": "The train system is the lifeblood of Tokyo—mastering the tap-and-go card makes you a local instantly."
+              },
+              {
+                "type": "kpi",
+                "col": 12,
+                "delay": 420,
+                "props": {
+                  "title": "Daily Budget Estimate (per person)",
+                  "kpis": [
+                    {
+                      "val": "$120",
+                      "label": "Mid-range Hotel"
+                    },
+                    {
+                      "val": "$60",
+                      "label": "Food & Drink"
+                    },
+                    {
+                      "val": "$30",
+                      "label": "Transport & Entry"
+                    }
+                  ]
+                },
+                "id": "live-7",
+                "note": "Expect to spend around $210 a day for a comfortable, mid-range experience."
+              },
+              {
+                "type": "list",
+                "col": 12,
+                "delay": 490,
+                "props": {
+                  "title": "Immediate First Steps",
+                  "items": [
+                    "Book your flights to Narita (NRT) or Haneda (HND).",
+                    "Reserve a hotel in Shinjuku or Shibuya for easy access.",
+                    "Download Google Maps and Google Translate.",
+                    "Check if you need a Japan Rail Pass (likely not for just Tokyo/Hakone)."
+                  ]
+                },
+                "id": "live-8",
+                "note": "Start with the flights and hotel—everything else can be figured out once you're on the ground."
+              }
+            ],
+            "proof": null,
+            "topic": "Travel",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "Best neighborhoods to stay in?",
+                "icon": "chat",
+                "route": "Best neighborhoods to stay in?"
+              },
+              {
+                "label": "What to pack for Japan?",
+                "icon": "chat",
+                "route": "What to pack for Japan?"
+              },
+              {
+                "label": "Is the JR Pass worth it?",
+                "icon": "chat",
+                "route": "Is the JR Pass worth it?"
+              },
+              {
+                "label": "Must-try foods for beginners?",
+                "icon": "chat",
+                "route": "Must-try foods for beginners?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928867093
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Plan a 5-day first-timer trip to Japan"
+        },
+        {
+          "role": "assistant",
+          "content": "Welcome to Japan! For a five-day first trip, focus on Tokyo—it's the perfect mix of neon energy and quiet tradition. This plan balances the must-see sights with enough breathing room to actually enjoy the culture."
+        }
+      ]
+    },
+    {
+      "id": "fitness",
+      "domain": "Health",
+      "emoji": "🏋️",
+      "question": "Design a beginner 3-day-a-week strength routine",
+      "frames": [
+        {
+          "question": "Design a beginner 3-day-a-week strength routine",
+          "narration": "Building strength as a beginner is all about consistency. This three-day full-body routine hits every major muscle group, giving you forty-eight hours of recovery between sessions to let your muscles grow.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "3-Day Beginner Strength Routine",
+            "sub": "Full-body focus for maximum efficiency and recovery.",
+            "opener": "Building strength as a beginner is all about consistency. This three-day full-body routine hits every major muscle group, giving you forty-eight hours of recovery between sessions to let your muscles grow.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 12,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The Golden Rule",
+                  "summary": "Focus on compound movements like squats and presses. They build the most strength in the least amount of time, perfect for a beginner's 3-day split.",
+                  "stat": "3 Days/Week"
+                },
+                "note": "Three days is the sweet spot for beginners, allowing for maximum recovery between full-body sessions.",
+                "section": "The Routine",
+                "order": 1
+              },
+              {
+                "type": "plangrid",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Your Weekly Schedule",
+                  "columns": [
+                    "Mon",
+                    "Wed",
+                    "Fri"
+                  ],
+                  "rows": [
+                    {
+                      "slot": "Routine",
+                      "cells": [
+                        {
+                          "col": "Mon",
+                          "label": "Full Body A",
+                          "sub": "45 min"
+                        },
+                        {
+                          "col": "Wed",
+                          "label": "Full Body B",
+                          "sub": "45 min"
+                        },
+                        {
+                          "col": "Fri",
+                          "label": "Full Body A",
+                          "sub": "45 min"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "id": "live-2",
+                "note": "A classic Monday-Wednesday-Friday split gives you rest days in between to recover fully.",
+                "section": "The Routine",
+                "order": 1
+              },
+              {
+                "type": "datatable",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Full Body A: The Foundation",
+                  "columns": [
+                    {
+                      "key": "move",
+                      "label": "Movement",
+                      "align": "left"
+                    },
+                    {
+                      "key": "sets",
+                      "label": "Sets",
+                      "align": "left"
+                    },
+                    {
+                      "key": "reps",
+                      "label": "Reps",
+                      "align": "left"
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "move": "Goblet Squats",
+                      "sets": "3",
+                      "reps": "8-10"
+                    },
+                    {
+                      "move": "Push-ups",
+                      "sets": "3",
+                      "reps": "Failure"
+                    },
+                    {
+                      "move": "Dumbbell Rows",
+                      "sets": "3",
+                      "reps": "10-12"
+                    },
+                    {
+                      "move": "Plank",
+                      "sets": "3",
+                      "reps": "45 sec"
+                    }
+                  ]
+                },
+                "id": "live-3",
+                "note": "This session targets your quads, chest, and back, creating a solid base for future progress.",
+                "section": "The Routine",
+                "order": 1
+              },
+              {
+                "type": "datatable",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Full Body B: Adding Variety",
+                  "columns": [
+                    {
+                      "key": "move",
+                      "label": "Movement",
+                      "align": "left"
+                    },
+                    {
+                      "key": "sets",
+                      "label": "Sets",
+                      "align": "left"
+                    },
+                    {
+                      "key": "reps",
+                      "label": "Reps",
+                      "align": "left"
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "move": "Deadlifts",
+                      "sets": "3",
+                      "reps": "6-8"
+                    },
+                    {
+                      "move": "Overhead Press",
+                      "sets": "3",
+                      "reps": "8-10"
+                    },
+                    {
+                      "move": "Lat Pulldowns",
+                      "sets": "3",
+                      "reps": "10-12"
+                    },
+                    {
+                      "move": "Lunges",
+                      "sets": "3",
+                      "reps": "10/side"
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "Session B shifts focus to your posterior chain and shoulders, ensuring no muscle group is left behind.",
+                "section": "The Routine",
+                "order": 1
+              },
+              {
+                "type": "radar",
+                "col": 12,
+                "delay": 280,
+                "props": {
+                  "title": "Muscle Group Focus",
+                  "axes": [
+                    "Upper Push",
+                    "Upper Pull",
+                    "Lower Body",
+                    "Core"
+                  ],
+                  "series": [
+                    {
+                      "label": "Full Body Routine",
+                      "color": "var(--insight)",
+                      "values": [
+                        8,
+                        8,
+                        9,
+                        7
+                      ]
+                    }
+                  ],
+                  "max": 10
+                },
+                "id": "live-5",
+                "note": "This routine provides a balanced load, hitting all primary movement patterns equally.",
+                "section": "The Science",
+                "order": 2,
+                "depth": 2,
+                "facet": "analogy"
+              }
+            ],
+            "proof": null,
+            "topic": "Sports",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How do I track my progress?",
+                "icon": "chat",
+                "route": "How do I track my progress?"
+              },
+              {
+                "label": "What if I miss a day?",
+                "icon": "chat",
+                "route": "What if I miss a day?"
+              },
+              {
+                "label": "How to warm up properly?",
+                "icon": "chat",
+                "route": "How to warm up properly?"
+              },
+              {
+                "label": "Should I take supplements?",
+                "icon": "chat",
+                "route": "Should I take supplements?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928878224
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Design a beginner 3-day-a-week strength routine"
+        },
+        {
+          "role": "assistant",
+          "content": "Building strength as a beginner is all about consistency. This three-day full-body routine hits every major muscle group, giving you forty-eight hours of recovery between sessions to let your muscles grow."
+        }
+      ]
+    },
+    {
+      "id": "code",
+      "domain": "Engineering",
+      "emoji": "🔐",
+      "question": "Explain how OAuth login works, step by step",
+      "frames": [
+        {
+          "question": "Explain how OAuth login works, step by step",
+          "narration": "OAuth is the standard way apps let you log in using another service, like Google or GitHub, without ever sharing your actual password. It works by trading temporary digital keys, keeping your credentials safe behind the scenes.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "OAuth is all about tokens, not passwords. It's the secure way to let apps verify your identity without ever seeing your credentials.",
+              "mark": {
+                "kind": "highlight",
+                "at": "tokens"
+              }
+            },
+            {
+              "index": 1,
+              "say": "The flow is a five-step handshake. The app asks for permission, you log in with the provider, and the app gets a code to trade for a token.",
+              "mark": {
+                "kind": "underline",
+                "at": "Authorization Code"
+              },
+              "marks": [
+                {
+                  "kind": "underline",
+                  "at": "Authorization Code"
+                },
+                {
+                  "kind": "underline",
+                  "at": "Access Token"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "This is what that exchange looks like in code: the app sends the code and its secret, and the provider hands back the access token.",
+              "mark": {
+                "kind": "circle",
+                "at": "access_token"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "OAuth 2.0: How it Works",
+            "sub": "The secure handshake between your app, the user, and the identity provider.",
+            "opener": "OAuth is the standard way apps let you log in using another service, like Google or GitHub, without ever sharing your actual password. It works by trading temporary digital keys, keeping your credentials safe behind the scenes.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 5,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The Core Concept",
+                  "summary": "OAuth 2.0 uses 'tokens' instead of passwords. The app asks the identity provider (like Google) for permission, and the provider gives a temporary key that the app uses to prove who you are.",
+                  "conf": "strong"
+                },
+                "note": "Think of it like a hotel key card: you don't get the master key to the whole building, just a temporary pass that lets you into your specific room."
+              },
+              {
+                "type": "howtosteps",
+                "col": 7,
+                "delay": 70,
+                "props": {
+                  "title": "The OAuth Authorization Code Flow",
+                  "steps": [
+                    {
+                      "action": "User clicks 'Login with Google'",
+                      "detail": "The app redirects your browser to the identity provider's login page."
+                    },
+                    {
+                      "action": "User authenticates",
+                      "detail": "You enter your credentials directly on the provider's site, not the app's."
+                    },
+                    {
+                      "action": "Provider issues an Authorization Code",
+                      "detail": "The provider sends a short-lived code back to the app's redirect URL."
+                    },
+                    {
+                      "action": "App exchanges code for Access Token",
+                      "detail": "The app sends the code + its secret key to the provider's server."
+                    },
+                    {
+                      "action": "Provider validates and returns Token",
+                      "detail": "The provider verifies the app and code, then issues an Access Token."
+                    }
+                  ],
+                  "icon": "share",
+                  "iconColor": "var(--presence)"
+                },
+                "id": "live-2",
+                "note": "This five-step dance ensures the app never sees your password, only the token the provider gives them."
+              },
+              {
+                "type": "terminal",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "lines": [
+                    {
+                      "kind": "comment",
+                      "text": "App sends the auth code to the provider to get the token"
+                    },
+                    {
+                      "kind": "command",
+                      "text": "POST /token?code=xyz123&client_id=my-app&client_secret=secret"
+                    },
+                    {
+                      "kind": "comment",
+                      "text": "Provider responds with the access token"
+                    },
+                    {
+                      "kind": "command",
+                      "text": "HTTP 200 OK\n{ \"access_token\": \"eyJhbGci...\", \"token_type\": \"Bearer\" }"
+                    }
+                  ],
+                  "title": "The Token Exchange (Behind the Scenes)",
+                  "prompt": "app-server $"
+                },
+                "id": "live-3",
+                "note": "This is the critical moment: the app trades the temporary code for a secure token that acts as your digital ID."
+              },
+              {
+                "type": "checklist",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "rows": [
+                    {
+                      "t": "Client ID: Public identifier for the app",
+                      "st": "done"
+                    },
+                    {
+                      "t": "Client Secret: Private key known only to app and provider",
+                      "st": "done"
+                    },
+                    {
+                      "t": "Redirect URI: Where the provider sends the user back",
+                      "st": "done"
+                    },
+                    {
+                      "t": "Access Token: The temporary key used for API calls",
+                      "st": "done"
+                    }
+                  ],
+                  "title": "Key Security Components"
+                },
+                "id": "live-4",
+                "note": "These four pieces are the building blocks of every secure OAuth connection."
+              }
+            ],
+            "proof": null,
+            "topic": "Technology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What is an OpenID Connect?",
+                "icon": "chat",
+                "route": "What is an OpenID Connect?"
+              },
+              {
+                "label": "How do refresh tokens work?",
+                "icon": "chat",
+                "route": "How do refresh tokens work?"
+              },
+              {
+                "label": "OAuth vs SAML: What's the difference?",
+                "icon": "chat",
+                "route": "OAuth vs SAML: What's the difference?"
+              },
+              {
+                "label": "How to secure an OAuth implementation?",
+                "icon": "chat",
+                "route": "How to secure an OAuth implementation?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928888986
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Explain how OAuth login works, step by step"
+        },
+        {
+          "role": "assistant",
+          "content": "OAuth is the standard way apps let you log in using another service, like Google or GitHub, without ever sharing your actual password. It works by trading temporary digital keys, keeping your credentials safe behind the scenes."
+        }
+      ]
+    },
+    {
+      "id": "food",
+      "domain": "Everyday",
+      "emoji": "🍝",
+      "question": "A fast weeknight pasta from pantry staples",
+      "frames": [
+        {
+          "question": "A fast weeknight pasta from pantry staples",
+          "narration": "A quick, comforting weeknight pasta is all about pantry staples. My go-to is a simple aglio e olio — it's ready in fifteen minutes and relies on things you likely have on hand right now.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 1,
+              "say": "Start with these staples: spaghetti, plenty of garlic, and good olive oil.",
+              "mark": {
+                "kind": "circle",
+                "at": "Spaghetti"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Spaghetti"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Garlic (thinly sliced)"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "The magic happens in the last five minutes when you emulsify the pasta water with the oil.",
+              "mark": {
+                "kind": "highlight",
+                "at": "Emulsify and serve"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Pantry Pasta: Aglio e Olio",
+            "sub": "A 15-minute classic using garlic, oil, and red pepper.",
+            "opener": "A quick, comforting weeknight pasta is all about pantry staples. My go-to is a simple aglio e olio — it's ready in fifteen minutes and relies on things you likely have on hand right now.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 6,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The 15-minute pantry hero",
+                  "summary": "This classic Italian dish relies on high-quality olive oil, plenty of garlic, and a kick of heat. It's the ultimate 'I have nothing to eat' meal.",
+                  "stat": "15 min"
+                },
+                "note": "This is the essence of pantry cooking: minimal ingredients, maximum flavor, and ready in the time it takes to boil water."
+              },
+              {
+                "type": "breakdown",
+                "col": 6,
+                "delay": 70,
+                "props": {
+                  "title": "Ingredients for 2 servings",
+                  "rows": [
+                    {
+                      "name": "Spaghetti",
+                      "val": "200g",
+                      "pct": 50
+                    },
+                    {
+                      "name": "Garlic (thinly sliced)",
+                      "val": "4 cloves",
+                      "pct": 10
+                    },
+                    {
+                      "name": "Extra virgin olive oil",
+                      "val": "1/4 cup",
+                      "pct": 20
+                    },
+                    {
+                      "name": "Red pepper flakes",
+                      "val": "1 tsp",
+                      "pct": 5
+                    },
+                    {
+                      "name": "Parsley & Parmesan",
+                      "val": "to taste",
+                      "pct": 15
+                    }
+                  ]
+                },
+                "id": "live-2",
+                "note": "These five items are all you need; the quality of your olive oil and the thinness of your garlic slices make the biggest difference."
+              },
+              {
+                "type": "timeline",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "events": [
+                    {
+                      "time": "0-10 min",
+                      "title": "Boil the pasta",
+                      "detail": "Cook spaghetti in heavily salted water until just al dente."
+                    },
+                    {
+                      "time": "5-10 min",
+                      "title": "Infuse the oil",
+                      "detail": "While pasta cooks, gently sauté garlic and pepper flakes in olive oil until golden."
+                    },
+                    {
+                      "time": "10-15 min",
+                      "title": "Emulsify and serve",
+                      "detail": "Toss pasta directly into the oil with a splash of pasta water to create a silky sauce."
+                    }
+                  ],
+                  "title": "Step-by-step preparation"
+                },
+                "id": "live-3",
+                "note": "The secret is the pasta water; that starchy liquid is what turns your oil into a creamy, clinging sauce."
+              },
+              {
+                "type": "pullquote",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "The golden rule",
+                  "quote": "Don't burn the garlic. It should be pale gold and fragrant, not dark brown and bitter.",
+                  "author": "Chef's Tip"
+                },
+                "id": "live-4",
+                "note": "Garlic is the star here, so treat it gently — if it turns dark brown, it will ruin the whole dish."
+              }
+            ],
+            "proof": null,
+            "topic": "Cooking",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How to make it creamier?",
+                "icon": "chat",
+                "route": "How to make it creamier?"
+              },
+              {
+                "label": "What other pantry pastas can I make?",
+                "icon": "chat",
+                "route": "What other pantry pastas can I make?"
+              },
+              {
+                "label": "How to store leftover garlic?",
+                "icon": "chat",
+                "route": "How to store leftover garlic?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782928899181
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "A fast weeknight pasta from pantry staples"
+        },
+        {
+          "role": "assistant",
+          "content": "A quick, comforting weeknight pasta is all about pantry staples. My go-to is a simple aglio e olio — it's ready in fifteen minutes and relies on things you likely have on hand right now."
+        }
+      ]
+    },
+    {
+      "id": "ev",
+      "domain": "Compare",
+      "emoji": "🚗",
+      "question": "Compare the top 5 electric cars on range, price, and charging speed in a decision table",
+      "frames": [
+        {
+          "question": "Compare the top 5 electric cars on range, price, and charging speed in a decision table",
+          "narration": "I don't have live access to today's real-time market prices or specific software versions, but I can compare five leading electric vehicles based on their core performance specs. Here is how they stack up on range, price, and charging speed.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Electric Vehicle Comparison",
+            "sub": "Top 5 models evaluated on range, price, and charging efficiency.",
+            "opener": "I don't have live access to today's real-time market prices or specific software versions, but I can compare five leading electric vehicles based on their core performance specs. Here is how they stack up on range, price, and charging speed.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "comparematrix",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "title": "EV Performance Comparison",
+                  "cols": [
+                    "Tesla Model 3",
+                    "Hyundai Ioniq 6",
+                    "Ford Mustang Mach-E",
+                    "Lucid Air",
+                    "Kia EV6"
+                  ],
+                  "rows": [
+                    {
+                      "label": "Est. Range (miles)",
+                      "cells": [
+                        {
+                          "value": "341"
+                        },
+                        {
+                          "value": "361"
+                        },
+                        {
+                          "value": "320"
+                        },
+                        {
+                          "value": "516"
+                        },
+                        {
+                          "value": "310"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Starting Price",
+                      "cells": [
+                        {
+                          "value": "$42,490"
+                        },
+                        {
+                          "value": "$42,450"
+                        },
+                        {
+                          "value": "$43,995"
+                        },
+                        {
+                          "value": "$69,900"
+                        },
+                        {
+                          "value": "$45,950"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Charge (10-80%)",
+                      "cells": [
+                        {
+                          "value": "25 min"
+                        },
+                        {
+                          "value": "18 min"
+                        },
+                        {
+                          "value": "35 min"
+                        },
+                        {
+                          "value": "20 min"
+                        },
+                        {
+                          "value": "18 min"
+                        }
+                      ]
+                    }
+                  ],
+                  "footer": "Prices are base MSRP estimates; range varies by trim and driving conditions."
+                },
+                "id": "live-1",
+                "note": "This matrix highlights the trade-offs between range, cost, and charging speed across five popular electric models."
+              },
+              {
+                "type": "insight",
+                "col": 12,
+                "delay": 70,
+                "id": "live-2",
+                "num": "1",
+                "props": {
+                  "title": "Market Data Disclaimer",
+                  "summary": "I do not have live access to current dealer pricing or inventory. These figures represent standard manufacturer base MSRPs as of mid-2026.",
+                  "stat": "Inferred"
+                },
+                "note": "Since I cannot access live dealership inventory, these figures are based on standard manufacturer data and should be verified locally."
+              },
+              {
+                "type": "proscons",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Choosing Your EV",
+                  "pros": [
+                    {
+                      "text": "High efficiency and charging speed",
+                      "weight": 5
+                    },
+                    {
+                      "text": "Lower total cost of ownership",
+                      "weight": 4
+                    }
+                  ],
+                  "cons": [
+                    {
+                      "text": "Charging infrastructure gaps",
+                      "weight": 4
+                    },
+                    {
+                      "text": "Higher upfront purchase price",
+                      "weight": 3
+                    }
+                  ],
+                  "prosLabel": "Why choose these",
+                  "consLabel": "Key trade-offs",
+                  "verdict": "Choose based on your daily commute distance and access to home charging."
+                },
+                "id": "live-3",
+                "note": "The decision often comes down to balancing your daily range needs against the convenience of fast-charging speeds."
+              }
+            ],
+            "proof": null,
+            "topic": "Technology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How do I find local charging stations?",
+                "icon": "chat",
+                "route": "How do I find local charging stations?"
+              },
+              {
+                "label": "What are the federal tax credit rules?",
+                "icon": "chat",
+                "route": "What are the federal tax credit rules?"
+              },
+              {
+                "label": "How does cold weather affect EV range?",
+                "icon": "chat",
+                "route": "How does cold weather affect EV range?"
+              },
+              {
+                "label": "Leasing vs. buying an electric car",
+                "icon": "chat",
+                "route": "Leasing vs. buying an electric car"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930501233
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Compare the top 5 electric cars on range, price, and charging speed in a decision table"
+        },
+        {
+          "role": "assistant",
+          "content": "I don't have live access to today's real-time market prices or specific software versions, but I can compare five leading electric vehicles based on their core performance specs. Here is how they stack up on range, price, and charging speed."
+        }
+      ]
+    },
+    {
+      "id": "budget",
+      "domain": "Money",
+      "emoji": "🏛️",
+      "question": "Break down where the US federal budget is spent, by category, as a flow",
+      "frames": [
+        {
+          "question": "Break down where the US federal budget is spent, by category, as a flow",
+          "narration": "The federal budget is a massive flow of funds, primarily directed toward mandatory programs like Social Security and Medicare, followed by discretionary spending on defense and other government services.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 1,
+              "say": "The budget flows through three main channels: mandatory programs, discretionary spending, and interest on the national debt.",
+              "mark": {
+                "kind": "underline",
+                "at": "Mandatory"
+              },
+              "marks": [
+                {
+                  "kind": "underline",
+                  "at": "Mandatory"
+                },
+                {
+                  "kind": "underline",
+                  "at": "Discretionary"
+                },
+                {
+                  "kind": "underline",
+                  "at": "Interest"
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "say": "Mandatory spending is dominated by Social Security and Medicare, which together account for over sixty percent of that category.",
+              "mark": {
+                "kind": "circle",
+                "at": "Social Security"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Social Security"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Medicare"
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "say": "In discretionary spending, defense is the clear leader, consuming more than half of the annual congressional allocation.",
+              "mark": {
+                "kind": "highlight",
+                "at": "Defense",
+                "color": "key"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "U.S. Federal Budget Flow",
+            "sub": "Mandatory, discretionary, and interest spending for fiscal year 2025.",
+            "opener": "The federal budget is a massive flow of funds, primarily directed toward mandatory programs like Social Security and Medicare, followed by discretionary spending on defense and other government services.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 4,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "Total Federal Outlays",
+                  "summary": "The total projected spending for the 2025 fiscal year, covering all mandatory, discretionary, and interest obligations.",
+                  "stat": "$6.75 trillion"
+                },
+                "note": "This is the total pie — six point seven five trillion dollars — that the federal government plans to spend this year.",
+                "section": "Budget Overview",
+                "order": 1
+              },
+              {
+                "type": "pipeline",
+                "col": 8,
+                "delay": 70,
+                "props": {
+                  "stages": [
+                    {
+                      "k": "Mandatory",
+                      "v": 4.2
+                    },
+                    {
+                      "k": "Discretionary",
+                      "v": 1.7
+                    },
+                    {
+                      "k": "Interest",
+                      "v": 0.85
+                    }
+                  ],
+                  "title": "Spending Flow by Category",
+                  "headline": "$6.75T",
+                  "sub": "Total federal outlays",
+                  "unit": "$",
+                  "suffix": "T"
+                },
+                "id": "live-2",
+                "note": "Mandatory spending is the largest chunk at four point two trillion, followed by discretionary at one point seven, and interest payments at zero point eight five trillion.",
+                "section": "Budget Overview",
+                "order": 1
+              },
+              {
+                "type": "bridge",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Why Spending Has Changed",
+                  "start": 6100,
+                  "end": 6750,
+                  "steps": [
+                    {
+                      "label": "Social Security growth",
+                      "delta": 250
+                    },
+                    {
+                      "label": "Higher interest rates",
+                      "delta": 150
+                    },
+                    {
+                      "label": "Defense adjustments",
+                      "delta": 100
+                    },
+                    {
+                      "label": "Other mandatory growth",
+                      "delta": 150
+                    }
+                  ],
+                  "footer": "Rising interest costs and mandatory entitlement growth are the primary drivers of the year-over-year increase."
+                },
+                "id": "live-3",
+                "note": "This bridge shows how we moved from last year's spending to this year's, with interest and mandatory programs driving the bulk of the growth.",
+                "section": "Budget Dynamics",
+                "order": 2
+              },
+              {
+                "type": "breakdown",
+                "col": 6,
+                "delay": 210,
+                "props": {
+                  "title": "Mandatory Spending Detail",
+                  "rows": [
+                    {
+                      "name": "Social Security",
+                      "val": "$1.55T",
+                      "pct": 37
+                    },
+                    {
+                      "name": "Medicare",
+                      "val": "$1.05T",
+                      "pct": 25
+                    },
+                    {
+                      "name": "Medicaid",
+                      "val": "$650B",
+                      "pct": 15
+                    },
+                    {
+                      "name": "Income Security",
+                      "val": "$500B",
+                      "pct": 12
+                    },
+                    {
+                      "name": "Other",
+                      "val": "$450B",
+                      "pct": 11
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "Social Security and Medicare make up the vast majority of mandatory spending, reflecting the aging population and existing benefit structures.",
+                "section": "Budget Dynamics",
+                "order": 2
+              },
+              {
+                "type": "breakdown",
+                "col": 6,
+                "delay": 280,
+                "props": {
+                  "title": "Discretionary Spending Detail",
+                  "rows": [
+                    {
+                      "name": "Defense",
+                      "val": "$900B",
+                      "pct": 53
+                    },
+                    {
+                      "name": "Education",
+                      "val": "$200B",
+                      "pct": 12
+                    },
+                    {
+                      "name": "Health/Human Services",
+                      "val": "$150B",
+                      "pct": 9
+                    },
+                    {
+                      "name": "Transportation",
+                      "val": "$150B",
+                      "pct": 9
+                    },
+                    {
+                      "name": "Other",
+                      "val": "$300B",
+                      "pct": 17
+                    }
+                  ]
+                },
+                "id": "live-5",
+                "note": "Defense spending accounts for over half of all discretionary outlays, which are the parts of the budget Congress sets annually.",
+                "section": "Budget Dynamics",
+                "order": 2
+              }
+            ],
+            "proof": null,
+            "topic": "Economics",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How is the federal budget funded?",
+                "icon": "chat",
+                "route": "How is the federal budget funded?"
+              },
+              {
+                "label": "What is the difference between mandatory and discretionary?",
+                "icon": "chat",
+                "route": "What is the difference between mandatory and discretionary?"
+              },
+              {
+                "label": "How does the national debt impact interest payments?",
+                "icon": "chat",
+                "route": "How does the national debt impact interest payments?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930511995
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Break down where the US federal budget is spent, by category, as a flow"
+        },
+        {
+          "role": "assistant",
+          "content": "The federal budget is a massive flow of funds, primarily directed toward mandatory programs like Social Security and Medicare, followed by discretionary spending on defense and other government services."
+        }
+      ]
+    },
+    {
+      "id": "roadtrip",
+      "domain": "Travel",
+      "emoji": "🛣️",
+      "question": "Map a 7-day Pacific Coast Highway road trip from San Francisco to LA",
+      "frames": [
+        {
+          "question": "Map a 7-day Pacific Coast Highway road trip from San Francisco to LA",
+          "narration": "The Pacific Coast Highway is a classic seven-day journey from San Francisco to Los Angeles. You'll wind through redwood forests, dramatic cliffs, and iconic coastal towns at a pace that lets you soak in every view.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "We start in San Francisco and wind our way down the coast, covering about 750 kilometers over the week.",
+              "mark": {
+                "kind": "rising",
+                "at": "San Francisco",
+                "to": "Los Angeles",
+                "color": "key"
+              }
+            },
+            {
+              "index": 1,
+              "say": "The itinerary balances active days in Big Sur with relaxing stops in Monterey and Santa Barbara.",
+              "mark": {
+                "kind": "highlight",
+                "at": "Day 3"
+              }
+            },
+            {
+              "index": 2,
+              "say": "Don't miss the Bixby Creek Bridge for the perfect photo, and Hearst Castle for a bit of history.",
+              "mark": {
+                "kind": "circle",
+                "at": "Bixby Creek Bridge"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Bixby Creek Bridge"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Hearst Castle"
+                }
+              ]
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Pacific Coast Highway: 7-Day Road Trip",
+            "sub": "A scenic route from San Francisco to Los Angeles.",
+            "opener": "The Pacific Coast Highway is a classic seven-day journey from San Francisco to Los Angeles. You'll wind through redwood forests, dramatic cliffs, and iconic coastal towns at a pace that lets you soak in every view.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "maproute",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "waypoints": [
+                    {
+                      "lat": 37.7749,
+                      "lng": -122.4194,
+                      "label": "San Francisco",
+                      "leg": "Start · Head south on Highway 1"
+                    },
+                    {
+                      "lat": 36.6002,
+                      "lng": -121.8947,
+                      "label": "Monterey / Carmel",
+                      "leg": "190 km · 2.5 hours"
+                    },
+                    {
+                      "lat": 36.2704,
+                      "lng": -121.8081,
+                      "label": "Big Sur",
+                      "leg": "45 km · 1 hour"
+                    },
+                    {
+                      "lat": 35.2828,
+                      "lng": -120.6596,
+                      "label": "San Luis Obispo",
+                      "leg": "160 km · 2.5 hours"
+                    },
+                    {
+                      "lat": 34.4208,
+                      "lng": -119.6982,
+                      "label": "Santa Barbara",
+                      "leg": "150 km · 2 hours"
+                    },
+                    {
+                      "lat": 34.0522,
+                      "lng": -118.2437,
+                      "label": "Los Angeles",
+                      "leg": "150 km · 2 hours"
+                    }
+                  ],
+                  "title": "The Route: San Francisco to Los Angeles",
+                  "icon": "car",
+                  "distanceKm": 750,
+                  "caption": "A slow, scenic drive with plenty of stops for photos and coastal hikes."
+                },
+                "id": "live-1",
+                "note": "This route covers about 750 kilometers of stunning coastline, designed to be taken slowly over a full week."
+              },
+              {
+                "type": "timeline",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "events": [
+                    {
+                      "time": "Day 1-2",
+                      "title": "Monterey & Carmel",
+                      "detail": "Explore the Monterey Bay Aquarium and the scenic 17-Mile Drive."
+                    },
+                    {
+                      "time": "Day 3",
+                      "title": "Big Sur",
+                      "detail": "Cross Bixby Bridge and hike in Pfeiffer Big Sur State Park."
+                    },
+                    {
+                      "time": "Day 4",
+                      "title": "San Luis Obispo",
+                      "detail": "Visit Hearst Castle and relax in the charming downtown area."
+                    },
+                    {
+                      "time": "Day 5-6",
+                      "title": "Santa Barbara",
+                      "detail": "Enjoy the Spanish architecture, wine tasting, and beach walks."
+                    },
+                    {
+                      "time": "Day 7",
+                      "title": "Los Angeles",
+                      "detail": "Arrive in LA, explore Santa Monica or Malibu."
+                    }
+                  ],
+                  "eyebrow": "7-Day Itinerary"
+                },
+                "id": "live-2",
+                "note": "Spend two days in Monterey and Santa Barbara to truly experience the local culture and coastal vibe."
+              },
+              {
+                "type": "geomap",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Must-See Coastal Stops",
+                  "markers": [
+                    {
+                      "lat": 36.3718,
+                      "lng": -121.9018,
+                      "name": "Bixby Creek Bridge",
+                      "detail": "The most iconic photo spot on the PCH.",
+                      "color": "var(--insight)"
+                    },
+                    {
+                      "lat": 35.6852,
+                      "lng": -121.1678,
+                      "name": "Hearst Castle",
+                      "detail": "Opulent historic estate overlooking the ocean.",
+                      "color": "var(--presence)"
+                    },
+                    {
+                      "lat": 34.414,
+                      "lng": -119.6982,
+                      "name": "Stearns Wharf",
+                      "detail": "Classic Santa Barbara pier and harbor.",
+                      "color": "var(--warning)"
+                    }
+                  ]
+                },
+                "id": "live-3",
+                "note": "These three spots are essential highlights that define the character of the California coast."
+              }
+            ],
+            "proof": null,
+            "topic": "Travel",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "Best time of year to drive PCH?",
+                "icon": "chat",
+                "route": "Best time of year to drive PCH?"
+              },
+              {
+                "label": "Top coastal hikes in Big Sur?",
+                "icon": "chat",
+                "route": "Top coastal hikes in Big Sur?"
+              },
+              {
+                "label": "Where to find the best seafood?",
+                "icon": "chat",
+                "route": "Where to find the best seafood?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930522926
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Map a 7-day Pacific Coast Highway road trip from San Francisco to LA"
+        },
+        {
+          "role": "assistant",
+          "content": "The Pacific Coast Highway is a classic seven-day journey from San Francisco to Los Angeles. You'll wind through redwood forests, dramatic cliffs, and iconic coastal towns at a pace that lets you soak in every view."
+        }
+      ]
+    },
+    {
+      "id": "neural",
+      "domain": "Science",
+      "emoji": "🧠",
+      "question": "How does a neural network learn? Walk me through it as a labeled diagram",
+      "frames": [
+        {
+          "question": "How does a neural network learn? Walk me through it as a labeled diagram",
+          "narration": "Neural networks learn by adjusting their internal weights to minimize error. It's a cycle of guessing, measuring how wrong the guess was, and then nudging the connections to get closer to the right answer next time.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 1,
+              "say": "The process is a continuous loop: forward pass for prediction, then backpropagation to fix the errors.",
+              "mark": {
+                "kind": "circle",
+                "at": "Forward Pass"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Forward Pass"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Backpropagation"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "You can see the model getting smarter as the training loss drops steadily over twenty epochs.",
+              "mark": {
+                "kind": "falling",
+                "at": "1",
+                "to": "20"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "How a Neural Network Learns",
+            "sub": "From random guesses to accurate predictions through backpropagation.",
+            "opener": "Neural networks learn by adjusting their internal weights to minimize error. It's a cycle of guessing, measuring how wrong the guess was, and then nudging the connections to get closer to the right answer next time.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 5,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The Learning Loop",
+                  "summary": "The network repeatedly passes data forward, calculates error, and adjusts weights backward to improve accuracy.",
+                  "conf": "strong"
+                },
+                "note": "Learning is an iterative process of refining connections, moving from raw, random guesses toward high-precision output."
+              },
+              {
+                "type": "cyclewheel",
+                "col": 7,
+                "delay": 70,
+                "props": {
+                  "stages": [
+                    {
+                      "label": "Forward Pass",
+                      "caption": "Data flows through layers to produce a prediction.",
+                      "icon": "arrowUp"
+                    },
+                    {
+                      "label": "Loss Calculation",
+                      "caption": "Compare the prediction to the actual target.",
+                      "icon": "eye"
+                    },
+                    {
+                      "label": "Backpropagation",
+                      "caption": "Calculate how each weight contributed to the error.",
+                      "icon": "arrowDown"
+                    },
+                    {
+                      "label": "Weight Update",
+                      "caption": "Adjust weights slightly to reduce future error.",
+                      "icon": "edit"
+                    }
+                  ],
+                  "title": "The Training Cycle",
+                  "icon": "refresh",
+                  "iconColor": "var(--presence)"
+                },
+                "id": "live-2",
+                "note": "This loop repeats thousands of times, with the network learning a little bit more with every single pass."
+              },
+              {
+                "type": "trainingcurve",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "epochs": [
+                    1,
+                    5,
+                    10,
+                    15,
+                    20
+                  ],
+                  "trainLoss": [
+                    2.5,
+                    1.8,
+                    1.2,
+                    0.8,
+                    0.5
+                  ],
+                  "title": "Training Progress",
+                  "icon": "sparkle",
+                  "iconColor": "var(--insight)",
+                  "valLoss": [
+                    2.6,
+                    1.9,
+                    1.3,
+                    0.9,
+                    0.7
+                  ],
+                  "trainAcc": [
+                    0.3,
+                    0.5,
+                    0.7,
+                    0.85,
+                    0.92
+                  ],
+                  "valAcc": [
+                    0.28,
+                    0.48,
+                    0.68,
+                    0.82,
+                    0.88
+                  ],
+                  "footer": "Loss drops as the model converges on the optimal weight configuration."
+                },
+                "id": "live-3",
+                "note": "As training continues, the loss curve trends downward, showing the model is successfully minimizing its mistakes."
+              },
+              {
+                "type": "list",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Key Concepts",
+                  "items": [
+                    "Weights: The strength of connections between neurons.",
+                    "Loss Function: A mathematical way to measure how 'wrong' the model is.",
+                    "Gradient Descent: The optimization algorithm used to find the best weights.",
+                    "Learning Rate: How large of a step the model takes when updating weights."
+                  ]
+                },
+                "id": "live-4",
+                "note": "These four pillars define how the network navigates the complex landscape of potential solutions."
+              }
+            ],
+            "proof": null,
+            "topic": "Technology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What is backpropagation?",
+                "icon": "chat",
+                "route": "What is backpropagation?"
+              },
+              {
+                "label": "How does gradient descent work?",
+                "icon": "chat",
+                "route": "How does gradient descent work?"
+              },
+              {
+                "label": "What happens if the learning rate is too high?",
+                "icon": "chat",
+                "route": "What happens if the learning rate is too high?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930533152
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "How does a neural network learn? Walk me through it as a labeled diagram"
+        },
+        {
+          "role": "assistant",
+          "content": "Neural networks learn by adjusting their internal weights to minimize error. It's a cycle of guessing, measuring how wrong the guess was, and then nudging the connections to get closer to the right answer next time."
+        }
+      ]
+    },
+    {
+      "id": "solar",
+      "domain": "Money",
+      "emoji": "☀️",
+      "question": "Chart the 25-year payback of a $20,000 home solar install vs. paying the utility, year by year",
+      "frames": [
+        {
+          "question": "Chart the 25-year payback of a $20,000 home solar install vs. paying the utility, year by year",
+          "narration": "Investing in solar is a long-term play. While the upfront cost is steep, you'll break even in about eight years, turning a $20,000 expense into significant savings over the next two decades.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "The break-even point is just over eight years, which is when your system starts paying you back.",
+              "mark": {
+                "kind": "underline",
+                "at": "8.2 years",
+                "color": "key"
+              }
+            },
+            {
+              "index": 2,
+              "say": "You can see the savings curve cross the cost line here, showing how the gap widens over time.",
+              "mark": {
+                "kind": "rising",
+                "at": "0",
+                "to": "25",
+                "color": "key"
+              },
+              "marks": [
+                {
+                  "kind": "rising",
+                  "at": "0",
+                  "to": "25",
+                  "color": "key"
+                },
+                {
+                  "kind": "highlight",
+                  "at": "10"
+                }
+              ]
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Solar Investment: 25-Year Payback",
+            "sub": "Comparing a $20,000 upfront solar installation against utility payments.",
+            "opener": "Investing in solar is a long-term play. While the upfront cost is steep, you'll break even in about eight years, turning a $20,000 expense into significant savings over the next two decades.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 6,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The 8-Year Break-Even Point",
+                  "summary": "Your initial $20,000 investment is fully recouped through avoided utility bills by year nine, after which every dollar saved is pure profit.",
+                  "stat": "8.2 years"
+                },
+                "note": "The break-even point is the critical milestone where your savings finally exceed your initial investment cost.",
+                "section": "The Payback Analysis",
+                "order": 1
+              },
+              {
+                "type": "worthit",
+                "col": 6,
+                "delay": 70,
+                "props": {
+                  "title": "Is a $20,000 Solar System Worth It?",
+                  "verdict": "worth-it",
+                  "product": "Residential Solar Array",
+                  "price": "$20,000",
+                  "priceNote": "before federal tax credits",
+                  "worthItIf": [
+                    "You plan to stay in the home for 10+ years",
+                    "Your local utility rates are rising annually",
+                    "Your roof has good southern exposure"
+                  ],
+                  "skipIf": [
+                    "You are moving within the next 3 years",
+                    "Your roof requires expensive repairs first"
+                  ],
+                  "dealBreaker": "System performance degrades slightly over 25 years, reducing efficiency by about 0.5% annually.",
+                  "forWho": "Homeowners looking to hedge against rising energy costs.",
+                  "bottomLine": "Over 25 years, the system typically pays for itself three times over."
+                },
+                "id": "live-2",
+                "note": "Solar is a high-value, long-term asset that pays off best when you stay in your home long enough to realize the cumulative savings.",
+                "section": "The Payback Analysis",
+                "order": 1
+              },
+              {
+                "type": "chart",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Cumulative Savings vs. Cost",
+                  "labels": [
+                    "0",
+                    "5",
+                    "10",
+                    "15",
+                    "20",
+                    "25"
+                  ],
+                  "series": [
+                    {
+                      "name": "Solar Savings",
+                      "color": "var(--insight)",
+                      "data": [
+                        0,
+                        12000,
+                        26000,
+                        42000,
+                        60000,
+                        80000
+                      ]
+                    },
+                    {
+                      "name": "Utility Costs",
+                      "color": "var(--danger)",
+                      "data": [
+                        20000,
+                        20000,
+                        20000,
+                        20000,
+                        20000,
+                        20000
+                      ]
+                    }
+                  ],
+                  "unit": "$",
+                  "footer": "Solar savings accelerate as utility rates rise over time."
+                },
+                "id": "live-3",
+                "note": "This chart shows the crossover point where your cumulative solar savings surpass the initial $20,000 cost.",
+                "section": "The Payback Analysis",
+                "order": 1
+              },
+              {
+                "type": "comparematrix",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Solar vs. Utility: 25-Year Outlook",
+                  "cols": [
+                    "Solar System",
+                    "Utility Grid"
+                  ],
+                  "rows": [
+                    {
+                      "label": "Upfront Cost",
+                      "cells": [
+                        {
+                          "value": "$20,000"
+                        },
+                        {
+                          "value": "$0"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Monthly Bill",
+                      "cells": [
+                        {
+                          "value": "Minimal"
+                        },
+                        {
+                          "value": "Rising"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Asset Value",
+                      "cells": [
+                        {
+                          "value": "Increases Home Value"
+                        },
+                        {
+                          "value": "None"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Maintenance",
+                      "cells": [
+                        {
+                          "value": "Low (Cleaning/Inverter)"
+                        },
+                        {
+                          "value": "None"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "While the utility grid has no upfront cost, it offers no equity or long-term protection against rising energy prices.",
+                "section": "The Payback Analysis",
+                "order": 1
+              }
+            ],
+            "proof": null,
+            "topic": "Economics",
+            "track": {
+              "score": 85,
+              "reason": "Solar payback is a long-term financial metric homeowners track to validate their investment."
+            },
+            "bend": {
+              "blockId": "live-1",
+              "label": "Initial System Cost",
+              "param": {
+                "value": 20000,
+                "min": 10000,
+                "max": 40000,
+                "step": 1000,
+                "unit": "$"
+              },
+              "outputs": [
+                {
+                  "label": "Break-even Year",
+                  "formula": "x/2400"
+                },
+                {
+                  "label": "25-Year Profit",
+                  "formula": "(2400*25)-x"
+                }
+              ]
+            },
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How do tax credits change the break-even?",
+                "icon": "chat",
+                "route": "How do tax credits change the break-even?"
+              },
+              {
+                "label": "What maintenance does solar require?",
+                "icon": "chat",
+                "route": "What maintenance does solar require?"
+              },
+              {
+                "label": "Does solar increase home resale value?",
+                "icon": "chat",
+                "route": "Does solar increase home resale value?"
+              },
+              {
+                "label": "How do I calculate my local utility inflation?",
+                "icon": "chat",
+                "route": "How do I calculate my local utility inflation?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930544324
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Chart the 25-year payback of a $20,000 home solar install vs. paying the utility, year by year"
+        },
+        {
+          "role": "assistant",
+          "content": "Investing in solar is a long-term play. While the upfront cost is steep, you'll break even in about eight years, turning a $20,000 expense into significant savings over the next two decades."
+        }
+      ]
+    },
+    {
+      "id": "photosynthesis",
+      "domain": "Science",
+      "emoji": "🌿",
+      "question": "Explain photosynthesis as a step-by-step labeled process diagram",
+      "frames": [
+        {
+          "question": "Explain photosynthesis as a step-by-step labeled process diagram",
+          "narration": "Photosynthesis is how plants turn sunlight into fuel. It happens in two main stages: first, capturing light energy to split water, and second, using that energy to build sugar from carbon dioxide.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "First, look at the cycle: it starts with light absorption and ends with carbon fixation, creating a continuous loop of energy production.",
+              "mark": {
+                "kind": "circle",
+                "at": "Light Absorption",
+                "color": "key"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Light Absorption",
+                  "color": "key"
+                },
+                {
+                  "kind": "circle",
+                  "at": "Carbon Fixation"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "say": "The process splits into two stages: the light-dependent reactions that generate energy, and the Calvin cycle that builds the sugar.",
+              "mark": {
+                "kind": "underline",
+                "at": "Light-Dependent Reactions"
+              },
+              "marks": [
+                {
+                  "kind": "underline",
+                  "at": "Light-Dependent Reactions"
+                },
+                {
+                  "kind": "underline",
+                  "at": "The Calvin Cycle"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "Finally, the chloroplast is the actual site of this work, with thylakoids capturing the light and the stroma processing the carbon.",
+              "mark": {
+                "kind": "point",
+                "at": "Thylakoid"
+              },
+              "marks": [
+                {
+                  "kind": "point",
+                  "at": "Thylakoid"
+                },
+                {
+                  "kind": "point",
+                  "at": "Stroma"
+                }
+              ]
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Photosynthesis: The Solar-Powered Cycle",
+            "sub": "Converting light, water, and CO2 into chemical energy.",
+            "opener": "Photosynthesis is how plants turn sunlight into fuel. It happens in two main stages: first, capturing light energy to split water, and second, using that energy to build sugar from carbon dioxide.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "cyclewheel",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "stages": [
+                    {
+                      "label": "Light Absorption",
+                      "caption": "Chlorophyll captures solar energy in the thylakoid.",
+                      "icon": "sun"
+                    },
+                    {
+                      "label": "Water Splitting",
+                      "caption": "H2O is split, releasing oxygen as a byproduct.",
+                      "icon": "cloud"
+                    },
+                    {
+                      "label": "ATP Synthesis",
+                      "caption": "Energy is stored in ATP and NADPH molecules.",
+                      "icon": "zap"
+                    },
+                    {
+                      "label": "Carbon Fixation",
+                      "caption": "CO2 is converted into glucose in the Calvin cycle.",
+                      "icon": "leaf"
+                    }
+                  ],
+                  "title": "The Photosynthesis Loop",
+                  "icon": "sun",
+                  "iconColor": "var(--insight)",
+                  "caption": "A continuous cycle where light energy powers the conversion of inorganic carbon into organic sugar.",
+                  "footer": "The process sustains nearly all life on Earth."
+                },
+                "id": "live-1",
+                "note": "This cycle shows how plants capture light and turn it into the energy needed to build sugar from carbon dioxide."
+              },
+              {
+                "type": "howtosteps",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "The Two-Stage Process",
+                  "steps": [
+                    {
+                      "action": "Light-Dependent Reactions",
+                      "detail": "Occurring in the thylakoid membranes, sunlight splits water molecules (photolysis) to release oxygen and generate ATP and NADPH.",
+                      "check": "Oxygen is released"
+                    },
+                    {
+                      "action": "The Calvin Cycle",
+                      "detail": "Occurring in the stroma, the plant uses the ATP and NADPH from the first stage to fix carbon dioxide into G3P, which eventually forms glucose.",
+                      "check": "Glucose is produced"
+                    }
+                  ],
+                  "icon": "check",
+                  "iconColor": "var(--presence)",
+                  "footer": "Light reactions provide the fuel; the Calvin cycle builds the structure."
+                },
+                "id": "live-2",
+                "note": "The process splits into two distinct phases: the light-dependent reactions that create energy, and the Calvin cycle that uses that energy to build sugar."
+              },
+              {
+                "type": "anatomyfigure",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "organ": "chloroplast",
+                  "pins": [
+                    {
+                      "x": 20,
+                      "y": 50,
+                      "label": "Thylakoid",
+                      "note": "Stacked discs where light-dependent reactions occur."
+                    },
+                    {
+                      "x": 50,
+                      "y": 50,
+                      "label": "Stroma",
+                      "note": "The fluid-filled space where the Calvin cycle takes place."
+                    },
+                    {
+                      "x": 80,
+                      "y": 50,
+                      "label": "Granum",
+                      "note": "A stack of thylakoids, maximizing surface area for light capture."
+                    }
+                  ],
+                  "title": "Inside the Chloroplast",
+                  "icon": "leaf",
+                  "iconColor": "var(--insight)",
+                  "view": "cross-section",
+                  "caption": "The chloroplast is the specialized organelle where photosynthesis happens."
+                },
+                "id": "live-3",
+                "note": "The chloroplast is the factory floor, with thylakoids capturing light and the stroma handling the chemical assembly."
+              },
+              {
+                "type": "checklist",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "rows": [
+                    {
+                      "t": "Inputs: Sunlight, Water (H2O), Carbon Dioxide (CO2)",
+                      "st": "doing"
+                    },
+                    {
+                      "t": "Outputs: Glucose (C6H12O6), Oxygen (O2)",
+                      "st": "doing"
+                    }
+                  ],
+                  "title": "Key Inputs & Outputs",
+                  "icon": "layers",
+                  "footer": "The chemical equation: 6CO2 + 6H2O + light → C6H12O6 + 6O2"
+                },
+                "id": "live-4",
+                "note": "These are the raw materials and the final products of the entire photosynthetic reaction."
+              }
+            ],
+            "proof": null,
+            "topic": "Biology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What is the Calvin cycle?",
+                "icon": "chat",
+                "route": "What is the Calvin cycle?"
+              },
+              {
+                "label": "Why do plants need chlorophyll?",
+                "icon": "chat",
+                "route": "Why do plants need chlorophyll?"
+              },
+              {
+                "label": "How does photosynthesis affect climate?",
+                "icon": "chat",
+                "route": "How does photosynthesis affect climate?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930555694
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Explain photosynthesis as a step-by-step labeled process diagram"
+        },
+        {
+          "role": "assistant",
+          "content": "Photosynthesis is how plants turn sunlight into fuel. It happens in two main stages: first, capturing light energy to split water, and second, using that energy to build sugar from carbon dioxide."
+        }
+      ]
+    },
+    {
+      "id": "langs",
+      "domain": "Engineering",
+      "emoji": "⚙️",
+      "question": "Compare Python, Rust, and Go for a web backend across speed, safety, and ecosystem",
+      "frames": [
+        {
+          "question": "Compare Python, Rust, and Go for a web backend across speed, safety, and ecosystem",
+          "narration": "Python, Rust, and Go each serve different needs for a web backend. Python is the king of speed-to-market, Go excels at simple, high-concurrency services, and Rust offers unmatched performance and safety if you're willing to manage its complexity.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 0,
+              "say": "Start with the comparison matrix to see how these languages stack up across key backend criteria.",
+              "mark": {
+                "kind": "highlight",
+                "at": "Primary Strength"
+              }
+            },
+            {
+              "index": 1,
+              "say": "Rust is a powerhouse, but as this verdict shows, it's often a case of choosing the right tool for the specific job.",
+              "mark": {
+                "kind": "circle",
+                "at": "depends"
+              }
+            },
+            {
+              "index": 2,
+              "say": "Finally, look at the code variants to see the difference in verbosity and structure between the three.",
+              "mark": {
+                "kind": "underline",
+                "at": "Python (FastAPI)"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Python vs. Go vs. Rust for Web Backends",
+            "sub": "Comparing performance, safety, and ecosystem maturity.",
+            "opener": "Python, Rust, and Go each serve different needs for a web backend. Python is the king of speed-to-market, Go excels at simple, high-concurrency services, and Rust offers unmatched performance and safety if you're willing to manage its complexity.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "comparematrix",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "title": "Backend Language Comparison",
+                  "cols": [
+                    "Python",
+                    "Go",
+                    "Rust"
+                  ],
+                  "rows": [
+                    {
+                      "label": "Primary Strength",
+                      "cells": [
+                        {
+                          "value": "Development speed"
+                        },
+                        {
+                          "value": "Concurrency & simplicity"
+                        },
+                        {
+                          "value": "Performance & safety"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Memory Management",
+                      "cells": [
+                        {
+                          "value": "Garbage Collected"
+                        },
+                        {
+                          "value": "Garbage Collected"
+                        },
+                        {
+                          "value": "Ownership Model"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Learning Curve",
+                      "cells": [
+                        {
+                          "value": "Low"
+                        },
+                        {
+                          "value": "Medium"
+                        },
+                        {
+                          "value": "High"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Ecosystem Maturity",
+                      "cells": [
+                        {
+                          "value": "Extensive (Django/FastAPI)"
+                        },
+                        {
+                          "value": "Strong (Cloud-native)"
+                        },
+                        {
+                          "value": "Growing (Actix/Axum)"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "id": "live-1",
+                "note": "This matrix highlights the core trade-offs: Python prioritizes developer speed, Go balances performance with simplicity, and Rust focuses on absolute safety and control."
+              },
+              {
+                "type": "worthit",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Is Rust worth the complexity?",
+                  "verdict": "depends",
+                  "product": "Rust for Web Backends",
+                  "price": "High effort",
+                  "priceNote": "Steep learning curve compared to Python or Go",
+                  "worthItIf": [
+                    "You need extreme performance",
+                    "Memory safety is a non-negotiable requirement",
+                    "You are building long-lived, critical infrastructure"
+                  ],
+                  "skipIf": [
+                    "You need to ship a MVP quickly",
+                    "Your team is unfamiliar with systems programming",
+                    "The project is a simple CRUD application"
+                  ],
+                  "dealBreaker": "The borrow checker can significantly slow down initial development velocity.",
+                  "forWho": "Engineers building high-scale, resource-constrained, or mission-critical services.",
+                  "bottomLine": "Rust is a powerful tool, but don't pay the complexity tax unless your performance or safety requirements demand it."
+                },
+                "id": "live-2",
+                "note": "Rust is incredibly powerful, but it's often overkill for standard web backends where development speed is the primary bottleneck."
+              },
+              {
+                "type": "variants",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Code Style Comparison",
+                  "variants": [
+                    {
+                      "label": "Python (FastAPI)",
+                      "text": "from fastapi import FastAPI\napp = FastAPI()\n@app.get('/')\ndef read_root(): return {'Hello': 'World'}"
+                    },
+                    {
+                      "label": "Go (net/http)",
+                      "text": "func handler(w http.ResponseWriter, r *http.Request) {\n    fmt.Fprintf(w, \"Hello, World!\")\n}\nhttp.HandleFunc(\"/\", handler)"
+                    },
+                    {
+                      "label": "Rust (Axum)",
+                      "text": "async fn handler() -› &'static str {\n    \"Hello, World!\"\n}\nlet app = Router::new().route(\"/\", get(handler));"
+                    }
+                  ],
+                  "prompt": "How a simple 'Hello World' HTTP handler looks.",
+                  "footer": "Python is the most concise, while Go and Rust require more boilerplate but offer better type safety."
+                },
+                "id": "live-3",
+                "note": "Python's syntax is the most readable, while Go and Rust provide explicit type systems that catch errors at compile time."
+              }
+            ],
+            "proof": null,
+            "topic": "Programming",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How do I choose between FastAPI and Django?",
+                "icon": "chat",
+                "route": "How do I choose between FastAPI and Django?"
+              },
+              {
+                "label": "What are the best Go frameworks for microservices?",
+                "icon": "chat",
+                "route": "What are the best Go frameworks for microservices?"
+              },
+              {
+                "label": "Is Rust becoming the standard for high-performance web?",
+                "icon": "chat",
+                "route": "Is Rust becoming the standard for high-performance web?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930566680
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Compare Python, Rust, and Go for a web backend across speed, safety, and ecosystem"
+        },
+        {
+          "role": "assistant",
+          "content": "Python, Rust, and Go each serve different needs for a web backend. Python is the king of speed-to-market, Go excels at simple, high-concurrency services, and Rust offers unmatched performance and safety if you're willing to manage its complexity."
+        }
+      ]
+    },
+    {
+      "id": "url",
+      "domain": "Engineering",
+      "emoji": "🌐",
+      "question": "Walk through exactly what happens when you type a URL and press enter, step by step",
+      "frames": [
+        {
+          "question": "Walk through exactly what happens when you type a URL and press enter, step by step",
+          "narration": "When you hit enter, your browser starts a lightning-fast relay race across the internet. It resolves the address, shakes hands with the server, and pulls down the page—all in a fraction of a second.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 1,
+              "say": "First, your browser maps the domain name to an IP address, then establishes a secure connection before requesting the page.",
+              "mark": {
+                "kind": "circle",
+                "at": "DNS Lookup"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "DNS Lookup"
+                },
+                {
+                  "kind": "circle",
+                  "at": "TLS Negotiation"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "Here is the DNS lookup in action—your computer asking a server for the IP address of the website.",
+              "mark": {
+                "kind": "highlight",
+                "at": "ANSWER SECTION"
+              }
+            },
+            {
+              "index": 3,
+              "say": "This timeline shows the handshake process, where the browser and server agree on security protocols before any data is sent.",
+              "mark": {
+                "kind": "rising",
+                "at": "TCP Handshake",
+                "to": "TLS Negotiation"
+              }
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "The Web Request Journey",
+            "sub": "From your browser to the server and back.",
+            "opener": "When you hit enter, your browser starts a lightning-fast relay race across the internet. It resolves the address, shakes hands with the server, and pulls down the page—all in a fraction of a second.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 12,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The Request Lifecycle",
+                  "summary": "A URL request is a multi-step handshake between your browser and a remote server, optimized for speed and security."
+                },
+                "note": "Every time you visit a site, this entire sequence happens in milliseconds.",
+                "section": "The Journey",
+                "order": 1
+              },
+              {
+                "type": "processflow",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Step-by-Step Journey",
+                  "steps": [
+                    {
+                      "label": "DNS Lookup",
+                      "detail": "Browser finds the IP address for the domain.",
+                      "icon": "globe"
+                    },
+                    {
+                      "label": "TCP Handshake",
+                      "detail": "Establishes a reliable connection.",
+                      "icon": "share"
+                    },
+                    {
+                      "label": "TLS Negotiation",
+                      "detail": "Secures the connection (HTTPS).",
+                      "icon": "lock"
+                    },
+                    {
+                      "label": "HTTP Request",
+                      "detail": "Browser asks for the page content.",
+                      "icon": "send"
+                    },
+                    {
+                      "label": "Server Response",
+                      "detail": "Server sends back the HTML/assets.",
+                      "icon": "paperclip"
+                    }
+                  ]
+                },
+                "id": "live-2",
+                "note": "The browser first resolves the address, then secures the line, and finally fetches the data.",
+                "section": "The Journey",
+                "order": 1
+              },
+              {
+                "type": "terminal",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "lines": [
+                    {
+                      "kind": "command",
+                      "text": "dig example.com"
+                    },
+                    {
+                      "kind": "comment",
+                      "text": ";; ANSWER SECTION:"
+                    },
+                    {
+                      "kind": "stdout",
+                      "text": "example.com. 3600 IN A 93.184.216.34"
+                    }
+                  ],
+                  "title": "DNS Lookup (dig)",
+                  "prompt": "user@local $",
+                  "exitCode": 0
+                },
+                "id": "live-3",
+                "note": "The DNS lookup is like looking up a phone number in a directory; it turns a human-readable name into a machine-readable IP address.",
+                "section": "The Details",
+                "order": 2
+              },
+              {
+                "type": "gantt",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Handshake Timing",
+                  "cols": [
+                    "0ms",
+                    "50ms",
+                    "100ms"
+                  ],
+                  "tasks": [
+                    {
+                      "name": "DNS Lookup",
+                      "lane": "Network",
+                      "start": 0,
+                      "span": 1,
+                      "pct": 100,
+                      "color": "var(--presence)"
+                    },
+                    {
+                      "name": "TCP Handshake",
+                      "lane": "Network",
+                      "start": 1,
+                      "span": 1,
+                      "pct": 100,
+                      "color": "var(--insight)"
+                    },
+                    {
+                      "name": "TLS Negotiation",
+                      "lane": "Network",
+                      "start": 2,
+                      "span": 1.5,
+                      "pct": 100,
+                      "color": "var(--warning)"
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "The handshake takes time; minimizing these round trips is why modern protocols like HTTP/3 are so much faster.",
+                "section": "The Details",
+                "order": 2
+              },
+              {
+                "type": "kpi",
+                "col": 12,
+                "delay": 280,
+                "props": {
+                  "title": "Typical Latency Breakdown",
+                  "kpis": [
+                    {
+                      "val": "20ms",
+                      "label": "DNS"
+                    },
+                    {
+                      "val": "30ms",
+                      "label": "TCP"
+                    },
+                    {
+                      "val": "30ms",
+                      "label": "TLS"
+                    },
+                    {
+                      "val": "50ms",
+                      "label": "Request"
+                    }
+                  ]
+                },
+                "id": "live-5",
+                "note": "These are typical times for a single request; your actual speed depends on your distance to the server.",
+                "section": "The Details",
+                "order": 2
+              },
+              {
+                "type": "gloss",
+                "col": 12,
+                "delay": 350,
+                "props": {
+                  "title": "Key Terms",
+                  "entries": [
+                    {
+                      "term": "DNS",
+                      "definition": "Domain Name System; the internet's phonebook."
+                    },
+                    {
+                      "term": "IP Address",
+                      "definition": "A unique string of numbers identifying a device."
+                    },
+                    {
+                      "term": "TLS",
+                      "definition": "Transport Layer Security; encrypts data in transit."
+                    }
+                  ],
+                  "domain": "Networking"
+                },
+                "id": "live-6",
+                "note": "Understanding these terms helps you troubleshoot connection issues.",
+                "section": "The Details",
+                "order": 2
+              }
+            ],
+            "proof": null,
+            "topic": "Technology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What is HTTP/3?",
+                "icon": "chat",
+                "route": "What is HTTP/3?"
+              },
+              {
+                "label": "How does browser caching work?",
+                "icon": "chat",
+                "route": "How does browser caching work?"
+              },
+              {
+                "label": "What is a CDN?",
+                "icon": "chat",
+                "route": "What is a CDN?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930583156
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Walk through exactly what happens when you type a URL and press enter, step by step"
+        },
+        {
+          "role": "assistant",
+          "content": "When you hit enter, your browser starts a lightning-fast relay race across the internet. It resolves the address, shakes hands with the server, and pulls down the page—all in a fraction of a second."
+        }
+      ]
+    },
+    {
+      "id": "sleep",
+      "domain": "Health",
+      "emoji": "😴",
+      "question": "Give me a 2-week plan to fix my sleep schedule, with a daily timeline",
+      "frames": [
+        {
+          "question": "Give me a 2-week plan to fix my sleep schedule, with a daily timeline",
+          "narration": "Fixing your sleep schedule takes consistency, not just willpower. We'll shift your bedtime by fifteen minutes each night and anchor your mornings with bright light to reset your internal clock.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Two-Week Sleep Reset Plan",
+            "sub": "A gradual, science-backed shift to align your circadian rhythm.",
+            "opener": "Fixing your sleep schedule takes consistency, not just willpower. We'll shift your bedtime by fifteen minutes each night and anchor your mornings with bright light to reset your internal clock.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 5,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "The 15-Minute Rule",
+                  "summary": "Shift your bedtime and wake-up time by exactly 15 minutes each day. This gradual approach minimizes 'social jetlag' and helps your body adjust without the crash.",
+                  "conf": "strong"
+                },
+                "note": "Consistency is the secret; shifting by 15 minutes daily is gentle enough to avoid the exhaustion of a sudden, drastic change.",
+                "section": "The Strategy",
+                "order": 1
+              },
+              {
+                "type": "howtosteps",
+                "col": 7,
+                "delay": 70,
+                "props": {
+                  "title": "Daily Reset Protocol",
+                  "steps": [
+                    {
+                      "action": "Morning Light Exposure",
+                      "detail": "Get 15-30 minutes of direct sunlight within 30 minutes of waking. This is the strongest signal to your brain to stop melatonin production.",
+                      "check": "sunlight hit your eyes"
+                    },
+                    {
+                      "action": "The 15-Minute Shift",
+                      "detail": "Move your bedtime and wake-up time 15 minutes earlier or later each day until you hit your target window.",
+                      "check": "bedtime adjusted"
+                    },
+                    {
+                      "action": "Caffeine Cutoff",
+                      "detail": "Stop all caffeine intake at least 8-10 hours before your target bedtime to ensure your sleep pressure builds naturally.",
+                      "check": "no coffee after 2 PM"
+                    }
+                  ],
+                  "icon": "check",
+                  "iconColor": "var(--insight)",
+                  "time": "14 days",
+                  "difficulty": "moderate"
+                },
+                "id": "live-2",
+                "note": "These three habits—morning light, gradual shifts, and caffeine timing—are the pillars of resetting your biological clock.",
+                "section": "The Strategy",
+                "order": 1
+              },
+              {
+                "type": "timeline",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "events": [
+                    {
+                      "time": "Days 1-4",
+                      "title": "Initial Adjustment",
+                      "detail": "Shift your schedule by 15 minutes daily. Expect some grogginess; stay consistent with morning light."
+                    },
+                    {
+                      "time": "Days 5-10",
+                      "title": "The Mid-Point",
+                      "detail": "Continue the 15-minute increments. Avoid naps longer than 20 minutes to keep your sleep drive high."
+                    },
+                    {
+                      "time": "Days 11-14",
+                      "title": "Stabilization",
+                      "detail": "Lock in your target times. Keep the same wake-up time even on weekends to cement the new rhythm."
+                    }
+                  ],
+                  "eyebrow": "Your 14-day schedule"
+                },
+                "id": "live-3",
+                "note": "This timeline breaks your two-week reset into three phases: initial adjustment, mid-point momentum, and final stabilization.",
+                "section": "The Strategy",
+                "order": 1
+              },
+              {
+                "type": "kpi",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Sleep Hygiene Checklist",
+                  "kpis": [
+                    {
+                      "val": "15-30 min",
+                      "label": "Morning Light"
+                    },
+                    {
+                      "val": "8-10 hrs",
+                      "label": "Caffeine Limit"
+                    },
+                    {
+                      "val": "60 min",
+                      "label": "Screen Time"
+                    }
+                  ]
+                },
+                "id": "live-4",
+                "note": "These metrics are your daily targets; hitting them consistently is more important than any single night of perfect sleep.",
+                "section": "The Strategy",
+                "order": 1
+              }
+            ],
+            "proof": null,
+            "topic": "Medicine",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "What if I can't fall asleep?",
+                "icon": "chat",
+                "route": "What if I can't fall asleep?"
+              },
+              {
+                "label": "How do naps affect this?",
+                "icon": "chat",
+                "route": "How do naps affect this?"
+              },
+              {
+                "label": "Best light therapy lamps?",
+                "icon": "chat",
+                "route": "Best light therapy lamps?"
+              },
+              {
+                "label": "Signs of sleep deprivation",
+                "icon": "chat",
+                "route": "Signs of sleep deprivation"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930593952
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Give me a 2-week plan to fix my sleep schedule, with a daily timeline"
+        },
+        {
+          "role": "assistant",
+          "content": "Fixing your sleep schedule takes consistency, not just willpower. We'll shift your bedtime by fifteen minutes each night and anchor your mornings with bright light to reset your internal clock."
+        }
+      ]
+    },
+    {
+      "id": "krebs",
+      "domain": "Science",
+      "emoji": "🔬",
+      "question": "Explain the Krebs cycle as a diagram of its stages",
+      "frames": [
+        {
+          "question": "Explain the Krebs cycle as a diagram of its stages",
+          "narration": "The Krebs cycle is the heart of cellular respiration, turning fuel into energy. It's a continuous loop that processes carbon molecules to power your cells.",
+          "mode": "replace",
+          "tour": [
+            {
+              "index": 1,
+              "say": "The cycle takes in fuel and outputs energy carriers like NADH and ATP.",
+              "mark": {
+                "kind": "circle",
+                "at": "Acetyl-CoA"
+              },
+              "marks": [
+                {
+                  "kind": "circle",
+                  "at": "Acetyl-CoA"
+                },
+                {
+                  "kind": "circle",
+                  "at": "3 NADH"
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "say": "It starts by forming citrate, releases carbon dioxide, and eventually regenerates the starting molecule.",
+              "mark": {
+                "kind": "underline",
+                "at": "Citrate Formation"
+              },
+              "marks": [
+                {
+                  "kind": "underline",
+                  "at": "Citrate Formation"
+                },
+                {
+                  "kind": "underline",
+                  "at": "Carbon Loss"
+                }
+              ]
+            }
+          ],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "The Krebs Cycle: Energy Production",
+            "sub": "A step-by-step breakdown of the citric acid cycle.",
+            "opener": "The Krebs cycle is the heart of cellular respiration, turning fuel into energy. It's a continuous loop that processes carbon molecules to power your cells.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "insight",
+                "col": 12,
+                "delay": 0,
+                "id": "live-1",
+                "num": "1",
+                "props": {
+                  "title": "What is the Krebs cycle?",
+                  "summary": "A series of chemical reactions used by all aerobic organisms to release stored energy through the oxidation of acetyl-CoA derived from carbohydrates, fats, and proteins.",
+                  "stat": "8 steps"
+                },
+                "note": "The cycle is a closed loop of eight enzymatic steps that extract high-energy electrons from carbon fuels.",
+                "section": "Overview",
+                "order": 1
+              },
+              {
+                "type": "sankey",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Energy yield per turn",
+                  "nodes": [
+                    {
+                      "id": "input",
+                      "label": "Acetyl-CoA",
+                      "layer": 0,
+                      "color": "var(--text-muted)"
+                    },
+                    {
+                      "id": "cycle",
+                      "label": "Krebs Cycle",
+                      "layer": 1,
+                      "color": "var(--presence)"
+                    },
+                    {
+                      "id": "nadh",
+                      "label": "3 NADH",
+                      "layer": 2,
+                      "color": "var(--insight)"
+                    },
+                    {
+                      "id": "fadh2",
+                      "label": "1 FADH2",
+                      "layer": 2,
+                      "color": "var(--warning)"
+                    },
+                    {
+                      "id": "atp",
+                      "label": "1 ATP/GTP",
+                      "layer": 2,
+                      "color": "var(--danger)"
+                    }
+                  ],
+                  "links": [
+                    {
+                      "source": "input",
+                      "target": "cycle",
+                      "value": 1
+                    },
+                    {
+                      "source": "cycle",
+                      "target": "nadh",
+                      "value": 3
+                    },
+                    {
+                      "source": "cycle",
+                      "target": "fadh2",
+                      "value": 1
+                    },
+                    {
+                      "source": "cycle",
+                      "target": "atp",
+                      "value": 1
+                    }
+                  ],
+                  "footer": "Each turn produces high-energy electron carriers for the electron transport chain."
+                },
+                "id": "live-2",
+                "note": "For every molecule of acetyl-CoA, the cycle generates three NADH, one FADH2, and one ATP.",
+                "section": "The Process",
+                "order": 2
+              },
+              {
+                "type": "timeline",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "events": [
+                    {
+                      "time": "Step 1",
+                      "title": "Citrate Formation",
+                      "detail": "Acetyl-CoA joins oxaloacetate."
+                    },
+                    {
+                      "time": "Step 3-4",
+                      "title": "Carbon Loss",
+                      "detail": "Two CO2 molecules are released."
+                    },
+                    {
+                      "time": "Step 5",
+                      "title": "ATP Synthesis",
+                      "detail": "Substrate-level phosphorylation."
+                    },
+                    {
+                      "time": "Step 6-8",
+                      "title": "Regeneration",
+                      "detail": "Oxaloacetate is reformed."
+                    }
+                  ],
+                  "eyebrow": "Key stages"
+                },
+                "id": "live-3",
+                "note": "The cycle begins by combining a two-carbon unit with a four-carbon acceptor, then stripping carbons until the acceptor is restored.",
+                "section": "The Process",
+                "order": 2
+              },
+              {
+                "type": "researchsummary",
+                "col": 12,
+                "delay": 210,
+                "props": {
+                  "title": "Metabolic significance",
+                  "question": "Why is the cycle central to metabolism?",
+                  "findings": [
+                    "Provides precursors for amino acid synthesis.",
+                    "Links carbohydrate, fat, and protein metabolism.",
+                    "Primary source of electrons for ATP production."
+                  ],
+                  "conclusion": "It is the metabolic hub of the cell, balancing energy production with biosynthetic needs."
+                },
+                "id": "live-4",
+                "note": "Beyond energy, the cycle acts as a crossroads for building the molecules your body needs.",
+                "section": "Significance",
+                "order": 3,
+                "depth": 2,
+                "facet": "derivation"
+              }
+            ],
+            "proof": null,
+            "topic": "Biology",
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How does NADH produce ATP?",
+                "icon": "chat",
+                "route": "How does NADH produce ATP?"
+              },
+              {
+                "label": "What happens if oxygen is absent?",
+                "icon": "chat",
+                "route": "What happens if oxygen is absent?"
+              },
+              {
+                "label": "How do fats enter the cycle?",
+                "icon": "chat",
+                "route": "How do fats enter the cycle?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930604391
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Explain the Krebs cycle as a diagram of its stages"
+        },
+        {
+          "role": "assistant",
+          "content": "The Krebs cycle is the heart of cellular respiration, turning fuel into energy. It's a continuous loop that processes carbon molecules to power your cells."
+        }
+      ]
+    },
+    {
+      "id": "mortgage",
+      "domain": "Money",
+      "emoji": "🏠",
+      "question": "Buy vs. rent a $500,000 home over 10 years — chart the cost and give me a verdict",
+      "frames": [
+        {
+          "question": "Buy vs. rent a $500,000 home over 10 years — chart the cost and give me a verdict",
+          "narration": "Deciding between buying and renting a $500,000 home depends on how long you stay. Over 10 years, buying often builds equity, but renting offers flexibility and lower upfront costs. Let's look at the numbers.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Buy vs. Rent: $500,000 Home",
+            "sub": "A 10-year financial comparison",
+            "opener": "Deciding between buying and renting a $500,000 home depends on how long you stay. Over 10 years, buying often builds equity, but renting offers flexibility and lower upfront costs. Let's look at the numbers.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "worthit",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "title": "Is buying worth it for you?",
+                  "verdict": "depends",
+                  "product": "Buying a $500,000 home",
+                  "price": "$500,000",
+                  "priceNote": "vs ~$2,500/mo rent",
+                  "worthItIf": [
+                    "You plan to stay 7+ years",
+                    "You want to build home equity",
+                    "You can handle maintenance costs"
+                  ],
+                  "skipIf": [
+                    "You might move in 3 years",
+                    "You prefer zero maintenance",
+                    "Your down payment is tight"
+                  ],
+                  "dealBreaker": "High interest rates significantly increase the total cost of borrowing.",
+                  "forWho": "Long-term residents seeking stability.",
+                  "bottomLine": "Buying wins on equity, but renting wins on liquidity and flexibility."
+                },
+                "id": "live-1",
+                "note": "Buying is a long-term play; if you're staying less than seven years, the closing costs often make renting the smarter financial choice.",
+                "section": "The Verdict",
+                "order": 1
+              },
+              {
+                "type": "comparematrix",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Buy vs. Rent: Key Differences",
+                  "cols": [
+                    "Buying",
+                    "Renting"
+                  ],
+                  "rows": [
+                    {
+                      "label": "Monthly Payment",
+                      "cells": [
+                        {
+                          "value": "Fixed (Principal + Interest)"
+                        },
+                        {
+                          "value": "Variable (Market Rent)"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Maintenance",
+                      "cells": [
+                        {
+                          "value": "Owner's responsibility"
+                        },
+                        {
+                          "value": "Landlord's responsibility"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Equity",
+                      "cells": [
+                        {
+                          "value": "You build ownership"
+                        },
+                        {
+                          "value": "None"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Flexibility",
+                      "cells": [
+                        {
+                          "value": "Low"
+                        },
+                        {
+                          "value": "High"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "id": "live-2",
+                "note": "Buying locks in your housing cost but adds maintenance, while renting keeps you mobile but leaves you without equity.",
+                "section": "The Comparison",
+                "order": 2
+              },
+              {
+                "type": "chart",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Cumulative Cost Over 10 Years",
+                  "labels": [
+                    "Year 1",
+                    "Year 3",
+                    "Year 5",
+                    "Year 7",
+                    "Year 10"
+                  ],
+                  "series": [
+                    {
+                      "name": "Buying (Net)",
+                      "color": "var(--insight)",
+                      "data": [
+                        25000,
+                        75000,
+                        125000,
+                        175000,
+                        250000
+                      ]
+                    },
+                    {
+                      "name": "Renting",
+                      "color": "var(--presence-soft)",
+                      "data": [
+                        30000,
+                        90000,
+                        150000,
+                        210000,
+                        300000
+                      ]
+                    }
+                  ],
+                  "unit": "$",
+                  "footer": "Buying costs include mortgage interest, taxes, and maintenance."
+                },
+                "id": "live-3",
+                "note": "Over a decade, the gap widens as rent increases and mortgage principal is paid down, favoring the buyer.",
+                "section": "The Math",
+                "order": 3
+              }
+            ],
+            "proof": null,
+            "topic": "Finance",
+            "bend": {
+              "blockId": "live-3",
+              "label": "Monthly Rent",
+              "param": {
+                "value": 2500,
+                "min": 1500,
+                "max": 5000,
+                "step": 100,
+                "unit": "$"
+              },
+              "outputs": [
+                {
+                  "label": "Annual Rent",
+                  "formula": "x*12",
+                  "unit": "$"
+                },
+                {
+                  "label": "10-Year Total",
+                  "formula": "x*120",
+                  "unit": "$"
+                }
+              ]
+            },
+            "extras": {},
+            "group": "home",
+            "suggests": [
+              {
+                "label": "How do interest rates affect this?",
+                "icon": "chat",
+                "route": "How do interest rates affect this?"
+              },
+              {
+                "label": "What are the hidden costs of buying?",
+                "icon": "chat",
+                "route": "What are the hidden costs of buying?"
+              },
+              {
+                "label": "How to calculate my break-even point?",
+                "icon": "chat",
+                "route": "How to calculate my break-even point?"
+              }
+            ],
+            "keywords": []
+          },
+          "at": 1782930615398
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Buy vs. rent a $500,000 home over 10 years — chart the cost and give me a verdict"
+        },
+        {
+          "role": "assistant",
+          "content": "Deciding between buying and renting a $500,000 home depends on how long you stay. Over 10 years, buying often builds equity, but renting offers flexibility and lower upfront costs. Let's look at the numbers."
+        }
+      ]
+    },
+    {
+      "id": "coffee",
+      "domain": "Everyday",
+      "emoji": "☕",
+      "question": "Compare pour-over, espresso, French press, and AeroPress for a home barista",
+      "frames": [
+        {
+          "question": "Compare pour-over, espresso, French press, and AeroPress for a home barista",
+          "narration": "Choosing a home brew method comes down to your taste and your time. Espresso is intense and complex, while pour-over highlights clarity, and French press offers a rich, full-bodied cup.",
+          "mode": "replace",
+          "tour": [],
+          "spec": {
+            "id": "live",
+            "workspace": "Live",
+            "title": "Home Brewing Methods: A Comparison",
+            "sub": "Finding the right extraction for your morning ritual.",
+            "opener": "Choosing a home brew method comes down to your taste and your time. Espresso is intense and complex, while pour-over highlights clarity, and French press offers a rich, full-bodied cup.",
+            "context": [],
+            "blocks": [
+              {
+                "type": "comparematrix",
+                "col": 12,
+                "delay": 0,
+                "props": {
+                  "title": "Brewing method comparison",
+                  "cols": [
+                    "Pour-over",
+                    "Espresso",
+                    "French press",
+                    "AeroPress"
+                  ],
+                  "rows": [
+                    {
+                      "label": "Body",
+                      "cells": [
+                        {
+                          "value": "Light/Clean"
+                        },
+                        {
+                          "value": "Heavy/Syrupy"
+                        },
+                        {
+                          "value": "Full/Bold"
+                        },
+                        {
+                          "value": "Medium"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Brew time",
+                      "cells": [
+                        {
+                          "value": "3-4 min"
+                        },
+                        {
+                          "value": "30 sec"
+                        },
+                        {
+                          "value": "4 min"
+                        },
+                        {
+                          "value": "1-2 min"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Difficulty",
+                      "cells": [
+                        {
+                          "value": "High"
+                        },
+                        {
+                          "value": "Expert"
+                        },
+                        {
+                          "value": "Low"
+                        },
+                        {
+                          "value": "Medium"
+                        }
+                      ]
+                    },
+                    {
+                      "label": "Best for",
+                      "cells": [
+                        {
+                          "value": "Single origin"
+                        },
+                        {
+                          "value": "Milk drinks"
+                        },
+                        {
+                          "value": "Dark roasts"
+                        },
+                        {
+                          "value": "Travel/Versatility"
+                        }
+                      ]
+                    }
+                  ],
+                  "footer": "Choose based on your preferred texture and the time you have available."
+                },
+                "id": "live-1",
+                "note": "This grid breaks down the four methods by body, time, and skill, helping you match a technique to your daily routine."
+              },
+              {
+                "type": "worthit",
+                "col": 12,
+                "delay": 70,
+                "props": {
+                  "title": "Is an Espresso Machine worth it?",
+                  "verdict": "depends",
+                  "product": "Home Espresso Setup",
+                  "price": "$500 - $2,000+",
+                  "priceNote": "vs ~$30 for a French press",
+                  "worthItIf": [
+                    "You drink lattes or cappuccinos daily",
+                    "You enjoy the technical craft of dialing in shots"
+                  ],
+                  "skipIf": [
+                    "You prefer black coffee",
+                    "You want a low-maintenance morning"
+                  ],
+                  "dealBreaker": "Maintenance and cleaning are significant; if you won't backflush regularly, the machine will fail.",
+                  "forWho": "The dedicated hobbyist who values cafe-quality milk drinks at home.",
+                  "bottomLine": "It is a lifestyle investment, not just a coffee maker."
+                },
+                "id": "live-2",
+                "note": "Espresso is a major commitment; only invest if you truly love the process and the specific drinks it produces."
+              },
+              {
+                "type": "comparebars",
+                "col": 12,
+                "delay": 140,
+                "props": {
+                  "title": "Extraction efficiency and flavor clarity",
+                  "series": [
+                    {
+                      "name": "Clarity",
+                      "color": "var(--insight)"
+                    },
+                    {
+                      "name": "Body/Texture",
+                      "color": "var(--presence)"
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "label": "Pour-over",
+                      "values": [
+                        90,
+                        30
+                      ]
+                    },
+                    {
+                      "label": "French press",
+                      "values": [
+                        40,
+                        95
+                      ]
+                    },
+                    {
+                      "label": "AeroPress",
+                      "values": [
+                        70,
+                        60
+                      ]
+                    }
+                  ],
+                  "footer": "Pour-over prioritizes clarity, while French press maximizes body."
+                },
+                "id": "live-3",
+                "note": "See how different methods trade off between flavor clarity and mouthfeel, helping you decide what you value most in your cup."
+              }
+            ],
+            "proof": null,
+            "extras": {},
+            "group": "home",
+            "suggests": [],
+            "keywords": []
+          },
+          "at": 1782930644420
+        }
+      ],
+      "history": [
+        {
+          "role": "user",
+          "content": "Compare pour-over, espresso, French press, and AeroPress for a home barista"
+        },
+        {
+          "role": "assistant",
+          "content": "Choosing a home brew method comes down to your taste and your time. Espresso is intense and complex, while pour-over highlights clarity, and French press offers a rich, full-bodied cup."
+        }
+      ]
+    }
+  ]
+}

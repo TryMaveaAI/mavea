@@ -1,0 +1,245 @@
+/* ============================================================================
+   Friend-aliveness (session N) — APPEND-ONLY. No rule above is modified.
+   ============================================================================ */
+
+/* --- Voice-synced talking body --------------------------------------------------
+   While Mavéa speaks, src/voice/voiceEnergy.ts publishes the live speech loudness as
+   --voice-energy (0..1) on :root and flags data-voice-sync. The jelly's mouth tracks that
+   energy in presence-canvas.css; this rule is the BODY half of the read: when the flag
+   is present the fixed-tempo talk loop is replaced by an energy-driven scale, so the
+   whole bell visibly swells with the actual words. transition:none is required —
+   .presence transitions transform over --m-expressive, which would smear the ~60fps
+   updates into mush. When the flag is absent (reduced motion, browser TTS, or Kokoro
+   unavailable) the fixed-tempo fallback loops run. */
+:root[data-voice-sync='on'] .presence[data-state='speaking'] {
+  animation: none;
+  transition: none;
+  transform: scale(calc(1 + 0.08 * var(--voice-energy, 0)));
+}
+/* The docked corner orb stays still — its aura carries the talking instead. */
+:root[data-voice-sync='on'] .presence-layer.corner .presence[data-state='speaking'] {
+  transform: none;
+}
+/* The aura brightens with the voice too, so even the tiny corner orb visibly "talks". */
+:root[data-voice-sync='on'] .presence[data-state='speaking'] .aura {
+  opacity: calc(0.82 + 0.4 * var(--voice-energy, 0));
+}
+
+/* --- idle warmth (centered / home) --------------------------------------------
+   The resting face shouldn't look frozen between asks. The tiny corner orb already
+   gets the glance loop; here the big centered/home face gently "breathes brighter"
+   (aura brightness only — no eye-darting on a large face, which would read as fidgety
+   rather than calm). Reduced motion keeps the plain breathe. */
+@media (prefers-reduced-motion: no-preference) {
+  .presence-layer:not(.corner) .presence[data-state='idle'] .aura {
+    animation:
+      breathe calc(3800ms / var(--motion-scale, 1)) var(--ease-in-out) infinite,
+      idle-perk 9s var(--ease-in-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
+  }
+}
+
+/* ─── OAuth settings rows ──────────────────────────────────────────────── */
+.oauth-settings {
+  display: grid;
+  gap: 12px;
+}
+.oauth-rows {
+  display: grid;
+  gap: 12px;
+}
+.oauth-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--grid-line);
+  border-radius: 10px;
+}
+.oauth-row-head {
+  display: grid;
+  gap: 2px;
+}
+.oauth-service-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.oauth-service-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.oauth-tier {
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+.oauth-service-setup {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+.oauth-row-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.oauth-connected {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--insight);
+}
+.oauth-disconnect {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.oauth-disconnect:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.oauth-device-prompt {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.oauth-user-code {
+  font-family: monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--presence);
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  display: inline-block;
+}
+.oauth-sub-form {
+  display: grid;
+  gap: 8px;
+}
+.oauth-text-input {
+  padding: 8px 10px;
+  font-size: 13.5px;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+.oauth-text-input:focus {
+  outline: none;
+  border-color: var(--presence);
+}
+.oauth-msg-warn {
+  font-size: 12px;
+  color: var(--warning);
+}
+.oauth-skip-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+.oauth-link {
+  color: var(--presence);
+}
+
+/* ─── Action card edit mode ─────────────────────────────────────────────── */
+.action-edit-fields {
+  display: grid;
+  gap: 10px;
+  margin-block: 10px;
+}
+.action-edit-field {
+  display: grid;
+  gap: 4px;
+}
+.action-edit-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.action-edit-input {
+  padding: 8px 10px;
+  font-size: 13.5px;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+.action-edit-input:focus {
+  outline: none;
+  border-color: var(--presence);
+}
+.action-edit-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+.action-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.action-error-msg {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* ─── Action card edit mode ─────────────────────────────────────────────── */
+.action-edit-fields {
+  display: grid;
+  gap: 10px;
+  margin-block: 10px;
+}
+.action-edit-field {
+  display: grid;
+  gap: 4px;
+}
+.action-edit-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.action-edit-input {
+  padding: 8px 10px;
+  font-size: 13.5px;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+.action-edit-input:focus {
+  outline: none;
+  border-color: var(--presence);
+}
+.action-edit-textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+.action-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.action-error-msg {
+  font-size: 13px;
+  color: var(--danger);
+}

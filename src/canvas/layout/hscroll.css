@@ -1,0 +1,24 @@
+/* Shared affordance for intentionally wide card content. The inset edge cue communicates that more
+   exists off-screen; it disappears at the end. The native scrollbar remains visible and the region
+   receives keyboard focus/semantics from useAccessibleScrollRegions. */
+.canvas-hscroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  box-shadow: inset -18px 0 14px -16px color-mix(in srgb, var(--text-muted) 72%, transparent);
+}
+
+.canvas-hscroll.canvas-hscroll--end {
+  box-shadow: none;
+}
+
+.canvas-hscroll:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .canvas-hscroll {
+    scroll-behavior: smooth;
+  }
+}

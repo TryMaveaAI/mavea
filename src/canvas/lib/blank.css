@@ -1,0 +1,334 @@
+/* The Blank Space — the glowing hole. Empty slots breathe and glow with their accent to read as
+ * "fill me, intentionally left for you"; filled slots settle into a solid, quiet chip. The accent
+ * is injected per-slot as --blank-accent (defaults to --presence) and all tints derive from it via
+ * color-mix, so light/dark and any accent are handled by tokens — no hex. Holds the overflow-safety
+ * floor: min-width:0 + ellipsis so a long value never blows the card. */
+
+.blank-slot {
+  --blank-accent: var(--presence);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+}
+
+.blank-label {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+
+.blank-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── empty hole ── */
+.blank-slot.is-empty {
+  border: 1px dashed color-mix(in oklab, var(--blank-accent) 50%, transparent);
+  background: color-mix(in oklab, var(--blank-accent) 7%, transparent);
+  box-shadow: 0 0 18px -2px color-mix(in oklab, var(--blank-accent) 30%, transparent);
+  animation: blank-breathe 2.4s ease-in-out infinite;
+}
+.blank-slot.is-empty.is-active {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--blank-accent) 70%, transparent);
+  box-shadow: 0 0 26px -2px color-mix(in oklab, var(--blank-accent) 45%, transparent);
+}
+
+@keyframes blank-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 14px -4px color-mix(in oklab, var(--blank-accent) 24%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 26px -2px color-mix(in oklab, var(--blank-accent) 42%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blank-slot.is-empty {
+    animation: none;
+  }
+}
+
+/* ── typed input (date / number / text) ── */
+.blank-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 42px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass-strong);
+  border: 1px solid color-mix(in oklab, var(--blank-accent) 40%, var(--line-strong));
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.blank-input:focus-within {
+  border-color: var(--blank-accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--blank-accent) 24%, transparent);
+}
+.blank-control {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  height: 100%;
+}
+.blank-control::placeholder {
+  color: var(--text-muted);
+}
+.blank-unit {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── choice chips ── */
+.blank-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.blank-chip {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  color: var(--text-primary);
+  background: var(--surface-glass-strong);
+  border: 1px solid color-mix(in oklab, var(--blank-accent) 35%, var(--line-strong));
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.blank-chip:hover {
+  border-color: var(--blank-accent);
+  background: color-mix(in oklab, var(--blank-accent) 12%, transparent);
+}
+
+/* ── card drop target ── */
+.blank-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: center;
+  background: transparent;
+  border: 1px dashed color-mix(in oklab, var(--blank-accent) 45%, transparent);
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.blank-drop.is-drop-target {
+  border-style: solid;
+  border-color: var(--blank-accent);
+  background: color-mix(in oklab, var(--blank-accent) 14%, transparent);
+}
+.blank-drop-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── filled chip ── */
+.blank-slot.is-filled {
+  border: 1px solid color-mix(in oklab, var(--blank-accent) 45%, var(--line-strong));
+  background: color-mix(in oklab, var(--blank-accent) 10%, transparent);
+}
+.blank-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.blank-value-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.blank-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.blank-mini {
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  transition: border-color var(--m-fast);
+}
+.blank-mini:hover {
+  border-color: var(--blank-accent);
+  color: var(--text-primary);
+}
+
+/* ── card-into-hole drag (the grip on each card, and the floating ghost) ── */
+.card-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: var(--r-sm);
+  cursor: grab;
+  color: var(--text-muted);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  /* only the handle opts out of touch-scroll, so a drag starting here isn't stolen by the page */
+  touch-action: none;
+  transition: color var(--m-fast);
+}
+.card-drag-handle:hover {
+  color: var(--text-primary);
+}
+.card-drag-handle:active {
+  cursor: grabbing;
+}
+/* ── "Complete the answer" bar (sticky at the bottom of the canvas while awaiting input) ──
+   It sticks to the bottom of the scroll viewport so the finish action stays in view however far the
+   user has scrolled — they fill holes anywhere on the page and the way to finish is always present.
+   An elevated, blurred surface lifts it off the content it floats over. */
+.blank-complete-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, var(--presence) 12%);
+  border: 1px solid color-mix(in oklab, var(--presence) 32%, transparent);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: blank-bar-rise var(--m-normal) var(--ease-out) both;
+}
+@keyframes blank-bar-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blank-complete-bar {
+    animation: none;
+  }
+}
+.blank-complete-bar.is-busy {
+  border-color: color-mix(in oklab, var(--presence) 45%, transparent);
+}
+/* Every hole is filled and nothing submits by itself — the bar leans in so the one remaining
+   action is unmissable, without motion (the answer is being reviewed right under it). */
+.blank-complete-bar.is-ready {
+  border-color: color-mix(in oklab, var(--presence) 55%, transparent);
+  background: color-mix(in oklab, var(--surface-elevated) 80%, var(--presence) 20%);
+}
+.blank-complete-bar.is-ready .blank-complete-count {
+  color: var(--text-primary);
+}
+.blank-complete-bar.is-ready .blank-complete-btn {
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 22%, transparent);
+}
+.blank-complete-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-right: auto;
+}
+.blank-complete-spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--presence) 30%, transparent);
+  border-top-color: var(--presence);
+  animation: blank-spin 0.7s linear infinite;
+}
+@keyframes blank-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blank-complete-spinner {
+    animation-duration: 1.6s;
+  }
+}
+.blank-complete-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 9px 16px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--surface-elevated);
+  background: var(--presence);
+  border: 1px solid transparent;
+  transition:
+    filter var(--m-fast),
+    opacity var(--m-fast);
+}
+.blank-complete-btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+.blank-complete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-drag-ghost {
+  position: fixed;
+  z-index: 60;
+  /* lift off the cursor so it doesn't sit under the pointer (elementFromPoint must see the hole) */
+  transform: translate(12px, 12px);
+  pointer-events: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--presence) 50%, var(--line-strong));
+  box-shadow: var(--shadow-floating);
+}

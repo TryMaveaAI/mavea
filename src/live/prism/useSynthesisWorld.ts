@@ -1,0 +1,118 @@
+// useSynthesisWorld.ts — the lifecycle for a Synthesis World (many sources → one map). Mirrors
+// usePrismWorld's idle → igniting → blooming → settled staging, but "blooming" now reports which stage
+// the frugal pipeline is on ("Reading 100 sources…", "Finding themes…", "Mapping claims…", "Finding
+// contradictions…") because a corpus takes longer to settle than one document and the honest thing is
+// to show the work. One AbortController threads into every stage; a superseded run never writes state.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Attachment } from '../attachments';
+import type { ModelConfig } from '../../types/mavea';
+import { mapCorpus } from './synthesis/mapCorpus';
+import type { CorpusPhase, CorpusSpec } from './synthesis/types';
+
+export interface UseSynthesisWorldReturn {
+  phase: CorpusPhase;
+  spec: CorpusSpec | null;
+  /** Per-source page text the claims were grounded against — kept so corpus Ask verifies verbatim. */
+  corpus: string[][] | null;
+  /** The surviving source attachments in claim.source order, for the shared source panels. */
+  sourcesAtt: Attachment[] | null;
+  /** Claims the model proposed before grounding — feeds the shared "N read · M grounded" counter. */
+  proposed: number;
+  /** The current pipeline stage line, shown under the bloom animation. */
+  stage: string;
+  error: string | null;
+  /** Start (or restart) the synthesis for a pile of sources. */
+  synthesize: (sources: readonly Attachment[]) => void;
+  reset: () => void;
+}
+
+const IGNITE_MS = 900;
+
+export function useSynthesisWorld(cfg: ModelConfig | null): UseSynthesisWorldReturn {
+  const [phase, setPhase] = useState<CorpusPhase>('idle');
+  const [spec, setSpec] = useState<CorpusSpec | null>(null);
+  const [corpus, setCorpus] = useState<string[][] | null>(null);
+  const [sourcesAtt, setSourcesAtt] = useState<Attachment[] | null>(null);
+  const [proposed, setProposed] = useState(0);
+  const [stage, setStage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const igniteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runIdRef = useRef(0);
+
+  const cleanup = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    if (igniteTimer.current !== null) {
+      clearTimeout(igniteTimer.current);
+      igniteTimer.current = null;
+    }
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+
+  const reset = useCallback(() => {
+    cleanup();
+    runIdRef.current += 1;
+    setPhase('idle');
+    setSpec(null);
+    setCorpus(null);
+    setSourcesAtt(null);
+    setProposed(0);
+    setStage('');
+    setError(null);
+  }, [cleanup]);
+
+  const synthesize = useCallback(
+    (sources: readonly Attachment[]) => {
+      if (!cfg) {
+        setError('Connect a model to synthesize a corpus.');
+        setPhase('error');
+        return;
+      }
+      cleanup();
+      const runId = (runIdRef.current += 1);
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setSpec(null);
+      setCorpus(null);
+      setProposed(0);
+      setError(null);
+      setStage(`Reading ${sources.length} sources…`);
+      setPhase('igniting');
+
+      igniteTimer.current = setTimeout(() => {
+        if (runIdRef.current === runId) setPhase((p) => (p === 'igniting' ? 'blooming' : p));
+      }, IGNITE_MS);
+
+      void mapCorpus(sources, cfg, ac.signal, {
+        onProgress: (s) => {
+          if (runIdRef.current === runId) setStage(s);
+        },
+      })
+        .then((res) => {
+          if (runIdRef.current !== runId) return;
+          if (res.spec) {
+            setSpec(res.spec);
+            setCorpus(res.corpus ?? null);
+            setSourcesAtt(res.sourcesAtt ?? null);
+            setProposed(res.proposed);
+            setPhase('settled');
+          } else {
+            setError(res.error ?? 'This corpus could not be synthesized.');
+            setPhase('error');
+          }
+        })
+        .catch((err: unknown) => {
+          if (runIdRef.current !== runId) return;
+          if (ac.signal.aborted) return;
+          setError(err instanceof Error ? err.message : 'Synthesis failed.');
+          setPhase('error');
+        });
+    },
+    [cfg, cleanup],
+  );
+
+  return { phase, spec, corpus, sourcesAtt, proposed, stage, error, synthesize, reset };
+}

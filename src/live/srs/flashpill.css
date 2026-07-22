@@ -1,0 +1,118 @@
+/* flashpill.css — the brief "N cards added · Undo · View" confirmation that appears when cards are
+   captured to the deck (the explicit "Cards" button, or an opt-in auto-save). Mirrors the quiet,
+   non-disruptive memory pill: it floats above the composer, announces itself to screen readers, and
+   self-clears. Tokens only — light and dark. Imported eagerly with the Live surface (it's tiny). */
+.cards-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 104px;
+  transform: translateX(-50%);
+  z-index: 88;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px 9px 14px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+  animation: cards-pill-in 220ms var(--ease-out, ease);
+  max-width: min(92vw, 420px);
+}
+@keyframes cards-pill-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.cards-pill svg {
+  width: 16px;
+  height: 16px;
+  color: var(--insight);
+  flex: none;
+}
+.cards-pill-text {
+  font: 600 13px/1 var(--font);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.cards-pill-btn {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12.5px/1 var(--font);
+  padding: 7px 13px;
+  cursor: pointer;
+  transition:
+    color var(--m-quick),
+    border-color var(--m-quick),
+    background var(--m-quick);
+}
+.cards-pill-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-mid);
+  background: var(--surface-glass);
+}
+/* The one-time "how should these behave?" variant. It carries a question and two answers, so it
+   stacks instead of running in a single row, and it drops the nowrap the one-line confirmation
+   relies on — a deck name is user text and can be any length. */
+.cards-pill.is-ask {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  max-width: min(92vw, 380px);
+}
+.cards-pill-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cards-pill.is-ask .cards-pill-text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.cards-pill-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.cards-pill-q {
+  font: 600 13px/1.4 var(--font);
+  color: var(--text-primary);
+}
+/* The mechanism, one step quieter than the question it answers. */
+.cards-pill-sub {
+  font: 450 12px/1.4 var(--font);
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+.cards-pill-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cards-pill-choices .cards-pill-btn {
+  flex: 1 1 auto;
+}
+
+.cards-pill-primary {
+  border-color: var(--presence);
+  color: var(--presence);
+}
+.cards-pill-primary:hover {
+  color: #fff;
+  background: var(--presence);
+  border-color: var(--presence);
+}

@@ -1,0 +1,138 @@
+/*
+ * Print rules for the vector ("Save as PDF") fallback. Scoped two ways so it can NEVER affect the
+ * other print paths in the app (the legacy canvas print — src/live/print/print.css — and
+ * SlidePreview's print, both reached via Cmd/Ctrl+P):
+ *   1. The "hide everything but the document" rule fires only when `printFallback` has added the
+ *      `.mavea-printing` class to <body> for the duration of its print call.
+ *   2. The document's page geometry lives on NAMED pages (`mavea-export` for Letter,
+ *      `mavea-export-a4` for A4) applied only to `.ex-page`, so the bare `@page` the canvas
+ *      print relies on is left alone.
+ */
+.mavea-export-doc {
+  display: none;
+}
+
+@media print {
+  /* A page box used only by the export document — does not touch the default @page. */
+  @page mavea-export {
+    size: Letter;
+    margin: 0;
+  }
+
+  /* The A4 counterpart, selected per-page below via the sheet's own `data-format="a4"` (set by
+   * Page.tsx from the document's chosen page format). */
+  @page mavea-export-a4 {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Reveal the export document and hide the live app — but only while WE are printing. */
+  body.mavea-printing > *:not(.mavea-export-doc) {
+    display: none !important;
+  }
+  body.mavea-printing .mavea-export-doc {
+    display: block !important;
+  }
+
+  /* Keep page fills/inks in the PDF (browsers drop backgrounds by default). */
+  .mavea-export-doc * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* The on-screen stack gap + centering are irrelevant in print; each sheet is its own page. */
+  .mavea-export-doc .ex-doc {
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  .mavea-export-doc .ex-page {
+    page: mavea-export;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    break-after: page;
+  }
+
+  .mavea-export-doc .ex-page[data-format='a4'] {
+    page: mavea-export-a4;
+  }
+
+  .mavea-export-doc .ex-page:last-child {
+    break-after: auto;
+  }
+
+  /* Presentation decks: a 16:9 landscape page sized to the slide's true 1920×1080, so each slide
+   * prints 1:1 with selectable text (no transform). Named so it can't disturb the document page. */
+  @page mavea-slide {
+    size: 1920px 1080px landscape;
+    margin: 0;
+  }
+
+  .mavea-export-slides .slide-page {
+    page: mavea-slide;
+    break-after: page;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mavea-export-slides .slide-page:last-child {
+    break-after: auto;
+  }
+
+  /* Speaker-notes handout ("Print with notes"): a *taller* named page than the plain deck's — the
+   * slide keeps its true, untransformed 1920×1080 block (so its text stays selectable exactly like
+   * the plain print above) and a notes band of the extra height prints underneath it. A wholly
+   * separate host class (`.mavea-export-slides-notes`, not `.mavea-export-slides`) keeps this from
+   * ever inheriting the plain deck's per-`.slide-page` page/break rules above. */
+  @page mavea-slide-notes {
+    size: 1920px 1400px landscape;
+    margin: 0;
+  }
+
+  .mavea-export-slides-notes .slide-page-notes {
+    page: mavea-slide-notes;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+  }
+
+  .mavea-export-slides-notes .slide-page-notes:last-child {
+    break-after: auto;
+  }
+
+  .mavea-export-slides-notes .slide-page {
+    flex: none;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mavea-export-slides-notes .slide-notes-block {
+    flex: none;
+    height: 320px;
+    box-sizing: border-box;
+    padding: 32px 56px;
+    overflow: hidden;
+    font-family: -apple-system, system-ui, sans-serif;
+    color: #16181d;
+    background: #fff;
+  }
+
+  .mavea-export-slides-notes .slide-notes-label {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #767b85;
+    margin-bottom: 10px;
+  }
+
+  .mavea-export-slides-notes .slide-notes-text {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.45;
+  }
+}

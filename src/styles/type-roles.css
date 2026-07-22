@@ -1,0 +1,82 @@
+/* ============================================================
+   MAVÉA · shared type and provenance roles
+   This small layer is eager because the landing and every product
+   surface share the same voice, UI, and data typography. The full
+   optional Live template skins stay route-scoped in templates.css.
+   ============================================================ */
+
+:root {
+  --app-bg: var(--surface-deep);
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-body:
+    'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-ui: var(--font-body);
+  --font-data: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', monospace;
+  /* Compatibility aliases while the existing block library migrates to explicit roles. */
+  --font: var(--font-body);
+  --font-voice: var(--font-display);
+  /* Scaled by --fs-scale (Appearance → Text size, see wow-polish.css) — every term, so the whole
+     curve grows/shrinks together rather than just its ceiling. */
+  --voice-size: clamp(
+    calc(19px * var(--fs-scale, 1)),
+    calc((15.5px + 1vw) * var(--fs-scale, 1)),
+    calc(34px * var(--fs-scale, 1))
+  );
+  --voice-lh: 1.25;
+  --voice-weight: 300;
+  --prov-inferred: #e2a33c;
+  --evidence-strong-bg: rgba(62, 216, 166, 0.14);
+  --evidence-strong-fg: var(--insight);
+  --evidence-partial-bg: rgba(245, 185, 92, 0.14);
+  --evidence-partial-fg: var(--warning);
+}
+
+:root[data-theme='light'] {
+  --voice-weight: 400;
+  --prov-inferred: #b97a1e;
+  --evidence-strong-bg: #e5f6ee;
+  --evidence-strong-fg: #18a36b;
+  --evidence-partial-bg: #fbf3df;
+  --evidence-partial-fg: #c98a1b;
+}
+
+body {
+  background: var(--app-bg);
+}
+
+.voice-text {
+  font-family: var(--font-voice);
+  font-size: var(--voice-size);
+  font-weight: var(--voice-weight);
+  line-height: var(--voice-lh);
+  letter-spacing: -0.005em;
+  text-wrap: pretty;
+}
+
+.bubble.mavea,
+.center-caption,
+.drawer-claim {
+  font-family: var(--font-voice);
+}
+
+.card-eyebrow {
+  font-family: var(--font-data);
+  font-size: calc(11px * var(--fs-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.live-badge {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.conf {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.source-chip .mono {
+  font-family: var(--font-data);
+}

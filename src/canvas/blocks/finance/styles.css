@@ -1,0 +1,982 @@
+/* finance family styles — equity, fundraising, and fixed-income blocks. Tokens only; every
+   rule rides the chosen theme in light and dark, clips to its .card (overflow:hidden), and
+   stays readable at both a narrow and a full-width card. Filled in one block at a time. */
+
+/* ── vestingschedule ──────────────────────────────────────────────────────────────────── */
+/* A 3-column grid (holder · timeline · readout) shared by every row AND by the "today"
+   needle column, so the needle's horizontal position is pixel-identical to each row's own
+   track with no separate alignment math — see VestingSchedule.tsx. */
+.fin-vs-body {
+  display: grid;
+  grid-template-columns: minmax(58px, 130px) minmax(64px, 1fr) minmax(44px, 70px);
+  column-gap: 12px;
+  row-gap: 16px;
+  position: relative;
+  padding-top: 6px;
+}
+/* The three column floors plus their gaps come to 190px — wider than a folded-phone card — so the
+   vested readout was carried off the right edge. The name already ellipsises and the readout sizes
+   itself to its digits, so let both find their own width and keep the bar as the one thing with a
+   floor: it is the column that has to stay a bar. */
+@container (max-width: 340px) {
+  .fin-vs-body {
+    grid-template-columns: minmax(0, 1fr) minmax(40px, 1.1fr) auto;
+    column-gap: 8px;
+  }
+}
+/* Every cell gets an explicit grid-row (set inline per grant) AND grid-column (here) — the
+   needle column below is also explicitly placed, and mixing explicit with auto-flowed items
+   on the same grid lets the auto-placement algorithm silently displace the auto items into
+   whatever cells the explicit one didn't claim. Pinning all of them avoids that entirely. */
+.fin-vs-who {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  justify-content: center;
+}
+.fin-vs-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+}
+.fin-vs-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-2xs, 11px);
+}
+.fin-vs-track {
+  grid-column: 2;
+  position: relative;
+  min-width: 0;
+  height: 22px;
+  align-self: center;
+}
+.fin-vs-track::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--grid-line);
+}
+.fin-vs-bar {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+}
+.fin-vs-cliff {
+  height: 100%;
+  background: color-mix(in oklab, var(--text-muted) 10%, transparent);
+}
+.fin-vs-ramp {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--line-strong);
+  background: color-mix(in oklab, var(--text-muted) 6%, transparent);
+}
+.fin-vs-ramp-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 5px 5px 0;
+}
+.fin-vs-readout {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  text-align: right;
+  min-width: 0;
+}
+.fin-vs-pct {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+}
+.fin-vs-shares {
+  font-size: var(--fs-2xs, 11px);
+}
+/* the needle's own grid cell — column 2 keeps it exactly over the track column; the row span
+   is set inline per render since it depends on the grant count. */
+.fin-vs-needle-col {
+  grid-column: 2;
+  position: relative;
+  pointer-events: none;
+}
+.fin-vs-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 0;
+  border-left: 1.5px dashed color-mix(in oklab, var(--presence) 70%, var(--text-muted));
+}
+
+/* ── termsheet ────────────────────────────────────────────────────────────────────────── */
+.fin-ts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.fin-ts-company {
+  font-size: var(--fs-md, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.fin-ts-round {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--presence);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line-strong));
+  border-radius: var(--r-full, 999px);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.fin-ts-date {
+  font-size: var(--fs-xs, 12px);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.fin-ts-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fin-ts-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 42%) 1fr;
+  column-gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--grid-line);
+}
+.fin-ts-row:last-child {
+  border-bottom: 0;
+}
+.fin-ts-label {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  align-self: start;
+}
+.fin-ts-value {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 650;
+  color: var(--text-primary);
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  align-self: start;
+}
+.fin-ts-note {
+  grid-column: 1 / -1;
+  font-size: var(--fs-2xs, 11px);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.fin-ts-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  font-size: var(--fs-md, 14px);
+}
+
+/* ── fundraisingrounds ────────────────────────────────────────────────────────────────── */
+.fin-fr-scroll {
+  overflow-x: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.fin-fr-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+.fin-fr-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+/* A fixed-height bar-track (clamp scales it with the card's own inline size via the .card
+   container query context) with its bottom edge padded to reserve room for each column's
+   name + caption, mirroring GroupedBars' c2-gb/c2-gb-glabel technique. */
+.fin-fr-chart {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(6px, 1.6cqi, 16px);
+  height: clamp(170px, 40cqi, 220px);
+  padding-bottom: 40px;
+}
+.fin-fr-grid {
+  position: absolute;
+  inset: 0 0 40px 0;
+  pointer-events: none;
+}
+.fin-fr-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--grid-line);
+}
+.fin-fr-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 58px;
+  max-width: 130px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+.fin-fr-total {
+  flex: none;
+  text-align: center;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.fin-fr-seg-raised,
+.fin-fr-seg-pre {
+  flex: none;
+  min-height: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition:
+    filter var(--m-fast),
+    transform var(--m-fast);
+}
+.fin-fr-seg-raised {
+  background: var(--presence);
+  border-radius: var(--r-sm, 4px) var(--r-sm, 4px) 0 0;
+}
+.fin-fr-seg-pre {
+  background: color-mix(in oklab, var(--presence) 30%, var(--surface-elevated-2));
+  border-radius: 0 0 var(--r-sm, 4px) var(--r-sm, 4px);
+}
+.fin-fr-col.on .fin-fr-seg-raised,
+.fin-fr-col.on .fin-fr-seg-pre {
+  filter: brightness(1.12);
+}
+.fin-fr-seg-lbl {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 650;
+  color: var(--surface-default);
+  white-space: nowrap;
+}
+.fin-fr-seg-pre .fin-fr-seg-lbl {
+  color: var(--text-primary);
+}
+.fin-fr-meta {
+  position: absolute;
+  top: 100%;
+  left: -6px;
+  right: -6px;
+  margin-top: 8px;
+  text-align: center;
+}
+.fin-fr-name {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 650;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-fr-cap {
+  font-size: var(--fs-2xs, 10px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-fr-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--grid-line);
+}
+.fin-fr-leg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.fin-fr-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.fin-fr-swatch.raised {
+  background: var(--presence);
+}
+.fin-fr-swatch.pre {
+  background: color-mix(in oklab, var(--presence) 30%, var(--surface-elevated-2));
+}
+
+/* ── saferterms ───────────────────────────────────────────────────────────────────────── */
+.fin-sf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.fin-sf-badge {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--presence);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line-strong));
+  border-radius: var(--r-full, 999px);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.fin-sf-investor {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.fin-sf-principal {
+  margin-left: auto;
+  font-size: var(--fs-md, 15px);
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.fin-sf-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.fin-sf-tile {
+  text-align: center;
+  padding: 12px 6px;
+  border-radius: var(--r-md, 10px);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+.fin-sf-val {
+  font-size: var(--fs-lg, 19px);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-sf-val.on {
+  color: var(--insight);
+}
+.fin-sf-lbl {
+  margin-top: 3px;
+  font-size: var(--fs-2xs, 11px);
+}
+.fin-sf-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid-line);
+}
+.fin-sf-note-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fin-sf-note-lbl {
+  font-size: var(--fs-2xs, 11px);
+}
+.fin-sf-note-val {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.fin-sf-conversion {
+  margin-top: 12px;
+}
+
+/* ── dilutionwaterfall ────────────────────────────────────────────────────────────────── */
+.fin-dw-scroll {
+  overflow-x: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.fin-dw-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+.fin-dw-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+/* Rendered at its natural pixel size (no max-width shrink) — unlike Plot/Sankey's "always fit
+   via viewBox scaling", a dilution chart with many rounds needs each column to stay wide enough
+   to read its % labels, so overflow scrolls (.fin-dw-scroll) instead of shrinking to illegible. */
+.fin-dw-svg {
+  display: block;
+  flex: none;
+}
+/* Segment fills are fixed accent hexes (don't flip with theme) — a plain theme-flipping text
+   color reads fine against a saturated accent like presence/danger but goes low-contrast
+   against a light one like insight/warning. `luminosity` blend (Marimekko's technique for the
+   same problem) derives the rendered luminance from the label color while taking hue/saturation
+   from whatever's underneath, so it stays legible against any accent in either theme. */
+.fin-dw-seg-lbl {
+  font-size: 10px;
+  font-weight: 650;
+  fill: var(--surface-deep);
+  mix-blend-mode: luminosity;
+  pointer-events: none;
+}
+.fin-dw-col-lbl {
+  font-size: 11px;
+  font-weight: 650;
+  fill: var(--text-secondary);
+}
+.fin-dw-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--grid-line);
+}
+.fin-dw-leg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--m-fast);
+}
+.fin-dw-leg i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.fin-dw-leg.on,
+.fin-dw-leg:hover {
+  color: var(--text-primary);
+}
+
+/* ── threestatementlink ───────────────────────────────────────────────────────────────── */
+.fin-tl-cap {
+  font-size: var(--fs-xs, 12px);
+  margin: 0 0 12px;
+}
+/* Three statements side by side, each a label and a figure: below roughly 160px per panel the figures
+   no longer fit their column and were cut in half. The panels cannot stack — the connector curves are
+   drawn across the panel boundaries in a single coordinate space — so hold the model at a width where
+   the figures are whole and pan it sideways instead. */
+.fin-tl-scroll {
+  overflow-x: auto;
+}
+.fin-tl-wrap {
+  position: relative;
+  min-width: calc(var(--fin-tl-panels, 3) * 160px);
+}
+.fin-tl-panels {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+.fin-tl-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+/* The connector curves cross exactly at each 33.33/66.67% boundary (see the component's fixed
+   panelW math) — the visual gap they cross through is internal padding on each panel's own
+   edge, not a flex `gap`, so the boundary percentages stay exact with no DOM measurement. */
+.fin-tl-panel:not(:first-child) {
+  padding-left: 14px;
+}
+.fin-tl-panel:not(:last-child) {
+  padding-right: 14px;
+}
+.fin-tl-panel-name {
+  height: 40px;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 6px;
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-tl-rows {
+  display: flex;
+  flex-direction: column;
+}
+.fin-tl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--grid-line);
+}
+.fin-tl-row.bold {
+  font-weight: 700;
+  background: color-mix(in oklab, var(--presence) 6%, transparent);
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+.fin-tl-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.fin-tl-row.bold .fin-tl-label {
+  color: var(--text-primary);
+}
+.fin-tl-val {
+  flex: none;
+  padding-right: 4px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-primary);
+}
+.fin-tl-val.neg {
+  color: var(--danger);
+}
+.fin-tl-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fin-tl-link-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.fin-tl-link-lbl {
+  position: absolute;
+  transform: translate(-50%, -100%) translateY(-3px);
+  white-space: nowrap;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 650;
+  color: var(--presence);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 4px);
+  padding: 1px 5px;
+}
+
+/* ── yieldcurve ───────────────────────────────────────────────────────────────────────── */
+.fin-yc-plot {
+  position: relative;
+}
+.fin-yc-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* computed, never authored — see the component's inversion detection */
+.fin-yc-inv {
+  fill: color-mix(in oklab, var(--warning) 14%, transparent);
+}
+.fin-yc-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.fin-yc-tick {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+.fin-yc-tip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11px);
+  pointer-events: none;
+  z-index: 5;
+}
+.fin-yc-flag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+}
+.fin-yc-flag .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.fin-yc-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+.fin-yc-leg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.fin-yc-leg i {
+  width: 14px;
+  height: 0;
+  border-top: 2px solid var(--presence);
+}
+.fin-yc-leg i.dashed {
+  border-top: 2px dashed var(--text-muted);
+}
+
+/* ── efficientfrontier ────────────────────────────────────────────────────────────────── */
+.fin-ef-plot {
+  position: relative;
+}
+.fin-ef-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.fin-ef-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.fin-ef-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.fin-ef-tick {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+.fin-ef-ring {
+  filter: drop-shadow(0 0 3px var(--glow-presence));
+}
+.fin-ef-tip {
+  position: absolute;
+  transform: translate(-50%, -140%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11px);
+  pointer-events: none;
+  z-index: 5;
+}
+.fin-ef-axlbl {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+
+/* ── bondladder ───────────────────────────────────────────────────────────────────────── */
+.fin-bl-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fin-bl-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* maturity · label · track · yield · face needs ~204px of floors on one line, more than a folded-phone
+   card has in total, so the face value ran off the end. Re-lay it as two rows — who and what it pays
+   on top, how much and how big underneath — rather than one row that cannot fit. */
+@container (max-width: 340px) {
+  .fin-bl-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+  .fin-bl-label {
+    max-width: none;
+  }
+  .fin-bl-track {
+    grid-area: 2 / 1 / 2 / 3;
+  }
+  .fin-bl-face {
+    grid-area: 2 / 3;
+    min-width: 0;
+  }
+}
+.fin-bl-badge {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 42px;
+  text-align: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.fin-bl-label {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+.fin-bl-track {
+  flex: 1 1 auto;
+  min-width: 24px;
+  height: 8px;
+  background: var(--track);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.fin-bl-fill {
+  height: 100%;
+  background: color-mix(in oklab, var(--presence) 85%, transparent);
+  border-radius: var(--r-full);
+}
+.fin-bl-fill.leader {
+  background: var(--presence);
+}
+.fin-bl-yield {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 650;
+  color: var(--text-primary);
+  min-width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.fin-bl-face {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  min-width: 54px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── cashflowtimeline ─────────────────────────────────────────────────────────────────── */
+.fin-cf-scroll {
+  overflow-x: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.fin-cf-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+.fin-cf-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+/* Natural-size floor with a growth cap (both set inline from the computed width): a
+   few-period diagram doesn't balloon across a wide card, a many-period one pans in
+   .fin-cf-scroll instead of shrinking its labels to fuzz. */
+.fin-cf-plot {
+  position: relative;
+  margin-inline: auto;
+}
+.fin-cf-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.fin-cf-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.fin-cf-tickmark {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+/* Period numbers sit where a down arrow's shaft passes (the textbook layout); the paint-order
+   halo strokes the card surface under each glyph so the number reads on top of the shaft. */
+.fin-cf-tick,
+.fin-cf-amt {
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.fin-cf-tick {
+  font-size: 9.5px;
+  fill: var(--text-muted);
+}
+.fin-cf-amt {
+  font-weight: 650;
+}
+.fin-cf-amt.in {
+  fill: var(--insight);
+}
+.fin-cf-amt.out {
+  fill: var(--danger);
+}
+.fin-cf-flow {
+  transition: filter var(--m-fast);
+}
+.fin-cf-flow.on {
+  filter: brightness(1.18);
+}
+.fin-cf-arrow line {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.fin-cf-arrow.in line {
+  stroke: var(--insight);
+}
+.fin-cf-arrow.in path {
+  fill: var(--insight);
+}
+.fin-cf-arrow.out line {
+  stroke: var(--danger);
+}
+.fin-cf-arrow.out path {
+  fill: var(--danger);
+}
+.fin-cf-zero {
+  fill: var(--text-muted);
+}
+.fin-cf-tip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11px);
+  pointer-events: none;
+  z-index: 5;
+}
+.fin-cf-tip.below {
+  transform: translate(-50%, 30%);
+}
+.fin-cf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+.fin-cf-leg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.fin-cf-leg i {
+  font-style: normal;
+  font-weight: 700;
+}
+.fin-cf-leg i.in {
+  color: var(--insight);
+}
+.fin-cf-leg i.out {
+  color: var(--danger);
+}
+.fin-cf-axcap {
+  margin-left: auto;
+  font-size: var(--fs-2xs, 11px);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-cf-npv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-md, 10px);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line);
+}
+.fin-cf-npv-lbl {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fin-cf-npv-rate {
+  color: var(--text-muted);
+}
+.fin-cf-npv-val {
+  margin-left: auto;
+  font-size: var(--fs-md, 15px);
+  font-weight: 700;
+  color: var(--insight);
+  white-space: nowrap;
+}
+.fin-cf-npv-val.neg {
+  color: var(--danger);
+}

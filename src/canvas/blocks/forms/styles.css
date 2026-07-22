@@ -1,0 +1,1909 @@
+/* forms family styles — tokens only; light/dark via existing token overrides. */
+
+/* blanks — "The Blank Space" card (the slot visuals live in canvas/lib/blank.css) ── */
+.blanks-intro {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.blanks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 12px;
+}
+
+/* shared form primitives ──────────────────────────────────────── */
+.tf-label {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   buttonbar — gallery of button variants
+   ════════════════════════════════════════════════════════════ */
+.bb-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  max-width: 100%;
+}
+.bb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  padding: 9px 15px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast),
+    box-shadow var(--m-fast),
+    transform var(--m-fast) var(--ease-spring),
+    filter var(--m-fast);
+}
+.bb-btn > span:not(.bb-spin) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bb-btn .ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.bb-btn:not(.is-disabled):active {
+  transform: translateY(1px) scale(0.985);
+}
+.bb-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--bb-c) 30%, transparent);
+}
+.bb-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bb-primary {
+  background: var(--bb-c);
+  color: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+}
+.bb-primary:not(.is-disabled):hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-floating);
+}
+.bb-secondary {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+  border-color: var(--line);
+}
+.bb-secondary:not(.is-disabled):hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+}
+.bb-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.bb-ghost:not(.is-disabled):hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.bb-outline {
+  background: transparent;
+  color: var(--bb-c);
+  border-color: color-mix(in oklab, var(--bb-c) 45%, var(--line-strong));
+}
+.bb-outline:not(.is-disabled):hover {
+  background: color-mix(in oklab, var(--bb-c) 10%, transparent);
+  border-color: var(--bb-c);
+}
+.bb-destructive {
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 32%, transparent);
+}
+.bb-destructive:not(.is-disabled):hover {
+  background: var(--danger);
+  color: var(--surface-elevated);
+  border-color: var(--danger);
+}
+.bb-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+  border-color: var(--line);
+}
+.bb-icon .ic {
+  width: 17px;
+  height: 17px;
+}
+.bb-icon:not(.is-disabled):hover {
+  color: var(--bb-c);
+  border-color: color-mix(in oklab, var(--bb-c) 40%, var(--line-strong));
+  background: color-mix(in oklab, var(--bb-c) 8%, transparent);
+}
+.bb-loading {
+  background: var(--bb-c);
+  color: var(--surface-elevated);
+}
+.bb-loading.is-busy {
+  filter: saturate(0.9);
+}
+.bb-spin {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+  border: 2px solid color-mix(in oklab, var(--surface-elevated) 40%, transparent);
+  border-top-color: var(--surface-elevated);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bb-spin {
+    animation: bb-spin 0.7s linear infinite;
+  }
+}
+@keyframes bb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.bb-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  margin-top: 16px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.bb-hint .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.bb-hint > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   textfield — labeled inputs with states
+   ════════════════════════════════════════════════════════════ */
+.tf-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tf-labelrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tf-optional {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.tf-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 42px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.tf-lead {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.tf-control {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  height: 100%;
+}
+.tf-control::placeholder {
+  color: var(--text-muted);
+}
+.tf-input.is-focus {
+  border-color: var(--tf-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tf-c) 26%, transparent);
+  background: var(--surface-elevated);
+}
+.tf-error .tf-input {
+  border-color: color-mix(in oklab, var(--danger) 60%, var(--line-strong));
+}
+.tf-error .tf-input.is-focus {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 26%, transparent);
+}
+.tf-success .tf-input {
+  border-color: color-mix(in oklab, var(--insight) 55%, var(--line-strong));
+}
+.tf-success .tf-input.is-focus {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--insight) 26%, transparent);
+}
+.tf-input.is-focus .tf-lead {
+  color: var(--tf-c);
+}
+.tf-eye {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 0;
+  flex-shrink: 0;
+}
+.tf-eye .ic {
+  width: 17px;
+  height: 17px;
+}
+.tf-eye:hover {
+  color: var(--text-primary);
+}
+.tf-trail {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.tf-ok {
+  color: var(--insight);
+}
+.tf-err {
+  color: var(--danger);
+}
+.tf-helper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tf-helper .ic {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.tf-error .tf-helper {
+  color: var(--danger);
+}
+.tf-success .tf-helper {
+  color: var(--insight);
+}
+
+/* ════════════════════════════════════════════════════════════
+   textarea — auto-growing + counter
+   ════════════════════════════════════════════════════════════ */
+.ta-wrap {
+  border-radius: var(--r-md);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+  overflow: hidden;
+}
+.ta-wrap.is-focus {
+  border-color: var(--ta-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ta-c) 26%, transparent);
+  background: var(--surface-elevated);
+}
+.ta-control {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  line-height: 1.55;
+  padding: 12px 13px 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.ta-control::placeholder {
+  color: var(--text-muted);
+}
+.ta-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 13px 10px;
+}
+.ta-meter {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.ta-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  transition:
+    width var(--m-fast) var(--ease-out),
+    background var(--m-fast);
+}
+.ta-count {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   select — single-select dropdown
+   ════════════════════════════════════════════════════════════ */
+.se-root {
+  position: relative;
+}
+.se-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.se-trigger:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+.se-trigger.is-open {
+  border-color: var(--se-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--se-c) 26%, transparent);
+  background: var(--surface-elevated);
+}
+.se-trigger:focus-visible {
+  outline: none;
+  border-color: var(--se-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--se-c) 26%, transparent);
+}
+.se-lead {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.se-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.se-trigger:not(.has-val) .se-value {
+  color: var(--text-muted);
+}
+.se-chev {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  transform: rotate(90deg);
+  transition: transform var(--m-normal) var(--ease-spring);
+  flex-shrink: 0;
+}
+.se-trigger.is-open .se-chev {
+  transform: rotate(-90deg);
+  color: var(--se-c);
+}
+.se-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+  max-height: 260px;
+  overflow-y: auto;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .se-menu {
+    animation: se-pop var(--m-fast) var(--ease-out);
+    transform-origin: top;
+  }
+}
+@keyframes se-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.se-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--m-fast);
+}
+.se-opt:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.se-opt.hi:not(:disabled) {
+  background: var(--surface-glass-strong);
+}
+.se-opt.on {
+  color: var(--se-c);
+}
+.se-opt-ic {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.se-opt.on .se-opt-ic {
+  color: var(--se-c);
+}
+.se-opt-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.se-opt-label {
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.se-opt-cap {
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.se-check {
+  width: 16px;
+  height: 16px;
+  color: var(--se-c);
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   combobox — searchable autocomplete
+   ════════════════════════════════════════════════════════════ */
+.cb-root {
+  position: relative;
+}
+.cb-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 10px 0 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.cb-input.is-open {
+  border-color: var(--cb-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--cb-c) 26%, transparent);
+  background: var(--surface-elevated);
+}
+.cb-search {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.cb-curic {
+  width: 16px;
+  height: 16px;
+  color: var(--cb-c);
+  flex-shrink: 0;
+}
+.cb-control {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  height: 100%;
+}
+.cb-control::placeholder {
+  color: var(--text-muted);
+}
+.cb-clear {
+  background: transparent;
+  border: none;
+  padding: 3px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 0;
+  flex-shrink: 0;
+  transition:
+    color var(--m-fast),
+    background var(--m-fast);
+}
+.cb-clear .ic {
+  width: 15px;
+  height: 15px;
+}
+.cb-clear:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.cb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+  max-height: 280px;
+  overflow-y: auto;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cb-menu {
+    animation: se-pop var(--m-fast) var(--ease-out);
+    transform-origin: top;
+  }
+}
+.cb-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--m-fast);
+}
+.cb-opt.hi {
+  background: var(--surface-glass-strong);
+}
+.cb-opt-ic {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.cb-opt-dot {
+  width: 7px;
+  height: 7px;
+  margin: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--cb-c);
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+.cb-opt-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.cb-opt-label {
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.cb-opt-cap {
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.cb-mark {
+  background: color-mix(in oklab, var(--cb-c) 24%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.cb-check {
+  width: 16px;
+  height: 16px;
+  color: var(--cb-c);
+  flex-shrink: 0;
+}
+.cb-empty {
+  font-size: var(--fs-sm);
+  padding: 14px 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.cb-foot {
+  font-size: var(--fs-xs);
+  padding: 7px 10px 3px;
+  margin-top: 3px;
+  border-top: 1px solid var(--line-soft);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   checkboxgroup — w/ indeterminate select-all
+   ════════════════════════════════════════════════════════════ */
+.cg-box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-glass-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface-elevated);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    transform var(--m-fast) var(--ease-spring);
+}
+.cg-box.on {
+  background: var(--cg-c);
+  border-color: var(--cg-c);
+}
+.cg-box.mixed {
+  background: var(--cg-c);
+  border-color: var(--cg-c);
+}
+.cg-tick {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+.cg-dash {
+  width: 10px;
+  height: 2.5px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+}
+.cg-all {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 4px 2px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+.cg-all-label {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cg-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+}
+.cg-sep {
+  height: 1px;
+  background: var(--line-soft);
+  margin: 11px 0;
+}
+.cg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cg-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.cg-row:not(.is-disabled):hover {
+  background: var(--surface-glass);
+}
+.cg-row.on {
+  background: color-mix(in oklab, var(--cg-c) 7%, transparent);
+  border-color: color-mix(in oklab, var(--cg-c) 22%, transparent);
+}
+.cg-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--cg-c) 26%, transparent);
+}
+.cg-row.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cg-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.cg-label {
+  font-size: var(--fs-md);
+  font-weight: 550;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.cg-cap {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   radiogroup — cards / rows
+   ════════════════════════════════════════════════════════════ */
+.rg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.rg-list.rg-row {
+  gap: 3px;
+}
+.rg-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  background: var(--surface-glass-strong);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.rg-list.rg-row .rg-opt {
+  background: transparent;
+  border-color: transparent;
+  padding: 9px 10px;
+}
+.rg-list.rg-row .rg-opt:not(.is-disabled):hover {
+  background: var(--surface-glass);
+}
+.rg-opt:not(.is-disabled):hover {
+  border-color: var(--line-strong);
+}
+.rg-opt.on {
+  border-color: var(--rg-c);
+  background: color-mix(in oklab, var(--rg-c) 8%, transparent);
+}
+.rg-list.rg-row .rg-opt.on {
+  background: color-mix(in oklab, var(--rg-c) 8%, transparent);
+  border-color: color-mix(in oklab, var(--rg-c) 24%, transparent);
+}
+.rg-opt:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--rg-c) 26%, transparent);
+}
+.rg-opt.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.rg-radio {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--m-fast);
+}
+.rg-opt.on .rg-radio {
+  border-color: var(--rg-c);
+}
+.rg-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-full);
+  background: var(--rg-c);
+  transform: scale(0);
+  transition: transform var(--m-normal) var(--ease-spring);
+}
+.rg-opt.on .rg-dot {
+  transform: scale(1);
+}
+.rg-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+.rg-icon .ic {
+  width: 17px;
+  height: 17px;
+}
+.rg-opt.on .rg-icon {
+  background: color-mix(in oklab, var(--rg-c) 14%, transparent);
+  color: var(--rg-c);
+}
+.rg-list.rg-row .rg-icon {
+  width: 28px;
+  height: 28px;
+}
+.rg-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rg-label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.rg-cap {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.rg-value {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  text-align: right;
+}
+.rg-opt.on .rg-value {
+  color: var(--rg-c);
+}
+
+/* A result such as "correct" is valuable content, not expendable chrome. On a narrow card it gets
+   a second line instead of competing with the radio, optional icon, label and caption. */
+@container (max-width: 260px) {
+  .rg-opt {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 11px 10px;
+  }
+  .rg-value {
+    flex: 1 1 100%;
+    padding-left: 28px;
+    text-align: left;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   switchset — labeled toggle rows
+   ════════════════════════════════════════════════════════════ */
+.sw-list {
+  display: flex;
+  flex-direction: column;
+}
+.sw-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.sw-row:first-child {
+  padding-top: 2px;
+}
+.sw-row:last-child {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
+.sw-row.is-disabled {
+  opacity: 0.5;
+}
+.sw-rowic {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.sw-rowic .ic {
+  width: 17px;
+  height: 17px;
+}
+.sw-rowic.on {
+  background: color-mix(in oklab, var(--sw-c) 14%, transparent);
+  color: var(--sw-c);
+}
+.sw-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.sw-label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.sw-desc {
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.sw-track {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  background: var(--track);
+  border: 1px solid var(--line-strong);
+  padding: 0;
+  transition:
+    background var(--m-normal) var(--ease-out),
+    border-color var(--m-normal);
+}
+.sw-track.on {
+  background: var(--sw-c);
+  border-color: var(--sw-c);
+}
+.sw-track:disabled {
+  cursor: not-allowed;
+}
+.sw-track:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sw-c) 28%, transparent);
+}
+.sw-thumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: left var(--m-normal) var(--ease-spring);
+}
+.sw-track.on .sw-thumb {
+  /* 23 = thumb width (20) + right gap (3) */
+  left: calc(100% - 23px);
+}
+
+/* ════════════════════════════════════════════════════════════
+   togglegroup — multi-toggle button group
+   ════════════════════════════════════════════════════════════ */
+.tg-group {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--r-md);
+  max-width: 100%;
+  background: var(--track);
+  border: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.tg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  max-width: 100%;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.tg-btn .ic {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.tg-btn:hover {
+  color: var(--text-primary);
+}
+.tg-btn.on {
+  background: var(--surface-elevated);
+  color: var(--tg-c);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+  border-color: var(--line-strong);
+}
+.tg-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--tg-c) 28%, transparent);
+}
+.tg-label {
+  line-height: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tg-hint {
+  font-size: var(--fs-sm);
+  margin-top: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.tg-hint strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   otp — segmented one-time-passcode
+   ════════════════════════════════════════════════════════════ */
+.otp-prompt {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.otp-boxes {
+  display: flex;
+  gap: 9px;
+  max-width: 100%;
+}
+.otp-box {
+  flex: 1;
+  min-width: 0;
+  height: 54px;
+  text-align: center;
+  font: inherit;
+  font-size: var(--fs-2xl);
+  font-weight: 720;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  background: var(--surface-glass-strong);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-md);
+  outline: none;
+  caret-color: var(--otp-c);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.otp-box::selection {
+  background: color-mix(in oklab, var(--otp-c) 30%, transparent);
+}
+.otp-box.filled {
+  background: var(--surface-elevated);
+  border-color: color-mix(in oklab, var(--otp-c) 45%, var(--line-strong));
+}
+.otp-box.is-focus {
+  border-color: var(--otp-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--otp-c) 26%, transparent);
+  background: var(--surface-elevated);
+}
+.otp-boxes.verified .otp-box {
+  border-color: color-mix(in oklab, var(--insight) 55%, var(--line-strong));
+  color: var(--insight);
+}
+.otp-boxes.errored .otp-box {
+  border-color: color-mix(in oklab, var(--danger) 50%, var(--line-strong));
+  color: var(--danger);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .otp-boxes.errored {
+    animation: otp-shake var(--m-expressive) var(--ease-out);
+  }
+}
+@keyframes otp-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+.otp-status {
+  margin-top: 16px;
+  min-height: 22px;
+}
+.otp-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.otp-msg .ic {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.otp-msg.ok {
+  color: var(--insight);
+}
+.otp-msg.err {
+  color: var(--danger);
+}
+.otp-resend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+  transition: color var(--m-fast);
+}
+.otp-resend .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.otp-resend:hover {
+  color: var(--otp-c);
+}
+
+/* ════════════════════════════════════════════════════════════
+   actionchecklist — checkable next-steps with a filling progress bar
+   ════════════════════════════════════════════════════════════ */
+.ac-sub {
+  font-size: var(--fs-sm);
+  margin: -2px 0 12px;
+  overflow-wrap: anywhere;
+}
+.ac-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ac-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.ac-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--ac-c);
+  transition: width var(--m-normal) var(--ease-spring);
+}
+.ac-count {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.ac-count.done {
+  color: var(--ac-c);
+  border-color: color-mix(in oklab, var(--ac-c) 40%, transparent);
+  background: color-mix(in oklab, var(--ac-c) 10%, transparent);
+}
+.ac-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ac-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.ac-row:hover {
+  background: var(--surface-glass);
+}
+.ac-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ac-c) 26%, transparent);
+}
+.ac-box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-glass-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface-elevated);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    transform var(--m-fast) var(--ease-spring);
+}
+.ac-box.on {
+  background: var(--ac-c);
+  border-color: var(--ac-c);
+}
+.ac-tick {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+.ac-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ac-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ac-label {
+  font-size: var(--fs-md);
+  font-weight: 550;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  transition: color var(--m-fast);
+}
+.ac-row.done .ac-label {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--text-muted) 60%, transparent);
+}
+.ac-pri {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  color: var(--pri);
+  background: color-mix(in oklab, var(--pri) 13%, transparent);
+}
+.ac-detail {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.ac-row.done .ac-detail {
+  opacity: 0.7;
+}
+.ac-tag {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+}
+
+/* ════════════════════════════════════════════════════════════
+   preflightchecklist — aviation walk-around, grouped into phases
+   ════════════════════════════════════════════════════════════ */
+.pf-aircraft {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin: -2px 0 12px;
+  overflow-wrap: anywhere;
+}
+.pf-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.pf-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.pf-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  transition:
+    width var(--m-normal) var(--ease-spring),
+    background var(--m-fast);
+}
+.pf-fill.has-critical {
+  background: var(--warning);
+}
+.pf-count {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.pf-count.done {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.pf-empty {
+  font-size: var(--fs-sm);
+  padding: 10px 2px;
+}
+.pf-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.pf-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 6px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 4px;
+}
+.pf-section-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pf-section-count {
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--text-muted);
+}
+.pf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pf-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.pf-row:hover {
+  background: var(--surface-glass);
+}
+.pf-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
+}
+.pf-box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-glass-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface-elevated);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    transform var(--m-fast) var(--ease-spring);
+}
+.pf-box.on {
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.pf-box.warn {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--warning) 22%, transparent);
+}
+.pf-tick {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+.pf-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.pf-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pf-label {
+  font-size: var(--fs-md);
+  font-weight: 550;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  transition: color var(--m-fast);
+}
+.pf-row.done .pf-label {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--text-muted) 60%, transparent);
+}
+.pf-critical-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+  transition: opacity var(--m-fast);
+}
+.pf-critical-tag .ic {
+  width: 10px;
+  height: 10px;
+}
+.pf-row.done .pf-critical-tag {
+  opacity: 0.6;
+}
+
+/* ════════════════════════════════════════════════════════════
+   estateplanchecklist — the five pillars, grouped, status-badged
+   ════════════════════════════════════════════════════════════ */
+.ep-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ep-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.ep-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--ep-c);
+  transition: width var(--m-normal) var(--ease-spring);
+}
+.ep-count {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.ep-count.done {
+  color: var(--ep-c);
+  border-color: color-mix(in oklab, var(--ep-c) 40%, transparent);
+  background: color-mix(in oklab, var(--ep-c) 10%, transparent);
+}
+.ep-empty {
+  font-size: var(--fs-sm);
+  padding: 10px 2px;
+}
+.ep-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ep-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 6px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 4px;
+}
+.ep-group-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ep-group-count {
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--text-muted);
+}
+.ep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ep-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+}
+.ep-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--ep-status);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ep-status) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ep-status) 32%, transparent);
+}
+.ep-status .ic {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.ep-reviewed {
+  font-size: var(--fs-xs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   visachecklist — Required / Optional buckets, each with its own meter
+   ════════════════════════════════════════════════════════════ */
+.vc-overall {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0 6px;
+}
+.vc-case {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vc-overall-count {
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--vc-c);
+  font-variant-numeric: tabular-nums;
+}
+.vc-bar {
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.vc-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--vc-c);
+  transition: width var(--m-normal) var(--ease-spring);
+}
+.vc-empty {
+  font-size: var(--fs-sm);
+  padding: 10px 2px;
+}
+.vc-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.vc-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.vc-group-name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Optional's header reads deliberately quieter than Required's — the section split plus this
+   weight difference is the "visually distinct" cue, without repeating a tag on every row. */
+.vc-group.is-optional .vc-group-name {
+  color: var(--text-muted);
+  font-weight: 650;
+}
+.vc-group-count {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.vc-group-bar {
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.vc-group-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--vc-c) 70%, transparent);
+  transition: width var(--m-normal) var(--ease-spring);
+}
+.vc-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  border-left: 2px solid transparent;
+}
+/* The Required bucket's own accent bar — the second half of the "visually distinct" cue. */
+.vc-group.is-required .vc-item {
+  border-left-color: color-mix(in oklab, var(--vc-c) 45%, transparent);
+  background: color-mix(in oklab, var(--vc-c) 5%, transparent);
+}
+.vc-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  font-weight: 550;
+}
+.vc-group.is-optional .vc-name {
+  color: var(--text-secondary);
+}
+.vc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--vc-status);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--vc-status) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--vc-status) 32%, transparent);
+}
+.vc-status .ic {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}

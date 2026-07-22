@@ -1,0 +1,193 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: &docs-only
+      - 'docs/**'
+      - 'CHANGELOG.md'
+  pull_request:
+    paths-ignore: *docs-only
+
+# Cancel superseded PR runs to save minutes, but NEVER cancel a push to main — a quick second
+# push must not kill the first run (and its uploaded artifact) mid-flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege by default; each job re-declares exactly what it needs.
+permissions:
+  contents: read
+
+# Actions are pinned to a commit SHA (supply-chain hardening) with the human-readable tag in a
+# trailing comment; Dependabot bumps the SHA and the comment together.
+jobs:
+  verify:
+    name: Lint · Typecheck · Test · Build · Dead code · Dependency audit
+    # Merged with the old standalone "quality" job: both need the full dependency install anyway,
+    # and a second job paid for its own checkout + pnpm setup + install just to run
+    # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24, 26]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Legal and package policy shape
+        # Ordinary CI proves the files and package without granting permission to publish. The
+        # release workflow supplies the final explicit authorization signal.
+        run: node scripts/check-release-policy.mjs --files-only
+
+      - name: Bundle size budget
+        # Fails if the landing page's eager (gzipped) payload exceeds the budget — the byte-creep
+        # backstop to the structural guard in tests/eager-bundle.test.ts. Runs against the build above.
+        run: pnpm size
+
+      - name: Public artifact boundary
+        run: pnpm check:artifact
+
+      - name: Upload production build
+        if: matrix.node == 26
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Dead code / unused deps (knip)
+        run: pnpm knip
+      - name: License gate (commercial-resale-safe deps only)
+        run: pnpm check:licenses
+      - name: Dependency vulnerability audit
+        # npm retired the legacy endpoints used by this pnpm line. Query OSV's maintained batch
+        # API against every exact package version in the installed graph instead.
+        run: pnpm check:vulnerabilities
+
+  browser-quality:
+    name: Responsive · Touch · Artifacts · Slow CPU · Memory
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run real-browser release gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec vite --host 127.0.0.1 > /tmp/mavea-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/ >/dev/null
+          pnpm audit:ui
+          pnpm audit:tap
+          pnpm audit:interactions
+          pnpm slides:gate
+          pnpm export:gate
+          pnpm audit:reel
+          pnpm perf -- --throttle 6
+          pnpm perf:memory -- --url http://127.0.0.1:5173 --cycles 6
+
+  # The source toolchain intentionally requires Node 24+, but the packed CLI is dependency-free
+  # and supports Node 20.19+. Exercise that public runtime contract separately instead of asking
+  # modern build dependencies to pretend they support an older engine.
+  cli-node20:
+    name: Published CLI smoke (Node 20)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 20.19
+      - name: Exercise the dependency-free CLI entry point
+        run: node bin/mavea.mjs --help
+
+  security:
+    name: Secret scan · SAST
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      # gitleaks BINARY (pinned), not the action: the action needs a paid license for
+      # organizations, and the binary is free forever on any repo — which matters on a private
+      # free-plan repo. Scan the working tree (`dir`): it catches a newly-committed secret, skips
+      # binary .git objects, and this job installs no deps so there's no node_modules to wade
+      # through. Non-zero exit on a finding fails the job.
+      - name: Secret scan (gitleaks)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks dir . --no-banner --redact
+      # Semgrep CLI + the free public `p/ci` ruleset — no login, no token, no GHAS. (The paid
+      # Semgrep AppSec platform is NOT used.) pipx is preinstalled on ubuntu-latest.
+      - name: Install Semgrep
+        run: pipx install semgrep
+      - name: SAST (Semgrep — curated CI ruleset)
+        run: semgrep --config p/ci --error --quiet src gateway bin scripts vite.config.ts
+
+  # NOTE: Gates that are GitHub-native but need a PUBLIC repo or GitHub Advanced Security are
+  # deliberately omitted on this private free-plan repo (they'd just error): CodeQL code scanning,
+  # dependency-review-action (needs the Dependency Graph), and OpenSSF Scorecard. Add them the day
+  # the repo goes public — they're free then.
+
+  commit-messages:
+    name: Commit messages (Conventional Commits)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+      # The dedicated action bundles its own commitlint install — no need to pnpm-install the
+      # whole monorepo just to lint commit message text.
+      - name: Lint the PR's commits
+        uses: wagoid/commitlint-github-action@f133a0d95090ef2609192b4a21f54e20af819ea9 # v6

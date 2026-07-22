@@ -1,0 +1,1967 @@
+/* Dashboards (#/dashboards) — the detail/settings/overview surfaces, plus the shared xt-/tpl-
+   modal chrome (extraction preview, template review, plan review) every creation flow rides. The
+   home surface's own topbar + tile grid live in dash-home.css. Tokens only — it rides the chosen
+   theme in light and dark. */
+
+/* .mavea-app is height:100% + overflow:hidden, so the surface must be its OWN scroll container
+   (like glance) — otherwise tall content below the fold is unreachable. */
+.dash-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.dash-risk-note {
+  flex: none;
+  width: min(calc(100% - 40px), var(--canvas-col-max));
+  margin: 12px auto 0;
+}
+
+/* ── shared CTA pill (Overview's "Track something →") ────────────────────────────────────── */
+.dash-cta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-presence, #fff);
+  background: linear-gradient(120deg, var(--presence), var(--insight));
+  border: none;
+  border-radius: var(--r-full);
+  padding: 11px 20px;
+  text-decoration: none;
+  font-family: var(--font);
+  cursor: pointer;
+  box-shadow: 0 6px 18px -8px color-mix(in oklab, var(--presence) 70%, transparent);
+  transition:
+    transform var(--m-normal) var(--ease-out),
+    box-shadow var(--m-normal) var(--ease-out);
+}
+.dash-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--presence) 75%, transparent);
+}
+
+/* ── empty state ─────────────────────────────────────────────────────────────────────────── */
+.dash-empty {
+  margin: 40px auto;
+  max-width: 460px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.dash-empty-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dash-empty-how {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.dash-empty-how a {
+  color: var(--presence);
+  text-decoration: none;
+}
+
+/* ── detail ──────────────────────────────────────────────────────────────────────────────── */
+.dash-detail {
+  width: min(100%, var(--canvas-col-max));
+  margin: 0 auto;
+  padding: 24px 26px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dash-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.dash-back {
+  flex: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.dash-back:hover {
+  color: var(--text-primary);
+}
+.dash-detail-title {
+  flex: 0 1 auto;
+  min-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dash-detail-q {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.dash-detail-clock {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.dash-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: dashPulse 1.6s ease-in-out infinite;
+}
+@keyframes dashPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+/* Hold the live dot fully lit (no infinite pulse) when reduced motion is requested. */
+@media (prefers-reduced-motion: reduce) {
+  .dash-live-dot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ── widget grid ─────────────────────────────────────────────────────────────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+  /* Equalise row heights so tiles in a row share a clean bottom edge — a tall chart
+     no longer leaves its short stat neighbours floating with ragged gaps. */
+  align-items: stretch;
+}
+.dash-span-1 {
+  grid-column: span 4;
+}
+.dash-span-2 {
+  grid-column: span 8;
+}
+.dash-span-3 {
+  grid-column: span 12;
+}
+.dash-tile {
+  min-width: 0;
+  /* Column flex so the embedded canvas + its card stretch to the equalised cell height. */
+  display: flex;
+  flex-direction: column;
+}
+/* the widget's own .card is the frame — no tile chrome, no double border, no extra margin */
+.dash-tile .card {
+  margin: 0;
+}
+/* TopicCanvas is built for the wide Live canvas: a 12-track grid with a desktop max-width
+   that auto-centres. Embedded inside a dashboard surface (a widget tile or the talk-to
+   answer pane) that math leaves the real card in a centred N/12 sliver with empty gutters
+   — the "jammed into a narrow column" bug. Collapse the embedded grid to one full-width
+   column so the card fills the panel, and let it grow to the equalised tile height. */
+.dash-tile .card-grid,
+.dash-talk-answer .card-grid {
+  grid-template-columns: 1fr;
+  max-width: none;
+  margin: 0;
+  gap: 12px;
+}
+.dash-tile .card-grid > [class*='col-'],
+.dash-talk-answer .card-grid > [class*='col-'] {
+  grid-column: 1 / -1;
+}
+.dash-tile,
+.dash-tile .card-grid,
+.dash-tile .card-grid > [class*='col-'] {
+  height: 100%;
+}
+@media (max-width: 760px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-span-1,
+  .dash-span-2,
+  .dash-span-3 {
+    grid-column: auto;
+  }
+}
+
+/* ── remember-key nudge ──────────────────────────────────────────────────────────────────── */
+.dash-key-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+.dash-key-nudge-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 220px;
+}
+.dash-key-nudge-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-key-nudge-keep {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border: none;
+  border-radius: var(--r-full);
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dash-key-nudge-dismiss {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dash-key-nudge-dismiss:hover {
+  color: var(--text-secondary);
+  border-color: var(--line);
+}
+.dash-key-nudge-keep:focus-visible,
+.dash-key-nudge-dismiss:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+
+/* ── the giant headline read (DetailHero) ────────────────────────────────────────────────── */
+.dash-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dash-hero-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-hero-eyebrow {
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+.dash-hero-meta {
+  font-family: var(--font-data, var(--font));
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.dash-hero-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-hero-value {
+  font-family: var(--font-data, var(--font));
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.dash-hero-delta {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+}
+.dash-hero-delta--up {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+}
+.dash-hero-delta--down {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+}
+.dash-hero-chart {
+  width: 100%;
+  overflow: hidden;
+}
+.dash-hero-chart .tile-viz-svg {
+  height: 72px;
+}
+.dash-hero-chart-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Mavéa's read on the last check (LastCheckCard, nesting ExpectsCard) ─────────────────── */
+.dash-lastcheck {
+  padding: 16px 18px;
+  border: 1px solid color-mix(in oklab, var(--presence) 32%, var(--line));
+  border-radius: var(--r-lg);
+  /* A faint presence wash so Mavéa's interpretation reads as distinct from the data tiles
+     without shouting; --surface-elevated base keeps it solid (glass tokens wash out light). */
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--presence) 7%, var(--surface-elevated)),
+    var(--surface-elevated)
+  );
+}
+.dash-lastcheck-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dash-lastcheck-eyebrow {
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+.dash-lastcheck-when {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.dash-lastcheck-text {
+  margin: 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.dash-lastcheck-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.dash-lastcheck-source {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease;
+}
+.dash-lastcheck-source:hover {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
+
+/* ── the standing prediction + its last grade (ExpectsCard, nested in LastCheckCard) ─────── */
+.dash-expects {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-expects-eyebrow {
+  color: var(--presence);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dash-expects-text {
+  margin: 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.dash-expects-grade {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dash-expects-chip {
+  align-self: flex-start;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+}
+.dash-expects-chip.is-hit {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+}
+.dash-expects-chip.is-miss {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+}
+.dash-expects-chip.is-unclear {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 18%, transparent);
+}
+.dash-expects-expected {
+  margin: 0;
+  font-family: var(--font-voice, var(--font));
+  font-style: italic;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.dash-expects-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.dash-expects-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dash-expects-tally,
+.dash-expects-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── check cadence, moved here from Settings (CadenceCard) ───────────────────────────────── */
+.dash-cadence-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-cadence-cost {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.dash-cadence-window,
+.dash-cadence-oneshot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+}
+.dash-cadence-window-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.dash-cadence-clear {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.dash-cadence-clear:hover {
+  color: var(--text-primary);
+  border-color: var(--presence);
+}
+
+/* ── your tripwires, honestly stated (AlertCard) ──────────────────────────────────────────── */
+.dash-alertcard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dash-alertcard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-alertcard-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+}
+.dash-alertcard-row.is-triggered {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+.dash-alertcard-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-alertcard-line {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.dash-alertcard-state {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dash-alertcard-crossed {
+  font-family: var(--font-data, var(--font));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+
+/* ── two-column body: cards + check log on the left, cadence + alerts on the right ───────── */
+.dash-detail-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+  gap: 18px;
+}
+.dash-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.dash-detail-section {
+  min-width: 0;
+}
+.dash-detail-section-title {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dash-detail-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .dash-detail-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── talk to this dashboard ──────────────────────────────────────────────────────────────── */
+.dash-talk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+.dash-talk-eyebrow {
+  margin-bottom: 0;
+}
+.dash-talk-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dash-talk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* Cap the chip so a long auto-generated question (built from a metric label) can't
+     stretch into a banner; the text inside truncates with an ellipsis instead. */
+  max-width: min(100%, 340px);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 8px 13px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+.dash-talk-chip-t {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-talk-chip:hover:not(:disabled) {
+  border-color: var(--presence);
+}
+.dash-talk-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dash-talk-chip-orb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+  background: radial-gradient(
+    circle at 34% 28%,
+    var(--presence-soft, #a9afff),
+    var(--presence) 60%,
+    var(--presence-deep, #3a43c9)
+  );
+}
+.dash-talk-ask {
+  display: flex;
+  gap: 8px;
+}
+.dash-talk-input {
+  /* Live's composer recipe (rounded-full, roomy) so talking to a dashboard feels like talking
+     anywhere else in the product, not filling in a settings field. */
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 12px 18px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text-primary);
+}
+.dash-talk-input:focus {
+  outline: none;
+  border-color: var(--presence);
+}
+.dash-talk-send {
+  flex: none;
+  background: linear-gradient(120deg, var(--presence), var(--insight));
+  color: var(--on-presence, #fff);
+  border: none;
+  border-radius: var(--r-full);
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dash-talk-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dash-talk-gate,
+.dash-talk-error {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.dash-talk-gate a,
+.dash-talk-error a,
+.dash-detail-q a {
+  color: var(--presence);
+  text-decoration: none;
+}
+.dash-talk-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  /* --surface-elevated, not --surface-glass — this sits directly on the page backdrop
+     with nothing solid behind it, and glass tokens wash out to near-invisible in light. */
+  background: var(--surface-elevated);
+}
+.dash-talk-q {
+  font-size: 13px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.dash-talk-narration {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+.dash-talk-thinking {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── extraction preview overlay ──────────────────────────────────────────────────────────── */
+.xt-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: color-mix(in oklab, var(--surface-deep, #000) 64%, transparent);
+  backdrop-filter: blur(3px);
+}
+.xt-modal {
+  width: min(100%, 920px);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-modal);
+}
+.xt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.xt-head-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.xt-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.xt-close:hover {
+  color: var(--text-primary);
+}
+.xt-empty,
+.xt-loading {
+  padding: 40px 28px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.xt-empty a,
+.xt-comp-body a {
+  color: var(--presence);
+  text-decoration: none;
+}
+.xt-split {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  min-height: 0;
+  overflow: hidden;
+}
+.xt-left,
+.xt-right {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.xt-left {
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface-glass);
+}
+.xt-section-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.xt-line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.xt-hl {
+  position: relative;
+  background: color-mix(in oklab, var(--hl, var(--presence)) 18%, transparent);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+.xt-goal {
+  --hl: var(--presence);
+}
+.xt-risk {
+  --hl: var(--warning);
+}
+.xt-metric {
+  --hl: var(--insight);
+}
+.xt-tag {
+  font-family: var(--font-data, var(--font));
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--hl, var(--presence));
+  margin-left: 5px;
+  vertical-align: middle;
+}
+.xt-comp {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.xt-comp.xt-off {
+  opacity: 0.5;
+}
+.xt-comp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: color-mix(in oklab, var(--hl, var(--presence)) 12%, transparent);
+}
+.xt-comp--goal {
+  --hl: var(--presence);
+}
+.xt-comp--risk {
+  --hl: var(--warning);
+}
+.xt-comp--metric {
+  --hl: var(--insight);
+}
+.xt-comp-kind {
+  font-family: var(--font-data, var(--font));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--hl, var(--presence));
+}
+.xt-comp-toggle {
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+.xt-comp-body {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+/* Shared honest search-volume line — reused by ExtractionPreview's build footer and by
+   PlanReview/TrackComposer's plan step, so the estimate reads identically everywhere it appears. */
+.dash-plan-estimate {
+  margin: 0;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+.xt-build-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.xt-name {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--presence);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  background: var(--surface-default);
+  color: var(--text-primary);
+}
+.xt-name:focus {
+  outline: none;
+}
+.xt-build {
+  flex: none;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--presence);
+  color: var(--on-presence, #fff);
+}
+@media (max-width: 720px) {
+  .xt-split {
+    grid-template-columns: 1fr;
+  }
+  .xt-left {
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+  }
+}
+
+/* ── settings ────────────────────────────────────────────────────────────────────────────── */
+.dash-settings {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 24px 26px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dash-gear {
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.dash-gear:hover {
+  color: var(--text-primary);
+}
+.dash-settings-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.dash-settings-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dash-set-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-set-blurb {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.dash-seg {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.dash-seg-opt {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 13px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.dash-seg-opt:hover {
+  border-color: var(--presence);
+}
+.dash-seg-opt.is-active {
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.dash-switch {
+  flex: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: var(--r-full);
+  background: var(--track, var(--line));
+  transition: background 160ms ease;
+}
+.dash-switch.on {
+  background: var(--insight);
+}
+.dash-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 160ms ease;
+}
+.dash-switch.on .dash-switch-knob {
+  transform: translateX(18px);
+}
+.dash-set-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-check {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+}
+.dash-check.disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.dash-check-box {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--on-presence, #fff);
+}
+.dash-check.on .dash-check-box {
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.dash-check-text {
+  display: flex;
+  flex-direction: column;
+}
+.dash-check-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.dash-check-note {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+/* Push test affordance — shown only while Push is on. */
+.dash-alert-test-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 2px 31px; /* align under the check label, past the box + gap */
+}
+.dash-alert-test {
+  border: none;
+  background: none;
+  padding: 0;
+  font: 600 var(--fs-2xs) / 1 var(--font);
+  color: var(--presence);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dash-alert-test-note {
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 320px;
+}
+.dash-usage {
+  position: sticky;
+  top: calc(var(--bar-h) + 10px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-usage-band {
+  font-family: var(--font-data, var(--font));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--insight);
+}
+.dash-usage--none {
+  color: var(--text-muted);
+}
+.dash-usage--minimal,
+.dash-usage--light {
+  color: var(--insight);
+}
+.dash-usage--moderate {
+  color: var(--warning);
+}
+.dash-usage--frequent {
+  color: var(--danger);
+}
+.dash-usage-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  padding: 12px 0;
+}
+.dash-usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.dash-usage-val {
+  font-family: var(--font-data, var(--font));
+  font-size: 11.5px;
+  color: var(--text-primary);
+  text-align: right;
+}
+.dash-usage-warning {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.dash-usage-done {
+  margin-top: 2px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border-radius: 11px;
+  padding: 11px;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .dash-settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-usage {
+    position: static;
+  }
+}
+
+/* ── edit mode ───────────────────────────────────────────────────────────────────────────── */
+.dash-edit-btn {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
+  border-radius: var(--r-sm);
+  padding: 6px 13px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.dash-edit-btn.is-active {
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.dash-refresh-btn,
+.dash-read-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-refresh-btn:disabled,
+.dash-read-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.dash-refresh-btn svg,
+.dash-read-btn svg {
+  width: 13px;
+  height: 13px;
+}
+/* The AI read gets the presence accent to read as Mavéa's own take, distinct from the plain data refresh. */
+.dash-read-btn {
+  color: var(--presence);
+}
+.dash-refresh-spin {
+  animation: dash-refresh-spin 0.8s linear infinite;
+}
+@keyframes dash-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.dash-refresh-hint {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dash-edit-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, transparent);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+  border-radius: var(--r-md);
+  flex-wrap: wrap;
+}
+.dash-edit-hint {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.dash-edit-add {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.dash-palette {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 14px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  min-width: 180px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-modal);
+}
+.dash-palette-item {
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.dash-palette-item:hover {
+  background: var(--surface-glass);
+}
+
+/* edit-mode tile chrome */
+.dash-tile--editing {
+  position: relative;
+  border: 1.5px dashed color-mix(in oklab, var(--presence) 45%, transparent);
+  border-radius: 18px;
+  padding: 2px;
+}
+.dash-tile--dragging {
+  opacity: 0.55;
+}
+.dash-tile-chrome {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  background: color-mix(in oklab, var(--surface-elevated) 92%, var(--presence));
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.dash-tile-handle {
+  cursor: grab;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  touch-action: none;
+  user-select: none;
+}
+.dash-tile-handle:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.dash-tile-ctrls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-tile-size {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.dash-tile-x {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+/* leave room for the chrome bar so it doesn't cover the widget's eyebrow */
+.dash-tile--editing .card {
+  margin-top: 30px;
+}
+
+/* ── overview (how it works) ─────────────────────────────────────────────────────────────── */
+.dash-overview {
+  /* Same fluid cap as the gallery/detail — an 880px ribbon inside a 1600px canvas read as a
+     page nobody finished; the hero lede keeps its own measure below so prose stays readable. */
+  width: min(100%, var(--canvas-col-max));
+  margin: 0 auto;
+  padding: 36px 26px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+.dash-ov-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.dash-ov-title {
+  margin: 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  color: var(--text-primary);
+}
+.dash-ov-lede {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 660px;
+}
+.dash-ov-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+.dash-ov-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--presence);
+  text-decoration: none;
+}
+.dash-ov-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.dash-ov-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.dash-ov-step,
+.dash-ov-layer {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+.dash-ov-step-n {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-data, var(--font));
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.dash-ov-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.dash-ov-step-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dash-ov-step-body {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.dash-ov-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-ov-layer-tag {
+  flex: none;
+  align-self: flex-start;
+  font-family: var(--font-data, var(--font));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--tag, var(--presence));
+  background: color-mix(in oklab, var(--tag, var(--presence)) 14%, transparent);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+}
+.dash-ov-note {
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── extraction preview: fold into an existing dashboard ─────────────────────────────────── */
+.xt-fold {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.xt-fold-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.xt-fold-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.xt-fold-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 7px 13px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: border-color 140ms ease;
+}
+.xt-fold-chip:hover {
+  border-color: var(--insight);
+}
+.xt-fold-chip.xt-fold-armed {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, var(--surface-glass));
+  border-color: color-mix(in oklab, var(--warning) 50%, var(--line));
+}
+
+/* ── fill a user-supplied metric ("your numbers") ────────────────────────────────────────── */
+.dash-fill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.dash-fill-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  font-family: var(--font);
+  color: var(--text-primary);
+}
+.dash-fill-input:focus {
+  outline: none;
+  border-color: var(--presence);
+}
+.dash-fill-unit {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.dash-fill-save {
+  flex: none;
+  border: none;
+  border-radius: 9px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+}
+.dash-fill-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── delete a dashboard (settings) ───────────────────────────────────────────────────────── */
+.dash-set-danger {
+  border-color: color-mix(in oklab, var(--danger) 30%, var(--line-soft));
+}
+.dash-del-btn {
+  align-self: flex-start;
+  border: 1px solid color-mix(in oklab, var(--danger) 40%, transparent);
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  color: var(--danger);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+.dash-del-btn.armed {
+  background: var(--danger);
+  color: var(--on-presence, #fff);
+}
+
+/* ── pin a talk answer onto the dashboard ────────────────────────────────────────────────── */
+.dash-talk-pin {
+  align-self: flex-start;
+  margin-top: 4px;
+  border: 1px solid color-mix(in oklab, var(--insight) 40%, transparent);
+  background: color-mix(in oklab, var(--insight) 10%, transparent);
+  color: var(--insight);
+  border-radius: 9px;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.dash-talk-pin:hover {
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+}
+.dash-talk-pinned {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--insight);
+}
+
+/* ── extraction: conversation picker ──────────────────────────────────────────────────────── */
+.xt-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-glass);
+}
+.xt-pick-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.xt-pick-chips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.xt-pick-chip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.xt-pick-chip.is-active {
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+  border-color: var(--presence);
+}
+
+/* The cadence picker reuses .xt-pick's label + chip styling but sits mid-form (between the
+   component toggles and the estimate line), not as the modal's own full-bleed top bar — reset the
+   bar chrome and stack label-over-chips, the same shape PlanReview's .tpl-chip-group uses for its
+   own cadence ask, so the two creation entry points read as one pattern. */
+.xt-cadence-pick {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0;
+  border-bottom: none;
+  background: none;
+}
+
+/* Visually hidden but still reachable by a screen reader's virtual cursor — for aria-live
+   announcements that have no on-screen equivalent (the two-tap delete arm/disarm). */
+.dash-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── new from template: header back button (replaces the title while a template is picked) ─ */
+.tpl-back {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+}
+.tpl-back:hover {
+  color: var(--text-primary);
+}
+
+/* ── new from template: grid step ────────────────────────────────────────────────────────── */
+.tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 20px;
+  overflow-y: auto;
+}
+.tpl-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+.tpl-tile:hover {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 6%, var(--surface-glass));
+}
+.tpl-tile-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.tpl-tile-blurb {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+@media (max-width: 640px) {
+  .tpl-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── new from template: form step ────────────────────────────────────────────────────────── */
+.tpl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+}
+.tpl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tpl-chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tpl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tpl-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 6px 12px;
+  background: var(--surface-elevated);
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    opacity 140ms ease,
+    border-color 140ms ease;
+}
+/* .xt-comp--metric/--risk (extraction preview) already set --hl to the right accent — reused here
+   so a metric/tripwire chip carries the same color language as its extraction-preview counterpart. */
+.tpl-chip.xt-comp--metric {
+  border-color: color-mix(in oklab, var(--insight) 35%, var(--line));
+}
+.tpl-chip.xt-comp--risk {
+  border-color: color-mix(in oklab, var(--warning) 35%, var(--line));
+}
+.tpl-chip.xt-comp--goal {
+  border-color: color-mix(in oklab, var(--presence) 35%, var(--line));
+}
+.tpl-chip.tpl-chip-off {
+  opacity: 0.5;
+}
+.tpl-chip-kind {
+  font-family: var(--font-data, var(--font));
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--hl, var(--presence));
+}
+.tpl-chip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.tpl-chip-state {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.tpl-create {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+}
+.tpl-create:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── new from template: related-dashboard interstitial ───────────────────────────────────── */
+.tpl-interstitial {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 24px;
+}
+.tpl-interstitial-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.tpl-interstitial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.tpl-fold-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+}
+.tpl-create-anyway {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+}
+
+/* ── track anything (the planner ask step) ───────────────────────────────────────────────── */
+.tpl-ask-row {
+  display: flex;
+  gap: 10px;
+}
+.tpl-ask-input {
+  /* The one control that IS this step — sized like Live's composer, not a settings field. */
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--r-full);
+  padding: 14px 20px;
+  font-size: 15px;
+}
+.tpl-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tpl-example-chip {
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  cursor: pointer;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.tpl-example-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+.tpl-example-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tpl-gate-note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.tpl-cadence-note {
+  margin-right: auto;
+  align-self: center;
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

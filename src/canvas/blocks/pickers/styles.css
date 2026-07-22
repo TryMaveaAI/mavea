@@ -1,0 +1,1412 @@
+/* pickers family styles — tokens only; light/dark via existing token overrides. */
+
+/* ── shared picker primitives ─────────────────────────────────── */
+.pk-label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin-bottom: 7px;
+  letter-spacing: 0.005em;
+}
+.pk-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-primary);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.pk-field:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+.pk-field.open,
+.pk-field:focus-visible {
+  outline: none;
+  border-color: var(--pk-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-c) 26%, transparent);
+}
+.pk-field-ic {
+  width: 16px;
+  height: 16px;
+  color: var(--pk-c);
+  flex-shrink: 0;
+}
+.pk-field-val {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-field-val.ph {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.pk-field-caret {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  transition: transform var(--m-fast) var(--ease-out);
+}
+.pk-field-caret.up {
+  transform: rotate(-90deg);
+}
+
+/* ── calendar (shared by datepicker / calendarpick / daterange) ── */
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cal-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.cal-nav:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+  border-color: var(--line);
+}
+.cal-nav-ic {
+  width: 15px;
+  height: 15px;
+}
+.cal-nav-ic.flip {
+  transform: rotate(180deg);
+}
+.cal-title {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.cal-title.sm {
+  font-size: var(--fs-sm);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.cal-grid {
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a plain 1fr floors each column at its item's min-content, and the day
+     cells (square, bordered buttons) have one big enough that on a phone the week ran wider than the
+     card. With the floor removed the seven columns simply share whatever width there is. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.cal-wd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+.cal-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    transform var(--m-fast) var(--ease-spring),
+    border-color var(--m-fast);
+}
+.cal-day:hover {
+  background: var(--surface-glass-strong);
+}
+.cal-day.out {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+.cal-day.sel {
+  background: var(--pk-c);
+  color: var(--surface-elevated);
+  font-weight: 700;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--pk-c) 36%, transparent);
+}
+.cal-day.sel:hover {
+  background: var(--pk-c);
+  filter: brightness(1.05);
+}
+.cal-dots {
+  position: absolute;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+.cal-dot {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: var(--r-full);
+}
+.cal-day.sel .cal-dot {
+  background: var(--surface-elevated) !important;
+}
+
+/* datepicker popover */
+.dp-wrap {
+  position: relative;
+}
+.dp-pop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 280px;
+  max-width: 100%;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+  transform-origin: top left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dp-pop {
+    animation: pk-pop var(--m-normal) var(--ease-spring);
+  }
+}
+@keyframes pk-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* calendarpick inline */
+.cal-inline {
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.cal-detail {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--pk-c) 7%, transparent);
+  border: 1px solid color-mix(in oklab, var(--pk-c) 20%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cal-detail {
+    animation: pk-fade var(--m-normal) var(--ease-out);
+  }
+}
+@keyframes pk-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cal-detail-date {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 7px;
+}
+.cal-detail-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cal-event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cal-event-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.cal-event-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cal-detail-empty {
+  font-size: var(--fs-sm);
+}
+
+/* daterange */
+.dr-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dr-summary {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dr-clear {
+  flex-shrink: 0;
+}
+.dr-clear {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: transparent;
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dr-clear:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+.dr-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.dr-preset {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dr-preset:hover {
+  color: var(--pk-c);
+  border-color: color-mix(in oklab, var(--pk-c) 40%, transparent);
+  background: color-mix(in oklab, var(--pk-c) 8%, transparent);
+}
+.dr-cal {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dr-edge {
+  flex-shrink: 0;
+}
+.dr-months {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  min-width: 0;
+}
+.dr-month {
+  min-width: 0;
+}
+.dr-month .cal-day {
+  font-size: var(--fs-xs);
+  border-radius: 0;
+}
+.dr-month .cal-grid {
+  gap: 1px 0;
+}
+.dr-month .cal-day.rng {
+  background: color-mix(in oklab, var(--pk-c) 14%, transparent);
+  color: var(--text-primary);
+  border-radius: 0;
+}
+.dr-month .cal-day.sel {
+  border-radius: var(--r-sm);
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 460px) {
+  .dr-months {
+    grid-template-columns: 1fr;
+  }
+  .dr-months .dr-month:nth-child(2) {
+    display: none;
+  }
+}
+
+/* ── timepicker ───────────────────────────────────────────────── */
+.tp-readout {
+  font-size: var(--fs-stat);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin: 6px 0 18px;
+}
+.tp-cols {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tp-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 7px 4px;
+  min-width: 64px;
+}
+.tp-cell {
+  font-size: var(--fs-2xl);
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1;
+  padding: 2px 0;
+}
+.tp-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 30px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.tp-step:hover {
+  background: var(--surface-glass-strong);
+  color: var(--pk-c);
+}
+.tp-step-ic {
+  width: 14px;
+  height: 14px;
+}
+.tp-step-ic.up {
+  transform: rotate(-90deg);
+}
+.tp-step-ic.down {
+  transform: rotate(90deg);
+}
+.tp-colon {
+  font-size: var(--fs-2xl);
+  font-weight: 760;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+.tp-mer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 6px;
+}
+/* Two 64px-floor spinners, a colon and the AM/PM pair do not fit across a folded-phone card, so the
+   meridiem buttons were pushed out past its edge. Give them their own row under the clock, laid out
+   side by side — the shape a phone time picker takes anyway. */
+@container (max-width: 340px) {
+  .tp-cols {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 10px;
+  }
+  .tp-mer {
+    flex-direction: row;
+    flex-basis: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+}
+.tp-mer-btn {
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+  transition: all var(--m-fast);
+}
+.tp-mer-btn.on {
+  background: var(--pk-c);
+  border-color: var(--pk-c);
+  color: var(--surface-elevated);
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--pk-c) 32%, transparent);
+}
+.tp-mer-btn:not(.on):hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+
+/* ── colorpicker ──────────────────────────────────────────────── */
+.cp-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.cp-preview {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-md);
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  box-shadow:
+    0 2px 10px color-mix(in oklab, var(--cp-c) 40%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.cp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cp-hex {
+  font-family: var(--mono);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+.cp-hsl {
+  font-size: var(--fs-sm);
+}
+.cp-strip {
+  position: relative;
+  height: 16px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  margin: 0 9px 18px;
+  touch-action: none;
+  user-select: none;
+  background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.cp-strip:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 0 0 3px color-mix(in oklab, var(--presence) 30%, transparent);
+}
+.cp-strip-handle {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--r-full);
+  border: 3px solid var(--surface-elevated);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  transition: transform var(--m-fast) var(--ease-spring);
+}
+.cp-strip.drag .cp-strip-handle {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.cp-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+.cp-swatch {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  border: 1px solid color-mix(in oklab, #000 12%, transparent);
+  padding: 0;
+  transition:
+    transform var(--m-fast) var(--ease-spring),
+    box-shadow var(--m-fast);
+}
+.cp-swatch:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+.cp-swatch.on {
+  box-shadow:
+    0 0 0 2px var(--surface-elevated),
+    0 0 0 4px var(--cp-c);
+}
+.cp-swatch-check {
+  width: 14px;
+  height: 14px;
+  color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  margin: auto;
+  display: block;
+}
+
+/* ── fileupload ───────────────────────────────────────────────── */
+.fu-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  padding: 26px 16px;
+  border-radius: var(--r-lg);
+  border: 1.5px dashed var(--line-strong);
+  background: var(--surface-glass);
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    transform var(--m-fast);
+}
+.fu-zone:hover {
+  border-color: var(--pk-c);
+  background: color-mix(in oklab, var(--pk-c) 5%, var(--surface-glass));
+}
+.fu-zone.over {
+  border-color: var(--pk-c);
+  background: color-mix(in oklab, var(--pk-c) 11%, var(--surface-glass));
+  transform: scale(1.01);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--pk-c) 14%, transparent);
+}
+.fu-zone:focus-visible {
+  outline: none;
+  border-color: var(--pk-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-c) 26%, transparent);
+}
+.fu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  margin-bottom: 12px;
+  background: color-mix(in oklab, var(--pk-c) 14%, transparent);
+  color: var(--pk-c);
+}
+.fu-zone.over .fu-icon {
+  animation: fu-bob 0.6s var(--ease-out) infinite;
+}
+@keyframes fu-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.fu-icon-ic {
+  width: 20px;
+  height: 20px;
+}
+.fu-prompt {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.fu-hint {
+  font-size: var(--fs-sm);
+  margin-bottom: 12px;
+}
+.fu-browse {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--pk-c);
+  padding: 5px 14px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--pk-c) 38%, transparent);
+  background: var(--surface-elevated);
+}
+.fu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.fu-file {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition: border-color var(--m-fast);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fu-file {
+    animation: pk-fade var(--m-normal) var(--ease-out);
+  }
+}
+.fu-file.done {
+  border-color: color-mix(in oklab, var(--insight) 32%, var(--line));
+}
+.fu-file-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--pk-c) 12%, transparent);
+  color: var(--pk-c);
+}
+.fu-file.done .fu-file-ic {
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  color: var(--insight);
+}
+.fu-file-ic .ic {
+  width: 16px;
+  height: 16px;
+}
+.fu-file-body {
+  flex: 1;
+  min-width: 0;
+}
+.fu-file-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+  min-width: 0;
+}
+.fu-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fu-file-size {
+  font-size: var(--fs-xs);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.fu-file-bar {
+  position: relative;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: visible;
+}
+.fu-file-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--pk-c) 65%, transparent),
+    var(--pk-c)
+  );
+  transition: width var(--m-normal) var(--ease-out);
+}
+.fu-file-pct {
+  position: absolute;
+  right: 0;
+  top: -16px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.fu-file-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--insight);
+}
+.fu-file-check {
+  width: 13px;
+  height: 13px;
+}
+.fu-file-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.fu-file-x:hover {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.fu-file-x .ic {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── tagsinput ────────────────────────────────────────────────── */
+.tg-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  cursor: text;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  min-height: 46px;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.tg-field.focus {
+  border-color: var(--pk-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-c) 24%, transparent);
+}
+.tg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  padding: 4px 6px 4px 10px;
+  border-radius: var(--r-full);
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  background: color-mix(in oklab, var(--pk-c) 13%, transparent);
+  color: var(--pk-c);
+  border: 1px solid color-mix(in oklab, var(--pk-c) 26%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tg-chip {
+    animation: tg-pop var(--m-normal) var(--ease-spring);
+  }
+}
+@keyframes tg-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tg-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+  padding: 0;
+  background: color-mix(in oklab, var(--pk-c) 18%, transparent);
+  border: none;
+  color: var(--pk-c);
+  transition: background var(--m-fast);
+}
+.tg-chip-x:hover {
+  background: var(--pk-c);
+  color: var(--surface-elevated);
+}
+.tg-chip-x .ic {
+  width: 10px;
+  height: 10px;
+}
+.tg-input {
+  flex: 1;
+  min-width: 80px;
+  font: inherit;
+  font-size: var(--fs-md);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 3px 2px;
+}
+.tg-input::placeholder {
+  color: var(--text-muted);
+}
+.tg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.tg-count {
+  font-size: var(--fs-xs);
+}
+.tg-clear {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  transition: color var(--m-fast);
+}
+.tg-clear:hover {
+  color: var(--danger);
+}
+.tg-sugs {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line-soft);
+}
+.tg-sugs-label {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tg-sugs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tg-sug {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 10px 4px 7px;
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px dashed var(--line-strong);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.tg-sug:hover {
+  color: var(--pk-c);
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--pk-c) 40%, transparent);
+  background: color-mix(in oklab, var(--pk-c) 7%, transparent);
+}
+.tg-sug-ic {
+  width: 11px;
+  height: 11px;
+}
+
+/* ── numberstepper ────────────────────────────────────────────── */
+.ns-control {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.ns-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 46px;
+  border-radius: var(--r-md);
+  padding: 0;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-primary);
+  transition: all var(--m-fast) var(--ease-spring);
+}
+.ns-btn:not(:disabled):hover {
+  border-color: var(--pk-c);
+  color: var(--pk-c);
+  background: color-mix(in oklab, var(--pk-c) 8%, transparent);
+  transform: translateY(-1px);
+}
+.ns-btn:not(:disabled):active {
+  transform: translateY(0) scale(0.96);
+}
+.ns-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ns-btn-ic {
+  width: 16px;
+  height: 16px;
+}
+.ns-btn-ic.minus {
+  transform: rotate(45deg);
+}
+.ns-value-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  padding: 0 8px;
+  overflow: hidden;
+}
+.ns-value-wrap:focus-within {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: 2px;
+}
+.ns-affix {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ns-value {
+  width: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  font: inherit;
+  font-size: var(--fs-2xl);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 12px 0;
+  color: var(--pk-c);
+}
+/* Preserve a usable numeric field between both 46px steppers on folded-phone cards. */
+@container (max-width: 260px) {
+  .ns-control {
+    gap: 6px;
+  }
+  .ns-btn {
+    width: 36px;
+  }
+  .ns-value-wrap {
+    padding-inline: 4px;
+  }
+  .ns-affix {
+    font-size: var(--fs-xs);
+  }
+  .ns-value {
+    font-size: var(--fs-lg);
+  }
+}
+.ns-track {
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  margin-top: 16px;
+  overflow: hidden;
+}
+.ns-track-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--pk-c) 65%, transparent),
+    var(--pk-c)
+  );
+  transition: width var(--m-normal) var(--ease-out);
+}
+.ns-bounds {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  margin-top: 6px;
+}
+.ns-bounds span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ns-caption {
+  font-size: var(--fs-sm);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* ── searchselect ─────────────────────────────────────────────── */
+.ss-wrap {
+  position: relative;
+}
+.ss-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.ss-field.open {
+  border-color: var(--pk-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-c) 24%, transparent);
+}
+.ss-search-ic {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ss-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 550;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+}
+.ss-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.ss-cur-ic {
+  width: 15px;
+  height: 15px;
+  color: var(--pk-c);
+  flex-shrink: 0;
+}
+.ss-caret {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  transition: transform var(--m-fast);
+  flex-shrink: 0;
+}
+.ss-caret.up {
+  transform: rotate(-90deg);
+}
+.ss-pop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ss-pop {
+    animation: pk-pop var(--m-normal) var(--ease-out);
+  }
+}
+.ss-empty {
+  font-size: var(--fs-sm);
+  padding: 14px 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ss-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  padding: 8px 9px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: none;
+  transition: background var(--m-fast);
+}
+.ss-opt.active {
+  background: var(--surface-glass-strong);
+}
+.ss-opt-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--pk-c);
+  background: color-mix(in oklab, var(--pk-c) 13%, transparent);
+}
+.ss-opt-ic .ic {
+  width: 15px;
+  height: 15px;
+}
+.ss-opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.ss-opt-label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ss-opt-meta {
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ss-opt-check {
+  width: 16px;
+  height: 16px;
+  color: var(--pk-c);
+  flex-shrink: 0;
+}
+
+/* ── formpanel ────────────────────────────────────────────────── */
+.fp-heading {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+.fp-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fp-label {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+.fp-req {
+  color: var(--danger);
+  margin-left: 2px;
+}
+.fp-input {
+  font: inherit;
+  font-size: var(--fs-md);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-primary);
+  outline: none;
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.fp-input::placeholder {
+  color: var(--text-muted);
+}
+.fp-input:focus {
+  border-color: var(--pk-c);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-c) 24%, transparent);
+}
+.fp-field.err .fp-input {
+  border-color: color-mix(in oklab, var(--danger) 60%, var(--line));
+}
+.fp-field.err .fp-input:focus {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 22%, transparent);
+}
+.fp-textarea {
+  resize: vertical;
+  min-height: 56px;
+  line-height: 1.5;
+}
+.fp-select-wrap {
+  position: relative;
+}
+.fp-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+}
+.fp-select-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.fp-msg {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fp-msg.hint {
+  color: var(--text-muted);
+}
+.fp-msg.err {
+  color: var(--danger);
+  font-weight: 600;
+}
+.fp-msg-ic {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.fp-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.fp-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  padding: 9px 18px;
+  border-radius: var(--r-full);
+  background: var(--pk-c);
+  border: 1px solid transparent;
+  color: var(--surface-elevated);
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--pk-c) 30%, transparent);
+  transition:
+    filter var(--m-fast),
+    transform var(--m-fast) var(--ease-spring),
+    background var(--m-fast);
+}
+.fp-submit:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+.fp-submit:active {
+  transform: translateY(0) scale(0.98);
+}
+.fp-submit.done {
+  background: var(--insight);
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--insight) 30%, transparent);
+}
+.fp-submit .ic {
+  width: 15px;
+  height: 15px;
+}
+.fp-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--insight);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fp-success {
+    animation: pk-fade var(--m-normal) var(--ease-out);
+  }
+}
+.fp-success-ic {
+  width: 14px;
+  height: 14px;
+}

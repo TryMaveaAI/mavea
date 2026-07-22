@@ -1,0 +1,314 @@
+/* shiponboarding.css — the "no PR" onboarding view. Matches ripple.css: tokens only (light/dark is
+   automatic), every card contains its overflow, dynamic text wraps, and code refs are monospace and
+   ellipsised only when they're short single-line refs. New classes are prefixed ripple-onb- so they
+   never collide with the shared surface. */
+
+.ripple-onb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+}
+
+/* ── header: the "no PR needed" pill + the line ── */
+.ripple-onb-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-md);
+}
+.ripple-onb-pill {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, transparent);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+}
+.ripple-onb-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── two-pane: module list ↔ selected module detail ── */
+.ripple-onb-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: var(--s-lg);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .ripple-onb-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* LEFT — the list */
+.ripple-onb-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+}
+.ripple-onb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.ripple-onb-item:hover {
+  background: var(--surface-elevated-2);
+}
+.ripple-onb-item[data-active='true'] {
+  border-color: color-mix(in oklab, var(--presence) 42%, transparent);
+  background: color-mix(in oklab, var(--presence) 13%, transparent);
+}
+.ripple-onb-item-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.ripple-onb-item-purpose {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-onb-item-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-top: 2px;
+}
+.ripple-onb-item-owner {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.ripple-onb-item-health {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* RIGHT — the detail */
+.ripple-onb-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+  min-width: 0;
+  padding: var(--s-md) var(--s-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-default);
+  overflow: hidden;
+}
+.ripple-onb-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ripple-onb-detail-name {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.ripple-onb-detail-purpose {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-onb-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 2px;
+}
+.ripple-onb-entry {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 11%, transparent);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ripple-onb-detail-owner {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Mavéa explain card — sits a touch above the page on the elevated surface */
+.ripple-onb-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px var(--s-md);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+}
+.ripple-onb-explain p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* chip groups: start here / depends on / used by */
+.ripple-onb-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ripple-onb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.ripple-onb-chip {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 4px 9px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+/* "start here" reads as the entry path — tint it toward presence so it leads the eye */
+.ripple-onb-chip-go {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 11%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 26%, transparent);
+}
+
+/* ── footer: first week (numbered strip) + a request's life (mono trace) ── */
+.ripple-onb-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-lg);
+}
+
+/* the request-trace lifted to the top: a lead orientation strip above the area reference */
+.ripple-onb-life-top {
+  margin-bottom: var(--s-md);
+  padding-bottom: var(--s-md);
+  border-bottom: 1px solid var(--line);
+}
+
+.ripple-onb-week {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s-2);
+}
+.ripple-onb-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  overflow: hidden;
+}
+.ripple-onb-step-num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
+}
+.ripple-onb-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ripple-onb-step-team {
+  color: var(--text-muted);
+}
+.ripple-onb-step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+.ripple-onb-step-sub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-onb-step-file {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  overflow-wrap: anywhere;
+}
+
+/* a request's life — mono stops separated by › chevrons, wrapping as a flow */
+.ripple-onb-life {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ripple-onb-trace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ripple-onb-trace-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ripple-onb-chevron {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+}

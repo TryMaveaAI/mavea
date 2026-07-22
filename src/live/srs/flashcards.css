@@ -1,0 +1,789 @@
+/* Flashcards (#/flashcards) — the manage + study surface. A .mavea-app, so it inherits the surface
+   gradient + theme; these rules lay out the top nav, the sidebar (smart filters + decks + tags), the
+   card list, bulk actions, and the add/edit sheet. Tokens only — it rides the chosen theme in light
+   and dark. Every text container clamps/ellipsizes so a long card never overflows its row. */
+
+/* .mavea-app is height:100% + overflow:hidden, so this surface is its OWN scroll container. */
+.fc-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── top nav ───────────────────────────────────────────────────────────────────────────────── */
+.fc-nav {
+  flex: none;
+  display: flex;
+  /* Wrap rather than clip: on a narrow phone the back button + title + the two action
+     buttons don't fit on one line. `.fc-nav-actions`' own margin-left:auto still pushes it
+     flush right once it drops to its own row, so this needs no extra breakpoint/media query. */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(var(--app-bg) 78%, transparent);
+  backdrop-filter: blur(8px);
+}
+.fc-nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 13px/1 var(--font);
+  padding: 7px 13px 7px 9px;
+  cursor: pointer;
+  transition:
+    color var(--m-quick),
+    border-color var(--m-quick),
+    background var(--m-quick);
+}
+.fc-nav-back svg {
+  width: 15px;
+  height: 15px;
+}
+.fc-nav-back:hover {
+  color: var(--text-primary);
+  border-color: var(--line-mid);
+  background: var(--surface-glass);
+}
+.fc-nav-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font: 700 18px/1 var(--font);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.fc-nav-sub {
+  font: 500 12.5px/1 var(--font);
+  color: var(--text-muted);
+}
+.fc-nav-actions {
+  margin-left: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ── shared buttons ────────────────────────────────────────────────────────────────────────── */
+.fc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: 600 13px/1 var(--font);
+  padding: 9px 15px;
+  cursor: pointer;
+  transition:
+    background var(--m-quick),
+    border-color var(--m-quick),
+    color var(--m-quick),
+    opacity var(--m-quick);
+}
+.fc-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.fc-btn:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+}
+.fc-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.fc-btn-primary {
+  background: var(--presence);
+  border-color: var(--presence);
+  color: #fff;
+}
+.fc-btn-primary:hover {
+  background: color-mix(in oklab, var(--presence) 88%, #000);
+  border-color: color-mix(in oklab, var(--presence) 88%, #000);
+}
+.fc-btn-sm {
+  padding: 6px 11px;
+  font-size: 12.5px;
+}
+.fc-btn-danger {
+  border-color: color-mix(in oklab, var(--danger) 55%, transparent);
+  color: var(--danger);
+}
+.fc-btn-danger:hover {
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface-elevated));
+  border-color: var(--danger);
+}
+
+/* ── body: sidebar + main ──────────────────────────────────────────────────────────────────── */
+.fc-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.fc-side {
+  flex: none;
+  width: 232px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line-soft);
+  padding: 18px 14px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.fc-side-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fc-side-eyebrow {
+  font: 700 10px/1 var(--font);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 10px 6px;
+}
+.fc-side-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-secondary);
+  font: 550 13.5px/1.2 var(--font);
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 44px;
+  cursor: pointer;
+  transition:
+    background var(--m-quick),
+    color var(--m-quick);
+}
+.fc-side-item:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.fc-side-item.is-active {
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--text-primary);
+}
+.fc-side-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-side-count {
+  margin-left: auto;
+  font: 600 12px/1 var(--font);
+  color: var(--text-muted);
+}
+.fc-side-badge {
+  margin-left: auto;
+  min-width: 20px;
+  text-align: center;
+  font: 700 11px/1 var(--font);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  border-radius: var(--r-full);
+  padding: 3px 6px;
+}
+.fc-side-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 8px;
+}
+.fc-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 550 12px/1 var(--font);
+  padding: 4px 9px;
+  cursor: pointer;
+  transition:
+    color var(--m-quick),
+    border-color var(--m-quick),
+    background var(--m-quick);
+}
+.fc-tag-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--line-mid);
+}
+.fc-tag-chip.is-active {
+  color: var(--text-primary);
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.fc-tag-n {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* ── main column ───────────────────────────────────────────────────────────────────────────── */
+.fc-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 18px 26px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fc-search {
+  flex: 1;
+  min-width: 0;
+}
+.fc-search input {
+  width: 100%;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: 450 14px/1 var(--font);
+  padding: 10px 16px;
+}
+.fc-search input::placeholder {
+  color: var(--text-faint);
+}
+.fc-search input:focus-visible {
+  outline: none;
+  border-color: var(--presence);
+}
+.fc-selectall {
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: 600 12.5px/1 var(--font);
+  cursor: pointer;
+  padding: 6px;
+}
+.fc-selectall:hover {
+  color: var(--text-primary);
+}
+
+/* ── bulk action bar ───────────────────────────────────────────────────────────────────────── */
+.fc-bulk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+.fc-bulk-n {
+  font: 600 13px/1 var(--font);
+  color: var(--text-primary);
+}
+.fc-bulk-input {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated-2, var(--surface-elevated));
+  color: var(--text-primary);
+  font: 450 13px/1 var(--font);
+  padding: 7px 12px;
+  width: 160px;
+}
+.fc-bulk-input:focus-visible {
+  outline: none;
+  border-color: var(--presence);
+}
+.fc-bulk-clear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: 600 12.5px/1 var(--font);
+  cursor: pointer;
+  padding: 6px;
+}
+.fc-bulk-clear:hover {
+  color: var(--text-primary);
+}
+
+/* ── card list ─────────────────────────────────────────────────────────────────────────────── */
+.fc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  transition:
+    border-color var(--m-quick),
+    background var(--m-quick);
+}
+.fc-row:hover {
+  border-color: var(--line-mid);
+}
+.fc-row.is-checked {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 7%, var(--surface-elevated));
+}
+.fc-row-check {
+  flex: none;
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--presence);
+  cursor: pointer;
+}
+.fc-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fc-row-front {
+  font: 600 14.5px/1.4 var(--font);
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fc-row-back {
+  font: 450 13px/1.45 var(--font);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fc-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 2px;
+}
+.fc-status {
+  font: 700 9.5px/1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: var(--r-full);
+  padding: 4px 8px;
+}
+.fc-status.is-due {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.fc-status.is-new {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.fc-status.is-suspended {
+  color: var(--text-muted);
+  background: var(--surface-glass);
+}
+.fc-status.is-sched {
+  color: var(--text-faint);
+  background: var(--surface-glass);
+}
+/* "Seen" is the majority state in a well-used pile, so it can't borrow is-sched's --text-faint —
+   that would leave nearly the whole status column too pale to read. */
+.fc-status.is-seen {
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+}
+.fc-row-deck {
+  font: 600 11.5px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border-radius: var(--r-full);
+  padding: 4px 9px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-row-tag {
+  border: none;
+  font: 500 11.5px/1 var(--font);
+  color: var(--text-muted);
+  background: none;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+.fc-row-tag::before {
+  content: '#';
+  opacity: 0.6;
+}
+.fc-row-tag:hover {
+  color: var(--presence);
+}
+.fc-row-origin {
+  font: 600 9.5px/1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 3px 7px;
+}
+.fc-row-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.fc-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color var(--m-quick),
+    background var(--m-quick),
+    border-color var(--m-quick);
+}
+.fc-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.fc-icon-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.fc-icon-danger {
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 45%, transparent);
+}
+
+/* ── empty state ───────────────────────────────────────────────────────────────────────────── */
+.fc-empty {
+  margin: 40px auto;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.fc-empty-icon {
+  color: var(--text-faint);
+}
+.fc-empty-icon svg {
+  width: 38px;
+  height: 38px;
+}
+.fc-empty-head {
+  font: 700 17px/1.2 var(--font);
+  color: var(--text-primary);
+}
+.fc-empty-sub {
+  font: 450 13.5px/1.5 var(--font);
+  color: var(--text-secondary);
+}
+
+/* ── add/edit sheet ────────────────────────────────────────────────────────────────────────── */
+.fc-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 92;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--scrim-rgb), 0.72);
+  backdrop-filter: blur(8px);
+  padding: 24px;
+}
+.fc-ed-shell {
+  width: min(560px, 100%);
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+.fc-ed-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fc-ed-title {
+  font: 700 16px/1 var(--font);
+  color: var(--text-primary);
+}
+.fc-ed-drafting {
+  font: 500 12px/1 var(--font);
+  color: var(--presence);
+  animation: fc-pulse 1.4s ease-in-out infinite;
+}
+@keyframes fc-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.fc-ed-close {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+.fc-ed-close:hover {
+  color: var(--text-primary);
+  border-color: var(--line-mid);
+}
+.fc-ed-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.fc-ed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated-2, var(--surface-glass));
+}
+.fc-ed-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fc-ed-card-n {
+  font: 700 10.5px/1 var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fc-ed-row-remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: 600 12px/1 var(--font);
+  cursor: pointer;
+}
+.fc-ed-row-remove:hover {
+  color: var(--danger);
+}
+.fc-ed-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fc-ed-label {
+  font: 700 9.5px/1 var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fc-ed-input {
+  width: 100%;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: 450 14px/1.5 var(--font);
+  padding: 9px 12px;
+  resize: vertical;
+}
+.fc-ed-input:focus-visible {
+  outline: none;
+  border-color: var(--presence);
+}
+.fc-ed-add-row {
+  align-self: flex-start;
+  border: 1px dashed var(--line-mid);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12.5px/1 var(--font);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.fc-ed-add-row:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+.fc-ed-meta {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 14px;
+}
+@media (max-width: 480px) {
+  .fc-ed-meta {
+    grid-template-columns: 1fr;
+  }
+}
+.fc-ed-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  padding: 7px 9px;
+  min-height: 38px;
+}
+.fc-ed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 550 12px/1 var(--font);
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 5px 4px 10px;
+}
+.fc-ed-tag button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px;
+}
+.fc-ed-tag button:hover {
+  color: var(--danger);
+}
+.fc-ed-tag-input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font: 450 13px/1 var(--font);
+  padding: 4px;
+}
+.fc-ed-tag-input:focus-visible {
+  outline: none;
+}
+.fc-ed-foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ── narrow screens: collapse the sidebar above the list ───────────────────────────────────── */
+@media (max-width: 720px) {
+  .fc-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .fc-side {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 14px 18px;
+  }
+  .fc-main {
+    overflow-y: visible;
+  }
+}
+
+/* ── study style, in the sidebar ── */
+/* Sits at the foot of the sidebar: the person who decides they want a schedule after all is
+   looking at their cards when they decide it, not at Live's settings panel. */
+.fc-side-style {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.fc-style-seg {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--track);
+  border: 1px solid var(--line-soft);
+}
+.fc-style-opt {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: calc(var(--r-md) - 4px);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 11.5px/1.2 var(--font);
+  cursor: pointer;
+  transition:
+    color var(--m-quick),
+    background var(--m-quick);
+}
+.fc-style-opt:hover {
+  color: var(--text-primary);
+}
+/* Tinted with the accent rather than just raised: on the darker workspace skins an elevated
+   surface is nearly the same value as the track behind it, which left the chosen option almost
+   impossible to pick out. This matches how .fc-side-item marks its selection. */
+.fc-style-opt.is-active {
+  background: color-mix(in oklab, var(--presence) 18%, var(--surface-elevated));
+  color: var(--text-primary);
+  box-shadow: var(--shadow-raised);
+}
+.fc-style-note {
+  margin: 8px 2px 0;
+  font: 450 11.5px/1.45 var(--font);
+  color: var(--text-muted);
+}

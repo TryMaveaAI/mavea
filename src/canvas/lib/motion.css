@@ -1,0 +1,123 @@
+/* motion.css — the canonical animation vocabulary for canvas blocks.
+   A long tail of family stylesheets hand-roll their own @keyframes for the same two or three
+   ideas (a fade-rise entrance, a scale-in, a one-shot "this changed" glow) under a different
+   name each time — c1FadeRise, c1NetworkNodeGrow, c1BarEnter, c1BarGlow, and their siblings
+   across the other families. This file is that shared vocabulary: new blocks reach for
+   `mavea-fade-rise` / `mavea-scale-in` / `mavea-draw` / `mavea-pulse-glow` (or the paired utility
+   classes below) instead of authoring a near-identical keyframe again. A family may still write
+   its own selector/trigger logic (which element, which data-mark, which stagger) — it just
+   plays one of these four keyframes rather than inventing a fifth.
+
+   House rules for every rule in this file (and for any block that reaches into it):
+   - GPU-cheap properties only — `opacity`, `transform`, `filter`. Never animate `width`,
+     `height`, `top`, `left`, or `margin`; those force layout on every frame and are the
+     difference between smooth and janky on the weakest hardware this app has to run on.
+   - No unthrottled loops: every keyframe defined here is a bounded, one-shot animation — never
+     `animation-iteration-count: infinite`. That's a hard rule for anything reaching into this
+     file specifically (entrances and "just updated" pulses finish and stay finished); it's
+     stricter than the app as a whole, which has a small number of transient loading affordances
+     (a spinner, a skeleton shimmer) that legitimately loop only for the duration of their
+     triggering state, plus exactly two always-on ambient loops — the Presence aura's conic
+     drift and a live-status dot's pulse — that are deliberate, reviewed exceptions living
+     outside `canvas/blocks/`. None of that is a precedent for a new block: reach for a loading
+     state's own affordance if you need one, never a fresh infinite loop of your own.
+   - Durations and easings come from the tokens in `src/styles/tokens-base.css`
+     (`--m-fast`/`--m-normal`/`--m-expressive`/`--m-cinematic`, `--ease-out`/`--ease-in-out`/
+     `--ease-spring`). Never invent a bespoke duration or cubic-bezier in a block's own CSS.
+   - Additive only, exactly like `.reveal` in `src/styles/replay-card.css`: every animating rule
+     lives inside `@media (prefers-reduced-motion: no-preference)`. Outside that query — which is
+     what a reduced-motion user gets — an element sits in its final, fully-visible state with no
+     rule needed to get it there (opacity 1 and no transform are the browser's own defaults, and
+     `.m-draw-path`'s base rule below makes that explicit for the one property, `stroke-dasharray`,
+     that isn't already blank by default). Nothing in this file may animate unless the OS
+     motion preference allows it. */
+
+@keyframes mavea-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 10px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mavea-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--scale-from, 0.92));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* SVG line/path draw-on. Consumers set `--path-len` to the element's real length (see
+   usePathDraw in motion.ts, which reads it from getTotalLength()) — the keyframe just walks
+   the dash offset from "fully retracted" to "fully drawn". */
+@keyframes mavea-draw {
+  from {
+    stroke-dashoffset: var(--path-len, 1px);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* One-shot "this just updated" pulse — NOT ambient decoration, and never looped. A family wires
+   this to its own trigger (e.g. the salient bar in a waterfall, a value that just changed) with
+   its own short-lived `animation: mavea-pulse-glow …` rule; there is no blanket utility class for
+   it here because the trigger condition is inherently family-specific. `--glow-color` defaults
+   to the presence glow but any of the `--glow-*` tokens in tokens-base.css apply. */
+@keyframes mavea-pulse-glow {
+  from {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px var(--glow-color, var(--glow-presence)));
+  }
+  to {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* Base (non-gated) state: `.m-draw-path` never leaves a dash pattern behind when its animation
+   can't run — a plain solid stroke is already "fully drawn", so a reduced-motion user (or an
+   element the usePathDraw hook never got to toggle the animation class on) simply sees the
+   finished line. */
+.m-draw-path {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Per-item stagger math, shared by every entrance class below. `--i` is the item's index
+     (set inline, e.g. `style={{ '--i': i }}`); this only ever feeds `--delay`, so it composes
+     with whichever entrance animation a block pairs it with instead of fighting that
+     animation's own fill-mode (mavea-draw wants `forwards`, the fade/scale entrances want
+     `backwards` — see below). Pair it with an entrance class; on its own it does nothing. */
+  .m-stagger-item {
+    --delay: calc(var(--i, 0) * var(--stagger, 40ms));
+  }
+
+  /* `backwards` fill-mode holds the keyframe's 0% state for the length of `--delay` — without
+     it, a staggered item would render in its normal (post-animation) state, flash, then jump
+     back to hidden and animate in, since the animation hasn't started yet during its own delay. */
+  .m-fade-rise {
+    animation: mavea-fade-rise var(--m-normal) var(--ease-out) var(--delay, 0ms) backwards;
+  }
+  .m-scale-in {
+    animation: mavea-scale-in var(--m-normal) var(--ease-out) var(--delay, 0ms) backwards;
+  }
+
+  /* `forwards` (not `backwards`) — the drawn state must persist once the animation ends, or the
+     path would snap back to its pre-animation (retracted) dash offset the instant it finishes. */
+  .m-draw-path {
+    stroke-dasharray: var(--path-len, 1px) var(--path-len, 1px);
+    stroke-dashoffset: var(--path-len, 1px);
+    animation: mavea-draw var(--draw-duration, var(--m-cinematic)) var(--ease-out) var(--delay, 0ms)
+      forwards;
+  }
+}

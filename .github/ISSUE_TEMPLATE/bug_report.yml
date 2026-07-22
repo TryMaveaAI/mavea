@@ -1,0 +1,41 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `pnpm dev`
+        2. Open http://localhost:5173
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: 'macOS 15 · Node 20 + pnpm 9 · Chrome 125'
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / console output
+      render: shell
+  - type: checkboxes
+    id: submission
+    attributes:
+      label: Submission checks
+      description: Issues are for reports and suggestions, not external contributions.
+      options:
+        - label: I did not include code, a patch, documentation changes, secrets, personal data, or confidential information.
+          required: true

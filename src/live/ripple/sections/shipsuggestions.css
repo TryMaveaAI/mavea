@@ -1,0 +1,235 @@
+/* shipsuggestions.css — the principal-review section. All color via the shared tokens (light/dark
+   automatic); each card carries its lens accent in --ripple-sg-accent, set inline from the model.
+   Prefix ripple-sg- so nothing collides with the rest of the surface. */
+
+.ripple-sg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+}
+
+/* ── the signal bar: the few things worth your time, the noise honestly accounted for ── */
+.ripple-sg-signal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px var(--s-md);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+.ripple-sg-orb {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--presence) 0%, var(--presence-deep) 75%);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 22%, transparent);
+}
+.ripple-sg-count {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.ripple-sg-count strong {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+.ripple-sg-muted {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.ripple-sg-grounded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+}
+.ripple-sg-grounded svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+/* ── the suggestion cards ── */
+.ripple-sg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ripple-sg-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  transition: border-color var(--m-fast) var(--ease-out);
+}
+.ripple-sg-card[data-open='true'] {
+  border-color: color-mix(in oklab, var(--ripple-sg-accent) 45%, var(--line));
+}
+
+.ripple-sg-trigger {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 3px 12px;
+  width: 100%;
+  /* the accent rail reads the lens color without an extra element */
+  border: 0;
+  border-left: 3px solid var(--ripple-sg-accent);
+  border-radius: 0;
+  padding: 14px 16px;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ripple-sg-trigger:hover {
+  background: var(--surface-elevated-2);
+}
+.ripple-sg-cat {
+  grid-column: 1;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ripple-sg-accent);
+}
+.ripple-sg-title {
+  grid-column: 1;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-sg-gist {
+  grid-column: 1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-sg-chev {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--m-fast) var(--ease-out);
+}
+.ripple-sg-card[data-open='true'] .ripple-sg-chev {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-sg-chev {
+    transition: none;
+  }
+}
+
+/* ── the expanded reasoning ── */
+.ripple-sg-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: 0 16px 16px;
+  border-left: 3px solid var(--ripple-sg-accent);
+}
+.ripple-sg-why {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-sg-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 11px 12px;
+}
+.ripple-sg-evidence-text {
+  margin: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--text-muted);
+  /* mono refs run long; wrap them rather than clip or overflow the card */
+  overflow-wrap: anywhere;
+}
+.ripple-sg-fix {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.ripple-sg-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 1px;
+  border-radius: 50%;
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+}
+.ripple-sg-check svg {
+  width: 11px;
+  height: 11px;
+}
+.ripple-sg-fix-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-sg-fix-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── the deliberate floor: what Mavéa chose not to spend your attention on ── */
+.ripple-sg-suppressed {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  padding: 12px var(--s-md);
+  text-wrap: pretty;
+}
+.ripple-sg-suppressed strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ripple-sg-empty {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--s-md);
+}

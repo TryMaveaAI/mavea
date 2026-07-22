@@ -1,0 +1,197 @@
+/* dashboard family — the four living-dashboard widgets. Tokens only; each rides the chosen theme in
+   light and dark, clips to its .card (overflow:hidden), and has an honest empty state. */
+
+/* shared chip + footer */
+.dash-foot {
+  margin-top: 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ── thesis ─────────────────────────────────────────────────────────────────────────────── */
+.dash-thesis-quote {
+  margin: 0;
+  padding: 13px 15px;
+  border-left: 3px solid var(--presence);
+  border-radius: 0 12px 12px 0;
+  background: var(--surface-glass);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  font-style: italic;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dash-thesis-date {
+  display: block;
+  margin-top: 9px;
+  font-family: var(--font-data, var(--font));
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint, var(--text-muted));
+}
+.dash-thesis-tripwire {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dash-thesis-recon {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.dash-chip {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--chip, var(--text-muted));
+  background: color-mix(in oklab, var(--chip, var(--text-muted)) 14%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+  overflow-wrap: anywhere;
+}
+/* Both of these are the state word — WATCHING, ORIGIN, LINKED — that says what you are looking at.
+   At 8.5px, widely tracked and uppercased, they were texture rather than text. */
+.dash-chip-state {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--chip, var(--text-muted));
+}
+
+/* ── alignment gauge ────────────────────────────────────────────────────────────────────── */
+.dash-gauge-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.dash-gauge-ring {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex: none;
+}
+.dash-gauge-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dash-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dash-gauge-pct {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+.dash-gauge-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.dash-gauge-band {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dash-gauge-note {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ── standing alerts ────────────────────────────────────────────────────────────────────── */
+.dash-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--surface-glass);
+}
+.dash-alert-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.dash-alert-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dash-alert-state {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.dash-alerts-empty,
+.dash-sources-empty {
+  font-size: var(--fs-sm);
+}
+
+/* ── sources lineage ────────────────────────────────────────────────────────────────────── */
+.dash-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.dash-source-row {
+  display: flex;
+  gap: 11px;
+  align-items: stretch;
+}
+.dash-source-rail {
+  width: 2px;
+  border-radius: 2px;
+  flex: none;
+}
+.dash-source-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dash-source-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash-source-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dash-source-kind {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.dash-source-contrib {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

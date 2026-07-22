@@ -1,0 +1,1408 @@
+/* ripple.css — the Ripple feature surface. Mirrors Prism's scrim + panel shell; all color via the
+   shared tokens so light/dark is automatic. The five-status vocabulary maps to the existing accents:
+   breaks → --danger, migration → --warning, untested → --text-muted, affected → --presence,
+   safe → --insight. */
+
+.ripple-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 2vw;
+  background: rgba(var(--scrim-rgb), 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: ripple-fade var(--m-fast, 160ms) var(--ease-out);
+}
+.ripple-scrim[data-expanded='true'] {
+  padding: 0;
+}
+@keyframes ripple-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.ripple-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1700px, 100%);
+  height: 95vh;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+.ripple-scrim[data-expanded='true'] .ripple-panel {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: 0;
+}
+
+/* ── top bar ── */
+.ripple-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  gap: var(--s-md);
+  padding: 12px var(--s-lg);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.ripple-id {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  /* Shrinks first (and ellipsizes its monospace fields) so the action cluster on the right
+     never gets pushed off-screen or clipped — a narrow viewport wraps it below instead. */
+  flex: 1 1 auto;
+}
+.ripple-word {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.ripple-sep {
+  width: 1px;
+  height: 13px;
+  background: var(--line-strong);
+}
+.ripple-repo,
+.ripple-pr,
+.ripple-branch,
+.ripple-stat {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* A nowrap flex item's default min-width is its full text width, which defeats the
+     ellipsis above and forces the row to overflow instead of truncating — min-width: 0
+     is what actually lets it shrink. */
+  min-width: 0;
+}
+.ripple-repo {
+  color: var(--text-secondary);
+}
+.ripple-pr {
+  color: var(--presence);
+  font-weight: 600;
+}
+.ripple-branch {
+  color: var(--text-muted);
+}
+.ripple-head-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
+  gap: 12px;
+  flex: none;
+  max-width: 100%;
+}
+.ripple-stat {
+  color: var(--text-muted);
+}
+.ripple-add {
+  color: var(--insight);
+}
+.ripple-del {
+  color: var(--danger);
+}
+.ripple-p0 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+  white-space: nowrap;
+}
+.ripple-p0-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.ripple-iconbtn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.ripple-iconbtn:hover {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+
+/* ── the honest "example" ribbon ── */
+.ripple-example {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px var(--s-lg);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--warning) 9%, transparent);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.ripple-example strong {
+  color: var(--text-primary);
+}
+.ripple-example-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex: none;
+}
+
+/* ── the quiet, one-time "a faster model would feel instant" nudge (slow models only, dismissible) ── */
+.ripple-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--s-md);
+  padding: 7px var(--s-lg);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.ripple-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+.ripple-hint-dismiss {
+  flex: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.ripple-hint-dismiss:hover {
+  background: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+}
+
+/* ── rail + main ── */
+.ripple-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.ripple-rail {
+  width: 212px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-2) var(--s-sm);
+  border-right: 1px solid var(--line);
+  background: var(--surface-deep);
+  overflow-y: auto;
+  /* The impact map's camera fits itself to its viewport via a ResizeObserver (useSpatialCanvas).
+     Without a reserved scrollbar lane, the rail's scrollbar popping in/out nudges every sibling's
+     width, which re-triggers that fit and can oscillate — same fix as prism.css's scroll panes. */
+  scrollbar-gutter: stable;
+}
+/* the rail is grouped by the two jobs (Understand / Ship) when both are present */
+.ripple-rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ripple-rail-group + .ripple-rail-group {
+  margin-top: var(--s-sm);
+}
+.ripple-rail-grouplabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 6px 12px 3px;
+}
+.ripple-rail-item {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  min-height: 44px;
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.ripple-rail-item:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+.ripple-rail-item[data-active='true'] {
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 34%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ripple-rail-label {
+  min-width: 0;
+}
+.ripple-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--s-lg) var(--s-xl);
+  /* The impact map (a direct or nested descendant) fits itself to its viewport via a
+     ResizeObserver (useSpatialCanvas). Without a reserved gutter, this pane's own scrollbar
+     appearing/disappearing changes the map's available width, which re-triggers the fit and
+     can oscillate — the same fix already applied to prism.css's scroll panes. */
+  scrollbar-gutter: stable;
+}
+
+/* Below tablet width the rail's fixed 212px plus the main pane's own padding leaves too little
+   room for real content (a card, a diff, the impact map) to be usable side by side — the rail
+   restructures into a horizontally-scrollable strip ABOVE the main pane (a tabbed layout) rather
+   than the two staying side by side and getting cramped. */
+@media (max-width: 720px) {
+  .ripple-body {
+    flex-direction: column;
+  }
+  .ripple-rail {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--s-sm);
+    padding: 6px var(--s-sm);
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .ripple-rail-group {
+    flex-direction: row;
+    flex: none;
+    gap: 6px;
+  }
+  .ripple-rail-group + .ripple-rail-group {
+    margin-top: 0;
+    padding-left: var(--s-sm);
+    border-left: 1px solid var(--line);
+  }
+  /* No room for the "Understand"/"Ship the change" group labels in a single scrolling row —
+     order + the active pill still communicate which cluster a section belongs to. */
+  .ripple-rail-grouplabel {
+    display: none;
+  }
+  .ripple-rail-item {
+    flex: none;
+    white-space: nowrap;
+  }
+  .ripple-rail-altitude {
+    flex: none;
+    margin: 0 0 0 auto;
+    padding: 0 0 0 var(--s-sm);
+    border-top: none;
+    border-left: 1px solid var(--line);
+  }
+  /* The "Explain for" label doesn't fit inline; the three buttons read fine on their own. */
+  .ripple-rail-altitude .ripple-eyebrow {
+    display: none;
+  }
+  .ripple-main {
+    padding: var(--s-md) var(--s-lg);
+  }
+}
+
+.ripple-eyebrow {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Mavéa's read ── */
+.ripple-read {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: var(--s-xl);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .ripple-read {
+    grid-template-columns: 1fr;
+  }
+}
+.ripple-read-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ripple-read-summary {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-read-scope {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.ripple-read-risks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--s-md);
+}
+.ripple-risk {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+.ripple-risk-dot {
+  margin-top: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.ripple-risk-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.ripple-risk-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── the honest "the model's read didn't land" note (dismissible, danger-tinted, retry-able) ── */
+.ripple-verdict-err {
+  display: flex;
+  align-items: center;
+  gap: var(--s-md);
+  margin: 0 0 var(--s-md);
+  padding: 8px var(--s-lg);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--danger) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, var(--line));
+  border-radius: var(--r-md);
+}
+.ripple-verdict-err-text {
+  flex: 1;
+  min-width: 0;
+}
+.ripple-verdict-err-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  flex: none;
+}
+.ripple-verdict-err-retry {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.ripple-verdict-err-retry:hover {
+  background: color-mix(in oklab, var(--danger) 14%, var(--surface-elevated));
+}
+.ripple-verdict-err-dismiss {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.ripple-verdict-err-dismiss:hover {
+  color: var(--text-secondary);
+}
+
+/* ── impact map ── */
+.ripple-impact {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  height: 100%;
+  /* A pixel floor, not a viewport-relative one — a vh value forced this taller than a short
+     panel (e.g. nested inside the verdict band) can actually offer, defeating the height:100%
+     shrink above and forcing .ripple-main to overflow. */
+  min-height: 280px;
+}
+.ripple-impact-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.ripple-lens {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.ripple-lens button {
+  padding: 5px 13px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0;
+  cursor: pointer;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ripple-lens button[data-active='true'] {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ripple-crossrepo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ripple-crossrepo input {
+  accent-color: var(--presence);
+}
+.ripple-zoombtns {
+  margin-left: auto;
+}
+.ripple-zoombtns button {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ripple-zoombtns button:hover {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+
+.ripple-stage {
+  position: relative;
+  flex: 1;
+  /* Same reasoning as .ripple-impact above: a small pixel floor instead of a vh value that
+     could force overflow inside a shorter panel. */
+  min-height: 240px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse 70% 70% at 50% 48%,
+    var(--surface-elevated) 0%,
+    var(--surface-default) 70%,
+    var(--surface-deep) 100%
+  );
+  cursor: grab;
+  touch-action: none;
+}
+.ripple-stage.is-panning {
+  cursor: grabbing;
+}
+.ripple-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  transition: transform var(--m-normal) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-world {
+    transition: none;
+  }
+}
+.ripple-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.ripple-edge-break {
+  animation: ripple-dash 0.8s linear infinite;
+}
+@keyframes ripple-dash {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-edge-break {
+    animation: none;
+  }
+}
+.ripple-edge-verb {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: color-mix(in oklab, var(--surface-default) 88%, transparent);
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.ripple-node {
+  position: absolute;
+  transform-origin: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px 11px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out);
+}
+.ripple-node:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+}
+.ripple-node[data-center='true'] {
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-elevated-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+}
+.ripple-node[data-open='true'] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 40%, transparent);
+}
+.ripple-node-eyebrow {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.ripple-node-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.ripple-node-name-lg {
+  font-size: 14px;
+}
+.ripple-node-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ripple-node-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.ripple-node-status {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.ripple-node-sev {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 7px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: var(--r-full);
+  padding: 1px 6px;
+  margin-left: auto;
+}
+.ripple-node-meta {
+  font-size: 9.5px;
+  color: var(--text-secondary);
+}
+.ripple-node-repo {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 7.5px;
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.ripple-map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 12px;
+  background: color-mix(in oklab, var(--surface-default) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  backdrop-filter: blur(4px);
+}
+.ripple-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--text-secondary);
+}
+
+.ripple-inspect {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  width: 344px;
+  max-width: 80%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: -16px 0 44px rgba(0, 0, 0, 0.32);
+  z-index: 3;
+}
+.ripple-inspect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.ripple-inspect-titles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ripple-inspect-sev {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+.ripple-inspect-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ripple-inspect-owner {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.ripple-inspect-cite {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--text-muted);
+}
+.ripple-inspect-traffic {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+}
+.ripple-inspect-traffic strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.ripple-inspect-traffic span {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.ripple-inspect-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ripple-inspect-block p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-inspect-problem {
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 11px 12px;
+}
+.ripple-inspect-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+}
+.ripple-inspect-fix p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.ripple-ask-btn {
+  margin-top: auto;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ripple-ask-btn:hover {
+  background: color-mix(in oklab, var(--presence) 24%, transparent);
+}
+
+/* ── rail altitude control ── */
+.ripple-rail-altitude {
+  margin-top: auto;
+  padding: var(--s-2) 4px 4px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ripple-alt {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.ripple-alt button {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 10.5px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ripple-alt button:last-child {
+  border-right: 0;
+}
+.ripple-alt button[data-active='true'] {
+  background: color-mix(in oklab, var(--presence) 18%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── the "run on your diff" banner + paste intake ── */
+.ripple-example-text {
+  flex: 1;
+  min-width: 0;
+}
+.ripple-example[data-real='true'] {
+  background: color-mix(in oklab, var(--presence) 9%, transparent);
+}
+.ripple-example[data-real='true'] .ripple-example-dot {
+  background: var(--presence);
+}
+.ripple-example-cta {
+  margin-left: auto;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 32%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ripple-example-cta:hover {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+}
+
+.ripple-paste {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-lg);
+  background: color-mix(in oklab, var(--surface-deep) 60%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.ripple-paste-card {
+  width: min(720px, 100%);
+  max-height: 88%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-modal);
+  padding: var(--s-lg);
+}
+.ripple-paste-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.ripple-paste-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ripple-paste-sub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+.ripple-paste-sub code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+.ripple-paste-input {
+  width: 100%;
+  min-height: 240px;
+  resize: vertical;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px;
+}
+.ripple-paste-input:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--presence) 50%, transparent);
+}
+.ripple-paste-err {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+.ripple-paste-actions {
+  display: flex;
+  gap: var(--s-sm);
+}
+.ripple-paste-go {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--presence);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ripple-paste-go:hover {
+  background: var(--presence-deep);
+}
+.ripple-paste-cancel {
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ── enrichment-in-progress indicator ── */
+.ripple-enriching {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  font-size: 11px;
+  color: var(--presence);
+}
+.ripple-enriching-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: ripple-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ripple-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-enriching-dot {
+    animation: none;
+  }
+}
+
+/* ── the entrance "ripple": the change pulses at centre, its reach fades in outward (staggered by
+   distance via an inline animation-delay). One-shot; respects reduced motion. ── */
+@media (prefers-reduced-motion: no-preference) {
+  .ripple-world[data-animate='true'] .ripple-node:not([data-center]),
+  .ripple-world[data-animate='true'] .ripple-edge {
+    animation: ripple-enter 440ms ease-out backwards;
+  }
+  .ripple-world[data-animate='true'] .ripple-node[data-center] {
+    animation: ripple-enter-pop 360ms cubic-bezier(0.2, 0.9, 0.2, 1) backwards;
+  }
+}
+@keyframes ripple-enter {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ripple-enter-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+.ripple-enter-pulse {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  border: 2px solid var(--presence);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ripple-enter-pulse {
+    animation: ripple-enter-ring 1200ms ease-out forwards;
+  }
+}
+@keyframes ripple-enter-ring {
+  from {
+    opacity: 0.5;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(6.5);
+  }
+}
+
+@keyframes ripple-build-pulse {
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.7;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 45%, transparent);
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 16px color-mix(in oklab, var(--presence) 0%, transparent);
+  }
+}
+
+/* ── floor-first "sharpening" cues: the deterministic floor is on screen instantly; the part still
+   being read/built by the model carries a subtle, non-blocking hint (the rail item gets a spark, the
+   open section a thin status line) instead of a full-screen wall ── */
+.ripple-sharpening {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 var(--s-md);
+  padding: 5px 11px;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-default));
+  border: 1px solid color-mix(in oklab, var(--presence) 22%, var(--line));
+  border-radius: 999px;
+}
+.ripple-sharpening-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--presence);
+}
+.ripple-rail-spark {
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--presence);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ripple-sharpening-dot,
+  .ripple-rail-spark {
+    animation: ripple-build-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+/* ── loading legibility ──────────────────────────────────────────────────────
+   The model calls (verdict/orientation enrichment, course generation) can take a few seconds.
+   These make that wait APPARENT rather than a frozen panel: a shimmer for ghost placeholders and
+   an indeterminate progress sweep, so it reads as real work in progress. Floor-first still holds —
+   the deterministic content stays useful underneath; this only sharpens the "still working" cue. */
+.ripple-sharpening-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 var(--s-md);
+}
+.ripple-sharpening-wrap .ripple-sharpening {
+  margin: 0;
+}
+/* A shimmering surface for skeleton bars (ghost lessons, quiz rows). */
+.ripple-skel-bar {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--presence) 5%, var(--surface-elevated-2)) 25%,
+    color-mix(in oklab, var(--presence) 22%, var(--surface-elevated-2)) 50%,
+    color-mix(in oklab, var(--presence) 5%, var(--surface-elevated-2)) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: 6px;
+}
+/* An indeterminate progress line — an accent segment sweeping a faint track. */
+.ripple-progress {
+  position: relative;
+  height: 3px;
+  max-width: 480px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-default));
+}
+.ripple-progress::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--presence), transparent);
+}
+@keyframes ripple-shimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -180% 0;
+  }
+}
+@keyframes ripple-indeterminate {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ripple-skel-bar {
+    animation: ripple-shimmer 1.6s linear infinite;
+  }
+  .ripple-progress::after {
+    animation: ripple-indeterminate 1.15s ease-in-out infinite;
+  }
+}
+
+/* ── intake tabs (paste / github) ── */
+.ripple-intake-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  align-self: flex-start;
+  max-width: 100%;
+  /* Four tabs' worth of labels don't all fit under ~340px — scroll the strip rather than
+     wrapping a label mid-word across two lines. */
+  overflow-x: auto;
+}
+.ripple-intake-tabs button {
+  flex: none;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--r-sm) - 3px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ripple-intake-tabs button[data-active='true'] {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+.ripple-paste-hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.ripple-paste-hint code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--text-secondary);
+}
+.ripple-paste-go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── github intake ── */
+.ripple-gh {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.ripple-gh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ripple-gh-field > span {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.ripple-gh-field > span em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+.ripple-gh-field input {
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+}
+.ripple-gh-field input:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--presence) 50%, transparent);
+}
+.ripple-gh-row {
+  display: flex;
+  gap: var(--s-sm);
+  align-items: flex-end;
+}
+.ripple-gh-grow {
+  flex: 1;
+  min-width: 0;
+}
+.ripple-gh-or {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+  margin-top: 2px;
+}
+/* optional private-repo token — public repos need nothing, so it sits quietly below the main input */
+.ripple-gh-token {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: 2px;
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+/* advanced (exact PR# / compare / explore) — tucked away behind the smart input */
+.ripple-gh-adv {
+  margin-top: 2px;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+}
+.ripple-gh-adv > summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  list-style: none;
+  user-select: none;
+}
+.ripple-gh-adv > summary::-webkit-details-marker {
+  display: none;
+}
+.ripple-gh-adv > summary::before {
+  content: '▸ ';
+  color: var(--text-muted);
+}
+.ripple-gh-adv[open] > summary::before {
+  content: '▾ ';
+}
+.ripple-gh-adv[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+/* ── ask toggle (header) ── */
+.ripple-ask-toggle {
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.ripple-ask-toggle:hover {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+.ripple-ask-toggle.is-active {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+  color: var(--text-primary);
+}
+
+/* ── track button + tracked list ── */
+.ripple-track-btn {
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.ripple-track-btn:hover {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+.ripple-tracked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  max-height: 320px;
+  overflow: auto;
+}
+.ripple-tracked-empty {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: var(--s-md) 0;
+}
+.ripple-tracked-empty strong {
+  color: var(--text-primary);
+}
+.ripple-tracked-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+}
+.ripple-tracked-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  text-align: left;
+  padding: 11px 13px;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: border-color var(--m-fast) var(--ease-out);
+}
+.ripple-tracked-open:hover {
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+}
+.ripple-tracked-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ripple-tracked-meta {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex: none;
+}

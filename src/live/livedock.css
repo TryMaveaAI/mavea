@@ -1,0 +1,533 @@
+/* Live layout additions for the bottom dock. Self-contained (imported by LiveApp), tokens only —
+   light/dark flip automatically. The persistent voice-scrubber strip was removed (near-empty most
+   of the time); Replay + Overview moved into the session rail. The canvas already clears the fixed
+   dock via the base padding-bottom in voice.css, so no scrubber-specific offset is needed. */
+
+/* ---- topbar icon buttons (share / replay) -------------------------------------------------- */
+.topbar-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-left: 8px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.topbar-icon-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+.topbar-icon-btn.is-on {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.topbar-icon-btn.is-warning {
+  color: var(--warning);
+  border-color: color-mix(in oklab, var(--warning) 45%, var(--line));
+}
+.topbar-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.topbar-icon-btn:disabled:hover {
+  color: var(--text-secondary);
+  border-color: var(--line);
+  background: var(--surface-elevated);
+}
+.topbar-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ================= UNIFIED CAPSULE (Design canvas "1a") =======================================
+   The composer is ONE bordered, shadowed card: an output-status strip on top (divider under it)
+   and the input row beneath — nothing floats loose. Every dimension/color here is the source's,
+   mapped to our tokens so light/dark flip automatically. Before a canvas exists (welcome/setup)
+   the wrapper is a display:contents passthrough and the composer keeps its standalone pill. */
+.voice-passthrough,
+.composer-passthrough {
+  display: contents;
+}
+.live-voice .voice-capsule {
+  /* Width + centring now come from the shared `.dock-main > *` rule (voice.css), which aligns the
+     capsule with the answer column AND with every other dock row (pin dock, attach strip, badges)
+     off the one --canvas-col-max token — so the input can never drift out of line with the cards
+     above it or the chips beside it. Only the capsule's own chrome lives here. */
+  border-radius: 22px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+}
+/* The input row is the capsule's bottom row — it sheds its own standalone pill (border/bg/shadow/
+   radius) and becomes flush inside the card. Demo + the welcome composer keep their pill. */
+.live-voice .voice-capsule .composer {
+  width: 100%;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 8px 14px;
+}
+.live-voice .voice-capsule .composer:focus-within {
+  border: none;
+  box-shadow: none;
+}
+
+/* ---- status strip: the top row (kept trim — idle, it's just the two settings on the right) ---- */
+.live-voice .voice-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px 8px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+/* Status pill: the equalizer orb + one-word state (Speaking / Mavéa), a soft indigo tint. */
+.live-voice .vc-status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 8px;
+  border: none;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  cursor: pointer;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.live-voice .vc-status:hover {
+  background: color-mix(in oklab, var(--presence) 18%, transparent);
+}
+/* The "Preparing voice…" beat: same pill, but nothing to interrupt — not a button, so no hover
+   or pointer affordance, and the equalizer bars hold still (only the halo breathes) since no
+   audio is playing yet. */
+.live-voice .vc-status.vc-preparing {
+  cursor: default;
+}
+.live-voice .vc-status.vc-preparing:hover {
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.live-voice .vc-preparing .vc-orb i {
+  animation: none;
+  height: 7px;
+  opacity: 0.75;
+}
+.live-voice .vc-status-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--presence);
+  white-space: nowrap;
+}
+/* Speaking orb: a 22px gradient disc with a pulsing halo and three dancing equalizer bars. */
+.live-voice .vc-orb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+  background: linear-gradient(135deg, var(--presence-soft), var(--presence));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  animation: vc-orb-pulse 1.8s infinite;
+}
+.live-voice .vc-orb i {
+  width: 2.5px;
+  border-radius: 2px;
+  background: #fff;
+}
+.live-voice .vc-orb i:nth-child(1) {
+  animation: vc-bar1 0.9s infinite;
+}
+.live-voice .vc-orb i:nth-child(2) {
+  animation: vc-bar2 0.9s infinite;
+}
+.live-voice .vc-orb i:nth-child(3) {
+  animation: vc-bar3 0.9s infinite;
+}
+/* The settings cluster (voice switch + speed chip + model chip) never shrinks — the transcript
+   gives way. */
+.live-voice .voice-strip > .voice-switch,
+.live-voice .voice-strip > .voice-speed,
+.live-voice .voice-strip > .explain-chip,
+.live-voice .voice-strip > .live-model-chip {
+  flex: none;
+}
+/* One-line transcript, filling the middle. Wraps rather than hard-truncating (it streams; the
+   reader can get ahead of the voice), but stays a single line at rest via the flex row. */
+.live-voice .vc-transcript {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@keyframes vc-orb-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 35%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes vc-bar1 {
+  0%,
+  100% {
+    height: 6px;
+  }
+  50% {
+    height: 13px;
+  }
+}
+@keyframes vc-bar2 {
+  0%,
+  100% {
+    height: 12px;
+  }
+  50% {
+    height: 5px;
+  }
+}
+@keyframes vc-bar3 {
+  0%,
+  100% {
+    height: 8px;
+  }
+  50% {
+    height: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-voice .vc-orb,
+  .live-voice .vc-orb i {
+    animation: none;
+  }
+}
+/* Phones: the status strip's settings get tight. Drop the voice switch's text to just its
+   speaker icon + toggle, cap the model name, and pull the row's padding in — so the capsule
+   stays clean and never overflows on a narrow screen. */
+@media (max-width: 560px) {
+  .live-voice .voice-strip {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .live-voice .voice-switch-label {
+    display: none;
+  }
+  .live-voice .chip-model {
+    max-width: 92px;
+  }
+}
+
+/* ---- the voice switch: an explicit labeled toggle, never a bare icon that could pass for the
+   mic mute. Dimensions/spacing sampled exactly from the Design source (pill: gap 7, padding
+   5/10/5/8, radius 15, 11px/600; track 24x14 r7; thumb 10px). The label stays put at every width
+   so the ambiguity fix can't regress under a responsive collapse. ---- */
+.voice-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px 6px 9px;
+  border-radius: 15px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.voice-switch:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.voice-switch svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.voice-switch.is-muted {
+  color: var(--warning);
+  border-color: color-mix(in oklab, var(--warning) 45%, var(--line));
+}
+.voice-switch-label {
+  white-space: nowrap;
+}
+.voice-switch-track {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--presence);
+  flex: none;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.voice-switch.is-muted .voice-switch-track {
+  background: var(--line-strong);
+}
+.voice-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: left var(--m-fast) var(--ease-out);
+}
+.voice-switch.is-muted .voice-switch-thumb {
+  left: 2px;
+}
+
+/* ---- mic-mode popover: a chevron badge on the mic button's own corner ----------------------- */
+/* Sized to the FULL mic button (inset: 0 matches .mic-btn-wrap, 44x44) rather than shrink-
+   wrapping to the tiny chevron badge — the popover's `bottom: 100%` below needs "100%" to mean
+   "above the whole mic circle," not "above a 15px badge," or it lands overlapping the mic. */
+.mic-mode-pop-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* Every value here is sampled EXACTLY from the Design source (the .dc.html file's inline styles),
+   not eyeballed. The badge INVERTS by theme so it always contrasts against the surface behind the
+   mic: dark theme = a mid slate fill with a light-gray chevron; light theme = a near-black navy
+   fill with a white chevron. The 2px ring is the surface color itself (var(--surface-elevated) ≈
+   the source's #141726 dark / #fff light), so the badge reads as a raised dot punched into it. */
+.mic-mode-chevron {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  /* flex, not grid: grid's place-items:center was right-aligning the 8px svg (+3px off) in the
+     14px content box for reasons that don't reproduce in isolation; flex centres it reliably. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-elevated);
+  background: #2a2e45; /* dark-theme fill (source) */
+  color: #c3c6dc; /* dark-theme chevron (source) — currentColor for the svg */
+  cursor: pointer;
+  pointer-events: auto;
+}
+:root[data-theme='light'] .mic-mode-chevron {
+  background: #14162b; /* light-theme fill (source) */
+  color: #fff; /* light-theme chevron (source) */
+}
+.mic-mode-chevron svg {
+  display: block;
+  flex: none;
+}
+/* Opens UPWARD and to the RIGHT — the mic is the leftmost element in the composer (right after
+   the session rail), so a right-anchored (`right: 0`) popover extending leftward ran out of room
+   and got clipped behind the rail. Left-anchored, it opens into the composer's own open space
+   instead (the model picker learned the vertical half of this lesson — see the Design canvas
+   notes; this is the horizontal half). A titled row per mode, reusing the app's own dropdown-row
+   language (.more-menu-row/-name/-blurb, the Create/Practice/Share/Explore menus). */
+.mic-mode-pop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 60;
+  width: 220px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: auto;
+}
+/* The menu opens UPWARD out of the dock. `.live-dock` is a fixed, z-indexed stacking context
+   (z-44), so the menu can't rise above anything painted over the dock — and on phones the session
+   rail collapses into a bottom sheet (`.side-rail`, z-45) that sits right over this area, clipping
+   the menu's middle row (only Tap + Hold show through). While the menu is open, lift the whole dock
+   one step above that sheet; scoped via :has() so the dock's resting order is untouched. */
+.live-voice .live-dock:has(.mic-mode-pop) {
+  z-index: 46;
+}
+.mic-mode-row {
+  position: relative;
+  padding-right: 34px;
+}
+.mic-mode-row-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--presence);
+}
+
+/* ---- failed-turn error state ----------------------------------------------------------------
+   A provider failure renders as an EXPLICIT error — danger-toned, no card chrome shared with
+   answer blocks, no confidence badge — so it can never be mistaken for content. */
+.live-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in oklab, var(--danger) 45%, var(--line));
+  border-left: 4px solid var(--danger);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--danger) 8%, var(--surface-elevated));
+  max-width: 560px;
+}
+.live-error-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  color: var(--danger);
+}
+.live-error-head svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.live-error-msg {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.live-error-actions {
+  display: flex;
+  gap: 8px;
+}
+.live-error-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  padding: 6px 16px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.live-error-btn:hover {
+  border-color: var(--text-secondary);
+}
+.live-error-btn.primary {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface-elevated);
+  font-weight: 600;
+}
+.live-error-btn.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Center the error state when the first turn fails (no canvas exists yet). */
+.live-error-stage {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+}
+
+/* ---- voice feedback ------------------------------------------------------------------------ */
+/* Inline notice above the composer when the mic can't work (unsupported browser, denied
+   permission, audio trouble). Dismissible; cleared automatically once listening starts. */
+.voice-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  color: var(--warning);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.voice-notice > svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+}
+.voice-notice > span {
+  flex: 1;
+  min-width: 0;
+}
+.voice-notice-x {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.voice-notice-x:hover {
+  color: var(--text-primary);
+}
+.voice-notice-x svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* A file dragged anywhere over the surface — the drop-to-attach hint. Fixed and centered near the
+   top so it reads regardless of scroll position; pointer-events:none so it never steals the drop
+   itself (the window-level listeners own that). */
+.drop-hint {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--presence);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-raised);
+  pointer-events: none;
+}
+.drop-hint svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--presence);
+}
+
+/* Honest hint under the voice pickers (wizard Remember step + LiveSettings) when the
+   Kokoro TTS service isn't reachable — Kokoro is the only voice, so playback is off
+   and answers are captions-only. */
+.voice-off-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

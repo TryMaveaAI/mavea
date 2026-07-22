@@ -1,0 +1,109 @@
+/* mindshape-world.css — the camera/world layer for "Watch Me Think".
+ *
+ * Kept in its own sheet (not the shared diagrams styles.css) so the change stays isolated.
+ * The atoms, spokes, and tension threads ride inside .ms-world; the camera (useSpatialCanvas)
+ * transforms .ms-world to auto-fit the whole map into the canvas. So a dense map zooms OUT to
+ * stay readable and non-overlapping instead of cramming — the legibility fix — while the face
+ * (.ms-center) stays a fixed sibling that the world flies around (never transformed: the camera
+ * scale must not land on a .presence ancestor). */
+
+.ms-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* The virtual world (VW×VH in MindShape.tsx). The camera scales it down to fit the viewport. */
+  width: 1000px;
+  height: 700px;
+  transform-origin: 0 0;
+  /* The "one breath" ease — flying between fits as the map grows. */
+  transition: transform 1100ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  will-change: transform;
+  /* Shared counter-scale: holds on-screen text size roughly constant as the camera zooms the world
+   * out for a busy map. Defined once here (not per-element) so every descendant that needs to stay
+   * readable — cards AND theme labels — reads the same value; a label is a sibling of the cards it
+   * names, so it can't see a --ms-counter defined only on .ms-card. Capped at ~1.6 to match the
+   * world-space headroom the layout already reserves per card (CARD_HW/CARD_HH in MindShape.tsx). */
+  --ms-counter: clamp(1, calc(1 / var(--ms-cam-scale, 1)), 1.6);
+}
+
+/* The camera centers the world's orbit point in the viewport, so the face sits at the centre and
+ * the thoughts arrange around it. Slightly higher specificity than the base .ms-center rule so this
+ * wins regardless of stylesheet order. */
+.ms-canvas .ms-center {
+  top: 50%;
+}
+
+/* Keep spoke/thread stroke weight constant on screen as the camera scales the world down, so the
+ * connections stay crisp when a busy map is zoomed out. */
+.ms-world .ms-spoke,
+.ms-world .ms-thread,
+.ms-world .ms-link {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Keep the thought CARDS readable on screen regardless of camera zoom. A sparse map (or a far-flung
+ * "maybe" card) makes the camera zoom way out, shrinking the cards' text toward nothing. We counter
+ * that with a transform SCALE on the card (NOT a width change — growing the width in world space would
+ * move the translate(-50%) anchor and then still be shrunk by the camera). Counter-scaling by ~1/cam
+ * holds a roughly-constant SIZE ON SCREEN; clamped [1, 1.6] (see --ms-counter on .ms-world above) so a
+ * deep zoom-out still lifts text to legibility without making cards huge when zoomed in. translate
+ * keeps the anchor exact; the entry keyframes below end at this same scale so there is no
+ * post-animation jump. */
+.ms-world .ms-card {
+  transform: translate(-50%, -50%) scale(var(--ms-counter));
+  transition:
+    transform 1100ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    box-shadow 0.2s ease;
+}
+.ms-world .ms-card[data-status='forming'] {
+  transform: translate(-50%, -50%) scale(calc(var(--ms-counter) * 0.97));
+}
+/* The shared entry keyframes (styles.css) end at scale(1)/scale(0.97); in the world they must end at
+   the counter-scaled size or the card snaps small after the entry animation. Re-point them here. */
+.ms-world .ms-card {
+  animation-name: ms-card-in-world;
+}
+.ms-world .ms-card[data-status='forming'] {
+  animation-name: ms-card-forming-in-world;
+}
+@keyframes ms-card-in-world {
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(var(--ms-counter));
+  }
+}
+@keyframes ms-card-forming-in-world {
+  to {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(calc(var(--ms-counter) * 0.97));
+  }
+}
+
+/* Theme labels get the exact same counter-scale as the cards they name — otherwise a busy map
+ * that zooms the camera out to stay legible shrinks the theme names toward illegibility while the
+ * atom cards next to them stay crisp, an inconsistent (and, at low zoom, genuinely unreadable)
+ * result. Re-point the entry keyframe here too so it ends at the counter-scaled size (mirrors the
+ * card's ms-card-in-world above) rather than snapping small right after it rises in. */
+.ms-world .ms-cluster-label {
+  transform: translate(-50%, -50%) scale(var(--ms-counter));
+  animation-name: ms-cluster-rise-in-world;
+}
+@keyframes ms-cluster-rise-in-world {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(var(--ms-counter));
+  }
+  to {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(var(--ms-counter));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-world {
+    transition: none;
+  }
+  .ms-world .ms-card {
+    transition: box-shadow 0.2s ease;
+  }
+}

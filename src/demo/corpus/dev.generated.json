@@ -1,0 +1,987 @@
+{
+  "v": 1,
+  "persona": "dev",
+  "generatedAt": 1784149692057,
+  "model": "gemini-3.5-flash",
+  "frames": [
+    {
+      "question": "Explain how OAuth login works, step by step. I'm adding it to our app.",
+      "narration": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials…",
+      "mode": "replace",
+      "tour": [
+        {
+          "index": 1,
+          "say": "The core of the process is the Authorization Code flow. It starts with a redirect, gets user consent, and returns a temporary code.",
+          "mark": {
+            "kind": "frame",
+            "at": "Redirect user to the Identity Provider"
+          },
+          "marks": [
+            {
+              "kind": "frame",
+              "at": "Redirect user to the Identity Provider"
+            },
+            {
+              "kind": "frame",
+              "at": "Receive the authorization code"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "say": "Next, your backend swaps that temporary code for an access token using a secure POST request.",
+          "mark": {
+            "kind": "underline",
+            "at": "grant_type=authorization_code"
+          },
+          "marks": [
+            {
+              "kind": "underline",
+              "at": "grant_type=authorization_code"
+            },
+            {
+              "kind": "highlight",
+              "at": "access_token"
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "say": "Before you ship, make sure you check off these security essentials, especially securing your redirect URIs and client secrets.",
+          "mark": {
+            "kind": "check",
+            "at": "Strictly validate redirect URIs on the provider dashboard (no wildcards)"
+          },
+          "marks": [
+            {
+              "kind": "check",
+              "at": "Strictly validate redirect URIs on the provider dashboard (no wildcards)"
+            },
+            {
+              "kind": "check",
+              "at": "Store client secrets securely in environment variables, never in client-side cod"
+            }
+          ]
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "OAuth 2.0 Login Flow",
+        "sub": "The step-by-step authorization code flow for your app.",
+        "opener": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials…",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 5,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Delegated Authorization, Not Just Login",
+              "summary": "OAuth 2.0 is designed to let a third-party application access resources without exposing user credentials. When used for login, we typically layer OpenID Connect on top to get profile data.",
+              "stat": "OAuth 2.0",
+              "conf": "inferred"
+            },
+            "note": "OAuth is about delegation — letting your app get a key to the front door without ever seeing the user's master password.",
+            "section": "The Core Concept",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "howtosteps",
+            "col": 7,
+            "delay": 70,
+            "props": {
+              "title": "The Authorization Code Flow",
+              "steps": [
+                {
+                  "action": "Redirect user to the Identity Provider",
+                  "detail": "Send the user to the provider's authorization endpoint with your client ID, requested scopes, and a redirect URI.",
+                  "tip": "Always include a random 'state' parameter or use PKCE to prevent cross-site request forgery.",
+                  "check": "User sees the provider's login screen"
+                },
+                {
+                  "action": "User grants permission",
+                  "detail": "The user authenticates with the provider (e.g., Google or GitHub) and consents to the permissions your app requested.",
+                  "check": "User clicks 'Authorize'"
+                },
+                {
+                  "action": "Receive the authorization code",
+                  "detail": "The provider redirects the user back to your registered Redirect URI, appending a temporary 'code' in the query string.",
+                  "tip": "This code is short-lived, usually expiring in under 10 minutes.",
+                  "check": "Your backend endpoint receives the GET request"
+                },
+                {
+                  "action": "Exchange code for an Access Token",
+                  "detail": "Your backend makes a secure POST request to the provider's token endpoint, sending the code, client ID, and client secret.",
+                  "check": "Provider returns an access token and ID token"
+                },
+                {
+                  "action": "Fetch user profile data",
+                  "detail": "Use the access token in the Authorization header to request the user's profile details from the provider's UserInfo endpoint.",
+                  "check": "You have the user's email and unique ID to log them in"
+                }
+              ],
+              "time": "5 steps",
+              "difficulty": "medium",
+              "tools": ["Client ID & Secret", "Redirect URI", "Authorization Server"]
+            },
+            "id": "live-2",
+            "note": "This five-step dance ensures that your client secret is never exposed to the user's browser.",
+            "section": "The OAuth Flow",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "terminal",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "lines": [
+                {
+                  "kind": "comment",
+                  "text": "Exchange the temporary authorization code for an access token"
+                },
+                {
+                  "kind": "command",
+                  "text": "curl -X POST https://oauth2.googleapis.com/token \\\n  -d code=4/0AeaYSH... \\\n  -d client_id=YOUR_CLIENT_ID \\\n  -d client_secret=YOUR_CLIENT_SECRET \\\n  -d redirect_uri=https://myapp.com/callback \\\n  -d grant_type=authorization_code"
+                },
+                {
+                  "kind": "stdout",
+                  "text": "{\n  \"access_token\": \"ya29.a0AfH6SM...\",\n  \"expires_in\": 3599,\n  \"scope\": \"openid email profile\",\n  \"token_type\": \"Bearer\",\n  \"id_token\": \"eyJhbGciOiJSUzI1NiIs...\""
+                }
+              ],
+              "title": "Step 4: The Token Exchange Request",
+              "prompt": "backend-server $",
+              "exitCode": 0,
+              "caption": "This POST request must happen strictly server-to-server to protect your client secret."
+            },
+            "id": "live-3",
+            "note": "Your server swaps the temporary code for a bearer token behind the scenes, keeping your client secret completely hidden.",
+            "section": "The Token Exchange",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "codeblock",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "Handling the Callback in Express",
+              "code": "router.get('/callback', async (req, res) => {\n  const { code, state } = req.query;\n\n  // 1. Verify state to prevent CSRF\n  if (state !== req.session.state) {\n    return res.status(400).send('State mismatch. Potential CSRF.');\n  }\n\n  // 2. Exchange code for tokens\n  const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {\n    code,\n    client_id: process.env.CLIENT_ID,\n    client_secret: process.env.CLIENT_SECRET,\n    redirect_uri: process.env.REDIRECT_URI,\n    grant_type: 'authorization_code'\n  });\n\n  const { access_token, id_token } = tokenResponse.data;\n  // 3. Use access_token to fetch user profile...\n});",
+              "lang": "javascript",
+              "filename": "auth-router.js",
+              "lineNumbers": true,
+              "footer": "Always validate the state parameter before making the token exchange."
+            },
+            "id": "live-4",
+            "note": "In code, the callback route is where you intercept the code, verify the state parameter, and perform the secure POST exchange.",
+            "section": "The Token Exchange",
+            "order": 3,
+            "depth": 2,
+            "facet": "example"
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "options": [
+                {
+                  "name": "OAuth 2.0",
+                  "sub": "Authorization framework"
+                },
+                {
+                  "name": "OIDC (OpenID Connect)",
+                  "sub": "Identity layer on OAuth 2.0",
+                  "pick": true
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Primary Purpose",
+                  "cells": [
+                    {
+                      "v": "Delegated access (API permissions)"
+                    },
+                    {
+                      "v": "User authentication (Who is logging in)",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Key Token Issued",
+                  "cells": [
+                    {
+                      "v": "Access Token (opaque string or JWT)"
+                    },
+                    {
+                      "v": "ID Token (standardized JWT)",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Standard UserInfo Endpoint",
+                  "cells": [
+                    {
+                      "v": "No (provider-specific)"
+                    },
+                    {
+                      "v": "Yes (standardized profile claims)",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Protocol Comparison",
+              "recommendation": "For user login, always use OpenID Connect (OIDC) so you get a standardized ID token containing the user's profile."
+            },
+            "id": "live-5",
+            "note": "While OAuth handles the permissions, OpenID Connect is what actually gives you the standardized ID token containing the user's profile.",
+            "section": "OAuth vs. OIDC",
+            "order": 4,
+            "depth": 1
+          },
+          {
+            "type": "checklist",
+            "col": 6,
+            "delay": 350,
+            "props": {
+              "rows": [
+                {
+                  "t": "Use HTTPS everywhere to protect tokens in transit",
+                  "st": "todo"
+                },
+                {
+                  "t": "Implement PKCE (Proof Key for Code Exchange) even for confidential backends",
+                  "st": "doing"
+                },
+                {
+                  "t": "Strictly validate redirect URIs on the provider dashboard (no wildcards)",
+                  "st": "todo"
+                },
+                {
+                  "t": "Store client secrets securely in environment variables, never in client-side code",
+                  "st": "todo"
+                },
+                {
+                  "t": "Set short expiration times on access tokens and use secure HttpOnly cookies for sessions",
+                  "st": "todo"
+                }
+              ],
+              "title": "OAuth Security Checklist",
+              "footer": "A single leaked client secret or open redirect can compromise your entire user base."
+            },
+            "id": "live-6",
+            "note": "Security is paramount here — make sure your redirect URIs are strictly matched and your client secrets are never exposed.",
+            "section": "Implementation Checklist",
+            "order": 5,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 420,
+            "props": {
+              "title": "Common Implementation Pitfalls",
+              "rows": [
+                {
+                  "name": "Exposing Client Secret",
+                  "val": "Critical Risk",
+                  "pct": 36,
+                  "hot": true,
+                  "tag": "Security"
+                },
+                {
+                  "name": "Missing State/PKCE Validation",
+                  "val": "CSRF Vulnerability",
+                  "pct": 27,
+                  "tag": "Security"
+                },
+                {
+                  "name": "Permissive Redirect URIs",
+                  "val": "Token Hijacking",
+                  "pct": 21,
+                  "tag": "Configuration"
+                },
+                {
+                  "name": "Storing Tokens in LocalStorage",
+                  "val": "XSS Risk",
+                  "pct": 16,
+                  "tag": "Storage"
+                }
+              ]
+            },
+            "id": "live-7",
+            "note": "The biggest mistake is putting the client secret in a mobile app or frontend code — it must live strictly on your secure server.",
+            "section": "Common Pitfalls",
+            "order": 6,
+            "depth": 1
+          }
+        ],
+        "proof": null,
+        "topic": "Technology",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "What is PKCE and how does it work?",
+            "icon": "chat",
+            "route": "What is PKCE and how does it work?"
+          },
+          {
+            "label": "How do I handle refresh tokens securely?",
+            "icon": "chat",
+            "route": "How do I handle refresh tokens securely?"
+          },
+          {
+            "label": "What is the difference between ID tokens and Access tokens?",
+            "icon": "chat",
+            "route": "What is the difference between ID tokens and Access tokens?"
+          },
+          {
+            "label": "How do I implement this with Passport.js?",
+            "icon": "chat",
+            "route": "How do I implement this with Passport.js?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149672569
+    },
+    {
+      "question": "Compare session cookies and JWTs for keeping users signed in. Focus on tradeoffs, not dogma.",
+      "narration": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials.",
+      "mode": "augment",
+      "tour": [
+        {
+          "index": 7,
+          "say": "First, let's look at the Authorization Code flow. It starts with a redirect to the identity provider and ends with your backend exchanging a code for tokens.",
+          "mark": {
+            "kind": "bracket",
+            "at": "Step 1",
+            "to": "Step 4",
+            "label": "Authorization Flow"
+          }
+        },
+        {
+          "index": 8,
+          "say": "This is what the actual token exchange request looks like. Notice how the authorization code and code verifier are sent securely from your backend.",
+          "mark": {
+            "kind": "underline",
+            "at": "code_verifier"
+          },
+          "marks": [
+            {
+              "kind": "underline",
+              "at": "code_verifier"
+            },
+            {
+              "kind": "underline",
+              "at": "access_token"
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "say": "Once you have the tokens, you must decide how to keep the user logged in. Session cookies offer instant revocation, while JWTs are stateless.",
+          "mark": {
+            "kind": "circle",
+            "at": "Session Cookies",
+            "color": "key"
+          },
+          "marks": [
+            {
+              "kind": "circle",
+              "at": "Session Cookies",
+              "color": "key"
+            },
+            {
+              "kind": "circle",
+              "at": "JSON Web Tokens (JWT)",
+              "color": "cool"
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "say": "For storage, avoid LocalStorage due to XSS risks. An HttpOnly, Secure cookie with SameSite protection is the safest place for web apps.",
+          "mark": {
+            "kind": "strike",
+            "at": "LocalStorage / SessionStorage",
+            "color": "cool"
+          },
+          "marks": [
+            {
+              "kind": "strike",
+              "at": "LocalStorage / SessionStorage",
+              "color": "cool"
+            },
+            {
+              "kind": "check",
+              "at": "HttpOnly, Secure, SameSite Cookie"
+            }
+          ]
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "OAuth 2.0 Authorization Code Flow",
+        "sub": "Step-by-step implementation guide and token comparison.",
+        "opener": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 5,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Delegated Authorization, Not Just Login",
+              "summary": "OAuth 2.0 is designed to let a third-party application access resources without exposing user credentials. When used for login, we typically layer OpenID Connect on top to get profile data.",
+              "stat": "OAuth 2.0",
+              "conf": "inferred"
+            },
+            "note": "OAuth is about delegation — letting your app get a key to the front door without ever seeing the user's master password.",
+            "section": "The Core Concept",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "howtosteps",
+            "col": 7,
+            "delay": 70,
+            "props": {
+              "title": "The Authorization Code Flow",
+              "steps": [
+                {
+                  "action": "Redirect user to the Identity Provider",
+                  "detail": "Send the user to the provider's authorization endpoint with your client ID, requested scopes, and a redirect URI.",
+                  "tip": "Always include a random 'state' parameter or use PKCE to prevent cross-site request forgery.",
+                  "check": "User sees the provider's login screen"
+                },
+                {
+                  "action": "User grants permission",
+                  "detail": "The user authenticates with the provider (e.g., Google or GitHub) and consents to the permissions your app requested.",
+                  "check": "User clicks 'Authorize'"
+                },
+                {
+                  "action": "Receive the authorization code",
+                  "detail": "The provider redirects the user back to your registered Redirect URI, appending a temporary 'code' in the query string.",
+                  "tip": "This code is short-lived, usually expiring in under 10 minutes.",
+                  "check": "Your backend endpoint receives the GET request"
+                },
+                {
+                  "action": "Exchange code for an Access Token",
+                  "detail": "Your backend makes a secure POST request to the provider's token endpoint, sending the code, client ID, and client secret.",
+                  "check": "Provider returns an access token and ID token"
+                },
+                {
+                  "action": "Fetch user profile data",
+                  "detail": "Use the access token in the Authorization header to request the user's profile details from the provider's UserInfo endpoint.",
+                  "check": "You have the user's email and unique ID to log them in"
+                }
+              ],
+              "time": "5 steps",
+              "difficulty": "medium",
+              "tools": ["Client ID & Secret", "Redirect URI", "Authorization Server"]
+            },
+            "id": "live-2",
+            "note": "This five-step dance ensures that your client secret is never exposed to the user's browser.",
+            "section": "The OAuth Flow",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "terminal",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "lines": [
+                {
+                  "kind": "comment",
+                  "text": "Exchange the temporary authorization code for an access token"
+                },
+                {
+                  "kind": "command",
+                  "text": "curl -X POST https://oauth2.googleapis.com/token \\\n  -d code=4/0AeaYSH... \\\n  -d client_id=YOUR_CLIENT_ID \\\n  -d client_secret=YOUR_CLIENT_SECRET \\\n  -d redirect_uri=https://myapp.com/callback \\\n  -d grant_type=authorization_code"
+                },
+                {
+                  "kind": "stdout",
+                  "text": "{\n  \"access_token\": \"ya29.a0AfH6SM...\",\n  \"expires_in\": 3599,\n  \"scope\": \"openid email profile\",\n  \"token_type\": \"Bearer\",\n  \"id_token\": \"eyJhbGciOiJSUzI1NiIs...\""
+                }
+              ],
+              "title": "Step 4: The Token Exchange Request",
+              "prompt": "backend-server $",
+              "exitCode": 0,
+              "caption": "This POST request must happen strictly server-to-server to protect your client secret."
+            },
+            "id": "live-3",
+            "note": "Your server swaps the temporary code for a bearer token behind the scenes, keeping your client secret completely hidden.",
+            "section": "The Token Exchange",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "codeblock",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "Handling the Callback in Express",
+              "code": "router.get('/callback', async (req, res) => {\n  const { code, state } = req.query;\n\n  // 1. Verify state to prevent CSRF\n  if (state !== req.session.state) {\n    return res.status(400).send('State mismatch. Potential CSRF.');\n  }\n\n  // 2. Exchange code for tokens\n  const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {\n    code,\n    client_id: process.env.CLIENT_ID,\n    client_secret: process.env.CLIENT_SECRET,\n    redirect_uri: process.env.REDIRECT_URI,\n    grant_type: 'authorization_code'\n  });\n\n  const { access_token, id_token } = tokenResponse.data;\n  // 3. Use access_token to fetch user profile...\n});",
+              "lang": "javascript",
+              "filename": "auth-router.js",
+              "lineNumbers": true,
+              "footer": "Always validate the state parameter before making the token exchange."
+            },
+            "id": "live-4",
+            "note": "In code, the callback route is where you intercept the code, verify the state parameter, and perform the secure POST exchange.",
+            "section": "The Token Exchange",
+            "order": 3,
+            "depth": 2,
+            "facet": "example"
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "options": [
+                {
+                  "name": "OAuth 2.0",
+                  "sub": "Authorization framework"
+                },
+                {
+                  "name": "OIDC (OpenID Connect)",
+                  "sub": "Identity layer on OAuth 2.0",
+                  "pick": true
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Primary Purpose",
+                  "cells": [
+                    {
+                      "v": "Delegated access (API permissions)"
+                    },
+                    {
+                      "v": "User authentication (Who is logging in)",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Key Token Issued",
+                  "cells": [
+                    {
+                      "v": "Access Token (opaque string or JWT)"
+                    },
+                    {
+                      "v": "ID Token (standardized JWT)",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Standard UserInfo Endpoint",
+                  "cells": [
+                    {
+                      "v": "No (provider-specific)"
+                    },
+                    {
+                      "v": "Yes (standardized profile claims)",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Protocol Comparison",
+              "recommendation": "For user login, always use OpenID Connect (OIDC) so you get a standardized ID token containing the user's profile."
+            },
+            "id": "live-5",
+            "note": "While OAuth handles the permissions, OpenID Connect is what actually gives you the standardized ID token containing the user's profile.",
+            "section": "OAuth vs. OIDC",
+            "order": 4,
+            "depth": 1
+          },
+          {
+            "type": "checklist",
+            "col": 6,
+            "delay": 350,
+            "props": {
+              "rows": [
+                {
+                  "t": "Use HTTPS everywhere to protect tokens in transit",
+                  "st": "todo"
+                },
+                {
+                  "t": "Implement PKCE (Proof Key for Code Exchange) even for confidential backends",
+                  "st": "doing"
+                },
+                {
+                  "t": "Strictly validate redirect URIs on the provider dashboard (no wildcards)",
+                  "st": "todo"
+                },
+                {
+                  "t": "Store client secrets securely in environment variables, never in client-side code",
+                  "st": "todo"
+                },
+                {
+                  "t": "Set short expiration times on access tokens and use secure HttpOnly cookies for sessions",
+                  "st": "todo"
+                }
+              ],
+              "title": "OAuth Security Checklist",
+              "footer": "A single leaked client secret or open redirect can compromise your entire user base."
+            },
+            "id": "live-6",
+            "note": "Security is paramount here — make sure your redirect URIs are strictly matched and your client secrets are never exposed.",
+            "section": "Implementation Checklist",
+            "order": 5,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 420,
+            "props": {
+              "title": "Common Implementation Pitfalls",
+              "rows": [
+                {
+                  "name": "Exposing Client Secret",
+                  "val": "Critical Risk",
+                  "pct": 36,
+                  "hot": true,
+                  "tag": "Security"
+                },
+                {
+                  "name": "Missing State/PKCE Validation",
+                  "val": "CSRF Vulnerability",
+                  "pct": 27,
+                  "tag": "Security"
+                },
+                {
+                  "name": "Permissive Redirect URIs",
+                  "val": "Token Hijacking",
+                  "pct": 21,
+                  "tag": "Configuration"
+                },
+                {
+                  "name": "Storing Tokens in LocalStorage",
+                  "val": "XSS Risk",
+                  "pct": 16,
+                  "tag": "Storage"
+                }
+              ]
+            },
+            "id": "live-7",
+            "note": "The biggest mistake is putting the client secret in a mobile app or frontend code — it must live strictly on your secure server.",
+            "section": "Common Pitfalls",
+            "order": 6,
+            "depth": 1
+          },
+          {
+            "type": "timeline",
+            "col": 6,
+            "delay": 0,
+            "props": {
+              "events": [
+                {
+                  "time": "Step 1",
+                  "title": "Redirect to Identity Provider",
+                  "detail": "Your app redirects the user to the OAuth server with a code_challenge (for PKCE) and requested scopes."
+                },
+                {
+                  "time": "Step 2",
+                  "title": "User Consents & Redirects Back",
+                  "detail": "The user logs in and approves permissions. The OAuth server redirects back to your redirect URI with a temporary authorization code."
+                },
+                {
+                  "time": "Step 3",
+                  "title": "Exchange Code for Tokens",
+                  "detail": "Your backend sends the authorization code and the original code_verifier to the token endpoint to prove identity."
+                },
+                {
+                  "time": "Step 4",
+                  "title": "Receive Access & ID Tokens",
+                  "detail": "The server validates the verifier and returns an Access Token, an ID Token, and optionally a Refresh Token."
+                }
+              ],
+              "eyebrow": "The Handshake",
+              "title": "Authorization Code Flow with PKCE"
+            },
+            "id": "live-8",
+            "note": "This is the standard Authorization Code flow with PKCE, which is now the recommended best practice for both mobile and web apps.",
+            "section": "OAuth Flow",
+            "order": 1
+          },
+          {
+            "type": "httpexchange",
+            "col": 6,
+            "delay": 70,
+            "props": {
+              "exchanges": [
+                {
+                  "method": "POST",
+                  "url": "https://oauth2.googleapis.com/token",
+                  "status": 200,
+                  "statusText": "OK",
+                  "durationMs": 142,
+                  "reqBody": "POST /token HTTP/1.1\nHost: oauth2.googleapis.com\nContent-Type: application/x-www-form-urlencoded\n\ncode=4/0AdQt8q...&\nclient_id=your-client-id&\nclient_secret=your-client-secret&\nredirect_uri=https://yourapp.com/callback&",
+                  "respPreview": "{\n  \"access_token\": \"ya29.a0AfH6S...\",\n  \"expires_in\": 3600,\n  \"refresh_token\": \"1//06u...\",\n  \"scope\": \"openid email profile\",\n  \"token_type\": \"Bearer\",\n  \"id_token\": \"eyJhbGciOiJSUzI1NiIs...\"\n}",
+                  "note": "Your backend exchanges the short-lived authorization code for the actual access and ID tokens securely."
+                }
+              ],
+              "title": "Step 3: The Token Exchange Request"
+            },
+            "id": "live-9",
+            "note": "The token exchange happens entirely on your backend, keeping your client secret and the resulting tokens safe from the browser.",
+            "section": "OAuth Flow",
+            "order": 1
+          },
+          {
+            "type": "comparematrix",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Session Cookies vs. JWTs",
+              "cols": ["Session Cookies", "JSON Web Tokens (JWT)"],
+              "rows": [
+                {
+                  "label": "Storage Location",
+                  "cells": [
+                    {
+                      "value": "Server-side database/Redis"
+                    },
+                    {
+                      "value": "Client-side (Cookie or LocalStorage)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Statelessness",
+                  "cells": [
+                    {
+                      "value": "No (Requires DB lookup per request)"
+                    },
+                    {
+                      "value": "Yes (Cryptographically signed self-contained data)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Revocation",
+                  "cells": [
+                    {
+                      "value": "Instant (Delete session from DB)"
+                    },
+                    {
+                      "value": "Hard (Must wait for expiry or use a blacklist)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Size Overhead",
+                  "cells": [
+                    {
+                      "value": "Minimal (Just a small session ID string)"
+                    },
+                    {
+                      "value": "Large (Carries claims, signatures, and metadata)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Primary Security Risk",
+                  "cells": [
+                    {
+                      "value": "CSRF (Mitigated with SameSite cookies)"
+                    },
+                    {
+                      "value": "XSS (If stored in LocalStorage, tokens can be stolen)"
+                    }
+                  ]
+                }
+              ],
+              "caption": "How to keep users signed in after OAuth completes",
+              "footer": "Use Session Cookies for standard web apps where instant revocation is critical. Use JWTs for APIs and microservices."
+            },
+            "id": "live-10",
+            "note": "Cookies win on instant revocation and size, while JWTs win on statelessness and scalability across multiple microservices.",
+            "section": "Session Management",
+            "order": 2
+          },
+          {
+            "type": "clearancematrix",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "Token Storage Security Matrix",
+              "rows": [
+                "LocalStorage / SessionStorage",
+                "In-Memory (React/Vue State)",
+                "HttpOnly, Secure, SameSite Cookie"
+              ],
+              "columns": ["XSS Vulnerability", "CSRF Vulnerability"],
+              "cells": [
+                {
+                  "row": "LocalStorage / SessionStorage",
+                  "col": "XSS Vulnerability",
+                  "level": "avoid",
+                  "reason": "Any malicious script running on your page can read the tokens instantly."
+                },
+                {
+                  "row": "LocalStorage / SessionStorage",
+                  "col": "CSRF Vulnerability",
+                  "level": "safe",
+                  "reason": "Browsers don't automatically send LocalStorage values with requests."
+                },
+                {
+                  "row": "In-Memory (React/Vue State)",
+                  "col": "XSS Vulnerability",
+                  "level": "caution",
+                  "reason": "Safer, but tokens are lost on page refresh, requiring silent refresh flows."
+                },
+                {
+                  "row": "In-Memory (React/Vue State)",
+                  "col": "CSRF Vulnerability",
+                  "level": "safe",
+                  "reason": "Not automatically attached to cross-site requests."
+                },
+                {
+                  "row": "HttpOnly, Secure, SameSite Cookie",
+                  "col": "XSS Vulnerability",
+                  "level": "safe",
+                  "reason": "JavaScript cannot read HttpOnly cookies, blocking basic token theft."
+                },
+                {
+                  "row": "HttpOnly, Secure, SameSite Cookie",
+                  "col": "CSRF Vulnerability",
+                  "level": "caution",
+                  "reason": "Vulnerable to CSRF, but mitigated completely by using SameSite=Strict/Lax."
+                }
+              ],
+              "footer": "Storing tokens in an HttpOnly, Secure cookie is the industry standard for web applications."
+            },
+            "id": "live-11",
+            "note": "Never store sensitive access tokens in LocalStorage; an XSS vulnerability would allow an attacker to steal them instantly.",
+            "section": "Security Best Practices",
+            "order": 3
+          },
+          {
+            "type": "threatmodel",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "title": "OAuth Implementation Threat Model",
+              "assets": [
+                {
+                  "id": "auth_code",
+                  "name": "Authorization Code",
+                  "kind": "process"
+                },
+                {
+                  "id": "access_token",
+                  "name": "Access Token",
+                  "kind": "process"
+                },
+                {
+                  "id": "client_secret",
+                  "name": "Client Secret",
+                  "kind": "datastore"
+                }
+              ],
+              "threats": [
+                {
+                  "assetId": "auth_code",
+                  "stride": "information-disclosure",
+                  "mitigation": "Use PKCE (Proof Key for Code Exchange) to bind the code to the client.",
+                  "status": "mitigated"
+                },
+                {
+                  "assetId": "client_secret",
+                  "stride": "information-disclosure",
+                  "mitigation": "Never expose the client secret in frontend code or mobile apps.",
+                  "status": "mitigated"
+                },
+                {
+                  "assetId": "access_token",
+                  "stride": "tampering",
+                  "mitigation": "Validate JWT signatures using JWKS endpoints and verify the 'aud' and 'iss' claims.",
+                  "status": "mitigated"
+                }
+              ],
+              "boundaries": [
+                {
+                  "label": "Browser / Client",
+                  "contains": ["auth_code"]
+                },
+                {
+                  "label": "Backend Server",
+                  "contains": ["access_token", "client_secret"]
+                }
+              ],
+              "footer": "Ensure PKCE is enabled even for confidential server-side clients to prevent authorization code injection."
+            },
+            "id": "live-12",
+            "note": "A robust threat model ensures you mitigate common OAuth pitfalls like code interception and client secret exposure.",
+            "section": "Security Best Practices",
+            "order": 3
+          }
+        ],
+        "proof": null,
+        "topic": "Programming",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "How do I implement PKCE in Node.js?",
+            "icon": "chat",
+            "route": "How do I implement PKCE in Node.js?"
+          },
+          {
+            "label": "What is a silent refresh flow?",
+            "icon": "chat",
+            "route": "What is a silent refresh flow?"
+          },
+          {
+            "label": "How do I validate a JWT signature?",
+            "icon": "chat",
+            "route": "How do I validate a JWT signature?"
+          },
+          {
+            "label": "What scopes should I request for basic login?",
+            "icon": "chat",
+            "route": "What scopes should I request for basic login?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149692057
+    }
+  ],
+  "history": [
+    {
+      "role": "user",
+      "content": "Explain how OAuth login works, step by step — I'm adding it to our app."
+    },
+    {
+      "role": "assistant",
+      "content": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials…"
+    },
+    {
+      "role": "user",
+      "content": "Compare session cookies vs JWTs for keeping users signed in — a side-by-side of the real tradeoffs (revocation, statelessness, size, XSS/CSRF exposure), and when each wins."
+    },
+    {
+      "role": "assistant",
+      "content": "OAuth can feel like a maze of redirects, but at its heart, it's just a secure way for a user to say 'yes, this app can act on my behalf' without handing over their password. Let's walk through the standard Authorization Code flow, look at the actual token exchange, and check off the security essentials."
+    }
+  ]
+}

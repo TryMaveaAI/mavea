@@ -1,0 +1,948 @@
+/* Present mode — chrome falls away and the canvas becomes a stage: one slide centered,
+   prev/next nav at the bottom, arrow keys to advance. Visual identity comes entirely from
+   the chosen slide skin (SlideStage, src/slides/skins/) — this file only supplies the
+   surrounding stage chrome and the PresentationDeck overlay it renders into. */
+
+/* ── Full-bleed backdrop ─────────────────────────────────────────────────────────────────── */
+/* Specificity must beat :root[data-template] .mavea-app (0,3,0) which sets --app-bg. */
+:root .mavea-app.presenting {
+  --rail-w: 0px;
+  --present-stage: color-mix(in oklab, var(--app-bg) 86%, #000);
+  background: var(--present-stage);
+}
+.mavea-app.presenting::before {
+  opacity: 0;
+}
+
+.mavea-app.presenting .topbar,
+.mavea-app.presenting .side-rail,
+.mavea-app.presenting .scrubber,
+.mavea-app.presenting .dock-modes,
+.mavea-app.presenting .dock-hint {
+  display: none;
+}
+
+/* ── Canvas area ─────────────────────────────────────────────────────────────────────────── */
+.mavea-app.presenting .canvas-stage {
+  background: var(--present-stage);
+}
+.mavea-app.presenting .canvas-scroll {
+  background: var(--present-stage);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 56px 24px 104px;
+}
+.mavea-app.presenting.with-rail .canvas-scroll {
+  max-width: 100%;
+  margin-inline: 0;
+  width: 100%;
+}
+.mavea-app.presenting .topic-wrap {
+  width: 100%;
+}
+
+/* Everything except the slide is noise during a presentation. */
+.mavea-app.presenting .answer-hero,
+.mavea-app.presenting .canvas-header,
+.mavea-app.presenting .ask-hint,
+.mavea-app.presenting .viewing-past,
+.mavea-app.presenting .understood,
+.mavea-app.presenting .voice-scrub,
+.mavea-app.presenting .answer-footer,
+.mavea-app.presenting .skel-grid {
+  display: none;
+}
+
+/* ── Focus stage → full stage ────────────────────────────────────────────────────────────── */
+.mavea-app.presenting .focus-stage {
+  grid-template-columns: 1fr;
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+.mavea-app.presenting .focus-main {
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+.mavea-app.presenting .focus-hero {
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  width: 100%;
+}
+
+/* ── Slide surface — the frame the block lives inside ────────────────────────────────────── */
+/* A proper slide: centered, 16:10-ish, elevated over the stage, less rounded than a card.
+   Font size is nudged up so content designed for small cards reads at stage scale. */
+.mavea-app.presenting .focus-hero-card.focus-in,
+.mavea-app.presenting .focus-hero-card.focus-out {
+  width: min(92vw, 1480px);
+  max-width: none;
+  min-height: min(80dvh, 828px);
+  margin-inline: auto;
+  display: grid;
+  place-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow:
+    0 40px 110px -28px rgba(0, 0, 0, 0.38),
+    0 8px 24px -12px rgba(0, 0, 0, 0.18);
+  padding: clamp(32px, 4.5vw, 80px);
+  font-size: 1.05em;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Accent strip — a thin line of persona color at the top of every slide. */
+.mavea-app.presenting .focus-hero-card.focus-in::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--presence);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* The outgoing card overlays the incoming one during the crossfade. */
+.mavea-app.presenting .focus-hero-card.focus-out {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+/* Slide is for showing, not editing. */
+.mavea-app.presenting .block-actions {
+  display: none;
+}
+
+/* The block sits directly on the slide surface — strip the card's own chrome so the
+   slide is the one surface, but keep internal layout intact. */
+.mavea-app.presenting .focus-hero-card .card {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Elevate the card-eyebrow to a proper slide-label — more room, more presence. */
+.mavea-app.presenting .focus-hero-card .card-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+  opacity: 0.9;
+}
+
+/* Caption stays clean below the slide frame. */
+.mavea-app.presenting .focus-caption {
+  width: min(92vw, 1480px);
+  margin-inline: auto;
+  text-align: center;
+  color: color-mix(in oklab, var(--present-stage) 30%, var(--text-muted));
+  font-size: clamp(14px, 1vw, 18px);
+}
+
+/* ── Mavéa: a quiet presence in the corner during a deck ─────────────────────────────────── */
+/* Transform stays on .presence-positioner (the sanctioned wrapper), never on .presence. */
+.mavea-app.presenting .presence-layer.corner .presence-positioner {
+  transform: translate(calc(50vw - 62px), calc(50dvh - 62px)) scale(0.34);
+}
+
+/* ── Ghost dock ───────────────────────────────────────────────────────────────────────────── */
+.mavea-app.presenting .live-dock {
+  opacity: 0.2;
+  transition: opacity 200ms ease;
+}
+.mavea-app.presenting .live-dock:hover,
+.mavea-app.presenting .live-dock:focus-within {
+  opacity: 1;
+}
+
+/* ── Floating exit pill ──────────────────────────────────────────────────────────────────── */
+.present-exit {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 160;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 10.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 7px 13px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+.present-exit:hover,
+.present-exit:focus-visible {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+/* ── Persona picker (top-left, mirrors the exit pill) ────────────────────────────────────── */
+.preso-style-picker {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 160;
+}
+
+.preso-style-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 10.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 7px 13px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+.preso-style-btn:hover,
+.preso-style-btn:focus-visible {
+  opacity: 1;
+  color: var(--text-primary);
+}
+.preso-style-btn.is-open {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+.preso-swatch-sm {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.preso-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 162;
+  min-width: 300px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preso-row {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 1px;
+  padding: 9px 11px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-secondary);
+  font: inherit;
+  transition: background 100ms ease;
+}
+.preso-row:hover {
+  background: var(--surface-glass-strong);
+}
+.preso-row.is-active {
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.preso-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  grid-row: 1 / 3;
+  flex: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.preso-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.preso-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  grid-column: 2;
+}
+
+/* ── Side arrow click zones — primary mouse affordance ──────────────────────────────────── */
+/* Full-height flanks on either side of the slide. Invisible at rest; a large chevron
+   appears on hover. Disabled at the first/last slide so the cursor stays default. */
+.present-arrow {
+  position: fixed;
+  top: 0;
+  bottom: calc(var(--dock-h, 72px) + 80px);
+  width: clamp(64px, 9vw, 140px);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 52;
+  color: white;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  padding: 0;
+}
+.present-arrow-prev {
+  left: 0;
+}
+.present-arrow-next {
+  right: 0;
+}
+
+.present-arrow:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+.present-arrow:not(:disabled):hover {
+  opacity: 1;
+}
+/* Gradient hint so the chevron has contrast over any persona background */
+.present-arrow-prev:not(:disabled):hover {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent);
+}
+.present-arrow-next:not(:disabled):hover {
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.18), transparent);
+}
+.present-arrow svg {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+  flex: none;
+}
+
+/* ── Slide counter — minimal centered pill at the bottom ─────────────────────────────────── */
+.present-nav {
+  position: fixed;
+  bottom: calc(var(--dock-h, 72px) + 14px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 155;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  backdrop-filter: blur(12px);
+  opacity: 0.35;
+  transition: opacity 200ms ease;
+}
+.present-nav:hover {
+  opacity: 1;
+}
+
+.present-nav-count {
+  font: 600 12.5px/1 var(--font-data, var(--font));
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── Room-question tag on the session rail ───────────────────────────────────────────────── */
+.sess-room {
+  flex: none;
+  font: 600 8.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────
+   PresentationDeck — the real slide deck (cover / agenda / one visual per slide / closing).
+   Sits BELOW the present chrome (style picker + exit pill are z-index 160+) so those stay
+   clickable above it. The whole overlay (50-62, now 150-162) sits above .present-arrow (52,
+   FocusStage's unrelated filmstrip-present feature) — a conversation's canvas can have its own
+   present-mode active behind this overlay, and without this margin its fixed-position arrows
+   would poke through and steal clicks meant for this modal.
+   ───────────────────────────────────────────────────────────────────────────────────────── */
+.preso-deck {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: var(--present-stage);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.preso-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 5vh 6vw 9vh;
+  overflow: hidden;
+  /* Let the browser handle vertical scroll/refresh gestures natively; only the horizontal
+     component of a touch drag here is ours (the swipe-to-navigate handler on this element). */
+  touch-action: pan-y;
+}
+/* Click zones for a remote / touch — narrow edge strips so reading-clicks don't advance */
+.preso-zone {
+  position: fixed;
+  top: 0;
+  bottom: 9vh; /* clear the progress rail */
+  width: 12vw;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 151;
+}
+.preso-zone-prev {
+  left: 0;
+}
+.preso-zone-next {
+  right: 0;
+}
+.preso-zone:disabled {
+  cursor: default;
+}
+
+/* Progress rail */
+.preso-rail {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 9vh;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 24px;
+  z-index: 155;
+}
+.preso-count {
+  position: absolute;
+  left: 24px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* Digit jump buffer — a transient chip near the counter while "12" et al. is being typed. */
+.preso-jumpchip {
+  position: absolute;
+  left: 24px;
+  bottom: calc(100% + 10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font: 600 12px/1 var(--font-data, var(--font));
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-floating);
+}
+.preso-dots {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+}
+.preso-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+.preso-dot:hover {
+  background: var(--text-muted);
+}
+.preso-dot.is-active {
+  background: var(--presence);
+  transform: scale(1.35);
+}
+.preso-notes-btn {
+  position: absolute;
+  right: 24px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.preso-notes-btn.is-on {
+  color: var(--presence);
+  border-color: var(--presence);
+}
+
+/* Presenter overlay — single-display speaker-view fallback */
+.preso-presenter {
+  position: fixed;
+  right: 24px;
+  bottom: calc(9vh + 14px);
+  width: min(420px, 80vw);
+  max-height: 42vh;
+  overflow: auto;
+  z-index: 156;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-floating);
+  padding: 16px 18px;
+}
+.preso-presenter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.preso-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--presence);
+  /* A <button> now (clicking it resets, mirroring the R key) — undo the UA chrome. */
+  font-family: inherit;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.preso-presenter-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.preso-presenter-notes {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+.preso-presenter-next {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+.preso-presenter-next span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 8px;
+  color: var(--text-faint);
+}
+
+/* Cross-slide transition — the keyed wrapper replays this on every index change. SlideStage
+   corrects its scale in a layout effect (pre-paint), so the slide never flashes un-measured.
+   The outgoing slide holds beneath (.preso-slide-ghost) so the incoming fade is a true
+   crossfade over paper, never a blink through the dark theatre. */
+.preso-slide-ghost {
+  position: absolute;
+  inset: 0;
+}
+.preso-slide-anim {
+  position: absolute;
+  inset: 0;
+  animation: presoSlideIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.preso-dir-prev {
+  animation-name: presoSlideInPrev;
+}
+@keyframes presoSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(1.6%) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes presoSlideInPrev {
+  from {
+    opacity: 0;
+    transform: translateX(-1.6%) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Visually-hidden live region for slide-change announcements. */
+.preso-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Jump-to-first / jump-to-last controls on the rail. */
+.preso-jump {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--r-full);
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+.preso-jump:hover:not(:disabled) {
+  color: var(--presence);
+  border-color: var(--presence);
+}
+.preso-jump:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Presenter overlay upgrades: percent, a thin progress bar, the current slide title, next thumbnail. */
+.preso-presenter-pct {
+  margin-left: auto;
+  margin-right: 12px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.preso-presenter-progress {
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--line-soft);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.preso-presenter-progress span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.preso-presenter-slide {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+.preso-presenter-next {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'label label' 'thumb text';
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+.preso-presenter-next-label {
+  grid-area: label;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.preso-presenter-thumb {
+  grid-area: thumb;
+  width: 132px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.preso-presenter-next-text {
+  grid-area: text;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Blackout / whiteout curtain — a full-stage opaque cover, dismissed by a click (keyboard paths
+   live in PresentationDeck's own key handler). Deliberately literal black/white rather than
+   theme tokens — a presenter blackout means the room actually goes dark, in either app theme. */
+.preso-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  cursor: pointer;
+  opacity: 0;
+  animation: presoCurtainIn 200ms ease forwards;
+}
+.preso-curtain-black {
+  background: #000;
+}
+.preso-curtain-white {
+  background: #fff;
+}
+@keyframes presoCurtainIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Overview — every slide at once, for jumping straight to one. A full takeover (not a floating
+   panel) since a long deck's grid needs the room; same fixed dark backdrop as .preso-deck itself
+   so opening it never flashes a different theme onto the stage. */
+.preso-overview {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: #0a0c11;
+  color: var(--text-primary);
+  overflow: auto;
+  padding: 64px 48px 40px;
+}
+.preso-overview-close {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 211;
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  border-radius: var(--r-full);
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.preso-overview-close:hover {
+  color: var(--text-primary);
+}
+.preso-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 22px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.preso-overview-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font: 600 12px/1 var(--font-data, var(--font));
+  font-variant-numeric: tabular-nums;
+}
+/* the cell's whole face is the jump/restore button; the corner × rides above it */
+.preso-overview-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.preso-overview-cell:hover {
+  color: var(--text-primary);
+}
+.preso-overview-cell.is-selected {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
+/* crossed out of this run: dimmed but present, one click from coming back */
+.preso-overview-cell.is-skipped .preso-overview-thumb {
+  opacity: 0.35;
+  filter: saturate(0.5);
+}
+.preso-overview-cell.is-skipped .preso-overview-num::after {
+  content: ' · skipped';
+  font-weight: 500;
+}
+.preso-overview-skip {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, transparent);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--m-fast),
+    color var(--m-fast);
+}
+.preso-overview-cell:hover .preso-overview-skip,
+.preso-overview-skip:focus-visible,
+.preso-overview-cell.is-skipped .preso-overview-skip {
+  opacity: 1;
+}
+.preso-overview-skip:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.preso-overview-skipnote {
+  max-width: 1400px;
+  margin: 0 auto 14px;
+  font: 500 12px/1 var(--font-data, var(--font));
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.preso-overview-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+}
+
+/* Help — the whole keyboard map, a simple readable list in a centered card over a dim scrim
+   (the scrim is a fixed-position pseudo-element so it covers the viewport regardless of the
+   card's own, content-sized box). */
+.preso-help {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  z-index: 220;
+  width: min(420px, 86vw);
+  max-height: 76vh;
+  overflow: auto;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 24px 26px;
+}
+.preso-help::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.55);
+}
+.preso-help-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.preso-help-title {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.preso-help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.preso-help-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+.preso-help-row dt {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.preso-help-row dd {
+  margin: 0;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preso-slide-anim {
+    animation: none;
+  }
+  .preso-dot,
+  .preso-jump,
+  .preso-presenter-progress span {
+    transition: none;
+  }
+  .preso-curtain {
+    animation: none;
+    opacity: 1;
+  }
+}

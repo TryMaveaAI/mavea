@@ -1,0 +1,154 @@
+/* briefing.css — The Briefing's chrome: a centered caption + a control bar floating over the map.
+   Tokens only, matching the same elevated-surface + blur recipe as the ask dock (.prism-ask in ask.css)
+   so it reads as one system and follows light/dark like the rest of the stage. Silent, captioned,
+   camera-led. The caption is the document's own words; the eyebrow tints by what the beat is doing
+   (the case / a tension / a verdict / the close). */
+
+/* During the briefing the camera GLIDES between beats (the rest of the time the world tracks the
+   pointer 1:1, so the transition is gated to briefing only and disabled under reduced-motion). */
+.prism-world[data-briefing='true'] {
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-world[data-briefing='true'] {
+    transition: none;
+  }
+}
+
+.prism-brief {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(720px, 88%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  pointer-events: none;
+}
+.prism-brief > * {
+  pointer-events: auto;
+}
+
+.prism-brief-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  text-align: center;
+  background: color-mix(in oklab, var(--surface-elevated) 90%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(10px);
+  animation: prism-brief-rise 0.34s ease both;
+}
+@keyframes prism-brief-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.prism-brief-eyebrow {
+  align-self: center;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--presence);
+}
+.prism-brief-eyebrow[data-kind='tension'],
+.prism-brief-eyebrow[data-kind='close'] {
+  color: color-mix(in oklab, var(--danger) 85%, #fff);
+}
+.prism-brief-eyebrow[data-kind='verdict'] {
+  color: color-mix(in oklab, var(--warning) 85%, #fff);
+}
+.prism-brief-eyebrow[data-kind='context'] {
+  color: var(--text-muted);
+}
+
+.prism-brief-line {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.prism-brief-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  padding: 7px 10px;
+  background: color-mix(in oklab, var(--surface-deep) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(8px);
+}
+.prism-brief-btn {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+}
+.prism-brief-btn:hover:not(:disabled) {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.prism-brief-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.prism-brief-play {
+  background: color-mix(in oklab, var(--presence) 22%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+  color: var(--text-primary);
+}
+.prism-brief-play:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--presence) 34%, var(--surface-elevated));
+}
+.prism-brief-audio.is-on {
+  background: color-mix(in oklab, var(--insight) 24%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--insight) 42%, transparent);
+}
+.prism-brief-progress {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.prism-brief-spacer {
+  width: 8px;
+}
+.prism-brief-exit {
+  appearance: none;
+  cursor: pointer;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+}
+.prism-brief-exit:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}

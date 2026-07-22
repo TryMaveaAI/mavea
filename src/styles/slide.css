@@ -1,0 +1,72 @@
+/* ============================================================
+   SLIDE / one-pager
+   ============================================================ */
+.slide-card {
+  aspect-ratio: 16/10;
+  background: var(--slide-bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  padding: 38px 42px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-floating);
+  position: relative;
+  overflow: hidden;
+}
+.slide-card::after {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(110, 140, 255, 0.16), transparent 70%);
+}
+.slide-kicker {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--presence-soft);
+}
+.slide-head {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  margin: 8px 0 18px;
+  max-width: 22ch;
+}
+.slide-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.slide-bullet {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 15.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.slide-bullet .bdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+.slide-bullet b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.slide-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 16px;
+}

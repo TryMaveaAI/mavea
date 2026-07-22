@@ -1,0 +1,117 @@
+/* The Briefing — Mavéa's "speaks first" opener on the Demo home. Self-contained: tokens only
+   (light/dark automatic), no edits to the shared styles.css. */
+
+.briefing {
+  width: 100%;
+  max-width: 1040px;
+  margin: 4px auto 26px;
+}
+.briefing-greeting {
+  font: 600 clamp(20px, 2.4vw, 27px) / 1.25 var(--font);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+.briefing-greeting-sub {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.briefing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  padding: 16px 16px 14px;
+  border-radius: 16px;
+  color: inherit;
+  border: 1px solid color-mix(in oklab, var(--brief-accent) 26%, var(--line));
+  background: linear-gradient(
+    160deg,
+    color-mix(in oklab, var(--brief-accent) 12%, var(--surface-elevated)),
+    var(--surface-elevated) 70%
+  );
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.briefing-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--brief-accent) 50%, var(--line));
+  box-shadow: var(--shadow-floating);
+}
+.briefing-card:focus-visible {
+  outline: 2px solid var(--brief-accent);
+  outline-offset: 2px;
+}
+
+.briefing-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  color: var(--brief-accent);
+  background: color-mix(in oklab, var(--brief-accent) 16%, transparent);
+}
+.briefing-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.briefing-eyebrow {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.briefing-headline {
+  font: 600 clamp(15px, 1.5vw, 17px) / 1.25 var(--font);
+  color: var(--text-primary);
+}
+.briefing-detail {
+  font: 400 13px/1.35 var(--font);
+  color: var(--text-secondary);
+}
+.briefing-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  font: 600 12px/1 var(--font);
+  color: var(--brief-accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    transform var(--m-fast) var(--ease-out);
+}
+.briefing-go svg {
+  width: 13px;
+  height: 13px;
+}
+.briefing-card:hover .briefing-go,
+.briefing-card:focus-visible .briefing-go {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-card,
+  .briefing-go {
+    transition: none;
+  }
+  .briefing-go {
+    opacity: 1;
+    transform: none;
+  }
+}

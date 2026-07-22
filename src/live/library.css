@@ -1,0 +1,398 @@
+/* The Library — living cards of the canvases you've generated. Self-contained: tokens only
+   (light/dark automatic), no edits to the shared styles.css. */
+
+.library {
+  width: 100%;
+  margin-top: 8px;
+}
+.library-head {
+  margin-bottom: 14px;
+}
+.library-title {
+  font: 600 clamp(18px, 2vw, 22px) / 1.2 var(--font);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0;
+}
+.library-sub {
+  font: 400 13.5px/1.4 var(--font);
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.lib-card {
+  position: relative;
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out);
+}
+.lib-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--lib-accent) 38%, var(--line)),
+    var(--shadow-floating);
+}
+
+.lib-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  padding: 16px 16px 14px;
+  border-radius: inherit;
+}
+.lib-open:focus-visible {
+  outline: 2px solid var(--lib-accent);
+  outline-offset: 2px;
+}
+
+.lib-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+/* .lib-remove overlays the card at a fixed `top/right` offset (it sits OUTSIDE .lib-open, a
+   sibling button — a button can't nest inside another button). .lib-count only inherits
+   .lib-open's 16px padding, so a wide-enough count badge butted right up against the remove
+   button and visually fused with it ("7" + "×" reading as one glyph). Reserve the button's full
+   footprint (24px + 8px offset, plus a hair of breathing room) so the two can never collide. */
+.lib-card-head.has-remove {
+  padding-right: 20px;
+}
+.lib-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full);
+  flex: 0 0 auto;
+  background: var(--lib-accent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--lib-accent) 60%, transparent);
+}
+.lib-card-title {
+  font: 600 14px/1.3 var(--font);
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-count {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font: 600 10.5px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass-strong);
+  border-radius: var(--r-full);
+  padding: 4px 8px;
+}
+
+/* The moment rows — the card retells its conversation along a hairline spine. */
+.lib-moments {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.lib-moment {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font: 400 11.5px/1.4 var(--font);
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.lib-moment-icon {
+  flex: 0 0 auto;
+  color: var(--lib-accent);
+  display: inline-flex;
+  margin-top: 1px;
+}
+.lib-moment-icon svg {
+  width: 11px;
+  height: 11px;
+}
+.lib-moment-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-moment-more {
+  color: var(--text-muted);
+}
+
+.lib-meta {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 500 11.5px/1 var(--font);
+  color: var(--text-muted);
+}
+.lib-resume {
+  font-weight: 600;
+  color: var(--presence-soft);
+}
+.lib-card:hover .lib-resume {
+  color: var(--presence);
+}
+
+.lib-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.35;
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.lib-card:hover .lib-remove,
+.lib-remove:focus-visible {
+  opacity: 1;
+}
+.lib-remove:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+}
+.lib-remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- By-topic: a thread of related canvases collapsed into one card ---- */
+.lib-count {
+  white-space: nowrap;
+}
+/* The count pill on a thread reads as "how many conversations" — tint it with the accent so it's
+   clearly a thread size, not a solo card's block count. */
+.lib-group .lib-count {
+  color: var(--lib-accent);
+  background: color-mix(in oklab, var(--lib-accent) 14%, transparent);
+}
+
+.lib-sessions {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.lib-session {
+  position: relative;
+}
+.lib-session-open {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  /* Reserve the right gutter so the ago never sits under the hover remove button. */
+  padding: 7px 30px 7px 8px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast) var(--ease-out);
+}
+.lib-session-open:hover {
+  background: color-mix(in oklab, var(--lib-accent) 9%, transparent);
+}
+.lib-session-open:focus-visible {
+  outline: 2px solid var(--lib-accent);
+  outline-offset: -2px;
+}
+.lib-session-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 12.5px/1.35 var(--font);
+  color: var(--text-secondary);
+  transition: color var(--m-fast) var(--ease-out);
+}
+.lib-session-open:hover .lib-session-title,
+.lib-session-open:focus-visible .lib-session-title {
+  color: var(--text-primary);
+}
+.lib-session-ago {
+  flex: 0 0 auto;
+  font: 500 10.5px/1 var(--font);
+  color: var(--text-muted);
+}
+
+.lib-session-remove {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.lib-session:hover .lib-session-remove,
+.lib-session-remove:focus-visible {
+  opacity: 1;
+}
+.lib-session-remove:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+}
+.lib-session-remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+.lib-session-more {
+  margin-top: 2px;
+  border: none;
+  background: none;
+  font: 500 11.5px/1.4 var(--font);
+  color: var(--text-muted);
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color var(--m-fast) var(--ease-out);
+}
+.lib-session-more:hover {
+  color: var(--lib-accent);
+}
+
+.lib-group-count {
+  font-family: var(--font-data, inherit);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---- the library toolbar: search + Recent/By-topic, board page 06 ---- */
+.library-count {
+  margin: 2px 0 0;
+  font-family: var(--font-data, inherit);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.library-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 4px;
+}
+.lib-search {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+}
+.lib-search:focus-within {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: 2px;
+}
+.lib-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+.lib-search input::placeholder {
+  color: var(--text-muted);
+}
+.lib-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+}
+.lib-tab {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+}
+.lib-tab.on {
+  background: var(--surface-default);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+.library-none {
+  margin: 16px 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.lib-more-btn {
+  margin: 16px auto 4px;
+  display: block;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 8px 18px;
+  cursor: pointer;
+}
+.lib-more-btn:hover {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}

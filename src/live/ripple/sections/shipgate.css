@@ -1,0 +1,307 @@
+/* shipgate.css — the humans + agents gate. Matches ripple.css conventions: tokens only, status color
+   via colors.ts helpers (passed in as --gate-accent / --cond-accent custom properties), cards on
+   --surface-elevated with --line borders, the terminal on --surface-elevated-2. Light/dark tracks
+   automatically through the tokens; every container contains its overflow and text wraps. */
+
+.ripple-gate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+  max-width: 760px;
+}
+
+/* ── the verdict header ── */
+.ripple-gate-verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-md);
+  padding: var(--s-md);
+  border: 1px solid color-mix(in oklab, var(--gate-accent) 32%, var(--line));
+  border-left: 3px solid var(--gate-accent);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--gate-accent) 8%, var(--surface-elevated));
+}
+.ripple-gate-badge {
+  flex: none;
+  align-self: center;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  background: var(--gate-accent);
+  color: var(--surface-default);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.ripple-gate-verdict-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.ripple-gate-summary {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.ripple-gate-summary strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gate-accent);
+}
+.ripple-gate-rationale {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── merge conditions ── */
+.ripple-gate-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ripple-gate-cond-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  overflow: hidden;
+}
+.ripple-gate-cond {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px var(--s-md);
+}
+.ripple-gate-cond + .ripple-gate-cond {
+  border-top: 1px solid var(--line);
+}
+.ripple-gate-cond-pill {
+  flex: none;
+  width: 64px;
+  text-align: center;
+  padding: 3px 0;
+  border-radius: var(--r-full);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--cond-accent);
+  background: color-mix(in oklab, var(--cond-accent) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--cond-accent) 34%, transparent);
+}
+.ripple-gate-cond-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-gate-cond-actor {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-muted);
+}
+.ripple-gate-cond-actor[data-actor='human'] {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 32%, transparent);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+
+/* ── requires + deploy order ── */
+.ripple-gate-requires {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ripple-gate-req-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ripple-gate-chip {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated-2);
+  word-break: break-word;
+}
+.ripple-gate-req-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.ripple-gate-deploy {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ripple-gate-deploy strong {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ripple-gate-deploy strong[data-enforced='true'] {
+  color: var(--insight);
+}
+
+/* ── the machine contract (a quiet terminal) ── */
+.ripple-gate-agents {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ripple-gate-terminal {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated-2);
+  overflow: hidden;
+}
+.ripple-gate-term-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: 9px var(--s-md);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--text-muted) 6%, transparent);
+}
+.ripple-gate-term-prompt {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ripple-gate-term-arg {
+  color: var(--presence);
+}
+.ripple-gate-term-status {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
+}
+.ripple-gate-term-status[data-clear='true'] {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  border-color: color-mix(in oklab, var(--insight) 32%, transparent);
+}
+.ripple-gate-term-body {
+  margin: 0;
+  padding: var(--s-md);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.ripple-gate-term-line {
+  display: block;
+}
+.ripple-gate-term-brace {
+  color: var(--text-muted);
+}
+.ripple-gate-term-key {
+  color: var(--text-muted);
+}
+.ripple-gate-term-punct {
+  color: var(--text-muted);
+}
+
+/* ── the draft-only review row ── */
+.ripple-gate-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--s-md);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+}
+.ripple-gate-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.ripple-gate-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.ripple-gate-rev-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.ripple-gate-rev-btn:hover {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+.ripple-gate-rev-btn[data-kind='approve']:hover {
+  border-color: color-mix(in oklab, var(--insight) 40%, transparent);
+  color: var(--insight);
+}
+.ripple-gate-rev-btn[data-kind='changes']:hover {
+  border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+  color: var(--danger);
+}
+.ripple-gate-rev-btn[data-kind='comment']:hover {
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+  color: var(--presence);
+}
+.ripple-gate-rev-btn:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+.ripple-gate-review-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}

@@ -1,0 +1,1348 @@
+/* ============================================================
+   SETUP WIZARD  (Live onboarding · src/live/setup/)
+   Fenced region — no existing rule is touched above this line.
+   All classes: setup-* · const-* · provider-* · seg-* · toggle-*
+   status-* · memory-* · voice-* · go-* · check-* · try-*
+   Safe to append; safe to remove as a complete block.
+   ============================================================ */
+
+/* Hide chrome that doesn't belong in the wizard shell. SetupWizard renders the shared Appearance
+   selector inside its own navigation grid, where it cannot turn the otherwise-hidden app topbar
+   into an opaque, click-blocking layer over the constellation. */
+.in-wizard .side-rail,
+.in-wizard .dock-bar {
+  display: none;
+}
+.in-wizard .topbar {
+  display: none;
+}
+
+/* The orb stays hidden through the ritual steps (calm, focused setup). The Go hub is the
+   "I'm awake" reveal, so the woken face is allowed to paint there — see the "woken face" block
+   near the end of this file. The scrim + caption never belong in the wizard shell. */
+.in-wizard .presence-scrim,
+.in-wizard .center-caption {
+  display: none;
+}
+:root:not([data-wizard-step='go']) .in-wizard .presence-layer {
+  display: none;
+}
+
+/* root wizard wrapper — fills the viewport so the composer is always pinned at the bottom */
+.setup.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* top navigation bar */
+.setup-nav {
+  display: grid;
+  /* Equal 1fr flanks sit the constellation on the TRUE page centre-line, so it lines up with the
+     centred heading and card below. A flex row centred it only within the space left over between
+     the wide "Back to the demo" button and the narrow theme toggle, which pushed it ~60px right. */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--s-md);
+  padding: var(--s-lg) var(--s-xl);
+  width: 100%;
+}
+.setup-nav > .setup-back {
+  justify-self: start;
+}
+.setup-nav > .setup-icon-btn {
+  justify-self: end;
+}
+.setup-nav > .appearance-picker {
+  justify-self: end;
+}
+
+.setup-back {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: 13px/1 var(--font);
+  padding: 7px var(--s-md);
+  transition:
+    border-color var(--m-fast),
+    color var(--m-fast),
+    background var(--m-fast);
+  white-space: nowrap;
+}
+.setup-back:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+
+.setup-icon-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: grid;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast);
+  width: 32px;
+}
+.setup-icon-btn:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.setup-icon-btn svg {
+  height: 16px;
+  width: 16px;
+}
+
+/* constellation stepper */
+.constellation {
+  display: flex;
+  justify-content: center;
+}
+.const-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.const-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.const-step + .const-step::before {
+  content: '';
+  display: block;
+  flex-shrink: 0;
+  height: 2px;
+  width: 24px;
+  border-radius: var(--r-full);
+  background: var(--line);
+}
+/* A charged leg reads as verified energy flowing toward the ready step: green (done) → blue (go). */
+.const-step.is-done + .const-step::before,
+.const-step.is-current + .const-step::before {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--insight) 60%, transparent),
+    color-mix(in oklab, var(--presence) 60%, transparent)
+  );
+}
+.const-disc {
+  appearance: none;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  font: 600 11px/1 var(--font);
+  height: 44px;
+  letter-spacing: 0.02em;
+  place-items: center;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    box-shadow var(--m-fast),
+    color var(--m-fast);
+  width: 44px;
+}
+.const-disc:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.const-step.is-current .const-disc {
+  position: relative;
+  background: radial-gradient(circle at 50% 32%, var(--presence-soft), var(--presence-deep));
+  border-color: var(--presence-soft);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 26%, transparent);
+  color: #fff;
+}
+/* A bright, softly-breathing core turns "you are here" from a flat blob into a live, ready pulse.
+   The halo animates transform/opacity only (compositor-cheap on weak hardware, see [[feedback-runs-on-all-hardware]]). */
+.const-step.is-current .const-disc::after {
+  content: '';
+  height: 7px;
+  width: 7px;
+  border-radius: var(--r-full);
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+}
+.const-step.is-current .const-disc::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  z-index: -1;
+  border-radius: var(--r-full);
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--presence) 55%, transparent),
+    transparent 70%
+  );
+  animation: const-pulse 2.6s ease-in-out infinite;
+}
+@keyframes const-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.18);
+  }
+}
+.const-step.is-done .const-disc {
+  background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
+  border-color: var(--insight-soft);
+  color: var(--insight);
+}
+.const-step.is-done .const-disc svg {
+  height: 12px;
+  width: 12px;
+}
+.const-label {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  user-select: none;
+}
+/* Labels mix the accent toward --text-primary, which flips per theme — so both greens and blues
+   stay vivid on dark yet darken enough to clear contrast on the light lavender surface. */
+.const-step.is-current .const-label {
+  color: color-mix(in oklab, var(--presence) 68%, var(--text-primary));
+  font-weight: 600;
+}
+.const-step.is-done .const-label {
+  color: color-mix(in oklab, var(--insight) 55%, var(--text-primary));
+}
+
+/* centered step content area */
+.setup-stage {
+  /* Block, NOT a flex column: a nested flex column with `min-height: 0` mis-computes
+     scrollHeight in Chromium — it clamps to the visible height, so content taller than the
+     viewport is clipped with NO scrollbar. That hid the step's "Done" footer below the fold on
+     laptop-height screens (≤~860px tall), leaving no way to advance. Block flow reports the true
+     content height, so overflow-y:auto actually scrolls; children center via `margin: 0 auto`. */
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--s-lg) var(--s-xl) var(--s-xl);
+  scrollbar-width: none;
+  width: 100%;
+}
+.setup-stage::-webkit-scrollbar {
+  display: none;
+}
+
+.setup-head {
+  margin: 0 auto;
+  max-width: 540px;
+  text-align: center;
+}
+
+.setup-q {
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 var(--s-sm);
+}
+
+.setup-sub {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* step card (extends .card.reveal) */
+.setup-card {
+  /* Centered as a block child of .setup-stage (block flow, not a flex column — see the
+     .setup-stage comment). The stage's own overflow-y:auto handles a tall step, so the card
+     just needs its natural full height here, no flex-shrink games. */
+  margin: var(--s-lg) auto 0;
+  max-width: 560px;
+  padding: var(--s-xl);
+  width: 100%;
+}
+.setup-card--wide {
+  max-width: 860px;
+}
+
+/* step body */
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+}
+
+/* card footer (non-Go steps) */
+.setup-foot {
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s-md);
+  padding-top: var(--s-md);
+}
+.setup-foot-note {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.setup-done {
+  align-items: center;
+  appearance: none;
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  border: none;
+  border-radius: var(--r-full);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font: 600 14px/1 var(--font);
+  gap: var(--s-xs);
+  padding: 9px var(--s-lg);
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+.setup-done:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.setup-done svg {
+  height: 14px;
+  width: 14px;
+}
+
+/* divider */
+.setup-divider {
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  margin: 0;
+}
+
+/* labeled section within a step */
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+}
+.field-helper {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* two-column grid in ConnectStep */
+.field-grid {
+  align-items: start;
+  display: grid;
+  gap: var(--s-lg);
+  grid-template-columns: 1fr 1fr;
+}
+.field-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  min-width: 0;
+}
+/* Wraps a field's eyebrow with an optional trailing action (e.g. the API key field's
+   "Get a key" link) on the same row, apart at the far edges. */
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm);
+}
+.field-head .card-eyebrow {
+  margin: 0;
+}
+.field-helper-link {
+  align-self: flex-start;
+  color: var(--presence-soft);
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+}
+.field-helper-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+.field-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* provider tiles — a fixed 5-column grid (one per VISIBLE_PROVIDERS entry) so every tile sits
+   in a single uniform row instead of auto-fit wrapping the 5th into a lonely second row with
+   three empty cells beside it. Narrow viewports fall back to wrapping (setup-wizard.css media
+   query below) where an orphaned last tile reads as normal responsive wrap, not a layout bug. */
+.provider-tiles {
+  display: grid;
+  gap: var(--s-sm);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.provider-tile {
+  align-items: center;
+  appearance: none;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--s-md) var(--s-sm);
+  text-align: center;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.provider-tile:hover {
+  background: var(--surface-elevated-2);
+  border-color: var(--line-strong);
+}
+.provider-tile.is-selected {
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+  border-color: var(--presence);
+}
+.tile-badge {
+  background: var(--surface-glass-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  height: 26px;
+  line-height: 26px;
+  text-align: center;
+  width: 26px;
+}
+.provider-tile.is-selected .tile-badge {
+  background: color-mix(in oklab, var(--presence) 22%, transparent);
+  color: var(--presence-soft);
+}
+.tile-name {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.tile-sub {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* text inputs */
+.setup-input {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font: 14px/1 var(--font);
+  outline: none;
+  padding: 9px 12px;
+  transition: border-color var(--m-fast);
+  width: 100%;
+  min-height: 44px;
+}
+.setup-input:focus {
+  border-color: var(--presence);
+}
+.setup-input::placeholder {
+  color: var(--text-faint);
+}
+.input-wrap {
+  position: relative;
+}
+.input-eye {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: color var(--m-fast);
+  width: 44px;
+}
+.input-eye:hover {
+  color: var(--text-primary);
+}
+.input-eye svg {
+  height: 15px;
+  width: 15px;
+}
+.input-wrap .setup-input {
+  padding-right: 48px;
+}
+
+/* selects (voice, search source) */
+.setup-select {
+  appearance: none;
+  background-color: var(--surface-elevated);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239aa7bb' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: 14px/1 var(--font);
+  outline: none;
+  padding: 9px 32px 9px 12px;
+  transition: border-color var(--m-fast);
+  width: 100%;
+}
+.setup-select:focus {
+  border-color: var(--presence);
+}
+:root[data-theme='light'] .setup-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%234d5a70' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* shared drop-select menus — the styled replacement for native datalist/select popups,
+   used by the model combobox (ModelSelect) and the closed-set pickers (DropSelect) */
+.drop-select {
+  position: relative;
+}
+.drop-select-input {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding-right: 40px;
+}
+.drop-select-trigger {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  text-align: left;
+}
+.drop-select-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.drop-select-trigger > svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  height: 8px;
+  transition: rotate var(--m-fast);
+  width: 12px;
+}
+.drop-select-trigger[aria-expanded='true'] > svg {
+  rotate: 180deg;
+}
+.drop-select-option-label {
+  color: var(--text-primary);
+  font: 500 13.5px/1.2 var(--font);
+}
+.drop-select-option.is-current .drop-select-option-label {
+  color: var(--presence);
+  font-weight: 650;
+}
+.drop-select-chevron {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: color var(--m-fast);
+  width: 40px;
+}
+.drop-select-chevron:hover {
+  color: var(--text-primary);
+}
+.drop-select-chevron svg {
+  height: 8px;
+  transition: rotate var(--m-fast);
+  width: 12px;
+}
+.drop-select-chevron[aria-expanded='true'] svg {
+  rotate: 180deg;
+}
+.drop-select-menu {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inset-inline: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 30;
+}
+.drop-select-option {
+  border-radius: calc(var(--r-md) - 4px);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+}
+.drop-select-option.is-active {
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.drop-select-option-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.drop-select-id {
+  color: var(--text-primary);
+  font: 500 13px/1.2 var(--mono);
+  overflow-wrap: anywhere;
+}
+.drop-select-option.is-current .drop-select-id {
+  color: var(--presence);
+  font-weight: 650;
+}
+.drop-select-badge {
+  border: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
+  border-radius: var(--r-full);
+  color: var(--presence);
+  flex-shrink: 0;
+  font: 600 10px/1 var(--font);
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+.drop-select-note {
+  color: var(--text-muted);
+  font: 11.5px/1.35 var(--font);
+}
+.drop-select-foot {
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font: 11.5px/1.4 var(--font);
+  gap: 4px 10px;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding: 8px 10px 5px;
+}
+.drop-select-foot a {
+  color: var(--presence);
+  flex-shrink: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.drop-select-foot a:hover {
+  text-decoration: underline;
+}
+
+/* provider readiness strip */
+.status-strip {
+  align-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: flex;
+  gap: var(--s-sm);
+  padding: 9px 12px;
+}
+.status-strip-test {
+  appearance: none;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+  font: 600 11px/1 var(--font);
+  padding: 5px 12px;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast);
+}
+.status-strip-test:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+  border-color: var(--line-strong, var(--line));
+}
+.status-strip.ok {
+  background: color-mix(in oklab, var(--insight) 8%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--insight) 28%, transparent);
+}
+.status-strip.warn {
+  background: color-mix(in oklab, var(--warning) 8%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--warning) 28%, transparent);
+}
+.status-strip-dot {
+  background: var(--line-strong);
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+}
+.status-strip.ok .status-strip-dot {
+  background: var(--insight);
+  box-shadow: 0 0 6px var(--glow-insight);
+}
+.status-strip.checking .status-strip-dot {
+  animation: status-pulse 1s var(--ease-in-out) infinite;
+  background: var(--warning);
+}
+.status-strip.warn .status-strip-dot {
+  background: var(--warning);
+}
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.status-strip-text {
+  color: var(--text-secondary);
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.status-strip-text strong {
+  color: var(--text-primary);
+}
+
+/* segmented control */
+.seg {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: flex;
+  gap: 2px;
+  overflow: hidden;
+  padding: 3px;
+}
+.seg-opt {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--r-md) - 3px);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: 1;
+  padding: 7px var(--s-sm);
+  text-align: center;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.seg-opt:hover {
+  color: var(--text-secondary);
+}
+.seg-opt.is-active {
+  background: var(--presence);
+  color: #fff;
+}
+.seg-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.seg-sub {
+  display: block;
+  font-size: 10px;
+  margin-top: 1px;
+  opacity: 0.72;
+}
+
+/* toggle row */
+.toggle-row {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--s-md);
+  justify-content: space-between;
+}
+.toggle-text {
+  flex: 1;
+  min-width: 0;
+}
+.toggle-label {
+  color: var(--text-primary);
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.toggle-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.toggle-pill {
+  appearance: none;
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 22px;
+  margin-top: 2px;
+  padding: 2px;
+  position: relative;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+  width: 38px;
+}
+.toggle-pill.is-on {
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.toggle-knob {
+  background: var(--text-muted);
+  border-radius: 50%;
+  height: 16px;
+  left: 1px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition:
+    left var(--m-fast) var(--ease-spring),
+    background var(--m-fast);
+  width: 16px;
+}
+.toggle-pill.is-on .toggle-knob {
+  background: #fff;
+  left: calc(100% - 17px);
+}
+
+/* memory panel */
+.memory-panel {
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  padding: var(--s-md);
+}
+.memory-head {
+  align-items: center;
+  display: flex;
+  gap: var(--s-sm);
+  justify-content: space-between;
+}
+.memory-empty {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0;
+}
+.memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0;
+}
+.memory-fact {
+  align-items: baseline;
+  display: flex;
+  gap: var(--s-xs);
+}
+.memory-fact-text {
+  color: var(--text-secondary);
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.memory-x {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  display: grid;
+  flex-shrink: 0;
+  padding: 2px;
+  place-items: center;
+  transition: color var(--m-fast);
+}
+.memory-x:hover {
+  color: var(--danger);
+}
+.memory-x svg {
+  height: 12px;
+  width: 12px;
+}
+
+/* ghost button (export / import / start over) */
+.ghost-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: 12px/1 var(--font);
+  padding: 6px 12px;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast);
+  white-space: nowrap;
+}
+.ghost-btn:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-secondary);
+}
+
+/* voice picker — a single, half-width column: only Mavéa's own voice is user-configurable now
+   (the "echo" voice that used to sit beside it only ever spoke the scripted Demo's simulated
+   turns, so it's a fixed choice, not a setting — see DEFAULT_USER_VOICE_ID in voice/presets.ts).
+   Capped at half the panel's width rather than stretching full-bleed, so a single select+preview
+   row keeps the same compact proportions the two-picker layout had. */
+/* Spans the card like the step's other rows, so the picker stretches and the preview button
+   lands on the same right edge as the Remember-me toggle above — a centered, shrink-wrapped
+   picker read as a misplaced afterthought. */
+.voice-grid {
+  display: grid;
+  gap: var(--s-lg);
+  grid-template-columns: minmax(0, 1fr);
+}
+.voice-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-xs);
+  min-width: 0;
+}
+.voice-row {
+  align-items: center;
+  display: flex;
+  gap: var(--s-sm);
+}
+.voice-row .drop-select {
+  flex: 1;
+  min-width: 0;
+}
+.voice-play {
+  appearance: none;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  flex-shrink: 0;
+  /* Same height as the picker beside it, so the pair reads as one control group rather than
+     a field with a small stray circle floating next to it. */
+  height: 44px;
+  place-items: center;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+  width: 44px;
+}
+.voice-play:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+.voice-play svg {
+  height: 14px;
+  width: 14px;
+}
+
+/* Go hub layout */
+.go-grid {
+  display: grid;
+  gap: var(--s-xl);
+  grid-template-columns: 1fr 1fr;
+}
+.go-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+  grid-column: 1;
+  min-width: 0;
+}
+.go-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+  grid-column: 2;
+  min-width: 0;
+}
+.go-study,
+.go-library {
+  grid-column: 1 / -1;
+}
+
+/* checklist (Go hub summary rows) */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.go-left .check-row {
+  align-items: flex-start;
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: var(--s-sm);
+  padding: 8px var(--s-sm);
+  text-align: left;
+  transition: background var(--m-fast);
+  width: 100%;
+}
+.go-left .check-row:hover {
+  background: var(--surface-glass);
+}
+.check-mark {
+  color: var(--insight);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.check-mark svg {
+  height: 14px;
+  width: 14px;
+}
+.check-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.check-value {
+  color: var(--text-muted);
+  font-size: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Start talking CTA */
+.go-start {
+  align-items: center;
+  appearance: none;
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  border: none;
+  border-radius: var(--r-full);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  font: 700 15px/1 var(--font);
+  gap: var(--s-sm);
+  justify-content: center;
+  padding: 13px var(--s-xl);
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+  width: 100%;
+}
+.go-start:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.go-start svg {
+  height: 16px;
+  width: 16px;
+}
+/* No model connected yet — a muted, honest stand-in for the primary CTA so the button never
+   reads as ready when a turn would just fail. Jumps to Connect instead of starting a turn. */
+.go-start--gated {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+}
+.go-start--gated:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+/* inline text entry on the Go hub */
+/* pinned chat composer on the Go hub */
+.go-composer {
+  padding: 0 var(--s-xl) var(--s-xl);
+  width: 100%;
+  max-width: 860px;
+}
+.go-composer-inner {
+  align-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  gap: var(--s-xs);
+  padding: 6px 6px 6px 18px;
+  transition: border-color var(--m-fast);
+}
+.go-composer-inner:focus-within {
+  border-color: var(--presence);
+}
+.go-composer-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  flex: 1;
+  font: 14px/1.4 var(--font);
+  min-width: 0;
+  outline: none;
+}
+.go-composer-input::placeholder {
+  color: var(--text-faint);
+}
+.go-composer-mic,
+.go-composer-send {
+  align-items: center;
+  appearance: none;
+  background: var(--presence);
+  border: none;
+  border-radius: var(--r-full);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 34px;
+  justify-content: center;
+  transition:
+    opacity var(--m-fast),
+    background var(--m-fast);
+  width: 34px;
+}
+.go-composer-mic:hover,
+.go-composer-send:hover {
+  opacity: 0.85;
+}
+.go-composer-mic svg,
+.go-composer-send svg {
+  height: 15px;
+  width: 15px;
+}
+
+/* ghost action row */
+.go-ghosts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+}
+
+/* try-one prompts */
+.try-head {
+  align-items: center;
+  display: flex;
+  gap: var(--s-sm);
+  justify-content: space-between;
+}
+.link-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--presence-soft);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font: 12px/1 var(--font);
+  padding: 0 4px;
+  text-decoration: none;
+  transition: color var(--m-fast);
+  white-space: nowrap;
+}
+.link-btn:hover {
+  color: var(--text-primary);
+}
+/* actions slot */
+.actions-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  margin-top: var(--s-xs);
+}
+
+/* ── "I'm awake" — the resting aurora face on the Go hub ────────────────────────────────────
+   The shared idle-home face (revealed by the hide-rule exception above) is lifted into the band
+   between the stepper header and the heading, so you meet Mavéa right above "I'm awake." It keeps
+   its natural aurora palette (teal → periwinkle → rose) — no re-tint. All motion rides the
+   positioner WRAPPER — never .presence — so the bob/swell/blink keyframes and the DOM-lock stay
+   intact. The setup content is pushed down to clear it. A soft one-shot rise + fade sells the
+   arrival; reduced-motion just gets the resting placement. */
+:root[data-wizard-step='go'] .presence-layer {
+  /* The wizard hides the side rail, and the heading/card centre on the full page — so cancel the
+     `.with-rail` horizontal offset here, or the face floats ~half a rail-width off-axis. */
+  left: 0;
+  /* Fade out as the hub scrolls (--wiz-scroll 0→1, published by SetupWizard) so the fixed face
+     lives only at the top rest position and never floats over the cards/recents below. */
+  opacity: calc(1 - var(--wiz-scroll, 0));
+}
+:root[data-wizard-step='go'] .presence-layer.idlehome .presence {
+  --face-size: 118px;
+}
+:root[data-wizard-step='go'] .presence-layer.idlehome .presence-positioner {
+  transform: translateY(calc(150px - 50vh));
+  animation: wake-rise 900ms var(--ease-out, ease-out) both;
+}
+@keyframes wake-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(174px - 50vh));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(calc(150px - 50vh));
+  }
+}
+/* Room above the heading for the woken face to breathe. */
+:root[data-wizard-step='go'] .setup-stage {
+  padding-top: 156px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-wizard-step='go'] .presence-layer.idlehome .presence-positioner {
+    animation: none;
+  }
+}
+
+/* responsive */
+@media (max-width: 720px) {
+  .setup-nav {
+    padding: var(--s-md);
+  }
+  .const-label {
+    display: none;
+  }
+  .const-step + .const-step::before {
+    width: 16px;
+  }
+  .setup-stage {
+    padding: var(--s-md) var(--s-md) var(--s-xl);
+  }
+  .setup-card {
+    padding: var(--s-lg);
+  }
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+  .voice-grid {
+    max-width: none;
+  }
+  /* Five fixed columns get too narrow to hold a badge + two lines of label text on a phone-
+     width screen — wrap normally here instead; three-then-two reads as ordinary responsive
+     wrap, not the lonely-orphan layout bug the fixed 5-column grid fixes at desktop width. */
+  .provider-tiles {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+  .go-grid {
+    grid-template-columns: 1fr;
+  }
+  .go-left,
+  .go-right {
+    grid-column: 1;
+  }
+}
+
+/* On a phone, three honest controls must share one row: Back, the four 44px step targets, and
+   Appearance. Keep every target full-size, but collapse Back to its already-visible arrow and trim
+   only the decorative connector rhythm so the constellation remains centered without overflow. */
+@media (max-width: 430px) {
+  .setup-nav {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .setup-back {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    place-items: center;
+    font-size: 0;
+  }
+  .setup-back > span {
+    font-size: 16px;
+  }
+  .const-track {
+    gap: 2px;
+  }
+  .const-step {
+    gap: 4px;
+  }
+  .const-step + .const-step::before {
+    width: 8px;
+  }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .const-disc,
+  .go-start,
+  .seg-opt,
+  .setup-done,
+  .toggle-knob,
+  .toggle-pill {
+    transition: none;
+  }
+  .const-step.is-current .const-disc::before {
+    animation: none;
+  }
+}

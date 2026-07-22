@@ -1,0 +1,74 @@
+/* Ghost blocks — dashed, breathing placeholders behind the listening card (board: ghost
+   1.6s opacity 0.45↔0.8; MAYBE runs fainter and half a beat behind). Tokens only. */
+
+.ghost-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: min(680px, 92%);
+  margin: 12px auto 0;
+}
+
+.ghost-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 150px;
+  max-width: 210px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+}
+.ghost-card.is-maybe {
+  border-color: var(--line);
+}
+
+.ghost-kind {
+  font: 600 9px/1 var(--font-data, var(--font));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ghost-card.is-forming .ghost-kind {
+  color: var(--text-secondary);
+}
+
+.ghost-title {
+  font: 700 12px/1.3 var(--font);
+  color: var(--text-secondary);
+}
+.ghost-card.is-maybe .ghost-title {
+  color: var(--text-muted);
+}
+
+.ghost-bones {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ghost-bones i {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--text-muted) 18%, transparent);
+}
+.ghost-bones i:last-child {
+  width: 62%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ghost-card {
+    animation: ghost-breathe 1.6s ease-in-out calc(var(--gi, 0) * 0.5s) infinite;
+  }
+}
+@keyframes ghost-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}

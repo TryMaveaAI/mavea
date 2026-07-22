@@ -1,0 +1,28 @@
+packages:
+  - .
+
+# Reproducible manifests and a fail-closed dependency graph. The lockfile remains the exact build
+# input; these settings also constrain future `pnpm add` / lockfile refreshes.
+savePrefix: ''
+strictPeerDependencies: true
+peerDependencyRules:
+  # eslint-plugin-jsx-a11y 6.10.2 works under the repository's green ESLint 10 lint suite but its
+  # peer range has not yet been widened past ESLint 9. Keep the exception package-specific.
+  allowedVersions:
+    'eslint-plugin-jsx-a11y>eslint': '10'
+engineStrict: true
+nodeVersion: 24.11.0
+minimumReleaseAge: 1440
+blockExoticSubdeps: true
+
+# Dependency lifecycle scripts are code execution during install. Esbuild's platform-binary check
+# is required; donation messages and protobuf's optional postinstall are explicitly denied. Any
+# new package that adds an unreviewed install script fails instead of silently executing it.
+allowBuilds:
+  esbuild: true
+  core-js: false
+  protobufjs: false
+
+overrides:
+  protobufjs: ^7.6.3
+  undici: ^7.28.0

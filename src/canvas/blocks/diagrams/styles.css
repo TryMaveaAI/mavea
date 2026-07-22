@@ -1,0 +1,4586 @@
+/* diagrams family styles — tokens only; light/dark via existing token overrides.
+   The figure itself is SVG drawn in design-system colors; this sheet only sizes the
+   stage and styles the text layers (which can't inherit CSS custom props as `fill`
+   reliably across browsers, so fills are set on the SVG nodes and these rules own
+   typography + the label backplate). */
+
+.dg-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The stage lets the SVG drive its own height via the computed viewBox, so a
+   horizontal chain of 4 nodes gets a compact card, not a letterboxed 16:10 box. */
+.dg-stage {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  min-height: 160px;
+  overflow: hidden;
+}
+.dg-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: hidden;
+}
+
+.dg-node-label {
+  fill: var(--text-primary);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dg-node-sub {
+  fill: var(--text-muted);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* edge labels get a soft backplate so a connection line never reads through the text */
+.dg-edge-label {
+  fill: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.dg-foot {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-card {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── sequencediagram ───────────────────────── */
+/* Wrapper clips any message-label or arrowhead bleed: the SVG keeps overflow:visible so
+   markers render, but a long label on the last lane must never escape the card. */
+.dg-seq {
+  overflow: hidden;
+}
+.dg-seq-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  /* The component sets max-width to the diagram's natural pixel width (n lanes × LANE_W), so it
+     renders 1:1 and only scales down on a narrow card — never balloons. Centre it. */
+  max-width: 100%;
+  margin-inline: auto;
+}
+.dg-seq-life {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.dg-seq-actorbox {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.dg-seq-actor {
+  fill: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.dg-seq-msg {
+  stroke: var(--presence);
+  stroke-width: 1.6;
+}
+.dg-seq-msg.reply {
+  stroke: var(--text-muted);
+  stroke-dasharray: 4 3;
+}
+.dg-seq-arrowhead {
+  fill: var(--presence);
+}
+.dg-seq-lbl {
+  fill: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ───────────────────────── statemachine ───────────────────────── */
+.dg-sm-svg {
+  width: 100%;
+  /* Cap the absolute size so a diagram in a wide canvas column doesn't blow up to ~1000px
+     (which scaled the viewBox-unit fonts to ~40px and made the figure dwarf the card). The
+     fitted viewBox supplies the aspect ratio, so this governs scale, not shape. */
+  max-width: 460px;
+  height: auto;
+  margin-inline: auto;
+  display: block;
+  overflow: visible;
+}
+.dg-sm-circ {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
+}
+.dg-sm-state.on .dg-sm-circ {
+  stroke: var(--presence);
+  fill: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+}
+.dg-sm-circ-inner {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 0.6;
+}
+.dg-sm-lbl {
+  fill: var(--text-primary);
+  font-size: 4px;
+  font-weight: 600;
+}
+.dg-sm-edge {
+  stroke: var(--text-muted);
+  stroke-width: 0.7;
+  fill: none;
+}
+.dg-sm-arrowhead {
+  fill: var(--text-muted);
+}
+.dg-sm-elbl {
+  fill: var(--text-secondary);
+  font-size: 3.6px;
+  /* Soft backplate (matching .dg-edge-label) so a transition line never reads through a
+     label — the diagonal "Loop"/"Capture" edges otherwise cut straight across the text. */
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 1.2px;
+  stroke-linejoin: round;
+}
+
+/* ───────────────────────── erdiagram ───────────────────────── */
+.dg-er {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+/* Entities may be hand-placed on the grid (the `gx`/`gy` props). On a phone-width card the grid has
+   only one column, so an entity asking for column 2 opened an implicit column and the pair squeezed
+   into half a card each — field types ran straight off the edge. Below that width the authored
+   placement is meaningless: ignore it and let the entities stack full-width, one per row. */
+@container (max-width: 340px) {
+  .dg-er {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dg-er-entity {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+}
+.dg-er-entity {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-glass);
+}
+.dg-er-name {
+  padding: 6px 10px;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+.dg-er-fields {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dg-er-field {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: var(--fs-xs, 12px);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 50%, transparent);
+}
+.dg-er-field:last-child {
+  border-bottom: 0;
+}
+.dg-er-key {
+  /* PK / FK is the whole reason the field is marked at all — at 8px it was a smudge on the chip. */
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--track);
+  color: var(--text-muted);
+}
+.dg-er-field.k-pk .dg-er-key {
+  background: color-mix(in oklab, var(--warning) 22%, transparent);
+  color: var(--warning);
+}
+.dg-er-fname {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.dg-er-ftype {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.dg-er-rels {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dg-er-rel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.dg-er-card {
+  font-weight: 700;
+  color: var(--presence);
+  font-variant-numeric: tabular-nums;
+}
+.dg-er-line {
+  flex: 1;
+  min-width: 18px;
+  height: 1px;
+  background: var(--line-strong);
+}
+.dg-er-rlbl {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ───────────────────────── circuitdiagram ───────────────────────── */
+.dg-cir-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  /* Square viewBox, so at full width the figure is as TALL as the card is wide — cap
+     the measure (and centre) so it stays a sensible size on a wide canvas. */
+  max-width: 420px;
+  margin-inline: auto;
+}
+.dg-cir-wire {
+  stroke: var(--text-muted);
+  stroke-width: 0.8;
+}
+.dg-cir-glyph line,
+.dg-cir-glyph polyline,
+.dg-cir-glyph circle {
+  stroke: var(--text-primary);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+.dg-cir-node {
+  fill: var(--text-primary);
+}
+.dg-cir-lbl {
+  fill: var(--text-secondary);
+  font-size: 4px;
+  font-weight: 600;
+}
+
+/* ───────────────────────── controlblockdiagram ───────────────────────── */
+.dg-cbd-stage {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  min-height: 140px;
+  overflow: hidden;
+}
+.dg-cbd-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.dg-cbd-wire line,
+.dg-cbd-wire polyline {
+  stroke: var(--text-muted);
+  stroke-width: 2.4;
+  fill: none;
+}
+.dg-cbd-arrowhead {
+  fill: var(--text-muted);
+}
+.dg-cbd-box {
+  fill: var(--surface-elevated-2);
+  stroke: var(--line-strong);
+  stroke-width: 1.6;
+}
+.dg-cbd-label {
+  fill: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dg-cbd-sum {
+  fill: var(--surface-elevated-2);
+  stroke: var(--line-strong);
+  stroke-width: 1.6;
+}
+.dg-cbd-sum-cross {
+  stroke: var(--text-secondary);
+  stroke-width: 1.8;
+}
+.dg-cbd-sum-label {
+  fill: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 600;
+}
+.dg-cbd-sign {
+  fill: var(--presence);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ───────────────────────── sysarchdiagram ───────────────────────── */
+.sa-stage {
+  max-width: 720px;
+}
+.sa-edge line {
+  stroke: var(--text-muted);
+  stroke-width: 2.2;
+  fill: none;
+  opacity: 0.85;
+}
+.sa-arrowhead {
+  fill: var(--text-muted);
+}
+.sa-label {
+  fill: var(--text-primary);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.sa-sub {
+  fill: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.sa-icon {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sa-icon-fill {
+  fill: var(--text-primary);
+  stroke: none;
+}
+
+/* ───────────────────────── datapipeline ───────────────────────── */
+.dp-stage {
+  max-width: 720px;
+}
+.dp-edge line {
+  stroke: var(--text-muted);
+  stroke-width: 2.2;
+  fill: none;
+  opacity: 0.85;
+}
+.dp-arrowhead {
+  fill: var(--text-muted);
+}
+.dp-label {
+  fill: var(--text-primary);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dp-sub {
+  fill: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.dp-icon {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ───────────────────────── fiveforces ───────────────────────── */
+.ff-stage {
+  max-width: 480px;
+}
+.ff-link {
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.ff-hub {
+  fill: var(--surface-elevated-2);
+  stroke: var(--line-strong);
+  stroke-width: 2;
+}
+.ff-hub-title {
+  fill: var(--text-primary);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.ff-hub-sub {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 500;
+}
+.ff-box {
+  fill: var(--surface-elevated);
+  stroke-width: 1.5;
+}
+.ff-slot-lbl {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.ff-box-lbl {
+  fill: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ff-box-note {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 500;
+}
+.ff-strength {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ───────────────────────── fivewhychain ───────────────────────── */
+.fwy-stage {
+  max-width: 560px;
+}
+.fwy-link {
+  stroke: var(--line-strong);
+  stroke-width: 2;
+}
+.fwy-arrowhead {
+  fill: var(--line-strong);
+}
+.fwy-card {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.fwy-card--root {
+  fill: color-mix(in oklab, var(--insight) 12%, var(--surface-elevated));
+  stroke: var(--insight);
+  stroke-width: 1.5;
+}
+.fwy-rail {
+  fill: var(--text-faint);
+}
+.fwy-rail--root {
+  fill: var(--insight);
+}
+.fwy-badge {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fwy-badge--problem {
+  fill: var(--presence);
+}
+.fwy-badge--root {
+  fill: var(--insight);
+}
+.fwy-question {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 500;
+  font-style: italic;
+}
+.fwy-answer {
+  fill: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.fwy-answer--problem {
+  font-weight: 700;
+}
+.fwy-answer--root {
+  fill: var(--insight);
+  font-weight: 700;
+}
+
+/* ───────────────────────── threatmodel ───────────────────────── */
+.tm-empty {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.tm-stage {
+  max-width: 720px;
+}
+.tm-boundary {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 4;
+}
+.tm-lane-plain {
+  fill: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.tm-lane-lbl {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.tm-lane-empty {
+  fill: var(--text-faint);
+  font-size: var(--fs-2xs, 10px);
+  font-style: italic;
+}
+.tm-chip {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.tm-glyph {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tm-chip-lbl {
+  fill: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tm-mark {
+  fill: var(--insight);
+  stroke: var(--surface-elevated);
+  stroke-width: 1.4;
+}
+.tm-mark--open {
+  fill: var(--danger);
+}
+.tm-mark-more {
+  fill: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.tm-register {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: var(--r-md, 8px);
+  background: color-mix(in oklab, var(--surface-elevated) 55%, transparent);
+  border: 1px solid var(--grid-line);
+}
+.tm-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tm-row-stride {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface-elevated-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  flex: none;
+}
+.tm-row-asset {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.tm-row-cat {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tm-row-status {
+  margin-left: auto;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  flex: none;
+}
+.tm-row-status--open {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+}
+.tm-row-status--mitigated {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.tm-row-mitigation {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ───────────────────────── foodweb ───────────────────────── */
+.fwb-empty {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.fwb-stage {
+  max-width: 640px;
+}
+.fwb-tier-line {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.fwb-gutter-line {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.fwb-tier-lbl {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.fwb-link {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 1.8;
+  opacity: 0.75;
+}
+.fwb-arrowhead {
+  fill: var(--presence);
+  opacity: 0.85;
+}
+.fwb-node {
+  fill: color-mix(in oklab, var(--insight) 16%, var(--surface-elevated));
+  stroke: var(--insight);
+  stroke-width: 1.6;
+}
+.fwb-node-lbl {
+  fill: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ───────────────────────── primefactortree ───────────────────────── */
+.pft-empty {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pft-stage {
+  max-width: 480px;
+}
+.pft-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.pft-node {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1.5;
+}
+.pft-node--prime {
+  fill: color-mix(in oklab, var(--insight) 14%, var(--surface-elevated));
+  stroke: var(--insight);
+}
+.pft-ring {
+  fill: none;
+  stroke: var(--insight);
+  stroke-width: 1.4;
+  opacity: 0.5;
+}
+.pft-node-lbl {
+  fill: var(--text-primary);
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+.pft-cap {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ───────────────────────── recursiontree ───────────────────────── */
+.rt-stage {
+  max-width: 600px;
+}
+.rt-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1.6;
+  fill: none;
+}
+.rt-box {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1.4;
+}
+.rt-call {
+  fill: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+.rt-badge {
+  fill: color-mix(in oklab, var(--insight) 20%, var(--surface-elevated));
+  stroke: var(--insight);
+  stroke-width: 1.2;
+}
+.rt-badge-text {
+  fill: var(--insight);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+
+/* ───────────────────────── nnarchitecture ───────────────────────── */
+.nn-stage {
+  max-width: 700px;
+}
+.nn-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  opacity: 0.22;
+}
+.nn-edge-hi {
+  stroke: var(--presence);
+  stroke-width: 1.8;
+  opacity: 0.85;
+}
+.nn-node {
+  fill: var(--surface-elevated-2);
+  stroke: var(--line-strong);
+  stroke-width: 1.4;
+}
+.nn-node-hi {
+  fill: color-mix(in oklab, var(--presence) 30%, var(--surface-elevated-2));
+  stroke: var(--presence);
+  stroke-width: 2.2;
+}
+.nn-more-dot {
+  fill: var(--surface-glass);
+  stroke: var(--grid-line);
+  stroke-width: 1.2;
+  stroke-dasharray: 2.5 2.5;
+}
+.nn-more-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.nn-name {
+  fill: var(--text-primary);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.nn-meta {
+  fill: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.nn-act {
+  fill: var(--text-faint);
+  font-style: italic;
+}
+
+/* ───────────────────────── synthesisroute ───────────────────────── */
+.sr-stage {
+  max-width: 720px;
+}
+.sr-label {
+  fill: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.sr-smiles {
+  fill: var(--text-muted);
+  font-size: 12px;
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+.sr-line {
+  stroke: var(--text-secondary);
+  stroke-width: 2.2;
+}
+.sr-line-retro {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+}
+.sr-arrowhead-fwd {
+  fill: var(--text-secondary);
+}
+.sr-arrowhead-retro {
+  fill: var(--surface-default);
+  stroke: var(--text-muted);
+  stroke-width: 1.2;
+}
+.sr-yield {
+  fill: var(--insight);
+  font-size: 14px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+/* ───────────────────────── plasmidmap ───────────────────────── */
+.pm-wrap {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 380px;
+  margin-inline: auto;
+}
+.pm-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.pm-backbone {
+  fill: none;
+  stroke: var(--grid-line);
+  stroke-width: 1.6;
+}
+.pm-feature {
+  stroke-width: 5;
+  stroke-linecap: butt;
+}
+.pm-arrowhead {
+  fill: var(--text-primary);
+}
+.pm-tick {
+  stroke: var(--text-muted);
+  stroke-width: 0.8;
+}
+.pm-tick-unique {
+  stroke: var(--text-primary);
+  stroke-width: 1.2;
+}
+.pm-origin-dot {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 0.8;
+}
+.pm-label {
+  font-size: 5px;
+  font-weight: 500;
+}
+.pm-label-bold {
+  font-weight: 700;
+}
+.pm-center-size {
+  fill: var(--text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pm-center-unit {
+  fill: var(--text-muted);
+  font-size: 5.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── argumentmap ── claim + premises (support / objection / qualifier) */
+.am-claim {
+  font-size: var(--fs-md, 16px);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 20%, transparent);
+  border-radius: var(--r-md);
+  margin: 10px 0 14px;
+}
+.am-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+@media (max-width: 440px) {
+  .am-columns {
+    grid-template-columns: 1fr;
+  }
+}
+.am-col-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.am-premise {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+.am-premise-rail {
+  width: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 16px;
+}
+.am-premise-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.am-premise-text {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+.am-premise-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.am-qualifiers {
+  padding-top: 10px;
+  border-top: 1px solid var(--grid-line);
+  margin-top: 4px;
+}
+.am-verdict {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--insight) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 20%, transparent);
+  font-size: var(--fs-xs, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.am-verdict .ic {
+  color: var(--insight);
+  flex-shrink: 0;
+}
+
+/* ── probabilitytree ── left-to-right branching event tree */
+
+/* Horizontally scrollable stage so narrow cards never clip the SVG. The SVG's
+   own viewBox determines height naturally — no max-height cap so deep trees
+   with many branches never get clipped at the bottom. */
+.dg-pt-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+  /* Negative margin compensates for card padding so the SVG can bleed edge-to-edge
+     on small cards while still clipping cleanly. */
+  margin-inline: -2px;
+}
+.dg-pt-svg {
+  display: block;
+  min-width: 380px;
+  /* The SVG is width:100% over a fixed viewBox (natural width VB_W = 560), so on a wide card it
+     would scale UP and the proportional height would balloon (the full-bleed-SVG trap). Cap it at
+     its natural width and centre it; narrow cards still pan via .dg-pt-scroll's min-width. */
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+/* Nodes */
+.dg-pt-node {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+.dg-pt-node--root {
+  fill: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  stroke: var(--presence);
+}
+/* Leaf nodes get a slightly deeper tint to anchor the terminal end visually. */
+.dg-pt-node--leaf {
+  fill: color-mix(in oklab, currentColor 10%, var(--surface-elevated));
+}
+
+.dg-pt-node-lbl {
+  fill: var(--text-primary);
+  font-size: 8px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Branch edges */
+.dg-pt-edge {
+  stroke-width: 1.5;
+  /* Color is set per-element via the `stroke` attribute to cycle through accents. */
+  fill: none;
+  opacity: 0.75;
+}
+
+/* Probability labels on branch lines — painted over the line with a backplate so
+   the line never bleeds through the text. */
+.dg-pt-edge-lbl {
+  fill: var(--text-secondary);
+  font-size: 8.5px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Outcome labels at the right edge */
+.dg-pt-outcome-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  /* fill is set per-element to match the branch accent color */
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Column header micro-labels */
+.dg-pt-col-hdr {
+  fill: var(--text-faint);
+  font-size: 7px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+/* Footer note */
+.dg-pt-note {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── MindShape ("Watch Me Think") ──────────────────────────────────────────── */
+
+/* Full-stage overlay — sits above canvas-scroll, fills the entire canvas-stage area.
+   The stage already has padding (76px top, 112px bottom) from the topbar/dock, so the
+   canvas centers within the padded usable region. */
+/* Watch Me Think takes over the stage: the mindshape draws its OWN center face, so the app's
+   presence orb would double it — hide it. The per-block Ask affordances belong to a real
+   answer canvas, not the live map, so suppress them too (they're confusing here). */
+.mavea-app.watch-thinking .presence-layer,
+.mavea-app.watch-thinking .block-actions,
+/* The user's own ink (blue strokes/highlights) over the answer would bleed through the takeover
+   the same way Mavéa's marks would — keep the live map clean. Mavéa's orange marks are unmounted
+   in LiveApp; this is the stage-level user-ink overlay, which stays mounted, so hide it here. */
+.mavea-app.watch-thinking .ink-user-overlay {
+  display: none;
+}
+
+.ms-stage-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Clear the topbar (top) and the dock + scrubber + chips assembly (bottom) so no card is
+     ever drawn under the fixed chrome. The bottom value accounts for dock-h + scrubber + the
+     floating Just-listen/Mapping chips that sit above the dock. */
+  padding: 70px 32px 168px;
+  box-sizing: border-box;
+  /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the
+     page background. Tokens handle light/dark automatically. */
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 44%,
+    var(--surface-raised) 0%,
+    var(--surface-default) 100%
+  );
+  transition: background 0.8s ease;
+}
+
+/* Subtle warmth at settle — signals the transition from "listening" to "found something". */
+.ms-stage-fill[data-phase='settled'] {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 44%,
+    color-mix(in oklab, var(--surface-raised) 85%, var(--insight) 15%) 0%,
+    var(--surface-default) 100%
+  );
+}
+
+/* The canvas inside the stage fill: a contained 10:7 box that always fits the visible area.
+   width drives it but is capped both by the available height (× 10/7) and a sane max so cards
+   stay clustered and readable instead of spreading to the screen edges on a wide monitor. */
+.ms-stage-fill .ms-canvas {
+  width: 100%;
+  max-width: min(1100px, calc((100dvh - 238px) * 10 / 7));
+  max-height: 100%;
+  margin-inline: auto;
+  border-radius: 0;
+}
+
+/* During listening the overlay stays at z-index 2 so the bottom dock/scrubber chrome remains on
+   top and usable (the on-map action bar sits in the clear space above the dock). Only a settled
+   map is raised above the dock. */
+.ms-stage-fill[data-phase='settled'] {
+  z-index: 50;
+}
+
+/* The always-visible way back to the conversation — top-right of the overlay's content area,
+   below the fixed topbar (the overlay fills the stage from y=0, so this clears the ~60px topbar
+   rather than colliding with its right-side controls). Mirrors the Present-mode exit pill so the
+   two takeovers feel of a piece. */
+.ms-exit {
+  position: absolute;
+  top: 72px;
+  right: 16px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 10.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 7px 13px 7px 9px;
+  cursor: pointer;
+  opacity: 0.72;
+  transition:
+    opacity 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+.ms-exit:hover,
+.ms-exit:focus-visible {
+  opacity: 1;
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.ms-exit svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ms-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 10 / 7;
+  max-width: 640px;
+  margin-inline: auto;
+  overflow: hidden;
+  background: var(--surface-default);
+  border-radius: 10px;
+}
+
+/* SVG overlay for spokes + tension threads */
+.ms-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Spokes: faint lines from center to each stable atom */
+.ms-spoke {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  opacity: 0.26;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ms-draw-spoke 0.5s ease forwards;
+  animation-delay: calc(var(--ms-spoke-i, 0) * 0.06s + 0.1s);
+}
+
+@keyframes ms-draw-spoke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Tension threads: dashed curved arcs */
+.ms-thread {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0;
+  animation: ms-fade-thread 0.4s ease forwards;
+}
+
+@keyframes ms-fade-thread {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+.ms-thread-label {
+  font-size: 9px;
+  font-style: italic;
+  fill: var(--text-muted);
+  font-family: inherit;
+}
+
+/* Connection threads (supports / depends-on / same-thread): quieter than a tension — a thin solid
+   arc so the map's structure reads even when nothing is in conflict, without competing with the
+   hero tension arcs. */
+.ms-link {
+  fill: none;
+  stroke: color-mix(in oklab, var(--insight) 55%, var(--text-muted));
+  stroke-width: 1.25;
+  opacity: 0;
+  animation: ms-fade-link 0.4s ease forwards;
+}
+
+@keyframes ms-fade-link {
+  to {
+    opacity: 0.4;
+  }
+}
+
+/* ── Center node ──────────────────────────────────────────────────────────── */
+
+.ms-center {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.ms-center-pip-wrap {
+  --face-size: 80px;
+}
+/* At 80px the jelly's fine detail (shimmer strokes, aurora bands, the second glint) turns to
+   noise and the glow filter costs a compositor layer the map doesn't need — simplify to the
+   silhouette features and thicken the strands so the curtains stay readable. */
+.ms-center-pip-wrap .presence .mascot .shimmer,
+.ms-center-pip-wrap .presence .mascot .band,
+.ms-center-pip-wrap .presence .mascot .glint.g2 {
+  display: none;
+}
+.ms-center-pip-wrap .presence .mascot .curtain .strand {
+  stroke-width: 4.2;
+}
+.ms-center-pip-wrap .presence .mascot .bell {
+  filter: none;
+}
+
+.ms-center-label {
+  /* "WHAT I HEARD" is the map's own caption — the line that says the whole thing is a read-back and
+     not a verdict — and it was set at 7px, below reading size. Tighter leading and tracking keep the
+     bigger type inside the footprint the 7px label had, so the atom cards the map places around the
+     centre have no less room than they were laid out against. */
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.ms-canvas[data-phase='listening'] .ms-center-label,
+.ms-canvas[data-phase='pausing'] .ms-center-label,
+.ms-canvas[data-phase='settled'] .ms-center-label {
+  opacity: 1;
+}
+
+.ms-center-question {
+  max-width: 180px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary, var(--text-muted));
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.3s;
+}
+
+/* The centre keeps a clear zone for itself in WORLD units (KEEPOUT in MindShape.tsx), and the atoms
+   respect it. But this text is a fixed sibling the camera flies around, not part of the world — so
+   when the map zooms out, that clear zone collapses on screen while the text stays exactly as big as
+   it was, and the question lies straight across the cards beneath it. Scale the TEXT with the camera
+   so it keeps to the room actually reserved for it. Floored, because unreadable is its own bug — and
+   applied only to the text: a transform must never land on .presence or an ancestor of it, which is
+   why .ms-center itself (the face's parent) is left alone. */
+.ms-center-label,
+.ms-center-question {
+  transform: scale(clamp(0.68, var(--ms-cam-scale, 1), 1));
+  transform-origin: center top;
+}
+
+.ms-canvas[data-phase='settled'] .ms-center-question {
+  opacity: 1;
+}
+
+/* ── Live transcript ticker — shows what the mic is hearing right now ─────── */
+.ms-live-text {
+  max-width: 220px;
+  font-size: 10px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  pointer-events: none;
+}
+.ms-canvas[data-phase='listening'] .ms-live-text,
+.ms-canvas[data-phase='pausing'] .ms-live-text {
+  opacity: 1;
+}
+
+/* banked thought count + mic-active dot */
+.ms-thought-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.ms-canvas[data-phase='listening'] .ms-thought-count,
+.ms-canvas[data-phase='pausing'] .ms-thought-count {
+  opacity: 1;
+}
+.ms-mic-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--insight);
+  animation: ms-mic-pulse 1.4s ease-in-out infinite;
+}
+.ms-canvas[data-phase='pausing'] .ms-mic-dot {
+  animation: none;
+  background: var(--text-muted);
+}
+@keyframes ms-mic-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ── Zoom controls ────────────────────────────────────────────────────────── */
+.ms-zoom-controls {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 2;
+}
+.ms-zoom-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  user-select: none;
+}
+.ms-zoom-btn:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+
+/* The transform-origin-centered zoom layer wraps atoms + SVG */
+.ms-zoom-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* ── Emergent theme labels ─────────────────────────────────────────────────────
+   Named from the speaker's own words and placed at the heart of each theme's atoms.
+   None exist until a theme is named, so the empty canvas carries no prescriptive scaffold.
+   They rise in rather than appear — the "arrives, not appears" feel of the settle reveal. */
+
+.ms-cluster-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 150px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--text-muted);
+  /* --surface-base is not a defined token; color-mix with an invalid color voids the whole
+     declaration → a transparent backplate that leaves the label illegible over threads in both
+     themes. Use the real card surface so the chip reads in light and dark. */
+  background: color-mix(in oklab, var(--surface-elevated) 80%, transparent);
+  padding: 2px 7px;
+  border-radius: 7px;
+  pointer-events: none;
+  opacity: 0;
+  animation: ms-cluster-rise 0.6s ease forwards;
+  animation-delay: 0.3s;
+}
+
+@keyframes ms-cluster-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -42%);
+  }
+  to {
+    opacity: 0.85;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-cluster-label {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+/* ── Atom cards ───────────────────────────────────────────────────────────── */
+
+.ms-card {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(0.95);
+  /* Shrinks in lockstep with the layout's collision boxes (cardScale) so a busy map stays
+     separated and legible. */
+  width: calc(184px * var(--ms-card-scale, 1));
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--ms-kind-color, var(--grid-line));
+  border-radius: var(--r-sm);
+  padding: 7px 9px 8px;
+  cursor: default;
+  opacity: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  animation: ms-card-in 0.35s ease forwards;
+  animation-delay: calc(var(--ms-i, 0) * 0.07s + 0.1s);
+  transition: box-shadow 0.2s ease;
+}
+
+@keyframes ms-card-in {
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* forming state: dashed border, muted */
+.ms-card[data-status='forming'] {
+  border-style: dashed;
+  opacity: 0;
+  animation: ms-card-forming-in 0.35s ease forwards;
+  animation-delay: calc(var(--ms-i, 0) * 0.07s + 0.1s);
+}
+
+@keyframes ms-card-forming-in {
+  to {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+}
+
+/* stable state: solid, elevated, clickable */
+.ms-card[data-status='stable'] {
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ms-card[data-status='stable']:hover {
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
+}
+
+/* unsaid/maybe: warm tinted background, gold dashed border.
+   Light: a warm cream wash from the mockup. Dark: the same intent expressed
+   as a gold tint over the elevated surface so the cue survives both themes. */
+.ms-card.ms-unsaid {
+  /* This is a sentence the learner must be able to judge, not a compact atom label. Give it a
+     wider measure and wrap the full validated text; the world camera already reserves 150px of
+     half-width for cards, so 240px stays inside the existing collision/auto-fit envelope. */
+  width: calc(240px * var(--ms-card-scale, 1));
+  background: color-mix(in oklab, var(--warning) 9%, var(--surface-elevated));
+  border-color: var(--warning);
+  border-style: dashed;
+}
+
+.ms-card.ms-unsaid .ms-atom-label {
+  overflow-wrap: anywhere;
+}
+
+:root[data-theme='light'] .ms-card.ms-unsaid {
+  background: color-mix(in oklab, var(--warning) 8%, var(--surface-elevated));
+}
+
+:root[data-theme='dark'] .ms-card.ms-unsaid {
+  background: color-mix(in oklab, var(--warning) 14%, var(--surface-elevated));
+}
+
+/* ── Card interior ────────────────────────────────────────────────────────── */
+
+.ms-card-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.ms-kind-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ms-kind-color, var(--text-muted));
+  flex-shrink: 0;
+}
+
+.ms-kind-label {
+  /* The kind — worry, option, constraint — tells you how to read the card under it, so it cannot be
+     the first thing the card scale shrinks out of legibility: floored, then scaled. The tighter
+     leading and tracking pay for the larger type, so the label's box comes out no bigger than it was
+     at 8.5px — the map's collision boxes are computed off the card's size, and a card that quietly
+     grew here would start landing on its neighbours. */
+  font-size: max(9px, calc(9px * var(--ms-card-scale, 1)));
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ms-kind-color, var(--text-muted));
+  filter: brightness(0.85);
+}
+
+.ms-atom-label {
+  font-size: calc(11.5px * var(--ms-card-scale, 1));
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary, inherit);
+  word-break: break-word;
+}
+
+/* Quote reveal: slides open on [data-open='true'] */
+.ms-card-quote {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s ease;
+  font-size: calc(10.5px * var(--ms-card-scale, 1));
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin-top: 0;
+}
+
+.ms-card[data-open='true'] .ms-card-quote {
+  max-height: 80px;
+  margin-top: 5px;
+}
+
+.ms-you-said {
+  font-weight: 600;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* ✕ to dismiss a card that doesn't belong (live map only — block/replay mode passes no handler).
+   Tucked into the top-right corner, revealed on hover/focus so it never competes with the label;
+   always shown on touch where there's no hover. Inside the card padding to stay clear of the
+   canvas's overflow clipping. */
+.ms-card-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--surface-elevated) 88%, var(--text-muted));
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.ms-card:hover .ms-card-remove,
+.ms-card:focus-within .ms-card-remove {
+  opacity: 1;
+}
+
+.ms-card-remove:hover,
+.ms-card-remove:focus-visible {
+  background: var(--warning, #c9705e);
+  color: #fff;
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .ms-card-remove {
+    opacity: 1;
+  }
+}
+
+/* ── Action bar ───────────────────────────────────────────────────────────── */
+
+.ms-actions {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 10px 12px;
+  /* The slide-in starts fully below the canvas. The gradient fades the bar's own backdrop, and the
+     14px bottom inset keeps the button pills clear of the canvas's overflow-hidden edge (and the
+     scrubber that sits right beneath it) so they're never clipped at the bottom. Wrapping (rather
+     than a fixed one-line row) matters here: up to five pills (settled + a hero tension) can be on
+     screen at once, and this bar sits inside whatever width the canvas card happens to have — a
+     narrow one must grow taller with a second row instead of clipping or overflowing sideways. */
+  background: linear-gradient(to top, var(--surface-default) 78%, transparent);
+  transform: translateY(calc(100% + 14px));
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.6s;
+}
+
+/* The actions ride on the map the moment there's something to act on — no pause or timer —
+   and stay up once settled. */
+.ms-canvas[data-has-actions='true'] .ms-actions,
+.ms-canvas[data-phase='settled'] .ms-actions {
+  transform: translateY(0);
+}
+
+.ms-action-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1.5px solid var(--grid-line);
+  background: var(--surface-elevated);
+  color: var(--text-primary, inherit);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ms-action-btn:hover {
+  background: color-mix(in oklab, var(--surface-elevated) 80%, var(--insight, #5b63e8));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ms-action-primary {
+  background: var(--insight, #5b63e8);
+  border-color: var(--insight, #5b63e8);
+  color: #fff;
+}
+
+.ms-action-primary:hover {
+  background: color-mix(in oklab, var(--insight, #5b63e8) 85%, #000);
+}
+
+.ms-action-btn.is-active {
+  border-color: var(--insight, #5b63e8);
+  background: color-mix(in oklab, var(--insight, #5b63e8) 14%, var(--surface-elevated));
+  color: var(--insight, #5b63e8);
+}
+
+/* ── The tension callout — top-right floating card (the settled map's headline) ───────────── */
+.ms-tension-callout {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 14;
+  width: min(300px, 60%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  border-radius: var(--r-md, 14px);
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, var(--grid-line));
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-modal, 0 18px 48px rgba(0, 0, 0, 0.28));
+  transform-origin: top right;
+  animation: ms-panel-in-corner 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Floated top-right at 60% of the width, the callout comes straight down across the centre label on a
+   narrow card — and that label is the one piece of text the whole map is arranged around. Dock it to
+   the bottom edge instead, where it still explains the tension without sitting on top of it. */
+@container (max-width: 460px) {
+  .ms-tension-callout {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    transform-origin: bottom center;
+  }
+}
+
+.ms-tension-eyebrow {
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--warning);
+}
+.ms-tension-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary, inherit);
+}
+.ms-tension-body strong {
+  font-weight: 600;
+  color: var(--text-primary, inherit);
+}
+.ms-tension-cta {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1.5px solid color-mix(in oklab, var(--warning) 55%, var(--grid-line));
+  background: color-mix(in oklab, var(--warning) 12%, var(--surface-elevated));
+  color: color-mix(in oklab, var(--warning) 78%, var(--text-primary, #222));
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.ms-tension-cta:hover {
+  background: color-mix(in oklab, var(--warning) 22%, var(--surface-elevated));
+}
+.ms-tension-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+}
+.ms-tension-close:hover {
+  color: var(--text-primary, inherit);
+}
+
+/* ── Turn into a plan — centered traced-step checklist ───────────────────────── */
+.ms-plan,
+.ms-kept {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 16;
+  width: min(440px, 86%);
+  max-height: 78%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px 22px;
+  border-radius: var(--r-lg, 18px);
+  border: 1px solid var(--grid-line);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-modal, 0 24px 60px rgba(0, 0, 0, 0.32));
+  animation: ms-panel-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ms-plan-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ms-plan-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, inherit);
+}
+.ms-plan-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ms-plan-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ms-plan-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1.5px solid color-mix(in oklab, var(--insight, #5b63e8) 55%, var(--grid-line));
+  background: color-mix(in oklab, var(--insight, #5b63e8) 8%, transparent);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.ms-plan-check:hover {
+  border-color: var(--insight, #5b63e8);
+  background: color-mix(in oklab, var(--insight, #5b63e8) 16%, transparent);
+}
+.ms-plan-check[aria-checked='true'] {
+  background: var(--insight, #5b63e8);
+  border-color: var(--insight, #5b63e8);
+}
+.ms-plan-check-mark {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+/* a checked-off step recedes — done, but its trace stays visible */
+.ms-plan-step[data-done='true'] .ms-plan-step-label {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.ms-plan-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ms-plan-step-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, inherit);
+  line-height: 1.35;
+}
+.ms-plan-step-trace {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.ms-plan-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.ms-plan-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid-line);
+}
+.ms-plan-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Kept this shape — the calm close ─────────────────────────────────────────── */
+.ms-kept {
+  width: min(380px, 84%);
+  align-items: flex-start;
+  text-align: left;
+}
+.ms-kept-eyebrow {
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--insight, #5b63e8);
+}
+.ms-kept-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary, inherit);
+}
+.ms-kept-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ms-kept-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--grid-line);
+  background: var(--surface-default);
+  color: var(--text-primary, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.ms-kept-btn:hover {
+  border-color: var(--insight, #5b63e8);
+}
+.ms-kept-memory {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* Centre-anchored panels (plan, kept) keep their -50% translate while scaling in. */
+@keyframes ms-panel-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+/* The corner callout scales from its own box (it isn't -50% centred). */
+@keyframes ms-panel-in-corner {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ── Signal chip: transient Mavéa reaction during listening ────────────────────
+   Appears above the center face, fades in on mount, exits when expired.
+   CSS animation handles enter; the component is simply unmounted on expiry so
+   a new chip re-triggers the enter animation automatically. */
+.ms-signal-chip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, transparent);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+  pointer-events: none;
+  animation: ms-signal-in 0.4s ease forwards;
+}
+
+@keyframes ms-signal-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* kind tints — subtle so chips don't compete with cards */
+.ms-signal-chip[data-kind='tension'] {
+  color: var(--warning);
+  border-color: color-mix(in oklab, var(--warning) 35%, var(--line-soft));
+}
+.ms-signal-chip[data-kind='unsaid'] {
+  color: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 30%, var(--line-soft));
+}
+
+/* ── Forming atom breathe pulse ───────────────────────────────────────────────
+   Forming atoms (dashed, awaiting model promotion) gently breathe while live —
+   the visual cue that they're being processed, not just sitting there. */
+@keyframes ms-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.ms-card[data-status='forming'] {
+  animation:
+    ms-card-forming-in 0.35s ease forwards,
+    ms-breathe 2s ease-in-out 0.5s infinite;
+}
+
+/* ── Synthesis line ────────────────────────────────────────────────────────────
+   One-sentence summary fading in during the settle reveal. Appears below the center
+   question so the hierarchy reads: label → question → synthesis → actions. */
+.ms-synthesis-line {
+  max-width: 200px;
+  font-size: 9.5px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.ms-canvas[data-phase='settled'] .ms-synthesis-line {
+  opacity: 1;
+  transition-delay: 0.9s;
+}
+
+/* ── Settle reveal: center question rises in with more presence ────────────────
+   In the settled phase the center question earns more visual weight — slightly
+   larger and transitioning in fresh so it reads as a "found it" conclusion. */
+.ms-canvas[data-phase='settled'] .ms-center-question {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* ── Settle reveal: cascade glow on stable atoms ─────────────────────────────
+   When data-revealing is active, stable cards get a brief ring-of-color glow
+   staggered by their order — the "highlight each thought" reveal sequence.
+   box-shadow transition in .ms-card handles the exit gracefully. */
+@keyframes ms-card-settle-glow {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ms-kind-color, var(--insight)) 28%, transparent);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.ms-canvas[data-revealing='true'] .ms-world .ms-card[data-status='stable'] {
+  animation:
+    ms-card-in 0.35s ease forwards,
+    ms-card-settle-glow 0.7s ease forwards;
+  animation-delay: calc(var(--ms-i, 0) * 40ms + 200ms), calc(var(--ms-i, 0) * 40ms + 200ms);
+}
+
+/* ── Settle reveal: hero tension arc draws in ─────────────────────────────────
+   The highest-weight tension arc gets a stroke-draw animation during the reveal
+   so it "arrives" rather than just fading in. pathLength="1" normalises the path. */
+@keyframes ms-thread-draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0.2;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0.7;
+  }
+}
+
+.ms-canvas[data-revealing='true'] .ms-thread[data-hero='true'] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ms-thread-draw 0.8s ease forwards;
+  animation-delay: 600ms;
+}
+
+/* ── Settle reveal: action bar slides up with a delay ────────────────────────
+   The action bar arrives last in the reveal sequence (1200ms) so it doesn't
+   compete with the center question, atoms, and arc animating in. */
+.ms-canvas[data-revealing='true'] .ms-actions {
+  animation: ms-actions-rise 0.4s ease forwards;
+  animation-delay: 1200ms;
+  opacity: 0;
+}
+
+@keyframes ms-actions-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Interactive unsaid card: confirm / dismiss buttons ─────────────────────── */
+.ms-unsaid-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ms-unsaid-btn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ms-unsaid-btn:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.ms-unsaid-confirm:hover {
+  border-color: var(--insight);
+  color: var(--insight);
+}
+
+.ms-unsaid-dismiss:hover {
+  border-color: var(--text-muted);
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-spoke,
+  .ms-thread,
+  .ms-link,
+  .ms-card,
+  .ms-card[data-status='forming'] {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .ms-spoke {
+    opacity: 0.26;
+  }
+
+  .ms-thread {
+    opacity: 0.7;
+  }
+
+  .ms-link {
+    opacity: 0.4;
+  }
+
+  .ms-card[data-status='forming'] {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+
+  .ms-card-quote {
+    transition: none;
+  }
+
+  .ms-actions {
+    transition: none;
+  }
+
+  .ms-tension-callout,
+  .ms-plan,
+  .ms-kept {
+    animation: none;
+  }
+
+  .ms-signal-chip {
+    animation: none;
+    opacity: 1;
+  }
+
+  .ms-canvas[data-revealing='true'] .ms-world .ms-card[data-status='stable'],
+  .ms-canvas[data-revealing='true'] .ms-thread[data-hero='true'],
+  .ms-canvas[data-revealing='true'] .ms-actions {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: none;
+  }
+}
+
+/* ───────────────────────── datastructure ───────────────────────── */
+.dst-wrap {
+  width: 100%;
+  overflow: hidden; /* never bleed outside the card */
+}
+.dst-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The fitted viewBox supplies the aspect ratio; this caps absolute scale so a wide
+     canvas column doesn't blow the cells up (which would scale the unit fonts to ~40px
+     and dwarf the card). margin-inline:auto centres a narrow figure. */
+  max-width: 560px;
+  max-height: 64cqi;
+  margin-inline: auto;
+  overflow: visible; /* arrowheads / pointer carets sit just outside their cell */
+}
+
+/* cells + tree nodes share the same surface/stroke so all kinds read as one family */
+.dst-cell {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
+}
+.dst-cell.on {
+  fill: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1.4;
+}
+.dst-node {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.dst-node.on {
+  fill: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1.6;
+}
+.dst-null {
+  fill: color-mix(in oklab, var(--text-muted) 8%, transparent);
+  stroke: var(--line);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 2.5;
+}
+.dst-divide {
+  stroke: var(--line);
+  stroke-width: 0.8;
+}
+
+/* edges: tree parent→child links and linked-list next pointers */
+.dst-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1.1;
+  fill: none;
+}
+.dst-arrowhead {
+  fill: var(--text-muted);
+}
+.dst-dot {
+  fill: var(--text-muted);
+}
+
+/* text */
+.dst-val {
+  fill: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.dst-idx {
+  fill: var(--text-faint);
+  font-size: 11px;
+}
+.dst-ptr {
+  fill: var(--presence);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dst-ptr-tip {
+  fill: var(--presence);
+}
+.dst-tag {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.dst-null-lbl {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ───────────────────────── causationchain ─────────────────────────
+   Causes → event → consequences, read left→right. Geometry is computed in the
+   component; this sheet sizes the stage, caps height, and owns typography (SVG <text>
+   can't reliably inherit CSS custom-prop fills, so fills are set on the nodes here). */
+.cau-wrap {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  /* Cap height on wide cards so a full-bleed SVG never balloons. */
+  max-height: 56cqi;
+  overflow: hidden;
+}
+.cau-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: hidden;
+  max-height: 56cqi;
+}
+
+.cau-col-hdr {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cau-col-hdr--event {
+  fill: var(--presence);
+}
+
+/* Cause / consequence node cards. */
+.cau-node {
+  fill: var(--surface-elevated);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cau-node-lbl {
+  fill: var(--text-primary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.cau-term-dot {
+  opacity: 0.9;
+}
+
+/* Central event card — the saturated pivot everything points to / flows from. */
+.cau-event {
+  fill: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.cau-event-lbl {
+  fill: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  dominant-baseline: middle;
+}
+
+/* Weighted connectors — thickness + opacity are set inline from the data. */
+.cau-link {
+  fill: none;
+  stroke-linecap: round;
+}
+.cau-arrowhead {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cau-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.cau-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cau-legend-item--weight {
+  color: var(--text-faint);
+}
+.cau-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-sm, 3px);
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cau-wrap {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── protocolstack ─────────────────────────
+   Left: the layer bands (application on top). Right: the concentric-encapsulation SVG.
+   Two columns on a roomy card; they stack on a narrow one so neither ever overflows. */
+.pst-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+}
+.pst-grid--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 460px) {
+  .pst-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The layered stack — bands top→bottom. A left rail tints each band so the model reads as a
+   continuous spectrum from application down to the wire. */
+.pst-stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.pst-band {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-left: 3px solid
+    color-mix(in oklab, var(--presence) calc(20% + (var(--pst-i, 0) * 7%)), var(--insight));
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.pst-band.on {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 9%, var(--surface-elevated));
+}
+.pst-band-num {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--text-muted) 12%, transparent);
+}
+.pst-band.on .pst-band-num {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+}
+.pst-band-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pst-band-name {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.pst-band-role {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.pst-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.pst-chip {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: var(--r-sm, 4px);
+  background: color-mix(in oklab, var(--insight) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 18%, transparent);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The encapsulation figure — concentric header boxes wrapping the payload. */
+.pst-encaps {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.pst-encaps-cap {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.pst-encaps-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Square viewBox: at full width the figure is as tall as the column is wide — cap the
+     measure (and centre) so it stays a sensible size on a wide canvas. */
+  max-width: 260px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.pst-box rect {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
+  /* Each nested header sits on a faintly deeper tint so the layers read apart even before hover. */
+  fill: color-mix(in oklab, var(--insight) 7%, var(--surface-elevated));
+}
+.pst-box--inner rect {
+  fill: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1;
+}
+.pst-box.on rect {
+  fill: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1.1;
+}
+.pst-box-lbl {
+  fill: var(--text-secondary);
+  font-size: 4.2px;
+  font-weight: 700;
+}
+.pst-box-lbl--inner {
+  fill: var(--text-primary);
+  font-size: 5px;
+}
+.pst-flow-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.pst-flow-arrow {
+  color: var(--presence);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pst-caption {
+  margin: 12px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ───────────────────────── wiringdiagram ─────────────────────────
+   A one-line electrical diagram drawn with trade symbols; wires are colour-coded by conductor.
+   The figure is SVG; this sheet sizes the stage and owns the text + the conductor legend. */
+.dg-wir {
+  margin-top: 12px;
+  width: 100%;
+  overflow: hidden;
+}
+.dg-wir-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Cap absolute width so a wide canvas column doesn't blow the device glyphs up (which would
+     scale the unit fonts huge and dwarf the card). The viewBox supplies the aspect ratio. */
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+/* device glyph ink — neutral so the colour reads only on the wires */
+.dg-wir-glyph line,
+.dg-wir-glyph polyline,
+.dg-wir-glyph polygon,
+.dg-wir-glyph rect,
+.dg-wir-glyph circle,
+.dg-wir-glyph path {
+  stroke: var(--text-primary);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dg-wir-fill {
+  fill: var(--text-primary);
+  stroke: none;
+}
+.dg-wir-tick,
+.dg-wir-mark {
+  fill: var(--text-secondary);
+  stroke: none;
+  font-size: 5px;
+  font-weight: 700;
+}
+.dg-wir-lbl {
+  fill: var(--text-secondary);
+  font-size: 4px;
+  font-weight: 600;
+}
+.dg-wir-gauge {
+  fill: var(--text-muted);
+  font-size: 3.4px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 1.1px;
+  stroke-linejoin: round;
+}
+/* conductor colours — black hot, muted neutral, green ground, amber traveler (trade convention) */
+.dg-wir-wire {
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+.dg-wir-wire.c-hot {
+  stroke: var(--danger);
+}
+.dg-wir-wire.c-neutral {
+  stroke: var(--text-muted);
+}
+.dg-wir-wire.c-ground {
+  stroke: var(--insight);
+}
+.dg-wir-wire.c-traveler {
+  stroke: var(--warning);
+}
+.dg-wir-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.dg-wir-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dg-wir-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dg-wir-swatch.c-hot {
+  background: var(--danger);
+}
+.dg-wir-swatch.c-neutral {
+  background: var(--text-muted);
+}
+.dg-wir-swatch.c-ground {
+  background: var(--insight);
+}
+.dg-wir-swatch.c-traveler {
+  background: var(--warning);
+}
+.dg-wir-cap {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ───────────────────────── pipingschematic ─────────────────────────
+   A P&ID-lite flow schematic; process glyphs joined by routed lines with optional flow arrows. */
+.dg-pip {
+  margin-top: 12px;
+  width: 100%;
+  overflow: hidden;
+}
+.dg-pip-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.dg-pip-glyph line,
+.dg-pip-glyph polyline,
+.dg-pip-glyph polygon,
+.dg-pip-glyph rect,
+.dg-pip-glyph circle,
+.dg-pip-glyph path {
+  stroke: var(--text-primary);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.dg-pip-fill {
+  fill: var(--text-primary);
+  stroke: none;
+}
+.dg-pip-fluid {
+  stroke: var(--insight);
+  stroke-width: 1.1;
+}
+.dg-pip-thin {
+  stroke-width: 0.7;
+}
+.dg-pip-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.1;
+}
+.dg-pip-arrowhead {
+  fill: var(--insight);
+  stroke: none;
+}
+.dg-pip-lbl {
+  fill: var(--text-secondary);
+  font-size: 4px;
+  font-weight: 600;
+}
+.dg-pip-size {
+  fill: var(--text-muted);
+  font-size: 3.4px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 1.1px;
+  stroke-linejoin: round;
+}
+.dg-pip-cap {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ───────────────────────── logicgates ─────────────────────────
+   A digital-logic circuit beside an optional truth table. The circuit is SVG; the table is DOM.
+   On a roomy card the two sit side-by-side; on a narrow one they stack so neither overflows. */
+.dg-lg {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.dg-lg.has-truth {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, auto);
+}
+@media (max-width: 460px) {
+  .dg-lg.has-truth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.dg-lg-circuit {
+  min-width: 0;
+  overflow: hidden;
+}
+.dg-lg-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Cap so the gates don't balloon on a wide card; the viewBox supplies the aspect ratio. */
+  max-width: 420px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.dg-lg-gate-body path,
+.dg-lg-gate-body polygon,
+.dg-lg-gate-body circle {
+  stroke: var(--text-primary);
+  stroke-width: 0.9;
+  fill: none;
+}
+.dg-lg-glbl {
+  fill: var(--text-muted);
+  font-size: 4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+/* signal wires — muted at 0, green at 1 */
+.dg-lg-wire {
+  stroke: var(--text-muted);
+  stroke-width: 0.9;
+}
+.dg-lg-wire.on {
+  stroke: var(--insight);
+  stroke-width: 1.1;
+}
+.dg-lg-arrowhead {
+  fill: var(--insight);
+}
+.dg-lg-pad {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
+}
+.dg-lg-pad.on {
+  fill: color-mix(in oklab, var(--insight) 24%, var(--surface-elevated));
+  stroke: var(--insight);
+}
+.dg-lg-in-lbl {
+  fill: var(--text-primary);
+  font-size: 5px;
+  font-weight: 700;
+}
+.dg-lg-bit {
+  fill: var(--text-muted);
+  font-size: 4.2px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dg-lg-bit.on {
+  fill: var(--insight);
+}
+.dg-lg-pin {
+  fill: var(--text-secondary);
+  font-size: 4.6px;
+  font-weight: 700;
+}
+
+/* truth table */
+.dg-lg-truth-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+.dg-lg-truth {
+  border-collapse: collapse;
+  font-size: var(--fs-2xs, 10px);
+  font-variant-numeric: tabular-nums;
+  margin-inline: auto;
+}
+.dg-lg-truth th,
+.dg-lg-truth td {
+  padding: 4px 8px;
+  text-align: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+}
+.dg-lg-truth th {
+  color: var(--text-muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line-strong);
+}
+.dg-lg-truth .dg-lg-out-col {
+  border-left: 1px solid var(--line);
+  font-weight: 700;
+}
+.dg-lg-truth td.bit {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.dg-lg-truth td.bit.on {
+  color: var(--insight);
+}
+.dg-lg-truth tr.on td {
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  color: var(--text-primary);
+}
+.dg-lg-truth tr.on td.bit.on {
+  color: var(--insight);
+}
+.dg-lg-truth tbody tr:last-child td {
+  border-bottom: 0;
+}
+.dg-lg-cap {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ───────────────────────── algorithmtrace ─────────────────────────
+   An interactive step-through of an array; a prev/next stepper recolours cells and draws
+   pointer carets. All DOM — no SVG — so the cells reflow and never overflow the card. */
+.dg-at-caption {
+  margin: 12px 0 10px;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.45;
+  min-height: 1.45em; /* hold the row so the layout doesn't jump between steps */
+}
+.dg-at-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+.dg-at-cell-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.dg-at-cell {
+  min-width: 34px;
+  height: 38px;
+  padding-inline: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm, 6px);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-elevated);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+.dg-at-cell.role-highlight {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+}
+.dg-at-cell.role-compared {
+  border-color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 16%, var(--surface-elevated));
+}
+.dg-at-cell.role-swapped {
+  border-color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
+}
+.dg-at-idx {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+/* pointer slot — lives inside each cell's column so the caret always tracks its cell, even when
+   the row wraps. Empty slots hold a fixed height so the band doesn't jump between steps. */
+.dg-at-ptr-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 24px;
+  max-width: 100%;
+}
+.dg-at-ptr-caret {
+  width: 0;
+  height: 0;
+  border-inline: 4px solid transparent;
+  border-bottom: 5px solid var(--presence);
+}
+.dg-at-ptr-labels {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--presence);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: -0.01em;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.dg-at-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  /* Play · step · reset · the step counter is more than a phone-width card can hold on one line, and
+     with no wrap the last control simply left the card. Wrapping keeps every control reachable. */
+  gap: 8px 10px;
+  margin-top: 14px;
+}
+.dg-at-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+.dg-at-btn .ic {
+  width: 13px;
+  height: 13px;
+}
+.dg-at-btn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  border-color: var(--presence);
+}
+.dg-at-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dg-at-progress {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.dg-at-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-muted) 30%, transparent);
+  transition: background 0.2s ease;
+}
+.dg-at-dot.done {
+  background: color-mix(in oklab, var(--presence) 45%, transparent);
+}
+.dg-at-dot.on {
+  background: var(--presence);
+}
+.dg-at-count {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dg-at-cap {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+/* Play/pause button — same pill shape as Prev/Next but presence-tinted when playing. */
+.dg-at-play {
+  padding: 5px 9px;
+}
+.dg-at-play.playing {
+  border-color: var(--presence);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+}
+/* Speed cycle button */
+.dg-at-speed {
+  padding: 5px 8px;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  font-size: 11px;
+  min-width: 34px;
+}
+/* Complexity badge in eyebrow */
+.dg-at-complexity {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, transparent);
+  color: var(--presence);
+  vertical-align: middle;
+}
+/* Ops counter row — shown below controls when step.ops is set */
+.dg-at-ops {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.dg-at-ops-sep {
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-at-cell,
+  .dg-at-btn,
+  .dg-at-dot {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── cyclewheel ─────────────────────────
+   An illustrated closed loop — stages ring a circle, curved arrows flow one into the next and
+   back to the start. The figure is SVG; this sheet sizes the stage and owns the typography
+   (SVG <text> can't reliably inherit CSS custom-prop fills, so fills are set here). */
+.dg-cw-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dg-cw-stage {
+  margin-top: 12px;
+  width: 100%;
+  /* Landscape viewBox (ring + a label gutter each side): cap the measure and centre it so the
+     wheel stays a sensible size on a wide canvas. */
+  max-width: 640px;
+  margin-inline: auto;
+}
+.dg-cw-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* the label gutters live inside the viewBox, so nothing should escape — visible is just a
+     forgiving margin for a stray wide glyph. */
+  overflow: visible;
+}
+
+/* the faint guide ring the loop turns around */
+.dg-cw-ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 5;
+  opacity: 0.7;
+}
+
+/* curved connector arcs — the flow that closes the circle */
+.dg-cw-link {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.dg-cw-arrowfill {
+  fill: var(--presence);
+}
+
+/* stage node disc */
+.dg-cw-disc {
+  fill: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  stroke: var(--presence);
+  stroke-width: 1.6;
+}
+.dg-cw-glyph {
+  color: var(--presence);
+}
+.dg-cw-num {
+  fill: var(--presence);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* labels + captions radiating outward from each node */
+.dg-cw-label {
+  fill: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  /* a soft backplate so a connector arc never reads through a label near the ring */
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.dg-cw-cap-lbl {
+  fill: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+
+.dg-cw-cap {
+  margin: 12px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-cw-card {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── dptable ───────────────────────── */
+.dp-recurrence {
+  margin: 10px 0 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm, 6px);
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-default));
+  border-left: 3px solid var(--presence);
+}
+.dp-recurrence code {
+  font-family: ui-monospace, 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.dp-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.dp-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* header cells — muted surface */
+.dp-corner,
+.dp-header {
+  fill: color-mix(in oklab, var(--text-primary) 6%, var(--surface-default));
+  stroke: var(--line, #e0e0e0);
+  stroke-width: 0.75;
+}
+.dp-hdr-val {
+  fill: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* data cells */
+.dp-cell {
+  fill: var(--surface-default);
+  stroke: var(--line, #e0e0e0);
+  stroke-width: 0.75;
+}
+.dp-cell.dp-active {
+  fill: color-mix(in oklab, var(--presence) 18%, var(--surface-default));
+  stroke: var(--presence);
+  stroke-width: 2;
+}
+.dp-cell.dp-path {
+  fill: color-mix(in oklab, var(--insight) 14%, var(--surface-default));
+  stroke: var(--insight);
+  stroke-width: 1.5;
+}
+.dp-cell.dp-dep {
+  fill: color-mix(in oklab, var(--insight) 12%, var(--surface-default));
+  stroke: color-mix(in oklab, var(--insight) 50%, transparent);
+  stroke-width: 1.5;
+}
+.dp-val {
+  fill: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+.dp-val.dp-val-active {
+  fill: var(--presence);
+  font-weight: 700;
+}
+.dp-val.dp-val-dep {
+  fill: var(--insight);
+  font-weight: 600;
+}
+.dp-val.dp-val-path {
+  fill: var(--insight);
+  font-weight: 700;
+}
+
+/* ───────────────────────── hashtable ───────────────────────── */
+.ht-hashfn {
+  margin: 8px 0 4px;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ht-wrap {
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.ht-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.ht-bucket {
+  fill: color-mix(in oklab, var(--text-primary) 7%, var(--surface-default));
+  stroke: var(--line, #e0e0e0);
+  stroke-width: 1;
+  rx: 4;
+}
+.ht-bucket-idx {
+  fill: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ht-node {
+  fill: var(--surface-elevated);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.ht-node.ht-active {
+  fill: color-mix(in oklab, var(--presence) 16%, var(--surface-default));
+  stroke: var(--presence);
+  stroke-width: 2;
+}
+.ht-node-text {
+  fill: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ht-null {
+  fill: color-mix(in oklab, var(--text-primary) 4%, var(--surface-default));
+  stroke: var(--line);
+  stroke-width: 0.75;
+  stroke-dasharray: 3 2;
+}
+.ht-null-text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.ht-chain {
+  stroke: var(--track);
+  stroke-width: 1.25;
+}
+.ht-arrowhead {
+  fill: var(--track);
+}
+
+/* ───────────────────────── trie ───────────────────────── */
+.tri-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.tri-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.tri-edge {
+  stroke: var(--grid-line);
+  stroke-width: 1.5;
+}
+.tri-edge.tri-edge-active {
+  stroke: var(--presence);
+  stroke-width: 2.5;
+}
+.tri-edge-label {
+  fill: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+}
+.tri-edge-label.tri-edge-label-active {
+  fill: var(--presence);
+}
+/* end-of-word outer ring */
+.tri-node-end-ring {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.25;
+}
+.tri-node-end-ring.tri-node-end-ring-active {
+  stroke: var(--presence);
+}
+.tri-node {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1.5;
+}
+.tri-node.tri-node-active {
+  fill: color-mix(in oklab, var(--presence) 20%, var(--surface-default));
+  stroke: var(--presence);
+  stroke-width: 2;
+}
+.tri-node.tri-node-root {
+  fill: color-mix(in oklab, var(--text-primary) 8%, var(--surface-default));
+  stroke: var(--text-secondary);
+}
+.tri-label {
+  fill: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.tri-label.tri-label-active {
+  fill: var(--presence);
+}
+
+/* ───────────────────────── graphtrace ───────────────────────── */
+.gt-stage {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: hidden;
+}
+.gt-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.gt-edge {
+  stroke: var(--track);
+  stroke-width: 1.75;
+}
+.gt-arrowhead {
+  fill: var(--track);
+}
+.gt-weight {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+}
+
+/* node states */
+.gt-node {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1.75;
+  transition:
+    fill 0.15s ease,
+    stroke 0.15s ease;
+}
+.gt-node.gt-node-current {
+  fill: var(--presence);
+  stroke: var(--presence);
+}
+.gt-node.gt-node-frontier {
+  fill: color-mix(in oklab, var(--warning) 22%, var(--surface-default));
+  stroke: var(--warning);
+  stroke-width: 2;
+}
+.gt-node.gt-node-visited {
+  fill: color-mix(in oklab, var(--text-muted) 18%, var(--surface-default));
+  stroke: var(--text-muted);
+}
+.gt-label {
+  fill: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.gt-label.gt-label-current {
+  fill: var(--surface-default);
+}
+
+/* queue/stack state panel */
+.gt-state-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm, 6px);
+  background: color-mix(in oklab, var(--text-primary) 4%, var(--surface-default));
+  border: 1px solid var(--line);
+}
+.gt-state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.gt-state-key {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.gt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gt-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.gt-chip-frontier {
+  background: color-mix(in oklab, var(--warning) 20%, var(--surface-default));
+  color: var(--warning);
+  border: 1px solid color-mix(in oklab, var(--warning) 35%, transparent);
+}
+.gt-chip-visited {
+  background: color-mix(in oklab, var(--text-muted) 14%, var(--surface-default));
+  color: var(--text-secondary);
+  border: 1px solid var(--line);
+}
+.gt-chip-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ───────────────────────── sortingviz ─────────────────────────
+   Bar-chart sorting visualizer: bars proportional to value,
+   coloured by algorithm state (compared/swapped/sorted/pivot). */
+.sv-complexity-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+  vertical-align: middle;
+}
+.sv-chart-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 160px;
+  margin: 14px 0 4px;
+  padding: 0 2px;
+  overflow: hidden;
+}
+.sv-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+  height: 100%;
+}
+.sv-val-label {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+.sv-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--line-strong);
+  border-bottom: none;
+  transition:
+    height 0.15s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+  min-height: 4px;
+}
+.sv-bar-compared {
+  background: color-mix(in oklab, var(--warning) 22%, var(--surface-elevated));
+  border-color: var(--warning);
+}
+.sv-bar-swapped {
+  background: color-mix(in oklab, var(--insight) 28%, var(--surface-elevated));
+  border-color: var(--insight);
+  animation: sv-pulse 0.22s ease;
+}
+.sv-bar-sorted {
+  background: color-mix(in oklab, var(--presence) 18%, var(--surface-elevated));
+  border-color: var(--presence);
+}
+.sv-bar-pivot {
+  background: color-mix(in oklab, var(--danger) 24%, var(--surface-elevated));
+  border-color: var(--danger);
+}
+@keyframes sv-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.45);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.sv-idx-label {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.sv-ops {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.sv-ops-sep {
+  color: var(--text-faint);
+}
+.sv-play-btn {
+  width: 34px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.sv-play-btn:hover {
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+  border-color: var(--presence);
+}
+.sv-speed-group {
+  display: flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sv-speed-btn {
+  padding: 3px 7px;
+  border: none;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+.sv-speed-btn + .sv-speed-btn {
+  border-left: 1px solid var(--line-strong);
+}
+.sv-speed-btn.on {
+  background: color-mix(in oklab, var(--presence) 15%, var(--surface-elevated));
+  color: var(--presence);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sv-bar,
+  .sv-bar-swapped {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ───────────────────────── binarytree ─────────────────────────
+   Interactive binary tree with traversal step-through. Node
+   colours come from inline styles (state-driven tokens in TSX);
+   CSS handles layout, edges, and the frontier/result panels. */
+.dg-bt-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.dg-bt-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  fill: none;
+}
+.dg-bt-node {
+  /* fill/stroke come from inline styles per state */
+  transition:
+    fill 0.2s ease,
+    stroke 0.2s ease;
+}
+.dg-bt-label {
+  /* fill comes from inline style per state */
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  transition: fill 0.2s ease;
+  pointer-events: none;
+}
+.dg-bt-panels {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.dg-bt-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm, 6px);
+  background: color-mix(in oklab, var(--text-primary) 4%, var(--surface-default));
+  border: 1px solid var(--line);
+}
+.dg-bt-panel-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+.dg-bt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 20px;
+}
+.dg-bt-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  color: var(--text-primary);
+}
+.dg-bt-chip-empty {
+  color: var(--text-muted);
+  font-weight: 400;
+  border-color: transparent;
+  background: transparent;
+}
+.dg-bt-chip-result {
+  background: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+  color: var(--presence);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-bt-node,
+  .dg-bt-label {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── sortingviz (dg-sv-*) ───────────────────────────
+   Bar-chart sorting visualizer. Bars are coloured by algorithm role each step
+   (compared / swapped / sorted / pivot / default). Shares dg-at-* controls. */
+.dg-sv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.dg-sv-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.dg-sv-badge {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
+  color: var(--presence);
+  white-space: nowrap;
+}
+.dg-sv-badge.dg-sv-ops {
+  background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-elevated));
+  border-color: var(--line-strong);
+  color: var(--text-secondary);
+}
+.dg-sv-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+  padding: 0 2px;
+  margin: 10px 0 6px;
+  overflow: hidden;
+}
+.dg-sv-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  height: 100%;
+}
+.dg-sv-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  background: color-mix(in oklab, var(--text-primary) 22%, var(--surface-elevated));
+  border: none;
+  transition:
+    height 0.14s ease,
+    background 0.16s ease;
+}
+.dg-sv-bar.role-compared {
+  background: var(--warning);
+}
+.dg-sv-bar.role-swapped {
+  background: var(--insight);
+  animation: sv-swap-pulse 0.24s ease;
+}
+.dg-sv-bar.role-sorted {
+  background: var(--presence);
+}
+.dg-sv-bar.role-pivot {
+  background: var(--danger);
+}
+@keyframes sv-swap-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.dg-sv-val {
+  font-size: 9px;
+  color: var(--text-faint);
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.dg-sv-play {
+  min-width: 36px;
+  font-size: 15px;
+}
+.dg-sv-speed {
+  min-width: 36px;
+  font-size: 12px;
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+.dg-sv-step-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-sv-bar {
+    transition: none;
+    animation: none;
+  }
+  .dg-sv-bar.role-swapped {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── gridtrace (gt2-*) ──────────────────────────────
+   2-D grid visualizer for BFS/DFS, flood-fill, and grid-DP problems.
+   Uses CSS grid with a computed --gt2-cell custom property so the grid
+   auto-scales to fill the card width regardless of dimensions. */
+.gt2-algo-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
+  color: var(--presence);
+  vertical-align: middle;
+}
+.gt2-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--gt2-cols), var(--gt2-cell));
+  gap: 2px;
+  margin: 12px 0 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+.gt2-cell {
+  width: var(--gt2-cell);
+  height: var(--gt2-cell);
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Fira Code', monospace;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+  border: 1.5px solid transparent;
+  overflow: hidden;
+}
+/* Cell state colours — all from design-system tokens */
+.gt2-empty {
+  background: var(--surface-elevated);
+  border-color: var(--line);
+  color: var(--text-faint);
+}
+.gt2-wall {
+  background: color-mix(in oklab, var(--text-primary) 55%, var(--surface-default));
+  border-color: transparent;
+  color: transparent;
+}
+.gt2-start {
+  background: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 60%, transparent);
+  color: #fff;
+}
+.gt2-end {
+  background: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 60%, transparent);
+  color: #fff;
+}
+.gt2-current {
+  background: color-mix(in oklab, var(--presence) 28%, var(--surface-elevated));
+  border-color: var(--presence);
+  border-width: 2px;
+  color: var(--presence);
+  animation: gt2-pulse 0.5s ease;
+}
+.gt2-queued {
+  background: color-mix(in oklab, var(--warning) 22%, var(--surface-elevated));
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.gt2-visited {
+  background: color-mix(in oklab, var(--text-primary) 10%, var(--surface-elevated));
+  border-color: var(--line);
+  color: var(--text-faint);
+}
+.gt2-path {
+  background: color-mix(in oklab, var(--insight) 30%, var(--surface-elevated));
+  border-color: var(--insight);
+  border-width: 2px;
+  color: var(--insight);
+}
+@keyframes gt2-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.gt2-cell-val {
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+  font-size: clamp(9px, calc(var(--gt2-cell) * 0.32), 13px);
+}
+/* Stats row — queue count + visited count */
+.gt2-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.gt2-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.gt2-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.gt2-dot-queued {
+  background: color-mix(in oklab, var(--warning) 40%, var(--surface-elevated));
+  border: 1px solid var(--warning);
+}
+.gt2-dot-visited {
+  background: color-mix(in oklab, var(--text-primary) 18%, var(--surface-elevated));
+  border: 1px solid var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gt2-cell {
+    transition: none;
+  }
+  .gt2-current {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── tournamentbracket (dg-tb-*) ─────────────────────────
+   Single-elimination bracket: one SVG per card holding the round headers, the elbow
+   connectors, and every matchup box. Box fill/stroke are plain tokens; winner/loser
+   tinting is per-text-element so a decided match reads at a glance. */
+.dg-tb-note {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.dg-tb-empty {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.dg-tb-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.dg-tb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dg-tb-round-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dg-tb-connector {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  fill: none;
+}
+.dg-tb-box-bg {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.dg-tb-row-winner {
+  fill: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.dg-tb-divider {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.dg-tb-name {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text-primary);
+}
+.dg-tb-name-winner {
+  fill: var(--presence);
+  font-weight: 700;
+}
+.dg-tb-name-loser {
+  fill: var(--text-faint);
+  font-weight: 400;
+}
+.dg-tb-name-tbd {
+  fill: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+.dg-tb-score {
+  font-family: ui-monospace, 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--text-secondary);
+}
+.dg-tb-score-winner {
+  fill: var(--presence);
+}
+.dg-tb-score-loser {
+  fill: var(--text-faint);
+  font-weight: 400;
+}
+
+/* ── toulmin: the six roles of a full argument, laid along their logical flow ─────────────
+   Support structure (grounds → warrant → backing) on one side, the claim on the other, a "so"
+   bridge between. A container query flips the figure from a stacked column on a narrow card to a
+   side-by-side pair on a wide one, preserving the reading order at every width. */
+.toul {
+  container-type: inline-size;
+  margin-top: 12px;
+}
+.toul-grid {
+  display: grid;
+  gap: 10px 14px;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'grounds'
+    'warrant'
+    'backing'
+    'bridge'
+    'claim'
+    'rebuttal';
+  align-items: start;
+}
+@container (min-width: 460px) {
+  .toul-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(58px, auto) minmax(0, 1fr);
+    grid-template-areas:
+      'grounds bridge claim'
+      'warrant bridge rebuttal'
+      'backing bridge .';
+  }
+}
+
+.toul-role {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--r-md, 10px);
+  background: var(--surface-elevated);
+  padding: 9px 12px;
+}
+.toul-role-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.toul-role-conn {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.toul-role-name {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.toul-role-text {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.toul-role--grounds {
+  border-left-color: var(--insight);
+}
+.toul-role--grounds .toul-role-name {
+  color: var(--insight);
+}
+.toul-role--warrant {
+  border-left-color: var(--presence);
+}
+.toul-role--warrant .toul-role-name {
+  color: var(--presence);
+}
+.toul-role--backing {
+  border-left-color: var(--presence-soft);
+}
+.toul-role--rebuttal {
+  border-left-color: var(--warning);
+}
+.toul-role--rebuttal .toul-role-name {
+  color: var(--warning);
+}
+.toul-role--claim {
+  border-color: color-mix(in oklab, var(--presence) 42%, transparent);
+  border-left-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+}
+.toul-role--claim .toul-role-name {
+  color: var(--presence);
+}
+.toul-role--claim .toul-role-text {
+  font-weight: 600;
+}
+
+/* The "so [qualifier]" inference bridge + an arrow that adapts to the layout. */
+.toul-bridge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+@container (min-width: 460px) {
+  .toul-bridge {
+    flex-direction: column;
+    height: 100%;
+  }
+}
+.toul-so {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.toul-qual {
+  font-size: var(--fs-2xs, 10px);
+  font-style: italic;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 130px;
+  overflow-wrap: anywhere;
+}
+/* Points down when the figure is stacked, right when it's side-by-side. */
+.toul-arrow {
+  width: 0;
+  height: 0;
+  flex: none;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--presence);
+  border-bottom: 0;
+}
+@container (min-width: 460px) {
+  .toul-arrow {
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid var(--presence);
+    border-right: 0;
+  }
+}
+
+/* ── castmap: a character / relationship ring with typed, colour-coded edges ──────────────
+   The SVG is a square viewBox scaled to the card; capped in height so it never balloons on a wide
+   column, and centred. Everything is drawn inside the padded viewBox, so overflow can stay hidden. */
+.cast-stage {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 600px;
+  margin-inline: auto;
+  max-height: 74cqi;
+  overflow: hidden;
+}
+.cast-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: hidden;
+  max-height: 74cqi;
+}
+.cast-chip {
+  fill: var(--surface-elevated);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.cast-name {
+  fill: var(--text-primary);
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.cast-role {
+  fill: var(--text-muted);
+  font-size: 16px;
+  font-weight: 500;
+}
+.cast-edge-lbl-bg {
+  fill: var(--surface-elevated);
+  stroke: var(--line);
+  stroke-width: 1;
+  opacity: 0.92;
+  vector-effect: non-scaling-stroke;
+}
+.cast-edge-lbl {
+  fill: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+}
+.cast-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.cast-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cast-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-sm, 3px);
+  display: inline-block;
+  flex: none;
+}
+/* A short line swatch for a relationship kind — the colour rides on `color` (currentColor). */
+.cast-swatch--line {
+  width: 16px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2.5px solid currentColor;
+}
+.cast-swatch--line.is-dashed {
+  border-top-style: dashed;
+}
+.cast-caption {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  text-align: center;
+}
+.cast-foot {
+  margin-top: 10px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.cast-empty {
+  margin: 16px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm, 13px);
+}
+
+/* ───────────────────────── prooftree ───────────────────────── */
+.prf-stage {
+  max-width: 620px;
+}
+/* The svg carries an inline natural-size max-width; centre it when the card is wider. */
+.prf-svg {
+  margin-inline: auto;
+}
+.prf-stmt {
+  fill: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+/* A bracketed leaf is a discharged assumption — quieter and italic, per the textbook. */
+.prf-assume {
+  fill: var(--text-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+.prf-bar {
+  stroke: var(--line-strong);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.prf-rule {
+  fill: var(--insight);
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* ───────────────────────── fishbone ───────────────────────── */
+.fsb-stage {
+  max-width: 760px;
+}
+.fsb-spine {
+  stroke: var(--text-muted);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.fsb-arrowhead {
+  fill: var(--text-muted);
+}
+.fsb-tail {
+  fill: color-mix(in oklab, var(--text-muted) 45%, transparent);
+}
+.fsb-head {
+  fill: color-mix(in oklab, var(--presence) 15%, var(--surface-elevated-2));
+  stroke: var(--presence);
+  stroke-width: 2;
+}
+.fsb-effect {
+  fill: var(--text-primary);
+  font-weight: 700;
+}
+/* Rib colour rides inline (the accent cycles per category); this owns the shared geometry. */
+.fsb-rib {
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+.fsb-cat {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.fsb-twig {
+  stroke: var(--grid-line);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.fsb-cause {
+  fill: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ───────────────────────── classdiagram ───────────────────────── */
+.ucd-stage {
+  max-width: 760px;
+}
+.ucd-box {
+  fill: var(--surface-elevated);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.ucd-header {
+  stroke: none;
+}
+.ucd-sep {
+  stroke: var(--grid-line);
+  stroke-width: 1.2;
+}
+.ucd-stereo {
+  fill: var(--text-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+.ucd-name {
+  fill: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.ucd-italic {
+  font-style: italic;
+}
+.ucd-member {
+  fill: var(--text-secondary);
+  font-family: ui-monospace, 'Fira Code', monospace;
+}
+.ucd-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1.8;
+  fill: none;
+  opacity: 0.9;
+}
+/* UML terminal glyphs: hollow shapes take the surface fill so the line never reads through. */
+.ucd-tri {
+  fill: var(--surface-elevated);
+  stroke: var(--text-muted);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.ucd-di {
+  fill: var(--surface-elevated);
+  stroke: var(--text-muted);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.ucd-di-fill {
+  fill: var(--text-muted);
+}
+.ucd-open {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

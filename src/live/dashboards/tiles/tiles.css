@@ -1,0 +1,352 @@
+/* dashboards/tiles/tiles.css — the shared TrackerTile frame + its viz-slot components. Sizes only
+   the tile itself; the surrounding "TRACKING · N" grid is a later phase's dash-home.css. Tokens
+   only, light/dark automatic. */
+
+.tile-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 15px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  background: linear-gradient(165deg, var(--surface-elevated), var(--surface-default));
+  box-shadow: var(--shadow-raised);
+  text-decoration: none;
+  overflow: hidden;
+  transition:
+    transform var(--m-normal) var(--ease-out),
+    border-color var(--m-normal) var(--ease-out),
+    box-shadow var(--m-normal) var(--ease-out);
+}
+.tile-frame:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-modal);
+}
+.tile-frame:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+/* Reuse .dash-live-dot verbatim (its reduced-motion override already covers it); just retint it —
+   every place this tile shows the dot means the same thing: a live window is open right now. */
+.tile-frame .dash-live-dot {
+  background: var(--danger);
+}
+
+.tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.tile-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.tile-cadence {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-data, var(--font));
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 16%, transparent);
+  color: var(--text-muted);
+}
+.tile-cadence--live {
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+.tile-cadence--paused {
+  background: color-mix(in oklab, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.tile-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.tile-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-data, var(--font));
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.tile-delta {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tile-delta--up {
+  color: var(--insight);
+}
+.tile-delta--down {
+  color: var(--danger);
+}
+.tile-context {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* ── viz slot ────────────────────────────────────────────────────────────────────────────── */
+.tile-viz {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.tile-viz-svg {
+  display: block;
+  width: 100%;
+  height: 40px;
+  overflow: hidden;
+}
+
+.tile-prob {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tile-prob-track {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 18%, transparent);
+  overflow: hidden;
+}
+.tile-prob-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--presence), var(--insight));
+  transition: width var(--m-normal) var(--ease-out);
+}
+.tile-prob-pct {
+  flex: none;
+  min-width: 36px;
+  text-align: right;
+  font-family: var(--font-data, var(--font));
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.tile-forecast {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+}
+.tile-forecast-day {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.tile-forecast-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tile-forecast-glyph {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+.tile-forecast-temp {
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+.tile-forecast-lo {
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+
+.tile-chips {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: hidden;
+}
+.tile-chip {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 14%, transparent);
+  color: var(--text-secondary);
+}
+.tile-chip--accent {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+  color: var(--presence-soft);
+}
+
+.tile-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.tile-countdown-value {
+  font-family: var(--font-data, var(--font));
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.tile-countdown-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.tile-live {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tile-live-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.tile-live-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.tile-live-track {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 18%, transparent);
+  overflow: hidden;
+}
+.tile-live-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--danger);
+  transition: width var(--m-normal) var(--ease-out);
+}
+
+.tile-foot {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tile-asof {
+  font-family: var(--font-data, var(--font));
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint, var(--text-muted));
+}
+
+/* Small ghost "check now" affordance in the footer — a span with role="button" (see TrackerTile's
+   comment: the whole tile is already an <a>, and interactive content can't nest inside another
+   interactive element), styled and focusable exactly like a real button. */
+.tile-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.tile-check svg {
+  width: 12px;
+  height: 12px;
+}
+.tile-check:hover,
+.tile-check:focus-visible {
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--presence);
+}
+.tile-check:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.tile-check.is-checking {
+  color: var(--presence);
+  cursor: default;
+}
+
+/* The headline value pulses gently while a fetch is in flight — a fresh or reconnected dashboard
+   reads as working, not dead, instead of sitting on a bare "—" with no signal anything is happening. */
+.tile-value--checking {
+  animation: tileValuePulse 1.4s ease-in-out infinite;
+}
+@keyframes tileValuePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-value--checking {
+    animation: none;
+    opacity: 0.75;
+  }
+}

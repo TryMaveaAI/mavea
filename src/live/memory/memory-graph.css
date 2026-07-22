@@ -1,0 +1,116 @@
+/* Memory concept graph — Obsidian-style knowledge network. Design tokens only. */
+
+.mg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mg-svg {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  overflow: visible;
+}
+
+.mg-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  transition: opacity 0.12s;
+}
+
+.mg-edge--strong {
+  stroke-width: 1.5;
+}
+
+.mg-node {
+  cursor: pointer;
+}
+
+.mg-node circle {
+  transition: opacity 0.12s;
+}
+
+.mg-label {
+  font-family: var(--font-data, inherit);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.mg-detail {
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mg-detail-concept {
+  font-family: var(--font-data, inherit);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--presence);
+  letter-spacing: 0.02em;
+}
+
+.mg-detail-body {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.mg-warmup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.mg-warmup-track {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.mg-warmup-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  transition: width 0.4s ease;
+}
+
+.mg-warmup-label {
+  flex: none;
+  font-family: var(--font-data, inherit);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mg-foot {
+  margin: 0;
+  font-family: var(--font-data, inherit);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.mg-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

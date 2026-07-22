@@ -1,0 +1,1300 @@
+/* ============================================================
+   Live · voice-first answer surface
+   The spoken answer leads the canvas; structure is hairline
+   rules, data is mono, one accent does the work. Every selector
+   is scoped under .mavea-app.live-voice so the Demo, the gallery,
+   and shared chrome never feel this file. Tokens only.
+   ============================================================ */
+
+.mavea-app.live-voice {
+  /* the ink-tinted hairline the boards use between sections (theme-correct via tokens) */
+  --hairline-ink: color-mix(in oklab, var(--text-primary) 12%, transparent);
+  --live-content-max: var(--canvas-col-max);
+}
+
+/* ===== answer hero — the spoken line above the canvas ===== */
+.live-voice .answer-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 2px 0 0;
+  border-bottom: 1px solid var(--hairline-ink);
+  padding-bottom: 22px;
+  margin-bottom: 24px;
+}
+.live-voice .hero-ask {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: calc(10.5px * var(--fs-scale, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.live-voice .hero-line {
+  margin: 0;
+  max-width: 90%;
+  color: var(--text-primary);
+  /* One continuous reading scale across phones, laptop windows, desktop displays, and ultrawides.
+     Each template's --voice-size remains the art-directed ceiling, never a desktop-sized floor —
+     it already carries --fs-scale itself, so only the min/preferred terms scale here too. */
+  font-size: clamp(
+    calc(18px * var(--fs-scale, 1)),
+    calc((14px + 1.2vw) * var(--fs-scale, 1)),
+    var(--voice-size)
+  );
+  line-height: 1.3;
+}
+.live-voice .hero-accent {
+  color: var(--presence);
+  font-style: normal;
+}
+.live-voice .hero-meta {
+  margin: 2px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-family: var(--font-data);
+  font-size: calc(10px * var(--fs-scale, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* the inferred badge is the shared InferredMark from canvas/provenance — no local copy */
+
+/* A small dot in the thread's colour, tying the hero to its chapter in the session rail. Only
+   rendered once a session has ≥2 threads (AnswerHero gates on the tint prop). */
+.live-voice .hero-thread-dot {
+  display: inline-block;
+  inline-size: 6px;
+  block-size: 6px;
+  margin-inline-end: 7px;
+  border-radius: 50%;
+  vertical-align: baseline;
+  background: var(--thread-tint, var(--presence));
+}
+
+/* ===== "New topic" sweep — the one-shot pivot beat (TopicSweep.tsx) ===== */
+.live-voice .topic-sweep {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+}
+.live-voice .topic-sweep-line {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1.5px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--topic-sweep-ink, var(--presence)) 16%, transparent);
+  opacity: 0;
+  animation: topic-sweep-fade 1.2s ease forwards;
+}
+/* A brighter segment wipes left→right across the faint line — the "wiping to a new subject" feel. */
+.live-voice .topic-sweep-line::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inline-size: 38%;
+  transform: translateX(-120%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--topic-sweep-ink, var(--presence)),
+    transparent
+  );
+  animation: topic-sweep-wipe 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.live-voice .topic-sweep-label {
+  margin-block-start: 9px;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--topic-sweep-ink, var(--presence)) 78%, var(--text-muted));
+  opacity: 0;
+  animation: topic-sweep-fade 1.25s ease forwards;
+}
+@keyframes topic-sweep-wipe {
+  to {
+    transform: translateX(330%);
+  }
+}
+@keyframes topic-sweep-fade {
+  0% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* Reduced motion: no horizontal wipe, just a brief, gentle static fade of the line + label. */
+@media (prefers-reduced-motion: reduce) {
+  .live-voice .topic-sweep-line::after {
+    animation: none;
+    transform: none;
+    inline-size: 100%;
+    opacity: 0.5;
+  }
+  .live-voice .topic-sweep-line,
+  .live-voice .topic-sweep-label {
+    animation-duration: 0.9s;
+  }
+}
+
+/* The hero + topbar carry the title now; the canvas header keeps only the focus toggle. */
+.live-voice .canvas-title,
+.live-voice .canvas-sub {
+  display: none;
+}
+.live-voice .canvas-header {
+  margin: 0 0 10px;
+}
+
+/* ===== answer footer — grounded in | keep going ===== */
+.live-voice .answer-footer {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 28px;
+  border-top: 1px solid var(--hairline-ink);
+  margin-top: 26px;
+  padding: 18px 2px 8px;
+}
+.live-voice .answer-footer.single {
+  grid-template-columns: 1fr;
+}
+/* the grounded list is the shared GroundedIn from canvas/provenance; the footer column
+   only loosens its rhythm to match the keep-going side */
+.live-voice .footer-label {
+  display: block;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.live-voice .footer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.live-voice .footer-grounded ul {
+  gap: 10px;
+}
+.live-voice .footer-grounded a {
+  font-size: 13.5px;
+}
+.live-voice .footer-grounded .grounded-in-host {
+  margin-left: 10px;
+}
+.live-voice .kg-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+.live-voice .kg-row:hover .kg-q {
+  color: var(--presence);
+}
+.live-voice .kg-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.live-voice .kg-arrow {
+  color: var(--presence);
+  font-style: normal;
+}
+/* Contextual feature chips — quiet pill-buttons that appear after a substantive answer to surface
+   the next natural action (explore deeper, track live). Never more than two at once. */
+.live-voice .footer-chips {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* "Explore this step by step" — surfaces Deep Zoom after teaching answers, explaining the
+   benefit (level-by-level drilling) without naming the feature. Uses --insight to distinguish
+   it visually from the --presence-tinted "Track this live" chip. */
+.live-voice .footer-feature-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, transparent);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--insight) 7%, transparent);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--insight) 78%, var(--text-primary));
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+.live-voice .footer-feature-chip:hover {
+  background: color-mix(in oklab, var(--insight) 15%, transparent);
+  border-color: color-mix(in oklab, var(--insight) 52%, transparent);
+  color: var(--insight);
+}
+/* "See all N moments" — composes the whole topic thread. Tinted with --presence so it reads as a
+   distinct action from the --insight "See this answer as a canvas" chip beside it. */
+.live-voice .footer-feature-chip.is-thread {
+  border-color: color-mix(in oklab, var(--presence) 30%, transparent);
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+  color: color-mix(in oklab, var(--presence) 80%, var(--text-primary));
+}
+.live-voice .footer-feature-chip.is-thread:hover {
+  background: color-mix(in oklab, var(--presence) 15%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 52%, transparent);
+  color: var(--presence);
+}
+.live-voice .footer-feature-chip.is-thread .footer-chip-arrow {
+  color: inherit;
+}
+.live-voice .footer-chip-arrow {
+  font-size: 12px;
+}
+
+/* "Track this live" — the rare, quiet offer to stand the answer up as a living dashboard. */
+.live-voice .footer-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--presence) 78%, var(--text-primary));
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+.live-voice .footer-track:hover {
+  background: color-mix(in oklab, var(--presence) 15%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 52%, transparent);
+  color: var(--presence);
+}
+.live-voice .footer-track:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.live-voice .footer-track-arrow {
+  font-size: 12px;
+}
+.live-voice .footer-disclaimer {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  font: 500 11px/1.55 var(--font-data);
+  color: var(--text-faint);
+}
+.live-voice .footer-disclaimer.only {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .live-voice .answer-footer {
+    grid-template-columns: 1fr;
+  }
+  .live-voice .hero-line {
+    max-width: 100%;
+  }
+}
+
+/* ===== topbar — instrument readouts, text actions ===== */
+/* board-exact brand row: 17px/700 wordmark, 14px divider */
+.live-voice .brand-name {
+  font-size: 17px;
+  font-weight: 700;
+}
+.live-voice .brand-sep {
+  height: 14px;
+}
+/* the LIVE badge is bare mono text + pulsing dot on the boards — no pill */
+.live-voice .live-badge {
+  height: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--presence);
+}
+.live-voice .composer-input {
+  font-size: 14.5px;
+}
+.live-voice .topbar-text-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.live-voice .topbar-text-btn.accent {
+  color: var(--presence);
+}
+.live-voice .topbar-text-btn:hover {
+  color: var(--presence-soft);
+}
+.live-voice .topbar-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--presence);
+}
+.live-voice .topbar-zoom-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.live-voice .topbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--line);
+  margin: 0 2px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.live-voice .topbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Named category menus (Create · Practice · Share · Explore) — anchor the popup below trigger */
+.more-menu-root {
+  position: relative;
+  display: inline-flex;
+}
+.more-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* The little downward caret that marks a trigger as a menu, not a plain action. */
+.more-menu-caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.55;
+}
+.more-menu {
+  /* Anchor to the trigger's RIGHT edge so the menu opens leftward and stays on-screen — the
+     menus sit in the right half of the bar (after the spacer), so a left:0 popup would spill a
+     320px panel off the right viewport edge. With right:0 + the width capped at 100vw-28px, the
+     menu fits at any window width. */
+  right: 0;
+  left: auto;
+  width: min(320px, calc(100vw - 28px));
+}
+
+.more-menu-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.more-menu-row:hover,
+.more-menu-row:focus-visible {
+  background: var(--surface-glass-strong);
+  outline: none;
+}
+.more-menu-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.more-menu-blurb {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+.more-menu-group {
+  display: flex;
+  flex-direction: column;
+}
+.more-menu-heading {
+  padding: 8px 12px 4px;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  pointer-events: none;
+  user-select: none;
+}
+.more-menu-divider {
+  height: 1px;
+  margin: 4px 12px;
+  background: var(--line-soft);
+}
+
+/* The ⌘K command-palette styles moved to src/live/features/commandPalette.css (owned by the
+   component) so the palette styles itself on the landing too, where voice.css isn't loaded. */
+
+.live-voice .live-model-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* the boards' model pill is plain mono text — no icon */
+.live-voice .live-model-chip > svg {
+  display: none;
+}
+.live-voice .chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--insight);
+  flex: none;
+}
+.live-voice .chip-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.live-voice .chip-caret {
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 3.5px solid currentColor;
+  opacity: 0.55;
+  flex: none;
+}
+/* Voice-speed chip: tap to cycle 1× / 1.25× / 1.5× / 2× / 0.5×. Same pill language as the model
+   chip, sitting beside the voice switch — how fast Mavéa speaks (synth-side, so pitch stays
+   natural), the one control the replay scrubber reads too. */
+.live-voice .voice-speed {
+  flex: none;
+  min-width: 40px;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.live-voice .voice-speed:hover {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+}
+
+/* Explanation-level chip: tap to flip Standard/Simple. Same pill language as the voice-speed and
+   model chips beside it; tints toward presence while Simple is active so the dock reflects it at
+   a glance, not just on hover. */
+.live-voice .explain-chip {
+  flex: none;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  font-family: var(--font-data);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.live-voice .explain-chip:hover {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+}
+.live-voice .explain-chip.is-simple {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+  background: color-mix(in oklab, var(--surface-elevated) 85%, var(--presence) 15%);
+}
+
+/* ===== bottom dock — the composer's fixed home ===== */
+.mavea-app.live-voice {
+  --dock-h: 76px;
+}
+.live-voice .live-dock {
+  position: fixed;
+  left: var(--rail-w, 0px);
+  right: 0;
+  bottom: 0;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: var(--dock-h);
+  /* Horizontal padding matches the content column's inset (canvas-stage 26px + canvas-scroll 6px =
+     32px) so the capsule's edges line up with the cards at EVERY width — not just the wide screens
+     where the shared --canvas-col-max cap binds. Below that cap both fall back to their parent's
+     width, and only equal insets keep them aligned. Keep these in sync with the stage/scroll pads. */
+  padding: 10px 32px;
+  background: var(--surface-default);
+  border-top: 1px solid var(--hairline-ink);
+}
+.live-voice .dock-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Every dock row shares ONE centered column — the same --canvas-col-max the answer grid and the
+   composer capsule use — so the pinned-element chips, the attach strip, the listening badges, and
+   the quick-follow-up buttons all line up under the composer instead of stranding at the far-left
+   edge on wide screens. One shared rule = the rows can never drift out of alignment with each other
+   or with the capsule (which sizes itself from the same token). The intro composer before the first
+   ask is a display:contents passthrough, which has no box to size, so its inner .composer is capped
+   directly. Below the cap, every row falls back to the dock's 32px-inset width and still aligns. */
+.live-voice .dock-main > *,
+.live-voice .dock-main > .composer-passthrough > .composer {
+  width: 100%;
+  max-width: var(--canvas-col-max);
+  margin-inline: auto;
+}
+.live-voice .dock-hint {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: none;
+}
+/* clickable PTT hint + inline key picker */
+.live-voice .dock-hint-wrap {
+  position: relative;
+  flex: none;
+}
+.live-voice .dock-hint-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  transition:
+    color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.live-voice .dock-hint-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.live-voice .dock-hint-picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  z-index: 60;
+}
+.live-voice .dock-hint-row {
+  display: flex;
+  gap: 4px;
+}
+/* the side row reads as a quieter refinement of the key above it */
+.live-voice .dock-hint-sides {
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+}
+.live-voice .dock-hint-sides .dock-hint-key {
+  flex: 1;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.live-voice .dock-hint-key {
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.live-voice .dock-hint-key:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+.live-voice .dock-hint-key.active {
+  background: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+  color: var(--presence);
+}
+/* the wizard owns the whole shell — no dock until a conversation exists */
+.in-wizard .live-dock {
+  display: none;
+}
+.mavea-app.live-voice.with-rail .canvas-stage,
+.mavea-app.live-voice.with-rail .presence-stage {
+  padding-bottom: calc(var(--dock-h) + 16px);
+}
+
+/* ===== slim session rail — a chaptered table of contents ===== */
+.mavea-app.live-voice.with-rail {
+  --rail-w: 236px;
+}
+.live-voice .sess-title {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.live-voice .sess-list {
+  padding: 10px 8px 14px;
+  gap: 2px;
+}
+.live-voice .sess-note {
+  margin: 4px 6px 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.live-voice .sess-chapter {
+  display: flex;
+  flex-direction: column;
+}
+/* Chapter header: the label + an on-hover "see this thread together" button (multi-moment chapters). */
+.live-voice .sess-chapter-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.live-voice .sess-chapter-label {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--ch-c, var(--presence)) 65%, var(--text-muted));
+  padding: 14px 10px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Quiet by default — appears on chapter hover/focus, in the chapter's own colour. */
+.live-voice .sess-together {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  color: color-mix(in oklab, var(--ch-c, var(--presence)) 70%, var(--text-muted));
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    color 0.12s,
+    background 0.12s;
+}
+.live-voice .sess-together svg {
+  width: 14px;
+  height: 14px;
+}
+.live-voice .sess-chapter:hover .sess-together,
+.live-voice .sess-together:focus-visible {
+  opacity: 0.85;
+}
+.live-voice .sess-together:hover {
+  opacity: 1;
+  background: var(--surface-glass);
+  color: color-mix(in oklab, var(--ch-c, var(--presence)) 90%, var(--text-primary));
+}
+.live-voice .sess-together:disabled {
+  cursor: default;
+}
+.live-voice .sess-chapter:hover .sess-together:disabled,
+.live-voice .sess-together:disabled:hover,
+.live-voice .sess-together:disabled:focus-visible {
+  opacity: 0.35;
+  background: none;
+  color: color-mix(in oklab, var(--ch-c, var(--presence)) 70%, var(--text-muted));
+}
+/* Wrapper holds the row button + the bookmark star side by side. */
+.live-voice .sess-row-wrap {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+}
+
+.live-voice .sess-row {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-secondary);
+  font: inherit;
+}
+/* The scripted demo reuses these row classes but renders .sess-row directly in the column
+   .sess-list (no .sess-row-wrap). There, flex:1 makes each row grow to fill the rail's full
+   (canvas-tall) height, spreading the questions far apart. As a direct child, pin it to its own
+   content height so the session list stacks cleanly. Live keeps flex:1 (its rows sit in a wrap). */
+.live-voice .sess-list > .sess-row {
+  flex: 0 0 auto;
+}
+.live-voice .sess-row-wrap:hover .sess-row,
+.live-voice .sess-row:hover {
+  background: var(--surface-glass);
+}
+.live-voice .sess-row.is-current {
+  background: color-mix(in srgb, var(--presence) 8%, transparent);
+  color: var(--text-primary);
+}
+.live-voice .sess-time {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--text-muted);
+  flex: none;
+  min-width: 34px;
+}
+/* The ask wraps to two lines so far more of it reads at a glance; the full text lives in the row's
+   title tooltip for the rare question that still overruns. (Single-line ellipsis hid most asks.) */
+.live-voice .sess-q {
+  font-size: 12.5px;
+  font-weight: 500;
+  min-width: 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Bookmark star — quiet until hovered or already set. */
+.live-voice .sess-bookmark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-right: 4px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    color 0.12s,
+    background 0.12s;
+}
+
+.live-voice .sess-row-wrap:hover .sess-bookmark,
+.live-voice .sess-bookmark.on {
+  opacity: 1;
+}
+
+.live-voice .sess-bookmark:hover {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+
+.live-voice .sess-bookmark.on {
+  color: var(--presence);
+}
+
+/* "View the thinking map" — only present on chats that grew from Watch Me Think. Subtly visible at
+   rest (it signals the chat HAS a map) and lifts on hover/focus, tinted with the mindshape accent. */
+.live-voice .sess-mapview {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-right: 2px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  color: color-mix(in oklab, var(--insight) 70%, var(--text-muted));
+  opacity: 0.6;
+  transition:
+    opacity 0.12s,
+    color 0.12s,
+    background 0.12s;
+}
+.live-voice .sess-mapview svg {
+  width: 15px;
+  height: 15px;
+}
+.live-voice .sess-row-wrap:hover .sess-mapview,
+.live-voice .sess-mapview:focus-visible {
+  opacity: 1;
+}
+.live-voice .sess-mapview:hover {
+  background: var(--surface-glass);
+  color: var(--insight);
+  opacity: 1;
+}
+
+/* Bookmarked rows get a faint left accent. */
+.live-voice .sess-row.is-bookmarked {
+  border-left: 2px solid color-mix(in oklab, var(--presence) 45%, transparent);
+  padding-left: 8px;
+}
+
+/* ===== past conversations — a quiet footer that opens the saved-canvas library =====
+   The list above is flex:1, so this pins to the bottom of the rail. It reads naturally as
+   "and before this session…", and is the only in-session way back to the library. */
+.live-voice .rail-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+.live-voice .rail-past {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.live-voice .rail-past svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+.live-voice .rail-past:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.live-voice .rail-past:hover svg {
+  color: var(--presence);
+}
+
+/* ===== collapse the rail — condense it to a slim strip so the canvas takes the room =====
+   Desktop only: lowering --rail-w on the root cascades to every `left: var(--rail-w)` offset
+   (topbar, stages, presence, dock, scrubber), so the whole stage widens in one move. The mobile
+   bottom-sheet (≤768px) owns its own open/close, so every rule here is gated to ≥769px. */
+.rail-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.rail-collapse svg {
+  width: 17px;
+  height: 17px;
+}
+.rail-collapse:hover {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+/* Decorative vertical caption shown only in the collapsed strip. */
+.rail-collapsed-label {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  /* 4 classes — outranks the 236px `.mavea-app.live-voice.with-rail` width. */
+  .mavea-app.live-voice.with-rail.rail-collapsed {
+    --rail-w: 48px;
+  }
+  /* Keep [toggle][title] grouped at the left, Replay pinned right. */
+  .live-voice .rail-head {
+    justify-content: flex-start;
+    gap: 9px;
+  }
+  /* The Replay/Overview icons ride as a group pushed to the right of the header (not each button
+     individually, which would spread them apart). */
+  .live-voice .rail-head-actions {
+    margin-left: auto;
+  }
+  .live-voice .rail-head-actions .rail-history {
+    margin-left: 0;
+  }
+  /* The slim strip: only the toggle and a quiet vertical label remain. */
+  .side-rail.is-collapsed .rail-head {
+    justify-content: center;
+    padding: 14px 0 12px;
+  }
+  .side-rail.is-collapsed .sess-title,
+  .side-rail.is-collapsed .rail-history,
+  .side-rail.is-collapsed .rail-foot,
+  .side-rail.is-collapsed .rail-chat {
+    display: none;
+  }
+  .side-rail.is-collapsed .rail-collapsed-label {
+    display: block;
+    writing-mode: vertical-rl;
+    margin: 12px auto 0;
+    font-family: var(--font-data);
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    user-select: none;
+  }
+}
+
+/* The desktop collapse toggle never shows in the mobile bottom-sheet. */
+@media (max-width: 768px) {
+  .rail-collapse {
+    display: none;
+  }
+}
+
+/* ===== quiet canvas (canvas-flat) — calm chrome, not no chrome ===== */
+/* The boards' fully-flat sections washed out against 190 arbitrary blocks (checklists and
+   KPI grids lost their grouping, and a dimmed tour erased the page) — so the treatment is
+   a QUIET card instead: soft surface, hairline border, no heavy shadow. Spotlit and picked
+   cards keep the full stock chrome (:not), so the glow and selection ring read unchanged.
+   Still one class token — drop `canvas-flat` from the root to revert to stock. */
+/* The second selector re-reaches .card through a FitBox host (see
+   canvas/layout/fitPolicy.ts), which sits where the direct `> .card` child used to be. */
+.mavea-app.live-voice.canvas-flat .card-grid > div:not(.spotlit):not(.picked) > .card,
+.mavea-app.live-voice.canvas-flat .card-grid > div:not(.spotlit):not(.picked) > .fit-box .card {
+  background: color-mix(in oklab, var(--surface-elevated) 72%, transparent);
+  border: 1px solid var(--line-soft);
+  box-shadow: none;
+}
+/* A talking tour dims the rest of the canvas; on the quiet cards the stock 0.34 floor
+   reads as an empty page, so Live keeps the dimmed neighbours legible. */
+.mavea-app.live-voice .card-grid > div.dimmed {
+  opacity: 0.55;
+}
+
+/* FIG. n — chart cards announce themselves like figures in a paper. The wrapper's
+   data-kind (the block's own type) picks out the chart families; eyebrows are already
+   small-caps mono, so the counter prefix completes the instrument label. */
+.mavea-app.live-voice.canvas-flat .card-grid {
+  counter-reset: fig;
+}
+.mavea-app.live-voice.canvas-flat
+  .card-grid
+  > div:is(
+    [data-kind='chart'],
+    [data-kind='bars'],
+    [data-kind='groupedbars'],
+    [data-kind='lines'],
+    [data-kind='plot'],
+    [data-kind='area'],
+    [data-kind='arearange'],
+    [data-kind='slopegraph'],
+    [data-kind='calheat'],
+    [data-kind='bump'],
+    [data-kind='marimekko'],
+    [data-kind='dumbbell'],
+    [data-kind='lollipop'],
+    [data-kind='bulletchart'],
+    [data-kind='candlestick'],
+    [data-kind='gantt'],
+    [data-kind='bubble'],
+    [data-kind='waffle'],
+    [data-kind='dualaxis'],
+    [data-kind='scatterregression'],
+    [data-kind='treemap'],
+    [data-kind='sunburst'],
+    [data-kind='sankey'],
+    [data-kind='network'],
+    [data-kind='radar'],
+    [data-kind='waterfall'],
+    [data-kind='funnel'],
+    [data-kind='histogram'],
+    [data-kind='boxplot'],
+    [data-kind='streamgraph'],
+    [data-kind='piedonut'],
+    [data-kind='distributioncurve'],
+    [data-kind='quadrant'],
+    [data-kind='heatmap'],
+    [data-kind='geomap'],
+    [data-kind='numberline']
+  ) {
+  counter-increment: fig;
+}
+.mavea-app.live-voice.canvas-flat
+  .card-grid
+  > div:is(
+    [data-kind='chart'],
+    [data-kind='bars'],
+    [data-kind='groupedbars'],
+    [data-kind='lines'],
+    [data-kind='plot'],
+    [data-kind='area'],
+    [data-kind='arearange'],
+    [data-kind='slopegraph'],
+    [data-kind='calheat'],
+    [data-kind='bump'],
+    [data-kind='marimekko'],
+    [data-kind='dumbbell'],
+    [data-kind='lollipop'],
+    [data-kind='bulletchart'],
+    [data-kind='candlestick'],
+    [data-kind='gantt'],
+    [data-kind='bubble'],
+    [data-kind='waffle'],
+    [data-kind='dualaxis'],
+    [data-kind='scatterregression'],
+    [data-kind='treemap'],
+    [data-kind='sunburst'],
+    [data-kind='sankey'],
+    [data-kind='network'],
+    [data-kind='radar'],
+    [data-kind='waterfall'],
+    [data-kind='funnel'],
+    [data-kind='histogram'],
+    [data-kind='boxplot'],
+    [data-kind='streamgraph'],
+    [data-kind='piedonut'],
+    [data-kind='distributioncurve'],
+    [data-kind='quadrant'],
+    [data-kind='heatmap'],
+    [data-kind='geomap'],
+    [data-kind='numberline']
+  )
+  .card-eyebrow::before {
+  content: 'Fig. ' counter(fig) ' — ';
+  font-family: var(--font-data);
+  color: var(--text-faint);
+}
+
+@media (max-width: 768px) {
+  /* the base sheet rules collapse --rail-w to 0; restate at this specificity so the
+     244px desktop width above doesn't outrank them */
+  .mavea-app.live-voice.with-rail {
+    --rail-w: 0px;
+  }
+  /* the rail's bottom sheet stacks above the dock — and above the scrubber strip when one
+     is present (specificity matches livedock.css's has-scrubber rule so this wins by order) */
+  .mavea-app.live-voice.with-rail .side-rail {
+    bottom: var(--dock-h);
+  }
+  .mavea-app.live-voice.with-rail.has-scrubber .side-rail {
+    bottom: calc(var(--dock-h) + var(--scrub-h, 48px));
+  }
+  .live-voice .dock-hint {
+    display: none;
+  }
+  .live-voice .live-dock {
+    /* Match the mobile content inset (canvas-stage 14px + canvas-scroll 6px = 20px) so the composer
+       stays aligned with the cards once the rail collapses, same as the desktop 32px above. */
+    padding: 8px 20px;
+  }
+}
+
+/* Self-healing history: a rail moment a later answer corrected says so, quietly. */
+.live-voice .sess-row.is-corrected .sess-q {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--warning) 65%, transparent);
+  text-decoration-thickness: 1px;
+}
+.live-voice .sess-corrected {
+  flex: none;
+  font: 600 8.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warning);
+}
+
+/* ===== Go hub: the type bar is an always-visible footer, however tall the library grows =====
+   App-shell layout: the wizard stage is a fixed-height column that does NOT scroll; only the
+   inner .setup-stage scrolls (it holds the library). The composer is the column's last flex
+   child, pinned at the bottom on every screen size — never pushed below the fold.
+   The conversation DockBar is fixed-position and would overlay the wizard's composer, so it
+   is hidden while in-wizard; --dock-h resets to 0 so no canvas padding bleeds in. */
+.mavea-app.in-wizard {
+  --dock-h: 0px;
+}
+.mavea-app.in-wizard .live-dock {
+  display: none;
+}
+.mavea-app.live-voice .go-composer {
+  flex: 0 0 auto;
+  z-index: 12;
+  margin-top: 0;
+  padding-top: 14px;
+  padding-bottom: 16px;
+  /* a real docked bar, like the conversation's dock — solid panel + hairline, so cards
+     scrolling beneath read as "behind the bar", never colliding with the input */
+  background: var(--surface-default);
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
+}
+/* a touch of breathing room so the last library row clears the footer as it scrolls */
+.mavea-app.live-voice .setup.stage .setup-stage {
+  padding-bottom: 18px;
+}
+/* The hub shell is a flex column so anything stacked above the stage (e.g. the LIVE-WHILE-OPEN
+   watch strip) and the stage itself share the viewport — the stage flexes to fit and its footer
+   composer stays pinned and visible, instead of a hard 100dvh stage overflowing and clipping it. */
+.mavea-app.live-voice.in-wizard {
+  display: flex;
+  flex-direction: column;
+}
+.mavea-app.live-voice.in-wizard .setup.stage {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+/* ── One alignment axis for the answer page ──────────────────────────────────
+   The scroll viewport is slightly wider than the card grid. Keep every primary
+   answer surface on the same centered measure as the cards, so the hero, voice
+   scrubber, canvas controls, and footer read as one column. */
+.mavea-app.live-voice .answer-hero,
+.mavea-app.live-voice .voice-scrub,
+.mavea-app.live-voice .canvas-header,
+.mavea-app.live-voice .context-row,
+.mavea-app.live-voice .answer-footer,
+.mavea-app.live-voice .understood,
+.mavea-app.live-voice .ask-hint {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--live-content-max);
+  margin-inline: auto;
+}
+
+.mavea-app.live-voice .focus-hero {
+  justify-content: flex-start;
+}
+.mavea-app.live-voice .focus-caption {
+  margin: 0;
+  text-align: left;
+}
+.mavea-app.live-voice .focus-hero-card.focus-out {
+  margin-inline: 0;
+}
+.mavea-app.live-voice .voice-scrub-hint {
+  text-align: left;
+}

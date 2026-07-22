@@ -1,0 +1,406 @@
+/* gallery.css — the browsable visual library at #/gallery. Tokens only (no hex), so it
+   inherits light/dark automatically via :root[data-theme]. Classes are namespaced `vlib-*`
+   (NOT `gallery-*`) — `.gallery` collides with the canvas Gallery block's styles. */
+
+/* The page is its OWN scroll container (height + overflow), so it scrolls even though the
+   demo shell may lock body scroll on the root surface. */
+.vlib {
+  /* dvh (not vh) so the mobile browser chrome showing/hiding doesn't clip the
+     bottom of the page as the viewport's usable height changes. */
+  height: 100dvh;
+  overflow-y: auto;
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  font-family: var(--font);
+}
+
+/* Sticky toolbar: title + search + theme toggle, with the family filter chips beneath. */
+.vlib-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in oklab, var(--surface-deep) 86%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  backdrop-filter: var(--glass-blur-soft);
+  border-bottom: 1px solid var(--line-soft);
+  padding: var(--s-lg) var(--s-2xl);
+}
+
+.vlib-bar-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-xl);
+  flex-wrap: wrap;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Back to the demo home — mirrors Live's "← Back to the demo" so every surface has a
+   visible way out. */
+.vlib-back {
+  appearance: none;
+  align-self: center;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: 13px/1 var(--font);
+  padding: 7px var(--s-md);
+  transition:
+    border-color var(--m-fast),
+    color var(--m-fast),
+    background var(--m-fast);
+  white-space: nowrap;
+}
+.vlib-back:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+
+.vlib-headline h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.vlib-subtitle {
+  margin: var(--s-xs) 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.vlib-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  flex: 1 1 320px;
+  max-width: 540px;
+}
+
+.vlib-search {
+  flex: 1;
+  padding: var(--s-sm) var(--s-md);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color var(--m-fast) var(--ease-out);
+}
+.vlib-search:focus {
+  border-color: var(--presence);
+}
+.vlib-search::placeholder {
+  color: var(--text-faint);
+}
+
+.vlib-theme {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.vlib-theme:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.vlib-theme svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Family "theme" chips — quick filter for a large library. A dozen-plus families would wrap
+   across many rows at any width narrower than ~1400px, and since this whole bar is sticky,
+   an unbounded wrap can grow it taller than the viewport itself — leaving no room to see the
+   grid it's filtering. A single scrollable row keeps the bar's height fixed at every size. */
+.vlib-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  max-width: 1400px;
+  margin: var(--s-md) auto 0;
+  scrollbar-width: none;
+}
+.vlib-chips::-webkit-scrollbar {
+  display: none;
+}
+.vlib-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 44px;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.vlib-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.vlib-chip.active {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--text-primary);
+}
+.vlib-chip-n {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.vlib-chip.active .vlib-chip-n {
+  color: var(--presence);
+}
+
+.vlib-body {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--s-2xl) var(--s-2xl) var(--s-3xl);
+}
+
+.vlib-section {
+  margin-bottom: var(--s-3xl);
+}
+.vlib-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-lg);
+  padding-bottom: var(--s-sm);
+  border-bottom: 1px solid var(--line-soft);
+}
+.vlib-section-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.vlib-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  background: var(--surface-elevated);
+  border-radius: var(--r-full);
+  padding: 2px 9px;
+}
+
+.vlib-grid {
+  display: grid;
+  /* min(400px, 100%) so the 400px floor never exceeds the content box on tablets/phones
+     narrower than 400px (which would overflow + clip). */
+  grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
+  gap: var(--s-xl);
+}
+/* Wide-by-design blocks get more room so their content doesn't squish. */
+.vlib-tile.vlib-wide {
+  grid-column: span 2;
+}
+.vlib-tile.vlib-full {
+  grid-column: 1 / -1;
+}
+@media (max-width: 900px) {
+  .vlib-tile.vlib-wide,
+  .vlib-tile.vlib-full {
+    grid-column: auto;
+  }
+}
+
+.vlib-tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-default);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: border-color var(--m-fast) var(--ease-out);
+  /* Zero-dep virtualization on top of the JS mount-windowing: the browser skips layout + paint for
+     any tile currently off-screen (even a mounted one that scrolled past), which is what keeps a
+     full-library scroll smooth on a weak machine with hundreds of tiles. `auto` in
+     contain-intrinsic-size caches each tile's real height after its first paint, so the scrollbar
+     stays honest; ~280px is the pre-paint estimate (head + the ~220px min render height). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+/* The overflow audit (?mountall=1) needs REAL measured rects for every tile, so it must defeat
+   content-visibility (a skipped subtree reports a zero rect and would hide overflow). */
+.vlib--mountall .vlib-tile {
+  content-visibility: visible;
+}
+.vlib-tile:hover {
+  border-color: var(--line-strong);
+}
+
+.vlib-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm);
+  padding: var(--s-sm) var(--s-md);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-elevated);
+}
+.vlib-type {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.vlib-fam {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+@media (max-width: 600px) {
+  .vlib-audit {
+    display: none;
+  }
+}
+
+/* On a phone the gallery was spending its desktop side padding twice over — 48px each side on the
+   body, 24px again inside every tile — which on a 320px screen is ~96px, nearly a third of the
+   viewport, gone before a single card is drawn. Every block then had to fit in ~170px and the whole
+   library read as broken. Give the content the screen; the cards are what people came to see. */
+@media (max-width: 640px) {
+  .vlib-body {
+    padding: var(--s-lg) var(--s-md) var(--s-2xl);
+  }
+  .vlib-bar {
+    padding: var(--s-md);
+  }
+  .vlib-render {
+    padding: var(--s-md);
+  }
+}
+
+/* Overflow-audit affordance: a toolbar button that measures every rendered tile, plus per-tile
+   badges. Dev/QA only — reuses the gallery's own render so it never drifts from what ships. */
+.vlib-audit {
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 var(--s-md);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.vlib-audit:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.vlib-audit.active {
+  border-color: color-mix(in oklab, var(--danger) 50%, var(--line));
+  color: var(--danger);
+}
+.vlib-flag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-sm, 6px);
+}
+.vlib-flag--clip {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+}
+.vlib-flag--scroll {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+}
+.vlib-tile--clip {
+  border-color: color-mix(in oklab, var(--danger) 55%, var(--line));
+}
+.vlib-tile--scroll {
+  border-color: color-mix(in oklab, var(--warning) 50%, var(--line));
+}
+
+/* The live render. We mount the real TopicCanvas; hide its in-canvas chrome so a tile
+   shows only the block itself. position:relative clips any absolutely-positioned block
+   content to the tile; min-height keeps short blocks from collapsing it. */
+.vlib-render {
+  position: relative;
+  padding: var(--s-lg);
+  min-height: 160px;
+  overflow: hidden;
+}
+.vlib-render .canvas-header,
+.vlib-render .context-row {
+  display: none;
+}
+/* Each tile renders one full-width block; flatten the grid wrapper to a single column. */
+.vlib-render .card-grid {
+  display: block;
+}
+.vlib-render .card-grid > [class*='col-'] {
+  width: 100%;
+}
+.vlib-render-error {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  padding: var(--s-lg);
+  border: 1px solid color-mix(in oklab, var(--danger) 45%, var(--line));
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 8%, var(--surface-default));
+  text-align: center;
+}
+
+/* Windowed-mount placeholder: a tile that hasn't scrolled near the viewport yet. It reserves a
+   plausible height so the scrollbar stays honest. Keep it static: a moving 400×220 gradient costs
+   meaningful compositor time on integrated GPUs and there can be hundreds of these placeholders
+   in the gallery. The layered highlight still reads as intentional during a fast fling. */
+.vlib-render--pending {
+  min-height: 220px;
+}
+.vlib-render--pending::after {
+  content: '';
+  position: absolute;
+  inset: var(--s-lg);
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    100deg,
+    var(--surface-elevated) 0%,
+    var(--surface-glass) 48%,
+    var(--surface-elevated) 100%
+  );
+}
+
+.vlib-empty {
+  margin: var(--s-3xl) auto;
+  text-align: center;
+  color: var(--text-muted);
+}

@@ -1,0 +1,46 @@
+/* On a phone, readable labels win over desktop-density ellipses. These are the shared label
+   primitives reported by the real-browser truncation gate. Their containing card/row is allowed to
+   grow; genuinely wide data structures keep their accessible horizontal region instead. */
+@media (max-width: 480px) {
+  :where(
+    .c1-corr-colhdr span,
+    .c1-corr-rowhdr span,
+    .qd-ylabel,
+    .qd-qlabel,
+    .c2-db-name-txt,
+    .c2-gantt-name,
+    .c2-lp-name,
+    .sc-tile-label,
+    .abl-name,
+    .lb-name,
+    .lb-sub,
+    .rm-chip,
+    .sk-name,
+    .sw-bar-label,
+    .tt-label,
+    .fl-cc-label,
+    .fl-lm-headtext,
+    .fl-wz-lbl,
+    .me-ba-caps .faint,
+    .do-heading,
+    .doc-view-file,
+    .sl-title,
+    .ai-at-branch-note,
+    .ai-hx-url,
+    .ai-rt-snippet,
+    .lay-tab > span:not(.lay-tab-badge),
+    .sp-media-alt,
+    .cb-count-noun,
+    .dr-summary,
+    .ht-habit-name,
+    .fin-tl-label
+  ) {
+    min-width: 0 !important;
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere !important;
+    text-overflow: clip !important;
+    -webkit-line-clamp: unset !important;
+  }
+}

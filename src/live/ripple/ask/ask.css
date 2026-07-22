@@ -1,0 +1,329 @@
+/* ask.css — the Ask rail: a third column beside .ripple-main, tokens only, matching the same
+   elevated-surface recipe as the rest of Ripple so it reads as one system. Silent, text-first: an
+   answer is a readout + an honest coverage pill + citation chips, with an unverifiable citation
+   visually distinct (dashed) rather than looking like a proven quote. Collapses to a bottom sheet
+   below the same 720px breakpoint the rail itself restructures at. */
+
+.ripple-ask-rail {
+  width: min(360px, 34vw);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface-deep);
+  animation: ripple-ask-in var(--m-med, 220ms) var(--ease-out);
+}
+
+@keyframes ripple-ask-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-ask-rail {
+    animation: none;
+  }
+}
+
+.ripple-ask-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.ripple-ask-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ripple-ask-spark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presence);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--presence) 70%, transparent);
+}
+.ripple-ask-min {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ripple-ask-min:hover {
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+}
+
+.ripple-ask-empty-state {
+  padding: 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.ripple-ask-empty-state p {
+  margin: 0;
+}
+
+.ripple-ask-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.ripple-ask-preset {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: color-mix(in oklab, var(--presence) 70%, var(--text-secondary));
+  background: color-mix(in oklab, var(--presence) 9%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, transparent);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.ripple-ask-preset:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--presence) 20%, var(--surface-elevated));
+  color: var(--text-primary);
+}
+.ripple-ask-preset:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ripple-ask-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Prevents the thread's own scrollbar popping in/out from nudging .ripple-main's width and
+     re-triggering the impact map's ResizeObserver fit — the same fix as ripple.css's own panes. */
+  scrollbar-gutter: stable;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ripple-ask-empty {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ripple-ask-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ripple-ask-q {
+  margin: 0;
+  align-self: flex-end;
+  max-width: 92%;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, transparent);
+  border-radius: 12px 12px 3px 12px;
+}
+
+.ripple-ask-pending {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ripple-ask-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: ripple-ask-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ripple-ask-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple-ask-dot {
+    animation: none;
+  }
+}
+
+.ripple-ask-err {
+  margin: 0;
+  font-size: 12px;
+  color: color-mix(in oklab, var(--danger) 80%, var(--text-primary));
+}
+
+.ripple-ask-a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ripple-ask-cover {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  color: color-mix(in oklab, var(--cover-color) 85%, #fff);
+  background: color-mix(in oklab, var(--cover-color) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--cover-color) 34%, transparent);
+}
+.ripple-ask-cover[data-coverage='none'] {
+  border-style: dashed;
+}
+.ripple-ask-cover-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cover-color);
+}
+.ripple-ask-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.ripple-ask-cites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ripple-ask-cite {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: color-mix(in oklab, var(--presence) 70%, var(--text-secondary));
+  background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--presence) 34%, transparent);
+  text-decoration: none;
+}
+a.ripple-ask-cite:hover {
+  background: color-mix(in oklab, var(--presence) 22%, var(--surface-elevated));
+  color: var(--text-primary);
+}
+/* A citation that couldn't be verified verbatim — shown, never dropped, but visibly NOT a proven
+   quote (dashed + muted, same honesty language as the "none" coverage pill above). */
+.ripple-ask-cite[data-unpinned='true'] {
+  color: var(--text-muted);
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.ripple-ask-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-deep);
+  flex: none;
+}
+.ripple-ask-input {
+  flex: 1;
+  resize: none;
+  max-height: 96px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.ripple-ask-input::placeholder {
+  color: var(--text-muted);
+}
+.ripple-ask-input:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--presence) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 18%, transparent);
+}
+.ripple-ask-send {
+  appearance: none;
+  flex: none;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
+  background: color-mix(in oklab, var(--presence) 22%, var(--surface-elevated));
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1;
+}
+.ripple-ask-send:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--presence) 36%, var(--surface-elevated));
+}
+.ripple-ask-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Below the width the rail itself restructures at, a fixed-width side column has no room left for
+   the impact map or a diff to stay usable — the rail becomes a bottom sheet instead, docked to the
+   viewport rather than squeezed into the row. */
+@media (max-width: 720px) {
+  .ripple-ask-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    max-height: min(72vh, 560px);
+    border-left: none;
+    border-top: 1px solid var(--line-strong);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: var(--shadow-modal);
+    z-index: 9;
+    animation: ripple-ask-sheet-in var(--m-med, 220ms) var(--ease-out);
+  }
+  @keyframes ripple-ask-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}

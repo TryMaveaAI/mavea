@@ -1,0 +1,29 @@
+/*
+ * Wrapping safety net for the export document. The pages are a fixed 816px wide and
+ * overflow:hidden, and the PDF crops each sheet 1:1 — so a long unbreakable token (a URL, file
+ * path, hash/ID, chemical or code identifier, long compound word) that refuses to wrap would be
+ * silently clipped at the right edge. `overflow-wrap:break-word` only inserts a break INSIDE such
+ * a token, and only when it has no other valid break point and would otherwise overflow its box —
+ * ordinary text is untouched. Its more aggressive sibling `anywhere` was the actual bug here: it
+ * collapses a flex/grid child's minimum content width down to a single character, which lets the
+ * container's own space-distribution squeeze an ordinary label below its natural word width — that
+ * read as mid-word wrapping/squishing in several places even though nothing in those labels was
+ * actually too long to fit. `word-break:break-word` is deliberately NOT set here either — per spec
+ * it forces the same "anywhere" behaviour regardless of what `overflow-wrap` says, so leaving it in
+ * would silently undo this fix. `min-width:0` lets grid/flex tracks shrink below their content's
+ * min-content width (they default to `auto`, which lets one long token blow out the row) — this is
+ * what lets a genuinely long, data-bearing label shrink and wrap normally; a handful of short,
+ * fixed-format labels (the brand wordmark, "FIG. N", "SCALE 1–N", the footer page count) instead
+ * keep an explicit `white-space:nowrap` because they must never wrap, and unbounded single-line
+ * values that also must never wrap (a section heading, a big stat) use `FitLine` (parts.tsx) to
+ * shrink visually instead of via the box. Mirrors the canvas blocks' own net (src/styles/styles.css).
+ */
+.ex-page,
+.ex-measure-host {
+  overflow-wrap: break-word;
+}
+
+.ex-page *,
+.ex-measure-host * {
+  min-width: 0;
+}

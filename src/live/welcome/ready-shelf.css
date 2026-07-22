@@ -1,0 +1,85 @@
+/* ready-shelf.css — the "Ready when you are" slot on the welcome hub. Deliberately calm: it sits
+   in the presence hue, never a warning or danger token, because a shelf of things you started is
+   an invitation, not an alert. Tokens only, so it rides light and dark. Its parent already draws a
+   card, so this is a plain section with no border of its own. */
+.ready-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Tiles are capped rather than stretched: with only one or two of them, a full-width row would
+   strand its action button an inch away from its label. They pack from the left and wrap. */
+.ready-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 300px));
+  justify-content: start;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ready-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--m-quick),
+    border-color var(--m-quick);
+}
+.ready-item:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-mid);
+}
+
+.ready-icon {
+  display: flex;
+  flex: none;
+  color: var(--presence);
+}
+.ready-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* min-width:0 lets the two clamped lines below actually shrink inside the grid track. */
+.ready-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* A deck or course title is user text of any length — clamp rather than let it push the row wide. */
+.ready-title {
+  font: 600 13.5px/1.25 var(--font);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ready-sub {
+  font: 450 11.5px/1.3 var(--font);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ready-go {
+  flex: none;
+  font: 600 12px/1 var(--font);
+  color: var(--presence);
+}

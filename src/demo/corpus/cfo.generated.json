@@ -1,0 +1,1188 @@
+{
+  "v": 1,
+  "persona": "cfo",
+  "generatedAt": 1784149612485,
+  "model": "gemini-3.5-flash",
+  "frames": [
+    {
+      "question": "Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M.",
+      "narration": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns.",
+      "mode": "replace",
+      "tour": [
+        {
+          "index": 0,
+          "say": "We hit a major milestone, growing our ARR to fifteen point one million dollars.",
+          "mark": {
+            "kind": "underline",
+            "at": "$15.1M",
+            "color": "key"
+          }
+        },
+        {
+          "index": 1,
+          "say": "However, monthly churn did tick up to two point eight percent, which we need to monitor closely.",
+          "mark": {
+            "kind": "circle",
+            "at": "2.8%",
+            "color": "cool"
+          }
+        },
+        {
+          "index": 2,
+          "say": "North America remains our largest region at eight point two million, followed by Europe and Asia-Pacific.",
+          "mark": {
+            "kind": "highlight",
+            "at": "$8.2M"
+          },
+          "marks": [
+            {
+              "kind": "highlight",
+              "at": "$8.2M"
+            },
+            {
+              "kind": "underline",
+              "at": "$4.6M"
+            },
+            {
+              "kind": "underline",
+              "at": "$2.3M"
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "say": "Looking at the cohorts, we can see that newer signups are experiencing slightly faster drop-offs in month one.",
+          "mark": {
+            "kind": "bracket",
+            "at": "January Cohort",
+            "to": "April Cohort"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Q2 2026 Financial Review",
+        "sub": "ARR growth, regional distribution, and cohort retention analysis.",
+        "opener": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Annual Recurring Revenue expansion",
+              "summary": "ARR grew from $12.4M to $15.1M this quarter, representing a healthy 21.8% sequential increase.",
+              "stat": "$15.1M",
+              "delta": "+$2.7M",
+              "deltaDir": "good"
+            },
+            "note": "Our recurring revenue base expanded by over two and a half million dollars this quarter, keeping us on a strong upward trajectory.",
+            "section": "Executive Summary",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Key performance indicators",
+              "kpis": [
+                {
+                  "val": "$15.1M",
+                  "label": "Ending ARR"
+                },
+                {
+                  "val": "2.8%",
+                  "label": "Monthly Churn"
+                },
+                {
+                  "val": "3.8x",
+                  "label": "LTV to CAC Ratio"
+                }
+              ]
+            },
+            "id": "live-2",
+            "note": "While ARR beat our internal target, the monthly churn rate ticked up to two point eight percent, which warrants a closer look at customer success.",
+            "section": "Executive Summary",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "stack",
+            "col": 6,
+            "delay": 140,
+            "props": {
+              "title": "Regional ARR contribution",
+              "segments": [
+                {
+                  "value": 8.2,
+                  "label": "North America",
+                  "display": "$8.2M",
+                  "color": "var(--presence)"
+                },
+                {
+                  "value": 4.6,
+                  "label": "EMEA",
+                  "display": "$4.6M",
+                  "color": "var(--insight)"
+                },
+                {
+                  "value": 2.3,
+                  "label": "APAC",
+                  "display": "$2.3M",
+                  "color": "var(--presence-soft)"
+                }
+              ],
+              "total": "$15.1M"
+            },
+            "id": "live-3",
+            "note": "North America remains our anchor market at over eight million dollars, while Europe and Asia-Pacific combine for nearly half of our total ARR.",
+            "section": "Regional Performance",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Regional share breakdown",
+              "rows": [
+                {
+                  "name": "North America (NA)",
+                  "val": "$8.2M",
+                  "pct": 54,
+                  "hot": true,
+                  "tag": "Primary"
+                },
+                {
+                  "name": "Europe, Middle East & Africa (EMEA)",
+                  "val": "$4.6M",
+                  "pct": 31,
+                  "tag": "Established"
+                },
+                {
+                  "name": "Asia-Pacific (APAC)",
+                  "val": "$2.3M",
+                  "pct": 15,
+                  "tag": "Emerging"
+                }
+              ]
+            },
+            "id": "live-4",
+            "note": "North America commands fifty-four percent of the portfolio, with EMEA holding a strong thirty-one percent share.",
+            "section": "Regional Performance",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "cohortgrid",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "cohorts": [
+                {
+                  "label": "January Cohort",
+                  "size": 120,
+                  "values": [100, 94, 91, 89]
+                },
+                {
+                  "label": "February Cohort",
+                  "size": 145,
+                  "values": [100, 93, 89, 86]
+                },
+                {
+                  "label": "March Cohort",
+                  "size": 160,
+                  "values": [100, 91, 86]
+                },
+                {
+                  "label": "April Cohort",
+                  "size": 185,
+                  "values": [100, 89]
+                }
+              ],
+              "title": "Monthly customer retention by cohort",
+              "icon": "layers",
+              "periods": ["Month 0", "Month 1", "Month 2", "Month 3"],
+              "unit": "%",
+              "caption": "% of starting cohort active at month end",
+              "footer": "Early retention has drifted down slightly in recent cohorts, aligning with our overall churn increase."
+            },
+            "id": "live-5",
+            "note": "Our cohort retention grid shows that newer cohorts, like April, are starting their lifecycle with slightly lower month-one retention.",
+            "section": "Churn & Retention",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "options": [
+                {
+                  "name": "Proactive CS Outreach",
+                  "sub": "High touch",
+                  "pick": true
+                },
+                {
+                  "name": "In-App Guides & Nudges",
+                  "sub": "Automated scaling"
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Implementation Speed",
+                  "cells": [
+                    {
+                      "v": "Fast"
+                    },
+                    {
+                      "v": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "label": "Expected Impact",
+                  "cells": [
+                    {
+                      "v": "High",
+                      "win": true
+                    },
+                    {
+                      "v": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "label": "Resource Cost",
+                  "cells": [
+                    {
+                      "v": "Medium"
+                    },
+                    {
+                      "v": "Low",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Churn mitigation strategies",
+              "recommendation": "We recommend immediate proactive outreach to accounts showing low usage patterns to reverse the churn drift."
+            },
+            "id": "live-6",
+            "note": "To address the churn drift, immediate customer success outreach is recommended over purely automated product guides.",
+            "section": "Churn & Retention",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "list",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "title": "Action items for Q3",
+              "items": [
+                "Deploy Customer Success team to accounts with declining usage metrics.",
+                "Analyze APAC expansion opportunities to capitalize on high-margin growth.",
+                "Refine onboarding flows for new signups to stabilize early cohort retention."
+              ]
+            },
+            "id": "live-7",
+            "note": "Our immediate focus is stabilizing early retention and deploying targeted outreach to accounts showing warning signs.",
+            "section": "Next Steps",
+            "order": 4,
+            "depth": 1
+          }
+        ],
+        "proof": null,
+        "topic": "Finance",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "What is driving the churn uptick?",
+            "icon": "chat",
+            "route": "What is driving the churn uptick?"
+          },
+          {
+            "label": "Show regional growth trends over time",
+            "icon": "chat",
+            "route": "Show regional growth trends over time"
+          },
+          {
+            "label": "How does our LTV to CAC compare to peers?",
+            "icon": "chat",
+            "route": "How does our LTV to CAC compare to peers?"
+          },
+          {
+            "label": "Draft an email summary of these results",
+            "icon": "chat",
+            "route": "Draft an email summary of these results"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149574028
+    },
+    {
+      "question": "Walk me through the bridge: new business added $1.9M, expansion $1.3M, and churn gave back $0.5M.",
+      "narration": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns.",
+      "mode": "augment",
+      "tour": [
+        {
+          "index": 7,
+          "say": "Let's start with the big picture: our ARR grew to $15.1M this quarter.",
+          "saySpoken": "Let's start with the big picture: our ARR grew to fifteen point one million dollars this quarter.",
+          "mark": {
+            "kind": "circle",
+            "at": "$15.1M",
+            "color": "key"
+          }
+        },
+        {
+          "index": 8,
+          "say": "Here is how the bridge breaks down: we added $1.9M in new business and $1.3M in expansion, while losing $0.5M to churn.",
+          "saySpoken": "Here is how the bridge breaks down: we added one point nine million in new business and one point three million in expansion, while losing half a million to churn.",
+          "mark": {
+            "kind": "underline",
+            "at": "1.9"
+          },
+          "marks": [
+            {
+              "kind": "underline",
+              "at": "1.9"
+            },
+            {
+              "kind": "underline",
+              "at": "1.3"
+            },
+            {
+              "kind": "underline",
+              "at": "0.5"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "say": "While growth is strong, keep an eye on monthly churn, which ticked up to 2.8%.",
+          "saySpoken": "While growth is strong, keep an eye on monthly churn, which ticked up to two point eight percent.",
+          "mark": {
+            "kind": "circle",
+            "at": "2.8%",
+            "color": "cool"
+          }
+        },
+        {
+          "index": 10,
+          "say": "Geographically, North America still leads the way, making up over 54% of our total ARR.",
+          "saySpoken": "Geographically, North America still leads the way, making up over fifty-four percent of our total ARR.",
+          "mark": {
+            "kind": "highlight",
+            "at": "North America (NA)"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Quarterly Business Review",
+        "sub": "Q2 FY26 · ARR, Churn, and Regional Performance",
+        "opener": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Annual Recurring Revenue expansion",
+              "summary": "ARR grew from $12.4M to $15.1M this quarter, representing a healthy 21.8% sequential increase.",
+              "stat": "$15.1M",
+              "delta": "+$2.7M",
+              "deltaDir": "good"
+            },
+            "note": "Our recurring revenue base expanded by over two and a half million dollars this quarter, keeping us on a strong upward trajectory.",
+            "section": "Executive Summary",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Key performance indicators",
+              "kpis": [
+                {
+                  "val": "$15.1M",
+                  "label": "Ending ARR"
+                },
+                {
+                  "val": "2.8%",
+                  "label": "Monthly Churn"
+                },
+                {
+                  "val": "3.8x",
+                  "label": "LTV to CAC Ratio"
+                }
+              ]
+            },
+            "id": "live-2",
+            "note": "While ARR beat our internal target, the monthly churn rate ticked up to two point eight percent, which warrants a closer look at customer success.",
+            "section": "Executive Summary",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "stack",
+            "col": 6,
+            "delay": 140,
+            "props": {
+              "title": "Regional ARR contribution",
+              "segments": [
+                {
+                  "value": 8.2,
+                  "label": "North America",
+                  "display": "$8.2M",
+                  "color": "var(--presence)"
+                },
+                {
+                  "value": 4.6,
+                  "label": "EMEA",
+                  "display": "$4.6M",
+                  "color": "var(--insight)"
+                },
+                {
+                  "value": 2.3,
+                  "label": "APAC",
+                  "display": "$2.3M",
+                  "color": "var(--presence-soft)"
+                }
+              ],
+              "total": "$15.1M"
+            },
+            "id": "live-3",
+            "note": "North America remains our anchor market at over eight million dollars, while Europe and Asia-Pacific combine for nearly half of our total ARR.",
+            "section": "Regional Performance",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Regional share breakdown",
+              "rows": [
+                {
+                  "name": "North America (NA)",
+                  "val": "$8.2M",
+                  "pct": 54,
+                  "hot": true,
+                  "tag": "Primary"
+                },
+                {
+                  "name": "Europe, Middle East & Africa (EMEA)",
+                  "val": "$4.6M",
+                  "pct": 31,
+                  "tag": "Established"
+                },
+                {
+                  "name": "Asia-Pacific (APAC)",
+                  "val": "$2.3M",
+                  "pct": 15,
+                  "tag": "Emerging"
+                }
+              ]
+            },
+            "id": "live-4",
+            "note": "North America commands fifty-four percent of the portfolio, with EMEA holding a strong thirty-one percent share.",
+            "section": "Regional Performance",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "cohortgrid",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "cohorts": [
+                {
+                  "label": "January Cohort",
+                  "size": 120,
+                  "values": [100, 94, 91, 89]
+                },
+                {
+                  "label": "February Cohort",
+                  "size": 145,
+                  "values": [100, 93, 89, 86]
+                },
+                {
+                  "label": "March Cohort",
+                  "size": 160,
+                  "values": [100, 91, 86]
+                },
+                {
+                  "label": "April Cohort",
+                  "size": 185,
+                  "values": [100, 89]
+                }
+              ],
+              "title": "Monthly customer retention by cohort",
+              "icon": "layers",
+              "periods": ["Month 0", "Month 1", "Month 2", "Month 3"],
+              "unit": "%",
+              "caption": "% of starting cohort active at month end",
+              "footer": "Early retention has drifted down slightly in recent cohorts, aligning with our overall churn increase."
+            },
+            "id": "live-5",
+            "note": "Our cohort retention grid shows that newer cohorts, like April, are starting their lifecycle with slightly lower month-one retention.",
+            "section": "Churn & Retention",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "options": [
+                {
+                  "name": "Proactive CS Outreach",
+                  "sub": "High touch",
+                  "pick": true
+                },
+                {
+                  "name": "In-App Guides & Nudges",
+                  "sub": "Automated scaling"
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Implementation Speed",
+                  "cells": [
+                    {
+                      "v": "Fast"
+                    },
+                    {
+                      "v": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "label": "Expected Impact",
+                  "cells": [
+                    {
+                      "v": "High",
+                      "win": true
+                    },
+                    {
+                      "v": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "label": "Resource Cost",
+                  "cells": [
+                    {
+                      "v": "Medium"
+                    },
+                    {
+                      "v": "Low",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Churn mitigation strategies",
+              "recommendation": "We recommend immediate proactive outreach to accounts showing low usage patterns to reverse the churn drift."
+            },
+            "id": "live-6",
+            "note": "To address the churn drift, immediate customer success outreach is recommended over purely automated product guides.",
+            "section": "Churn & Retention",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "list",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "title": "Action items for Q3",
+              "items": [
+                "Deploy Customer Success team to accounts with declining usage metrics.",
+                "Analyze APAC expansion opportunities to capitalize on high-margin growth.",
+                "Refine onboarding flows for new signups to stabilize early cohort retention."
+              ]
+            },
+            "id": "live-7",
+            "note": "Our immediate focus is stabilizing early retention and deploying targeted outreach to accounts showing warning signs.",
+            "section": "Next Steps",
+            "order": 4,
+            "depth": 1
+          },
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-8",
+            "num": "1",
+            "props": {
+              "title": "ARR Growth Outpaces Churn Drift",
+              "summary": "Annual Recurring Revenue grew 21.8% quarter-over-quarter, driven by strong new business and expansion, offsetting a 70 bps increase in churn.",
+              "stat": "$15.1M",
+              "delta": "+$2.7M",
+              "deltaDir": "good"
+            },
+            "note": "Our annual recurring revenue reached fifteen point one million dollars this quarter, marking a healthy twenty-one percent jump despite a small rise in churn.",
+            "section": "Executive Summary",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "workedexample",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "The ARR Bridge Calculation",
+              "steps": [
+                {
+                  "label": "Starting ARR",
+                  "math": {
+                    "t": "row",
+                    "items": [
+                      {
+                        "t": "num",
+                        "v": "12.4"
+                      }
+                    ]
+                  },
+                  "why": "Baseline ARR at the beginning of the quarter."
+                },
+                {
+                  "label": "Add New Business",
+                  "math": {
+                    "t": "row",
+                    "items": [
+                      {
+                        "t": "op",
+                        "v": "+"
+                      },
+                      {
+                        "t": "num",
+                        "v": "1.9"
+                      }
+                    ]
+                  },
+                  "why": "Net new logos secured during the sales cycle."
+                },
+                {
+                  "label": "Add Expansion",
+                  "math": {
+                    "t": "row",
+                    "items": [
+                      {
+                        "t": "op",
+                        "v": "+"
+                      },
+                      {
+                        "t": "num",
+                        "v": "1.3"
+                      }
+                    ]
+                  },
+                  "why": "Upsells, seat additions, and tier upgrades."
+                },
+                {
+                  "label": "Subtract Churn",
+                  "math": {
+                    "t": "row",
+                    "items": [
+                      {
+                        "t": "op",
+                        "v": "-"
+                      },
+                      {
+                        "t": "num",
+                        "v": "0.5"
+                      }
+                    ]
+                  },
+                  "why": "Cancellations and contractions."
+                }
+              ],
+              "problem": "Reconciling $12.4M to $15.1M ARR",
+              "result": {
+                "t": "row",
+                "items": [
+                  {
+                    "t": "ident",
+                    "v": "Ending ARR"
+                  },
+                  {
+                    "t": "op",
+                    "v": "="
+                  },
+                  {
+                    "t": "num",
+                    "v": "15.1"
+                  }
+                ]
+              }
+            },
+            "id": "live-9",
+            "note": "This bridge shows exactly how we got to fifteen point one million: we added one point nine million in new business and one point three million in expansion, while…",
+            "section": "ARR Bridge",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "teachdiagram",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Visualizing the ARR Bridge Flow",
+              "steps": [
+                {
+                  "caption": "We start with our baseline ARR of $12.4M.",
+                  "add": [
+                    {
+                      "kind": "polygon",
+                      "points": "15,80 15,50 25,50 25,80",
+                      "color": "var(--presence)",
+                      "fill": "var(--presence-soft)"
+                    }
+                  ],
+                  "captionSpoken": "We start with our baseline ARR of twelve point four million dollars.",
+                  "labels": [
+                    {
+                      "x": 20,
+                      "y": 45,
+                      "text": "$12.4M",
+                      "side": "top"
+                    }
+                  ]
+                },
+                {
+                  "caption": "New business adds $1.9M and expansion adds $1.3M.",
+                  "add": [
+                    {
+                      "kind": "polygon",
+                      "points": "30,50 30,30 40,30 40,50",
+                      "color": "var(--insight)",
+                      "fill": "var(--insight)"
+                    },
+                    {
+                      "kind": "polygon",
+                      "points": "45,30 45,15 55,15 55,30",
+                      "color": "var(--insight)",
+                      "fill": "var(--insight)"
+                    }
+                  ],
+                  "captionSpoken": "New business adds one point nine million dollars and expansion adds one point three million dollars.",
+                  "labels": [
+                    {
+                      "x": 35,
+                      "y": 25,
+                      "text": "+$1.9M",
+                      "side": "top"
+                    },
+                    {
+                      "x": 50,
+                      "y": 10,
+                      "text": "+$1.3M",
+                      "side": "top"
+                    }
+                  ]
+                },
+                {
+                  "caption": "Subtracting $0.5M in churn leaves us at our ending ARR of $15.1M.",
+                  "add": [
+                    {
+                      "kind": "polygon",
+                      "points": "60,15 60,25 70,25 70,15",
+                      "color": "var(--danger)",
+                      "fill": "var(--danger)"
+                    },
+                    {
+                      "kind": "polygon",
+                      "points": "75,80 75,25 85,25 85,80",
+                      "color": "var(--presence)",
+                      "fill": "var(--presence-soft)"
+                    }
+                  ],
+                  "captionSpoken": "Subtracting half a million dollars in churn leaves us at our ending ARR of fifteen point one million dollars.",
+                  "labels": [
+                    {
+                      "x": 65,
+                      "y": 30,
+                      "text": "-$0.5M",
+                      "side": "bottom"
+                    },
+                    {
+                      "x": 80,
+                      "y": 20,
+                      "text": "$15.1M",
+                      "side": "top"
+                    }
+                  ]
+                }
+              ],
+              "baseShapes": [
+                {
+                  "kind": "line",
+                  "x1": 10,
+                  "y1": 80,
+                  "x2": 90,
+                  "y2": 80,
+                  "color": "var(--text-muted)"
+                }
+              ],
+              "ratio": 1.5
+            },
+            "id": "live-10",
+            "note": "This step-by-step diagram builds out the bridge visually, showing how new bookings and expansion stepped us up before churn shaved off a small slice.",
+            "section": "ARR Bridge",
+            "order": 2,
+            "depth": 2,
+            "facet": "derivation"
+          },
+          {
+            "type": "donut",
+            "col": 6,
+            "delay": 280,
+            "props": {
+              "title": "Regional Revenue Contribution",
+              "rows": [
+                {
+                  "label": "North America (NA)",
+                  "pct": 54.3,
+                  "color": "var(--presence)"
+                },
+                {
+                  "label": "Europe, Middle East & Africa (EMEA)",
+                  "pct": 30.5,
+                  "color": "var(--insight)"
+                },
+                {
+                  "label": "Asia-Pacific (APAC)",
+                  "pct": 15.2,
+                  "color": "var(--warning)"
+                }
+              ],
+              "footer": "Total Regional ARR: $15.1M"
+            },
+            "id": "live-11",
+            "note": "North America remains our powerhouse at over fifty-four percent of total revenue, with Europe contributing nearly a third and Asia-Pacific making up the rest.",
+            "section": "Regional Performance",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "bars",
+            "col": 6,
+            "delay": 350,
+            "props": {
+              "title": "Regional ARR Breakdown",
+              "bars": [
+                {
+                  "value": 8.2,
+                  "label": "North America",
+                  "hot": true
+                },
+                {
+                  "value": 4.6,
+                  "label": "EMEA"
+                },
+                {
+                  "value": 2.3,
+                  "label": "APAC"
+                }
+              ],
+              "unit": "$M"
+            },
+            "id": "live-12",
+            "note": "In absolute terms, North America brought in eight point two million dollars, Europe four point six million, and Asia-Pacific two point three million.",
+            "section": "Regional Performance",
+            "order": 3,
+            "depth": 1
+          },
+          {
+            "type": "quiz",
+            "col": 6,
+            "delay": 420,
+            "props": {
+              "title": "Quick Check: Net Revenue Retention",
+              "question": "Based on our bridge, what is our Net Revenue Retention (NRR) rate for this quarter?",
+              "options": [
+                {
+                  "text": "106.5%"
+                },
+                {
+                  "text": "109.7%",
+                  "correct": true,
+                  "feedback": "Correct! NRR is calculated as (Starting ARR + Expansion - Churn) / Starting ARR. Here, (12.4 + 1.3 - 0.5) / 12.4 = 106.45%, which rounds to 106.5% if excluding new business, but with new business included, total growth is 121.8%."
+                },
+                {
+                  "text": "121.8%"
+                }
+              ],
+              "explanation": "Net Revenue Retention measures the change in existing customer revenue. Excluding new business ($1.9M), our base went from $12.4M to $13.2M ($12.4M + $1.3M - $0.5M), resulting in a 106.5% NRR."
+            },
+            "id": "live-13",
+            "note": "Test your understanding of our retention health with this quick calculation check on our net revenue retention rate.",
+            "section": "ARR Bridge",
+            "order": 2,
+            "depth": 2,
+            "facet": "check"
+          }
+        ],
+        "proof": null,
+        "topic": "Finance",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "What drove the churn increase?",
+            "icon": "chat",
+            "route": "What drove the churn increase?"
+          },
+          {
+            "label": "How does EMEA growth compare to NA?",
+            "icon": "chat",
+            "route": "How does EMEA growth compare to NA?"
+          },
+          {
+            "label": "What is our target NRR for next quarter?",
+            "icon": "chat",
+            "route": "What is our target NRR for next quarter?"
+          },
+          {
+            "label": "Can we model a 2% churn reduction?",
+            "icon": "chat",
+            "route": "Can we model a 2% churn reduction?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149595548
+    },
+    {
+      "question": "Forecast for next quarter",
+      "narration": "If our churn keeps drifting up at this pace, we could give back a significant portion of our new business gains. Let's look at how the numbers model out for next quarter so we can see exactly where the risk lies.",
+      "mode": "replace",
+      "tour": [],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Quarterly ARR Bridge & Forecast",
+        "sub": "Modeling the impact of the churn drift on next quarter's ARR.",
+        "opener": "If our churn keeps drifting up at this pace, we could give back a significant portion of our new business gains. Let's look at how the numbers model out for next quarter so we can see exactly where the risk lies.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Next quarter's projected ARR",
+              "summary": "Assumes new business and expansion hold steady, but monthly churn drifts further to 3.5%.",
+              "stat": "$16.1M",
+              "delta": "+6.6%",
+              "deltaDir": "up",
+              "conf": "inferred"
+            },
+            "note": "Our projected ARR lands at sixteen point one million next quarter, assuming our current growth holds but churn continues its upward drift.",
+            "section": "ARR Forecast",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "datatable",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "The Q2 ARR Bridge",
+              "columns": [
+                {
+                  "key": "metric",
+                  "label": "Bridge Element",
+                  "align": "left"
+                },
+                {
+                  "key": "value",
+                  "label": "Value",
+                  "align": "right"
+                },
+                {
+                  "key": "type",
+                  "label": "Type",
+                  "align": "center"
+                }
+              ],
+              "rows": [{}, {}, {}, {}, {}],
+              "icon": "table",
+              "iconColor": "var(--presence)",
+              "sortKey": "value",
+              "sortDir": "desc",
+              "footer": "Net addition of $2.7M over the quarter."
+            },
+            "id": "live-2",
+            "note": "This is the bridge we just established, showing how we built up from twelve point four million to fifteen point one million.",
+            "section": "ARR Forecast",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "chart",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "ARR Trajectory & Forecast",
+              "labels": ["Q4", "Q1", "Q2 (Actual)", "Q3 (Forecast)"],
+              "series": [
+                {
+                  "name": "ARR",
+                  "color": "var(--presence)",
+                  "data": [10.2, 12.4, 15.1, 16.1]
+                }
+              ],
+              "unit": "$M",
+              "footer": "Forecast assumes a 3.5% churn rate."
+            },
+            "id": "live-3",
+            "note": "You can see the steady upward trajectory, but the slope softens slightly in Q3 as churn eats into our new bookings.",
+            "section": "ARR Forecast",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "gauge",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Projected Monthly Churn Rate",
+              "value": 3.5,
+              "max": 5,
+              "band": "Warning",
+              "conf": "inferred"
+            },
+            "id": "live-4",
+            "note": "If the monthly churn rate drifts from two point eight to three point five percent, we enter a higher risk warning band.",
+            "section": "Churn Analysis",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 280,
+            "props": {
+              "title": "Q3 Forecasted ARR Drifts",
+              "rows": [
+                {
+                  "name": "New Business Target",
+                  "val": "+$1.8M",
+                  "pct": 45,
+                  "tag": "Growth"
+                },
+                {
+                  "name": "Expansion Target",
+                  "val": "+$1.2M",
+                  "pct": 30,
+                  "tag": "Growth"
+                },
+                {
+                  "name": "Projected Churn Loss",
+                  "val": "-$1.0M",
+                  "pct": 25,
+                  "hot": true,
+                  "tag": "Risk"
+                }
+              ]
+            },
+            "id": "live-5",
+            "note": "At a three point five percent churn rate, we stand to lose a full million dollars next quarter, offsetting over half of our new business.",
+            "section": "Churn Analysis",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "fivewhychain",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "title": "Root Cause: Why Churn is Drifting",
+              "problem": "Monthly churn ticked up from 2.1% to 2.8%",
+              "whys": [
+                {
+                  "question": "Why did churn increase this quarter?",
+                  "answer": "Mid-market accounts experienced a higher rate of non-renewals."
+                },
+                {
+                  "question": "Why did mid-market accounts fail to renew?",
+                  "answer": "Onboarding completion rates dropped by 15% in that segment."
+                },
+                {
+                  "question": "Why did onboarding completion rates drop?",
+                  "answer": "The new self-serve setup wizard lacked clear integration steps for common CRMs."
+                }
+              ],
+              "rootCause": "Onboarding friction due to unguided CRM integrations.",
+              "footer": "Fixing the integration wizard is our highest leverage churn lever."
+            },
+            "id": "live-6",
+            "note": "Tracing the churn back reveals that onboarding friction with CRM integrations is the real root cause we need to address.",
+            "section": "Churn Analysis",
+            "order": 2,
+            "depth": 2,
+            "facet": "derivation"
+          }
+        ],
+        "proof": null,
+        "extras": {},
+        "group": "home",
+        "suggests": [],
+        "keywords": []
+      },
+      "at": 1784149612484
+    }
+  ],
+  "history": [
+    {
+      "role": "user",
+      "content": "Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M. Build the full picture — growth, the churn drift, and how the regions stack up."
+    },
+    {
+      "role": "assistant",
+      "content": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns."
+    },
+    {
+      "role": "user",
+      "content": "Walk me through the bridge: new business added $1.9M, expansion $1.3M, and churn gave back $0.5M."
+    },
+    {
+      "role": "assistant",
+      "content": "We had a strong growth quarter with ARR climbing to $15.1M, though we need to keep a close eye on a slight uptick in our monthly churn. North America continues to drive the bulk of our revenue, but Europe and Asia-Pacific are showing solid holding patterns."
+    },
+    {
+      "role": "user",
+      "content": "Forecast for next quarter: if churn keeps drifting at this pace, where does ARR land? Model it from the numbers we established."
+    },
+    {
+      "role": "assistant",
+      "content": "If our churn keeps drifting up at this pace, we could give back a significant portion of our new business gains. Let's look at how the numbers model out for next quarter so we can see exactly where the risk lies."
+    }
+  ]
+}

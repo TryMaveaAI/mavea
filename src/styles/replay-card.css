@@ -1,0 +1,66 @@
+/* ============================================================
+   REPLAY CARD
+   ============================================================ */
+.replay-card {
+  background: var(--replay-bg);
+  border: 1px solid rgba(110, 140, 255, 0.25);
+}
+.replay-stage {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--replay-stage-bg);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+}
+.replay-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--presence);
+  box-shadow: 0 0 10px var(--glow-presence);
+  width: 0;
+}
+.replay-formats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.fmt {
+  padding: 7px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.fmt.on {
+  color: var(--presence-soft);
+  border-color: rgba(110, 140, 255, 0.4);
+  background: rgba(110, 140, 255, 0.1);
+}
+
+/* entrance animation for cards (gated by data-active) */
+/* entrance: visible end-state is the BASE; animate IN from hidden via @starting-style
+   so content is never stuck invisible if animations are paused/unsupported */
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    transition:
+      opacity var(--m-expressive) var(--ease-out),
+      transform var(--m-expressive) var(--ease-out);
+    transition-delay: var(--delay, 0ms);
+  }
+  @starting-style {
+    .reveal {
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+    }
+  }
+}

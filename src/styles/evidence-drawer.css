@@ -1,0 +1,232 @@
+/* ============================================================
+   EVIDENCE / PROOF DRAWER
+   ============================================================ */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--scrim-rgb), 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+  opacity: 0;
+  transition: opacity var(--m-normal);
+}
+.scrim.show {
+  opacity: 1;
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(560px, 92vw);
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface-default));
+  border-left: 1px solid var(--line-strong);
+  z-index: 51;
+  box-shadow: var(--shadow-modal);
+  transform: translateX(100%);
+  /* Closed state must be truly inert, not just translated offscreen: the app shell is
+     overflow:hidden, so a focus/scrollIntoView on the drawer's (still focusable) content can
+     scroll the shell horizontally and drag the "closed" panel into view, where it silently
+     intercepts topbar clicks. visibility flips to hidden only AFTER the slide-out finishes
+     (the 0s visibility transition is delayed by the transform duration). */
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform var(--m-expressive) var(--ease-out),
+    visibility 0s linear var(--m-expressive);
+  display: flex;
+  flex-direction: column;
+}
+.drawer.show {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform var(--m-expressive) var(--ease-out);
+}
+.drawer-head {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.drawer-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--insight);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.drawer-claim {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-top: 8px;
+}
+.drawer-body {
+  padding: 18px 24px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.drawer-x {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+}
+.drawer-x:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass-strong);
+}
+
+.evidence-block {
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.evidence-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+.evidence-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.evidence-file .ficon {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.evidence-loc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.evidence-rows {
+  font-size: 13px;
+  font-family: var(--mono);
+}
+.evidence-rows .erow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-secondary);
+}
+.evidence-rows .erow:last-child {
+  border-bottom: 0;
+}
+.evidence-rows .erow.hot {
+  background: rgba(245, 185, 92, 0.1);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--warning);
+}
+.evidence-rows .erow .amt {
+  color: var(--text-primary);
+}
+
+/* A source as a receipt: the title row reuses .evidence-top chrome, and the real fetched
+   excerpt sits below as a quoted passage — the honest analog to the demo's proof rows. */
+.evidence-src {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: border-color 0.15s ease;
+}
+.evidence-src:hover {
+  border-color: var(--line-strong);
+}
+.evidence-src .evidence-top {
+  gap: 10px;
+}
+.evidence-src .evidence-file {
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.evidence-src .evidence-file svg {
+  flex: 0 0 auto;
+}
+.evidence-src .evidence-loc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42%;
+}
+.evidence-quote {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  padding: 10px 13px;
+}
+.evidence-quote::before {
+  content: '\201C';
+  color: var(--text-muted);
+}
+.evidence-quote::after {
+  content: '\201D';
+  color: var(--text-muted);
+}
+
+.assumption {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  background: rgba(245, 185, 92, 0.07);
+  border: 1px solid rgba(245, 185, 92, 0.2);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.assumption svg {
+  width: 16px;
+  height: 16px;
+  color: var(--warning);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.assumption b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.proof-quote {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  padding: 12px 14px;
+}
+.proof-quote mark {
+  background: rgba(245, 185, 92, 0.28);
+  color: var(--warning-soft);
+  padding: 1px 3px;
+  border-radius: 3px;
+}

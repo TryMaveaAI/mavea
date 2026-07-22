@@ -1,0 +1,4529 @@
+/* charts2 family styles — tokens only; light/dark via existing token overrides.
+   All classes namespaced `.c2-*` (and root `.c2`) to stay disjoint from other families. */
+
+.c2 .tab-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── overflow containment (scoped to this family's cards via .c2 root) ──
+   long titles wrap instead of spilling past the rounded border; the global
+   .card-eyebrow is white-space:nowrap, so relax it only for our cards. */
+.c2 .card-eyebrow {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c2 .insight-summary {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── Slopegraph ───────────────────────── */
+.c2-slope-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.c2-slope {
+  position: relative;
+}
+.c2-slope-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.c2-slope-lbl {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  transform: translateY(-50%);
+  transition: opacity var(--m-fast);
+  cursor: default;
+}
+.c2-slope-lbl.l {
+  left: 0;
+  max-width: 46%;
+}
+.c2-slope-lbl.r {
+  right: 0;
+  justify-content: flex-end;
+}
+.c2-slope-name {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.c2-slope-lbl .mono {
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+/* ───────────────────────── Dumbbell ───────────────────────── */
+.c2-db-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.c2-db-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.c2-db-leg i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.c2-db {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.c2-db-row {
+  display: grid;
+  grid-template-columns: clamp(64px, 24cqi, 90px) minmax(0, 1fr) 54px;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast);
+}
+.c2-db-row.on {
+  background: var(--surface-glass);
+}
+.c2-db-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.c2-db-name-txt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c2-db-tag {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.c2-db-track {
+  position: relative;
+  height: 16px;
+}
+.c2-db-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--track);
+  transform: translateY(-50%);
+}
+.c2-db-conn {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: var(--r-full);
+  background: var(--line-strong);
+}
+.c2-db-dot {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px var(--surface-elevated);
+  transition: transform var(--m-fast);
+}
+.c2-db-row.on .c2-db-dot {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.c2-db-delta {
+  font-size: 12px;
+  text-align: right;
+}
+.c2-db-tip {
+  position: absolute;
+  bottom: 130%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: 11px;
+  z-index: 4;
+}
+.c2-db-arr {
+  font-weight: 700;
+}
+
+/* ───────────────────────── PopulationPyramid ───────────────────────── */
+.c2-pp-head {
+  display: grid;
+  grid-template-columns:
+    minmax(30px, 48px) minmax(0, 1fr) minmax(48px, 68px) minmax(0, 1fr)
+    minmax(30px, 48px);
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.c2-pp-head-lbl.left {
+  grid-column: 1 / 3;
+  text-align: right;
+}
+.c2-pp-head-lbl {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.c2-pp-head-lbl.right {
+  grid-column: 4 / 6;
+  text-align: left;
+}
+.c2-pp {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.c2-pp-row {
+  display: grid;
+  grid-template-columns:
+    minmax(30px, 48px) minmax(0, 1fr) minmax(48px, 68px) minmax(0, 1fr)
+    minmax(30px, 48px);
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast);
+}
+.c2-pp-row.on {
+  background: var(--surface-glass);
+}
+.c2-pp-val {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.c2-pp-val.left {
+  text-align: right;
+}
+.c2-pp-val.right {
+  text-align: left;
+}
+.c2-pp-track {
+  position: relative;
+  height: 14px;
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--track);
+}
+.c2-pp-track.left {
+  justify-content: flex-end;
+}
+.c2-pp-bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-sm);
+  min-width: 2px;
+}
+.c2-pp-bar.left {
+  background: var(--presence);
+  transform-origin: right center;
+}
+.c2-pp-bar.right {
+  background: var(--insight);
+  transform-origin: left center;
+}
+.c2-pp-band-lbl {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ───────────────────────── Lollipop ───────────────────────── */
+.c2-sort-btn {
+  margin-bottom: 12px;
+}
+.c2-lp {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.c2-lp-row {
+  display: grid;
+  grid-template-columns: clamp(64px, 24cqi, 90px) minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 4px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast);
+}
+.c2-lp-row.on {
+  background: var(--surface-glass);
+}
+.c2-lp-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.c2-lp-track {
+  position: relative;
+  height: 14px;
+}
+.c2-lp-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--track);
+  transform: translateY(-50%);
+}
+.c2-lp-stem {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: var(--r-full);
+  transition: width var(--m-expressive) var(--ease-out);
+}
+.c2-lp-circ {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+  transform: translate(-50%, -50%);
+  transition:
+    left var(--m-expressive) var(--ease-out),
+    background var(--m-fast);
+}
+.c2-lp-val {
+  font-size: 12.5px;
+  text-align: right;
+  color: var(--text-primary);
+}
+.c2-lp-tip {
+  position: absolute;
+  bottom: 135%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: 11px;
+  z-index: 4;
+}
+
+/* ───────────────────────── Bullet chart ───────────────────────── */
+.c2-bul {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.c2-bul-row {
+  padding: 2px 0;
+  /* The track keeps overflow:visible so the target marker and hover tip can bleed past it;
+     clip only the horizontal axis here so the bar/tip never escape sideways while the tip
+     still floats upward (overflow-x:clip leaves the cross axis genuinely visible). */
+  overflow-x: clip;
+}
+.c2-bul-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.c2-bul-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.c2-bul-num {
+  font-size: 12.5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.c2-bul-track {
+  position: relative;
+  height: 20px;
+  border-radius: var(--r-sm);
+  overflow: visible;
+}
+.c2-bul-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.c2-bul-measure {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  border-radius: var(--r-sm);
+  transition: width var(--m-expressive) var(--ease-out);
+  box-shadow: 0 0 8px -2px currentColor;
+}
+.c2-bul-target {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2.5px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  transform: translateX(-50%);
+}
+.c2-bul-tip {
+  position: absolute;
+  bottom: 125%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: 11px;
+  z-index: 4;
+}
+
+/* ───────────────────────── PayBandChart ───────────────────────── */
+.c2-pb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.c2-pb-role {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.c2-pb-range {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.c2-pb-track {
+  position: relative;
+  height: 30px;
+  border-radius: var(--r-sm);
+  overflow: visible;
+  background: var(--track);
+}
+.c2-pb-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--r-sm);
+}
+.c2-pb-band-lo {
+  left: 0;
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.c2-pb-band-hi {
+  background: color-mix(in oklab, var(--presence) 26%, transparent);
+}
+.c2-pb-mid {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--line-strong);
+  transform: translateX(-50%);
+}
+.c2-pb-marker {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--presence);
+  border: 2px solid var(--surface-default);
+  box-shadow: 0 0 0 1px var(--presence);
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    box-shadow var(--m-fast),
+    filter var(--m-fast);
+}
+.c2-pb-marker.flagged {
+  background: var(--warning);
+  box-shadow: 0 0 0 1px var(--warning);
+}
+.c2-pb-marker.on {
+  filter: brightness(1.2);
+  box-shadow:
+    0 0 0 1px var(--presence),
+    0 0 8px var(--glow-presence);
+  z-index: 4;
+}
+.c2-pb-marker.flagged.on {
+  box-shadow:
+    0 0 0 1px var(--warning),
+    0 0 8px var(--glow-warning);
+}
+.c2-pb-tip {
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: 11px;
+  z-index: 5;
+}
+.c2-pb-tip-flag {
+  color: var(--warning);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.c2-pb-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+}
+.c2-pb-tick {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.c2-pb-tick-mid {
+  transform: translateX(-50%);
+}
+.c2-pb-tick-end {
+  transform: translateX(-100%);
+}
+.c2-pb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 14px;
+}
+.c2-pb-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  transition: color var(--m-fast);
+}
+.c2-pb-leg i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.c2-pb-leg.on,
+.c2-pb-leg.flagged {
+  color: var(--text-primary);
+}
+.c2-pb-leg-name {
+  overflow-wrap: anywhere;
+}
+.c2-pb-leg-val {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+/* ───────────────────────── Candlestick ───────────────────────── */
+.c2-cs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  min-height: 28px;
+  flex-wrap: wrap;
+}
+.c2-cs-ohlc {
+  display: flex;
+  gap: 12px;
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.c2-cs-ohlc b {
+  font-size: var(--fs-sm, 12px);
+  color: var(--text-primary);
+}
+.c2-cs-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.c2-cs-yaxis {
+  position: relative;
+  flex: none;
+  width: clamp(26px, 10cqi, 48px);
+}
+.c2-cs-yt {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  font-size: var(--fs-2xs, 10px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.c2-cs {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.c2-cs-svg {
+  width: 100%;
+  height: clamp(160px, 60cqi, 370px);
+  display: block;
+}
+.c2-cs-svg g {
+  cursor: pointer;
+}
+.c2-cs-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  margin-left: clamp(32px, 10cqi, 54px);
+  font-size: var(--fs-xs, 11px);
+}
+
+/* ───────────────────────── Gantt ───────────────────────── */
+.c2-gantt-cols {
+  display: flex;
+  margin-left: 96px;
+  margin-bottom: 6px;
+}
+.c2-gantt-col {
+  font-size: 10.5px;
+  text-align: left;
+  padding-left: 2px;
+}
+.c2-gantt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.c2-gantt-line {
+  display: grid;
+  grid-template-columns: clamp(64px, 24cqi, 90px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.c2-gantt-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.c2-gantt-track {
+  position: relative;
+  height: 22px;
+}
+.c2-gantt-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--grid-line);
+}
+.c2-gantt-dep {
+  position: absolute;
+  top: 50%;
+  height: 1px;
+  border-top: 1.5px dashed var(--line-strong);
+  transform: translateY(-50%);
+}
+.c2-gantt-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.c2-gantt-bar.on {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-floating);
+  z-index: 3;
+}
+.c2-gantt-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.55;
+  transition: width var(--m-expressive) var(--ease-out);
+}
+.c2-gantt-pct {
+  position: relative;
+  font-size: 9.5px;
+  color: var(--text-primary);
+  padding-left: 6px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+/* A one-period bar can be narrower than its percentage at the smallest supported card size.
+   Keep the exact value on the button's accessible name and in its tap-open detail instead of
+   drawing text outside the bar. */
+@container (max-width: 260px) {
+  .c2-gantt-pct {
+    display: none;
+  }
+}
+.c2-gantt-tip {
+  position: absolute;
+  bottom: 120%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  z-index: 5;
+}
+.c2-gantt-detail {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+.c2-gantt-detail-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.c2-gantt-detail-h .ic {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.c2-gantt-detail-h b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.c2-gantt-x {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  transition: all var(--m-fast);
+}
+.c2-gantt-x:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+.c2-gantt-x svg {
+  width: 13px;
+  height: 13px;
+}
+.c2-gantt-detail-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  flex-wrap: wrap;
+}
+
+/* ───────────────────────── FlightChart ───────────────────────── */
+.c2-fc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.c2-fc-line {
+  display: grid;
+  grid-template-columns: clamp(64px, 24cqi, 96px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.c2-fc-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.c2-fc-track {
+  position: relative;
+  height: 24px;
+}
+.c2-fc-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--grid-line);
+}
+.c2-fc-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 20px;
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  background: var(--surface-glass);
+  transform-origin: left center;
+  transition:
+    transform var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.c2-fc-bar.on {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-floating);
+  z-index: 3;
+}
+.c2-fc-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.5;
+}
+.c2-fc-amt {
+  position: relative;
+  display: block;
+  font-size: 9.5px;
+  color: var(--text-primary);
+  padding: 0 6px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c2-fc-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.c2-fc-total-lbl {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.c2-fc-total-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ───────────────────────── Bubble ───────────────────────── */
+.c2-bub {
+  position: relative;
+}
+.c2-bub-svg {
+  width: 100%;
+  height: clamp(160px, 60cqi, 370px);
+  display: block;
+  overflow: visible;
+}
+.c2-bub-tip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11.5px);
+  pointer-events: none;
+  z-index: 4;
+}
+.c2-bub-tip .faint {
+  font-size: var(--fs-2xs, 10.5px);
+}
+
+/* ───────────────────────── Area range ───────────────────────── */
+.c2-ar-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.c2-ar-yaxis {
+  position: relative;
+  flex: none;
+  width: clamp(22px, 9cqi, 40px);
+}
+.c2-ar-yt {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  color: var(--text-faint);
+  font-size: var(--fs-2xs, 10px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.c2-ar {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.c2-ar-svg {
+  width: 100%;
+  height: clamp(150px, 58cqi, 360px);
+  display: block;
+}
+.c2-ar-tip {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: min(160px, 90%);
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11.5px);
+  pointer-events: none;
+  z-index: 4;
+}
+.c2-ar-tip b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c2-ar-tip .faint {
+  font-size: var(--fs-2xs, 10.5px);
+}
+.c2-ar-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  margin-left: clamp(28px, 9cqi, 46px); /* align under the plot, past the y-axis gutter */
+  font-size: var(--fs-xs, 11px);
+}
+
+/* ───────────────────────── Waffle ───────────────────────── */
+.c2-waf-wrap {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.c2-waffle {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  width: 188px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.c2-waf-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+.c2-waf-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-width: 130px;
+}
+.c2-waf-leg {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast);
+  width: 100%;
+  text-align: left;
+}
+.c2-waf-leg.on {
+  background: var(--surface-glass);
+}
+.c2-waf-leg i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.c2-waf-leg-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c2-waf-leg-pct {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+/* ───────────────────────── PictogramChart ───────────────────────── */
+.c2-pic-wrap {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.c2-pic-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  width: 188px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.c2-pic-cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+.c2-pic-cell-empty {
+  border-radius: 3px;
+  background: var(--cell-empty);
+}
+.c2-pic-glyph {
+  width: 68%;
+  height: 68%;
+  color: inherit;
+}
+.c2-pic-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 130px;
+}
+.c2-pic-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast);
+  width: 100%;
+  text-align: left;
+}
+.c2-pic-leg.on {
+  background: var(--surface-glass);
+}
+.c2-pic-leg-ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.c2-pic-leg-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c2-pic-leg-val {
+  font-size: 11.5px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+.c2-pic-key {
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+/* ───────────────────────── Grouped bars ───────────────────────── */
+.c2-gb-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.c2-gb-axis {
+  position: relative;
+  flex: none;
+  width: clamp(22px, 9cqi, 40px);
+  margin-bottom: 22px; /* align baseline with the bars' group labels */
+}
+.c2-gb-axis-t {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  color: var(--text-faint);
+  font-size: var(--fs-2xs, 10px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.c2-gb {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: clamp(150px, 56cqi, 360px);
+  padding-bottom: 22px;
+}
+.c2-gb-grid {
+  position: absolute;
+  inset: 0 0 22px 0;
+  pointer-events: none;
+}
+.c2-gb-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--grid-line);
+}
+.c2-gb-group {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+.c2-gb-cluster {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+}
+.c2-gb-bar {
+  position: relative;
+  flex: 1;
+  max-width: 18px;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  transition:
+    filter var(--m-fast),
+    transform var(--m-fast);
+  animation: c2gbGrow var(--m-expressive) var(--ease-out) both;
+  animation-delay: var(--bd, 0ms);
+  transform-origin: bottom;
+}
+.c2-gb-bar.on {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+}
+.c2-gb-tip {
+  position: absolute;
+  bottom: 104%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11px);
+  z-index: 5;
+}
+.c2-gb-glabel {
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: var(--fs-xs, 11px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes c2gbGrow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c2-gb-bar {
+    animation: none;
+  }
+  .c2-lp-stem,
+  .c2-lp-circ,
+  .c2-bul-measure,
+  .c2-gantt-fill {
+    transition: none;
+  }
+}
+
+/* ── calheat: contribution-style activity calendar ── */
+.c2-cal-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.c2-cal-days {
+  display: grid;
+  grid-template-rows: repeat(7, 13px);
+  gap: 3px;
+  flex-shrink: 0;
+}
+.c2-cal-day {
+  font-size: 10px;
+  line-height: 13px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.c2-cal-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 13px);
+  grid-auto-flow: column;
+  grid-auto-columns: 13px;
+  gap: 3px;
+}
+.c2-cal-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  transition: transform var(--m-fast) var(--ease-out);
+}
+.c2-cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.c2-cal-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.c2-cal-leg-lbl {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* ── bump: rank-over-time ── */
+.c2-bump {
+  width: 100%;
+}
+.c2-bump-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  /* Cap the measure so a full-width rank chart doesn't balloon on a wide canvas. */
+  max-width: 640px;
+  margin-inline: auto;
+}
+.c2-bump-period {
+  fill: var(--text-faint);
+  font-size: 9px;
+}
+.c2-bump-name {
+  font-size: 10px;
+}
+
+/* ── marimekko: 2D composition (width = total, height = share) ── */
+.c2-mek {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  height: 210px;
+}
+.c2-mek-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.c2-mek-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.c2-mek-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--m-fast);
+  min-height: 0;
+}
+.c2-mek-seg-v {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--surface-deep);
+  mix-blend-mode: luminosity;
+}
+.c2-mek-col-lbl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding-top: 6px;
+  text-align: center;
+  min-width: 0;
+}
+.c2-mek-col-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.c2-mek-col-tot {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.c2-mek-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 12px;
+}
+.c2-mek-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.c2-mek-leg i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.c2-mek-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── plot: Cartesian function/curve plotter ── */
+.c2-plot-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Height derives from width via the viewBox, so cap the measure (and centre) — a
+     full-width plot on a wide canvas would otherwise be ~900px tall. */
+  max-width: 640px;
+  margin-inline: auto;
+}
+.c2-plot-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2-plot-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2-plot-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+}
+.c2-plot-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2-plot-mk {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2-plot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 10px;
+}
+.c2-plot-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.c2-plot-leg i {
+  width: 11px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.c2-plot-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ───────────────────────── dualaxis ───────────────────────── */
+.c2-da-svg {
+  width: 100%;
+  height: clamp(170px, 62cqi, 370px);
+  display: block;
+  overflow: visible;
+}
+.c2-da-tip {
+  fill: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────── pareto ───────────────────────── */
+.c2-pt {
+  position: relative;
+}
+.c2-pt-svg {
+  width: 100%;
+  height: clamp(170px, 62cqi, 370px);
+  display: block;
+  overflow: visible;
+}
+.c2-pt-bar {
+  fill: color-mix(in oklab, var(--presence) 55%, transparent);
+  stroke: var(--presence);
+  stroke-width: 1;
+  cursor: pointer;
+  transition: filter var(--m-fast);
+}
+.c2-pt-bar.on {
+  filter: brightness(1.15);
+}
+.c2-pt-bar-vital {
+  fill: color-mix(in oklab, var(--insight) 55%, transparent);
+  stroke: var(--insight);
+}
+.c2-pt-guide {
+  stroke: var(--warning);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+}
+.c2-pt-line {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+.c2-pt-dot {
+  fill: var(--text-primary);
+  cursor: pointer;
+}
+.c2-pt-tip {
+  fill: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────── parallelcoordinates ───────────────────────── */
+.c2-pc-wrap {
+  position: relative;
+}
+.c2-pc-svg {
+  width: 100%;
+  height: clamp(180px, 62cqi, 380px);
+  display: block;
+  overflow: visible;
+}
+.c2-pc-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2-pc-alabel {
+  fill: var(--text-secondary);
+  font-size: clamp(8px, 2.6cqi, 10px);
+  font-weight: 500;
+}
+.c2-pc-atick {
+  fill: var(--text-faint);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.c2-pc-line {
+  cursor: pointer;
+  transition:
+    stroke-opacity var(--m-fast),
+    stroke-width var(--m-fast);
+}
+
+/* ───────────────────────── scatterplotmatrix ───────────────────────── */
+.c2-spm {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  grid-template-rows: repeat(var(--n), 1fr);
+  gap: 2px;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+.c2-spm-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 2px;
+  transition: background var(--m-fast);
+}
+.c2-spm-cell.on {
+  background: var(--surface-glass);
+}
+.c2-spm-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c2-spm-frame {
+  fill: var(--surface-glass);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2-spm-dot {
+  fill-opacity: 0.62;
+}
+.c2-spm-diag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2px;
+  border-radius: 2px;
+  background: var(--surface-glass-strong);
+  /* These are the variable names down the diagonal — the only key to what any cell in the matrix is
+     plotting. At 7px they were decoration; the matrix is unreadable without them. */
+  font-size: clamp(9px, 2cqi, 11px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ───────────────────────── scatterregression ───────────────────────── */
+.c2-sr {
+  position: relative;
+}
+.c2-sr-svg {
+  width: 100%;
+  height: clamp(170px, 62cqi, 370px);
+  display: block;
+  overflow: visible;
+}
+.c2-sr-r2 {
+  fill: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.c2-sr-tip {
+  position: absolute;
+  transform: translate(-50%, -135%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11px);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ── dotplot: stacked-dot distribution above a number line ── */
+.ch2-dp-wrap {
+  /* Cap height on wide canvases; the viewBox preserves aspect ratio. */
+  max-width: 640px;
+  margin-inline: auto;
+  width: 100%;
+}
+.ch2-dp-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ch2-dp-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.ch2-dp-tick-line {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.ch2-dp-tick-lbl {
+  fill: var(--text-faint);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.ch2-dp-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.ch2-dp-dot {
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ch2-dp-dot:hover {
+  transform: scale(1.2);
+}
+.ch2-dp-badge-bg {
+  fill: var(--surface-elevated-2);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.ch2-dp-badge-txt {
+  fill: var(--text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ch2-dp-val-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ch2-dp-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.ch2-dp-note {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch2-dp-dot {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── ControlChart ───────────────────────── */
+.c2-cc-wrap {
+  /* 50cqi keeps the 480:240 viewBox aspect-ratio across card widths; clamp
+     stays above 200px so rotated x-tick labels always clear the bottom edge. */
+  height: clamp(200px, 58cqi, 420px);
+  overflow: hidden;
+}
+.c2-cc-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Control zone fill (between LCL and UCL) */
+.c2-cc-zone {
+  fill: color-mix(in oklab, var(--insight) 8%, transparent);
+}
+
+/* Horizontal grid lines */
+.c2-cc-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+
+/* UCL / LCL — dashed red */
+.c2-cc-ucl,
+.c2-cc-lcl {
+  stroke: var(--warning);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+
+/* Center line — solid muted */
+.c2-cc-cl {
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+/* Axes */
+.c2-cc-axis {
+  stroke: var(--track);
+  stroke-width: 1;
+}
+
+/* Data polyline */
+.c2-cc-line {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Normal data dots */
+.c2-cc-dot {
+  fill: var(--presence);
+  stroke: var(--surface-elevated);
+  stroke-width: 1.5;
+  cursor: crosshair;
+  transition: r 120ms ease;
+}
+
+/* Out-of-control dots — red/warning fill, slightly larger */
+.c2-cc-dot-oc {
+  fill: var(--warning);
+  stroke: var(--surface-elevated);
+  r: 5.5;
+}
+
+/* Y-axis tick labels */
+.c2-cc-ytick {
+  fill: var(--text-faint);
+  font-size: 9.5px;
+  text-anchor: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Y-axis label (rotated) */
+.c2-cc-ylabel {
+  fill: var(--text-faint);
+  font-size: 9.5px;
+}
+
+/* X-axis tick labels */
+.c2-cc-xtick {
+  fill: var(--text-faint);
+  font-size: 9.5px;
+}
+
+/* Right-side legend labels */
+.c2-cc-legend-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.c2-cc-legend-warn {
+  fill: var(--warning);
+}
+.c2-cc-legend-cl {
+  fill: var(--text-faint);
+}
+
+/* Tooltip */
+.c2-cc-tip-bg {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
+}
+.c2-cc-tip-label {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  text-anchor: middle;
+}
+.c2-cc-tip-val {
+  fill: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+}
+.c2-cc-tip-warn {
+  fill: var(--warning);
+}
+
+/* Sub-title and note */
+.c2-cc-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c2-cc-note {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── LineBalance ───────────────────────── */
+.c2-lb-wrap {
+  height: clamp(190px, 54cqi, 400px);
+  overflow: hidden;
+}
+.c2-lb-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c2-lb-bar {
+  fill: color-mix(in oklab, var(--presence) 55%, transparent);
+  stroke: var(--presence);
+  stroke-width: 1;
+  cursor: pointer;
+  transition: filter var(--m-fast);
+}
+.c2-lb-bar.on {
+  filter: brightness(1.15);
+}
+.c2-lb-bar-warn {
+  fill: color-mix(in oklab, var(--warning) 55%, transparent);
+  stroke: var(--warning);
+}
+.c2-lb-flag {
+  fill: var(--warning);
+  font-size: 8.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.c2-lb-takt {
+  stroke: var(--text-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.c2-lb-takt-lbl {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2-lb-tip-bg {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
+}
+.c2-lb-tip-val {
+  fill: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────── EpiCurve ───────────────────────── */
+.c2-ec-wrap {
+  height: clamp(190px, 54cqi, 400px);
+  overflow: hidden;
+}
+.c2-ec-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c2-ec-seg {
+  transition: filter var(--m-fast);
+}
+.c2-ec-seg.on {
+  filter: brightness(1.15);
+}
+.c2-ec-phase {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+  stroke-dasharray: 1.5 2.5;
+}
+.c2-ec-phase-lbl {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+}
+.c2-ec-threshold {
+  stroke: var(--danger);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.c2-ec-threshold-lbl {
+  fill: var(--danger);
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2-ec-tip-bg {
+  fill: var(--surface-elevated);
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
+}
+.c2-ec-tip-val {
+  fill: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────── Bridge (waterfall) ───────────────────────── */
+.br-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.br-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 30%) 1fr minmax(56px, auto);
+  align-items: center;
+  gap: 10px;
+  transition: opacity var(--m-fast) var(--ease-out);
+}
+.br-wrap.on .br-row:not(.on) {
+  opacity: 0.5;
+}
+.br-label {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.br-row--anchor .br-label {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.br-track {
+  position: relative;
+  height: 18px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--track) 60%, transparent);
+  overflow: visible;
+}
+/* zero baseline / left edge rule, so a bar's offset reads against a fixed origin */
+.br-track::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  pointer-events: none;
+}
+.br-bar {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 3px;
+  background: var(--presence);
+  transition:
+    width var(--m-expressive, 420ms) var(--ease-out),
+    left var(--m-expressive, 420ms) var(--ease-out);
+}
+.br-bar--anchor {
+  top: 1px;
+  bottom: 1px;
+  background: var(--text-primary);
+  box-shadow: 0 0 6px -2px currentColor;
+}
+.br-row--driver .br-bar {
+  box-shadow: 0 0 8px -1px currentColor;
+}
+.br-val {
+  font-size: var(--fs-xs, 11.5px);
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.br-row--anchor .br-val {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.br-tip {
+  position: absolute;
+  bottom: 130%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.4);
+  font-size: var(--fs-2xs, 10px);
+  z-index: 4;
+  pointer-events: none;
+}
+.br-tip-run {
+  font-size: var(--fs-2xs, 10px);
+}
+.br-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.br-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.br-leg--net {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+.br-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── areaplot: Cartesian plot that shades a region under/between curves + labels its area ── */
+.apl-wrap {
+  position: relative;
+}
+.apl-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Height derives from width via the viewBox, so cap the measure (and centre) so a
+     full-width plot on a wide canvas doesn't balloon to hundreds of pixels tall. */
+  max-width: 620px;
+  margin-inline: auto;
+}
+.apl-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.apl-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.apl-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+}
+.apl-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+/* Riemann / trapezoid rectangles: faint fill, crisp outline in the region's accent. */
+.apl-rect {
+  fill: color-mix(in oklab, var(--text-secondary) 8%, transparent);
+  stroke-width: 0.9;
+  stroke-opacity: 0.7;
+}
+/* dashed verticals at the integration limits x0, x1 */
+.apl-bound {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+/* the area read-out badge centred in the shaded region */
+.apl-area {
+  fill: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.apl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 10px;
+}
+.apl-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.apl-leg i {
+  width: 11px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+  flex: none;
+}
+.apl-note {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+}
+.apl-note .tab-num {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── supplydemand: economics supply×demand on a price(P)×quantity(Q) plane ── */
+.c2 .sud-wrap {
+  margin-top: 4px;
+}
+.c2 .sud-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox sets the aspect ratio, so cap the measure (and centre) to keep the
+     diagram from ballooning on a wide canvas. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+.c2 .sud-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .sud-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .sud-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .sud-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2 .sud-curve {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+.c2 .sud-curve--ghost {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.4;
+}
+.c2 .sud-curve-lbl {
+  font-size: 11px;
+  font-weight: 700;
+}
+.c2 .sud-shift-arrow {
+  stroke: var(--text-secondary);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+.c2 .sud-guide {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.c2 .sud-eq {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .sud-eq-lbl {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────── bigo: Big-O growth comparison ───────────────────────── */
+.bgo-wrap {
+  margin-top: 4px;
+}
+.bgo-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Height derives from width via the viewBox, so cap the measure (and centre) so a
+     full-width chart on a wide canvas doesn't balloon. */
+  max-width: 640px;
+  margin-inline: auto;
+}
+.bgo-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.bgo-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.bgo-tick {
+  fill: var(--text-faint);
+  font-size: var(--fs-2xs, 10px);
+}
+.bgo-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.bgo-curve-lbl {
+  font-size: 10px;
+  font-weight: 600;
+}
+.bgo-curve-lbl--hi {
+  font-weight: 700;
+}
+.bgo-algo-lbl {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.bgo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 10px;
+}
+.bgo-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.bgo-leg i {
+  width: 11px;
+  height: 3px;
+  border-radius: var(--r-full);
+  display: inline-block;
+}
+.bgo-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.bgo-leg.flagged {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.bgo-meta {
+  margin-top: 8px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+
+/* ── errorbars: group means with confidence-interval whiskers ── */
+.erb-wrap {
+  /* The 480:270 viewBox keeps its aspect ratio across card widths; the clamp floor
+     keeps category labels and the bracket legible on a narrow column. */
+  height: clamp(210px, 64cqi, 440px);
+  overflow: hidden;
+}
+.erb-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Horizontal grid lines */
+.erb-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+
+/* Axes */
+.erb-axis {
+  stroke: var(--track);
+  stroke-width: 1;
+}
+
+/* Y-axis tick labels */
+.erb-ytick {
+  fill: var(--text-faint);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Y-axis label (rotated upright via translate + rotate) */
+.erb-ylabel {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* X-axis category labels */
+.erb-xtick {
+  fill: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Optional bar behind the whisker (fill set inline per group) */
+.erb-bar {
+  transition: opacity 120ms ease;
+}
+
+/* CI whisker — stalk + end caps (stroke set inline per group) */
+.erb-whisk line {
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Mean marker (fill set inline per group) */
+.erb-pt {
+  stroke: var(--surface-elevated);
+  stroke-width: 1.5;
+  transition: r 120ms ease;
+}
+
+/* Hover readout */
+.erb-tip-mean {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.erb-tip-ci {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reference line — dashed, neutral */
+.erb-ref {
+  stroke: var(--text-faint);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 3;
+}
+.erb-ref-lbl {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Significance bracket */
+.erb-brk path {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1.2;
+}
+.erb-brk text {
+  fill: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+/* ───────────────────────── EraTimeline ─────────────────────────
+   Comparative multi-track timeline on one shared time axis. All classes are
+   namespaced `.era-*` (unique across families — verified no collision). */
+.era-wrap {
+  width: 100%;
+  margin-top: 4px;
+  /* The viewBox fixes the aspect ratio; cap the measure (and centre) so the timeline — and its
+     fixed-px SVG type — never balloon on a wide canvas. */
+  max-width: 760px;
+  margin-inline: auto;
+}
+.era-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 62cqi;
+  overflow: hidden;
+}
+.era-grid line {
+  stroke: var(--grid-line);
+  stroke-width: 0.6;
+}
+.era-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.era-tick {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-variant-numeric: tabular-nums;
+}
+.era-track-lbl {
+  fill: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+}
+.era-band {
+  transition:
+    fill var(--m-fast),
+    stroke-width var(--m-fast);
+  cursor: default;
+}
+.era-band-lbl {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  pointer-events: none;
+}
+/* a soft backplate so labels riding above narrow bands stay legible over a gridline or neighbour */
+.era-band-lbl-out {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.era-event-lbl {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 9.5px);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* ───────────────── indifferencecurve: consumer-choice indifference map ───────────────── */
+.c2 .idf-wrap {
+  margin-top: 4px;
+}
+.c2 .idf-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox fixes the aspect ratio, so cap the measure (and centre) to keep the
+     diagram from ballooning on a wide canvas. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+.c2 .idf-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .idf-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .idf-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .idf-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2 .idf-curve {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
+/* the highest reachable curve (the one the optimal bundle sits on) reads at full strength */
+.c2 .idf-curve--best {
+  opacity: 1;
+  stroke-width: 2.5;
+}
+.c2 .idf-curve-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .idf-budget {
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+.c2 .idf-budget-lbl {
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.c2 .idf-guide {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.c2 .idf-optimal {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .idf-optimal-lbl {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────── payoffdiagram: options/derivatives P&L at expiration ───────────────────── */
+.c2 .pay-wrap {
+  margin-top: 4px;
+}
+.c2 .pay-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox fixes the aspect ratio, so cap the measure (and centre) to keep the
+     diagram from ballooning on a wide canvas. */
+  max-width: 580px;
+  margin-inline: auto;
+}
+.c2 .pay-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .pay-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+/* zero P/L reference line (the break-even level) — stronger than a gridline */
+.c2 .pay-zero {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+/* vertical guides at each strike (where the payoff kinks) */
+.c2 .pay-strike {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.c2 .pay-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .pay-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+/* profit zone (above zero) and loss zone (below zero) */
+.c2 .pay-profit {
+  fill: color-mix(in oklab, var(--presence) 16%, transparent);
+  stroke: none;
+}
+.c2 .pay-loss {
+  fill: color-mix(in oklab, var(--danger) 15%, transparent);
+  stroke: none;
+}
+/* the kinked payoff line */
+.c2 .pay-line {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* breakeven markers sitting on the zero line */
+.c2 .pay-be-dot {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .pay-be-lbl {
+  fill: var(--text-secondary);
+  font-size: 8.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+/* today's underlying-price guide */
+.c2 .pay-spot {
+  stroke: var(--insight);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+  opacity: 0.8;
+}
+.c2 .pay-spot-lbl {
+  fill: var(--insight);
+  font-size: 8.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* derived read-outs row under the chart */
+.c2 .pay-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+}
+.c2 .pay-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-xs, 12px);
+}
+.c2 .pay-stat-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full, 999px);
+  flex: none;
+}
+.c2 .pay-stat-dot--up {
+  background: var(--presence);
+}
+.c2 .pay-stat-dot--down {
+  background: var(--danger);
+}
+.c2 .pay-stat-dot--be {
+  background: var(--warning);
+}
+.c2 .pay-stat-k {
+  color: var(--text-muted);
+}
+.c2 .pay-stat-v {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── phasediagram: a pressure–temperature phase diagram (solid/liquid/gas/supercritical) ── */
+.c2 .phd-wrap {
+  margin-top: 4px;
+}
+.c2 .phd-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox sets the aspect ratio, so cap the measure (and centre it) to keep the diagram
+     from ballooning on a wide canvas. */
+  max-width: 580px;
+  margin-inline: auto;
+}
+.c2 .phd-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .phd-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .phd-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .phd-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2 .phd-tint {
+  /* faint region colour-key disc behind the curves */
+  pointer-events: none;
+}
+.c2 .phd-curve {
+  stroke-width: 2.25;
+}
+.c2 .phd-region-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.c2 .phd-pt {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .phd-pt-lbl {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.c2 .phd-pt-sub {
+  fill: var(--text-muted);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .phd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 10px;
+}
+.c2 .phd-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.c2 .phd-leg i {
+  width: 14px;
+  height: 3px;
+  border-radius: var(--r-full, 999px);
+  flex: none;
+}
+.c2 .phd-empty {
+  color: var(--text-muted);
+  font-size: var(--fs-sm, 13px);
+  padding: 18px 4px;
+}
+
+/* ── breakeven: cost-volume-profit (revenue × total-cost crossing) ── */
+.c2 .bev-wrap {
+  margin-top: 4px;
+}
+.c2 .bev-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox sets the aspect ratio, so cap the measure (and centre) so a full-width chart
+     on a wide canvas doesn't balloon. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+.c2 .bev-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .bev-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .bev-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .bev-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+/* shaded loss / profit wedges between the revenue and total-cost lines */
+.c2 .bev-loss {
+  fill: color-mix(in oklab, var(--danger) 14%, transparent);
+  stroke: none;
+}
+.c2 .bev-profit {
+  fill: color-mix(in oklab, var(--insight) 15%, transparent);
+  stroke: none;
+}
+/* the fixed-cost floor (where total cost meets the y-axis) */
+.c2 .bev-fixed {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  opacity: 0.55;
+}
+.c2 .bev-line {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+.c2 .bev-line-lbl {
+  font-size: 10px;
+  font-weight: 700;
+}
+.c2 .bev-guide {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.c2 .bev-dot {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .bev-eq-lbl {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* the break-even / contribution-margin readout row beneath the chart */
+.c2 .bev-callouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.c2 .bev-callout {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+}
+.c2 .bev-callout-k {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.c2 .bev-callout-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.c2 .bev-callout-u {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.c2 .bev-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ── loaddiagram: a beam load diagram with matched shear V(x) and bending-moment M(x) panels ── */
+.c2 .c2-ld-wrap {
+  margin-top: 4px;
+}
+.c2 .c2-ld-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox fixes the aspect ratio, so cap the measure (and centre) to keep the three-panel
+     figure from ballooning on a wide canvas. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+/* shared vertical guides tying the three panels together at each distance tick */
+.c2 .c2-ld-guide {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+/* the beam member itself */
+.c2 .c2-ld-beam {
+  stroke: var(--text-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+/* supports: triangle fill for pin/roller, lines for the ground / fixed wall */
+.c2 .c2-ld-sup-tri {
+  fill: var(--text-secondary);
+  stroke: none;
+}
+.c2 .c2-ld-sup {
+  stroke: var(--text-muted);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+/* applied loads: arrows + the udl top rail + labels */
+.c2 .c2-ld-arrow line {
+  stroke: var(--presence);
+  stroke-width: 1.4;
+}
+.c2 .c2-ld-arrow path {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.c2 .c2-ld-arrow--bold line,
+.c2 .c2-ld-arrow--bold path {
+  stroke: var(--danger);
+  stroke-width: 2.2;
+}
+.c2 .c2-ld-udl-rail {
+  stroke: var(--presence);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.c2 .c2-ld-load-lbl {
+  fill: var(--text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+/* V/M panels: faint frame, the signed zero baseline, and the panel title */
+.c2 .c2-ld-panel {
+  fill: color-mix(in oklab, var(--text-secondary) 4%, transparent);
+  stroke: var(--line-soft);
+  stroke-width: 1;
+  rx: 4;
+}
+.c2 .c2-ld-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+}
+.c2 .c2-ld-panel-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+/* the shear curve + its tinted signed area */
+.c2 .c2-ld-vfill {
+  fill: color-mix(in oklab, var(--insight) 14%, transparent);
+  stroke: none;
+}
+.c2 .c2-ld-vline {
+  fill: none;
+  stroke: var(--insight);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* the moment curve + its tinted signed area */
+.c2 .c2-ld-mfill {
+  fill: color-mix(in oklab, var(--warning) 14%, transparent);
+  stroke: none;
+}
+.c2 .c2-ld-mline {
+  fill: none;
+  stroke: var(--warning);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* the marked peak (Vmax / Mmax): stem, dot, value label */
+.c2 .c2-ld-peak-stem {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.c2 .c2-ld-peak circle {
+  fill: var(--insight);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .c2-ld-peak--accent circle {
+  fill: var(--warning);
+}
+.c2 .c2-ld-peak-lbl {
+  fill: var(--text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+/* shared bottom distance axis */
+.c2 .c2-ld-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .c2-ld-xtick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .c2-ld-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2 .c2-ld-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── EcgStrip ─────────────────────────
+   classic pink ECG paper, built from --danger so it tints correctly in light + dark;
+   the trace itself is the strong --danger stroke over the faint graticule. */
+.c2 .c2-ecg-read {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 8px;
+  min-width: 0;
+}
+.c2 .c2-ecg-rate {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+}
+.c2 .c2-ecg-rate b {
+  font-size: var(--fs-md, 18px);
+  color: var(--danger);
+  font-weight: 700;
+}
+.c2 .c2-ecg-rhythm {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c2 .c2-ecg-scale {
+  margin-left: auto;
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.c2 .c2-ecg-wrap {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: color-mix(in oklab, var(--danger) 5%, var(--surface-elevated));
+}
+.c2 .c2-ecg-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.c2 .c2-ecg-grid {
+  stroke: color-mix(in oklab, var(--danger) 16%, transparent);
+  stroke-width: 0.5;
+}
+.c2 .c2-ecg-grid--major {
+  stroke: color-mix(in oklab, var(--danger) 34%, transparent);
+  stroke-width: 0.8;
+}
+.c2 .c2-ecg-trace {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* interval brackets (PR / QRS / QT) */
+.c2 .c2-ecg-iv-bar,
+.c2 .c2-ecg-iv-cap {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+.c2 .c2-ecg-iv-lbl {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-elevated);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+/* abnormality pins above the trace */
+.c2 .c2-ecg-pin-stem {
+  stroke: var(--warning);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.c2 .c2-ecg-pin-dot {
+  fill: var(--warning);
+}
+.c2 .c2-ecg-pin-lbl {
+  fill: var(--text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--surface-elevated);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+.c2 .c2-ecg-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── VitalStrip ─────────────────────────
+   a bedside monitor: stacked channels, each a mini trend with its normal band shaded and a big
+   current read-out; an out-of-range channel glows in --danger. */
+.c2 .c2-vs-window {
+  margin-left: auto;
+  font-size: var(--fs-xs, 11px);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.c2 .c2-vs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.c2 .c2-vs-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 22%) minmax(0, 1fr) minmax(70px, auto);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.c2 .c2-vs-row.on {
+  background: color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+.c2 .c2-vs-row.alarm {
+  border-color: color-mix(in oklab, var(--danger) 35%, transparent);
+  background: color-mix(in oklab, var(--danger) 7%, transparent);
+}
+.c2 .c2-vs-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.c2 .c2-vs-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c2 .c2-vs-norm {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.c2 .c2-vs-plot {
+  min-width: 0;
+}
+.c2 .c2-vs-svg {
+  display: block;
+  width: 100%;
+  height: 38px;
+}
+.c2 .c2-vs-band {
+  opacity: 1;
+}
+.c2 .c2-vs-line {
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.c2 .c2-vs-now {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+}
+.c2 .c2-vs-val {
+  font-size: var(--fs-md, 18px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.c2 .c2-vs-unit {
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+}
+.c2 .c2-vs-flag {
+  margin-left: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full, 999px);
+  background: var(--danger);
+  color: var(--surface-elevated);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.c2 .c2-vs-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── GrowthCurve ─────────────────────────
+   a pediatric percentile fan with the child's measured track plotted over it. */
+.c2 .c2-gc-wrap {
+  margin-top: 4px;
+}
+.c2 .c2-gc-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* The viewBox fixes the aspect ratio, so cap the measure (and centre) to keep the chart from
+     ballooning on a wide canvas. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+.c2 .c2-gc-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .c2-gc-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .c2-gc-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .c2-gc-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+/* the percentile fan: a soft tinted band between the outermost curves, then the curves themselves */
+.c2 .c2-gc-band {
+  fill: color-mix(in oklab, var(--insight) 9%, transparent);
+  stroke: none;
+}
+.c2 .c2-gc-pcurve {
+  fill: none;
+  stroke: color-mix(in oklab, var(--insight) 55%, transparent);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.c2 .c2-gc-pcurve--median {
+  stroke: color-mix(in oklab, var(--insight) 85%, transparent);
+  stroke-width: 1.8;
+  stroke-dasharray: 4 3;
+}
+.c2 .c2-gc-plabel {
+  fill: var(--text-muted);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+/* the child's measured track + points; the latest sits proud as the headline datum */
+.c2 .c2-gc-track {
+  fill: none;
+  stroke: color-mix(in oklab, var(--presence) 45%, transparent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.c2 .c2-gc-pt {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.c2 .c2-gc-pt--latest {
+  stroke-width: 2;
+}
+/* read-out beneath the chart: latest measurement + the tracked percentile */
+.c2 .c2-gc-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.c2 .c2-gc-ro {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+}
+.c2 .c2-gc-ro-k {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.c2 .c2-gc-ro-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.c2 .c2-gc-ro-u {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.c2 .c2-gc-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────────────── SleepCycle ─────────────────────────
+   a one-night hypnogram: a stepped trace through Awake/REM/Light/Deep lanes, REM highlighted. */
+.c2 .c2-sc-stats {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+.c2 .c2-sc-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.c2 .c2-sc-stat-v {
+  font-size: var(--fs-lg, 18px);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.c2 .c2-sc-stat-k {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.c2 .c2-sc-wrap {
+  margin-top: 2px;
+}
+.c2 .c2-sc-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 560px;
+  margin-inline: auto;
+}
+/* the four stage lanes; REM's lane carries a faint tint so its highlight reads end to end */
+.c2 .c2-sc-lane {
+  fill: color-mix(in oklab, var(--text-secondary) 3%, transparent);
+  stroke: var(--line-soft);
+  stroke-width: 0.75;
+}
+.c2 .c2-sc-lane--rem {
+  fill: color-mix(in oklab, var(--presence) 7%, transparent);
+}
+.c2 .c2-sc-lane-lbl {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2 .c2-sc-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+/* the filled REM bouts — the highlighted stage */
+.c2 .c2-sc-rem {
+  fill: color-mix(in oklab, var(--presence) 38%, transparent);
+  stroke: none;
+}
+/* the stepped hypnogram trace */
+.c2 .c2-sc-line {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.c2 .c2-sc-edge {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.c2 .c2-sc-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .c2-sc-clock {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* per-stage time legend beneath the strip */
+.c2 .c2-sc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+.c2 .c2-sc-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.c2 .c2-sc-leg b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.c2 .c2-sc-leg--rem {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.c2 .c2-sc-sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.c2 .c2-sc-sw--awake {
+  background: color-mix(in oklab, var(--text-secondary) 40%, transparent);
+}
+.c2 .c2-sc-sw--rem {
+  background: var(--presence);
+}
+.c2 .c2-sc-sw--light {
+  background: color-mix(in oklab, var(--insight) 55%, transparent);
+}
+.c2 .c2-sc-sw--deep {
+  background: var(--insight);
+}
+.c2 .c2-sc-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ───────────────── seasonband: a 12-month produce / planting / bloom calendar ─────────────────
+   Namespaced `.c2-sb-*`. The whole-year grid is fixed (Jan→Dec) so seasons read against a stable
+   calendar; window bars are positioned in the SVG from their month numbers. */
+.c2-sb-wrap {
+  width: 100%;
+  margin-top: 4px;
+}
+.c2-sb-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 70cqi;
+  overflow: hidden;
+}
+.c2-sb-grid line {
+  stroke: var(--grid-line);
+  stroke-width: 0.6;
+}
+.c2-sb-month {
+  fill: var(--text-muted);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  pointer-events: none;
+}
+.c2-sb-row-lbl {
+  fill: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+}
+.c2-sb-band {
+  transition:
+    fill var(--m-fast),
+    stroke-width var(--m-fast);
+  cursor: default;
+}
+/* The "now" marker: a dashed vertical guide pinning today's month across every row. */
+.c2-sb-now line {
+  stroke: var(--warning);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+.c2-sb-now circle {
+  fill: var(--warning);
+}
+.c2-sb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+.c2-sb-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.c2-sb-leg i {
+  width: 11px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+.c2-sb-leg--now i {
+  width: 2px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--warning);
+}
+.c2-sb-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+.c2-sb-note {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c2-sb-note b {
+  color: var(--text-primary);
+}
+.c2-sb-caption {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ── RocCurve ───────────────────────────────────────────────────────────────── */
+.roc-wrap {
+  width: 100%;
+}
+.roc-svg {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+.roc-gridline {
+  stroke: var(--grid-line, var(--line-soft));
+  stroke-width: 0.5;
+}
+.roc-axis {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.roc-tick {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.roc-tick-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+.roc-axis-label {
+  font-size: 10px;
+  fill: var(--text-secondary);
+}
+.roc-diagonal {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+.roc-op {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 2;
+}
+.roc-readout {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.roc-readout-item {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+.roc-readout-key {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.roc-readout-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.roc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+}
+.roc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+.roc-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.roc-legend-dash {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.roc-legend-name {
+  color: var(--text-secondary);
+}
+.roc-legend-auc {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.roc-caption {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ── GradientDescent ────────────────────────────────────────────────────────── */
+.gd-wrap {
+  width: 100%;
+}
+.gd-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.gd-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+}
+.gd-legend-lbl {
+  fill: var(--text-faint);
+  font-size: 8px;
+}
+.gd-path {
+  stroke: var(--text-primary);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+.gd-step {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 1.25;
+}
+.gd-step-start {
+  fill: var(--surface-default);
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+.gd-step-end {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.5;
+}
+.gd-caption {
+  margin: 8px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+/* ── BiasVariance ───────────────────────────────────────────────────────────── */
+.bv-wrap {
+  width: 100%;
+}
+.bv-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.bv-grid {
+  stroke: var(--grid-line);
+  stroke-width: 0.5;
+}
+.bv-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.bv-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+}
+.bv-curve {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    opacity var(--m-fast),
+    stroke-width var(--m-fast);
+  cursor: pointer;
+}
+.bv-sweet-band {
+  fill: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.bv-sweet-line {
+  stroke: var(--presence);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.bv-sweet-lbl {
+  fill: var(--presence);
+  font-size: 8px;
+  font-weight: 600;
+}
+.bv-zone-lbl {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-style: italic;
+}
+.bv-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+}
+.bv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 10px;
+}
+.bv-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.bv-leg i {
+  width: 11px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.bv-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.bv-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+/* ── TimeSeriesDecomposition ───────────────────────────────────────────────── */
+.tsd-wrap {
+  width: 100%;
+}
+.tsd-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 560px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.tsd-sep {
+  stroke: var(--grid-line);
+  stroke-width: 0.5;
+}
+.tsd-zero {
+  stroke: var(--line-soft, var(--grid-line));
+  stroke-width: 0.75;
+  stroke-dasharray: 2 2;
+}
+.tsd-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.tsd-panel-lbl {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+}
+.tsd-panel-val {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.tsd-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.tsd-tick {
+  fill: var(--text-faint);
+  font-size: 8px;
+}
+.tsd-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+/* ── PrecisionRecallCurve ──────────────────────────────────────────────────── */
+.prc-ap-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.prc-wrap {
+  width: 100%;
+}
+.prc-svg {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+.prc-gridline {
+  stroke: var(--grid-line, var(--line-soft));
+  stroke-width: 0.5;
+}
+.prc-axis {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.prc-tick {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.prc-tick-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+.prc-axis-label {
+  font-size: 10px;
+  fill: var(--text-secondary);
+}
+.prc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+}
+.prc-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.prc-leg i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.prc-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.prc-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+
+/* ───────────────────────── Chromatogram ───────────────────────── */
+.c2-chrom-method {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: -6px 0 10px;
+  overflow-wrap: anywhere;
+}
+.c2-chrom-wrap {
+  height: clamp(180px, 54cqi, 380px);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.c2-chrom-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c2-chrom-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2-chrom-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2-chrom-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2-chrom-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2-chrom-fill {
+  opacity: 0.16;
+}
+.c2-chrom-line {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.c2-chrom-guide {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  transition: opacity var(--m-fast);
+}
+.c2-chrom-mk {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--text-secondary);
+  transition: fill var(--m-fast);
+}
+.c2-chrom-empty {
+  font-size: 12.5px;
+  padding: 10px 0;
+}
+.c2-chrom-table-wrap {
+  overflow-x: auto;
+}
+table.c2-chrom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.c2-chrom-table th {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line-strong);
+}
+.c2-chrom-table th:last-child,
+.c2-chrom-table td:last-child {
+  padding-right: 0;
+}
+.c2-chrom-table th.r {
+  text-align: right;
+}
+.c2-chrom-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.c2-chrom-table td.r {
+  text-align: right;
+}
+.c2-chrom-table tr:hover td {
+  background: var(--surface-elevated-2);
+  color: var(--text-primary);
+}
+
+/* ───────────────────────── StressStrainCurve ───────────────────────── */
+.c2-ssc-wrap {
+  margin-bottom: 4px;
+}
+.c2-ssc-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 480px;
+  margin-inline: auto;
+}
+.c2-ssc-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2-ssc-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2-ssc-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2-ssc-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2-ssc-elastic {
+  fill: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.c2-ssc-line {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.c2-ssc-leader {
+  stroke-width: 1.25;
+  opacity: 0.75;
+}
+.c2-ssc-arrowhead {
+  /* stroke color is set inline per marker, to match its leader line */
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.c2-ssc-mk {
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2-ssc-modulus {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+  text-align: center;
+}
+.c2-ssc-modulus em {
+  font-style: italic;
+  color: var(--text-primary);
+}
+.c2-ssc-empty {
+  font-size: 12.5px;
+  padding: 10px 0;
+}
+
+/* ───────────────────────── GatingPlot ───────────────────────── */
+.c2-gate-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.c2-gate-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition: all var(--m-fast) var(--ease-out);
+}
+.c2-gate-leg:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.c2-gate-leg.is-on {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+.c2-gate-leg.muted {
+  opacity: 0.42;
+}
+.c2-gate-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.c2-gate-wrap {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  padding: 4px;
+  overflow: hidden;
+}
+.c2-gate-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.c2-gate-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2-gate-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2-gate-tick {
+  fill: var(--text-faint);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.c2-gate-axlbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2-gate-pt {
+  transition:
+    r var(--m-fast) var(--ease-out),
+    opacity var(--m-fast);
+}
+.c2-gate-region {
+  fill-opacity: 0.12;
+  stroke-width: 1.5;
+  transition: opacity var(--m-fast);
+}
+.c2-gate-label {
+  font-size: 9px;
+  font-weight: 600;
+}
+.c2-gate-empty {
+  font-size: 12.5px;
+  padding: 10px 0;
+}
+
+/* ───────────────────────── GelLane ───────────────────────── */
+.c2-gel-panel {
+  border-radius: var(--r-md);
+  padding: 12px 10px 10px;
+  /* A gel is a specimen image, so it flips with the theme the way a real gel photo does: a dark,
+     UV-lit backdrop with bright bands in dark mode, and a pale stained plate with dark bands in
+     light mode. Every colour is token-anchored so it always belongs to the palette. */
+  --gel-bg: color-mix(in oklab, var(--presence) 9%, #05070d);
+  --gel-well: color-mix(in oklab, var(--text-primary) 55%, #05070d);
+  --gel-band: color-mix(in oklab, #fff 84%, var(--insight));
+  --gel-tick: color-mix(in oklab, #fff 70%, var(--text-muted));
+  --gel-tick-lbl: color-mix(in oklab, #fff 78%, var(--text-secondary));
+  background: var(--gel-bg);
+}
+:root[data-theme='light'] .c2-gel-panel {
+  /* Light stained-gel plate: a pale surface with dark bands, so it sits inside the light page
+     instead of reading as a black hole. */
+  --gel-bg: color-mix(in oklab, var(--presence) 7%, var(--surface-deep));
+  --gel-well: color-mix(in oklab, var(--text-primary) 20%, var(--surface-default));
+  --gel-band: color-mix(in oklab, var(--text-primary) 86%, var(--presence));
+  --gel-tick: color-mix(in oklab, var(--text-primary) 50%, transparent);
+  --gel-tick-lbl: var(--text-secondary);
+}
+.c2-gel-scroll {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.c2-gel-lane {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.c2-gel-lane-svg {
+  display: block;
+}
+.c2-gel-well {
+  fill: var(--gel-well);
+  stroke: color-mix(in oklab, var(--text-primary) 35%, transparent);
+  stroke-width: 0.75;
+}
+.c2-gel-band {
+  filter: blur(0.7px);
+}
+.c2-gel-lane-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 64px;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.c2-gel-lane-sizes {
+  font-size: 9px;
+  text-align: center;
+  max-width: 64px;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.c2-gel-ladder .c2-gel-lane-label {
+  color: var(--text-muted);
+}
+.c2-gel-tick {
+  stroke: var(--gel-tick);
+  stroke-width: 1;
+}
+.c2-gel-tick-lbl {
+  fill: var(--gel-tick-lbl);
+  font-size: 7.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2-gel-empty {
+  font-size: 12.5px;
+  padding: 10px 0;
+}
+
+/* ── hrdiagram: Hertzsprung–Russell diagram (inverted-log temp × log luminosity) ── */
+.c2 .hrd-wrap {
+  margin-top: 4px;
+}
+.c2 .hrd-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* viewBox owns the aspect ratio; cap the measure so the plot never balloons wide. */
+  max-width: 560px;
+  margin-inline: auto;
+}
+.c2 .hrd-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .hrd-axis {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.c2 .hrd-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .hrd-exp {
+  font-size: 6.5px;
+}
+.c2 .hrd-axis-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-style: italic;
+}
+.c2 .hrd-cls {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.c2 .hrd-cls-sep {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .hrd-region {
+  /* soft population bands — blurred so they read as regions, not data marks */
+  filter: blur(6px);
+  pointer-events: none;
+}
+.c2 .hrd-region-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.c2 .hrd-star {
+  stroke: var(--surface-default);
+  stroke-width: 1;
+  transition:
+    r 120ms ease,
+    opacity 120ms ease;
+}
+.c2 .hrd-sun {
+  fill: var(--warning);
+  stroke: var(--surface-default);
+  stroke-width: 1.25;
+}
+.c2 .hrd-sun-lbl {
+  fill: var(--text-muted);
+  font-size: 8.5px;
+  font-style: italic;
+}
+.c2 .hrd-ring {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2.5;
+}
+.c2 .hrd-hl-lbl {
+  fill: var(--text-primary);
+  font-weight: 700;
+}
+.c2 .hrd-read {
+  min-height: 16px;
+  margin-top: 4px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── ternaryplot: barycentric simplex (three-component compositions) ── */
+.c2 .ter-wrap {
+  margin-top: 4px;
+}
+.c2 .ter-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.c2 .ter-grid {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+}
+.c2 .ter-frame {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.c2 .ter-tick-mark {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.c2 .ter-tick {
+  fill: var(--text-faint);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.c2 .ter-corner {
+  fill: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.c2 .ter-zone {
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.c2 .ter-zone-lbl {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.c2 .ter-pt {
+  fill: var(--presence);
+  stroke: var(--surface-default);
+  stroke-width: 1.25;
+  transition: r 120ms ease;
+}
+.c2 .ter-pt-lbl {
+  fill: var(--text-primary);
+  font-weight: 600;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--surface-default);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.c2 .ter-read {
+  min-height: 16px;
+  margin-top: 2px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── parliamentseats: hemicycle seat chart with majority marker ── */
+.c2 .prl-wrap {
+  margin-top: 4px;
+}
+.c2 .prl-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.c2 .prl-dot {
+  transition: opacity 140ms ease;
+}
+.c2 .prl-maj-line {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2.5 2.5;
+}
+.c2 .prl-maj-lbl {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-style: italic;
+}
+.c2 .prl-total {
+  fill: var(--text-primary);
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.c2 .prl-total-lbl {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+.c2 .prl-note {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.c2 .prl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.c2 .prl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-full, 999px);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs, 12px);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    opacity 140ms ease,
+    border-color 140ms ease;
+}
+.c2 .prl-chip.is-on {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
+.c2 .prl-chip.muted {
+  opacity: 0.45;
+}
+.c2 .prl-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full, 999px);
+  flex: none;
+}
+.c2 .prl-chip-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.c2 .prl-chip-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}

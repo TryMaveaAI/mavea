@@ -1,0 +1,82 @@
+/* embed.css — frame chrome for an embedded figure, and the rules that strip the live card chrome
+   off the real component so it sits natively on the skin's paper. Every rule is scoped to
+   .figure-embed, so the live canvas is never touched. */
+
+.figure-embed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text-primary);
+}
+
+/* Skin-styled label above the figure (replaces the component's own card eyebrow). */
+.figure-embed__eyebrow {
+  font-family: var(--mono, inherit);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent-ink, var(--presence));
+}
+
+/* The fixed frame: clips to the height the scaler reports, the last-line overflow safety net. */
+.figure-embed__frame {
+  overflow: hidden;
+}
+
+/* Shrinks the block to fit the frame; never enlarges. Top-centre origin so a scaled figure sits
+   under its eyebrow and centres horizontally. */
+.figure-embed__scaler {
+  width: 100%;
+  transform: scale(var(--fit-scale, 1));
+  transform-origin: top center;
+}
+
+.figure-embed__caption {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* --- strip the live card chrome: the component contributes only its inner visual --- */
+.figure-embed .card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+/* The component's own eyebrow is replaced by the skin-styled one above. */
+.figure-embed .card-eyebrow {
+  display: none !important;
+}
+/* A trailing summary that is only a faint hint ("Hover a flow to trace the path") is an
+   interaction affordance with no meaning in a static figure — hide it. A real footer renders as
+   prose (not a lone .faint), so it survives. */
+.figure-embed .insight-summary .faint:only-child {
+  display: none;
+}
+
+/* Carry Mavéa's emphasis into the figure. The real component already flags its key datum with
+   data-mark (the peak point, the busiest node — what Mavéa would circle when narrating live). With
+   no annotation layer in a static export, a soft accent ring stands in for that gesture, so the
+   figure still points at what matters. Subtle by design; deterministic (it's already in the DOM). */
+.figure-embed [data-mark] {
+  filter: drop-shadow(
+    0 0 4px color-mix(in oklab, var(--accent-ink, var(--presence)) 55%, transparent)
+  );
+}
+
+/* --- frozen capture: settle entrance motion to its resting state so the raster is deterministic.
+   Present omits data-static, so figures animate in on stage. --- */
+.figure-embed[data-static] *,
+.figure-embed[data-static] *::before,
+.figure-embed[data-static] *::after {
+  transition: none !important;
+}
+.figure-embed[data-static] .card.reveal {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}

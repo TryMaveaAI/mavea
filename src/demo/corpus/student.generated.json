@@ -1,0 +1,744 @@
+{
+  "v": 1,
+  "persona": "student",
+  "generatedAt": 1784155046201,
+  "model": "gpt-5.4-nano",
+  "frames": [
+    {
+      "question": "What does saving $200 a month at 5% become after 10 years?",
+      "narration": "If you save $200 a month at 5% interest, after 10 years you’ve put in $24,000 and earned about $7,056—so roughly $31,056 total. The chart shows both the “what you added” and the “interest earned” year by year; drag the monthly amount to see the what-if.",
+      "mode": "replace",
+      "tour": [
+        {
+          "index": 0,
+          "say": "First, look at the stacked flow: each year’s balance is split into what you deposited and the interest earned, so you can watch the gap widen with compounding."
+        },
+        {
+          "index": 1,
+          "say": "Now the line chart makes the totals feel tangible—Year 10 lands around thirty-one thousand dollars, with the principal and interest shown as separate series."
+        },
+        {
+          "index": 2,
+          "say": "Those headline numbers are the whole answer: after ten years you’d deposit twenty-four thousand, earn about seven thousand, and end up near thirty-one thousand."
+        },
+        {
+          "index": 3,
+          "say": "And the donut shows the same result as a share: most is your deposits, and roughly a fifth to a quarter is interest earned."
+        },
+        {
+          "index": 5,
+          "say": "If you want to reproduce it: monthly rate equals five percent divided by twelve, then we use the standard monthly-annuity future value formula."
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Monthly saving growth at 5%",
+        "sub": "Year-by-year principal vs interest, adjustable monthly contribution.",
+        "opener": "If you save $200 a month at 5% interest, after 10 years you’ve put in $24,000 and earned about $7,056—so roughly $31,056 total. The chart shows both the “what you added” and the “interest earned” year by year; drag the monthly amount to see the what-if.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "streamgraph",
+            "col": 12,
+            "delay": 0,
+            "props": {
+              "title": "Year-by-year: principal vs interest (5% annual, monthly deposits)",
+              "ticks": [
+                "Year 1",
+                "Year 2",
+                "Year 3",
+                "Year 4",
+                "Year 5",
+                "Year 6",
+                "Year 7",
+                "Year 8",
+                "Year 9",
+                "Year 10"
+              ],
+              "series": [
+                {
+                  "label": "Principal (you put in)",
+                  "color": "var(--presence)",
+                  "values": [
+                    2400,
+                    4800,
+                    7200,
+                    9600,
+                    12000,
+                    14400,
+                    16800,
+                    19200,
+                    21600,
+                    24000
+                  ]
+                },
+                {
+                  "label": "Interest earned",
+                  "color": "var(--insight)",
+                  "values": [
+                    58,
+                    245,
+                    562,
+                    1032,
+                    1666,
+                    2438,
+                    3400,
+                    4580,
+                    5980,
+                    7056
+                  ]
+                }
+              ],
+              "icon": "chart",
+              "iconColor": "var(--insight)",
+              "unit": "$",
+              "footer": "Interest grows over time because it earns on both your past deposits and the accumulated balance."
+            },
+            "id": "live-1",
+            "note": "This flow view stacks your growing balance into “principal” and “interest,” so you can see exactly when interest starts to dominate."
+          },
+          {
+            "type": "chart",
+            "col": 6,
+            "delay": 70,
+            "props": {
+              "title": "Total balance each year (principal + interest)",
+              "labels": [
+                "Year 1",
+                "Year 2",
+                "Year 3",
+                "Year 4",
+                "Year 5",
+                "Year 6",
+                "Year 7",
+                "Year 8",
+                "Year 9",
+                "Year 10"
+              ],
+              "series": [
+                {
+                  "name": "Total balance",
+                  "color": "var(--presence-soft)",
+                  "data": [
+                    2458,
+                    5045,
+                    7762,
+                    10632,
+                    13666,
+                    16838,
+                    20200,
+                    23780,
+                    27580,
+                    31056
+                  ]
+                },
+                {
+                  "name": "Principal (you put in)",
+                  "color": "var(--presence)",
+                  "data": [
+                    2400,
+                    4800,
+                    7200,
+                    9600,
+                    12000,
+                    14400,
+                    16800,
+                    19200,
+                    21600,
+                    24000
+                  ]
+                },
+                {
+                  "name": "Interest earned",
+                  "color": "var(--insight)",
+                  "data": [
+                    58,
+                    245,
+                    562,
+                    1032,
+                    1666,
+                    2438,
+                    3400,
+                    4580,
+                    5980,
+                    7056
+                  ]
+                }
+              ],
+              "unit": "$",
+              "footer": "At Year 10, total is about $31,056 with $24,000 principal and about $7,056 interest.",
+              "conf": "inferred"
+            },
+            "id": "live-2",
+            "note": "This shows the exact year-by-year totals and the two components—so the gap widening is the real “compounding” story."
+          },
+          {
+            "type": "kpi",
+            "col": 6,
+            "delay": 140,
+            "props": {
+              "title": "After 10 years (default: $200/mo at 5%)",
+              "kpis": [
+                {
+                  "val": "$200/mo",
+                  "label": "Monthly contribution"
+                },
+                {
+                  "val": "$24,000",
+                  "label": "Total deposited"
+                },
+                {
+                  "val": "$7,056",
+                  "label": "Interest earned"
+                },
+                {
+                  "val": "$31,056",
+                  "label": "Total balance"
+                }
+              ],
+              "icon": "chart",
+              "iconColor": "var(--insight)"
+            },
+            "id": "live-3",
+            "note": "These four numbers summarize the whole question in one place: what you put in, what you earned, and what you end up with."
+          },
+          {
+            "type": "donut",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Where the Year 10 balance comes from",
+              "rows": [
+                {
+                  "label": "Principal (deposits)",
+                  "pct": 77.2,
+                  "color": "var(--presence)"
+                },
+                {
+                  "label": "Interest earned",
+                  "pct": 22.8,
+                  "color": "var(--insight)"
+                }
+              ],
+              "footer": "Roughly 77% principal and 23% interest after 10 years at 5%.",
+              "conf": "inferred"
+            },
+            "id": "live-4",
+            "note": "This split gives you intuition: early on it’s mostly principal, and later a bigger share is interest you didn’t directly contribute."
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 280,
+            "props": {
+              "title": "How the interest grows (what’s changing over time)",
+              "rows": [
+                {
+                  "name": "Early years",
+                  "val": "Interest is small vs deposits",
+                  "pct": 15,
+                  "tag": "growth starts slowly"
+                },
+                {
+                  "name": "Middle years",
+                  "val": "Interest rises as the balance builds",
+                  "pct": 35,
+                  "tag": "compounding kicks in"
+                },
+                {
+                  "name": "Later years",
+                  "val": "Interest share increases noticeably",
+                  "pct": 50,
+                  "tag": "bigger gap between lines"
+                }
+              ],
+              "conf": "inferred"
+            },
+            "id": "live-5",
+            "note": "This is the qualitative pattern behind the numbers: the interest portion stays modest early, then accelerates as the accumulated balance gets larger."
+          },
+          {
+            "type": "list",
+            "col": 6,
+            "delay": 350,
+            "props": {
+              "title": "Formula used (monthly deposits, fixed 5%)",
+              "items": [
+                "Monthly rate r = 0.05 / 12",
+                "Number of months n = 10 × 12",
+                "Future value FV = P × (( (1 + r)^n − 1 ) / r)",
+                "Total deposited = P × n",
+                "Interest earned = FV − (P × n)"
+              ]
+            },
+            "id": "live-6",
+            "note": "If you want to recompute outside this chart, these are the exact steps: compute r and n, then apply the monthly-annuity future value formula."
+          },
+          {
+            "type": "timeline",
+            "col": 6,
+            "delay": 420,
+            "props": {
+              "events": [
+                {
+                  "time": "Each month",
+                  "title": "Add $P",
+                  "detail": "Deposits are treated as happening monthly, consistently."
+                },
+                {
+                  "time": "Ongoing",
+                  "title": "Interest compounds",
+                  "detail": "Each deposit earns interest starting after it’s been added."
+                },
+                {
+                  "time": "Year end (Years 1–10)",
+                  "title": "Snapshot totals",
+                  "detail": "The chart values show end-of-year balances."
+                }
+              ],
+              "eyebrow": "Monthly contributions assumed",
+              "title": "Deposit timing (important for “monthly” saving)"
+            },
+            "id": "live-7",
+            "note": "This explains the underlying assumption: deposits are monthly and interest compounds continuously on the accumulating balance, not just once per year."
+          },
+          {
+            "type": "blanks",
+            "col": 12,
+            "delay": 490,
+            "props": {
+              "title": "Adjust the monthly contribution",
+              "slots": [
+                {
+                  "key": "monthly",
+                  "label": "Monthly savings",
+                  "prompt": "How much per month you save (P)?",
+                  "kind": "number",
+                  "unit": "$",
+                  "placeholder": "e.g., 200"
+                }
+              ],
+              "intro": "Drag the slider to update principal, interest earned, and total balance each year."
+            },
+            "id": "live-8",
+            "note": "Use this to run your own what-if scenario: change the monthly amount, and the year-by-year split updates."
+          }
+        ],
+        "proof": null,
+        "topic": "Finance",
+        "bend": {
+          "blockId": "live-8",
+          "label": "Monthly contribution (P)",
+          "param": {
+            "value": 200,
+            "min": 0,
+            "max": 1000,
+            "step": 10,
+            "unit": "$"
+          },
+          "outputs": [
+            {
+              "label": "Total deposited (10 years)",
+              "formula": "x*12*10",
+              "unit": "$"
+            }
+          ]
+        },
+        "blanks": [
+          {
+            "key": "monthly",
+            "label": "Monthly savings",
+            "prompt": "How much per month you save (P)?",
+            "kind": "number",
+            "unit": "$",
+            "placeholder": "e.g., 200"
+          }
+        ],
+        "awaiting": true,
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "What if I start with a lump sum too—how does that change the chart?",
+            "icon": "chat",
+            "route": "What if I start with a lump sum too—how does that change the chart?"
+          },
+          {
+            "label": "How does the result change if interest compounds monthly vs annually?",
+            "icon": "chat",
+            "route": "How does the result change if interest compounds monthly vs annually?"
+          },
+          {
+            "label": "Can you show the same split for 5 years and 20 years too?",
+            "icon": "chat",
+            "route": "Can you show the same split for 5 years and 20 years too?"
+          },
+          {
+            "label": "What monthly amount do I need to reach a target total (like $50,000)?",
+            "icon": "chat",
+            "route": "What monthly amount do I need to reach a target total (like $50,000)?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784155033799
+    },
+    {
+      "question": "Why does compound interest beat simple interest? It's on my econ exam.",
+      "narration": "Compound interest beats simple because the interest you earn gets added back into the balance, so future interest is calculated on a bigger and bigger base. Simple interest keeps paying interest only on the original principal, so growth stays linear instead of exponential-ish.",
+      "mode": "replace",
+      "tour": [],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Compound vs Simple Interest",
+        "sub": "Compounding reinvests interest, so the base grows and future interest grows too.",
+        "opener": "Compound interest beats simple because the interest you earn gets added back into the balance, so future interest is calculated on a bigger and bigger base. Simple interest keeps paying interest only on the original principal, so growth stays linear instead of exponential-ish.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Compound interest grows faster",
+              "summary": "Each period’s interest becomes part of the new principal, so the interest base increases over time.",
+              "stat": "Base grows every period",
+              "deltaDir": "up",
+              "conf": "strong"
+            },
+            "note": "Compound interest updates the balance each period; your interest then earns interest next period, which is the whole growth advantage.",
+            "section": "Core idea",
+            "order": 1
+          },
+          {
+            "type": "loaddiagram",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Why compounding “feeds back” every period",
+              "span": 10,
+              "supports": [
+                {
+                  "at": 0,
+                  "kind": "pin"
+                },
+                {
+                  "at": 10,
+                  "kind": "roller"
+                }
+              ],
+              "loads": [
+                {
+                  "kind": "point",
+                  "at": 1,
+                  "mag": 1,
+                  "label": "interest added"
+                }
+              ],
+              "unit": "time step",
+              "shear": [
+                {
+                  "x": 0,
+                  "v": 0
+                },
+                {
+                  "x": 1,
+                  "v": 1
+                },
+                {
+                  "x": 10,
+                  "v": 10
+                }
+              ],
+              "moment": [
+                {
+                  "x": 0,
+                  "m": 0
+                },
+                {
+                  "x": 1,
+                  "m": 1
+                },
+                {
+                  "x": 10,
+                  "m": 55
+                }
+              ],
+              "caption": "Think of each period’s interest as a new load that increases the next period’s starting point—so later “moment” is larger."
+            },
+            "id": "live-2",
+            "note": "This diagram is an intuition pump: every time you add interest back in, you raise the next step’s starting point, so effects accumulate more.",
+            "section": "Core idea",
+            "order": 1,
+            "depth": 2,
+            "facet": "analogy"
+          },
+          {
+            "type": "chart",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Same rate, compounding vs simple over time",
+              "labels": [
+                "After 1 yr",
+                "After 2 yrs",
+                "After 3 yrs",
+                "After 4 yrs",
+                "After 5 yrs",
+                "After 10 yrs"
+              ],
+              "series": [
+                {
+                  "name": "Simple interest total",
+                  "color": "var(--presence-soft)",
+                  "data": [
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    11
+                  ]
+                },
+                {
+                  "name": "Compounded total",
+                  "color": "var(--insight)",
+                  "data": [
+                    2,
+                    2.5,
+                    3.13,
+                    3.91,
+                    4.88,
+                    12.19
+                  ]
+                }
+              ],
+              "unit": "$ (conceptual)",
+              "footer": "Compounding is the faster-growing curve because the base increases each period.",
+              "conf": "inferred"
+            },
+            "id": "live-3",
+            "note": "This conceptual chart shows the pattern: simple grows by a fixed increment, while compounding climbs faster as the base keeps increasing.",
+            "section": "Core idea",
+            "order": 1,
+            "depth": 1
+          },
+          {
+            "type": "breakdown",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Key difference in the formula",
+              "rows": [
+                {
+                  "name": "Simple interest",
+                  "val": "I = P·r·t",
+                  "pct": 50,
+                  "tag": "linear growth"
+                },
+                {
+                  "name": "Compound interest",
+                  "val": "A = P·(1 + r/n)^(n·t)",
+                  "pct": 50,
+                  "hot": true,
+                  "tag": "base reinvests"
+                }
+              ]
+            },
+            "id": "live-4",
+            "note": "Simple uses principal only (P·r·t), while compound raises (1 + r/n) to a power, reflecting repeated reinvestment.",
+            "section": "Mechanism",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "toolscale",
+            "col": 6,
+            "delay": 280,
+            "props": {
+              "instrument": "thermometer",
+              "value": 0.65,
+              "max": 1,
+              "title": "Compounding: interest rate on a growing base",
+              "unit": "relative growth",
+              "caption": "As time goes on, the “effective principal” rises, so the next period’s interest is larger even with the same r."
+            },
+            "id": "live-5",
+            "note": "A good way to picture it: compounding increases the balance, so applying the same interest rate later yields a bigger interest amount.",
+            "section": "Mechanism",
+            "order": 2,
+            "depth": 2,
+            "facet": "derivation"
+          },
+          {
+            "type": "timeline",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "events": [
+                {
+                  "time": "Start of year",
+                  "title": "Principal exists",
+                  "detail": "Your balance entering the period is the base."
+                },
+                {
+                  "time": "During the year",
+                  "title": "Interest is calculated",
+                  "detail": "You compute interest as a % of the current balance."
+                },
+                {
+                  "time": "End of the year",
+                  "title": "Interest is added back",
+                  "detail": "Now the next period starts with principal plus last period’s interest."
+                },
+                {
+                  "time": "Next years",
+                  "title": "Repeat the feedback loop",
+                  "detail": "Because the base is larger, future interest gets bigger each time."
+                }
+              ],
+              "eyebrow": "What happens each period"
+            },
+            "id": "live-6",
+            "note": "That end-of-period “add interest to the balance” step is the feedback loop that makes compound interest win.",
+            "section": "Mechanism",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "options": [
+                {
+                  "name": "Simple interest",
+                  "sub": "Same $ interest each year"
+                },
+                {
+                  "name": "Compound interest",
+                  "sub": "Same r each period, but bigger interest $ later",
+                  "pick": true
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Growth pattern",
+                  "cells": [
+                    {
+                      "v": "Linear"
+                    },
+                    {
+                      "v": "Faster than linear",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Interest base",
+                  "cells": [
+                    {
+                      "v": "Original principal P"
+                    },
+                    {
+                      "v": "Rises each period",
+                      "win": true
+                    }
+                  ]
+                },
+                {
+                  "label": "Formula structure",
+                  "cells": [
+                    {
+                      "v": "P·r·t"
+                    },
+                    {
+                      "v": "P·(1+r/n)^(n·t)",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Exam-style takeaway",
+              "recommendation": "If the rate is positive and time is › 1 period, compounding almost always produces a larger final amount than simple interest."
+            },
+            "id": "live-7",
+            "note": "For econ exams: emphasize the base—simple pays on P, compounding pays on P plus all prior interest.",
+            "section": "Mechanism",
+            "order": 2,
+            "depth": 1
+          },
+          {
+            "type": "list",
+            "col": 12,
+            "delay": 490,
+            "props": {
+              "title": "How to answer in one exam paragraph",
+              "items": [
+                "Start with the principal: simple interest keeps using the original P as the base.",
+                "Then state the feedback: compound adds interest to the balance each period.",
+                "Conclude with growth: because the base increases, interest amounts rise over time.",
+                "Mention compounding frequency: more frequent compounding means more “reinvestment” opportunities."
+              ]
+            },
+            "id": "live-8",
+            "note": "Use this structure: base stays fixed in simple, but in compound the base increases, so growth accelerates.",
+            "section": "How to write it",
+            "order": 3,
+            "depth": 1
+          }
+        ],
+        "proof": null,
+        "topic": "Economics",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "Show the derivation starting from A=P(1+r)^t",
+            "icon": "chat",
+            "route": "Show the derivation starting from A=P(1+r)^t"
+          },
+          {
+            "label": "Give me a numeric example with P, r, t (simple vs compound)",
+            "icon": "chat",
+            "route": "Give me a numeric example with P, r, t (simple vs compound)"
+          },
+          {
+            "label": "How compounding frequency (annual vs monthly) changes results",
+            "icon": "chat",
+            "route": "How compounding frequency (annual vs monthly) changes results"
+          },
+          {
+            "label": "Best wording for a 3–4 sentence exam answer",
+            "icon": "chat",
+            "route": "Best wording for a 3–4 sentence exam answer"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784155046200
+    }
+  ],
+  "history": [
+    {
+      "role": "user",
+      "content": "What does saving $200 a month at 5% interest become after 10 years? Chart it year by year, split what I put in from what the interest earned, and make the monthly amount a what-if I can adjust."
+    },
+    {
+      "role": "assistant",
+      "content": "If you save $200 a month at 5% interest, after 10 years you’ve put in $24,000 and earned about $7,056—so roughly $31,056 total. The chart shows both the “what you added” and the “interest earned” year by year; drag the monthly amount to see the what-if."
+    },
+    {
+      "role": "user",
+      "content": "Why does compound interest beat simple interest? It's on my econ exam."
+    },
+    {
+      "role": "assistant",
+      "content": "Compound interest beats simple because the interest you earn gets added back into the balance, so future interest is calculated on a bigger and bigger base. Simple interest keeps paying interest only on the original principal, so growth stays linear instead of exponential-ish."
+    }
+  ]
+}

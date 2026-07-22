@@ -1,0 +1,350 @@
+/* Weekly Rewind (RewindOverlay) — deliberately full-bleed rather than a centered card like the
+   rest of this directory's overlays: a recap is meant to feel like the week's own moment, not
+   another settings sheet. The "moment" slide reuses CheckLogEntry's chipForEntry tone mapping so
+   its accent matches the same entry's chip in the check-log rail. */
+.rw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(
+      120% 90% at 50% -10%,
+      color-mix(in oklab, var(--presence) 10%, transparent),
+      transparent 60%
+    ),
+    var(--surface-deep);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.rw-chrome {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 18px 22px;
+}
+.rw-counter {
+  margin-right: auto;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rw-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.rw-close:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+
+.rw-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rw-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  z-index: 2;
+}
+.rw-zone--prev {
+  left: 0;
+}
+.rw-zone--next {
+  right: 0;
+}
+.rw-zone:disabled {
+  cursor: default;
+}
+
+.rw-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 48px max(6vw, 24px);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--m-expressive) var(--ease-out),
+    transform var(--m-expressive) var(--ease-out);
+  pointer-events: none;
+  overflow: hidden auto;
+  scrollbar-gutter: stable;
+}
+.rw-slide[data-active] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* Children reveal on a translateY-only keyframe, staggered via the --d custom property each
+   sets — opacity is deliberately left to the PARENT'S transition above (opacity compounds down
+   the tree), so a child never needs its own fade and can't be caught mid-fade snapping to
+   invisible the instant a slide stops being active. */
+@keyframes rw-reveal {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.rw-child {
+  transform: translateY(10px);
+}
+.rw-slide[data-active] .rw-child {
+  animation: rw-reveal var(--m-expressive) var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.rw-eyebrow {
+  margin: 0;
+  font-family: var(--font-data, var(--font));
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rw-figure {
+  margin: 0;
+  font-family: var(--font-data, var(--font));
+  font-size: clamp(56px, 14vw, 128px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--presence-soft);
+}
+.rw-figure-label {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.rw-caption {
+  margin: 8px 0 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.rw-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+.rw-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 30px;
+}
+.rw-bar-track {
+  height: 96px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.rw-bar-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--presence);
+}
+.rw-bar-day {
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rw-moment {
+  width: min(100%, 640px);
+  padding: 26px 28px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--tone, var(--presence));
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-modal);
+  text-align: left;
+}
+.rw-moment[data-tone='presence'] {
+  --tone: var(--presence);
+}
+.rw-moment[data-tone='insight'] {
+  --tone: var(--insight);
+}
+.rw-moment[data-tone='danger'] {
+  --tone: var(--danger);
+}
+.rw-moment[data-tone='plain'] {
+  --tone: var(--text-muted);
+}
+.rw-moment-text {
+  margin: 0 0 14px;
+  font-family: var(--font-voice, var(--font));
+  font-size: clamp(18px, 2.6vw, 24px);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.rw-moment-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rw-moment-chip {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  color: var(--tone, var(--presence));
+  background: color-mix(in oklab, var(--tone, var(--presence)) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--tone, var(--presence)) 40%, transparent);
+}
+.rw-moment-time {
+  font-family: var(--font-data, var(--font));
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.rw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  max-width: 560px;
+}
+.rw-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-full);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: default;
+}
+.rw-chip--hit {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 40%, transparent);
+}
+.rw-chip--miss {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 40%, transparent);
+}
+.rw-chip--unclear {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, transparent);
+}
+
+.rw-quote {
+  max-width: 52ch;
+  margin: 6px 0 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+.rw-quote-attr {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-data, var(--font));
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rw-fallback-text {
+  max-width: 44ch;
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.rw-dots {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 26px;
+}
+.rw-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  border: none;
+  background: var(--line-strong);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    transform var(--m-fast) var(--ease-out);
+}
+.rw-dot[data-active] {
+  background: var(--presence);
+  transform: scale(1.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-slide {
+    transition: none;
+  }
+  .rw-child {
+    animation: none;
+    transform: none;
+  }
+  .rw-dot {
+    transition: none;
+  }
+}

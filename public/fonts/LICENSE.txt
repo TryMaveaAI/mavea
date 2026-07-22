@@ -1,0 +1,34 @@
+The font files in this directory (including export/families/) are licensed under the SIL Open
+Font License 1.1 (https://openfontlicense.org), which permits free commercial use, bundling, and
+redistribution:
+
+- Hanken Grotesk — Copyright 2020 The Hanken Grotesk Project Authors
+  https://github.com/marcologous/hanken-grotesk
+- IBM Plex Mono — Copyright 2017 IBM Corp.
+  https://github.com/IBM/plex
+- Newsreader — Copyright 2020 Production Type
+  https://github.com/productiontype/Newsreader
+- Instrument Serif — Copyright 2022 The Instrument Serif Project Authors
+  https://github.com/Instrument/instrument-serif
+- JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
+  https://github.com/JetBrains/JetBrainsMono
+- Archivo — Copyright 2020 The Archivo Project Authors
+  https://github.com/Omnibus-Type/Archivo
+- Space Grotesk — Copyright 2020 The Space Grotesk Project Authors
+  https://github.com/floriankarsten/space-grotesk
+- Bodoni Moda — Copyright 2020 The Bodoni Moda Project Authors
+  https://github.com/indestructible-type/Bodoni
+- IBM Plex Sans — Copyright 2017 IBM Corp.
+  https://github.com/IBM/plex
+- Lora — Copyright 2011 The Lora Project Authors
+  https://github.com/cyrealtype/Lora-Cyrillic
+- Libre Franklin — Copyright 2020 The Libre Franklin Project Authors
+  https://github.com/googlefonts/Libre-Franklin
+- Source Serif 4 — Copyright 2014 The Source Serif 4 Project Authors
+  https://github.com/adobe-fonts/source-serif
+- Spectral — Copyright 2017 The Spectral Project Authors
+  https://github.com/productiontype/Spectral
+- EB Garamond — Copyright 2017 The EB Garamond Project Authors
+  https://github.com/octaviopardo/EBGaramond12
+
+Latin-subset woff2 builds as served by Google Fonts.

@@ -1,0 +1,41 @@
+/* SurfaceNav — the shared "← Back to Mavéa" bar for the standalone dev surfaces (#/reel,
+   #/slidelab). Tokens only (no hex), so it inherits light/dark via :root[data-theme]. The
+   back link mirrors the gallery's `.vlib-back` for cross-surface consistency. */
+
+.surface-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s-md);
+  padding: var(--s-sm) var(--s-lg);
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface-deep) 86%, transparent);
+}
+
+.surface-nav-back {
+  appearance: none;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  font: 13px/1 var(--font);
+  padding: 7px var(--s-md);
+  transition:
+    border-color var(--m-fast),
+    color var(--m-fast),
+    background var(--m-fast);
+  white-space: nowrap;
+}
+.surface-nav-back:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+
+.surface-nav-title {
+  color: var(--text-muted);
+  font: 500 12px/1 var(--font);
+  letter-spacing: 0.04em;
+}

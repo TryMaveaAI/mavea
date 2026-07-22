@@ -1,0 +1,3932 @@
+/* layout family styles — tokens only; light/dark via existing token overrides. */
+
+/* shared chevron used by several collapsibles */
+.lay-chev {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  transition: transform var(--m-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+/* ── callout ───────────────────────────────────────────────── */
+.lay-callout {
+  border-left: 3px solid color-mix(in oklab, var(--lc) 70%, var(--line));
+}
+.lay-co-band {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+  background: color-mix(in oklab, var(--lc) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--lc) 22%, transparent);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  color: var(--text-primary);
+  font: inherit;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast);
+}
+.lay-co-band:hover {
+  background: color-mix(in oklab, var(--lc) 15%, transparent);
+}
+.lay-co-bar {
+  width: 3px;
+  align-self: stretch;
+  border-radius: var(--r-full);
+  background: var(--lc);
+  flex-shrink: 0;
+}
+.lay-co-kic-ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.lay-co-kicker {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lc);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lay-co-band .lay-chev {
+  margin-left: auto;
+}
+.lay-co-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--m-normal) var(--ease-out);
+}
+.lay-co-body.open {
+  grid-template-rows: 1fr;
+}
+.lay-co-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.lay-co-text {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding-top: 12px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-co-points {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lay-co-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  min-width: 0;
+}
+.lay-co-points li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-co-pt-ic {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ── proscons ──────────────────────────────────────────────── */
+.lay-pc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 4px;
+}
+.lay-pc-divider {
+  width: 1px;
+  background: linear-gradient(var(--line), transparent);
+}
+.lay-pc-col {
+  --pc: var(--presence);
+}
+.lay-pc-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  min-width: 0;
+}
+.lay-pc-head .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.lay-pc-head > span:not(.lay-pc-count) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lay-pc-count {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--pc);
+  background: color-mix(in oklab, var(--pc) 14%, transparent);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+.lay-pc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.lay-pc-item {
+  display: flex;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast),
+    transform var(--m-fast);
+  cursor: default;
+}
+.lay-pc-item.on {
+  background: color-mix(in oklab, var(--pc) 11%, transparent);
+  border-color: color-mix(in oklab, var(--pc) 30%, transparent);
+  transform: translateX(2px);
+}
+.lay-pc-mark {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.lay-pc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.lay-pc-text {
+  font-size: var(--fs-md);
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.lay-pc-pips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.lay-pc-pip {
+  width: 14px;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  transition: background var(--m-fast);
+}
+.lay-pc-note {
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.lay-pc-verdict {
+  margin-top: 14px;
+}
+.lay-pc-vbar {
+  display: flex;
+  height: 8px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--track);
+}
+.lay-pc-vbar-l {
+  background: var(--insight);
+  transition: width var(--m-expressive) var(--ease-spring);
+}
+.lay-pc-vbar-r {
+  background: var(--danger);
+  transition: width var(--m-expressive) var(--ease-spring);
+}
+.lay-pc-vrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.lay-pc-vlabel {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.lay-pc-vtext {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+/* ── takeaways ─────────────────────────────────────────────── */
+.lay-ta-heading {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.lay-ta-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  counter-reset: ta;
+}
+.lay-ta-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.lay-ta-num {
+  --tc: var(--presence);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--tc);
+  background: color-mix(in oklab, var(--tc) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--tc) 34%, transparent);
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast),
+    transform var(--m-fast);
+}
+.lay-ta-num .ic {
+  width: 15px;
+  height: 15px;
+}
+.lay-ta-num:hover {
+  transform: scale(1.08);
+}
+.lay-ta-item.done .lay-ta-num {
+  background: var(--tc);
+  color: var(--surface-default);
+  border-color: var(--tc);
+}
+.lay-ta-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 3px;
+  min-width: 0;
+}
+.lay-ta-text {
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text-primary);
+  transition: color var(--m-fast);
+  overflow-wrap: anywhere;
+}
+.lay-ta-item.done .lay-ta-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--text-muted) 60%, transparent);
+}
+.lay-ta-detail {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.lay-ta-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.lay-ta-track {
+  flex: 1;
+  min-width: 0;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.lay-ta-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--presence), var(--insight));
+  transition: width var(--m-normal) var(--ease-spring);
+}
+.lay-ta-pct {
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+
+/* ── faq ───────────────────────────────────────────────────── */
+.lay-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+.lay-faq-item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  /* The list above scrolls past its max-height. Without this the items are SQUEEZED to fit it
+     instead — and being overflow:hidden, each one silently crops its own answer. It only shows up
+     on a narrow card, where the answers wrap to enough lines to overrun the cap. */
+  flex-shrink: 0;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.lay-faq-item.open {
+  border-color: color-mix(in oklab, var(--presence) 38%, var(--line));
+  background: color-mix(in oklab, var(--presence) 5%, transparent);
+}
+.lay-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 12px 14px;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+}
+.lay-faq-sign {
+  width: 15px;
+  height: 15px;
+  color: var(--presence);
+  flex-shrink: 0;
+  transition: transform var(--m-normal) var(--ease-spring);
+}
+.lay-faq-q-text {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-faq-tag {
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lay-faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--m-normal) var(--ease-out);
+}
+.lay-faq-a.open {
+  grid-template-rows: 1fr;
+}
+.lay-faq-a-inner {
+  overflow: hidden;
+  min-height: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: 0 14px 0 39px;
+  overflow-wrap: anywhere;
+}
+.lay-faq-a.open .lay-faq-a-inner {
+  padding-bottom: 13px;
+}
+
+/* ── accordion ─────────────────────────────────────────────── */
+.lay-acc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lay-acc-item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.lay-acc-item.open {
+  border-color: color-mix(in oklab, var(--presence) 38%, var(--line));
+  background: color-mix(in oklab, var(--presence) 5%, transparent);
+}
+.lay-acc-head {
+  width: 100%;
+  display: flex;
+  /* The tag, the meta and the chevron are all unshrinkable, so on a narrow card they used to run out
+     past the item's edge. Let the head wrap: the label holds the first row and the trailing chrome
+     drops to a second one. The label's basis is what decides that — it is wide enough that the row
+     only breaks once there is genuinely no room, and (as the sole grower) it still fills the whole
+     row on a wide card, so nothing changes there. */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 12px 14px;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+}
+.lay-acc-lead {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.lay-acc-label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.35;
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-acc-tag {
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lay-acc-meta {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lay-acc-chev {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--m-normal) var(--ease-spring);
+}
+.lay-acc-item.open .lay-acc-chev {
+  color: var(--presence);
+}
+.lay-acc-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--m-normal) var(--ease-out);
+}
+.lay-acc-body.open {
+  grid-template-rows: 1fr;
+}
+.lay-acc-body-inner {
+  min-height: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: 0 14px 0 14px;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  max-height: 320px;
+}
+.lay-acc-body.open .lay-acc-body-inner {
+  padding-bottom: 13px;
+}
+
+/* ── tabs ──────────────────────────────────────────────────── */
+.lay-tabs {
+  --tab-acc: var(--presence);
+}
+.lay-tab-bar {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.lay-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 9px 12px 11px;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color var(--m-fast) var(--ease-out);
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+.lay-tab > span:not(.lay-tab-badge) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lay-tab:hover {
+  color: var(--text-secondary);
+}
+.lay-tab.on {
+  color: var(--text-primary);
+}
+.lay-tab-ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.lay-tab-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-elevated-2, var(--surface-elevated));
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 0 6px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.lay-tab.on .lay-tab-badge {
+  color: var(--tab-acc);
+  border-color: color-mix(in oklab, var(--tab-acc) 36%, transparent);
+}
+.lay-tab-underline {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: var(--r-full);
+  background: var(--tab-acc);
+  box-shadow: 0 0 10px -1px var(--tab-acc);
+  transition:
+    transform var(--m-normal) var(--ease-spring),
+    width var(--m-normal) var(--ease-out);
+}
+.lay-tab-panel {
+  animation: lay-fade var(--m-normal) var(--ease-out);
+}
+.lay-tab-body {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+@keyframes lay-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── divider ───────────────────────────────────────────────── */
+.lay-div-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lay-div-head {
+  min-width: 0;
+}
+.lay-div-eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.lay-div-heading {
+  font-size: var(--fs-2xl);
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.lay-div-badge {
+  --bc: var(--presence);
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--bc);
+  background: color-mix(in oklab, var(--bc) 13%, transparent);
+  border: 1px solid color-mix(in oklab, var(--bc) 30%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+  white-space: nowrap;
+}
+.lay-div-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+.lay-div-rule-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}
+.lay-div-rule-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 9px -1px currentColor;
+}
+.lay-div-sub {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-div-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.lay-div-chip {
+  --cc: var(--presence);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 5px 12px;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.lay-div-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.lay-div-chip.on {
+  color: var(--cc);
+  border-color: color-mix(in oklab, var(--cc) 45%, transparent);
+  background: color-mix(in oklab, var(--cc) 12%, transparent);
+}
+
+/* ── pullquote ─────────────────────────────────────────────── */
+.lay-pq {
+  --pq: var(--presence);
+}
+.lay-pq-fig {
+  position: relative;
+  margin: 0;
+  padding: 4px 0 4px 22px;
+}
+.lay-pq-bar {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  border-radius: var(--r-full);
+  background: linear-gradient(180deg, var(--pq), color-mix(in oklab, var(--pq) 35%, transparent));
+}
+.lay-pq-mark {
+  position: absolute;
+  left: 14px;
+  top: -2px;
+  width: 26px;
+  height: 26px;
+  opacity: 0.18;
+}
+.lay-pq-quote {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  animation: lay-fade var(--m-normal) var(--ease-out);
+}
+.lay-pq-quote em,
+.lay-pq-quote strong {
+  color: var(--pq);
+  font-style: normal;
+  font-weight: 650;
+}
+.lay-pq-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 14px;
+}
+.lay-pq-author {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.lay-pq-role {
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.lay-pq-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.lay-pq-arrow {
+  padding: 5px;
+  flex-shrink: 0;
+}
+.lay-pq-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lay-pq-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  padding: 0;
+  background: var(--track);
+  border: 0;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    transform var(--m-fast);
+}
+.lay-pq-dot:hover {
+  transform: scale(1.25);
+}
+.lay-pq-dot.on {
+  background: var(--pq);
+  box-shadow: 0 0 8px -1px var(--pq);
+}
+
+/* ── storystrip ────────────────────────────────────────────── */
+.lay-story {
+  --sc: var(--presence);
+}
+.lay-story-stage {
+  animation: lay-slide var(--m-normal) var(--ease-out);
+}
+@keyframes lay-slide {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lay-story-panel {
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--sc) 28%, var(--line));
+  border-radius: var(--r-md);
+  padding: 16px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--sc) 6%, transparent);
+}
+.lay-story-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--sc), transparent);
+}
+.lay-story-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  color: var(--surface-default);
+  margin-bottom: 10px;
+}
+.lay-story-badge .ic {
+  width: 18px;
+  height: 18px;
+}
+.lay-story-num {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--sc);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.lay-story-of {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.lay-story-heading {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 4px 0 2px;
+  overflow-wrap: anywhere;
+}
+.lay-story-caption {
+  font-size: var(--fs-sm);
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.lay-story-body {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-story-track {
+  display: flex;
+  gap: 5px;
+  margin: 14px 0 12px;
+}
+.lay-story-tick {
+  --tk: var(--presence);
+  flex: 1 1 0;
+  min-width: 0;
+  height: 5px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: var(--track);
+  transition:
+    background var(--m-fast) var(--ease-out),
+    transform var(--m-fast);
+}
+.lay-story-tick:hover {
+  transform: scaleY(1.6);
+}
+.lay-story-tick.past {
+  background: color-mix(in oklab, var(--tk) 45%, var(--track));
+}
+.lay-story-tick.on {
+  background: var(--tk);
+  box-shadow: 0 0 8px -1px var(--tk);
+}
+.lay-story-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.lay-story-nav .mini-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.lay-story-pos {
+  font-size: var(--fs-sm);
+}
+
+/* ── casestudy ─────────────────────────────────────────────── */
+.lay-cs-subject {
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-cs-stages {
+  display: flex;
+  flex-direction: column;
+}
+.lay-cs-stage {
+  --st: var(--presence);
+}
+.lay-cs-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+}
+.lay-cs-rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+.lay-cs-node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  color: var(--st);
+  background: color-mix(in oklab, var(--st) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--st) 34%, transparent);
+  transition:
+    background var(--m-fast) var(--ease-out),
+    transform var(--m-fast);
+  z-index: 1;
+}
+.lay-cs-node .ic {
+  width: 14px;
+  height: 14px;
+}
+.lay-cs-stage.open .lay-cs-node {
+  background: var(--st);
+  color: var(--surface-default);
+  transform: scale(1.06);
+}
+.lay-cs-line {
+  flex: 1;
+  width: 2px;
+  background: var(--line);
+  margin: 2px 0;
+  min-height: 8px;
+}
+.lay-cs-stage.open .lay-cs-line {
+  background: color-mix(in oklab, var(--st) 40%, var(--line));
+}
+.lay-cs-label {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lay-cs-metric {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--st);
+  background: color-mix(in oklab, var(--st) 13%, transparent);
+  border-radius: var(--r-full);
+  padding: 2px 9px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lay-cs-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--m-normal) var(--ease-out);
+}
+.lay-cs-body.open {
+  grid-template-rows: 1fr;
+}
+.lay-cs-body-inner {
+  overflow: hidden;
+  min-height: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-left: 36px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-cs-body.open .lay-cs-body-inner {
+  padding: 2px 0 12px;
+}
+
+/* ── deflist ───────────────────────────────────────────────── */
+.lay-dl-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-default);
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast);
+}
+.lay-dl-search:focus-within {
+  border-color: color-mix(in oklab, var(--presence) 50%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.lay-dl-search-ic {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.lay-dl-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+}
+.lay-dl-input::placeholder {
+  color: var(--text-muted);
+}
+.lay-dl-clear {
+  display: inline-flex;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  color: var(--text-muted);
+}
+.lay-dl-clear:hover {
+  color: var(--text-primary);
+}
+.lay-dl-clear .ic {
+  width: 14px;
+  height: 14px;
+}
+.lay-dl-count {
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lay-dl-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.lay-dl-item {
+  padding: 9px 8px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast) var(--ease-out);
+}
+.lay-dl-item:hover {
+  background: var(--hover-line);
+}
+.lay-dl-term {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.lay-dl-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.lay-dl-term-text {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-dl-tag {
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lay-dl-def {
+  margin: 4px 0 0 14px;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-dl-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+.lay-dl-empty .ic {
+  width: 15px;
+  height: 15px;
+}
+
+/* reduced motion: kill the per-panel entrance animations (entrance handled globally) */
+@media (prefers-reduced-motion: reduce) {
+  .lay-tab-panel,
+  .lay-story-stage,
+  .lay-pq-quote {
+    animation: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   verdictcard — the opening call: stance badge + bold verdict + caveat
+   ════════════════════════════════════════════════════════════ */
+.lay-vd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 11px;
+}
+.lay-vd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--vc);
+  background: color-mix(in oklab, var(--vc) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--vc) 34%, transparent);
+}
+.lay-vd-badge-ic {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+.lay-vd-conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.lay-vd-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.lay-vd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--line-strong);
+}
+.lay-vd-dot.on {
+  background: var(--vc);
+}
+.lay-vd-verdict {
+  font-size: var(--fs-xl);
+  line-height: 1.32;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.lay-vd-reason {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  margin-top: 12px;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lay-vd-tag {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vc);
+  padding-top: 2px;
+}
+.lay-vd-caveat {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--warning) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 22%, transparent);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lay-vd-caveat-ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--warning);
+}
+
+/* ════════════════════════════════════════════════════════════
+   scenarioset — best / likely / worst outcomes side by side
+   ════════════════════════════════════════════════════════════ */
+.lay-sc-metric {
+  font-size: var(--fs-sm);
+  margin: -2px 0 12px;
+  overflow-wrap: anywhere;
+}
+.lay-sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.lay-sc-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 13px 13px 15px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  min-width: 0;
+}
+.lay-sc-panel.hi {
+  background: color-mix(in oklab, var(--sc) 7%, var(--surface-glass));
+  border-color: color-mix(in oklab, var(--sc) 38%, transparent);
+}
+.lay-sc-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--sc);
+}
+.lay-sc-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sc);
+  overflow-wrap: anywhere;
+}
+.lay-sc-value {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.lay-sc-detail {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.lay-sc-points {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lay-sc-points li {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lay-sc-pt-dot {
+  flex-shrink: 0;
+  width: 4px;
+  height: 4px;
+  margin-top: 5px;
+  border-radius: var(--r-full);
+  background: var(--sc);
+}
+
+/* ── worthit ── single-product value verdict */
+.wi-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 14px;
+}
+.wi-product {
+  font-size: var(--fs-md, 16px);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.wi-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.wi-price-val {
+  font-size: var(--fs-lg, 20px);
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.wi-price-note {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-secondary);
+}
+.wi-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 800;
+  padding: 5px 11px;
+  border-radius: var(--r-full);
+  color: var(--wi);
+  background: color-mix(in oklab, var(--wi) 14%, transparent);
+  white-space: nowrap;
+}
+.wi-badge-ic {
+  width: 13px;
+  height: 13px;
+}
+.wi-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wi-col {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  min-width: 0;
+}
+.wi-col-h {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 7px;
+}
+.wi-col--yes .wi-col-h {
+  color: var(--insight);
+}
+.wi-col--no .wi-col-h {
+  color: var(--text-muted);
+}
+.wi-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wi-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.wi-li-ic {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin-top: 3px;
+}
+.wi-col--yes .wi-li-ic {
+  color: var(--insight);
+}
+.wi-col--no .wi-li-ic {
+  color: var(--text-faint);
+}
+.wi-dealbreaker {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+  color: var(--text-primary);
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.wi-dealbreaker .ic {
+  color: var(--warning);
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+}
+.wi-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wi-forwho {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+}
+.wi-forwho-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.wi-bottomline {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* ── companionnote ── low-chrome emotional reflection (no eyebrow/icon/metrics by design) */
+.cn-card {
+  padding: var(--s-xl, 30px) var(--s-lg, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+.cn-reflection {
+  margin: 0;
+  font-size: var(--fs-xl, 22px);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  max-width: 48ch;
+}
+.cn-follow {
+  margin: 0;
+  font-size: var(--fs-md, 15px);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 52ch;
+}
+.cn-chip {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--presence);
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+
+/* ── positioncard ── calibrated normal→concerning scale */
+.pc-track {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0 6px;
+}
+.pc-seg {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--pc) 22%, transparent);
+  transition: all var(--m-fast) var(--ease-out);
+}
+.pc-seg.on {
+  background: var(--pc);
+  height: 12px;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc) 18%, transparent);
+}
+.pc-labels {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+.pc-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+.pc-label.on {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.pc-current {
+  border-left: 3px solid var(--pc);
+  padding: 2px 0 2px 12px;
+  margin-bottom: 10px;
+}
+.pc-marker {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--pc);
+}
+.pc-cur-label {
+  font-size: var(--fs-md, 16px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+.pc-cur-detail {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.pc-reason {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.pc-watch {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--danger) 9%, transparent);
+  margin-bottom: 10px;
+}
+.pc-watch-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 6px;
+}
+.pc-watch-h .ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.pc-watch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pc-watch-list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.pc-watch-list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.pc-caveat {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+/* ── differential ── ranked plausible causes with honest likelihood */
+.df-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.df-cause {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+}
+.df-cause:last-child {
+  border-bottom: none;
+}
+.df-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.df-rank {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.df-name {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.df-band {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--db);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--db) 13%, transparent);
+}
+.df-serious {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+.df-serious .ic {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+.df-tell,
+.df-away {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-top: 5px;
+}
+.df-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-right: 5px;
+}
+.df-tag--fit {
+  color: var(--insight);
+}
+.df-prompt {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+.df-prompt .ic {
+  color: var(--presence);
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 1px;
+}
+.df-caveat {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.45;
+  margin-top: 10px;
+}
+
+/* ── reframecard ── a cognitive reframe of one stuck thought; weight lands on the shift, not a scoreboard */
+.rf-card {
+  display: flex;
+  flex-direction: column;
+}
+.rf-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 7px;
+}
+.rf-tag--true {
+  color: var(--insight);
+}
+.rf-thought {
+  border-radius: var(--r-md, 12px);
+  border: 1px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface-default) 60%, transparent);
+  padding: 14px 16px;
+}
+.rf-quote {
+  margin: 0;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: var(--fs-md, 16px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.rf-quote-ic {
+  flex: none;
+  margin-top: 3px;
+  color: var(--text-faint);
+}
+.rf-distortion {
+  display: inline-block;
+  margin-top: 11px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--warning);
+  padding: 4px 11px;
+  border-radius: var(--r-full, 999px);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+}
+.rf-shift {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+}
+.rf-shift-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--insight) 32%, transparent),
+    color-mix(in oklab, var(--insight) 8%, transparent)
+  );
+}
+.rf-shift-line:first-child {
+  background: linear-gradient(
+    to left,
+    color-mix(in oklab, var(--insight) 32%, transparent),
+    color-mix(in oklab, var(--insight) 8%, transparent)
+  );
+}
+.rf-shift-ic {
+  flex: none;
+  color: var(--insight);
+}
+.rf-reframe {
+  border-radius: var(--r-md, 12px);
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, var(--line-soft));
+  background: color-mix(in oklab, var(--insight) 8%, transparent);
+  padding: 16px 18px;
+}
+.rf-counter {
+  margin: 0;
+  font-size: var(--fs-lg, 20px);
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   breathpacer — a paced calming breath, animated in pure CSS (no JS timer).
+   One --bp-cycle duration drives the orb scale, the soft glow, and the caption
+   cross-fade; per-phase fraction vars (--bp-in-end / --bp-hold-end) keep the
+   words tracking the orb. prefers-reduced-motion swaps motion for a written rhythm.
+   ════════════════════════════════════════════════════════════ */
+.bp-card {
+  --bp-accent: var(--presence);
+  padding: var(--s-xl, 30px) var(--s-lg, 24px);
+}
+.bp-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0 6px;
+}
+.bp-ring {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full, 999px);
+  /* a faint resting halo the orb breathes within */
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--bp-accent) 9%, transparent) 0%,
+    transparent 68%
+  );
+}
+.bp-orb {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--r-full, 999px);
+  background: radial-gradient(
+    circle at 38% 34%,
+    color-mix(in oklab, var(--bp-accent) 78%, #fff 22%),
+    color-mix(in oklab, var(--bp-accent) 88%, transparent)
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--bp-accent) 22%, transparent),
+    0 8px 28px color-mix(in oklab, var(--bp-accent) 26%, transparent);
+  transform: scale(0.62);
+  will-change: transform, box-shadow;
+  animation: bp-breathe var(--bp-cycle, 14s) ease-in-out infinite;
+}
+@keyframes bp-breathe {
+  0% {
+    transform: scale(0.62);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--bp-accent) 18%, transparent),
+      0 4px 14px color-mix(in oklab, var(--bp-accent) 18%, transparent);
+  }
+  /* end of inhale → fully expanded (fixed offsets: CSS keyframe selectors can't use var/calc) */
+  44% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--bp-accent) 30%, transparent),
+      0 10px 34px color-mix(in oklab, var(--bp-accent) 34%, transparent);
+  }
+  /* hold → stay expanded */
+  56% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--bp-accent) 30%, transparent),
+      0 10px 34px color-mix(in oklab, var(--bp-accent) 34%, transparent);
+  }
+  100% {
+    transform: scale(0.62);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--bp-accent) 18%, transparent),
+      0 4px 14px color-mix(in oklab, var(--bp-accent) 18%, transparent);
+  }
+}
+.bp-caption {
+  position: relative;
+  height: 1.4em;
+  width: 100%;
+  text-align: center;
+}
+.bp-phase {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  font-size: var(--fs-md, 16px);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  opacity: 0;
+  animation: var(--bp-cycle, 14s) ease-in-out infinite;
+  animation-name: bp-cap-out; /* default; in/hold override below */
+}
+.bp-phase--in {
+  animation-name: bp-cap-in;
+}
+.bp-phase--hold {
+  animation-name: bp-cap-hold;
+}
+.bp-secs {
+  font-size: var(--fs-xs, 11.5px);
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0;
+}
+/* Each caption is visible only during its phase, with a brief cross-fade at the edges.
+   Boundaries reuse the same fraction vars as the orb so the word and the motion agree. */
+@keyframes bp-cap-in {
+  0% {
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes bp-cap-hold {
+  0% {
+    opacity: 0;
+  }
+  42% {
+    opacity: 0;
+  }
+  47% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes bp-cap-out {
+  0% {
+    opacity: 0;
+  }
+  56% {
+    opacity: 0;
+  }
+  61% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bp-still {
+  display: none; /* shown only under reduced-motion */
+  margin: 4px 0 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.bp-note {
+  margin-top: 12px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: center;
+}
+/* Reduced-motion floor: still orb, no looping; the rhythm is written plainly instead. */
+@media (prefers-reduced-motion: reduce) {
+  .bp-orb {
+    animation: none;
+    transform: scale(0.92);
+  }
+  .bp-caption {
+    display: none;
+  }
+  .bp-still {
+    display: block;
+  }
+}
+
+/* ── copingmenu ── permission-giving, capacity-tagged coping options ── */
+.cpm-intro {
+  margin: 10px 0 14px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 56ch;
+}
+.cpm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.cpm-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 13px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  transition: border-color var(--m-fast) var(--ease-out);
+}
+.cpm-opt:hover {
+  border-color: var(--line);
+}
+.cpm-opt-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.cpm-opt-ic {
+  color: var(--presence);
+}
+.cpm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+}
+.cpm-opt-body {
+  min-width: 0;
+  flex: 1;
+}
+.cpm-opt-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.cpm-opt-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.cpm-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+}
+.cpm-tag--time {
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--text-muted) 12%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.cpm-tag-ic {
+  flex: none;
+}
+.cpm-tag--effort {
+  color: var(--cm, var(--presence));
+  background: color-mix(in oklab, var(--cm, var(--presence)) 14%, transparent);
+}
+.cpm-opt-detail {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs, 11.5px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ── subtextdecode ── decode a received message: pinned verbatim + ranked honest readings */
+.sbd-card {
+  --sd: var(--presence);
+}
+.sbd-msg {
+  position: relative;
+  margin: 10px 0 4px;
+  padding: 4px 0 4px 22px;
+}
+.sbd-msg-bar {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  border-radius: var(--r-full);
+  background: linear-gradient(180deg, var(--sd), color-mix(in oklab, var(--sd) 35%, transparent));
+}
+.sbd-msg-mark {
+  position: absolute;
+  left: 13px;
+  top: -3px;
+  color: var(--sd);
+  opacity: 0.16;
+  flex: none;
+}
+.sbd-msg-text {
+  margin: 0;
+  font-size: var(--fs-md, 16px);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.sbd-readings {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sbd-reading {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+}
+.sbd-reading:last-child {
+  border-bottom: none;
+}
+.sbd-reading-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sbd-rank {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.sbd-interp {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-sm, 14px);
+  font-weight: 650;
+  color: var(--text-primary);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sbd-band {
+  flex: none;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sb);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--sb) 13%, transparent);
+}
+.sbd-cue {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 5px;
+  padding-left: 28px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.sbd-cue-tag {
+  flex: none;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.sbd-cantknow {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.45;
+}
+.sbd-cantknow .ic {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+.sbd-reply {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--sd) 9%, var(--surface-glass));
+  border: 1px solid color-mix(in oklab, var(--sd) 20%, transparent);
+}
+.sbd-reply-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sd);
+}
+.sbd-reply-tag .ic {
+  flex: none;
+  color: var(--sd);
+}
+.sbd-reply-text {
+  margin: 5px 0 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ── rehearsal ── branching playbook for a hard talk: opener → reaction branches → exit ── */
+.rh-opener {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--presence) 9%, var(--surface-glass));
+  border-left: 3px solid var(--presence);
+}
+.rh-open-tag {
+  display: inline-block;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--presence);
+  margin-bottom: 5px;
+}
+.rh-open-line {
+  margin: 0;
+  font-size: var(--fs-md, 16px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.rh-branches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rh-branch {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+}
+.rh-branch:first-child {
+  padding-top: 0;
+}
+.rh-branch:last-child {
+  border-bottom: none;
+}
+.rh-reaction {
+  display: block;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.rh-reaction-ic {
+  color: var(--warning);
+  vertical-align: -2px;
+  margin-right: 5px;
+  flex: none;
+}
+.rh-if {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.rh-say {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 7px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+}
+.rh-say-tag {
+  flex: none;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--insight);
+}
+.rh-say-line {
+  font-size: var(--fs-sm, 14px);
+  color: var(--text-primary);
+  line-height: 1.45;
+  font-style: italic;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rh-why {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  padding-left: 2px;
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.rh-why-ic {
+  color: var(--presence);
+  flex: none;
+  margin-top: 2px;
+}
+.rh-exit {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--insight) 8%, var(--surface-glass));
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+.rh-exit-ic {
+  color: var(--insight);
+  flex: none;
+  margin-top: 1px;
+}
+.rh-exit-tag {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.rh-note {
+  margin: 12px 0 0;
+  font-size: var(--fs-xs, 11.5px);
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* ── messagescriptset ── a bundle of ready-to-send messages to several targets ── */
+.mss-intro {
+  margin: 2px 0 12px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.mss-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* a bundle can grow unbounded — let it scroll inside the card rather than overflow it */
+  max-height: 460px;
+  overflow-y: auto;
+}
+.mss-item {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.mss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.mss-target {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mss-chan {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--presence);
+  padding: 3px 9px;
+  border-radius: var(--r-full, 999px);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  white-space: nowrap;
+}
+.mss-chan-ic {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+.mss-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-default);
+  border: 1px solid var(--line-soft);
+}
+.mss-msg-text {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.mss-copy {
+  flex: none;
+  margin-top: -2px;
+}
+.mss-rebuttal {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 9px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.mss-rebuttal-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+
+/* ── talktrack ── speakable word-for-word talk-track / teleprompter ── */
+.tlk-card .card-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.tlk-total {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tlk-total-ic {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+.tlk-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.tlk-line {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+}
+.tlk-line:last-child {
+  border-bottom: none;
+}
+.tlk-rail {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  width: 12px;
+  position: relative;
+}
+.tlk-rail::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: -28px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--line-soft);
+}
+.tlk-line:last-child .tlk-rail::before {
+  display: none;
+}
+.tlk-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 9px;
+  border-radius: var(--r-full, 999px);
+  background: var(--presence);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 16%, transparent);
+}
+.tlk-body {
+  flex: 1;
+  min-width: 0;
+}
+.tlk-say {
+  margin: 0;
+  font-size: var(--fs-lg, 20px);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.tlk-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+.tlk-beat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--presence);
+  padding: 3px 9px;
+  border-radius: var(--r-full, 999px);
+  background: color-mix(in oklab, var(--presence) 11%, transparent);
+}
+.tlk-beat-ic {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+.tlk-note {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── lifeline ── calm crisis support (Mavéa leads with this on an acute-crisis turn) */
+.lfl-card {
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, var(--line));
+  background: color-mix(in oklab, var(--presence) 5%, transparent);
+}
+.lfl-message {
+  margin: 8px 0 0;
+  font-size: var(--fs-md, 16px);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.lfl-safety {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+  color: var(--presence);
+}
+.lfl-resources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.lfl-res {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--r-md, 12px);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  text-decoration: none;
+}
+.lfl-res--link:hover {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-default));
+}
+.lfl-res-name {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.lfl-res-contact {
+  font-size: var(--fs-lg, 20px);
+  font-weight: 800;
+  color: var(--presence);
+  line-height: 1.2;
+}
+.lfl-res-note {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-muted);
+}
+.lfl-grounding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--insight) 10%, transparent);
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+}
+.lfl-grounding .ic {
+  color: var(--insight);
+  flex: none;
+}
+.lfl-reassurance {
+  margin: 12px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════════════════════
+   scansionmark — poetry scansion: stress marks, foot bars, rhyme letters
+   ════════════════════════════════════════════════════════════ */
+.lay-scan-meter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 14px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.lay-scan-meter-key {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.lay-scan-glyph {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-lg);
+  color: var(--presence);
+  transform: translateY(1px);
+}
+.lay-scan-glyph.muted {
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+.lay-scan-meter-name {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.lay-scan-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.lay-scan-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 7px 0;
+  border-radius: var(--r-sm);
+  min-width: 0;
+}
+.lay-scan-row:hover {
+  background: color-mix(in oklab, var(--presence) 5%, transparent);
+}
+
+/* the line itself — a baseline row of syllable columns in the mono face so feet line up */
+.lay-scan-line {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px;
+  display: flex;
+  align-items: flex-end;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.lay-scan-syl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+}
+/* the prosody mark stacked above each syllable */
+.lay-scan-mark {
+  font-size: var(--fs-lg);
+  line-height: 1;
+  height: 14px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.lay-scan-syl[data-stress='on'] .lay-scan-mark {
+  color: var(--presence);
+  font-weight: 700;
+}
+.lay-scan-text {
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  padding: 0 3px;
+  color: var(--text-primary);
+}
+.lay-scan-syl[data-stress='on'] .lay-scan-text {
+  font-weight: 650;
+}
+/* the foot-divider bar, drawn before the syllable that opens a new foot */
+.lay-scan-bar {
+  position: absolute;
+  left: -1px;
+  bottom: 0;
+  width: 1.5px;
+  height: 22px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 55%, transparent);
+}
+
+/* the rhyme-scheme letter in the right margin, hued per distinct rhyme */
+.lay-scan-rhyme {
+  --rh: var(--presence);
+  flex: 0 0 auto;
+  align-self: flex-end;
+  width: 20px;
+  margin-bottom: 1px;
+  text-align: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  font-style: italic;
+  color: var(--rh);
+}
+
+.lay-scan-caption {
+  margin-top: 14px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.55;
+}
+
+/* reduced motion is handled globally via the card reveal; nothing block-local to disable */
+
+/* ════════════════════════════════════════════════════════════
+   typespec — a typography specimen sheet: each role rendered at its real size
+   beside its spec chips, plus an optional font-pairing showcase
+   ════════════════════════════════════════════════════════════ */
+.lay-tspec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lay-tspec-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+  min-width: 0;
+}
+.lay-tspec-row:last-child {
+  border-bottom: none;
+}
+.lay-tspec-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+.lay-tspec-name {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--presence);
+  flex-shrink: 0;
+}
+.lay-tspec-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+.lay-tspec-chip {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full, 999px);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+/* the specimen line — set at its authored (clamped) size; never overflows the card */
+.lay-tspec-sample {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.lay-tspec-pairing {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--presence) 5%, transparent);
+}
+.lay-tspec-pair-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.lay-tspec-pair-head {
+  font-size: var(--fs-2xl);
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.lay-tspec-pair-body {
+  margin-top: 8px;
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-tspec-pair-faces {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.lay-tspec-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   shotlist — a film / video shot breakdown: framed thumbnail + metadata + action
+   ════════════════════════════════════════════════════════════ */
+.lay-shot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lay-shot-row {
+  display: flex;
+  gap: 13px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--grid-line, var(--line-soft));
+  min-width: 0;
+}
+.lay-shot-row:last-child {
+  border-bottom: none;
+}
+.lay-shot-thumb {
+  position: relative;
+  flex-shrink: 0;
+  /* A flex child stretches to the row's height by default, which overrides the aspect-ratio below —
+     on a narrow card the shot text wraps tall, the thumb stretched with it, and the "slice" framing
+     art then scaled to cover a portrait box and blew far past its own edges. Pin it to the top so
+     the frame keeps the 100:64 box the art is drawn for. */
+  align-self: flex-start;
+  width: 100px;
+  max-width: 38%;
+  aspect-ratio: 100 / 64;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--text-primary) 7%, var(--surface-elevated));
+}
+.lay-shot-frame {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.lay-shot-subj {
+  fill: color-mix(in oklab, var(--presence) 42%, transparent);
+}
+.lay-shot-fg {
+  fill: color-mix(in oklab, var(--text-primary) 30%, transparent);
+}
+.lay-shot-grid {
+  stroke: color-mix(in oklab, var(--text-primary) 12%, transparent);
+  stroke-width: 0.75;
+}
+.lay-shot-size {
+  position: absolute;
+  left: 5px;
+  bottom: 4px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: color-mix(in oklab, #000 62%, transparent);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+}
+.lay-shot-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+.lay-shot-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  min-width: 0;
+}
+.lay-shot-n {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full, 999px);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--presence);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.lay-shot-frame-label {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.lay-shot-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: auto;
+  min-width: 0;
+}
+.lay-shot-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full, 999px);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.lay-shot-action {
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.45;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-shot-dialogue {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  font-size: var(--fs-sm, 13px);
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lay-shot-dialogue .ic {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.lay-shot-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   beatsheet — a narrative beat sheet: beats on a rail + a computed tension curve
+   ════════════════════════════════════════════════════════════ */
+.lay-beat-framework {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: var(--fs-sm, 13.5px);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.lay-beat-fw-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 13%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 2px 9px;
+}
+.lay-beat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lay-beat-row {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+.lay-beat-rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 14px;
+}
+/* the connecting spine runs the full height of the rail behind the dots */
+.lay-beat-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+.lay-beat-row:first-child .lay-beat-rail::before {
+  top: 7px;
+}
+.lay-beat-row:last-child .lay-beat-rail::before {
+  bottom: calc(100% - 14px);
+}
+.lay-beat-dot {
+  position: relative;
+  margin-top: 7px;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full, 999px);
+  background: var(--presence);
+  box-shadow: 0 0 0 3px var(--surface-default);
+}
+.lay-beat-body {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 13px;
+}
+.lay-beat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.lay-beat-name {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.lay-beat-at {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full, 999px);
+  padding: 1px 7px;
+}
+.lay-beat-line {
+  margin-top: 3px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-beat-curve {
+  margin: 6px 0 0;
+  padding: 10px 4px 4px;
+  border-top: 1px solid var(--grid-line, var(--line-soft));
+}
+.lay-beat-curve-cap {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.lay-beat-svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.lay-beat-stroke {
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lay-beat-pt {
+  fill: var(--surface-default);
+  stroke: var(--presence);
+  stroke-width: 2;
+}
+.lay-beat-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   promptset — calm open reflection / journaling prompts. Low-chrome by
+   design: soft cards, a gentle guidance line, no checkboxes or scores.
+   ════════════════════════════════════════════════════════════ */
+.lay-ps-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  margin: 2px 0 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-ps-theme-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full, 999px);
+  background: var(--presence);
+}
+.lay-ps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.lay-ps-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-soft, var(--line));
+  background: color-mix(in oklab, var(--presence) 4%, transparent);
+  min-width: 0;
+}
+.lay-ps-mark {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full, 999px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  margin-top: 1px;
+}
+.lay-ps-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.lay-ps-q {
+  margin: 0;
+  font-size: var(--fs-md, 15.5px);
+  font-weight: 550;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-ps-guide {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.lay-ps-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   zoneladder — training intensity zones, stacked easy (bottom) → hard (top),
+   on a cool→hot ramp (band colour set inline via --zc), with a "you are here"
+   marker on the current zone.
+   ════════════════════════════════════════════════════════════ */
+.lay-zl-metric {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full, 999px);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.lay-zl-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.lay-zl-band {
+  --zc: var(--presence);
+  display: flex;
+  gap: 11px;
+  padding: 11px 13px 11px 0;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--zc) 7%, transparent);
+  border: 1px solid color-mix(in oklab, var(--zc) 20%, transparent);
+  overflow: hidden;
+  min-width: 0;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast);
+}
+.lay-zl-band.here {
+  background: color-mix(in oklab, var(--zc) 13%, transparent);
+  border-color: color-mix(in oklab, var(--zc) 46%, transparent);
+}
+.lay-zl-rail {
+  flex-shrink: 0;
+  width: 4px;
+  align-self: stretch;
+  border-radius: 0 var(--r-full, 999px) var(--r-full, 999px) 0;
+  background: var(--zc);
+}
+.lay-zl-band-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.lay-zl-band-top {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.lay-zl-name {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-zl-range {
+  font-size: var(--fs-xs, 12.5px);
+  font-weight: 700;
+  color: var(--zc);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lay-zl-here {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--zc);
+  background: color-mix(in oklab, var(--zc) 16%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.lay-zl-here-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-full, 999px);
+  background: var(--zc);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--zc) 24%, transparent);
+}
+.lay-zl-effort {
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lay-zl-purpose {
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.4;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.lay-zl-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════
+   picturesequence — order-the-events strip (first → then → next → last).
+   Panels flow left→right with arrows between; the row scrolls horizontally
+   if the steps don't fit, so nothing overflows the card.
+   ════════════════════════════════════════════════════════════ */
+.lay-pseq-strip {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 2px 2px 8px;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.lay-pseq-panel {
+  --mc: var(--presence);
+  flex: 1 0 116px;
+  min-width: 116px;
+  max-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--mc) 24%, var(--line));
+  background: color-mix(in oklab, var(--mc) 5%, transparent);
+  text-align: center;
+  min-width: 0;
+}
+.lay-pseq-marker {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mc);
+  background: color-mix(in oklab, var(--mc) 14%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 2px 11px;
+}
+.lay-pseq-frame {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.lay-pseq-art {
+  width: 100%;
+  max-width: 96px;
+  height: auto;
+}
+.lay-pseq-art-card {
+  fill: color-mix(in oklab, var(--mc) 9%, transparent);
+  stroke: color-mix(in oklab, var(--mc) 36%, transparent);
+  stroke-width: 1.5;
+}
+.lay-pseq-art-base {
+  stroke: color-mix(in oklab, var(--mc) 32%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.lay-pseq-art-badge {
+  fill: var(--surface-default);
+  stroke: var(--mc);
+  stroke-width: 2;
+}
+.lay-pseq-art-num {
+  fill: var(--mc);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.lay-pseq-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.lay-pseq-cap {
+  font-size: var(--fs-xs, 11.5px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.lay-pseq-arrow {
+  flex: 0 0 auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.lay-pseq-arrow .ic {
+  width: 16px;
+  height: 16px;
+}
+.lay-pseq-caption {
+  margin-top: 12px;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ── StoryArc ───────────────────────────────────────────────────────────────── */
+.sa-wrap {
+  width: 100%;
+}
+.sa-svg {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+.sa-framework-label {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.sa-fill {
+  fill: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.sa-curve {
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.sa-baseline {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.sa-stage-lbl {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+.sa-beat-dot {
+  fill: var(--warning);
+  r: 4px;
+}
+.sa-beat-dot-hero {
+  fill: var(--warning);
+}
+.sa-beat-lbl {
+  font-size: 8px;
+  fill: var(--text-primary);
+  font-weight: 600;
+}
+.sa-act-rect {
+  stroke: none;
+}
+.sa-transition {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+.sa-transition-lbl {
+  font-size: 8px;
+  fill: var(--text-muted);
+}
+.sa-stage-dot {
+  fill: var(--presence);
+}
+.sa-hj-lbl {
+  font-size: 8px;
+  fill: var(--text-secondary);
+}
+.sa-arc-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+.sa-circle-guide {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.sa-circle-path {
+  stroke: var(--presence);
+  stroke-width: 2;
+  fill: none;
+}
+.sa-stc-bar {
+  fill: var(--surface-elevated);
+}
+.sa-stc-break {
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+.sa-stc-pin {
+  stroke: var(--warning);
+  stroke-width: 1.5;
+}
+.sa-stc-tick {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.sa-stc-lbl {
+  font-size: 7px;
+  fill: var(--text-muted);
+}
+.sa-pct-lbl {
+  font-size: 8px;
+  fill: var(--text-muted);
+}
+
+/* ── thoughtrecord ── a full CBT thought record: situation → automatic thought → evidence
+   weighed both ways → the shift → the balanced thought → before/after intensity. A vertical
+   stack of warm cards, never a literal worksheet table — that layout has a hard per-column
+   floor that overflows every phone width this family has to fit. */
+.tr-card {
+  display: flex;
+  flex-direction: column;
+}
+.tr-block + .tr-block {
+  margin-top: 12px;
+}
+.tr-tag {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 7px;
+}
+.tr-tag--true {
+  color: var(--insight);
+}
+.tr-situation {
+  border-radius: var(--r-md, 12px);
+  border: 1px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface-default) 45%, transparent);
+  padding: 12px 15px;
+}
+.tr-body {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.tr-thought {
+  border-radius: var(--r-md, 12px);
+  border: 1px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface-default) 60%, transparent);
+  padding: 14px 16px;
+}
+.tr-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.tr-row-head .tr-tag {
+  margin-bottom: 0;
+}
+.tr-emo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 13%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 4px 11px;
+  overflow-wrap: anywhere;
+}
+.tr-emo-pct {
+  opacity: 0.75;
+}
+.tr-quote {
+  margin: 0;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: var(--fs-md, 16px);
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.tr-quote-ic {
+  flex: none;
+  margin-top: 3px;
+  color: var(--text-faint);
+}
+.tr-meter {
+  margin-top: 11px;
+  height: 5px;
+  border-radius: var(--r-full, 999px);
+  background: var(--track);
+  overflow: hidden;
+}
+.tr-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--presence);
+  transition: width var(--m-expressive) var(--ease-spring);
+}
+.tr-ev-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 4px;
+}
+.tr-ev-divider {
+  width: 1px;
+  background: linear-gradient(var(--line), transparent);
+}
+.tr-ev-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs, 11.5px);
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin-bottom: 7px;
+  min-width: 0;
+}
+.tr-ev-head > span:not(.tr-ev-count) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tr-ev-count {
+  margin-left: auto;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--te);
+  background: color-mix(in oklab, var(--te) 14%, transparent);
+  border-radius: var(--r-full, 999px);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+.tr-ev-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.tr-ev-item {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  padding: 5px 2px;
+}
+.tr-ev-mark {
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.tr-ev-text {
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.tr-ev-empty {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  font-style: italic;
+}
+.tr-shift {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 4px;
+}
+.tr-shift-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--insight) 32%, transparent),
+    color-mix(in oklab, var(--insight) 8%, transparent)
+  );
+}
+.tr-shift-line:first-child {
+  background: linear-gradient(
+    to left,
+    color-mix(in oklab, var(--insight) 32%, transparent),
+    color-mix(in oklab, var(--insight) 8%, transparent)
+  );
+}
+.tr-shift-ic {
+  flex: none;
+  color: var(--insight);
+}
+.tr-alt {
+  border-radius: var(--r-md, 12px);
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, var(--line-soft));
+  background: color-mix(in oklab, var(--insight) 8%, transparent);
+  padding: 15px 17px;
+}
+.tr-alt-text {
+  margin: 0;
+  font-size: var(--fs-lg, 20px);
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.tr-outcome {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tr-outcome-arrow {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+.tr-outcome-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 12px;
+  border-radius: var(--r-full, 999px);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+}
+.tr-outcome-chip--after {
+  border-color: color-mix(in oklab, var(--insight) 35%, var(--line-soft));
+  background: color-mix(in oklab, var(--insight) 9%, transparent);
+}
+.tr-outcome-label {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.tr-outcome-emo {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.tr-outcome-pct {
+  font-size: var(--fs-xs, 11.5px);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}

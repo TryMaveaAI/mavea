@@ -1,0 +1,139 @@
+/* shipverdict.css — Ripple's home: a glanceable verdict band, the living map as the centrepiece, and
+   a row of "go deeper" chips. Tokens only; the verdict tone tints the badge + the band's top edge. */
+.ripple-verdict {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: var(--s-md);
+}
+
+.ripple-verdict-head {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  padding: var(--s-md) var(--s-lg);
+  overflow: hidden;
+}
+/* a thin tone bar on the leading edge — the verdict color, read before any words */
+.ripple-verdict-head::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--tone, var(--presence));
+}
+.ripple-verdict-head[data-tone='safe'] {
+  --tone: var(--insight);
+}
+.ripple-verdict-head[data-tone='watch'] {
+  --tone: var(--warning);
+}
+.ripple-verdict-head[data-tone='breaks'] {
+  --tone: var(--danger);
+}
+.ripple-verdict-head[data-tone='neutral'] {
+  --tone: var(--presence);
+}
+
+.ripple-verdict-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-md);
+}
+.ripple-verdict-badge {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--tone);
+}
+.ripple-verdict-scale {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.ripple-verdict-what {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.ripple-verdict-one {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.ripple-verdict-one-tag {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tone, var(--text-muted));
+  padding-top: 2px;
+}
+.ripple-verdict-one-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.ripple-verdict-clean .ripple-verdict-one-tag {
+  color: var(--insight);
+}
+
+/* the map fills the rest of the stage — the change rippling out is the centrepiece */
+.ripple-verdict-map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ripple-verdict-map > * {
+  height: 100%;
+}
+
+.ripple-verdict-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ripple-verdict-chips-tag {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+.ripple-verdict-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 5px 13px;
+  min-height: 44px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.ripple-verdict-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+}

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/TryMaveaAI/mavea/discussions
+    about: Ask a question or share a feature idea without code, patches, or confidential material.
