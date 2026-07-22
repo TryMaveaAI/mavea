@@ -33,7 +33,10 @@ describe('production build and package-manager policy', () => {
   });
 
   it('keeps the published CLI dependency-free and excludes lazy voice models', () => {
-    expect(pkg.dependencies).toEqual({});
+    // `pnpm version` rewrites package.json and drops an empty "dependencies" key entirely rather
+    // than keeping `{}` — the release workflow's version bump produces exactly that shape, so
+    // treat absent and empty as the same "dependency-free" fact rather than one specific spelling.
+    expect(pkg.dependencies ?? {}).toEqual({});
     expect((pkg.publishConfig as { engines: { node: string } }).engines.node).toBe('>=20.19');
     const files = pkg.files as string[];
     expect(files).toContain('!dist/ort-wasm-simd-threaded.wasm');
