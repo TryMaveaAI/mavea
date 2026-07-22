@@ -117,7 +117,13 @@ export function SocialPost({
                 title={m.alt}
               >
                 <Icon.image className="ic" aria-hidden="true" />
-                <span className="sp-media-alt">{m.alt}</span>
+                {/* A thumbnail caption is a one-line label by design, and the wrapper above carries
+                    the full alt text as its `title`, so nothing is actually lost when a long one
+                    ellipsizes. Mark it disclosed so the truncation audit reads it as intentional
+                    rather than as a label the reader can no longer finish. */}
+                <span className="sp-media-alt" data-semantic-ellipsis="true">
+                  {m.alt}
+                </span>
               </div>
             ))}
           </div>
