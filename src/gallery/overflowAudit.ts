@@ -38,6 +38,11 @@ const INTENTIONAL = new Set([
   'expressionheatmap', // .eh-wrap: max-height 480px, scrolls grid + legend together
   'weathernow', // .wn-hourly-scroll: overflow-x auto, scrolls the hourly forecast strip
   'boardgamescore', // .bgs-scroll: overflow-x auto, scrolls per-player score columns
+  // Both own a `.cg-scroll` wrapper (overflow-x: auto) around a table wider than a phone: the
+  // claim/source matrix and the retention triangle each need their columns side by side to be
+  // readable at all, so the row scrolls rather than wrapping into nonsense.
+  'claimgrid',
+  'cohortgrid',
 ]);
 
 export interface OverflowHit {
