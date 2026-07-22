@@ -133,34 +133,40 @@ function loadModel(): StaticModel {
   };
 }
 
-describe.skipIf(!hasAssets)('threadStarts — canonical trip/diabetes example (real model)', () => {
-  const model = hasAssets ? loadModel() : (null as never);
-  // Each turn's embedded text is question + narration + title (the narration/title recover anaphora
-  // on terse asks like "renting a car there"). Modes are set to what the LEXICAL boundary would emit
-  // — 'replace' for every one, since none share enough words — to prove the semantic signal overrides
-  // the Jaccard misfire and keeps the trip follow-ups together anyway.
-  const turns = [
-    "help me plan a trip to Portugal. Here's a relaxed week across Portugal — Lisbon, Porto, and the Algarve coast. Portugal Trip",
-    'what about renting a car there. Renting a car in Portugal is easy; here are the pickup options and rough daily costs. Renting a Car in Portugal',
-    'and hotels in Lisbon. The best Lisbon neighborhoods to stay in, with a few hotels at each price point. Lisbon Hotels',
-    'how does diabetes drug discovery work. Modern diabetes drug discovery, from target selection through clinical trials. Diabetes Drug Discovery',
-    'back to the car — what about insurance. Rental car insurance in Portugal: what CDW covers and when to add extra. Car Rental Insurance',
-  ];
-  const vectors = turns.map((t) => embed(t, model));
-  const frames = turns.map(() => frame('replace'));
+// `describe.skipIf` only skips the `it` bodies below — the describe callback itself (and any
+// top-level `embed()` calls in it) still runs during collection even when assets are absent, so
+// the whole block is gated with a plain `if` instead to keep it from touching a null model at all.
+if (hasAssets) {
+  describe('threadStarts — canonical trip/diabetes example (real model)', () => {
+    const model = loadModel();
+    // Each turn's embedded text is question + narration + title (the narration/title recover
+    // anaphora on terse asks like "renting a car there"). Modes are set to what the LEXICAL
+    // boundary would emit — 'replace' for every one, since none share enough words — to prove
+    // the semantic signal overrides the Jaccard misfire and keeps the trip follow-ups together
+    // anyway.
+    const turns = [
+      "help me plan a trip to Portugal. Here's a relaxed week across Portugal — Lisbon, Porto, and the Algarve coast. Portugal Trip",
+      'what about renting a car there. Renting a car in Portugal is easy; here are the pickup options and rough daily costs. Renting a Car in Portugal',
+      'and hotels in Lisbon. The best Lisbon neighborhoods to stay in, with a few hotels at each price point. Lisbon Hotels',
+      'how does diabetes drug discovery work. Modern diabetes drug discovery, from target selection through clinical trials. Diabetes Drug Discovery',
+      'back to the car — what about insurance. Rental car insurance in Portugal: what CDW covers and when to add extra. Car Rental Insurance',
+    ];
+    const vectors = turns.map((t) => embed(t, model));
+    const frames = turns.map(() => frame('replace'));
 
-  it('keeps trip + car + hotels as one thread and splits diabetes off — despite replace hints', () => {
-    expect(threadStarts(frames, vectors)).toEqual([true, false, false, true, true]);
-  });
+    it('keeps trip + car + hotels as one thread and splits diabetes off — despite replace hints', () => {
+      expect(threadStarts(frames, vectors)).toEqual([true, false, false, true, true]);
+    });
 
-  it('separates same-thread similarity from a pivot with clear margin around the thresholds', () => {
-    const cos = (a: Float32Array, b: Float32Array): number => {
-      let s = 0;
-      for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-      return s;
-    };
-    // trip↔car is a real continuation (well above KEEP); trip↔diabetes is a pivot (below UNRELATED).
-    expect(cos(vectors[0], vectors[1])).toBeGreaterThan(THREAD_KEEP);
-    expect(cos(vectors[0], vectors[3])).toBeLessThan(THREAD_UNRELATED);
+    it('separates same-thread similarity from a pivot with clear margin around the thresholds', () => {
+      const cos = (a: Float32Array, b: Float32Array): number => {
+        let s = 0;
+        for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+        return s;
+      };
+      // trip↔car is a real continuation (well above KEEP); trip↔diabetes is a pivot (below UNRELATED).
+      expect(cos(vectors[0], vectors[1])).toBeGreaterThan(THREAD_KEEP);
+      expect(cos(vectors[0], vectors[3])).toBeLessThan(THREAD_UNRELATED);
+    });
   });
-});
+}

@@ -99,7 +99,7 @@ describe('LegalGate', () => {
     expect(hasLegalAcceptance()).toBe(true);
   });
 
-  it('fails closed when acknowledgement cannot be persisted', () => {
+  it('fails closed when acknowledgement cannot be persisted', async () => {
     // jsdom's Storage is proxy-backed: defining a property on the INSTANCE records it as a
     // stored string item instead of shadowing the method, so the spy must target the prototype.
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
@@ -112,8 +112,13 @@ describe('LegalGate', () => {
     );
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /continue to mavéa/i }));
+    // Assert via findBy/waitFor rather than a synchronous queryBy: the click's state update is
+    // scheduled through the same microtask queue as any environment-level timer flushing, so an
+    // immediate synchronous read isn't guaranteed to observe the post-click render everywhere.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /could not save your acknowledgement/i,
+    );
     expect(screen.queryByText('Connected product mounted')).toBeNull();
-    expect(screen.getByRole('alert')).toHaveTextContent(/could not save your acknowledgement/i);
   });
 
   it('allows an explicitly bypassed prerecorded surface without storing acceptance', () => {
