@@ -18,7 +18,9 @@ import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/l
 // CPU-throttle rate it is emulating. `--slow-machine` (set by CI) states plainly that the host is
 // slow; it does NOT relax what we expect of the app on real hardware.
 const SLOW_MACHINE = process.argv.slice(2).includes('--slow-machine');
-const SLOW_MACHINE_FACTOR = 4;
+// Measured, not guessed: the same commit produced a 176ms median acknowledgement on a 2-core CI
+// runner and 28ms on a 16-core laptop — a factor of ~6.3. Round down to 6.
+const SLOW_MACHINE_FACTOR = 6;
 const ACK_BUDGET_MS = 100 * (SLOW_MACHINE ? SLOW_MACHINE_FACTOR : 1);
 // Pointer intent warms the bytes, but each case deliberately starts from a fresh document, so the
 // first Live mount still has to initialise its stores and full interaction tree. Keep that honest
@@ -80,9 +82,9 @@ async function measureFeature(page: Page, base: string, featureId: string): Prom
     await page
       .locator(readySelector(featureId))
       .first()
-      // Generous relative to the budget below, so a surface that is merely slow is REPORTED as
-      // over budget rather than collapsing into an indistinguishable "never became usable".
-      .waitFor({ state: 'visible', timeout: PRELOADED_FIRST_MOUNT_BUDGET_MS * 4 });
+      // Only slightly past the budget: enough to tell "slow" from "never rendered", without
+      // holding a browser open for seconds per feature on a constrained runner.
+      .waitFor({ state: 'visible', timeout: PRELOADED_FIRST_MOUNT_BUDGET_MS + 500 });
     usableMs = Date.now() - started;
   } catch {
     reason = 'surface never became usable';
@@ -192,7 +194,15 @@ async function measureTopbar(page: Page, base: string): Promise<Result[]> {
 
 async function main(): Promise<void> {
   const base = readFlag('url', 'http://127.0.0.1:5173').replace(/\/$/, '');
-  const browser = await chromium.launch({ headless: true });
+  // This walks ~35 surfaces through one long-lived page. Chromium's default shared-memory backing
+  // is /dev/shm, which is small on a CI container, and exhausting it kills the browser outright —
+  // which surfaces later as "Target page, context or browser has been closed" rather than as
+  // anything about memory. Writing that scratch space to disk instead is the standard fix and
+  // costs nothing on a dev machine.
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-dev-shm-usage'],
+  });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   // Pre-accept the legal gate the same way ui-audit does: consent UI is not part of the
   // interaction budgets being measured, and a fresh profile would otherwise stall every
@@ -241,7 +251,20 @@ async function main(): Promise<void> {
       }
     }
     currentAction = 'topbar';
-    results.push(...(await measureTopbar(page, base)));
+    // Wrapped like the feature loop above. Unguarded, a browser that died mid-run threw here and
+    // took the whole results table with it — leaving a bare stack trace and no way to tell which
+    // action was responsible. Record it as a failure and still print the table.
+    try {
+      results.push(...(await measureTopbar(page, base)));
+    } catch (error) {
+      results.push({
+        action: 'topbar',
+        ackMs: -1,
+        usableMs: -1,
+        result: 'fail',
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
   } finally {
     await context.close();
     await browser.close();
