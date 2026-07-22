@@ -22,7 +22,7 @@ const PALETTE = [
 ];
 
 const W = 320;
-const LEFT = 74;
+const LEFT = 90;
 const RIGHT = 14;
 const TOP = 12;
 const BOTTOM = 12;

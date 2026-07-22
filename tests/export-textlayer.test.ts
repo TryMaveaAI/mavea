@@ -348,7 +348,7 @@ describe('extractTextLines / applyTextLayer — real DOM walking, stubbed browse
   // to do) put a run far wider than the box it claimed to fill on the page — its tail ran off the
   // sheet and the produced PDF copied the id back as 36 of its 64 characters.
   it('places each fragment of a browser-broken word on the line it actually landed on', () => {
-    const TOKEN = 'TXN-88f0c3e1a2b74d6f9c0011223344556677889900aabbccddeeff0011223344';
+    const TOKEN = 'TXN-88f0c3e1a2b74d6f9c0011223344556677889900aabbccddeeff0011223344'; // gitleaks:allow — synthetic fixture, not a credential
     const SPLIT = 32; // the cell is narrow — the browser breaks the token after 32 characters
     const CHAR_W = 6;
 
