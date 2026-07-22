@@ -247,6 +247,11 @@ table.dt {
 .dt-cell-v {
   position: relative;
   z-index: 1;
+  /* Clamp the span itself, not just the td: an inline span keeps its full nowrap width even when
+     the td ellipsizes, so a long value still reaches past the cell under wider font metrics. */
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Computed summary row(s) — a total/mean line, set apart with a heavier top border. */
 .dt-summary-td {

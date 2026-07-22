@@ -421,6 +421,10 @@ async function main(): Promise<void> {
         // same DOM becomes keyboard/touch/screen-reader reachable and the result depends on cache
         // warmth or theme order.
         await page.waitForTimeout(850);
+        // The UI faces load with `font-display: swap`, so a cold run can paint fallback metrics
+        // and re-layout mid-measure — rects captured before the swap collide with rects captured
+        // after it, and fallback glyphs run wider than the real face. Measure only settled type.
+        await page.evaluate(() => document.fonts.ready);
 
         const renderErrors = await page
           .locator('.vlib-render-error')

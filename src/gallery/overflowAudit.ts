@@ -37,6 +37,7 @@ const INTENTIONAL = new Set([
   'emotionwheel', // .ew-list: max-height 260px, scrolls long emotion-chip lists
   'expressionheatmap', // .eh-wrap: max-height 480px, scrolls grid + legend together
   'weathernow', // .wn-hourly-scroll: overflow-x auto, scrolls the hourly forecast strip
+  'boardgamescore', // .bgs-scroll: overflow-x auto, scrolls per-player score columns
 ]);
 
 export interface OverflowHit {
