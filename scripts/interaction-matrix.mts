@@ -203,43 +203,59 @@ async function main(): Promise<void> {
     headless: true,
     args: ['--disable-dev-shm-usage'],
   });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  // Pre-accept the legal gate the same way ui-audit does: consent UI is not part of the
-  // interaction budgets being measured, and a fresh profile would otherwise stall every
-  // #/live-bound click at the acknowledgement screen instead of reaching the rail.
-  await context.addInitScript(
-    ({ legalKey, legalVersion }) => {
-      localStorage.setItem('mavea-tour-seen-v1', '1');
-      localStorage.setItem('mavea-live-setup-v1', '1');
-      localStorage.setItem(
-        legalKey,
-        JSON.stringify({ version: legalVersion, acceptedAt: '2026-07-16T00:00:00.000Z' }),
-      );
-    },
-    { legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY, legalVersion: LEGAL_ACCEPTANCE_VERSION },
-  );
-  const page = await context.newPage();
   const pageErrors: string[] = [];
   const modelCalls: string[] = [];
   let currentAction = 'boot';
-  page.on('pageerror', (error) => pageErrors.push(`${currentAction}: ${error.message}`));
-  page.on('request', (request) => {
-    if (request.method() !== 'POST') return;
-    if (
-      /api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com|api\.x\.ai|\/v1\/(messages|chat\/completions|responses)/i.test(
-        request.url(),
-      )
-    ) {
-      modelCalls.push(`${currentAction}: ${request.method()} ${request.url()}`);
+
+  /** A fresh context + page for ONE measurement.
+   *
+   *  Every case is supposed to start from a fresh document, and this is what actually delivers
+   *  that. Reusing a single page across all ~35 surfaces let each mount's listeners, timers and
+   *  sockets pile up until Chromium started answering navigations with ERR_INSUFFICIENT_RESOURCES
+   *  — from roughly the 24th feature onward, every remaining row failed for that reason rather
+   *  than for anything about the product. A context per measurement releases all of it, and is
+   *  the same shape ui-audit.mts already uses for its 20 width/theme passes. */
+  async function withPage<T>(run: (page: Page) => Promise<T>): Promise<T> {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    // Pre-accept the legal gate the same way ui-audit does: consent UI is not part of the
+    // interaction budgets being measured, and a fresh profile would otherwise stall every
+    // #/live-bound click at the acknowledgement screen instead of reaching the rail.
+    await context.addInitScript(
+      ({ legalKey, legalVersion }) => {
+        localStorage.setItem('mavea-tour-seen-v1', '1');
+        localStorage.setItem('mavea-live-setup-v1', '1');
+        localStorage.setItem(
+          legalKey,
+          JSON.stringify({ version: legalVersion, acceptedAt: '2026-07-16T00:00:00.000Z' }),
+        );
+      },
+      { legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY, legalVersion: LEGAL_ACCEPTANCE_VERSION },
+    );
+    const page = await context.newPage();
+    page.on('pageerror', (error) => pageErrors.push(`${currentAction}: ${error.message}`));
+    page.on('request', (request) => {
+      if (request.method() !== 'POST') return;
+      if (
+        /api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com|api\.x\.ai|\/v1\/(messages|chat\/completions|responses)/i.test(
+          request.url(),
+        )
+      ) {
+        modelCalls.push(`${currentAction}: ${request.method()} ${request.url()}`);
+      }
+    });
+    try {
+      return await run(page);
+    } finally {
+      await context.close();
     }
-  });
+  }
 
   const results: Result[] = [];
   try {
     for (const feature of FEATURES) {
       currentAction = feature.id;
       try {
-        results.push(await measureFeature(page, base, feature.id));
+        results.push(await withPage((page) => measureFeature(page, base, feature.id)));
       } catch (error) {
         results.push({
           action: feature.id,
@@ -255,7 +271,7 @@ async function main(): Promise<void> {
     // took the whole results table with it — leaving a bare stack trace and no way to tell which
     // action was responsible. Record it as a failure and still print the table.
     try {
-      results.push(...(await measureTopbar(page, base)));
+      results.push(...(await withPage((page) => measureTopbar(page, base))));
     } catch (error) {
       results.push({
         action: 'topbar',
@@ -266,7 +282,6 @@ async function main(): Promise<void> {
       });
     }
   } finally {
-    await context.close();
     await browser.close();
   }
 
