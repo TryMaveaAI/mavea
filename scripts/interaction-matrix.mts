@@ -252,6 +252,28 @@ async function main(): Promise<void> {
 
   const results: Result[] = [];
   try {
+    // Warm the Live surface once before anything is measured.
+    //
+    // This gate measures how fast a public action responds, and every case is written to be a warm
+    // measurement — it hovers to trigger the lazy chunk, then waits for network idle before
+    // clicking. What no individual case can absorb is the very FIRST mount against a dev server,
+    // which compiles the whole Live surface on demand; every later feature reuses that work. So
+    // whichever feature happened to be first paid a cost none of the others did and was reported
+    // as never rendering (atlas, being index 0). Pay it here instead, outside the measurements.
+    currentAction = 'warmup';
+    try {
+      await withPage(async (page) => {
+        await page.goto(`${base}/#/live`, { waitUntil: 'load' });
+        await page
+          .locator('.mavea-app.with-rail')
+          .first()
+          .waitFor({ state: 'visible', timeout: 60_000 });
+      });
+    } catch {
+      // A failed warm-up is not itself a finding: the surface is about to be measured properly
+      // below, and that measurement is what reports.
+    }
+
     for (const feature of FEATURES) {
       currentAction = feature.id;
       try {
