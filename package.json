@@ -1,6 +1,6 @@
 {
   "name": "mavea",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Mavéa — an AI Presence interface. Talk to AI. See what it means.",
   "license": "PolyForm-Noncommercial-1.0.0",
@@ -146,6 +146,5 @@
     "typescript-eslint": "8.61.1",
     "vite": "8.0.16",
     "vitest": "4.1.9"
-  },
-  "dependencies": {}
+  }
 }
