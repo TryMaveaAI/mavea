@@ -86,6 +86,11 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
               // than a bet on how many pixels a given font needs.
               maxWidth: `${2 * Math.min(left, 100 - left)}%`,
               boxSizing: 'border-box',
+              // fitLine sets `nowrap`, so without this the text paints straight through the cap
+              // above and the rect still reaches past the board. The ladder shrinks the label
+              // first, so trimming is the last resort rather than the usual outcome.
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               padding: 'calc(var(--ru) * 1.1) calc(var(--rw) * 2.2)',
               borderRadius: 999,
               fontWeight: 600,
@@ -109,6 +114,12 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
           left: '50%',
           top: '50%',
           transform: 'translate(-50%, -50%)',
+          // Centred on the board, so it may use the full width and no more. The 9:16 board is the
+          // narrow one, and this chip carries the longest label with the largest padding.
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
           padding: 'calc(var(--ru) * 2) calc(var(--rw) * 3.6)',
           borderRadius: 999,
           fontWeight: 800,

@@ -43,6 +43,10 @@ const INTENTIONAL = new Set([
   // readable at all, so the row scrolls rather than wrapping into nonsense.
   'claimgrid',
   'cohortgrid',
+  // .fs-scroll: overflow-x auto with its own styled scrollbar. A P&L needs its period columns
+  // side by side to be comparable at all, so a narrow card scrolls the table rather than
+  // reflowing the figures into something unreadable.
+  'financialstatement',
 ]);
 
 export interface OverflowHit {
