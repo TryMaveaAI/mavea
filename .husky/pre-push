@@ -1,0 +1,4 @@
+# Fast local sanity check only — full test/build/knip/license/vuln gating happens in CI
+# on every push and PR, so re-running it here just burns local CPU for no extra safety.
+pnpm typecheck
+pnpm lint

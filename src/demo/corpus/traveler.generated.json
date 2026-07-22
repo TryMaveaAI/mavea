@@ -1,0 +1,690 @@
+{
+  "v": 1,
+  "persona": "traveler",
+  "generatedAt": 1784149739432,
+  "model": "gemini-3.5-flash",
+  "frames": [
+    {
+      "question": "Plan a long weekend in Lisbon. Three days, first visit, and we love food and views.",
+      "narration": "Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I've mapped out a three-day route that balances the classic sights with plenty of time to eat and take in the views without burning out on the climbs.",
+      "mode": "replace",
+      "tour": [
+        {
+          "index": 1,
+          "say": "On your first day, we'll head straight into the historic heart, climbing up through Alfama to the castle.",
+          "mark": {
+            "kind": "circle",
+            "at": "Alfama Wander"
+          }
+        },
+        {
+          "index": 3,
+          "say": "I've organized your meals and views into a clean grid, featuring a legendary seafood lunch at Ramiro on day three.",
+          "mark": {
+            "kind": "frame",
+            "at": "Cervejaria Ramiro"
+          }
+        },
+        {
+          "index": 5,
+          "say": "For your hotel, I highly recommend staying in Baixa or Chiado to keep your walks flat and central.",
+          "mark": {
+            "kind": "star",
+            "at": "Baixa / Chiado",
+            "color": "key"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Three Days in Lisbon",
+        "sub": "A curated weekend of hills, history, and coastal flavors.",
+        "opener": "Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I've mapped out a three-day route that balances the classic sights with plenty of time to eat and take in the views without burning out on the climbs.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "The Golden Rule: Pace the Hills",
+              "summary": "Lisbon is famously steep. Mix walking with historic trams and rideshares to save your knees for the viewpoints.",
+              "stat": "7 Hills",
+              "conf": "inferred"
+            },
+            "note": "Lisbon's hills are no joke, so the secret to a great trip is mixing scenic walks with strategic tram rides.",
+            "section": "Trip Strategy",
+            "order": 1
+          },
+          {
+            "type": "maproute",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "waypoints": [
+                {
+                  "lat": 38.7138,
+                  "lng": -9.1387,
+                  "label": "Praça do Comércio",
+                  "leg": "Start · Grand riverside square and gateway to the city"
+                },
+                {
+                  "lat": 38.7114,
+                  "lng": -9.1299,
+                  "label": "Alfama Wander",
+                  "leg": "0.8 km · 12 min · Get lost in the oldest, winding alleys"
+                },
+                {
+                  "lat": 38.7139,
+                  "lng": -9.1334,
+                  "label": "Castelo de São Jorge",
+                  "leg": "0.5 km · 10 min uphill · Historic ramparts with 360-degree views"
+                },
+                {
+                  "lat": 38.7162,
+                  "lng": -9.1315,
+                  "label": "Miradouro da Graça",
+                  "leg": "0.6 km · 9 min · Sunset drinks overlooking the bridge and castle"
+                }
+              ],
+              "title": "Day 1: Historic Heart & Sunset Views",
+              "icon": "walk",
+              "iconColor": "var(--presence)",
+              "distanceKm": 1.9,
+              "elevationGainM": 110,
+              "caption": "A classic introduction climbing from the river through Alfama to the highest peaks."
+            },
+            "id": "live-2",
+            "note": "Your first day takes you from the grand riverfront up through the ancient alleys of Alfama, ending at a stunning sunset viewpoint.",
+            "section": "Itinerary",
+            "order": 2
+          },
+          {
+            "type": "maproute",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "waypoints": [
+                {
+                  "lat": 38.7104,
+                  "lng": -9.1422,
+                  "label": "A Brasileira, Chiado",
+                  "leg": "Morning · Coffee and pastry at a historic literary cafe"
+                },
+                {
+                  "lat": 38.6979,
+                  "lng": -9.2064,
+                  "label": "Mosteiro dos Jerónimos",
+                  "leg": "6.5 km · Take Tram 15 · Incredible Manueline architecture"
+                },
+                {
+                  "lat": 38.6975,
+                  "lng": -9.2032,
+                  "label": "Pastéis de Belém",
+                  "leg": "0.3 km · 4 min walk · The original, warm custard tarts"
+                },
+                {
+                  "lat": 38.6916,
+                  "lng": -9.216,
+                  "label": "Torre de Belém",
+                  "leg": "1.2 km · 15 min walk along the river · Iconic fortress"
+                }
+              ],
+              "title": "Day 2: Bohemian Chiado & Belem Culture",
+              "icon": "tram",
+              "iconColor": "var(--insight)",
+              "distanceKm": 8,
+              "elevationGainM": 15,
+              "caption": "Morning in the trendy shopping district, then a quick tram ride west to historic Belém."
+            },
+            "id": "live-3",
+            "note": "Day two pairs the elegant streets of Chiado with a tram ride out to Belém for world-famous architecture and the original custard tarts.",
+            "section": "Itinerary",
+            "order": 2
+          },
+          {
+            "type": "plangrid",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "The 3-Day Food & View Planner",
+              "columns": ["Day 1: Alfama", "Day 2: Belém & Chiado", "Day 3: Bairro Alto"],
+              "rows": [
+                {
+                  "slot": "Morning View",
+                  "cells": [
+                    {
+                      "col": "Day 1: Alfama",
+                      "label": "Portas do Sol",
+                      "sub": "Sunrise view over Alfama",
+                      "accent": "var(--presence-soft)"
+                    },
+                    {
+                      "col": "Day 2: Belém & Chiado",
+                      "label": "Elevador de Santa Justa",
+                      "sub": "Gothic iron tower view"
+                    },
+                    {
+                      "col": "Day 3: Bairro Alto",
+                      "label": "Miradouro de São Pedro",
+                      "sub": "Garden terrace view"
+                    }
+                  ]
+                },
+                {
+                  "slot": "Lunch Spot",
+                  "cells": [
+                    {
+                      "col": "Day 1: Alfama",
+                      "label": "Tasca do Jaime",
+                      "sub": "Traditional small plates"
+                    },
+                    {
+                      "col": "Day 2: Belém & Chiado",
+                      "label": "Time Out Market",
+                      "sub": "Gourmet food hall",
+                      "accent": "var(--insight)"
+                    },
+                    {
+                      "col": "Day 3: Bairro Alto",
+                      "label": "Cervejaria Ramiro",
+                      "sub": "Legendary seafood feast"
+                    }
+                  ]
+                },
+                {
+                  "slot": "Sunset & Dinner",
+                  "cells": [
+                    {
+                      "col": "Day 1: Alfama",
+                      "label": "Clube de Fado",
+                      "sub": "Dinner with live music"
+                    },
+                    {
+                      "col": "Day 2: Belém & Chiado",
+                      "label": "Bairro do Avillez",
+                      "sub": "Modern Portuguese"
+                    },
+                    {
+                      "col": "Day 3: Bairro Alto",
+                      "label": "Park Rooftop",
+                      "sub": "Bar on top of a garage"
+                    }
+                  ]
+                }
+              ],
+              "icon": "clock",
+              "iconColor": "var(--presence-soft)",
+              "caption": "A balanced mix of traditional tascas, modern food halls, and scenic drink spots.",
+              "footer": "Reservations are highly recommended for Ramiro and Avillez at least 2 weeks in advance."
+            },
+            "id": "live-4",
+            "note": "This grid maps out your best culinary bets, including the famous Time Out Market and a legendary seafood lunch at Ramiro.",
+            "section": "Food & Views",
+            "order": 3
+          },
+          {
+            "type": "howtosteps",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "title": "How to Eat a Pastel de Nata Like a Local",
+              "steps": [
+                {
+                  "action": "Secure a warm, fresh tart",
+                  "detail": "The pastry must be crisp and flaky, and the custard should still be slightly warm.",
+                  "check": "The bottom of the pastry crackles when gently squeezed"
+                },
+                {
+                  "action": "Dust with cinnamon and sugar",
+                  "detail": "Locals heavily dust the top with cinnamon. Add a tiny pinch of powdered sugar if you want it sweeter.",
+                  "tip": "Don't skip the cinnamon; it cuts through the rich egg custard beautifully."
+                },
+                {
+                  "action": "Pair with a 'Bica'",
+                  "detail": "Order a bica (a strong, dark Portuguese espresso) to balance the sweetness of the tart.",
+                  "check": "You take a bite, then a sip of espresso"
+                }
+              ],
+              "icon": "check",
+              "iconColor": "var(--insight)",
+              "time": "5 min",
+              "difficulty": "easy",
+              "tools": [
+                "A warm custard tart",
+                "Cinnamon shaker",
+                "Powdered sugar",
+                "Espresso (Bica)"
+              ],
+              "footer": "Pastéis de Belém is the historic birthplace, but Manteigaria in Chiado is just as spectacular."
+            },
+            "id": "live-5",
+            "note": "To eat a custard tart like a local, dust it with plenty of cinnamon and pair it with a strong espresso called a bica.",
+            "section": "Food & Views",
+            "order": 3
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "options": [
+                {
+                  "name": "Baixa / Chiado",
+                  "sub": "Central & Flat",
+                  "pick": true
+                },
+                {
+                  "name": "Alfama",
+                  "sub": "Historic & Steep"
+                },
+                {
+                  "name": "Avenida da Liberdade",
+                  "sub": "Luxury & Quiet"
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Walkability",
+                  "cells": [
+                    {
+                      "v": "Excellent",
+                      "win": true
+                    },
+                    {
+                      "v": "Difficult (stairs)"
+                    },
+                    {
+                      "v": "Good (flat)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Atmosphere",
+                  "cells": [
+                    {
+                      "v": "Bustling"
+                    },
+                    {
+                      "v": "Charming & Romantic",
+                      "win": true
+                    },
+                    {
+                      "v": "Modern / Upscale"
+                    }
+                  ]
+                },
+                {
+                  "label": "Noise Level",
+                  "cells": [
+                    {
+                      "v": "Medium"
+                    },
+                    {
+                      "v": "Loud (Fado / bars)"
+                    },
+                    {
+                      "v": "Very Quiet",
+                      "win": true
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Where to Stay",
+              "recommendation": "For a first visit, Baixa or Chiado keeps you central, flat, and connected to all transit lines."
+            },
+            "id": "live-6",
+            "note": "Staying in Baixa or Chiado is highly recommended for first-timers because it's central, relatively flat, and close to everything.",
+            "section": "Logistics",
+            "order": 4
+          },
+          {
+            "type": "list",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "title": "Essential Lisbon Tips",
+              "items": [
+                "Buy a Navegante card at any metro station and load it with 'zapping' credit for cheap transit fares.",
+                "Wear shoes with good grip. The traditional cobblestones (Calçada Portuguesa) are incredibly slippery, even when dry.",
+                "Appetizers brought to your table (bread, olives, cheese) are not free. If you eat them, you will be charged a few euros.",
+                "Skip the long lines for Tram 28 by riding it early in the morning or late in the evening."
+              ]
+            },
+            "id": "live-7",
+            "note": "Watch out for the beautiful cobblestones—they get incredibly slick, so leave the heels at home and wear shoes with great grip.",
+            "section": "Logistics",
+            "order": 4
+          }
+        ],
+        "proof": null,
+        "topic": "Travel",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "How do I get from the airport to downtown?",
+            "icon": "chat",
+            "route": "How do I get from the airport to downtown?"
+          },
+          {
+            "label": "What is a good day trip from Lisbon?",
+            "icon": "chat",
+            "route": "What is a good day trip from Lisbon?"
+          },
+          {
+            "label": "Can you recommend some vegetarian restaurants?",
+            "icon": "chat",
+            "route": "Can you recommend some vegetarian restaurants?"
+          },
+          {
+            "label": "How does the metro system work?",
+            "icon": "chat",
+            "route": "How does the metro system work?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149722686
+    },
+    {
+      "question": "How do we plan a great day trip to Sintra on Saturday?",
+      "narration": "Sintra is magical, but it can easily become a crowded tourist trap if you don't plan ahead. I've mapped out a seamless Saturday itinerary that beats the crowds at Pena Palace, gets you into the lush gardens of Regaleira, and finishes with a coastal sunset at Cabo da Roca.",
+      "mode": "replace",
+      "tour": [
+        {
+          "index": 0,
+          "say": "First, make sure you book the nine-thirty A-M slot for Pena Palace online a few days early.",
+          "mark": {
+            "kind": "star",
+            "at": "9:30 AM",
+            "color": "key"
+          }
+        },
+        {
+          "index": 1,
+          "say": "Here is how your day flows geographically: starting at Rossio, heading up to the palaces, and finishing on the coast.",
+          "mark": {
+            "kind": "circle",
+            "at": "Pena Palace"
+          },
+          "marks": [
+            {
+              "kind": "circle",
+              "at": "Pena Palace"
+            },
+            {
+              "kind": "circle",
+              "at": "Cabo da Roca"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "say": "When comparing transport, train combined with rideshare is the clear winner for cost and flexibility.",
+          "mark": {
+            "kind": "frame",
+            "at": "Train + Rideshare"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Sintra Day Trip: Saturday Itinerary",
+        "sub": "How to beat the crowds, see the best palaces, and catch a coastal sunset.",
+        "opener": "Sintra is magical, but it can easily become a crowded tourist trap if you don't plan ahead. I've mapped out a seamless Saturday itinerary that beats the crowds at Pena Palace, gets you into the lush gardens of Regaleira, and finishes with a coastal sunset at Cabo da Roca.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "The Golden Rule: Buy the 9:30 AM Pena Palace ticket",
+              "summary": "You must book the very first time slot of the day online in advance. Miss this, and you will spend hours shuffling in shoulder-to-shoulder lines.",
+              "stat": "9:30 AM",
+              "conf": "inferred"
+            },
+            "note": "Getting the absolute first slot at Pena Palace is the single most important decision you will make for this trip.",
+            "section": "The Strategy",
+            "order": 1
+          },
+          {
+            "type": "maproute",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "waypoints": [
+                {
+                  "lat": 38.7138,
+                  "lng": -9.1394,
+                  "label": "Rossio Station (Lisbon)",
+                  "leg": "Start · Take the 7:40 AM train to Sintra (40 min)"
+                },
+                {
+                  "lat": 38.7876,
+                  "lng": -9.3906,
+                  "label": "Pena Palace",
+                  "leg": "Take taxi/bolt straight from station to gate for 9:30 AM entry"
+                },
+                {
+                  "lat": 38.7964,
+                  "lng": -9.4128,
+                  "label": "Quinta da Regaleira",
+                  "leg": "Walk or ride down for the initiation well and mystical gardens"
+                },
+                {
+                  "lat": 38.7804,
+                  "lng": -9.4989,
+                  "label": "Cabo da Roca",
+                  "leg": "Bus 1253 or Bolt to the westernmost point of Europe for sunset"
+                }
+              ],
+              "title": "Your Saturday Route: Lisbon to Sintra & Coast",
+              "icon": "train",
+              "iconColor": "var(--presence)",
+              "distanceKm": 42.5,
+              "elevationGainM": 320,
+              "caption": "A perfect loop starting with early morning mountain palaces and ending on the wild Atlantic cliffs."
+            },
+            "id": "live-2",
+            "note": "This route keeps you moving forward, avoiding the midday bottleneck in Sintra's historic town center.",
+            "section": "The Route",
+            "order": 2
+          },
+          {
+            "type": "timeline",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "events": [
+                {
+                  "time": "7:40 AM",
+                  "title": "Train from Rossio Station",
+                  "detail": "Buy a Viva Viagem card the night before to skip morning ticket machine lines."
+                },
+                {
+                  "time": "8:30 AM",
+                  "title": "Arrive Sintra & Ride Up",
+                  "detail": "Skip the 434 bus queue; grab a Bolt or Uber straight to Pena Palace's main gate."
+                },
+                {
+                  "time": "9:30 AM",
+                  "title": "Pena Palace & Gardens",
+                  "detail": "Explore the terraces first for clean photos, then walk the lush lakes trail."
+                },
+                {
+                  "time": "12:30 PM",
+                  "title": "Lunch in Sintra Town",
+                  "detail": "Avoid the main square. Head to Tascantiga for excellent, modern Portuguese tapas."
+                },
+                {
+                  "time": "2:30 PM",
+                  "title": "Quinta da Regaleira",
+                  "detail": "Descend the famous Initiation Well and explore the hidden tunnels."
+                },
+                {
+                  "time": "6:00 PM",
+                  "title": "Sunset at Cabo da Roca",
+                  "detail": "Watch the sun sink into the Atlantic from the dramatic, windy cliffs."
+                }
+              ],
+              "eyebrow": "Hour-by-Hour Playbook",
+              "title": "Saturday Timeline"
+            },
+            "id": "live-3",
+            "note": "Following this timeline ensures you are always one step ahead of the massive tour bus groups.",
+            "section": "The Route",
+            "order": 2
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "options": [
+                {
+                  "name": "Train + Rideshare",
+                  "sub": "Highly Recommended",
+                  "pick": true
+                },
+                {
+                  "name": "Guided Group Tour",
+                  "sub": "Easy but Rigid"
+                },
+                {
+                  "name": "Rental Car",
+                  "sub": "Not Recommended"
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Cost",
+                  "cells": [
+                    {
+                      "v": "Low (~€15-25 pp)",
+                      "win": true
+                    },
+                    {
+                      "v": "Medium (~€60-80 pp)"
+                    },
+                    {
+                      "v": "High (Gas + Parking)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Crowd Control",
+                  "cells": [
+                    {
+                      "v": "Excellent (You set pace)",
+                      "win": true
+                    },
+                    {
+                      "v": "Poor (Arrive with crowds)"
+                    },
+                    {
+                      "v": "Poor (Stuck in traffic)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Parking/Driving Ease",
+                  "cells": [
+                    {
+                      "v": "No driving needed",
+                      "win": true
+                    },
+                    {
+                      "v": "No driving needed",
+                      "win": true
+                    },
+                    {
+                      "v": "Nightmare (No palace parking)"
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Transit Options",
+              "recommendation": "Take the train from Rossio to Sintra, then use Bolt/Uber to hop between palaces. Never rent a car; roads are narrow, one-way, and parking at the palaces is practically non-existent."
+            },
+            "id": "live-4",
+            "note": "Taking the train combined with local rideshares gives you total freedom without the stress of Sintra's tight mountain roads.",
+            "section": "Logistics",
+            "order": 3
+          },
+          {
+            "type": "list",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "title": "Essential Packing & Prep Checklist",
+              "items": [
+                "Buy Pena Palace tickets online 3-5 days in advance (select the 9:30 AM slot).",
+                "Wear sturdy walking shoes with good grip—the cobblestones are steep and slippery.",
+                "Pack a light windbreaker; the microclimate in the Sintra hills is much cooler and windier than Lisbon.",
+                "Load €10 onto your Viva Viagem transit card on Friday to bypass the Saturday morning station rush."
+              ]
+            },
+            "id": "live-5",
+            "note": "A little bit of Friday night prep will save you at least forty-five minutes of waiting in lines on Saturday morning.",
+            "section": "Logistics",
+            "order": 3
+          }
+        ],
+        "proof": null,
+        "topic": "Travel",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "Where should we eat lunch in Sintra?",
+            "icon": "chat",
+            "route": "Where should we eat lunch in Sintra?"
+          },
+          {
+            "label": "How do we get from Sintra to Cascais?",
+            "icon": "chat",
+            "route": "How do we get from Sintra to Cascais?"
+          },
+          {
+            "label": "Is Monserrate Palace worth visiting instead?",
+            "icon": "chat",
+            "route": "Is Monserrate Palace worth visiting instead?"
+          },
+          {
+            "label": "What is the best viewpoint in Sintra?",
+            "icon": "chat",
+            "route": "What is the best viewpoint in Sintra?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1784149739432
+    }
+  ],
+  "history": [
+    {
+      "role": "user",
+      "content": "Plan a long weekend in Lisbon — three days, first visit, we love food and views."
+    },
+    {
+      "role": "assistant",
+      "content": "Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I've mapped out a three-day route that balances the classic sights with plenty of time to eat and take in the views without burning out on the climbs."
+    },
+    {
+      "role": "user",
+      "content": "Day trip to Sintra on Saturday — how do we do it right?"
+    },
+    {
+      "role": "assistant",
+      "content": "Sintra is magical, but it can easily become a crowded tourist trap if you don't plan ahead. I've mapped out a seamless Saturday itinerary that beats the crowds at Pena Palace, gets you into the lush gardens of Regaleira, and finishes with a coastal sunset at Cabo da Roca."
+    }
+  ]
+}

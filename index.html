@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      Content-Security-Policy — defense-in-depth behind the app's input sanitization. It
+      allow-lists exactly the origins Mavéa uses, so even if markup ever slipped past the
+      sanitizers it could neither load a script nor exfiltrate to an attacker origin.
+        script-src   self + wasm-unsafe-eval (Silero VAD / onnx WASM). Shiki, jsPDF,
+                     modern-screenshot, mediabunny, and pdf.js are ordinary bundled dependencies
+                     (self-hosted, code-split, dynamic import()) — they need no CDN allowance.
+        style-src    'unsafe-inline' is required — React inline styles + the design-system CSS vars
+        connect-src  self covers the same-origin /llm·/tts·/stt·/search·/pdf·/actions proxies and
+                     VAD's same-origin assets; the provider + Wikipedia hosts cover a direct baseUrl;
+                     api.github.com
+                     covers Ripple's read-only, browser-direct GitHub intake (public repos keyless,
+                     private with the user's own token). It ALSO has to repeat every image host
+                     below: the raster export (modern-screenshot) inlines a cross-origin image by
+                     fetch()ing it, so a host that img-src can paint but connect-src cannot fetch
+                     renders on screen and then comes out BLANK in the exported PDF/PPTX — which is
+                     how map tiles and photos silently vanished from exports. No new trust: these
+                     origins are already trusted to paint pixels.
+        img-src      data:/blob: (object-URL images) + the photo / map-tile allow-list
+        media-src    blob: — Kokoro TTS mp3 plays from an object URL
+        worker-src   blob: — the VAD / onnx worker
+        frame-src    self — the PDF reader may frame a same-origin PDF/proxy URL; its render
+                     boundary rejects every external or active-scheme frame source
+      This meta tag is the ONE place the policy is defined, so it travels with the app to any static
+      host. `frame-ancestors` is the one directive a meta tag cannot carry — send it as a response
+      header (X-Frame-Options / CSP frame-ancestors) from whatever actually serves dist/.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://commons.wikimedia.org https://images.unsplash.com https://images.pexels.com https://cdn.pixabay.com https://images-assets.nasa.gov https://www.nasa.gov https://*.basemaps.cartocdn.com; connect-src 'self' https://en.wikipedia.org https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai https://api.github.com https://api.search.brave.com https://api.tavily.com https://upload.wikimedia.org https://commons.wikimedia.org https://images.unsplash.com https://images.pexels.com https://cdn.pixabay.com https://images-assets.nasa.gov https://www.nasa.gov https://*.basemaps.cartocdn.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <title>Mavéa · Talk to AI. See what it means.</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Self-hosted fonts (public/fonts, OFL): no third-party request, and the app works offline.
+         Preload only the compact UI face. Newsreader is display:swap and loads at normal priority;
+         preloading its 129 kB variable file competed with the shell on constrained connections. -->
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-var-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <!-- Boot splash — painted straight from this static document, so a slow connection or an old
+         machine sees Mavéa's pulsing orb instead of a blank white page while the bundle downloads
+         and parses. Root() removes #boot on its first commit (src/main.tsx); if the bundle never
+         arrives the splash simply stays, which beats a blank page. The CSP above allows inline
+         STYLE but no inline script, so this block is the only boot-time styling possible. Colors
+         are literals because no token CSS has loaded yet; each mirrors its token: #0a0e15 =
+         --surface-default (tokens-base.css — dark is the documented startup default, theme.ts),
+         #f3f5fb = light --surface-default (light-theme.css), #6e8cff = --presence. The orb copies
+         SurfaceFallback's (rootBoundary.css) exactly, so the splash → React hand-off is invisible. -->
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0; /* full-viewport cover — zero layout shift when it is removed */
+        z-index: 9997; /* one under SurfaceFallback (9998) so React's own loading UI wins */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface-default, #0a0e15);
+      }
+      /* applyTheme stamps data-theme at module scope, before React renders — light users are
+         corrected the instant the bundle executes, not at first paint. */
+      :root[data-theme='light'] #boot {
+        background: var(--surface-default, #f3f5fb);
+      }
+      .boot-orb {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: radial-gradient(
+          circle at 35% 30%,
+          color-mix(in oklab, #6e8cff 70%, white 12%),
+          #6e8cff
+        );
+        /* opacity + scale only — compositor-cheap even on the weakest hardware */
+        animation: boot-pulse 1.1s ease-in-out infinite;
+      }
+      @keyframes boot-pulse {
+        0%,
+        100% {
+          transform: scale(0.85);
+          opacity: 0.6;
+        }
+        50% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-orb {
+          animation: none;
+          opacity: 0.85;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="boot" role="status" aria-busy="true" aria-label="Loading Mavéa">
+      <div class="boot-orb" aria-hidden="true"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

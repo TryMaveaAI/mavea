@@ -1,0 +1,1356 @@
+/* overlays family styles — tokens only; light/dark via existing token overrides.
+   Each block is a `.card` with an inviting trigger that opens a real, premium overlay. */
+
+/* ════════════════════════════════════════════════════════════
+   SHARED — triggers, buttons, portal, backdrop
+   ════════════════════════════════════════════════════════════ */
+.ov-trigger-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.ov-anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ov-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  max-width: 100%;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 640;
+  color: var(--text-primary);
+  padding: 9px 15px;
+  border-radius: var(--r-full);
+  overflow-wrap: anywhere;
+  text-align: left;
+  background: var(--surface-glass);
+  border: 1px solid var(--line-strong);
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    transform var(--m-fast) var(--ease-spring),
+    box-shadow var(--m-fast),
+    color var(--m-fast);
+}
+.ov-trigger .ic {
+  width: 15px;
+  height: 15px;
+  color: var(--ov-c);
+  flex-shrink: 0;
+}
+.ov-trigger:hover {
+  transform: translateY(-1px);
+  border-color: var(--ov-c);
+  background: var(--surface-glass-strong);
+}
+.ov-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ov-c) 30%, transparent);
+}
+.ov-trigger.active {
+  border-color: var(--ov-c);
+  background: color-mix(in oklab, var(--ov-c) 10%, var(--surface-glass));
+}
+.ov-trigger.danger {
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 40%, var(--line));
+}
+.ov-trigger.danger .ic {
+  color: var(--danger);
+}
+.ov-trigger.danger:hover {
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  border-color: var(--danger);
+}
+.ov-trigger.is-done {
+  color: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 40%, var(--line));
+  cursor: default;
+}
+.ov-trigger.is-done .ic {
+  color: var(--insight);
+}
+.ov-trigger-caret {
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: transform var(--m-fast) var(--ease-out);
+}
+.ov-trigger-caret.up {
+  transform: rotate(-90deg);
+}
+.ov-trigger-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0 5px;
+  margin-left: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 720;
+  border-radius: var(--r-full);
+  color: var(--surface-elevated);
+  background: var(--ov-c);
+}
+
+.ov-desc {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ov-desc strong {
+  color: var(--text-primary);
+  font-weight: 660;
+}
+
+/* shared dialog buttons */
+.ov-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  max-width: 100%;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 640;
+  padding: 9px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  transition:
+    filter var(--m-fast),
+    background var(--m-fast),
+    border-color var(--m-fast),
+    transform var(--m-fast) var(--ease-spring),
+    box-shadow var(--m-fast);
+}
+.ov-btn .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.ov-btn.ghost {
+  color: var(--text-secondary);
+  border-color: var(--line-strong);
+  background: transparent;
+}
+.ov-btn.ghost:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+}
+.ov-btn.solid {
+  color: var(--surface-elevated);
+  background: var(--ov-c);
+}
+.ov-btn.solid:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.ov-btn.solid:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ov-c) 32%, transparent);
+}
+.ov-btn.solid.danger {
+  background: var(--danger);
+}
+.ov-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ov-c) 28%, transparent);
+}
+
+.ov-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  transition:
+    color var(--m-fast),
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.ov-x .ic {
+  width: 15px;
+  height: 15px;
+}
+.ov-x:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border-color: var(--line);
+}
+
+.ov-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 19px;
+  padding: 0 5px;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--track);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  box-shadow: 0 1px 0 var(--line);
+}
+
+/* portal + backdrop (above app chrome / side rail z=45) */
+.ov-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+.ov-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-backdrop {
+    animation: ov-fade var(--m-normal) var(--ease-out);
+  }
+}
+@keyframes ov-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   modal — centered dialog
+   ════════════════════════════════════════════════════════════ */
+.ov-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-dialog {
+    animation: ov-pop var(--m-normal) var(--ease-spring);
+  }
+}
+@keyframes ov-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.ov-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 0;
+}
+.ov-dialog-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ov-dialog-body {
+  padding: 12px 20px 4px;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  min-height: 0;
+}
+.ov-dialog-body strong {
+  color: var(--text-primary);
+  font-weight: 660;
+}
+.ov-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 18px 20px 20px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════════
+   confirmdialog — destructive alert
+   ════════════════════════════════════════════════════════════ */
+.ov-alert {
+  width: min(400px, calc(100vw - 40px));
+  align-items: center;
+  text-align: center;
+  padding: 26px 24px 22px;
+}
+.ov-alert-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-full);
+  margin-bottom: 16px;
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  box-shadow: 0 0 0 7px color-mix(in oklab, var(--danger) 8%, transparent);
+}
+.ov-alert-badge .ic {
+  width: 24px;
+  height: 24px;
+}
+.ov-alert-title {
+  font-size: var(--fs-xl);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.ov-alert-body {
+  padding: 10px 4px 4px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ov-alert .ov-dialog-foot {
+  justify-content: center;
+  padding: 22px 0 0;
+  width: 100%;
+}
+.ov-alert .ov-btn {
+  flex: 1;
+}
+
+/* ════════════════════════════════════════════════════════════
+   drawer — right-side panel
+   ════════════════════════════════════════════════════════════ */
+.ov-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-drawer {
+    animation: ov-slide-r var(--m-normal) var(--ease-out);
+  }
+}
+@keyframes ov-slide-r {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.ov-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.ov-drawer-titles {
+  min-width: 0;
+}
+.ov-drawer-sub {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.ov-drawer-title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ov-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 18px;
+  min-height: 0;
+}
+.ov-drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ov-drawer-row:last-child {
+  border-bottom: none;
+}
+.ov-drawer-row-l {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-md);
+  font-weight: 560;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ov-drawer-row-l .ic {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ov-drawer-row-v {
+  font-size: var(--fs-md);
+  font-weight: 640;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.ov-drawer-foot {
+  display: flex;
+  gap: 10px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.ov-drawer-foot .ov-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   sheet — bottom sheet
+   ════════════════════════════════════════════════════════════ */
+.ov-sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(460px, 100vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 10px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--shadow-modal);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-sheet {
+    animation: ov-slide-up var(--m-normal) var(--ease-out);
+  }
+}
+@keyframes ov-slide-up {
+  from {
+    transform: translate(-50%, 100%);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+.ov-sheet-grab {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--line-strong);
+  margin: 0 auto 14px;
+}
+.ov-sheet-head {
+  margin-bottom: 14px;
+  min-width: 0;
+}
+.ov-sheet-title {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ov-sheet-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.ov-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ov-sheet-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    transform var(--m-fast) var(--ease-spring);
+}
+.ov-sheet-opt:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+.ov-sheet-opt.on {
+  border-color: var(--ov-c);
+  background: color-mix(in oklab, var(--ov-c) 8%, var(--surface-glass));
+}
+.ov-sheet-opt-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: var(--track);
+  color: var(--text-secondary);
+}
+.ov-sheet-opt.on .ov-sheet-opt-ic {
+  background: color-mix(in oklab, var(--ov-c) 16%, transparent);
+  color: var(--ov-c);
+}
+.ov-sheet-opt-ic .ic {
+  width: 17px;
+  height: 17px;
+}
+.ov-sheet-opt-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.ov-sheet-opt-label {
+  font-size: var(--fs-md);
+  font-weight: 620;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ov-sheet-opt-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ov-sheet-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  border: 2px solid var(--line-strong);
+  color: var(--surface-elevated);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.ov-sheet-opt.on .ov-sheet-radio {
+  background: var(--ov-c);
+  border-color: var(--ov-c);
+}
+.ov-sheet-radio .ic {
+  width: 12px;
+  height: 12px;
+}
+.ov-sheet-cta {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   popover — anchored panel with arrow
+   ════════════════════════════════════════════════════════════ */
+.ov-pop {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 60;
+  width: 264px;
+  padding: 16px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-floating);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-pop {
+    animation: ov-pop-up var(--m-fast) var(--ease-spring);
+    transform-origin: top left;
+  }
+}
+@keyframes ov-pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ov-pop-arrow {
+  position: absolute;
+  top: -7px;
+  left: 22px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface-elevated);
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+.ov-pop-head {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+.ov-pop-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ov-pop-stat-val {
+  font-size: var(--fs-2xl);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ov-c);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.ov-pop-stat-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ov-pop-body {
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ov-pop-body strong {
+  color: var(--text-primary);
+  font-weight: 640;
+}
+.ov-pop-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 640;
+  color: var(--ov-c);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: 14px;
+  transition: gap var(--m-fast);
+}
+.ov-pop-action .ic {
+  width: 14px;
+  height: 14px;
+}
+.ov-pop-action:hover {
+  gap: 9px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   hovercard — @mention preview
+   ════════════════════════════════════════════════════════════ */
+.ov-hc-lead {
+  font-size: var(--fs-md);
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.ov-hc-anchor {
+  position: relative;
+  display: inline;
+}
+.ov-mention {
+  font: inherit;
+  font-weight: 640;
+  color: var(--ov-c);
+  cursor: pointer;
+  padding: 1px 4px;
+  margin: 0 -1px;
+  background: color-mix(in oklab, var(--ov-c) 9%, transparent);
+  border: none;
+  border-radius: var(--r-sm);
+  overflow-wrap: anywhere;
+  transition: background var(--m-fast);
+}
+.ov-mention:hover,
+.ov-mention.active {
+  background: color-mix(in oklab, var(--ov-c) 18%, transparent);
+}
+.ov-hc-card {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 60;
+  width: 280px;
+  display: block;
+  padding: 16px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-floating);
+  text-align: left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-hc-card {
+    animation: ov-pop-up var(--m-fast) var(--ease-spring);
+    transform-origin: top left;
+  }
+}
+.ov-hc-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ov-hc-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  font-size: var(--fs-lg);
+  font-weight: 720;
+  letter-spacing: 0.02em;
+  color: var(--surface-elevated);
+  overflow: hidden;
+  background: linear-gradient(
+    140deg,
+    color-mix(in oklab, var(--ov-c) 78%, transparent),
+    var(--ov-c)
+  );
+}
+.ov-hc-names {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.ov-hc-name {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ov-hc-handle {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.ov-hc-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font: inherit;
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 640;
+  padding: 6px 13px;
+  border-radius: var(--r-full);
+  color: var(--surface-elevated);
+  background: var(--ov-c);
+  border: 1px solid var(--ov-c);
+  transition:
+    filter var(--m-fast),
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.ov-hc-follow .ic {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.ov-hc-follow:hover {
+  filter: brightness(1.08);
+}
+.ov-hc-follow.on {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--line-strong);
+}
+.ov-hc-bio {
+  display: block;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  overflow-wrap: anywhere;
+}
+.ov-hc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.ov-hc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ov-hc-stat-val {
+  font-size: var(--fs-lg);
+  font-weight: 720;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.ov-hc-stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.ov-hc-hint {
+  margin-top: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   tooltip — four placements
+   ════════════════════════════════════════════════════════════ */
+.ov-tip-prompt {
+  margin: 0 0 16px;
+}
+.ov-tip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 10px;
+  padding: 6px 4px;
+}
+.ov-tip-cell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+.ov-tip-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font: inherit;
+  max-width: 100%;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 9px 14px;
+  border-radius: var(--r-md);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.ov-tip-target .ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.ov-tip-target:hover,
+.ov-tip-target.on {
+  color: var(--text-primary);
+  border-color: var(--ov-c);
+  background: var(--surface-glass-strong);
+}
+.ov-tip-bubble {
+  position: absolute;
+  z-index: 60;
+  width: max-content;
+  max-width: 180px;
+  padding: 7px 11px;
+  font-size: var(--fs-sm);
+  font-weight: 560;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--surface-default);
+  background: var(--text-primary);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-floating);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-tip-bubble {
+    animation: ov-fade var(--m-fast) var(--ease-out);
+  }
+}
+.ov-tip-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--text-primary);
+  transform: rotate(45deg);
+}
+.ov-tip-bubble.place-top {
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ov-tip-bubble.place-top .ov-tip-arrow {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+.ov-tip-bubble.place-bottom {
+  top: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ov-tip-bubble.place-bottom .ov-tip-arrow {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+.ov-tip-bubble.place-left {
+  right: calc(100% + 9px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ov-tip-bubble.place-left .ov-tip-arrow {
+  right: -4px;
+  top: 50%;
+  margin-top: -4px;
+}
+.ov-tip-bubble.place-right {
+  left: calc(100% + 9px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ov-tip-bubble.place-right .ov-tip-arrow {
+  left: -4px;
+  top: 50%;
+  margin-top: -4px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   menu + contextmenu — dropdown lists
+   ════════════════════════════════════════════════════════════ */
+.ov-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  min-width: 230px;
+  padding: 6px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-menu {
+    animation: ov-pop-up var(--m-fast) var(--ease-spring);
+    transform-origin: top left;
+  }
+}
+.ov-menu-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 10px 7px;
+  overflow-wrap: anywhere;
+}
+.ov-menu-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 5px 6px;
+}
+.ov-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 560;
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: none;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.ov-menu-ic {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ov-menu-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ov-menu-item .ov-kbd {
+  flex-shrink: 0;
+}
+.ov-menu-item.on {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.ov-menu-item.on .ov-menu-ic {
+  color: var(--ov-c);
+}
+.ov-menu-item.danger {
+  color: var(--danger);
+}
+.ov-menu-item.danger .ov-menu-ic {
+  color: var(--danger);
+}
+.ov-menu-item.danger.on {
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+.ov-menu-item .ov-kbd {
+  background: transparent;
+  border-color: var(--line);
+}
+.ov-menu-item.on .ov-kbd {
+  background: var(--surface-elevated);
+}
+
+/* contextmenu */
+.ov-ctx-host {
+  position: relative;
+}
+.ov-ctx-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 132px;
+  cursor: context-menu;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1.5px dashed var(--line-strong);
+  padding: 12px;
+  overflow-wrap: anywhere;
+  text-align: center;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.ov-ctx-zone:hover,
+.ov-ctx-zone.active {
+  border-color: var(--ov-c);
+  color: var(--text-primary);
+  background: var(--surface-glass-strong);
+}
+.ov-ctx-zone-ic {
+  width: 28px;
+  height: 28px;
+  color: var(--ov-c);
+  flex-shrink: 0;
+}
+.ov-ctx {
+  position: absolute;
+  z-index: 60;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-ctx {
+    animation: ov-pop-up var(--m-fast) var(--ease-spring);
+    transform-origin: top left;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   commandk — ⌘K palette
+   ════════════════════════════════════════════════════════════ */
+.ov-ck-trigger {
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+}
+.ov-ck-kbd {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.ov-ck {
+  position: fixed;
+  top: 16vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(540px, calc(100vw - 32px));
+  max-height: 64vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ov-ck {
+    animation: ov-ck-in var(--m-normal) var(--ease-spring);
+  }
+}
+@keyframes ov-ck-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+.ov-ck-search {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.ov-ck-search:focus-within {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: -2px;
+}
+.ov-ck-search-ic {
+  width: 17px;
+  height: 17px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ov-ck-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--fs-lg);
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+}
+.ov-ck-input::placeholder {
+  color: var(--text-muted);
+}
+.ov-ck-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+.ov-ck-group {
+  margin-bottom: 4px;
+}
+.ov-ck-group-label {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 10px 5px;
+}
+.ov-ck-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: none;
+  transition: background var(--m-fast);
+}
+.ov-ck-item-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--track);
+  color: var(--text-secondary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.ov-ck-item-ic .ic {
+  width: 15px;
+  height: 15px;
+}
+.ov-ck-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.ov-ck-item-label {
+  font-size: var(--fs-md);
+  font-weight: 580;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ov-ck-item-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.ov-ck-item-go {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+.ov-ck-item.on {
+  background: color-mix(in oklab, var(--ov-c) 12%, var(--surface-glass));
+}
+.ov-ck-item.on .ov-ck-item-ic {
+  background: color-mix(in oklab, var(--ov-c) 20%, transparent);
+  color: var(--ov-c);
+}
+.ov-ck-item.on .ov-ck-item-go {
+  opacity: 1;
+  transform: none;
+  color: var(--ov-c);
+}
+.ov-ck-item .ov-kbd {
+  flex-shrink: 0;
+}
+.ov-ck-empty {
+  padding: 28px 16px;
+  text-align: center;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ov-ck-empty strong {
+  color: var(--text-primary);
+}
+.ov-ck-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-glass);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.ov-ck-foot-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ov-ck-foot-hint .ov-kbd {
+  min-width: 16px;
+  height: 18px;
+}
+.ov-ck-foot-count {
+  margin-left: auto;
+}
+
+/* portal passthrough wrapper — invisible to layout, just carries --ov-c to the overlay */
+.ov-root {
+  display: contents;
+}

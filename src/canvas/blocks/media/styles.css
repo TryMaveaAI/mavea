@@ -1,0 +1,4360 @@
+/* media family styles — tokens only; light/dark via existing token overrides. */
+
+/* ───────────────────────── shared ───────────────────────── */
+.me-ba-arrow.flip,
+.me-car-arrow .flip,
+.me-lb-nav .flip {
+  transform: scaleX(-1);
+}
+
+/* ───────────────────────── beforeafter ───────────────────────── */
+.me-ba {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  user-select: none;
+  touch-action: none;
+  cursor: ew-resize;
+}
+.me-ba-plate {
+  position: absolute;
+  inset: 0;
+}
+.me-ba-before {
+  will-change: clip-path;
+}
+.me-ba-tag {
+  position: absolute;
+  top: 12px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(var(--scrim-rgb), 0.42);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.me-ba-tag.left {
+  left: 12px;
+}
+.me-ba-tag.right {
+  right: 12px;
+}
+.me-ba-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(var(--scrim-rgb), 0.3);
+  cursor: ew-resize;
+}
+.me-ba-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--m-fast) var(--ease-out);
+}
+.me-ba.dragging .me-ba-handle {
+  transform: translate(-50%, -50%) scale(1.12);
+}
+.me-ba-arrow {
+  width: 12px;
+  height: 12px;
+  color: #111;
+  stroke: #111;
+  margin: 0 -3px;
+}
+.me-ba-caps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.me-ba-caps > .faint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.me-ba-pct {
+  color: var(--text-primary);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────── carousel ───────────────────────── */
+.me-carousel {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.me-car-track {
+  display: flex;
+  transition: transform var(--m-normal) var(--ease-out);
+  touch-action: pan-y;
+}
+.me-car-slide {
+  flex: 0 0 100%;
+}
+.me-car-img {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+}
+.me-car-label {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  /* the plate is a fixed aspect-ratio box with overflow: hidden — a label longer than the demo
+     fixture must wrap to at most 2 lines with an ellipsis instead of being clipped mid-glyph */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.me-car-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(var(--scrim-rgb), 0.42);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.me-car-cap {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.me-car-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: rgba(var(--scrim-rgb), 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition:
+    background var(--m-fast),
+    transform var(--m-fast) var(--ease-out);
+}
+.me-car-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+.me-car-arrow:hover {
+  background: rgba(var(--scrim-rgb), 0.72);
+}
+.me-car-arrow.left {
+  left: 10px;
+}
+.me-car-arrow.right {
+  right: 10px;
+}
+.me-car-dots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+.me-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: var(--track);
+  transition: all var(--m-fast) var(--ease-out);
+}
+.me-dot.on {
+  width: 20px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+}
+.me-car-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ───────────────────────── imagecallouts ───────────────────────── */
+.me-ico-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 14px;
+}
+@media (max-width: 560px) {
+  .me-ico-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+.me-ico-img {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.me-ico-imglabel {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
+}
+.me-ico-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: clamp(18px, 6cqi, 26px);
+  height: clamp(18px, 6cqi, 26px);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  padding: 0;
+  background: var(--cc);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast);
+}
+.me-ico-pin.on {
+  transform: translate(-50%, -50%) scale(1.28);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--cc) 30%, transparent);
+}
+.me-ico-num {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  color: #fff;
+}
+.me-ico-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.me-ico-row {
+  display: flex;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  transition: all var(--m-fast) var(--ease-out);
+}
+.me-ico-row.on {
+  border-color: var(--line-strong);
+  border-left-color: var(--cc);
+  background: color-mix(in oklab, var(--cc) 10%, transparent);
+}
+.me-ico-rownum {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: var(--cc);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.me-ico-rowbody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.me-ico-rowtitle {
+  font-size: var(--fs-sm, 13.5px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.me-ico-rowdetail {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* ───────────────────────── waveform ───────────────────────── */
+.me-wave-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.me-wave-play {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-glass);
+  color: var(--cc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--m-fast) var(--ease-out);
+}
+.me-wave-play:hover {
+  background: color-mix(in oklab, var(--cc) 14%, transparent);
+  border-color: var(--cc);
+}
+.me-wave-play.on {
+  background: color-mix(in oklab, var(--cc) 16%, transparent);
+  border-color: var(--cc);
+}
+.me-wave-play svg {
+  width: 18px;
+  height: 18px;
+}
+.me-wave-pause {
+  display: flex;
+  gap: 4px;
+}
+.me-wave-pause i {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--cc);
+}
+.me-wave {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.me-wave-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: var(--r-full);
+  transition: background var(--m-fast);
+}
+.me-wave-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--cc);
+  box-shadow: 0 0 8px var(--cc);
+}
+.me-wave-head::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full);
+  background: var(--cc);
+}
+.me-wave-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--hover-line);
+}
+.me-wave-time {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+/* The bars shrink to nothing but the gaps between them do not, so on a folded-phone card those ~60
+   gaps alone were wider than the strip left beside the play button and the last bars ran out through
+   its edge. Give the waveform a full row of its own instead of the remainder of someone else's.
+   Must sit after `.me-wave`, whose `flex: 1` would otherwise reset the basis back to zero. */
+@container (max-width: 340px) {
+  .me-wave-row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .me-wave {
+    order: 1;
+    flex-basis: 100%;
+    gap: 1px;
+  }
+}
+
+/* ───────────────────────── videoembed ───────────────────────── */
+.me-vid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 14px;
+}
+@media (max-width: 580px) {
+  .me-vid {
+    grid-template-columns: 1fr;
+  }
+}
+.me-vid-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.me-vid-overlaylabel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+.me-vid-dur {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  background: rgba(var(--scrim-rgb), 0.55);
+  color: #fff;
+}
+.me-vid-playbtn {
+  width: 54px;
+  height: 54px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  background: rgba(var(--scrim-rgb), 0.5);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform var(--m-fast) var(--ease-spring),
+    background var(--m-fast);
+}
+.me-vid-playbtn:hover {
+  transform: scale(1.08);
+  background: rgba(var(--scrim-rgb), 0.7);
+}
+.me-vid-playbtn svg {
+  width: 22px;
+  height: 22px;
+  margin-left: 2px;
+}
+.me-vid-pause {
+  display: flex;
+  gap: 5px;
+}
+.me-vid-pause i {
+  width: 5px;
+  height: 20px;
+  border-radius: 2px;
+  background: #fff;
+}
+.me-vid-scrub {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.25);
+}
+.me-vid-scrub-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--r-full);
+  background: #fff;
+  transition: width var(--m-normal) var(--ease-out);
+}
+.me-vid-tick {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.6);
+}
+.me-vid-tick.on {
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+.me-vid-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+}
+.me-vid-chap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  transition: all var(--m-fast) var(--ease-out);
+}
+.me-vid-chap:hover {
+  background: var(--surface-glass);
+}
+.me-vid-chap.on {
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 40%, transparent);
+}
+.me-vid-chaptime {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  min-width: 38px;
+  flex-shrink: 0;
+}
+.me-vid-chap.on .me-vid-chaptime {
+  color: var(--presence-soft);
+}
+.me-vid-chaptitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.me-vid-chap.on .me-vid-chaptitle {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.me-vid-chapnow {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  color: var(--presence-soft);
+  flex-shrink: 0;
+}
+
+/* ───────────────────────── lightbox ───────────────────────── */
+.me-lb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 480px) {
+  .me-lb-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.me-lb-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  padding: 0;
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast);
+}
+.me-lb-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-raised);
+}
+.me-lb-thumblabel {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  max-width: calc(100% - 16px);
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+  overflow-wrap: anywhere;
+}
+.me-lb-expand {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  background: rgba(var(--scrim-rgb), 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--m-fast);
+}
+.me-lb-expand svg {
+  width: 13px;
+  height: 13px;
+  color: #fff;
+}
+.me-lb-thumb:hover .me-lb-expand {
+  opacity: 1;
+}
+.me-lb-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  border-radius: var(--r-lg);
+  background: rgba(var(--scrim-rgb), 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: me-fade var(--m-fast) var(--ease-out);
+}
+@keyframes me-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.me-lb-stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-modal);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  animation: me-zoom var(--m-normal) var(--ease-spring);
+}
+@keyframes me-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.me-lb-hero {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+}
+.me-lb-herolabel {
+  max-width: calc(100% - 32px);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.4);
+  overflow-wrap: anywhere;
+}
+.me-lb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+}
+.me-lb-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.me-lb-metatitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.me-lb-metacap {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.me-lb-bar > .tab-num {
+  flex-shrink: 0;
+}
+.me-lb-nav {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  background: rgba(var(--scrim-rgb), 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--m-fast);
+}
+.me-lb-nav:hover {
+  background: rgba(var(--scrim-rgb), 0.75);
+}
+.me-lb-nav svg {
+  width: 18px;
+  height: 18px;
+}
+.me-lb-nav.left {
+  left: 10px;
+}
+.me-lb-nav.right {
+  right: 10px;
+}
+.me-lb-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-full);
+  background: rgba(var(--scrim-rgb), 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.me-lb-close svg {
+  width: 15px;
+  height: 15px;
+}
+.me-lb-close:hover {
+  background: rgba(var(--scrim-rgb), 0.75);
+}
+
+/* ───────────────────────── moodboard ───────────────────────── */
+.me-mood {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 78px;
+  gap: 8px;
+  grid-auto-flow: dense;
+}
+@media (max-width: 480px) {
+  .me-mood {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.me-mood-tile {
+  position: relative;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  padding: 10px;
+  display: flex;
+  align-items: flex-end;
+  transition:
+    transform var(--m-normal) var(--ease-spring),
+    box-shadow var(--m-normal),
+    opacity var(--m-normal);
+}
+.me-mood-tile.lift {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: var(--shadow-floating);
+  z-index: 2;
+}
+.me-mood-tile.fade {
+  opacity: 0.55;
+}
+.me-mood-tile.k-text {
+  background: var(--surface-glass-strong);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.me-mood-tile.k-color {
+  align-items: flex-end;
+}
+.me-mood-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.me-mood-hex {
+  font-size: 10.5px;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: rgba(var(--scrim-rgb), 0.32);
+  backdrop-filter: blur(4px);
+}
+.me-mood-imglabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ───────────────────────── palette ───────────────────────── */
+.me-pal {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .me-pal {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.me-pal-swatch {
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  /* The ratio alone turns the column width into the height, so on a folded-phone card the swatch came
+     out shorter than the caption printed inside it (contrast chip row + name + hex ≈ 96px) and cropped
+     it away. Floor the height at the caption: the ratio still shapes every swatch wide enough to hold
+     one, and only the narrowest cards trade a little of the ratio to keep their labels. The explicit
+     width keeps the ratio pointing one way — with only a floored height to go on it would work the
+     ratio backwards and widen the swatch out of its own grid column. */
+  min-height: 96px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast);
+}
+.me-pal-swatch:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-raised);
+}
+.me-pal-swatch.copied {
+  box-shadow: 0 0 0 2px var(--presence);
+}
+.me-pal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 9px 0;
+}
+.me-pal-contrast {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.me-pal-copyicon {
+  display: flex;
+  opacity: 0;
+  transition: opacity var(--m-fast);
+}
+.me-pal-copyicon svg {
+  width: 13px;
+  height: 13px;
+  color: #fff;
+}
+.me-pal-swatch:hover .me-pal-copyicon,
+.me-pal-swatch.copied .me-pal-copyicon {
+  opacity: 1;
+}
+.me-pal-meta {
+  padding: 8px 9px 9px;
+  text-align: left;
+  background: linear-gradient(to top, rgba(var(--scrim-rgb), 0.32), transparent);
+}
+.me-pal-name {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.me-pal-hex {
+  display: block;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.me-pal-swatch.light .me-pal-contrast {
+  background: rgba(0, 0, 0, 0.14);
+  color: #111;
+}
+.me-pal-swatch.light .me-pal-copyicon svg {
+  color: #111;
+}
+.me-pal-swatch.light .me-pal-name {
+  color: #111;
+  text-shadow: none;
+}
+.me-pal-swatch.light .me-pal-hex {
+  color: rgba(0, 0, 0, 0.6);
+}
+.me-pal-swatch.light .me-pal-meta {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.32), transparent);
+}
+.me-pal-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+  color: var(--insight);
+  border: 1px solid color-mix(in oklab, var(--insight) 40%, transparent);
+  animation: me-fade var(--m-fast) var(--ease-out);
+}
+.me-pal-toast svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ───────────────────────── photo ─────────────────────────
+   A real photograph the model found and we verified loads.
+   Fixed aspect box so the canvas never reflows when the image finishes loading;
+   a shimmer covers the fetch. */
+.me-photo {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+}
+.me-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+
+/* Optional real photo for the gradient-plate media blocks (carousel/lightbox/before-after/
+   image-callouts/moodboard). The plate keeps its gradient as a loading + fallback background;
+   the photo fills it at z-index -1 (above that gradient, below the plate's own labels/pins).
+   `isolation` scopes that negative layer to the plate so it never slips behind the card. */
+.me-car-img,
+.me-lb-thumb,
+.me-lb-hero,
+.me-ba-plate,
+.me-ico-img,
+.me-mood-tile,
+.crt-media {
+  isolation: isolate;
+}
+.me-img-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* a real <video> for the videoembed block (native controls; replaces the stylized player) */
+.me-vid-real {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+  border-radius: var(--r-md);
+  background: #000;
+  object-fit: cover;
+}
+.me-photo.ready .me-photo-img {
+  opacity: 1;
+}
+.me-photo-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--surface-elevated) 30%,
+    var(--surface-elevated-2) 50%,
+    var(--surface-elevated) 70%
+  );
+  background-size: 200% 100%;
+  animation: me-photo-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes me-photo-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+/* A photo whose image never loaded degrades to a plain caption card (Photo.tsx) — no fixed image
+   box, no broken-image glyph. It sizes to its text like any other text card so the grid closes
+   around it cleanly. */
+.me-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .me-photo-shimmer {
+    animation: none;
+  }
+}
+
+/* ── diagram: general labeled vector figure ── */
+.med-diag-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.med-diag-lead {
+  stroke: var(--line-strong);
+  stroke-width: 0.4;
+}
+.med-diag-lbl {
+  font-size: 3.4px;
+  font-weight: 600;
+}
+
+/* ---- GeoMap: a real Leaflet map (tiles loaded from CARTO/OSM) ---- */
+.geo-map {
+  /* Scale the map with the card so it stays generous on wide layouts and never dominates a
+     narrow phone card; clamped so it can't collapse or balloon. Upper bound kept moderate so a
+     map doesn't tower over the shorter card it shares a row with — a ~380px map is still
+     comfortably explorable. */
+  height: clamp(280px, 36cqi, 380px);
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-deep);
+  position: relative;
+  z-index: 0; /* keep Leaflet panes under app overlays */
+}
+/* Tile fetch veil — Leaflet owns every element inside .geo-map (it injects its pane tree on
+   mount), so the loading cover is a pseudo-element the library can never remove or reflow.
+   z-index 640 floats it over the tile (200) / overlay (400) / marker (600) panes but under
+   popups (700) and the controls (1000), all inside the z-index:0 stacking context above. Same
+   shimmer idiom as .me-photo-shimmer; GeoMap drops data-tiles='loading' on the first full tile
+   load (or its 8s cap), and the veil fades out over the finished basemap. */
+.geo-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 640;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    var(--surface-elevated) 30%,
+    var(--surface-glass-strong) 50%,
+    var(--surface-elevated) 70%
+  );
+  background-size: 220% 100%;
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+.geo-map[data-tiles='loading']::after {
+  opacity: 1;
+  animation: geo-tile-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes geo-tile-shimmer {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -220% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .geo-map[data-tiles='loading']::after {
+    animation: none;
+  }
+}
+.geo-map-empty {
+  display: grid;
+  place-items: center;
+}
+.geo-divicon {
+  background: none;
+  border: none;
+}
+.geo-pin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-full);
+  background: var(--geo-c, var(--presence));
+  color: #fff;
+  font: 700 13px/1 var(--font);
+  border: 2px solid #fff;
+  box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
+}
+/* themed popups (Leaflet defaults are white) */
+.geo-map .leaflet-popup-content-wrapper {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+}
+.geo-map .leaflet-popup-tip {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+}
+.geo-map .leaflet-popup-content {
+  margin: 10px 12px;
+  font: 400 13px/1.4 var(--font);
+}
+.geo-pop b {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.geo-pop-d {
+  color: var(--text-secondary);
+  margin: 3px 0 6px;
+}
+.geo-pop-a {
+  color: var(--presence);
+  font-weight: 600;
+  text-decoration: none;
+}
+.geo-map .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--surface-deep) 72%, transparent);
+  color: var(--text-muted);
+}
+.geo-map .leaflet-control-attribution a {
+  color: var(--text-secondary);
+}
+
+/* ─────────────────────── svgblock ─────────────────────── */
+/* The badge sits just after the title (left-clustered), clear of the card's top-right action
+   icons (Ask / screenshot). The title may shrink+truncate but does not grow to push it right. */
+.svgb-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.svgb-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 28%, transparent);
+}
+.svgb-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.svgb-wrap {
+  margin: 4px 0 2px;
+  width: 100%;
+  overflow: hidden;
+}
+.svgb-inner {
+  display: block;
+  width: 100%;
+  /* A model-authored SVG is full-bleed (width:100%, viewBox, no height), so on a wide canvas
+     its height scales with the card width and balloons (a simple wave hit ~600px tall in a
+     1640px card). Cap the figure width and center it so the height stays proportional + sane. */
+  max-width: 640px;
+  margin-inline: auto;
+}
+.svgb-inner svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Belt-and-suspenders: bound the height for tall/near-square viewBoxes too (the width cap
+     alone wouldn't stop a 1:1 figure from being 640px tall). preserveAspectRatio letterboxes. */
+  max-height: 440px;
+}
+/* Inherit design tokens so model-authored var(--presence) etc. resolve correctly */
+.svgb-inner text {
+  font-family: var(--font);
+}
+.svgb-err {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+.svgb-caption {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+.svgb-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.svgb-disclaimer svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--warning);
+}
+.svgb-disclaimer strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+/* ── sportspitch ── sports field/court overlay */
+.sp-wrap {
+  margin-top: 10px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  max-width: 480px;
+  margin-inline: auto;
+}
+
+/* ── floorplan ── top-down room layout */
+.fp-wrap {
+  margin-top: 10px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  max-width: 420px;
+  margin-inline: auto;
+}
+.fp-scale {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ─────────────────────── mediacard ─────────────────────── */
+/* Poster-forward detail card: cover art beside title/meta/logline/genres/providers. Flex so a
+   narrow column wraps the cover above the text; the cover never overflows the card. */
+.mc-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  align-items: flex-start;
+}
+.mc-cover {
+  position: relative;
+  flex: 0 0 116px;
+  width: 116px;
+  max-width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.mc-score {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--mc-sc) 90%, #000);
+  color: #fff;
+  box-shadow: 0 1px 8px color-mix(in oklab, #000 28%, transparent);
+}
+.mc-score-val {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  line-height: 1;
+}
+.mc-score-unit {
+  font-size: var(--fs-2xs, 10px);
+  opacity: 0.75;
+  line-height: 1;
+}
+.mc-main {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.mc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mc-chip {
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.mc-logline {
+  margin: 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  /* spoiler-safe blurb — clamp so a long premise never blows out the card height */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mc-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mc-genre {
+  padding: 2px 9px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 26%, transparent);
+}
+.mc-where {
+  margin-top: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mc-where-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mc-where-ic {
+  width: 11px;
+  height: 11px;
+  color: var(--text-muted);
+}
+.mc-providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mc-provider {
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+}
+
+/* ─────────────────────── dimensiondrawing ─────────────────────── */
+/* A shop drawing: the part profile + dimension lines fitted to a frame, with a title block. */
+.dim-wrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  max-width: 560px;
+  margin-inline: auto;
+}
+.dim-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dim-part {
+  fill: color-mix(in oklab, var(--presence) 9%, transparent);
+  stroke: var(--text-primary);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+.dim-ext {
+  stroke: var(--text-muted);
+  stroke-width: 0.35;
+}
+.dim-line {
+  stroke: var(--presence);
+  stroke-width: 0.45;
+}
+.dim-text {
+  fill: var(--text-primary);
+  font-size: 5px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.dim-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--line);
+}
+.dim-block-cell {
+  flex: 1 1 90px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 10px;
+  background: var(--surface-elevated);
+}
+.dim-block-tol {
+  flex-basis: 140px;
+}
+.dim-block-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.dim-block-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+.dim-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── explodedview ─────────────────────── */
+/* An exploded assembly figure beside a numbered parts list. */
+.exp-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  margin-top: 10px;
+  align-items: center;
+}
+@media (max-width: 520px) {
+  .exp-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+.exp-fig {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 6px;
+}
+.exp-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  margin-inline: auto;
+}
+.exp-axis {
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 2;
+}
+.exp-leader {
+  stroke: var(--line-strong);
+  stroke-width: 0.4;
+}
+.exp-plate {
+  fill: color-mix(in oklab, var(--presence) 12%, transparent);
+  stroke: var(--presence);
+  stroke-width: 0.6;
+}
+.exp-plate-line {
+  stroke: color-mix(in oklab, var(--presence) 40%, transparent);
+  stroke-width: 0.35;
+}
+.exp-node {
+  fill: var(--text-secondary);
+}
+.exp-balloon {
+  fill: var(--surface-card, var(--surface-elevated));
+  stroke: var(--text-primary);
+  stroke-width: 0.6;
+}
+.exp-balloon-num {
+  fill: var(--text-primary);
+  font-size: 6px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.exp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.exp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.exp-row-n {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--presence);
+  border: 1px solid color-mix(in oklab, var(--presence) 34%, transparent);
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.exp-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.exp-row-qty {
+  flex-shrink: 0;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.exp-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── weldsymbol ─────────────────────── */
+/* The joint cross-section + the AWS weld symbol, with a legend. */
+.wld-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+@media (max-width: 480px) {
+  .wld-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.wld-cell {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  padding: 10px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wld-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+}
+.wld-cap {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+}
+.wld-metal {
+  fill: color-mix(in oklab, var(--text-muted) 18%, transparent);
+  stroke: var(--text-secondary);
+  stroke-width: 0.8;
+}
+.wld-weld {
+  fill: color-mix(in oklab, var(--warning) 32%, transparent);
+  stroke: var(--warning);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+.wld-arrow {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+}
+.wld-ref {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+}
+.wld-glyph {
+  fill: var(--presence);
+  stroke: var(--presence);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.wld-dim {
+  fill: var(--text-primary);
+  font-size: 8px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  text-anchor: middle;
+}
+.wld-process {
+  fill: var(--text-secondary);
+  font-size: 6px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.wld-legend {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 14px;
+}
+.wld-legend li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.wld-leg-key {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+.wld-leg-val {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.wld-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── cutlist ─────────────────────── */
+/* A parts table beside a to-scale nesting layout on the stock sheet. */
+.cut-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 14px;
+  margin-top: 10px;
+  align-items: start;
+}
+@media (max-width: 560px) {
+  .cut-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.cut-tablewrap {
+  min-width: 0;
+}
+.cut-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm, 13px);
+}
+.cut-table th {
+  text-align: left;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 8px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.cut-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-primary);
+}
+.cut-num {
+  text-align: right;
+  white-space: nowrap;
+}
+.cut-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-secondary);
+}
+.cut-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: -1px;
+}
+.cut-label {
+  overflow-wrap: anywhere;
+}
+.cut-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cut-stat {
+  flex: 1 1 100px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.cut-stat-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cut-stat-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.cut-yield {
+  color: var(--insight);
+}
+.cut-yield[data-low] {
+  color: var(--warning);
+}
+.cut-figwrap {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 6px;
+}
+.cut-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cut-sheet {
+  fill: var(--surface-glass);
+  stroke: var(--text-secondary);
+  stroke-width: 0.6;
+}
+.cut-piece-lbl {
+  fill: var(--text-primary);
+  font-weight: 600;
+}
+.cut-sheet-lbl {
+  fill: var(--text-faint);
+  font-size: 4px;
+  font-weight: 600;
+}
+.cut-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── spacefit ─────────────────────── */
+/* A to-scale room with rotatable furniture, a scale ruler, and clearance flags. */
+.spf-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+  max-width: 560px;
+  margin-inline: auto;
+}
+.spf-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.spf-room {
+  fill: var(--surface-glass);
+  stroke: var(--text-secondary);
+}
+.spf-item-lbl {
+  fill: var(--text-primary);
+  font-weight: 600;
+}
+.spf-ruler line {
+  stroke: var(--text-muted);
+}
+.spf-ruler-lbl {
+  fill: var(--text-secondary);
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.spf-dims {
+  margin-top: 10px;
+  text-align: center;
+}
+.spf-dim {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.spf-clear {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.spf-clear-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.spf-clear-row.tight {
+  background: color-mix(in oklab, var(--warning) 10%, transparent);
+  border-color: color-mix(in oklab, var(--warning) 38%, transparent);
+}
+.spf-clear-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--insight);
+}
+.spf-clear-row.tight .spf-clear-dot {
+  background: var(--warning);
+}
+.spf-clear-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.spf-clear-gap {
+  flex-shrink: 0;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.spf-clear-flag {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--warning);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--warning) 16%, transparent);
+}
+.spf-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── anatomyfigure ─────────────────────── */
+/* A built-in organ illustration beside a numbered callout list. The figure is authored SVG (paths
+   in 0–100 space); the model only places the pins. */
+.an-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+  align-items: start;
+}
+@media (max-width: 540px) {
+  .an-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+.an-figbox {
+  position: relative;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  padding: 8px;
+}
+.an-view {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  z-index: 1;
+}
+.an-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 340px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.an-organ {
+  fill: color-mix(in oklab, var(--danger) 16%, var(--surface-elevated));
+  stroke: var(--danger);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.an-organ-detail {
+  fill: none;
+  stroke: color-mix(in oklab, var(--danger) 72%, var(--text-primary));
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.an-organ-detail .an-vessel {
+  stroke: color-mix(in oklab, var(--danger) 60%, var(--text-secondary));
+  stroke-width: 1;
+}
+.an-organ-detail .an-septum,
+.an-organ-detail .an-fold,
+.an-organ-detail .an-bone,
+.an-organ-detail .an-axon {
+  stroke: color-mix(in oklab, var(--danger) 50%, var(--text-secondary));
+}
+.an-organ-detail .an-tube {
+  stroke: color-mix(in oklab, var(--insight) 70%, var(--text-secondary));
+  stroke-width: 0.9;
+}
+.an-organ-detail .an-tube-dn {
+  stroke-dasharray: 1.6 1.4;
+}
+.an-organ-detail .an-cavity {
+  fill: color-mix(in oklab, var(--surface-deep) 70%, transparent);
+  stroke: color-mix(in oklab, var(--danger) 55%, var(--text-secondary));
+}
+.an-organ-detail .an-node {
+  fill: color-mix(in oklab, var(--danger) 40%, var(--text-secondary));
+  stroke: none;
+}
+.an-organ-detail .an-glint {
+  fill: var(--surface-elevated);
+  stroke: none;
+}
+.an-pin {
+  cursor: pointer;
+}
+.an-pin-dot {
+  fill: var(--text-primary);
+  stroke: var(--surface-elevated);
+  stroke-width: 1;
+  transition:
+    fill var(--m-fast),
+    r var(--m-fast) var(--ease-out);
+}
+.an-pin.on .an-pin-dot {
+  fill: var(--presence);
+}
+.an-pin-halo {
+  fill: color-mix(in oklab, var(--presence) 22%, transparent);
+  stroke: var(--presence);
+  stroke-width: 0.5;
+}
+.an-pin-num {
+  fill: #fff;
+  font-size: 3.6px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.an-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.an-row {
+  display: flex;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  transition: all var(--m-fast) var(--ease-out);
+}
+.an-row.on {
+  border-color: var(--line-strong);
+  border-left-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.an-rownum {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: var(--text-secondary);
+  color: var(--surface-elevated);
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--m-fast);
+}
+.an-row.on .an-rownum {
+  background: var(--presence);
+  color: #fff;
+}
+.an-rowbody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.an-rowtitle {
+  font-size: var(--fs-sm, 13.5px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.an-rownote {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.an-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── exposuretriangle ─────────────────────── */
+/* The three exposure controls wired on a triangle, with the resulting exposure in the centre and a
+   side-effect cue per axis below. */
+.ex-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 10px;
+  max-width: 380px;
+  margin-inline: auto;
+}
+.ex-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ex-tri {
+  fill: color-mix(in oklab, var(--presence) 6%, transparent);
+  stroke: var(--line-strong);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
+}
+.ex-edge {
+  stroke: color-mix(in oklab, var(--text-muted) 70%, transparent);
+  stroke-width: 0.5;
+}
+.ex-ev {
+  fill: var(--surface-glass-strong, var(--surface-glass));
+  stroke: var(--line-strong);
+  stroke-width: 0.5;
+}
+.ex-ev-k {
+  fill: var(--text-faint);
+  font-size: 3px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+.ex-ev-v {
+  fill: var(--text-primary);
+  font-size: 5.4px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.ex-node {
+  fill: var(--cc);
+  stroke: var(--surface-elevated);
+  stroke-width: 0.8;
+}
+.ex-node-k {
+  fill: var(--text-faint);
+  font-size: 3px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+.ex-node-v {
+  fill: var(--cc);
+  font-size: 5px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.ex-cues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ex-cue {
+  flex: 1 1 100px;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--cc);
+}
+.ex-cue-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: var(--r-full);
+  background: var(--cc);
+}
+.ex-cue-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ex-cue-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ex-cue-v {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ex-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── colorwheel ─────────────────────── */
+/* A hue ring with the harmony geometry drawn over it, beside a swatch row of the resulting colors. */
+.cw-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 16px;
+  margin-top: 12px;
+  align-items: center;
+}
+@media (max-width: 520px) {
+  .cw-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+.cw-figbox {
+  min-width: 0;
+}
+.cw-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 240px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.cw-svg path[d] {
+  stroke: none;
+}
+.cw-hub {
+  fill: var(--surface-elevated);
+  stroke: var(--line);
+  stroke-width: 0.5;
+}
+.cw-spoke {
+  stroke: var(--text-muted);
+  stroke-width: 0.6;
+}
+.cw-marker {
+  stroke: var(--surface-elevated);
+  stroke-width: 1.2;
+}
+.cw-marker.base {
+  stroke: var(--text-primary);
+  stroke-width: 1.6;
+}
+.cw-center {
+  fill: var(--text-secondary);
+  stroke: var(--surface-elevated);
+  stroke-width: 0.6;
+}
+.cw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.cw-harmony {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 1px;
+}
+.cw-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.cw-chip-sw {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 16%, transparent);
+}
+.cw-chip-body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.cw-chip-hex {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+.cw-chip-role {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.cw-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── artanalysis ─────────────────────── */
+/* An abstract picture plane with a compositional overlay + labeled focal regions, then a palette
+   row and technique notes. */
+.art-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.art-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.art-guide line {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 0.5;
+}
+.art-guide .art-guide-axis {
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 1.5;
+}
+.art-guide-arc {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 0.6;
+}
+.art-guide-node {
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 0.4;
+}
+.art-region-box {
+  fill: color-mix(in oklab, var(--presence) 14%, transparent);
+  stroke: var(--presence);
+  stroke-width: 0.7;
+}
+.art-region-lbl {
+  fill: #fff;
+  font-size: 4.4px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 0.8;
+}
+.art-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.art-pal-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px 5px 5px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.art-pal-sw {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 16%, transparent);
+}
+.art-pal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+.art-pal-hex {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+.art-pal-role {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+.art-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.art-note {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--presence);
+}
+.art-note-k {
+  flex-shrink: 0;
+  width: 84px;
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+.art-note-v {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.art-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── mixerboard ─────────────────────── */
+/* Stacked track lanes on a shared bar timeline, each with a volume bar, pan thumb, and mute/solo. */
+.mx-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.mx-ruler {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.mx-ruler-head {
+  display: block;
+}
+.mx-ruler-track {
+  position: relative;
+  height: 14px;
+}
+.mx-ruler-tick {
+  position: absolute;
+  transform: translateX(-1px);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-faint);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.mx-lane {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  transition: opacity var(--m-fast);
+}
+.mx-lane.muted {
+  opacity: 0.5;
+}
+@media (max-width: 520px) {
+  .mx-ruler,
+  .mx-lane {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+}
+/* Even the narrowed 116px channel strip claims most of a folded-phone card, leaving a timeline too
+   short to hold a single clip — the clips ran straight out of it. Stack them: strip on top, timeline
+   full-width underneath, which is the shape a mixer takes on a phone anyway. Must sit after the
+   media query above, which would otherwise put the two-column track back. */
+@container (max-width: 340px) {
+  .mx-ruler,
+  .mx-lane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.mx-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cc);
+  min-width: 0;
+}
+.mx-lane.soloed .mx-head {
+  background: color-mix(in oklab, var(--cc) 12%, transparent);
+  border-color: color-mix(in oklab, var(--cc) 38%, transparent);
+  border-left-color: var(--cc);
+}
+.mx-head-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mx-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-flags {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mx-flag {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+}
+.mx-flag.m.on {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+  border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+}
+.mx-flag.s.on {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 18%, transparent);
+  border-color: color-mix(in oklab, var(--warning) 42%, transparent);
+}
+.mx-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mx-vol {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.mx-vol-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--r-full);
+  background: var(--cc);
+}
+.mx-pan {
+  position: relative;
+  flex: 0 0 30px;
+  height: 12px;
+}
+.mx-pan-mid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: var(--r-full);
+  background: var(--track);
+}
+.mx-pan-thumb {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: var(--r-full);
+  background: var(--cc);
+  border: 1px solid var(--surface-elevated);
+}
+.mx-pan-lbl {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 20px;
+  text-align: right;
+}
+.mx-timeline {
+  position: relative;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  min-height: 36px;
+}
+.mx-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--grid-line, var(--line));
+}
+.mx-clip {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--cc) 26%, transparent);
+  border: 1px solid var(--cc);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  min-width: 3px;
+}
+.mx-clip-lbl {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mx-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ── wireframe ── a single-page sketch on a column grid ── */
+.wireframe {
+  display: grid;
+  grid-template-columns: repeat(var(--wf-cols, 12), 1fr);
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+}
+
+/* one placeholder region — the grey box every sketch lives inside */
+.wf-region {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(var(--wf-rows, 1) * 24px);
+  padding: 8px;
+  border: 1px dashed color-mix(in oklab, var(--line) 80%, transparent);
+  border-radius: var(--r-sm);
+  background: var(--track);
+  overflow: hidden;
+}
+/* hero + image read as the "loud" regions — a touch more presence */
+.wf-hero,
+.wf-image {
+  background: color-mix(in oklab, var(--presence) 7%, var(--track));
+  border-color: color-mix(in oklab, var(--presence) 22%, transparent);
+}
+.wf-header,
+.wf-footer,
+.wf-nav {
+  background: color-mix(in oklab, var(--text-muted) 8%, var(--track));
+}
+
+.wf-fill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* the region's name, tucked into a corner so it never crowds the sketch */
+.wf-label {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  max-width: calc(100% - 14px);
+  font-size: var(--fs-xs, 11px);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* lorem bars — the universal "text goes here" */
+.wf-line {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--text-muted) 38%, transparent);
+}
+.wf-line.wf-strong {
+  height: 9px;
+  background: color-mix(in oklab, var(--text-muted) 55%, transparent);
+}
+.wf-line.wf-tall {
+  height: 13px;
+  border-radius: 5px;
+}
+.wf-w40 {
+  width: 40%;
+}
+.wf-w50 {
+  width: 50%;
+}
+.wf-w60 {
+  width: 60%;
+}
+.wf-w70 {
+  width: 70%;
+}
+.wf-w80 {
+  width: 80%;
+}
+.wf-w90 {
+  width: 90%;
+}
+.wf-w100 {
+  width: 100%;
+}
+
+/* header / nav bar — brand dot + link bars */
+.wf-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.wf-dot {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 55%, transparent);
+}
+.wf-spacer {
+  flex: 1 1 auto;
+}
+.wf-link {
+  /* Three rigid 32px stubs plus a logo do not fit across a phone-width mock nav bar, so the last of
+     them ran out through the region. They stand in for nav links, not for any real measurement — let
+     them give ground and shorten together rather than shoulder each other off the bar. */
+  flex: 0 1 auto;
+  width: 32px;
+  min-width: 0;
+  height: 7px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--text-muted) 40%, transparent);
+}
+
+/* hero — headline stack + CTA pill */
+.wf-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* a button pill */
+.wf-pill {
+  width: 96px;
+  max-width: 60%;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, transparent);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.wf-pill-solid {
+  margin-inline: auto;
+  background: color-mix(in oklab, var(--presence) 60%, transparent);
+  border-color: transparent;
+}
+
+/* image placeholder — diagonal cross + glyph */
+.wf-image {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+}
+.wf-image-x {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: color-mix(in oklab, var(--text-muted) 30%, transparent);
+  stroke-width: 1;
+}
+.wf-image-ic {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  color: color-mix(in oklab, var(--text-muted) 60%, transparent);
+}
+
+/* text block — pure lorem bars */
+.wf-text {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+/* feature/product card — thumbnail + title + body lines */
+.wf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.wf-thumb {
+  width: 100%;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--insight) 16%, var(--track));
+  border: 1px solid color-mix(in oklab, var(--insight) 24%, transparent);
+}
+
+/* list — rows with a leading dot */
+.wf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.wf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.wf-row-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text-muted) 45%, transparent);
+}
+.wf-row .wf-line {
+  flex: 1 1 auto;
+}
+
+/* footer — three columns of link stacks */
+.wf-foot {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+.wf-foot-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* input field — a label line + a trailing affordance */
+.wf-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--surface-elevated) 70%, transparent);
+  border: 1px solid var(--line);
+}
+.wf-input .wf-line {
+  flex: 1 1 auto;
+}
+.wf-input-cta {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--presence) 40%, transparent);
+}
+
+.wf-caption {
+  margin-top: 10px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* ─────────────────────── maproute ───────────────────────
+   An ordered route on the same real Leaflet map as geomap (it reuses .geo-map / .geo-pin /
+   themed-popup rules above), plus a numbered itinerary list and a distance/elevation summary. */
+.mr-map {
+  height: 320px;
+}
+.mr-pin {
+  background: var(--presence);
+}
+.mr-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mr-stat {
+  flex: 1 1 90px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.mr-stat-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+.mr-stat-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.mr-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mr-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.mr-row-n {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  color: var(--presence);
+  border: 1px solid color-mix(in oklab, var(--presence) 36%, transparent);
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mr-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.mr-row-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.mr-row-leg {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+.mr-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── moonphase ───────────────────────
+   A lunar disk whose lit shape is computed from the illuminated fraction (the terminator
+   half-ellipse), beside the phase name + %, and an optional strip of upcoming nights. */
+.mp-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 12px;
+  /* the lit-face gradient stops — soft moonlight, derived from tokens so it tracks the theme:
+     a near-white highlight grading down to a cool muted edge. */
+  --mp-glow-hi: color-mix(in oklab, #fff 92%, var(--text-secondary));
+  --mp-glow: color-mix(in oklab, #fff 70%, var(--text-muted));
+  --mp-glow-lo: color-mix(in oklab, #fff 42%, var(--text-muted));
+}
+.mp-diskwrap {
+  flex: 0 0 132px;
+  width: 132px;
+  max-width: 100%;
+}
+.mp-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.mp-dark {
+  fill: color-mix(in oklab, var(--surface-deep) 78%, #000);
+}
+.mp-rim {
+  fill: none;
+  stroke: color-mix(in oklab, var(--text-muted) 50%, transparent);
+  stroke-width: 0.8;
+}
+.mp-info {
+  flex: 1 1 150px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mp-phase {
+  font-size: var(--fs-md, 16px);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.mp-illum {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.mp-illum-v {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--presence);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.mp-illum-k {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.mp-side {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+}
+.mp-date {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-faint);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.mp-upcoming {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.mp-night {
+  flex: 1 1 56px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  --mp-glow-hi: color-mix(in oklab, #fff 90%, var(--text-secondary));
+  --mp-glow: color-mix(in oklab, #fff 58%, var(--text-muted));
+}
+.mp-mini-svg {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+.mp-night-date {
+  font-size: var(--fs-2xs, 11px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.mp-night-pct {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.mp-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── skychart ───────────────────────
+   A circular planisphere: a sky dome with stars sized by magnitude, constellation lines, and
+   labeled planets — every point plotted from the props inside the dome (clipped to the ring). */
+.sky-wrap {
+  margin-top: 12px;
+  max-width: 420px;
+  margin-inline: auto;
+  /* The dome must read as "night sky" on EITHER theme, so its colours are deliberately fixed
+     (a deep blue zenith → near-black horizon) rather than theme tokens — a white dome on a light
+     card would not be a sky. Built from the presence-blue + black so it still belongs to the
+     palette. Star tint stays near-white; light theme lifts the dome a touch (below). */
+  --sky-zenith: color-mix(in oklab, var(--presence) 30%, #060912);
+  --sky-horizon: color-mix(in oklab, var(--presence) 8%, #03050a);
+  --sky-star: color-mix(in oklab, #fff 92%, var(--presence));
+  --sky-line: color-mix(in oklab, var(--presence) 60%, transparent);
+}
+.sky-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.sky-dome {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.sky-grid circle {
+  fill: none;
+  stroke: color-mix(in oklab, var(--text-muted) 22%, transparent);
+  stroke-width: 0.5;
+}
+.sky-grid line {
+  stroke: color-mix(in oklab, var(--text-muted) 18%, transparent);
+  stroke-width: 0.5;
+}
+.sky-line {
+  stroke: var(--sky-line);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+}
+.sky-star {
+  fill: var(--sky-star);
+}
+.sky-glow {
+  fill: color-mix(in oklab, var(--sky-star) 26%, transparent);
+}
+.sky-star-lbl {
+  fill: var(--sky-star);
+  font-size: 5px;
+  font-weight: 600;
+}
+.sky-planet-dot {
+  fill: var(--warning);
+  stroke: color-mix(in oklab, var(--warning) 50%, #000);
+  stroke-width: 0.4;
+}
+.sky-planet-lbl {
+  fill: var(--warning);
+  font-size: 5.4px;
+  font-weight: 700;
+}
+.sky-card {
+  fill: color-mix(in oklab, var(--text-muted) 80%, transparent);
+  font-size: 6px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.sky-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+:root[data-theme='light'] .sky-wrap {
+  /* lift the dusk-blue dome a little on a light page so it doesn't read as a black hole */
+  --sky-zenith: color-mix(in oklab, var(--presence) 34%, #1a2238);
+  --sky-horizon: color-mix(in oklab, var(--presence) 16%, #10162a);
+}
+
+/* ─────────────────────── orbitdiagram ───────────────────────
+   A central body with concentric labeled orbit rings + sized bodies, ring radii computed from
+   the orbit radii (sqrt-compressed unless toScale), with distance/period annotations. */
+.orb-wrap {
+  margin-top: 12px;
+  max-width: 440px;
+  margin-inline: auto;
+  /* the central body glows from a warm highlight to the warning-amber accent (a star/sun read) */
+  --orb-star-hi: color-mix(in oklab, #fff 70%, var(--warning));
+  --orb-star: var(--warning);
+}
+.orb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.orb-ring {
+  fill: none;
+  stroke: color-mix(in oklab, var(--text-muted) 34%, transparent);
+  stroke-width: 0.5;
+}
+.orb-center {
+  stroke: color-mix(in oklab, var(--warning) 60%, transparent);
+  stroke-width: 0.6;
+}
+.orb-center-lbl {
+  fill: var(--text-primary);
+  font-size: 5px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.orb-body {
+  stroke: color-mix(in oklab, #000 26%, transparent);
+  stroke-width: 0.4;
+}
+.orb-body-lbl {
+  fill: var(--text-primary);
+  font-size: 5.2px;
+  font-weight: 600;
+}
+.orb-body-annot {
+  fill: var(--text-muted);
+  font-size: 4.4px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.orb-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── gameboard ─────────────────────── */
+/* A configurable abstract board (chess/checkers/go/hex/grid) with pieces, highlights, and moves.
+   The square viewBox is capped + centred so a wide card never balloons it. */
+.gb-wrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+  max-width: 440px;
+  margin-inline: auto;
+}
+.gb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.gb-frame {
+  fill: color-mix(in oklab, var(--warning) 14%, var(--surface-elevated));
+  stroke: var(--text-secondary);
+  stroke-width: 0.5;
+}
+.gb-dark {
+  fill: color-mix(in oklab, var(--text-primary) 22%, transparent);
+}
+.gb-grid {
+  stroke: color-mix(in oklab, var(--text-secondary) 60%, transparent);
+  stroke-width: 0.25;
+}
+.gb-hexdot {
+  fill: color-mix(in oklab, var(--text-secondary) 50%, transparent);
+}
+.gb-star {
+  fill: var(--text-secondary);
+}
+.gb-hl {
+  fill: color-mix(in oklab, var(--insight) 30%, transparent);
+  stroke: var(--insight);
+  stroke-width: 0.4;
+}
+.gb-hl-dot {
+  fill: none;
+  stroke: var(--insight);
+  stroke-width: 0.8;
+}
+.gb-disc {
+  fill: var(--surface-elevated);
+  stroke: var(--text-primary);
+}
+.gb-piece.side-a .gb-disc {
+  fill: color-mix(in oklab, var(--presence) 18%, var(--surface-elevated));
+  stroke: var(--presence);
+}
+.gb-piece.side-b .gb-disc {
+  fill: color-mix(in oklab, var(--text-primary) 82%, var(--surface-elevated));
+  stroke: var(--text-primary);
+}
+.gb-glyph {
+  fill: var(--text-primary);
+  font-weight: 600;
+  user-select: none;
+}
+.gb-piece.side-b .gb-glyph {
+  fill: var(--surface-elevated);
+}
+.gb-move {
+  stroke: var(--warning);
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+.gb-arrhead {
+  fill: var(--warning);
+}
+.gb-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── patternpiece ─────────────────────── */
+/* A to-scale fabric layout: pattern pieces (dashed cut edges, a grainline arrow, fold marks) on a
+   folded fabric rectangle, with a computed yield note. Mirrors the cutlist/spacefit figure frame. */
+.pat-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+  max-width: 560px;
+  margin-inline: auto;
+}
+.pat-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pat-fabric {
+  fill: var(--surface-glass);
+  stroke: var(--text-secondary);
+  stroke-width: 0.4;
+}
+.pat-foldedge {
+  stroke: var(--presence);
+  stroke-dasharray: 1.6 1.4;
+  opacity: 0.7;
+}
+.pat-foldlabel {
+  fill: var(--presence);
+  font-size: 2.6px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+  opacity: 0.75;
+}
+.pat-fabriclabel {
+  fill: var(--text-faint);
+  font-size: 2.8px;
+  font-weight: 600;
+}
+.pat-onfold {
+  stroke: var(--presence);
+  stroke-linecap: round;
+}
+.pat-grain {
+  stroke: var(--text-secondary);
+  fill: none;
+  stroke-linecap: round;
+}
+.pat-grain-head {
+  fill: var(--text-secondary);
+}
+.pat-piece-lbl {
+  fill: var(--text-primary);
+  font-weight: 600;
+}
+.pat-piece-sub {
+  fill: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.78em;
+}
+.pat-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pat-stat {
+  flex: 1 1 120px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.pat-stat-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.pat-stat-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.pat-yield {
+  color: var(--insight);
+}
+.pat-yield[data-low] {
+  color: var(--warning);
+}
+.pat-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── emotionwheel ─────────────────────── */
+.ew-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 16px;
+  margin-top: 12px;
+  align-items: center;
+}
+@media (max-width: 520px) {
+  .ew-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+.ew-figbox {
+  min-width: 0;
+}
+.ew-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 240px;
+  margin-inline: auto;
+  overflow: visible;
+}
+.ew-wedge {
+  stroke: var(--surface-elevated);
+  stroke-width: 0.6;
+  transform-origin: 50px 50px;
+}
+.ew-wedge.hot {
+  stroke: var(--text-primary);
+  stroke-width: 1.6;
+}
+.ew-hub {
+  fill: var(--surface-elevated);
+  stroke: var(--line);
+  stroke-width: 0.5;
+}
+.ew-marker {
+  stroke: var(--text-primary);
+  stroke-width: 1.6;
+}
+.ew-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  /* A model can name far more than the core 8 feelings (a full Plutchik dyad set, or a granular
+     "feelings wheel" with dozens of tertiary shades) — cap and scroll rather than let the legend
+     stretch the card past its neighbours or, worse, get silently clipped by .card's overflow guard. */
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.ew-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.ew-chip.hot {
+  border-color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text-primary) 24%, transparent);
+}
+.ew-chip-sw {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 16%, transparent);
+}
+.ew-chip-body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.ew-chip-label {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+.ew-chip-tier {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ew-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ───────────────────────── creativetest ─────────────────────────
+   Marketing A/B creative comparison — an image card per variant, a metric-chip row under each,
+   and a ribbon on the winner. `auto-fit` keeps the common two-up case a clean split and lets a
+   longer test wrap instead of overflow. */
+.crt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--s-md);
+}
+.crt-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.crt-card.winner .crt-media {
+  outline: 2px solid var(--insight);
+  outline-offset: 2px;
+}
+.crt-ribbon {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--surface-deep);
+  background: var(--insight);
+  box-shadow: 0 0 14px var(--glow-insight);
+}
+.crt-ribbon .ic {
+  width: 11px;
+  height: 11px;
+}
+.crt-media {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 10px;
+}
+.crt-headline {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.crt-cardlabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.crt-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.crt-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+  min-width: 0;
+}
+.crt-metric-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.crt-metric-value {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.crt-metric-delta {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.crt-metric-delta.good {
+  color: var(--insight);
+}
+.crt-metric-delta.bad {
+  color: var(--danger);
+}
+
+/* ───────────────────────── brandguide ─────────────────────────
+   Colors reuse .me-pal-* (Palette's own click-to-copy swatch row) above; this section is only the
+   type-specimen stack + voice-note list added on top of it. */
+.brg-type-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.brg-type-row {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  min-width: 0;
+}
+.brg-type-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.brg-type-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.brg-type-family {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.brg-type-weight {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+}
+.brg-type-preview {
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.brg-voice {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.brg-voice-item {
+  position: relative;
+  padding-left: 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.brg-voice-item::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--presence);
+}
+
+/* ───────────────────────── siteplan ─────────────────────────
+   A property boundary plan — FloorPlan's outdoor counterpart. The parcel outline in a bold line,
+   the structure footprint filled solid, dashed setback rings with a numbered badge, and hatched
+   easement strips, fitted to the frame the same way DimensionDrawing fits a part profile. */
+.splan-wrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  max-width: 560px;
+  margin-inline: auto;
+}
+.splan-svg {
+  display: block;
+  width: 100%;
+}
+.splan-boundary {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.splan-structure {
+  fill: color-mix(in oklab, var(--presence) 16%, transparent);
+  stroke: var(--presence);
+  stroke-width: 0.8;
+}
+/* fill is set per-instance in JSX (cycled by index) — this rule intentionally stays out of the
+   badge's fill so that per-instance color wins instead of being overridden by the stylesheet. */
+.splan-badge {
+  stroke: var(--surface-elevated);
+  stroke-width: 0.6;
+}
+.splan-badge-text {
+  font-size: 4.4px;
+  font-weight: 700;
+  fill: #fff;
+  pointer-events: none;
+}
+.splan-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.splan-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  min-width: 0;
+}
+.splan-legend-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.splan-legend-dot.hatched {
+  border-radius: 2px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0,
+    rgba(255, 255, 255, 0.55) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+.splan-legend-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+.splan-legend-val {
+  color: var(--text-primary);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────── zoningmap (geomap zoning overlay) ─────────────────────────
+   Additive to .geo-map above: a category-colored polygon layer (styled from JS via inline
+   Leaflet path options, not CSS) plus this small legend chip row under the map. */
+.geo-zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.geo-zone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.geo-zone-swatch {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* ─────────────────────── wordsearch ───────────────────────
+   A generated puzzle grid beside its word list. Answer capsules draw under the letters; the
+   word buttons toggle them. The grid box mirrors the gb-/pat- figure frame so the family's
+   board figures read as one. */
+.wsr-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+.wsr-gridbox {
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 420px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+}
+.wsr-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.wsr-grid {
+  stroke: color-mix(in oklab, var(--grid-line) 70%, transparent);
+  stroke-width: 0.2;
+}
+.wsr-hit {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.32;
+}
+.wsr-letter {
+  fill: var(--text-primary);
+  font-size: 5.2px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  user-select: none;
+}
+.wsr-side {
+  flex: 1 1 150px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wsr-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+.wsr-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.wsr-word:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+}
+.wsr-word.on {
+  color: var(--text-primary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+}
+.wsr-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+.wsr-reveal {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, var(--line));
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  color: var(--text-primary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.wsr-reveal:hover {
+  background: color-mix(in oklab, var(--presence) 18%, transparent);
+}
+.wsr-skip {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-faint);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* ─────────────────────── playingcards ───────────────────────
+   SVG card faces grouped into hands. Cards size off their group's width (percent-based, capped
+   for readability); the fan/stack overlap is transform-only. */
+.pcd-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+.pcd-defs {
+  position: absolute;
+}
+.pcd-group {
+  min-width: 0;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  padding: 10px 12px;
+  overflow: hidden;
+}
+.pcd-glabel {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.pcd-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 1px 2px color-mix(in oklab, var(--text-primary) 14%, transparent));
+}
+.pcd-face {
+  fill: var(--surface-elevated);
+  stroke: color-mix(in oklab, var(--text-primary) 32%, transparent);
+  stroke-width: 3;
+}
+.pcd-rank {
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.pcd-red {
+  fill: var(--danger);
+}
+.pcd-blk {
+  fill: var(--text-primary);
+}
+.pcd-court {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-weight: 700;
+}
+.pcd-frame {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-opacity: 0.4;
+}
+.pcd-red .pcd-frame {
+  stroke: var(--danger);
+}
+.pcd-blk .pcd-frame {
+  stroke: var(--text-primary);
+}
+.pcd-back {
+  stroke: color-mix(in oklab, var(--presence) 55%, transparent);
+  stroke-width: 2.5;
+}
+.pcd-backfill {
+  fill: color-mix(in oklab, var(--presence) 14%, var(--surface-elevated));
+}
+.pcd-backline {
+  stroke: color-mix(in oklab, var(--presence) 45%, transparent);
+  stroke-width: 2.5;
+  fill: none;
+}
+.pcd-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pcd-rowcard {
+  width: clamp(44px, calc((100% - (var(--pcd-n) - 1) * 6px) / var(--pcd-n)), 86px);
+  min-width: 0;
+}
+.pcd-fan {
+  display: grid;
+  justify-items: center;
+  /* headroom for the rotated outer cards, so the arc never clips against the group box */
+  padding: 26px 12px 18px;
+}
+.pcd-fancard {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transform-origin: 50% 100%;
+}
+.pcd-stackrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pcd-stack {
+  /* the extra width + the 5:7 aspect hold the cascade offsets, so nothing escapes the box */
+  position: relative;
+  width: min(30%, 110px);
+  aspect-ratio: 5 / 7;
+}
+.pcd-stackcard {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 80%;
+}
+.pcd-count {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pcd-none {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-faint);
+}
+.pcd-more {
+  margin-top: 6px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-faint);
+}
+.pcd-note {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── stitchchart ───────────────────────
+   A bottom-up knitting chart with alternating row numbers and an auto-legend of only the
+   symbols in use. Symbols stroke with the ink token so the chart prints/exports cleanly. */
+.stc-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.stc-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.stc-frame {
+  fill: var(--surface-glass);
+  stroke: color-mix(in oklab, var(--text-secondary) 75%, transparent);
+  stroke-width: 0.3;
+}
+.stc-grid {
+  stroke: color-mix(in oklab, var(--grid-line) 80%, transparent);
+  stroke-width: 0.18;
+}
+.stc-stroke {
+  stroke: var(--text-primary);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  fill: none;
+}
+.stc-heavy {
+  stroke-width: 1.3;
+}
+.stc-fill {
+  fill: var(--text-primary);
+}
+.stc-cellText {
+  fill: var(--text-primary);
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.stc-rownum {
+  fill: var(--text-muted);
+  font-size: 3.4px;
+  font-weight: 600;
+  dominant-baseline: central;
+}
+.stc-rownum.rs {
+  text-anchor: start;
+}
+.stc-rownum.ws {
+  text-anchor: end;
+}
+.stc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 12px;
+}
+.stc-legchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.stc-legswatch {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.stc-legkey {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stc-legmeaning {
+  overflow-wrap: anywhere;
+}
+.stc-gauge {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.stc-gauge-k {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.stc-gauge-v {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stc-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* ─────────────────────── pianoroll ───────────────────────
+   A MIDI-style roll: mini keyboard gutter, beat grid with heavy bar lines, velocity-tinted
+   note bars. Wide sequences scale down inside the frame — never overflow it. */
+.pnr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pnr-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pnr-chip-dim {
+  color: var(--text-faint);
+}
+.pnr-figwrap {
+  margin-top: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  overflow: hidden;
+  padding: 8px;
+}
+.pnr-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pnr-blackband {
+  fill: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+.pnr-beatline {
+  stroke: color-mix(in oklab, var(--grid-line) 70%, transparent);
+  stroke-width: 0.6;
+}
+.pnr-barline {
+  stroke: color-mix(in oklab, var(--text-secondary) 45%, transparent);
+  stroke-width: 1;
+}
+.pnr-rowline {
+  stroke: color-mix(in oklab, var(--grid-line) 45%, transparent);
+  stroke-width: 0.4;
+}
+.pnr-key-white {
+  fill: var(--surface-elevated);
+  stroke: var(--line);
+  stroke-width: 0.6;
+}
+.pnr-key-black {
+  fill: color-mix(in oklab, var(--text-primary) 68%, var(--surface-elevated));
+  stroke: var(--line);
+  stroke-width: 0.6;
+}
+.pnr-octave {
+  fill: var(--text-muted);
+  font-size: 7.5px;
+  font-weight: 600;
+  text-anchor: end;
+  dominant-baseline: central;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.pnr-note {
+  stroke: var(--presence);
+  stroke-opacity: 0.55;
+  stroke-width: 0.8;
+}
+.pnr-notelabel {
+  fill: var(--text-primary);
+  font-weight: 600;
+  dominant-baseline: central;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.pnr-barnum {
+  fill: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+}
+.pnr-skip {
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-faint);
+  margin-top: 8px;
+}
+.pnr-caption {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 10px;
+  line-height: 1.45;
+}

@@ -1,0 +1,1083 @@
+/* ── shared code primitives ── */
+.co-snippet {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-x: auto;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* ── stacktrace ── error + call frames */
+.st-error-block {
+  background: color-mix(in oklab, var(--warning) 8%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, var(--line));
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.st-error-type {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 800;
+  color: var(--warning);
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  margin-bottom: 4px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.st-error-msg {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.st-cause {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in oklab, var(--warning) 20%, transparent);
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-style: italic;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.st-frames-label {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 6px;
+}
+.st-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.st-frame {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grid-line);
+  font-size: var(--fs-xs, 12px);
+}
+.st-frame:last-child {
+  border-bottom: none;
+}
+.st-frame.user-code .st-file {
+  color: var(--presence);
+  font-weight: 600;
+}
+.st-frame-num {
+  color: var(--text-faint);
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.st-file-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.st-file {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.st-fn {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  color: var(--text-muted);
+  font-style: italic;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.st-ctx {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border-left: 2px solid var(--line-strong);
+  padding: 2px 8px;
+  margin-top: 3px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.st-fix {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--insight) 30%, var(--line));
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--insight) 6%, var(--surface-elevated));
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.st-fix-label {
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  color: var(--insight);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+/* ── syntaxbreakdown ── annotated code */
+.sb-summary {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.sb-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.sb-line-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grid-line);
+}
+.sb-line-row:last-child {
+  border-bottom: none;
+}
+.sb-code-col {
+  flex: 1;
+  min-width: 0;
+}
+.sb-code {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.sb-exp {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.sb-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sb-token {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: var(--fs-xs, 11px);
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+.sb-token-code {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  color: var(--presence);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.sb-token-label {
+  color: var(--text-muted);
+}
+
+/* ── codewalk ── step-by-step algorithm walkthrough */
+.cw-algo {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.cw-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+.cw-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid-line);
+}
+.cw-step:last-child {
+  border-bottom: none;
+}
+.cw-num {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+  color: var(--presence);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.cw-body {
+  flex: 1;
+  min-width: 0;
+}
+.cw-step-title {
+  font-size: var(--fs-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.cw-exp {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.cw-code {
+  margin-top: 8px;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  line-height: 1.5;
+  overflow-x: auto;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* ── componentapi ── typed prop/contract reference table */
+.cap-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cap-sig {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 3px 10px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.cap-count {
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cap-count-req {
+  color: var(--warning);
+  font-weight: 600;
+}
+.cap-scroll {
+  max-height: 460px;
+  overflow-y: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+}
+.cap-table {
+  display: flex;
+  flex-direction: column;
+}
+.cap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 0.9fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--grid-line);
+  align-items: start;
+}
+.cap-row:last-child {
+  border-bottom: none;
+}
+.cap-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--line);
+}
+.cap-th {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.cap-cell {
+  min-width: 0;
+}
+.cap-c-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cap-name {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.cap-req {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  align-self: flex-start;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  color: var(--warning);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cap-req-ic {
+  color: var(--warning);
+  flex-shrink: 0;
+}
+.cap-opt {
+  align-self: flex-start;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cap-type {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--insight);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.cap-default {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--presence);
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.cap-dash {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-faint);
+}
+.cap-desc {
+  grid-column: 1 / -1;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.cap-empty {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── terminal ── a shell-session window with traffic-light chrome */
+.term {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-elevated);
+}
+.term-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-elevated));
+  border-bottom: 1px solid var(--line);
+}
+.term-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.term-dot-a {
+  background: var(--danger);
+}
+.term-dot-b {
+  background: var(--warning);
+}
+.term-dot-c {
+  background: var(--insight);
+}
+.term-bar-label {
+  margin-left: 6px;
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.term-body {
+  padding: 11px 13px;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.6;
+  max-height: 22rem;
+  overflow: auto;
+}
+.term-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.term-cmd {
+  display: flex;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.term-cmd + .term-out,
+.term-cmd + .term-err {
+  margin-top: 1px;
+}
+.term-out + .term-cmd,
+.term-err + .term-cmd,
+.term-comment + .term-cmd {
+  margin-top: 9px;
+}
+.term-prompt {
+  flex: 0 0 auto;
+  color: var(--insight);
+  font-weight: 700;
+  user-select: none;
+}
+.term-cmd-text {
+  min-width: 0;
+}
+.term-cmd-head {
+  color: var(--presence-soft);
+  font-weight: 700;
+}
+.term-out {
+  color: var(--text-secondary);
+}
+.term-err {
+  color: var(--danger);
+}
+.term-comment {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.term-exit {
+  margin-top: 11px;
+  display: inline-block;
+  font-size: calc(var(--fs-xs, 12px) - 0.5px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+}
+.term-exit.ok {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.term-exit.err {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+}
+.term-caption {
+  margin-top: 10px;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ── logstream ── severity-coded log feed with a clickable volume header */
+.log-vol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 11px;
+}
+.log-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--log-c, var(--text-muted)) 40%, var(--line));
+  background: color-mix(in oklab, var(--log-c, var(--text-muted)) 9%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.log-chip:hover {
+  background: color-mix(in oklab, var(--log-c, var(--text-muted)) 16%, transparent);
+}
+.log-chip.on {
+  background: color-mix(in oklab, var(--log-c, var(--text-muted)) 22%, transparent);
+  border-color: var(--log-c, var(--text-muted));
+  color: var(--text-primary);
+}
+.log-chip-name {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--log-c, var(--text-muted));
+}
+.log-chip-count {
+  font-variant-numeric: tabular-nums;
+}
+.log-feed {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.55;
+  max-height: 22rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+.log-row {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 4px 11px;
+  border-left: 2px solid var(--log-c, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 55%, transparent);
+}
+.log-row:last-child {
+  border-bottom: none;
+}
+.log-time {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.log-pill {
+  flex: 0 0 auto;
+  min-width: 3.4em;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: calc(var(--fs-xs, 12px) - 1px);
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  color: var(--log-c, var(--text-muted));
+  background: color-mix(in oklab, var(--log-c, var(--text-muted)) 15%, transparent);
+}
+.log-src {
+  flex: 0 0 auto;
+  color: var(--presence-soft);
+  font-weight: 600;
+}
+.log-msg {
+  min-width: 0;
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.log-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* per-level accent: drives chip, pill, and row rail via one custom prop */
+.log-trace {
+  --log-c: var(--text-muted);
+}
+.log-debug {
+  --log-c: var(--presence-soft);
+}
+.log-info {
+  --log-c: var(--insight);
+}
+.log-warn {
+  --log-c: var(--warning);
+}
+.log-error {
+  --log-c: var(--danger);
+}
+.log-fatal {
+  --log-c: var(--danger);
+}
+
+/* ── gitgraph ── a commit DAG: SVG lane graph + aligned commit rows */
+.gg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+}
+.gg-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.gg-leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.gg {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+}
+.gg-graph {
+  flex: 0 0 auto;
+}
+.gg-rows {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 45%, transparent);
+}
+.gg-row:last-child {
+  border-bottom: none;
+}
+.gg-hash {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.gg-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gg-tag,
+.gg-head {
+  flex: 0 0 auto;
+  font-size: calc(var(--fs-xs, 12px) - 1px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+}
+.gg-tag {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.gg-head {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 16%, transparent);
+}
+.gg-more {
+  margin-top: 8px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+
+/* ── flamegraph ── width = time, depth = call stack */
+.flame {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-elevated);
+}
+.flame-cell {
+  position: absolute;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  /* No padding, deliberately — the label carries its own inset via text-indent instead. A cell's
+     width is a percentage of the graph, so on a phone the slimmest frames are only a few px wide;
+     border-box sizing floors a padded box at padding + border, which grew those slivers past their
+     true width and pushed the right-most ones out through the graph's edge. */
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, transparent);
+  background: color-mix(
+    in oklab,
+    var(--warning) calc(22% + min(var(--d, 0), 8) * 4%),
+    var(--surface-elevated)
+  );
+  overflow: hidden;
+  cursor: default;
+}
+.flame-cell.hot {
+  background: color-mix(in oklab, var(--danger) 32%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--danger) 55%, transparent);
+}
+.flame-cell:hover {
+  outline: 1.5px solid var(--text-primary);
+  outline-offset: -1.5px;
+}
+.flame-label {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: calc(var(--fs-xs, 12px) - 1px);
+  color: var(--text-primary);
+  /* text-indent, not padding: it insets the text without giving the box a width it must honour, so a
+     sliver frame can still shrink to nothing (see .flame-cell). */
+  text-indent: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flame-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+.flame-hot-key {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ── queryplan ── indented EXPLAIN tree */
+.qp-sql {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 11px;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  color: var(--text-secondary);
+}
+.qp-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.qp-node {
+  display: flex;
+  /* Each level of the plan indents, and the row/cost metrics never shrink — deep in the tree on a
+     narrow card there was no room left for them and they ran off the edge. Let the node wrap so the
+     metrics drop under the operator instead. A wide card fits both on one line exactly as before. */
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  border-left: 2px solid transparent;
+}
+.qp-node.slow {
+  background: color-mix(in oklab, var(--danger) 9%, var(--surface-elevated));
+  border-left-color: var(--danger);
+}
+.qp-node-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.qp-op {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.qp-detail {
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.qp-metrics {
+  /* Wrapping the node (above) drops the metrics under the operator, but the three of them are still
+     one unbreakable line — and once the deepest levels of the plan have eaten the width with their
+     indent, that line is wider than what is left. Let the metrics stack too. */
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+}
+.qp-metric {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.qp-metric i {
+  font-style: normal;
+  color: var(--text-muted);
+}
+.qp-metric.qp-hot {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ── regexscope ── pattern + token breakdown + highlighted samples */
+.rx-pattern {
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-sm, 13px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+.rx-slash {
+  color: var(--text-muted);
+}
+.rx-src {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.rx-flags {
+  color: var(--presence);
+  margin-left: 1px;
+}
+.rx-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.rx-part {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.rx-token {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  color: var(--rx-c, var(--text-muted));
+  background: color-mix(in oklab, var(--rx-c, var(--text-muted)) 14%, transparent);
+  white-space: nowrap;
+}
+.rx-literal {
+  --rx-c: var(--text-muted);
+}
+.rx-class {
+  --rx-c: var(--presence);
+}
+.rx-quantifier {
+  --rx-c: var(--warning);
+}
+.rx-group {
+  --rx-c: var(--insight);
+}
+.rx-anchor {
+  --rx-c: var(--danger);
+}
+.rx-escape {
+  --rx-c: var(--presence-soft);
+}
+.rx-other {
+  --rx-c: var(--text-muted);
+}
+.rx-label {
+  min-width: 0;
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.rx-samples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.rx-sample-label {
+  display: block;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.rx-sample-text {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: var(--fs-xs, 12px);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  color: var(--text-secondary);
+}
+.rx-hit {
+  background: color-mix(in oklab, var(--insight) 28%, transparent);
+  color: var(--text-primary);
+  border-radius: 2px;
+  padding: 0 1px;
+  filter: hue-rotate(calc(var(--g, 0) * 36deg));
+}
+
+/* ── sequencealign ── multiple-sequence alignment: pinned label column, scrolling reads ── */
+.sq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 8px;
+  font-size: var(--fs-xs, 12px);
+}
+.sq-kind {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 35%, var(--line));
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  color: var(--presence-soft);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: var(--fs-2xs, 10px);
+}
+.sq-stat {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.sq-empty {
+  padding: 18px 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm, 13px);
+  text-align: center;
+}
+.sq-scroll {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  overflow: auto;
+  max-height: clamp(220px, 42vh, 460px);
+}
+.sq-rows {
+  display: flex;
+  flex-direction: column;
+}
+.sq-row {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  min-width: 100%;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 55%, transparent);
+}
+.sq-row:last-child {
+  border-bottom: none;
+}
+.sq-label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  width: 108px;
+  padding: 5px 10px;
+  background: var(--surface-elevated);
+  border-right: 1px solid var(--line);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sq-chars {
+  display: flex;
+  flex: none;
+  padding: 5px 6px;
+  font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
+  font-size: clamp(11px, 2.6cqi, 13px);
+  line-height: 1.5;
+}
+.sq-char {
+  flex: none;
+  width: 1.6em;
+  text-align: center;
+  color: var(--text-primary);
+}
+.sq-char.gap {
+  color: var(--text-faint);
+}
+.sq-char.mismatch {
+  color: var(--warning-soft);
+  background: color-mix(in oklab, var(--warning) 24%, transparent);
+  border-radius: 2px;
+}
+.sq-consensus {
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-elevated));
+  border-top: 1px solid var(--line-strong);
+  font-weight: 700;
+}
+.sq-consensus .sq-label {
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-elevated));
+  color: var(--text-primary);
+}
+.sq-consensus .sq-char.ambiguous {
+  color: var(--warning);
+}

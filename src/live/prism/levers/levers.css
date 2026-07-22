@@ -1,0 +1,263 @@
+/* levers.css — the Live Levers dock: sliders for the assumptions, live readouts for the conclusions, a
+   conclusion flipping red when its stated bound is violated. Tokens only, matching the same
+   elevated-surface + blur recipe as the ask dock (.prism-ask in ask.css) so it reads as one system and
+   follows light/dark like the rest of the stage. */
+
+.prism-lv {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 44vw);
+  max-height: min(66%, 560px);
+  box-sizing: border-box;
+  background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  animation: prism-ask-in 0.32s ease both;
+}
+
+.prism-lv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.prism-lv-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-lv-spark {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--presence);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--presence) 70%, transparent);
+}
+.prism-lv-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.prism-lv-reset {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 3px 9px;
+}
+.prism-lv-reset:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass-strong);
+}
+.prism-lv-min {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.prism-lv-min:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+
+.prism-lv-intro {
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--line);
+}
+
+.prism-lv-empty {
+  margin: 0;
+  padding: 16px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.prism-lv-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: prism-ask-pulse 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-lv-dot {
+    animation: none;
+  }
+}
+
+.prism-lv-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.prism-lv-group {
+  margin: 6px 0 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.prism-lv-group:first-child {
+  margin-top: 0;
+}
+
+.prism-lv-input {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.prism-lv-input-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prism-lv-label {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  border-bottom: 1px dashed transparent;
+}
+.prism-lv-label:hover {
+  border-bottom-color: color-mix(in oklab, var(--presence) 50%, transparent);
+  color: var(--text-primary);
+}
+.prism-lv-val {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.prism-lv-val.is-changed {
+  color: color-mix(in oklab, var(--presence) 75%, #fff);
+  font-weight: 600;
+}
+
+.prism-lv-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  outline: none;
+}
+.prism-lv-slider:focus-visible {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: 4px;
+}
+.prism-lv-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--presence);
+  border: 2px solid var(--surface-deep);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--presence) 60%, transparent);
+  cursor: grab;
+}
+.prism-lv-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+.prism-lv-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--presence);
+  border: 2px solid var(--surface-deep);
+  cursor: grab;
+}
+
+.prism-lv-out {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+.prism-lv-out:hover {
+  background: var(--surface-glass);
+}
+.prism-lv-out.is-violated {
+  border-color: color-mix(in oklab, var(--danger) 70%, transparent);
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface-elevated));
+}
+.prism-lv-out-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.prism-lv-out-val {
+  font-family: var(--font-data);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-lv-out.is-violated .prism-lv-out-val {
+  color: color-mix(in oklab, var(--danger) 80%, #fff);
+}
+.prism-lv-bound {
+  font-size: 10.5px;
+  color: color-mix(in oklab, var(--insight) 60%, var(--text-secondary));
+}
+.prism-lv-bound.is-violated {
+  color: color-mix(in oklab, var(--danger) 82%, #fff);
+  font-weight: 600;
+}
+
+/* Below tablet width, `44vw` shrinks the whole model — sliders, readouts, bounds — into a sliver too
+   narrow to actually use. The dock restructures to a near-full-width sheet anchored to both edges
+   instead of scaling the same cramped column down further. */
+@media (max-width: 560px) {
+  .prism-lv {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}

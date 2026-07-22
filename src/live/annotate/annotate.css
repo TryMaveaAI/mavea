@@ -1,0 +1,683 @@
+/* ============================================================
+   Live · drawn gestures — the strokes Mavéa draws while it talks.
+   The ink rides inside the card wrapper (scrolls and dims with
+   it); pathLength=1 normalizes the dash animation for any shape.
+   ============================================================ */
+
+/* Ink color palette — warm (default, orange), key (presence purple, the one standout mark),
+   cool (blue, for negative/contrast marks). User draw-back strokes share the cool blue. */
+:root {
+  --ink-gesture: #e8963f;
+  --ink-key: var(--presence);
+  --ink-cool: #5b8dee;
+}
+:root[data-theme='light'] {
+  --ink-gesture: #c2722e;
+  --ink-cool: #3566c9;
+}
+
+.live-voice .card-grid > div,
+.live-voice .focus-hero-card.focus-in {
+  /* The ink layer anchors to its card wrapper (grid cell or the ACTIVE focus hero). Scope this to
+     `.focus-in` only: it ties `.focus-hero-card.focus-out { position: absolute }` (same 0,2,0
+     specificity, defined earlier in focus.css) and, winning by cascade order, would force the
+     outgoing swap overlay back in-flow — the flex `.focus-hero` then splits the two cards 50/50,
+     so each new slide flashes at half width for the length of the crossfade. The outgoing card
+     never carries ink, so it has no need to be a positioning context. */
+  position: relative;
+}
+.ink-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Clip the ink to its own card. Every gesture's geometry already clamps inside the card with a
+     pen margin, so nothing intended is cut — this is the safety net that keeps a near-edge stroke
+     (or its halo) from bleeding over the neighbouring card or into the grid gutter. */
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.live-voice .card-grid {
+  /* The one shared, untransformed frame both ends of a "connect" gesture sit inside — each
+     .col-N card gets its own CSS scale (spotlit/dimmed/none), but the grid itself never does,
+     so it's the positioning context .ink-connect-layer anchors to below. */
+  position: relative;
+}
+.ink-connect-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Unlike .ink-layer, this deliberately does NOT clip — a connector spans two cards and
+     everything between them, by design. connect()'s own geometry already stays inside the
+     grid's own box (it pulls back to each named element's edge, never past it). */
+  overflow: visible;
+  pointer-events: none;
+  z-index: 7;
+}
+.ink-stroke {
+  fill: none;
+  stroke: var(--ink-gesture, var(--warning));
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.92;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ink-draw 1s cubic-bezier(0.45, 0, 0.3, 1) var(--ink-delay, 0ms) forwards;
+}
+.ink-halo {
+  fill: none;
+  stroke: var(--ink-gesture, var(--warning));
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.13;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: ink-draw 1s cubic-bezier(0.45, 0, 0.3, 1) var(--ink-delay, 0ms) forwards;
+}
+.ink-stroke.ink-head {
+  stroke-width: 2.4;
+  animation-duration: 0.28s;
+  animation-delay: calc(var(--ink-delay, 0ms) + 0.96s);
+}
+@keyframes ink-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Color overrides — key (the single standout mark) and cool (negative/contrast). */
+.ink-stroke[data-color='key'],
+.ink-halo[data-color='key'] {
+  stroke: var(--ink-key);
+}
+.ink-stroke[data-color='cool'],
+.ink-halo[data-color='cool'] {
+  stroke: var(--ink-cool);
+}
+
+/* Highlight: a semi-transparent filled band that sweeps on left-to-right like a marker. */
+.ink-fill {
+  fill: var(--ink-gesture);
+  stroke: none;
+  opacity: 0.18;
+  transform-origin: left center;
+  transform-box: fill-box;
+  animation: ink-fill-reveal 0.7s cubic-bezier(0.4, 0, 0.2, 1) var(--ink-delay, 0ms) forwards;
+}
+.ink-fill[data-color='key'] {
+  fill: var(--ink-key);
+}
+.ink-fill[data-color='cool'] {
+  fill: var(--ink-cool);
+}
+@keyframes ink-fill-reveal {
+  from {
+    transform: scaleX(0);
+    opacity: 0.04;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 0.18;
+  }
+}
+
+/* Handwritten caption — a note's words, or a bracket's delta. A slanted, condensed ink hand,
+   fading in just after its connecting stroke lands so the aside reads as written, not typed. */
+.ink-note {
+  fill: var(--ink-gesture, var(--warning));
+  font-family: 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', 'Marker Felt', cursive;
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  animation: ink-note-in 0.4s ease-out calc(var(--ink-delay, 0ms) + 0.5s) forwards;
+}
+.ink-note[data-color='key'] {
+  fill: var(--ink-key);
+}
+.ink-note[data-color='cool'] {
+  fill: var(--ink-cool);
+}
+/* The question gesture's "?" — a glyph, not a caption, so it draws bigger and upright;
+   it reads as a scrawled doubt beside the figure, never a sentence. */
+.ink-note.ink-glyph {
+  font-size: 26px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+@keyframes ink-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 0.95;
+    transform: translateY(0);
+  }
+}
+
+/* Step chip — a small numbered dot marking a mark's position in a multi-step sequence, so a
+   teaching walk ("first this, then that") reads in order. Shares the note's fade-in timing. */
+.ink-step-dot {
+  fill: var(--ink-gesture, var(--warning));
+  opacity: 0;
+  animation: ink-note-in 0.35s ease-out var(--ink-delay, 0ms) forwards;
+}
+.ink-step-dot[data-color='key'] {
+  fill: var(--ink-key);
+}
+.ink-step-dot[data-color='cool'] {
+  fill: var(--ink-cool);
+}
+.ink-step-num {
+  fill: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: inherit;
+  opacity: 0;
+  animation: ink-note-in 0.35s ease-out var(--ink-delay, 0ms) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-stroke,
+  .ink-halo {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .ink-fill {
+    animation: none;
+    opacity: 0.18;
+  }
+  .ink-note {
+    animation: none;
+    opacity: 0.95;
+  }
+  .ink-step-dot,
+  .ink-step-num {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* "MAVÉA IS DRAWING" — floats in the top-right corner of the card while the stroke
+   animates. Uses the card wrapper's existing position:relative anchor; z-index sits
+   just above the ink layer (5) so it's always readable. The badge fades in and out
+   over the draw cycle so it never lingers on a finished annotation. */
+[data-inking]::after {
+  content: '✦ MAVÉA IS DRAWING';
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-gesture);
+  pointer-events: none;
+  z-index: 6;
+  white-space: nowrap;
+  animation: ink-badge var(--ink-badge-dur, 2.4s) ease forwards;
+}
+[data-inking='key']::after {
+  color: var(--ink-key);
+}
+[data-inking='cool']::after {
+  color: var(--ink-cool);
+}
+@keyframes ink-badge {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  12% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-inking]::after {
+    animation: none;
+    display: none;
+  }
+}
+
+/* ============================================================
+   User ink — the user's own freehand marks on the canvas.
+   The overlay is pointer-events:none ALWAYS (it only draws); the HOST stage
+   receives the pointer, so card clicks/scroll are never blocked when idle.
+   The host carries the cue classes: .ink-armed (crosshair) and .ink-capturing
+   (suppress touch-scroll while a stroke is live).
+   ============================================================ */
+
+.ink-user-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+.ink-armed {
+  cursor: crosshair;
+}
+.ink-capturing {
+  touch-action: none;
+}
+
+/* Brief glow ring on a card when the user clicks a gesture entry to jump to it. */
+.ink-jump-glow {
+  animation: ink-jump-glow 0.75s ease-out both;
+}
+@keyframes ink-jump-glow {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, var(--ink-gesture) 55%, transparent),
+      var(--shadow-card, none);
+  }
+  35% {
+    box-shadow:
+      0 0 0 5px color-mix(in oklab, var(--ink-gesture) 28%, transparent),
+      var(--shadow-card, none);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      var(--shadow-card, none);
+  }
+}
+.ink-user-stroke {
+  fill: none;
+  stroke: var(--ink-cool);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+  transition: opacity 0.4s ease;
+}
+.ink-user-halo {
+  fill: none;
+  stroke: var(--ink-cool);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.11;
+  transition: opacity 0.4s ease;
+}
+/* A settled mark persists (hugging the part it grabbed) until the turn fires or the user undoes. */
+.ink-user-settled {
+  opacity: 0.9;
+}
+/* The in-place highlight over the grabbed text — the confirm-first proof of what a mark captured.
+   Shares the user-ink palette so highlight, stroke, and chip read as one system. No entrance
+   animation on purpose: a from-0 opacity animation can freeze at 0 on a throttled/backgrounded tab
+   and hide the proof, so the fill itself carries the (resting, always-on) visibility. */
+.ink-highlight {
+  fill: color-mix(in oklab, var(--ink-cool) 22%, transparent);
+  stroke: color-mix(in oklab, var(--ink-cool) 55%, transparent);
+  stroke-width: 1;
+}
+
+/* ---- "Mark" tool (arms ink for mouse/touch; distinct from the "Pen" annotation toggle) ---- */
+.mark-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+.mark-toggle:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in oklab, var(--ink-cool) 45%, var(--line));
+}
+.mark-toggle.on {
+  color: var(--ink-cool);
+  border-color: color-mix(in oklab, var(--ink-cool) 60%, transparent);
+  background: color-mix(in oklab, var(--ink-cool) 12%, var(--surface-elevated));
+}
+
+/* ---- the Mark tool + recognized-intent chips, a row above the composer ----
+   Matches .voice-capsule's own column width + centering (livedock.css) — the coach bubble
+   teaches the Highlight button that lives inside that capsule, so it needs to sit above it,
+   not hug the dock's full-width left edge while the capsule centers under the cards. */
+.ink-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: var(--canvas-col-max);
+  margin-inline: auto;
+}
+
+/* Transient nudge when a mark landed on open space / wasn't recognized — so the gesture never
+   just vanishes with no feedback (what made "Mark" feel broken). Fades in, auto-clears. */
+.ink-miss {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--warning) 12%, var(--surface-elevated));
+  animation: ink-coach-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Just-in-time how-to: shown whenever Mark is armed with nothing grabbed yet, so the user always
+   knows what to do the moment they turn the tool on. Calmer than the one-time coach (a soft cue,
+   no dismiss) — it clears itself the instant a mark resolves. */
+.ink-howto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ink-cool) 11%, var(--surface-elevated));
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+  animation: ink-coach-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ink-howto-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-cool);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ink-cool) 22%, transparent);
+}
+
+/* One-time coach: teaches "draw on the answer to ask" and pulses the Mark tool, until the user
+   arms ink or makes a mark (then it's gone for good, remembered across sessions). */
+.ink-coach {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 540px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid color-mix(in oklab, var(--ink-cool) 38%, var(--line));
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--ink-cool) 9%, var(--surface-elevated));
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  animation: ink-coach-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ink-coach strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.ink-coach-spark {
+  font-size: 14px;
+}
+.ink-coach-text {
+  flex: 1;
+}
+.ink-coach-x {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ink-coach-x:hover {
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+@keyframes ink-coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ink-bar.coaching .mark-toggle {
+  animation: ink-mark-pulse 2.1s ease-in-out infinite;
+}
+@keyframes ink-mark-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink-cool) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--ink-cool) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--ink-cool) 0%, transparent);
+  }
+}
+.ink-dock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+}
+.ink-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 240px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid color-mix(in oklab, var(--ink-cool) 40%, var(--line));
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ink-cool) 9%, var(--surface-elevated));
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.ink-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Per-chip remove (✕) — drop one highlight without clearing the rest. */
+.ink-chip-x {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--ink-cool);
+  cursor: pointer;
+}
+.ink-chip-x:hover {
+  background: color-mix(in oklab, var(--ink-cool) 18%, transparent);
+}
+.ink-chip-act {
+  padding: 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ink-chip-act:hover {
+  color: var(--text-primary);
+}
+.ink-chip-act.primary {
+  color: var(--surface-default);
+  background: var(--ink-cool);
+  border-color: transparent;
+}
+.ink-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 600px) {
+  .ink-coach-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-user-stroke,
+  .ink-user-halo,
+  .mark-toggle {
+    transition: none;
+  }
+  .ink-coach,
+  .ink-bar.coaching .mark-toggle {
+    animation: none;
+  }
+}
+
+/* ── Margin notes — a muted walk writes its stops beside the cards. The grid reserves the
+   gutter as padding-right (the responsive grid measures its content box, so the card tiling
+   re-budgets on its own — cards can structurally never enter the strip); the rail + tether
+   overlay portal into the grid and live inside that reserved strip. Calm typeset note cards:
+   the hand stays in the tethers, the words stay readable. ── */
+.live-voice .card-grid.note-gutter {
+  /* One margin per side — a reader writes beside the thing, in whichever margin is nearest
+     with a clear path (MarginNoteRail picks per note). Mirrored by GUTTER_FALLBACK / RAIL_GAP
+     in MarginNoteRail.tsx (its jsdom fallback). */
+  padding-left: 218px;
+  padding-right: 218px;
+}
+.note-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.note-rail.left {
+  right: auto;
+  left: 0;
+}
+.margin-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 8px 10px 8px 12px;
+  border-left: 2.5px solid var(--ink-gesture, var(--warning));
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ink-gesture, var(--warning)) 6%, var(--surface-elevated));
+  box-shadow: var(--shadow-raised);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  font-style: italic;
+  opacity: 0;
+  animation: margin-note-in 420ms var(--ease-out, ease) both;
+  animation-delay: var(--note-delay, 0ms);
+}
+@keyframes margin-note-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* The tether overlay spans the whole grid (like the connect layer) so an arrow can run from
+   the rail to any card's edge; it never clips and never catches the pointer. */
+.note-rail-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 6;
+}
+.note-tether {
+  stroke: var(--ink-gesture, var(--warning));
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  opacity: 0.75;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: note-tether-draw 600ms var(--ease-out, ease) forwards;
+  animation-delay: calc(var(--note-delay, 0ms) + 120ms);
+}
+.note-tether-head {
+  animation-delay: calc(var(--note-delay, 0ms) + 620ms);
+  animation-duration: 220ms;
+}
+@keyframes note-tether-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* Belt to the JS width gate: below the fit threshold the gutter never reserves and the rail
+   never shows, even if a stale class survives a resize race. */
+@media (max-width: 1279px) {
+  .live-voice .card-grid.note-gutter {
+    padding-right: 0;
+  }
+  .note-rail,
+  .note-rail-arrows {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .margin-note {
+    animation: none;
+    opacity: 1;
+  }
+  .note-tether {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

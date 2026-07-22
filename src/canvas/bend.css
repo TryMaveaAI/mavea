@@ -1,0 +1,84 @@
+/* ============================================================
+   Bendable answers — the slider strip under a bent block.
+   Self-contained (imported by BendStrip.tsx), tokens only.
+   ============================================================ */
+
+.bend-strip {
+  margin-top: 8px;
+  padding: 11px 14px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--presence) 6%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 22%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bend-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.bend-kicker {
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--presence);
+}
+.bend-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bend-value {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--presence);
+}
+.bend-value em,
+.bend-out-value em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.82em;
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+.bend-slider {
+  width: 100%;
+  accent-color: var(--presence);
+  cursor: ew-resize;
+}
+.bend-outputs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.bend-outputs li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  cursor: help;
+}
+.bend-out-label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.bend-out-value {
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}

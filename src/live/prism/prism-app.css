@@ -1,0 +1,310 @@
+/* PrismApp — standalone upload-first entry surface at #/prism (and SynthesisApp, which reuses
+   this same root class at #/synthesis). */
+
+/* The page is its own scroll container (height + overflow), so it scrolls even though the demo
+   shell locks body scroll on the root surface — the same pattern gallery.css documents. Without
+   this, a shorter window (a real 13"/14" laptop with normal browser chrome) locks out the bottom
+   of the page — including the "why trust this" feature bullets — with no way to reach it. */
+.prism-app {
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-deep);
+  color: var(--text-primary);
+}
+
+/* ── header ── */
+/* Sticky, like gallery's toolbar: the way back to Mavéa should never scroll out of reach once
+   the page can scroll. */
+.prism-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 32px;
+  background: var(--surface-deep);
+  border-bottom: 1px solid var(--line);
+}
+.prism-app-back {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.prism-app-back:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.prism-app-back svg {
+  width: 16px;
+  height: 16px;
+}
+.prism-app-brand {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ── main — full bleed, no narrow column cap ── */
+.prism-app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+}
+
+/* ── hero — fills the top half of the viewport ── */
+.prism-app-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: clamp(40px, 7vh, 72px) clamp(20px, 5vw, 48px) clamp(32px, 5vh, 52px);
+  min-height: clamp(220px, 36vh, 480px);
+}
+.prism-app-title {
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0;
+}
+.prism-app-lede {
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 640px;
+}
+
+/* ── drop zone — full width, generous height ── */
+.prism-dropzone {
+  width: 100%;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  background: var(--surface-glass);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: clamp(40px, 7vh, 80px) clamp(20px, 5vw, 48px);
+  cursor: pointer;
+  min-height: clamp(160px, 28vh, 400px);
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+  position: relative;
+}
+.prism-dropzone:hover,
+.prism-dropzone:focus-visible {
+  background: color-mix(in oklab, var(--presence) 6%, var(--surface-glass));
+  outline: none;
+}
+.prism-dropzone--over {
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-glass));
+  border-color: var(--presence);
+}
+.prism-dropzone svg {
+  width: 40px;
+  height: 40px;
+  color: var(--text-muted);
+}
+.prism-dropzone-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.prism-dropzone-label {
+  font-size: clamp(16px, 1.6vw, 20px);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-dropzone-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+/* ── error ── */
+.prism-app-error {
+  font-size: 13px;
+  color: var(--danger, #e05);
+  padding: 12px 32px 0;
+  margin: 0;
+}
+
+/* ── staging area ── */
+.prism-staged {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 32px;
+  max-width: 860px;
+  margin-inline: auto;
+  width: 100%;
+}
+.prism-staged-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+.prism-staged-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prism-staged-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+.prism-staged-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.prism-staged-name {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prism-staged-remove {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.prism-staged-remove:hover {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+.prism-staged-remove svg {
+  width: 13px;
+  height: 13px;
+  color: inherit;
+}
+
+/* ── confirm button ── */
+.prism-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-end;
+  padding: 14px 28px;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--presence);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+.prism-confirm-btn:hover {
+  opacity: 0.88;
+}
+.prism-confirm-btn:active {
+  transform: translateY(1px);
+}
+.prism-confirm-btn svg {
+  width: 15px;
+  height: 15px;
+}
+/* At 3 sources the user picks Compare (Prism) or Synthesize — two buttons side by side, the
+   Compare option shown as the secondary (ghost) action next to the primary Synthesize. */
+.prism-confirm-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  align-self: flex-end;
+}
+.prism-confirm-row .prism-confirm-btn {
+  align-self: auto;
+}
+.prism-confirm-alt {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--line-strong);
+}
+.prism-confirm-alt:hover {
+  opacity: 1;
+  background: var(--surface-deep);
+}
+
+/* ── feature bullets — 3-column grid below the drop zone ── */
+.prism-app-features {
+  list-style: none;
+  margin: 0;
+  padding: 32px 32px 48px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 1200px;
+  align-self: center;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .prism-app-features {
+    grid-template-columns: 1fr;
+  }
+}
+.prism-app-features li {
+  padding: 20px 22px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.prism-app-features li strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}

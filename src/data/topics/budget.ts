@@ -1,0 +1,368 @@
+// "Help me with money and expenses", amortization table, receipt breakdown, group settle-up,
+// ranked comparison bars, a zero-based budget, and a paystub. Exercises the everyday family
+// (finance blocks). Closes with a homeowner follow-on to the mortgage story: a backyard ADU
+// checked against the lot's setbacks (siteplan) and its zoning (zoningmap) before permitting.
+import type { ConversationSpec } from '../conversation';
+
+export const budget: ConversationSpec = {
+  id: 'budget',
+  workspace: 'Finances',
+  title: 'Help me understand my expenses',
+  sub: 'Mortgage math, receipt breakdown, and splitting the group trip.',
+  opener: "Your monthly payment is $2,205, here's exactly how it breaks down over 30 years.",
+  switchSay: "Let's run the numbers together.",
+  tint: '#e8a838',
+  context: [
+    { name: 'Mortgage · $340K', color: 'var(--presence-soft)' },
+    { name: 'Rome trip receipt', color: 'var(--insight)' },
+    { name: 'Group of 4', color: 'var(--text-muted)' },
+  ],
+  blocks: [
+    {
+      type: 'amortization',
+      col: 12,
+      delay: 0,
+      props: {
+        title: 'Mortgage Amortization',
+        icon: 'layers',
+        iconColor: 'var(--presence)',
+        principal: '$340,000',
+        rate: '6.75% APR',
+        term: '30 years',
+        monthlyPayment: '$2,205',
+        rows: [
+          {
+            period: 'Year 1',
+            payment: '$26,460',
+            principal: '$4,212',
+            interest: '$22,248',
+            balance: '$335,788',
+          },
+          {
+            period: 'Year 2',
+            payment: '$26,460',
+            principal: '$4,498',
+            interest: '$21,962',
+            balance: '$331,290',
+          },
+          {
+            period: 'Year 3',
+            payment: '$26,460',
+            principal: '$4,801',
+            interest: '$21,659',
+            balance: '$326,489',
+          },
+          {
+            period: 'Year 5',
+            payment: '$26,460',
+            principal: '$5,473',
+            interest: '$20,987',
+            balance: '$315,481',
+          },
+          {
+            period: 'Year 10',
+            payment: '$26,460',
+            principal: '$7,630',
+            interest: '$18,830',
+            balance: '$283,640',
+          },
+          {
+            period: 'Year 15',
+            payment: '$26,460',
+            principal: '$10,641',
+            interest: '$15,819',
+            balance: '$238,764',
+          },
+          {
+            period: 'Year 20',
+            payment: '$26,460',
+            principal: '$14,831',
+            interest: '$11,629',
+            balance: '$174,680',
+          },
+          {
+            period: 'Year 25',
+            payment: '$26,460',
+            principal: '$20,672',
+            interest: '$5,788',
+            balance: '$83,700',
+          },
+          {
+            period: 'Year 30',
+            payment: '$26,460',
+            principal: '$26,197',
+            interest: '$263',
+            balance: '$0',
+          },
+        ],
+        footer:
+          'Total interest paid over 30 years: ~$453,800. Refinancing at 5.5% would save ~$65K.',
+      },
+    },
+    {
+      type: 'receipt',
+      col: 6,
+      delay: 150,
+      props: {
+        title: 'Trip Receipt',
+        icon: 'layers',
+        iconColor: 'var(--insight)',
+        merchant: 'Trattoria da Enzo, Rome',
+        date: 'June 5, 2025',
+        lines: [
+          { item: 'Cacio e pepe', qty: '2', unit: '$18', total: '$36' },
+          { item: 'Carbonara', qty: '1', unit: '$21', total: '$21' },
+          { item: 'Antipasto misto', qty: '1', unit: '$14', total: '$14' },
+          { item: 'House wine (500ml)', qty: '2', unit: '$12', total: '$24' },
+          { item: 'Sparkling water', qty: '3', unit: '$4', total: '$12' },
+          { item: 'Tiramisu', qty: '2', unit: '$9', total: '$18' },
+        ],
+        subtotal: '$125',
+        tax: '$11',
+        total: '$136',
+        footer: 'Paid on Alex card, split below.',
+      },
+    },
+    {
+      type: 'settleup',
+      col: 6,
+      delay: 230,
+      props: {
+        title: 'Settle Up',
+        icon: 'chat',
+        iconColor: 'var(--presence)',
+        people: ['Alex', 'Jordan', 'Sam', 'Morgan'],
+        expenses: [
+          { description: 'Trattoria dinner', amount: '$136', paidBy: 'Alex' },
+          { description: 'Colosseum tickets', amount: '$96', paidBy: 'Jordan' },
+          { description: 'Hotel (2 nights)', amount: '$520', paidBy: 'Sam' },
+          { description: 'Airport taxi', amount: '$48', paidBy: 'Morgan' },
+        ],
+        settlements: [
+          { from: 'Alex', to: 'Sam', amount: '$96' },
+          { from: 'Jordan', to: 'Sam', amount: '$34' },
+          { from: 'Morgan', to: 'Sam', amount: '$62' },
+        ],
+        footer: 'Three transfers settle everything. Sam overpaid the most.',
+      },
+    },
+    {
+      type: 'bracketbar',
+      col: 8,
+      delay: 320,
+      props: {
+        title: 'Expense Breakdown',
+        icon: 'layers',
+        iconColor: 'var(--insight)',
+        metric: 'Trip cost by category',
+        items: [
+          { label: 'Hotel', value: 520, bar: '$520', badge: '#1' },
+          { label: 'Food & dining', value: 280, bar: '$280', badge: '#2' },
+          { label: 'Activities', value: 96, bar: '$96', badge: '#3' },
+          { label: 'Transport', value: 48, bar: '$48', badge: '#4' },
+          { label: 'Shopping', value: 38, bar: '$38', badge: '#5' },
+        ],
+        footer: 'Total trip: $982 for 4 people · $246 per person.',
+      },
+    },
+    {
+      type: 'budgetallocator',
+      col: 6,
+      delay: 420,
+      props: {
+        title: 'Your monthly budget',
+        icon: 'chart',
+        iconColor: 'var(--presence)',
+        income: 4200,
+        unit: '$',
+        incomeLabel: 'Take-home',
+        caption: 'Assign every dollar a job; the remainder is still yours to place.',
+        envelopes: [
+          { label: 'Rent', amount: 1500, group: 'fixed' },
+          { label: 'Groceries', amount: 500, group: 'flexible' },
+          { label: 'Utilities', amount: 220, group: 'fixed', note: 'power, water, internet' },
+          { label: 'Transport', amount: 180, group: 'fixed' },
+          { label: 'Savings', amount: 600, group: 'savings', note: 'auto-transfer on payday' },
+          { label: 'Dining out', amount: 300, group: 'flexible' },
+          { label: 'Fun money', amount: 200, group: 'flexible' },
+        ],
+        footer: '$700 still unassigned — bump savings or start a travel envelope.',
+      },
+    },
+    {
+      type: 'paystub',
+      col: 6,
+      delay: 500,
+      props: {
+        title: 'Your latest paycheck',
+        icon: 'doc',
+        iconColor: 'var(--presence)',
+        employer: 'Northwind Logistics',
+        payPeriod: 'Jun 1 – Jun 15, 2026',
+        payDate: 'Jun 20, 2026',
+        grossPay: '$2,884.62',
+        earnings: [
+          { label: 'Regular hours (80)', amount: '$2,769.23' },
+          { label: 'Overtime (3)', amount: '$115.39' },
+        ],
+        deductions: [
+          { label: 'Federal tax', amount: '$412.10' },
+          { label: 'State tax', amount: '$98.44' },
+          { label: 'Social Security', amount: '$178.85' },
+          { label: 'Medicare', amount: '$41.83' },
+          { label: '401(k) (6%)', amount: '$173.08' },
+          { label: 'Health insurance', amount: '$96.50' },
+        ],
+        netPay: '$1,883.82',
+        ytdNet: '$21,822.40',
+        footer:
+          'Your 401(k) contribution went up to 6% this period — the employer match kicked in.',
+      },
+    },
+    {
+      type: 'taxbracket',
+      col: 8,
+      delay: 580,
+      props: {
+        title: 'Your 2026 federal tax bracket',
+        icon: 'chart',
+        iconColor: 'var(--presence)',
+        filingStatus: 'Single',
+        income: 78000,
+        bands: [
+          { min: 0, max: 11600, rate: 10 },
+          { min: 11600, max: 47150, rate: 12 },
+          { min: 47150, max: 100525, rate: 22 },
+          { min: 100525, max: 191950, rate: 24 },
+          { min: 191950, max: 243725, rate: 32 },
+          { min: 243725, max: 609350, rate: 35 },
+          { min: 609350, rate: 37 },
+        ],
+        footer:
+          "You're taxed at 22% only on the slice above $47,150 — everything below that is taxed at its own lower band.",
+      },
+    },
+    {
+      type: 'taxreturnsummary',
+      col: 6,
+      delay: 640,
+      props: {
+        title: 'Your filed return, line by line',
+        icon: 'doc',
+        iconColor: 'var(--presence)',
+        filingStatus: 'Single',
+        taxYear: 2025,
+        rows: [
+          { label: 'Wages (W-2 Box 1)', amount: 78000 },
+          { label: 'Interest & dividends', amount: 640 },
+          { label: 'Total income', amount: 78640, kind: 'subtotal' },
+          { label: 'Standard deduction', amount: -14600, indent: 1 },
+          { label: 'Taxable income', amount: 64040, kind: 'subtotal' },
+          { label: 'Tax before credits', amount: 9612, indent: 1 },
+          { label: 'Child tax credit', amount: -2000, indent: 1 },
+          { label: 'Total tax', amount: 7612, kind: 'subtotal' },
+          { label: 'Federal withholding (W-2 Box 2)', amount: 8940, indent: 1 },
+          { label: 'Total payments', amount: 8940, kind: 'total' },
+        ],
+        refundOrOwed: { amount: 1328, direction: 'refund' },
+        footer:
+          'Withholding ran a little ahead of what you owed, mostly the child tax credit landing after your W-4 was set.',
+      },
+    },
+
+    // ── siteplan (media) — the same house, planning a backyard ADU before permitting ──
+    {
+      type: 'siteplan',
+      col: 8,
+      delay: 660,
+      id: 'adu-siteplan',
+      props: {
+        title: 'Backyard ADU — does it clear the setbacks?',
+        icon: 'layers',
+        iconColor: 'var(--presence)',
+        boundary: [
+          [0, 0],
+          [60, 0],
+          [62, 120],
+          [0, 118],
+        ],
+        structureFootprint: [
+          [10, 10],
+          [40, 10],
+          [40, 50],
+          [10, 50],
+        ],
+        setbackLines: [
+          { offset: 20, label: 'Front yard · 20 ft' },
+          { offset: 5, label: 'Side yard · 5 ft' },
+          { offset: 15, label: 'Rear yard · 15 ft' },
+        ],
+        easements: [
+          {
+            label: 'Utility easement · rear 13 ft',
+            path: [
+              [0, 105],
+              [60, 105],
+              [60, 118],
+              [0, 118],
+            ],
+          },
+        ],
+        footer:
+          'The ADU footprint clears the side and rear setbacks but overlaps the utility easement — shift it forward about 4 ft before you file.',
+      },
+    },
+
+    // ── zoningmap (media) — the same lot, checking it's actually zoned for an ADU ──
+    {
+      type: 'zoningmap',
+      col: 8,
+      delay: 740,
+      id: 'adu-zoning',
+      props: {
+        title: 'Is the lot zoned for an ADU?',
+        icon: 'globe',
+        iconColor: 'var(--presence)',
+        markers: [{ lat: 30.2451, lng: -97.7511, name: '412 Sunset Ave', detail: 'Your lot' }],
+        zones: [
+          {
+            category: 'residential',
+            label: 'SF-3 · single-family',
+            coords: [
+              [30.2465, -97.7525],
+              [30.2465, -97.7497],
+              [30.2437, -97.7497],
+              [30.2437, -97.7525],
+            ],
+          },
+          {
+            category: 'commercial',
+            label: 'CS · commercial corridor',
+            coords: [
+              [30.2465, -97.7497],
+              [30.2465, -97.747],
+              [30.2437, -97.747],
+              [30.2437, -97.7497],
+            ],
+          },
+        ],
+        footer:
+          "412 Sunset Ave sits in SF-3 residential — ADUs are allowed by-right up to 800 sq ft. The commercial corridor two blocks east doesn't apply here.",
+      },
+    },
+  ],
+  proof: null,
+  extras: {},
+  group: 'home',
+  suggests: [
+    { label: 'Refinance at 5.5% instead', icon: 'layers', route: 'topic:budget' },
+    { label: 'Budget for next month', icon: 'clock', route: 'topic:money' },
+    { label: 'Plan another trip', icon: 'globe', route: 'topic:trip' },
+  ],
+  keywords: [
+    {
+      test: /\bmortgage\b|\bamortiz\w+\b|\breceipt\b|\bsettle(\s+up)?\b|\bexpense split\b|\bwho owes\b|\bloan\s+(payment|table|breakdown)\b/,
+      route: 'topic:budget',
+    },
+  ],
+};

@@ -1,0 +1,52 @@
+# Security response headers for the built app.
+#
+# The Content-Security-Policy travels in index.html's <meta> tag, so it applies on any host. These
+# five cannot be expressed in a meta tag at all — they only exist as response headers — so they have
+# to come from whatever actually serves dist/. This file is the format Cloudflare Pages and Netlify
+# read directly out of the publish directory; Vite copies it verbatim from public/.
+#
+# If you deploy somewhere else, these are the headers to carry across (nginx `add_header`, an S3 +
+# CloudFront response-headers policy, a Vercel `headers` block, and so on). Do not drop
+# Permissions-Policy: Mavéa asks for the microphone, and that line is what keeps an embedded or
+# third-party context from asking on its behalf.
+
+/*
+  # No one frames Mavéa. Clickjacking a voice app means clickjacking a mic prompt.
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
+  # The mic is ours and same-origin only. The camera and location are things we never use, so they
+  # are denied outright rather than left to the default.
+  Permissions-Policy: microphone=(self), display-capture=(self), camera=(), geolocation=()
+  # BYOK keys travel over this connection. It is HTTPS or it is nothing.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  # HTML and unhashed root assets revalidate. Fingerprinted /assets/* gets the one-year override
+  # below; this also covers the origin path `/`, not only an explicit `/index.html` request.
+  Cache-Control: no-cache
+
+# Hashed build assets are immutable by construction; the entry HTML never is.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# These filenames are stable rather than content-hashed, so keep the repeat-load win bounded and
+# revalidate in the background instead of treating them as immutable across future releases.
+/fonts/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/semantic/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+/demo-assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# The app shell is never frameable. This narrow exception lets only bundled PDF assets render in
+# Pdfreader's same-origin, sandboxed iframe; other demo assets inherit DENY from /*.
+/demo-assets/pdf/*
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
+  Cross-Origin-Resource-Policy: same-origin
+  Content-Disposition: inline
+
+/index.html
+  Cache-Control: no-cache

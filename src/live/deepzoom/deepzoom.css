@@ -1,0 +1,1076 @@
+/* deepzoom.css — Powers-of-Ten semantic zoom surface.
+   The layout reads as one continuous descent: a scale-ladder navigator on the
+   left, an editorial reading stage on the right, and an ambient field whose hue
+   migrates through the ten --dz-* accents as you fall deeper. Colour and text
+   come from the shared tokens; only the ten scale accents are local. */
+
+/* ── scale accent spectrum (dark) ─────────────────────────────────────── */
+.deepzoom-app {
+  --dz-0: oklch(64% 0.19 264); /* blue-indigo   ×1    */
+  --dz-1: oklch(62% 0.2 288); /* blue-violet   ×10   */
+  --dz-2: oklch(60% 0.24 316); /* violet-magenta ×100 */
+  --dz-3: oklch(62% 0.2 355); /* rose          ×1k   */
+  --dz-4: oklch(65% 0.19 40); /* warm orange   ×10k  */
+  --dz-5: oklch(72% 0.17 82); /* amber         ×100k */
+  --dz-6: oklch(74% 0.18 128); /* lime          ×1M   */
+  --dz-7: oklch(70% 0.16 158); /* green         ×10M  */
+  --dz-8: oklch(68% 0.13 192); /* teal          ×100M */
+  --dz-9: oklch(66% 0.15 222); /* cyan-blue     ×1B   */
+
+  --dz-move: 560ms;
+  --dz-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  font-family: var(--font);
+}
+
+/* Slightly deeper, higher-chroma accents read better as text/spine on the
+   near-white light surface. */
+:root[data-theme='light'] .deepzoom-app {
+  --dz-0: oklch(52% 0.2 264);
+  --dz-1: oklch(50% 0.22 290);
+  --dz-2: oklch(49% 0.26 318);
+  --dz-3: oklch(52% 0.23 358);
+  --dz-4: oklch(55% 0.2 42);
+  --dz-5: oklch(58% 0.17 78);
+  --dz-6: oklch(56% 0.18 132);
+  --dz-7: oklch(52% 0.16 160);
+  --dz-8: oklch(52% 0.13 196);
+  --dz-9: oklch(52% 0.16 226);
+}
+
+/* ── top bar ──────────────────────────────────────────────────────────── */
+.dz-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 clamp(14px, 2.4vw, 26px);
+  height: 56px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--grid-line);
+  background: color-mix(in oklab, var(--surface-default) 72%, transparent);
+  backdrop-filter: blur(10px);
+  z-index: 5;
+}
+
+.dz-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dz-back-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dz-back-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.dz-back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+
+.dz-wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.dz-wordmark-sub {
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.dz-query {
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dz-query::before {
+  content: '“';
+  color: var(--text-faint);
+}
+.dz-query::after {
+  content: '”';
+  color: var(--text-faint);
+}
+
+.dz-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.dz-course-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dz-course-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.dz-course-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+
+/* "New" — start a fresh zoom without leaving for Live and back. Shares the course button's shape
+   but carries a presence tint so it reads as the primary "start over" action beside it. */
+.dz-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, var(--line));
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  color: var(--presence);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dz-new-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.dz-new-btn:hover {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+}
+
+.dz-theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.dz-theme-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+.dz-theme-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+
+/* ── stage: ladder + reading ──────────────────────────────────────────── */
+.dz-stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ── scale ladder (the single navigator) ──────────────────────────────── */
+.dz-ladder {
+  flex-shrink: 0;
+  width: clamp(232px, 23vw, 336px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 14px 22px 24px;
+  border-right: 1px solid var(--grid-line);
+  background: color-mix(in oklab, var(--surface-default) 45%, transparent);
+  min-height: 0;
+}
+
+.dz-ladder-cap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-left: 32px;
+  padding-right: 6px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.dz-ladder-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.dz-ladder-count-sep {
+  margin: 0 2px;
+  color: var(--text-faint);
+}
+
+.dz-ladder-track {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  padding-block: 2px;
+}
+.dz-ladder-track::-webkit-scrollbar {
+  display: none;
+}
+
+.dz-stop {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px 6px 0;
+  margin: 0;
+  border: none;
+  border-radius: 11px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--m-fast);
+}
+.dz-stop:hover {
+  background: color-mix(in oklab, var(--stop-color) 9%, transparent);
+}
+.dz-stop:focus-visible {
+  outline: 2px solid var(--stop-color);
+  outline-offset: 1px;
+}
+
+/* connecting spine: each stop draws the segment leading into it from the stop
+   above, so the line follows the stops even when the ladder scrolls. */
+.dz-stop::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: -50%;
+  height: 100%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--grid-strong);
+  z-index: 0;
+  transition: background var(--m-normal) var(--ease-out);
+}
+.dz-stop:first-child::before {
+  display: none;
+}
+.dz-stop.is-past::before,
+.dz-stop.is-current::before {
+  background: var(--stop-color);
+}
+
+.dz-stop-node {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  justify-self: center;
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--grid-strong);
+  background: var(--surface-deep);
+  z-index: 2;
+  transition:
+    width var(--m-normal) var(--ease-spring),
+    height var(--m-normal) var(--ease-spring),
+    background var(--m-normal) var(--ease-out),
+    border-color var(--m-normal) var(--ease-out),
+    box-shadow var(--m-normal) var(--ease-out);
+}
+.dz-stop.is-past .dz-stop-node {
+  border-color: var(--stop-color);
+  background: var(--stop-color);
+}
+.dz-stop.is-current .dz-stop-node {
+  width: 15px;
+  height: 15px;
+  border-color: var(--stop-color);
+  background: var(--stop-color);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--stop-color) 20%, transparent),
+    0 0 16px color-mix(in oklab, var(--stop-color) 60%, transparent);
+}
+
+.dz-stop-mult {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  transition: color var(--m-normal) var(--ease-out);
+}
+.dz-stop-label {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin-top: 2px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--m-normal) var(--ease-out);
+}
+
+.dz-stop.is-past .dz-stop-mult {
+  color: var(--text-secondary);
+}
+.dz-stop.is-past .dz-stop-label {
+  color: var(--text-muted);
+}
+.dz-stop.is-current .dz-stop-mult {
+  color: var(--stop-color);
+  font-weight: 600;
+}
+.dz-stop.is-current .dz-stop-label {
+  color: var(--text-primary);
+  letter-spacing: 0.15em;
+}
+
+/* ── reading stage ────────────────────────────────────────────────────── */
+.dz-reading {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background-color: color-mix(in oklab, var(--dz-current) 7%, var(--surface-deep));
+  transition: background-color var(--dz-move) var(--dz-ease);
+}
+
+/* ambient field: a soft lens glow biased to one side so the empty canvas is a
+   scale-coloured atmosphere, not dead space. */
+.dz-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      70% 90% at 78% 32%,
+      color-mix(in oklab, var(--dz-current) 26%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      60% 80% at 12% 88%,
+      color-mix(in oklab, var(--dz-current) 12%, transparent),
+      transparent 60%
+    );
+  opacity: 0.9;
+  transition: background var(--dz-move) var(--dz-ease);
+}
+/* faint concentric aperture rings echo a lens/telescope focus */
+.dz-field::after {
+  content: '';
+  position: absolute;
+  top: 32%;
+  left: 78%;
+  width: min(52vw, 720px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 0 46%,
+    color-mix(in oklab, var(--dz-current) 22%, transparent) 46.5% 47.5%,
+    transparent 48%,
+    transparent 0 63%,
+    color-mix(in oklab, var(--dz-current) 14%, transparent) 63.5% 64.3%,
+    transparent 65%
+  );
+  opacity: 0.6;
+  transition: background var(--dz-move) var(--dz-ease);
+}
+
+.dz-levels {
+  position: absolute;
+  inset: 0;
+  /* Bound + centre the editorial stage. The level is deliberately biased left (glow breathes on the
+     right), which is calm on a laptop but strands the text against the far edge on an ultrawide.
+     With inset:0 giving both left AND right anchors, a max-width + margin-inline:auto re-centres the
+     whole stage on wide displays; a laptop is under the cap, so it's untouched. */
+  max-width: 1500px;
+  margin-inline: auto;
+  display: grid;
+}
+
+/* each level fills the stage; content is an editorial column, generously inset,
+   vertically centred, biased left so the glow breathes on the right. */
+.dz-level {
+  grid-area: 1 / 1;
+  align-self: center;
+  justify-self: start;
+  width: min(60ch, 100%);
+  padding: clamp(28px, 5vw, 72px);
+  transform-origin: 32% 50%;
+}
+.dz-level.is-current[data-dir='in'] {
+  animation: dz-enter-in var(--dz-move) var(--dz-ease) both;
+}
+.dz-level.is-current[data-dir='out'] {
+  animation: dz-enter-out var(--dz-move) var(--dz-ease) both;
+}
+.dz-level.is-exiting {
+  pointer-events: none;
+  z-index: 1;
+}
+.dz-level.is-exiting[data-dir='in'] {
+  animation: dz-exit-in var(--dz-move) var(--dz-ease) both;
+}
+.dz-level.is-exiting[data-dir='out'] {
+  animation: dz-exit-out var(--dz-move) var(--dz-ease) both;
+}
+
+/* zooming IN (to finer scale): both frames dolly outward — the new level rushes
+   up from small while the old, broader level swells past the camera and fades. */
+@keyframes dz-enter-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dz-exit-in {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+}
+/* zooming OUT (to broader scale): the broader level falls back into frame while
+   the finer level recedes into the distance. */
+@keyframes dz-enter-out {
+  from {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dz-exit-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ── scale eyebrow ────────────────────────────────────────────────────── */
+.dz-scale-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.dz-scale-mult {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--dz-current);
+}
+.dz-scale-tick {
+  width: 22px;
+  height: 1px;
+  background: color-mix(in oklab, var(--dz-current) 55%, transparent);
+}
+.dz-scale-label {
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--dz-current) 78%, var(--text-primary));
+}
+
+/* ── title + body ─────────────────────────────────────────────────────── */
+.dz-title {
+  margin: 0 0 16px;
+  font-size: clamp(30px, 4.6vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+.dz-body {
+  margin: 0 0 26px;
+  max-width: 46ch;
+  font-size: clamp(15.5px, 1.3vw, 18px);
+  line-height: 1.62;
+  color: var(--text-secondary);
+}
+
+/* ── subtopic chips ───────────────────────────────────────────────────── */
+.dz-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+.dz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    color var(--m-fast);
+}
+.dz-chip:hover {
+  border-color: color-mix(in oklab, var(--dz-current) 55%, var(--line));
+  color: var(--text-primary);
+}
+.dz-chip:focus-visible {
+  outline: 2px solid var(--dz-current);
+  outline-offset: 1px;
+}
+.dz-chip.is-selected {
+  border-color: color-mix(in oklab, var(--dz-current) 70%, transparent);
+  background: color-mix(in oklab, var(--dz-current) 14%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.dz-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  flex-shrink: 0;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.dz-chip.is-selected .dz-chip-dot {
+  background: var(--dz-current);
+  border-color: var(--dz-current);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--dz-current) 60%, transparent);
+}
+.dz-chip-more {
+  border-style: dashed;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* ── zoom CTA ─────────────────────────────────────────────────────────── */
+.dz-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 20px 11px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--dz-current) 40%, var(--line));
+  background: color-mix(in oklab, var(--dz-current) 12%, var(--surface-glass));
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast),
+    transform var(--m-fast);
+}
+.dz-zoom strong {
+  font-weight: 700;
+  color: var(--dz-current);
+}
+.dz-zoom:hover {
+  border-color: color-mix(in oklab, var(--dz-current) 70%, transparent);
+  background: color-mix(in oklab, var(--dz-current) 20%, var(--surface-glass));
+  transform: translateY(-1px);
+}
+.dz-zoom:focus-visible {
+  outline: 2px solid var(--dz-current);
+  outline-offset: 2px;
+}
+.dz-zoom-glyph {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--dz-current) 28%, transparent);
+  color: var(--dz-current);
+}
+.dz-zoom-glyph svg {
+  width: 13px;
+  height: 13px;
+}
+.dz-zoom.is-loading {
+  cursor: default;
+  color: var(--text-secondary);
+  border-color: var(--line);
+  background: var(--surface-glass);
+}
+.dz-zoom-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid color-mix(in oklab, var(--dz-current) 30%, transparent);
+  border-top-color: var(--dz-current);
+  border-radius: 50%;
+  animation: dz-spin 0.7s linear infinite;
+}
+
+/* ── loading / error ──────────────────────────────────────────────────── */
+.dz-loading-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--surface-deep);
+}
+.dz-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+.dz-loading-lens {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+.dz-loading-lens span {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--presence);
+  animation: dz-spin 1.1s linear infinite;
+}
+.dz-loading-lens span:nth-child(2) {
+  inset: 12px;
+  border-top-color: var(--insight);
+  animation-duration: 0.85s;
+  animation-direction: reverse;
+}
+.dz-loading-lens span:nth-child(3) {
+  inset: 24px;
+  border-top-color: var(--warning);
+  animation-duration: 1.4s;
+}
+.dz-loading-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+@keyframes dz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dz-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+}
+.dz-error-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dz-error-body {
+  max-width: 46ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ── start screen ─────────────────────────────────────────────────────── */
+.dz-start {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      80% 60% at 80% 0%,
+      color-mix(in oklab, var(--presence) 12%, transparent),
+      transparent 60%
+    ),
+    var(--surface-deep);
+}
+.dz-start-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Centre the hero as one column instead of stranding it against the left edge — on a wide or
+     ultrawide monitor a left-anchored block leaves the reader looking off to the side. Centred
+     text + a centred, margin-auto column reads as intentional at every width from phone to 5K. */
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0;
+  padding: clamp(32px, 7vw, 96px) clamp(24px, 6vw, 72px);
+  max-width: 920px;
+  margin-inline: auto;
+}
+.dz-start-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.dz-start-eyebrow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presence);
+  box-shadow: 0 0 10px var(--glow-presence);
+}
+.dz-start-title {
+  margin: 0 0 22px;
+  font-size: clamp(34px, 6vw, 68px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+.dz-start-sub {
+  margin: 0 0 40px;
+  max-width: 52ch;
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.dz-start-carry {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--presence);
+}
+.dz-start-form {
+  width: min(640px, 100%);
+  margin-bottom: 26px;
+}
+.dz-start-body > .feature-use-notice {
+  width: min(640px, 100%);
+  margin: -18px 0 20px;
+}
+.dz-start-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 20px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-floating);
+}
+.dz-start-composer:focus-within {
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+}
+.dz-start-composer-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.dz-start-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: 16px var(--font);
+  color: var(--text-primary);
+}
+.dz-start-input::placeholder {
+  color: var(--text-muted);
+}
+.dz-start-btn {
+  padding: 11px 22px;
+  border-radius: var(--r-md);
+  background: linear-gradient(120deg, var(--presence-deep), var(--presence));
+  color: var(--text-on-accent, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+}
+[data-theme='dark'] .dz-start-btn {
+  background: linear-gradient(120deg, var(--presence), var(--presence-soft));
+}
+.dz-start-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.dz-start-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dz-start-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 640px;
+}
+.dz-start-chip {
+  min-height: 44px;
+  padding: 8px 15px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font: 13px var(--font);
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.dz-start-chip:hover {
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-glass));
+  color: var(--text-primary);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+}
+
+/* ── tablet: narrow the ladder ────────────────────────────────────────── */
+@media (max-width: 1040px) {
+  .dz-ladder {
+    width: clamp(196px, 26vw, 248px);
+    padding: 20px 10px 20px 18px;
+  }
+  .dz-level {
+    width: min(56ch, 100%);
+  }
+}
+
+/* ── mobile: ladder becomes a horizontal scale strip on top ───────────── */
+@media (max-width: 760px) {
+  .dz-stage {
+    flex-direction: column;
+  }
+  .dz-ladder {
+    width: auto;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--grid-line);
+  }
+  .dz-ladder-cap {
+    padding-left: 2px;
+  }
+  .dz-ladder-track {
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 2px 4px;
+    gap: 0;
+  }
+  /* horizontal strip: dot + multiplier only. The full scale label would collide
+     across stops, so it lives in the stage eyebrow instead. */
+  .dz-stop {
+    grid-template-columns: 1fr;
+    grid-template-rows: 16px auto;
+    justify-items: center;
+    min-height: 0;
+    min-width: 52px;
+    padding: 2px 4px;
+    row-gap: 4px;
+  }
+  /* horizontal connector: the segment reaches left to the previous stop */
+  .dz-stop::before {
+    left: -50%;
+    top: 8px;
+    width: 100%;
+    height: 2px;
+    transform: translateY(-50%);
+  }
+  .dz-stop-node {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+  .dz-stop-mult {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    font-size: 11px;
+  }
+  .dz-stop-label {
+    display: none;
+  }
+  .dz-reading {
+    flex: 1;
+  }
+  .dz-level {
+    justify-self: stretch;
+    width: 100%;
+    padding: 28px 22px;
+    align-self: center;
+    transform-origin: 50% 42%;
+  }
+  .dz-body {
+    max-width: none;
+  }
+  .dz-field::after {
+    left: 50%;
+    top: 26%;
+    width: min(120vw, 560px);
+  }
+  .dz-query {
+    display: none;
+  }
+  /* Icon-only past this width — the label would otherwise crowd the ladder/theme toggle. The
+     accessible name survives via aria-label/title on the button itself. */
+  .dz-course-btn,
+  .dz-new-btn {
+    padding: 0;
+    width: 34px;
+    justify-content: center;
+  }
+  .dz-course-btn-label,
+  .dz-new-btn-label {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .dz-topbar {
+    height: 52px;
+  }
+  .dz-wordmark-sub {
+    display: none;
+  }
+}
+
+/* ── reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dz-reading,
+  .dz-field,
+  .dz-field::after,
+  .dz-stop::before,
+  .dz-stop-node,
+  .dz-stop-mult,
+  .dz-stop-label {
+    transition: none;
+  }
+  .dz-level.is-current,
+  .dz-level.is-exiting {
+    animation: none;
+  }
+  .dz-level.is-exiting {
+    display: none;
+  }
+  .dz-loading-lens span,
+  .dz-zoom-spinner {
+    animation: none;
+  }
+}

@@ -1,0 +1,354 @@
+/* ============================================================
+   MAVÉA · Command composer, upload dock, suggestions
+   ============================================================ */
+
+/* suggested next steps */
+.suggest {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  backdrop-filter: var(--glass-blur-soft);
+  transition: all var(--m-fast) var(--ease-out);
+}
+.suggest:hover {
+  color: var(--text-primary);
+  border-color: rgba(110, 140, 255, 0.4);
+  background: rgba(110, 140, 255, 0.1);
+  transform: translateY(-1px);
+}
+.suggest svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+.suggest .lead {
+  color: var(--text-muted);
+}
+
+/* the bar */
+.composer {
+  width: min(780px, 100%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 9px 9px 16px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-floating);
+  transition:
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.composer:focus-within {
+  border-color: rgba(110, 140, 255, 0.5);
+  box-shadow:
+    var(--shadow-floating),
+    0 0 0 4px rgba(110, 140, 255, 0.12);
+}
+
+.composer-input {
+  flex: 1;
+  /* A flex item's default min-width is `auto` (its content size), which for a text input is a
+     fixed UA minimum — without this it refuses to shrink past that floor and forces the whole
+     pill wider than the viewport on a narrow phone instead of the input just getting narrower. */
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+}
+.composer-input::placeholder {
+  color: var(--text-muted);
+}
+
+.composer-tool {
+  width: 38px;
+  height: 38px;
+  /* Stay full-size on a narrow phone — the text input is the one flexible child (min-width:0
+     above), so a cramped viewport shrinks it, not this touch target. Without this the button
+     (the attach/paperclip control) shrank along with everything else below ~450px. */
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+  transition: all var(--m-fast);
+}
+.composer-tool:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+.composer-tool svg {
+  width: 18px;
+  height: 18px;
+}
+.composer-tool:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.composer-tool:disabled:hover {
+  color: var(--text-secondary);
+  border-color: var(--line);
+  background: transparent;
+}
+/* Attention pulse — drawn to the attach button when a feature (Prism) needs a document but none is
+   attached yet. Two soft rings in the presence color, then it settles back. */
+.composer-tool.is-pulsing {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+  animation: composer-tool-pulse 1.05s ease-out 2;
+}
+@keyframes composer-tool-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--presence) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 0%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-tool.is-pulsing {
+    animation: none;
+  }
+}
+
+/* attached-files strip — chips above the composer for files staged for the next turn */
+.attach-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 6px 4px 8px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.attach-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.attach-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  flex: none;
+}
+.attach-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The flagship action on a PDF chip: one tap explodes the document into its claim map. Accented so
+   it reads as the primary thing to do with an attached PDF, not a quiet utility. */
+.attach-explode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px 11px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, transparent);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--presence);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast);
+}
+.attach-explode:hover {
+  background: color-mix(in oklab, var(--presence) 22%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 60%, transparent);
+}
+/* "Compare N PDFs" — the multi-document entry; a touch bolder since it's the headline action */
+.attach-compare {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 55%, transparent);
+}
+.attach-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  flex: none;
+  transition: color var(--m-fast);
+}
+.attach-remove:hover {
+  color: var(--text-primary);
+}
+.attach-error {
+  align-self: center;
+  font-size: 12px;
+  color: var(--warning);
+}
+
+/* Wraps the mic button only when a caller passes `micExtra` (Live's mic-mode chevron) — a
+   positioning context for that overlay so it can't affect Demo, which never passes it. */
+.mic-btn-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* mic button — the primary voice affordance */
+.mic-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  border: none;
+  color: #fff;
+  position: relative;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  box-shadow: 0 8px 22px -8px var(--glow-presence);
+  transition:
+    transform var(--m-fast),
+    filter var(--m-fast);
+}
+.mic-btn:hover {
+  filter: brightness(1.08);
+}
+.mic-btn:active {
+  transform: scale(0.96);
+}
+.mic-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.mic-btn.listening {
+  animation: micpulse 1.6s var(--ease-in-out) infinite;
+}
+.mic-btn.mic-off {
+  background: var(--surface-elevated-2);
+  color: var(--warning);
+  box-shadow: none;
+}
+@keyframes micpulse {
+  0% {
+    box-shadow:
+      0 8px 22px -8px var(--glow-presence),
+      0 0 0 0 rgba(110, 140, 255, 0.5);
+  }
+  70% {
+    box-shadow:
+      0 8px 22px -8px var(--glow-presence),
+      0 0 0 14px rgba(110, 140, 255, 0);
+  }
+  100% {
+    box-shadow:
+      0 8px 22px -8px var(--glow-presence),
+      0 0 0 0 rgba(110, 140, 255, 0);
+  }
+}
+
+/* listening live indicator inside bar */
+.live-listen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+}
+.wave i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--presence-soft);
+  animation: waveform 1s var(--ease-in-out) infinite;
+}
+.wave i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.wave i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.wave i:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.wave i:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.wave i:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.wave i:nth-child(7) {
+  animation-delay: 0.2s;
+}
+@keyframes waveform {
+  0%,
+  100% {
+    height: 5px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+.send-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  border: none;
+  color: #fff;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--presence), var(--presence-deep));
+  box-shadow: 0 8px 22px -8px var(--glow-presence);
+  transition:
+    transform var(--m-fast),
+    opacity var(--m-fast);
+}
+.send-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+.send-btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+.send-btn svg {
+  width: 18px;
+  height: 18px;
+}

@@ -1,0 +1,158 @@
+/* ============================================================
+   MOBILE — phones and small tablets (≤768px). The canvas becomes the
+   full-width stage; the conversation rail collapses into a bottom dock
+   (composer always reachable) with the transcript behind a toggle that
+   opens it as a bottom sheet. Desktop (>768px) is untouched.
+   ============================================================ */
+.rail-mobile-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* every `left: var(--rail-w)` offset (topbar, stages, presence, scrubber,
+     center caption) collapses to full width in one move */
+  .mavea-app.with-rail {
+    --rail-w: 0px;
+  }
+
+  /* The desktop "This session" topbar toggle collapses the left rail — meaningless
+     once the rail is a bottom sheet (which carries its own .rail-mobile-toggle). */
+  .topbar-session-toggle {
+    display: none;
+  }
+
+  /* ---- the rail becomes a bottom dock / sheet ---- */
+  .side-rail {
+    top: auto;
+    right: 0;
+    width: auto;
+    max-height: calc(100dvh - 64px);
+    border-right: none;
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -12px 32px -18px rgba(0, 0, 0, 0.45);
+  }
+  /* transcript chrome is hidden until the user opens the sheet */
+  .side-rail .rail-head,
+  .side-rail .rail-chat {
+    display: none;
+  }
+  .side-rail.chat-open {
+    height: min(68dvh, 540px);
+  }
+  .side-rail.chat-open .rail-head {
+    display: flex;
+  }
+  .side-rail.chat-open .rail-chat {
+    display: flex;
+    flex: 1 1 auto;
+  }
+  .rail-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    align-self: center;
+    margin: 8px auto 0;
+    padding: 6px 14px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--line);
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font: 500 12.5px/1 var(--font);
+    cursor: pointer;
+  }
+  .rail-mobile-toggle svg {
+    width: 14px;
+    height: 14px;
+    color: var(--presence-soft);
+  }
+  .rail-head {
+    padding: 12px 16px 10px;
+  }
+  .rail-dock {
+    /* The dock sits at the fixed bottom edge of the screen (.side-rail becomes the
+       bottom sheet in this breakpoint) — on a notched phone the home-indicator bar
+       overlaps that edge, so stack the safe-area inset on top of the base padding. */
+    padding: 10px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ---- the canvas takes the full width; clear the bottom dock ---- */
+  .canvas-stage {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .with-rail .canvas-stage,
+  .with-rail .presence-stage {
+    padding-bottom: 108px;
+  }
+
+  /* ---- topbar condenses: keep brand, Live badge, New session, model chip;
+     the rest (canvas title, share/replay, theme) collapses. Replay stays
+     reachable from the conversation sheet's header. Mic mode + captions/voice live in the
+     dock now (dock-controls), not the topbar, so they're untouched by this collapse. ---- */
+  .with-rail .topbar {
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .with-rail .topbar .workspace-name,
+  .with-rail .topbar .brand-sep,
+  .with-rail .topbar .topbar-icon-btn:not(.appearance-trigger) {
+    display: none;
+  }
+}
+
+/* Smallest phones (≤430px): the topbar must never force the page to scroll sideways. Tighten its
+   padding/gap so a long model name can't push the row past the viewport. */
+@media (max-width: 430px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 12px;
+  }
+  /* Feature menus (Create / Practice / Share / Explore) don't fit on 375px phones.
+     Settings remain reachable via the model chip; every feature stays reachable via the standalone
+     Search button (which survives this collapse) → the ⌘K palette, tappable without a keyboard.
+     !important needed: voice.css defines display:inline-flex which is imported later. */
+  .more-menu-root {
+    display: none !important;
+  }
+  .topbar-divider {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   THUMB TARGETS — a 32px control is a button with a mouse and a coin toss with a finger.
+   The platform bar is ~44px, and every control in this app was sized for a cursor because a cursor
+   is the only thing that has ever driven it: theme toggles at 32×32, chips 35px tall, the setup
+   wizard's step dots at 28×28.
+
+   The fix is a HIT AREA, not a bigger button. A pseudo-element reaches out from the control to the
+   44px bar, so the finger lands but nothing reflows and nothing looks any different — the alternative
+   (a min-height on everything) would grow tight toolbars and change a design that is otherwise right.
+
+   Scoped to `pointer: coarse`, so a mouse is untouched, and kept out of `.card`: a control inside a
+   canvas block is content — a periodic-table cell, a swatch in a palette — with its own density, and
+   inflating those would have neighbouring hit areas swallowing each other.
+   ============================================================ */
+@media (pointer: coarse) {
+  :where(button, [role='button'], summary, select, label[for]):not(.card *) {
+    position: relative;
+  }
+  :where(button, [role='button'], summary, select, label[for]):not(.card *)::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    /* Invisible, and behind the label it belongs to — this only ever catches a finger. */
+    background: none;
+    border-radius: inherit;
+    pointer-events: auto;
+  }
+  /* A control that already draws with ::before keeps its own; it is decorated, so it is not the
+     bare, too-small chrome this is here to rescue. */
+  :where(.jelly-mark, .presence, .ic)::before {
+    content: none;
+  }
+}

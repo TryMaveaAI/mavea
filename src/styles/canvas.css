@@ -1,0 +1,341 @@
+/* ============================================================
+   CANVAS
+   ============================================================ */
+.canvas-stage {
+  position: absolute;
+  inset: 0;
+  padding: 76px 26px 112px;
+  display: grid;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+}
+.canvas-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 6px 24px;
+  scrollbar-width: none;
+}
+.canvas-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.canvas-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 4px 0 20px;
+}
+.canvas-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.canvas-header > .canvas-header-actions {
+  /* Reading + Focus/Everything + View-as-canvas + a Live headerSlot can all be present on the same
+     answer — that cluster doesn't shrink (buttons losing their labels reads worse than the row
+     wrapping), so on a narrow screen it drops to its own line under the title via .canvas-header's
+     own flex-wrap instead of running past the card's edge. */
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: min-content;
+}
+
+/* Enter/leave the spatial Canvas view — a header pill each. "View as canvas" is a gentle,
+   presence-tinted invite; "Back to answer" is a plain return. */
+.canvas-open,
+.canvas-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: 600 12.5px / 1 var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast);
+}
+.canvas-open:hover,
+.canvas-exit:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.canvas-open {
+  border-color: color-mix(in oklab, var(--presence) 40%, var(--line));
+  color: var(--presence-soft);
+}
+.canvas-open:hover {
+  border-color: var(--presence);
+  color: var(--presence);
+}
+.canvas-open-glyph {
+  font-size: 13px;
+  line-height: 1;
+}
+.canvas-title {
+  font-size: clamp(22px, 2.5vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.canvas-sub {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* context pills row */
+.context-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.context-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.context-pill .fdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+.context-pill .using {
+  color: var(--text-muted);
+}
+
+/* category breakdown */
+.cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 4px;
+}
+.cat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13.5px;
+}
+.cat-top > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+/* The ellipsis has to live on the name, not on the flex row holding it: `text-overflow` does nothing
+   to a flex container, so a long category name kept its full width and shouldered the tag beside it
+   out through the card. Give the name its own box to be truncated in and pin the tag against it. */
+.cat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-top .cat-tag {
+  flex: none;
+}
+.cat-top .tab-num {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cat-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--warning);
+  background: rgba(245, 185, 92, 0.12);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+}
+.cat-bar {
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.cat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+}
+
+/* topic cross-dissolve */
+.topic-wrap {
+  /* The positioning context for the user's ink overlay (below) — an in-flow child of the
+     SCROLLING `.canvas-scroll`, sized to the full answer rather than just the visible viewport,
+     so the overlay scrolls together with the content it draws on instead of staying glued to the
+     stage while the text underneath it moves. */
+  position: relative;
+  transition:
+    opacity 280ms var(--ease-out),
+    transform 280ms var(--ease-out);
+}
+.topic-wrap.swapping {
+  opacity: 0;
+  transform: translateY(8px) scale(0.996);
+}
+
+/* timeline — a continuous journey spine, each stop its own calm card */
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+/* One continuous spine drawn behind the dots, so the stops still read as a single journey even
+   with the breathing room between cards (the old per-row flex-fill connector is retired below —
+   it tethered the cards together, which is what made them feel cramped). */
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--line);
+  border-radius: 2px;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 14px;
+}
+.tl-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tl-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: var(--r-full);
+  margin-top: 5px;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor;
+}
+.tl-row:not(:last-child) .tl-rail::after {
+  content: '';
+  flex: 1;
+  width: 2px;
+  background: var(--line);
+  margin: 6px 0;
+  border-radius: 2px;
+}
+/* Within the core Timeline the continuous ::before spine replaces the per-row connector, and each
+   stop sits in its own recessed card — scoped under .timeline so TierList (which reuses .tl-row /
+   .tl-rail globally) is untouched. */
+.timeline .tl-row .tl-rail::after {
+  content: none;
+}
+.timeline .tl-dot {
+  margin-top: 15px;
+}
+.timeline .tl-body {
+  min-width: 0;
+  padding: 12px 14px 13px;
+  border-radius: var(--r-md);
+  background: var(--surface-deep);
+  border: 1px solid var(--line-soft);
+}
+.tl-time {
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tl-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.tl-title .cat-tag {
+  max-width: 100%;
+  margin-left: 0 !important;
+}
+.tl-detail {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+/* check list */
+.check-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px 32px;
+  margin-top: 4px;
+  align-content: start;
+}
+/* A single left-anchored column strands a dead void on a wide card. When a list ends up genuinely
+   wide (a lone card the tiler couldn't pair), flow the items into two even columns so it fills the
+   card instead of hugging the left. Keyed to the CARD's own inline size (the .card container-query
+   context), so half/third-width tiled cards stay one clean readable column and only a wide lone one
+   splits — two columns, never three, so any item count stays visually even. */
+@container (min-width: 900px) {
+  .check-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.check-row {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.check-ic {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  background: rgba(62, 216, 166, 0.12);
+  color: var(--insight);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.check-ic svg {
+  width: 13px;
+  height: 13px;
+}

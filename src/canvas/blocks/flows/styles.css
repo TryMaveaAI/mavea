@@ -1,0 +1,2528 @@
+/* flows family styles — tokens only; light/dark via existing token overrides. */
+
+/* ============================================================
+   KANBAN BOARD
+   ============================================================ */
+.fl-kanban {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(200px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.fl-kb-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fl-kb-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.fl-kb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+.fl-kb-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-kb-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--track);
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+}
+.fl-kb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 48px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.fl-kb-card {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--c, var(--presence));
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  padding: 9px 10px;
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    border-color var(--m-fast),
+    box-shadow var(--m-fast);
+}
+.fl-kb-card.is-lift {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-floating, 0 6px 18px rgba(0, 0, 0, 0.25));
+}
+.fl-kb-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 14px;
+}
+.fl-kb-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fl-kb-pts {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--track);
+  border-radius: var(--r-full);
+  padding: 0 7px;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+.fl-kb-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin: 5px 0 7px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.fl-kb-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fl-kb-who {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.fl-kb-nav {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.fl-kb-arrow {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.fl-kb-arrow .ic {
+  width: 12px;
+  height: 12px;
+}
+.fl-kb-arrow:hover:not(:disabled) {
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.fl-kb-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.fl-kb-empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 10px 6px;
+}
+
+/* ============================================================
+   WIZARD STEPPER
+   ============================================================ */
+.fl-wz-rail {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0 16px;
+}
+.fl-wz-line {
+  position: absolute;
+  top: 14px;
+  /* Stop the track at the first and last bubble CENTERS, not the rail edges. Nodes are flex:1, so
+     each end bubble's center sits 50%/n in from its edge; insetting by that keeps the line (and its
+     progress fill) from overshooting the end steps. */
+  left: calc(50% / var(--n, 1));
+  right: calc(50% / var(--n, 1));
+  height: 2px;
+  background: var(--track);
+  border-radius: var(--r-full);
+}
+.fl-wz-line-fill {
+  height: 100%;
+  background: var(--presence);
+  border-radius: var(--r-full);
+  transition: width var(--m-expressive) var(--ease-out);
+}
+.fl-wz-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.fl-wz-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid var(--line-strong);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  transition: all var(--m-normal) var(--ease-out);
+}
+.fl-wz-bubble .ic {
+  width: 14px;
+  height: 14px;
+}
+.fl-wz-node.is-done .fl-wz-bubble {
+  border-color: var(--insight);
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.fl-wz-node.is-active .fl-wz-bubble {
+  border-color: var(--presence);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.fl-wz-lbl {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fl-wz-node.is-active .fl-wz-lbl {
+  color: var(--text-primary);
+}
+.fl-wz-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  padding: 14px 16px;
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-wz-cap {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--presence-soft);
+  margin-bottom: 6px;
+}
+.fl-wz-bullets {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.fl-wz-bullets li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-wz-bullets .ic {
+  width: 13px;
+  height: 13px;
+  color: var(--presence-soft);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.fl-wz-ctrls {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.fl-wz-ctrls .mini-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ============================================================
+   DECISION TREE
+   ============================================================ */
+.fl-dt {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto; /* deep trees scroll rather than spill the card */
+}
+/* A node + its two child subtrees. `--depth-pad` indents each level; a connector spine + an
+   elbow into each child draw the actual tree shape. */
+.fl-dt-branch-wrap {
+  position: relative;
+}
+.fl-dt-children {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 0 clamp(14px, 5cqi, 26px);
+  padding-left: clamp(12px, 4cqi, 22px);
+  border-left: 2px solid var(--line-strong); /* the vertical spine connecting children */
+}
+.fl-dt-branch-wrap.from-yes > .fl-dt-node,
+.fl-dt-branch-wrap.from-yes > .fl-dt-outcome,
+.fl-dt-branch-wrap.from-no > .fl-dt-node,
+.fl-dt-branch-wrap.from-no > .fl-dt-outcome {
+  position: relative;
+}
+/* the horizontal elbow from the spine into this child's card */
+.fl-dt-children > .fl-dt-branch-wrap::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * clamp(12px, 4cqi, 22px) - 2px);
+  top: 20px;
+  width: clamp(12px, 4cqi, 22px);
+  height: 2px;
+  background: var(--line-strong);
+}
+/* Yes/No edge label riding the connector */
+.fl-dt-edge {
+  display: inline-block;
+  margin-bottom: 5px;
+  font-size: var(--fs-2xs, 10.5px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+}
+.fl-dt-edge-yes {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.fl-dt-edge-no {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+}
+/* Unchosen subtrees stay visible but recede, so the whole decision space reads while the live
+   path pops. */
+.fl-dt-branch-wrap.dimmed {
+  /* the path-not-taken is shown but de-emphasised — keep it clearly READABLE (it was reading as
+     "cut off" when too faint) rather than hidden. */
+  opacity: 0.66;
+  filter: saturate(0.82);
+  transition: opacity var(--m-normal);
+}
+.fl-dt-branch-wrap.dimmed:hover {
+  opacity: 0.85;
+}
+.fl-dt-node {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  padding: 12px 13px;
+  position: relative;
+}
+.fl-dt-q {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.fl-dt-q > div {
+  min-width: 0;
+}
+.fl-dt-qmark {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: var(--fs-sm, 13px);
+  color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+}
+.fl-dt-qtext {
+  font-size: var(--fs-md, 14px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.fl-dt-detail {
+  font-size: var(--fs-xs, 12.5px);
+  color: var(--text-muted);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.fl-dt-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 11px;
+  padding-left: 34px;
+}
+.fl-dt-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs, 12.5px);
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--m-fast) var(--ease-out);
+}
+.fl-dt-pick .ic {
+  width: 13px;
+  height: 13px;
+}
+.fl-dt-pick.is-yes:hover,
+.fl-dt-pick.is-yes.is-on {
+  color: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 45%, transparent);
+  background: color-mix(in oklab, var(--insight) 12%, transparent);
+}
+.fl-dt-pick.is-no:hover,
+.fl-dt-pick.is-no.is-on {
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 45%, transparent);
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+.fl-dt-outcome {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-md, 14px);
+  font-weight: 600;
+  color: var(--c, var(--insight));
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--c, var(--insight)) 40%, transparent);
+  background: color-mix(in oklab, var(--c, var(--insight)) 11%, transparent);
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-dt-outcome span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-dt-outcome .ic {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+/* ML-classifier fields: a split's impurity readout, and the class-count bar + legend a
+   scikit-learn tree diagram shows at every node (split or leaf). Purely additive — only
+   rendered when a node actually carries these optional fields. */
+.fl-dt-impurity {
+  margin-top: 4px;
+  font-size: var(--fs-2xs, 10.5px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.fl-dt-classdist {
+  margin-top: 10px;
+}
+.fl-dt-node > .fl-dt-classdist {
+  margin-left: 34px; /* aligns under the question text, past the qmark badge */
+}
+.fl-dt-classbar {
+  display: flex;
+  height: 7px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+}
+.fl-dt-classseg {
+  background: var(--seg-color, var(--presence));
+  min-width: 3px;
+}
+.fl-dt-classchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.fl-dt-classchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2xs, 10.5px);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+}
+.fl-dt-classchip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  background: var(--dot-color, var(--presence));
+}
+
+/* ============================================================
+   GOAL TREE
+   ============================================================ */
+.fl-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.fl-goal {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  overflow: hidden;
+  /* The list above scrolls past its max-height; without this a goal would instead be SQUEEZED to
+     fit it and, being overflow:hidden, silently crop its own expanded key results. */
+  flex-shrink: 0;
+  transition: border-color var(--m-fast);
+}
+.fl-goal.is-open {
+  border-color: var(--line-strong);
+}
+.fl-goal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.fl-goal-chev {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--m-normal) var(--ease-out);
+}
+.fl-goal.is-open .fl-goal-chev {
+  transform: rotate(90deg);
+}
+.fl-goal-headmain {
+  min-width: 0;
+  flex: 1;
+}
+.fl-goal-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.fl-goal-owner {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  overflow-wrap: anywhere;
+}
+.fl-goal-prog {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.fl-goal-bar {
+  width: 70px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+/* A 70px bar plus its percentage never gives an inch, so on a folded-phone card the pair was carried
+   past the goal's edge. Shorten the bar there — it is read against its own track, not measured, so it
+   loses nothing by being shorter, and the percentage beside it still says the number. */
+@container (max-width: 340px) {
+  .fl-goal-head {
+    gap: 8px;
+    padding: 11px 10px;
+  }
+  .fl-goal-prog {
+    gap: 6px;
+  }
+  .fl-goal-bar {
+    width: 38px;
+  }
+}
+.fl-goal-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--m-expressive) var(--ease-out);
+}
+.fl-goal-pct {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 34px;
+  text-align: right;
+}
+.fl-goal-krs {
+  padding: 4px 14px 13px 37px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-kr-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.fl-kr-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-kr-target {
+  margin-left: auto;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.fl-kr-bar {
+  position: relative;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.fl-kr-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--m-expressive) var(--ease-out);
+}
+.fl-kr-pct {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   PLAN DAG
+   ============================================================ */
+.fl-dag-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.fl-dag {
+  position: relative;
+  width: 100%;
+  /* Cap the measure (and centre) so the DAG doesn't balloon to ~900px tall on a wide canvas. */
+  max-width: 680px;
+  margin-inline: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  overflow: hidden;
+}
+.fl-dag-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.fl-dag-edge {
+  transition:
+    stroke var(--m-normal),
+    opacity var(--m-normal),
+    stroke-width var(--m-normal);
+}
+.fl-dag-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 2px 6px;
+  overflow: hidden;
+  transition:
+    transform var(--m-normal) var(--ease-out),
+    border-color var(--m-normal),
+    box-shadow var(--m-normal),
+    opacity var(--m-normal);
+}
+.fl-dag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--c, var(--presence));
+  flex-shrink: 0;
+}
+.fl-dag-label {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.fl-dag-meta {
+  /* 8.5px is not small type, it is type nobody reads — and the owner of a step is the whole point of
+     putting it on the node. Sized to be read; it still ellipsises when the node is too narrow for it. */
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* The label beside it is capped to the node; without the same cap this ran straight out of it. */
+  max-width: 100%;
+}
+.fl-dag-node.st-self {
+  border-color: var(--c, var(--presence));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--c, var(--presence)) 22%, transparent);
+  transform: translate(-50%, -50%) scale(1.08);
+  z-index: 3;
+}
+.fl-dag-node.st-up {
+  border-color: var(--insight);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--insight) 22%, transparent);
+  z-index: 2;
+}
+.fl-dag-node.st-down {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--warning) 22%, transparent);
+  z-index: 2;
+}
+.fl-dag-node.st-dim {
+  opacity: 0.4;
+}
+
+/* ============================================================
+   MILESTONE TRACK
+   ============================================================ */
+.fl-ms {
+  position: relative;
+  height: 84px;
+  /* The side margins exist so the first and last caps — which are centred on the track's ends —
+     have somewhere to hang. On a phone, 42px a side is a fifth of the card spent on overhang, and
+     the track it leaves behind is too tight for the caps to sit in. Give some of it back. */
+  margin: 10px clamp(18px, 6cqi, 42px) 6px;
+  /* Caps wrap to more lines when the track is narrow; let the block grow rather than crop them. */
+  height: auto;
+  min-height: 84px;
+  padding-bottom: 4px;
+}
+.fl-ms-line {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--track);
+  border-radius: var(--r-full);
+}
+.fl-ms-point {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  /* --w is set inline per-instance, shrinking as milestone count grows so a busy track's
+     caps stay inside their own slice instead of overlapping the next one (fixed 80px was
+     sized for the ~5-6 item demo fixture). But --w is derived from the COUNT alone — it has no
+     idea how much room the track actually has — so on a phone five 80px caps were laid over a
+     ~200px track and landed on top of one another. Take the smaller of the two: the width the
+     count wants, or the slice this point genuinely owns. Desktop is unchanged (the slice is far
+     wider than 80px there); a narrow card wraps its caps instead of colliding them. */
+  width: min(var(--w, 80px), calc(100% / var(--n, 5) - 6px));
+}
+.fl-ms-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: var(--surface-elevated);
+  border: 2px solid var(--c, var(--text-muted));
+  color: var(--c, var(--text-muted));
+  transition:
+    transform var(--m-normal) var(--ease-spring),
+    box-shadow var(--m-normal);
+  z-index: 1;
+}
+.fl-ms-dot .ic {
+  width: 11px;
+  height: 11px;
+}
+.fl-ms-point.is-on .fl-ms-dot {
+  transform: scale(1.25);
+  background: var(--c, var(--presence));
+  color: var(--surface-deep);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--c, var(--presence)) 18%, transparent);
+}
+.fl-ms-cap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  text-align: center;
+}
+.fl-ms-date {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.fl-ms-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  max-width: var(--w, 80px);
+  overflow-wrap: anywhere;
+}
+/* Past WRAP_THRESHOLD (MilestoneTrack.tsx) a shrunken box has no room left to wrap into —
+   clip to one line with an ellipsis instead, and rely on the native title tooltip for the
+   full label. */
+.fl-ms-label.is-clipped {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fl-ms-point.is-on .fl-ms-label {
+  color: var(--text-primary);
+}
+.fl-ms-detail {
+  border: 1px solid color-mix(in oklab, var(--c, var(--presence)) 40%, transparent);
+  border-left: 3px solid var(--c, var(--presence));
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  padding: 11px 13px;
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-ms-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  margin-bottom: 6px;
+}
+.fl-ms-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c, var(--presence));
+  background: color-mix(in oklab, var(--c, var(--presence)) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+.fl-ms-detail-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.fl-ms-detail-top {
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   PROCESS FLOW — a horizontal stepper: numbered nodes threaded on a
+   connector line, each with an icon, a label, and an always-visible
+   detail. Steps flex to fill the card width (no dead space); the row
+   scrolls only when too many to fit. Details show without hover, so it
+   reads identically on touch, in Focus mode, and in a Replay capture.
+   ============================================================ */
+.fl-pf {
+  display: flex;
+  align-items: stretch; /* every step column is the same height */
+  gap: 0; /* zero gap so each rail's two halves meet into one continuous line */
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 4px;
+  overflow-x: auto;
+}
+.fl-pf-step {
+  position: relative;
+  flex: 1 1 0; /* share the width evenly — fills the card, no trailing gap */
+  min-width: 116px; /* …until they'd be too cramped, then the row scrolls instead */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 12px;
+  text-align: center;
+}
+/* the connector rail: the number node centered, a line reaching toward each neighbour */
+.fl-pf-rail {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 28px;
+}
+.fl-pf-rail::before,
+.fl-pf-rail::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  background: var(--line);
+  transform: translateY(-50%);
+}
+.fl-pf-rail::before {
+  left: 0;
+  right: 50%;
+  margin-right: 16px; /* stop just short of the node */
+}
+.fl-pf-rail::after {
+  left: 50%;
+  right: 0;
+  margin-left: 16px;
+}
+.fl-pf-step:first-child .fl-pf-rail::before {
+  display: none;
+}
+.fl-pf-step:last-child .fl-pf-rail::after {
+  display: none;
+}
+.fl-pf-num {
+  position: relative;
+  z-index: 1; /* sits above the connector line */
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-deep);
+  background: var(--presence);
+}
+.fl-pf-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--presence) 13%, transparent);
+  color: var(--presence-soft);
+  transition:
+    background var(--m-fast),
+    transform var(--m-fast);
+}
+.fl-pf-ico .ic {
+  width: 18px;
+  height: 18px;
+}
+.fl-pf-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.fl-pf-detail {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  max-width: 22ch; /* keep lines readable when a column grows wide */
+  overflow-wrap: anywhere;
+}
+/* hover/focus flourish — lifts and warms the node; never gates content */
+.fl-pf-step:hover .fl-pf-ico {
+  background: color-mix(in oklab, var(--presence) 22%, transparent);
+  transform: translateY(-2px);
+}
+.fl-pf-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+.fl-pf-branch-arm {
+  width: 2px;
+  height: 10px;
+  background: var(--warning);
+  border-radius: var(--r-full);
+}
+.fl-pf-branch-txt {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 13%, transparent);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   JOURNEY MAP
+   ============================================================ */
+.fl-jm-persona {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.fl-jm {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  /* A journey is a stage × lane matrix: below roughly 120px per stage the cells are too narrow to
+     hold a sentence, and no amount of reflow changes that. Give the stages a readable floor and pan
+     the matrix sideways instead — the rounded box still clips vertically. */
+  overflow: auto hidden;
+}
+.fl-jm-row {
+  display: grid;
+  grid-template-columns: 78px repeat(var(--n), minmax(0, 1fr));
+  min-width: calc(78px + var(--n) * 120px);
+  border-bottom: 1px solid var(--line);
+}
+.fl-jm-row:last-child {
+  border-bottom: none;
+}
+.fl-jm-stages {
+  grid-template-columns: 78px repeat(var(--n), minmax(0, 1fr));
+}
+.fl-jm-stages .fl-jm-stage:first-child {
+  grid-column: 2;
+}
+.fl-jm-rowlbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 10px;
+  background: var(--surface-glass);
+  border-right: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+.fl-jm-cell {
+  padding: 9px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  border-right: 1px solid var(--line);
+  background: none;
+  text-align: left;
+  cursor: default;
+  transition: background var(--m-fast);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-jm-cell:last-child {
+  border-right: none;
+}
+.fl-jm-cell.is-on {
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+}
+.fl-jm-stage {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  background: var(--surface-glass);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-jm-stage-idx {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+}
+.fl-jm-emorow .fl-jm-emo {
+  grid-column: 2 / -1;
+  position: relative;
+  height: 56px;
+}
+.fl-jm-emo-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.fl-jm-emodot {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--r-full);
+  transform: translate(-50%, -50%);
+  background: var(--surface-elevated);
+  border: 2px solid var(--c, var(--warning));
+  cursor: pointer;
+  transition:
+    transform var(--m-normal) var(--ease-spring),
+    box-shadow var(--m-normal);
+}
+.fl-jm-emodot.is-on {
+  background: var(--c, var(--warning));
+  transform: translate(-50%, -50%) scale(1.4);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--c, var(--warning)) 20%, transparent);
+}
+.fl-jm-tps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.fl-jm-tp {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: var(--track);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fl-jm-opp {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--warning) 35%, transparent);
+  background: color-mix(in oklab, var(--warning) 9%, transparent);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-jm-opp span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fl-jm-opp .ic {
+  width: 15px;
+  height: 15px;
+  color: var(--warning);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.fl-jm-opp strong {
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   ORG CHART
+   ============================================================ */
+.fl-org {
+  overflow-x: auto;
+  padding: 8px 4px 4px;
+}
+.fl-org-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.fl-org-box {
+  position: relative;
+  min-width: 116px;
+  max-width: 170px;
+  padding: 9px 12px 9px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--c, var(--presence));
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  text-align: center;
+}
+.fl-org-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-org-role {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-org-toggle {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated-2);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 2;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.fl-org-toggle .ic {
+  width: 11px;
+  height: 11px;
+}
+.fl-org-toggle:hover {
+  color: var(--presence-soft);
+  border-color: var(--presence-soft);
+}
+.fl-org-kids {
+  display: flex;
+  gap: 14px;
+  margin-top: 22px;
+  position: relative;
+  padding-top: 14px;
+}
+/* vertical connector down from parent */
+.fl-org-box.has-kids + .fl-org-kids::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 14px;
+  background: var(--line-strong);
+  transform: translateX(-50%);
+}
+/* each child's stub up to a horizontal bus */
+.fl-org-kids > .fl-org-branch {
+  position: relative;
+}
+.fl-org-kids > .fl-org-branch::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 2px;
+  height: 14px;
+  background: var(--line-strong);
+  transform: translateX(-50%);
+}
+/* horizontal bus spanning between first and last child */
+.fl-org-kids > .fl-org-branch:first-child::after,
+.fl-org-kids > .fl-org-branch:last-child::after {
+  content: '';
+  position: absolute;
+  top: -14px;
+  height: 2px;
+  background: var(--line-strong);
+}
+.fl-org-kids > .fl-org-branch:first-child::after {
+  left: 50%;
+  right: -7px;
+}
+.fl-org-kids > .fl-org-branch:last-child::after {
+  right: 50%;
+  left: -7px;
+}
+.fl-org-kids > .fl-org-branch:only-child::before {
+  display: none;
+}
+.fl-org-kids > .fl-org-branch:only-child::after {
+  display: none;
+}
+
+/* ============================================================
+   ROADMAP
+   ============================================================ */
+.fl-rm {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.fl-rm-header,
+.fl-rm-lane {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+}
+.fl-rm-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-glass);
+}
+.fl-rm-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--nq), 1fr);
+}
+.fl-rm-qrow .fl-rm-q {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 9px 4px;
+  border-left: 1px solid var(--line);
+}
+.fl-rm-lanelbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  min-width: 0;
+  overflow: hidden;
+}
+.fl-rm-lanetoggle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-rm-laneeye {
+  flex-shrink: 0;
+}
+.fl-rm-lane {
+  border-bottom: 1px solid var(--line);
+}
+.fl-rm-lane:last-child {
+  border-bottom: none;
+}
+.fl-rm-lanetoggle {
+  border-left: 3px solid var(--c, var(--presence));
+  background: var(--surface-glass);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+  gap: 7px;
+  text-align: left;
+  color: var(--text-primary);
+  transition: color var(--m-fast);
+}
+.fl-rm-lane.is-off .fl-rm-lanetoggle {
+  color: var(--text-muted);
+}
+.fl-rm-laneeye .ic {
+  width: 13px;
+  height: 13px;
+  color: var(--c, var(--presence));
+}
+.fl-rm-lane.is-off .fl-rm-laneeye .ic {
+  color: var(--text-muted);
+}
+.fl-rm-track {
+  position: relative;
+  grid-auto-rows: minmax(38px, auto);
+  align-items: center;
+  padding: 6px 0;
+  gap: 5px 0;
+  grid-auto-flow: row;
+}
+.fl-rm-cell {
+  /* span every packed row so the column dividers run the full height of a multi-row lane */
+  grid-row: 1 / -1;
+  border-left: 1px solid var(--line);
+  height: 100%;
+  min-height: 38px;
+}
+.fl-rm-cell:first-child {
+  border-left: none;
+}
+.fl-rm-bar {
+  /* grid-row is set per item (packed to avoid overlap); see Roadmap.tsx */
+  align-self: center;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  margin: 0 4px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--c, var(--presence)) 45%, transparent);
+  background: color-mix(in oklab, var(--c, var(--presence)) 16%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 1;
+  transition:
+    transform var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast),
+    background var(--m-fast);
+}
+.fl-rm-bar.is-on {
+  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--c, var(--presence)) 26%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--c, var(--presence)) 16%, transparent);
+}
+.fl-rm-bar-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-rm-detail {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  animation: flFade var(--m-normal) var(--ease-out);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.fl-rm-detail strong {
+  color: var(--text-primary);
+}
+.fl-rm-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c, var(--presence));
+  background: color-mix(in oklab, var(--c, var(--presence)) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+}
+
+/* ============================================================
+   shared
+   ============================================================ */
+@keyframes flFade {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-wz-panel,
+  .fl-dt-outcome,
+  .fl-goal-krs,
+  .fl-pf-detail,
+  .fl-ms-detail,
+  .fl-jm-opp,
+  .fl-rm-detail {
+    animation: none;
+  }
+  .fl-wz-line-fill,
+  .fl-goal-fill,
+  .fl-kr-fill,
+  .fl-dag-node,
+  .fl-dag-edge,
+  .fl-ms-dot,
+  .fl-jm-emodot {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── chronologicaltimeline ───────────────────────── */
+.fl-ct {
+  position: relative;
+  padding: 8px 6px 4px;
+}
+.fl-ct-eras {
+  position: relative;
+  height: 20px;
+  margin-bottom: 6px;
+}
+.fl-ct-era {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--c) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--c) 30%, transparent);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+}
+.fl-ct-era-lbl {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-ct-axis {
+  position: relative;
+  height: 44px;
+}
+.fl-ct-axis::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  background: var(--line-strong);
+  border-radius: 2px;
+}
+.fl-ct-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.fl-ct-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid var(--surface-default);
+  box-shadow: 0 0 0 1px var(--c);
+  transition: transform var(--m-fast);
+}
+.fl-ct-mark.on .fl-ct-dot {
+  transform: scale(1.3);
+}
+.fl-ct-date {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  /* --dw narrows as event count grows (ChronologicalTimeline.tsx dateWidth) so a longer date
+     string or a dense event list clips to one line instead of colliding with the next marker. */
+  max-width: var(--dw, 72px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-ct-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+.fl-ct-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--c) 35%, transparent);
+  border-left: 3px solid var(--c);
+  background: color-mix(in oklab, var(--c) 8%, transparent);
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.fl-ct-card-date {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--c);
+}
+.fl-ct-card-title {
+  font-size: var(--fs-sm, 13.5px);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.fl-ct-card-detail {
+  font-size: var(--fs-xs, 12.5px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ───────────────────────── trustmap ───────────────────────── */
+.trm-flows {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-glass);
+  animation: flFade var(--m-normal) var(--ease-out);
+}
+.trm-part {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 28%;
+  min-width: 0;
+}
+.trm-part-lbl {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.trm-part-val {
+  font-size: var(--fs-sm, 13.5px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.trm-loc .trm-part-val {
+  color: var(--text-secondary);
+}
+.trm-access .trm-part-val {
+  color: var(--presence);
+}
+.trm-retention {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--text-muted) 12%, transparent);
+}
+.trm-ret-ic {
+  color: var(--text-muted);
+}
+.trm-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--text-faint);
+}
+.trm-arrow-ic {
+  color: var(--text-faint);
+}
+.trm-checklist {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.trm-checklist-h {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 7px;
+}
+.trm-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* `min(180px, 100%)` keeps the preferred desktop width without forcing a 180px track through a
+     narrower card (the gallery's folded-phone card has only 140px of content width). */
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 6px;
+}
+.trm-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  font-size: var(--fs-xs, 12.5px);
+  min-width: 0;
+}
+.trm-check-lbl {
+  color: var(--text-secondary);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.trm-check.is-ok {
+  border-color: color-mix(in oklab, var(--insight) 30%, transparent);
+}
+.trm-check.is-ok .trm-check-ic {
+  color: var(--insight);
+}
+.trm-check.is-gap {
+  border-color: color-mix(in oklab, var(--warning) 35%, transparent);
+}
+.trm-check.is-gap .trm-check-ic {
+  color: var(--warning);
+}
+.trm-check.is-gap .trm-check-lbl {
+  color: var(--text-primary);
+}
+.trm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 22%, transparent);
+  font-size: var(--fs-xs, 12.5px);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.trm-note-ic {
+  color: var(--presence);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trm-row {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── skilltree ─────────────────────────
+   A tiered progression / tech tree: nodes grouped into horizontal tier bands with
+   prerequisite edges threaded between them. Node states are color-coded (locked greyed,
+   available outlined, unlocked filled, maxed gold) via a per-node --c accent. The board
+   is an absolutely-positioned node layer over an SVG edge layer sharing one 0..100 space,
+   capped + centred so it never balloons on a wide canvas. */
+.fl-sk-cap {
+  font-size: var(--fs-sm, 13px);
+  color: var(--text-secondary);
+  margin: 2px 0 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+/* A skill node is a pill — icon, label, cost — and cannot compress below about 90px, so on a phone
+   two of them per tier simply do not fit the card. Hold the tree at a width its nodes can actually
+   be read at and pan it sideways, rather than crushing the pills until the cost falls off the end. */
+.fl-sk-scroll {
+  overflow-x: auto;
+}
+.fl-sk {
+  position: relative;
+  width: 100%;
+  min-width: 380px;
+  max-width: 620px;
+  margin-inline: auto;
+  /* taller per tier so labels + cost pills breathe; grows with the band count */
+  aspect-ratio: 4 / 3;
+  min-height: calc(var(--rows, 3) * 86px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  /* These visuals encode position. Preserve enough intrinsic width for their labels and let the
+     shared Canvas scroll enhancer provide touch, keyboard and screen-reader access. */
+  .fl-dag {
+    width: 620px;
+    max-width: none;
+  }
+  .fl-rm {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .fl-rm-header,
+  .fl-rm-lane {
+    min-width: 620px;
+  }
+  .fl-sk {
+    min-width: 620px;
+  }
+}
+.fl-sk-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.fl-sk-edge {
+  transition:
+    stroke var(--m-normal),
+    opacity var(--m-normal),
+    stroke-width var(--m-normal);
+}
+/* a faint guide rule marking each tier band's centre line */
+.fl-sk-tier {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 0;
+  border-top: 1px dashed color-mix(in oklab, var(--line) 70%, transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.fl-sk-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: var(--max-node-w, 38%);
+  padding: 7px 11px 7px 8px;
+  border: 1.5px solid var(--c, var(--text-muted));
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform var(--m-normal) var(--ease-out),
+    border-color var(--m-normal),
+    box-shadow var(--m-normal),
+    opacity var(--m-normal);
+}
+.fl-sk-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  color: var(--c, var(--text-muted));
+  background: color-mix(in oklab, var(--c, var(--text-muted)) 16%, transparent);
+}
+.fl-sk-icon .ic {
+  width: 12px;
+  height: 12px;
+}
+.fl-sk-label {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.fl-sk-cost {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--track);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  line-height: 14px;
+}
+/* locked: recessed + dashed so it reads as "not yet earned" */
+.fl-sk-node.st-locked {
+  border-style: dashed;
+  background: var(--surface-glass);
+  color: var(--text-muted);
+}
+.fl-sk-node.st-locked .fl-sk-label {
+  color: var(--text-muted);
+}
+/* available: outlined in presence, primed to be taken next */
+.fl-sk-node.st-available {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 13%, transparent);
+}
+/* unlocked: filled tint, clearly earned */
+.fl-sk-node.st-unlocked {
+  background: color-mix(in oklab, var(--insight) 12%, var(--surface-elevated));
+}
+/* maxed: the prized top rank — gold fill + halo */
+.fl-sk-node.st-maxed {
+  background: color-mix(in oklab, var(--warning) 16%, var(--surface-elevated));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--warning) 18%, transparent);
+}
+.fl-sk-node:hover,
+.fl-sk-node:focus-visible {
+  transform: translate(-50%, -50%) scale(1.05);
+  border-color: var(--c, var(--presence));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--c, var(--presence)) 20%, transparent);
+  z-index: 3;
+  outline: none;
+}
+.fl-sk-node.is-dim {
+  opacity: 0.42;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-sk-node,
+  .fl-sk-edge {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   HEADCOUNT PLAN
+   ============================================================ */
+.fl-hc-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+.fl-hc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fl-hc-row {
+  min-width: 0;
+}
+.fl-hc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.fl-hc-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.fl-hc-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.fl-hc-over {
+  color: var(--warning);
+  font-weight: 700;
+}
+.fl-hc-bar {
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+}
+.fl-hc-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width 0.5s var(--ease-out, ease);
+}
+.fl-hc-reqs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--presence-soft);
+}
+.fl-hc-reqs .ic {
+  width: 10px;
+  height: 10px;
+}
+.fl-hc-totals {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.fl-hc-totals-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.fl-hc-totals-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.fl-hc-totals-reqs {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--presence-soft);
+}
+
+/* ============================================================
+   ISSUE TREE
+   ============================================================ */
+.fl-it-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+.fl-it {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 4px 12px;
+}
+.fl-it-frame {
+  display: flex;
+  width: max-content;
+}
+.fl-it-branch {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+}
+.fl-it-box {
+  position: relative;
+  min-width: 116px;
+  max-width: 176px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--c, var(--presence));
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+}
+.fl-it-box.fl-it-root {
+  border-left-color: var(--presence);
+  background: var(--surface-elevated-2);
+  font-weight: 700;
+}
+.fl-it-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.fl-it-box.fl-it-root .fl-it-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.fl-it-finding {
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.fl-it-kids {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 22px;
+  padding-left: 14px;
+  position: relative;
+}
+/* horizontal stub out of a parent box, into the shared vertical bus */
+.fl-it-box.has-kids + .fl-it-kids::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 14px;
+  height: 2px;
+  background: var(--line-strong);
+  transform: translateY(-50%);
+}
+/* each child's stub in from the bus */
+.fl-it-kids > .fl-it-branch::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  width: 14px;
+  height: 2px;
+  background: var(--line-strong);
+  transform: translateY(-50%);
+}
+/* vertical bus spanning between the first and last sibling */
+.fl-it-kids > .fl-it-branch:first-child::after,
+.fl-it-kids > .fl-it-branch:last-child::after {
+  content: '';
+  position: absolute;
+  left: -14px;
+  width: 2px;
+  background: var(--line-strong);
+}
+.fl-it-kids > .fl-it-branch:first-child::after {
+  top: 50%;
+  bottom: -7px;
+}
+.fl-it-kids > .fl-it-branch:last-child::after {
+  bottom: 50%;
+  top: -7px;
+}
+.fl-it-kids > .fl-it-branch:only-child::before,
+.fl-it-kids > .fl-it-branch:only-child::after {
+  display: none;
+}
+
+/* ============================================================
+   LOGIC MODEL
+   ============================================================ */
+.fl-lm {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.fl-lm-col {
+  min-width: 0;
+  padding: 10px 9px;
+  border-right: 1px solid var(--line);
+}
+.fl-lm-col:last-child {
+  border-right: none;
+}
+.fl-lm-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin-bottom: 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.fl-lm-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, var(--presence));
+}
+.fl-lm-headtext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fl-lm-arrow {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  color: var(--line-strong);
+}
+.fl-lm-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fl-lm-chip {
+  overflow-wrap: anywhere;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--c, var(--presence));
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.fl-lm-empty {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ============================================================
+   CONTENT CALENDAR
+   ============================================================ */
+.fl-cc-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+.fl-cc {
+  display: grid;
+  grid-template-columns: 84px repeat(var(--weeks), minmax(0, 1fr));
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.fl-cc-corner {
+  position: sticky;
+  left: 0;
+  background: var(--surface-glass);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.fl-cc-weekhead {
+  min-width: 0;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.fl-cc-platform {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 8px;
+  border-right: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fl-cc-cell {
+  min-width: 0;
+  min-height: 40px;
+  padding: 4px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+.fl-cc-cell.has-status {
+  gap: 5px;
+  margin: 2px;
+  padding: 5px 6px;
+  border: 1px solid color-mix(in oklab, var(--c, var(--presence)) 35%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--c, var(--presence)) 12%, var(--surface-elevated));
+}
+.fl-cc-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c, var(--presence));
+}
+.fl-cc-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.fl-cc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.fl-cc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.fl-cc-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, var(--presence));
+}
+
+/* ============================================================
+   BUSINESS CANVAS — the canonical nine-box strategy grid.
+   BMC and Lean Canvas share the same geometry (Maurya relabeled
+   Osterwalder's boxes), so one template serves both variants.
+   ============================================================ */
+.fl-bc-variant {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap; /* a fixed framework name, never dynamic text */
+}
+.fl-bc {
+  display: grid;
+  /* 10 tracks = 5 canvas columns of 2; lets costs/revenue split the bottom row exactly in half. */
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-areas:
+    'partners partners activities activities value value relationships relationships segments segments'
+    'partners partners resources resources value value channels channels segments segments'
+    'costs costs costs costs costs revenue revenue revenue revenue revenue';
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.fl-bc-region {
+  min-width: 0;
+  /* a floor per box so an unfilled canvas still reads as the familiar grid, not a label strip */
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 11px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  --c: var(--text-muted);
+}
+.fl-bc-partners {
+  grid-area: partners;
+}
+.fl-bc-activities {
+  grid-area: activities;
+}
+.fl-bc-resources {
+  grid-area: resources;
+}
+.fl-bc-value {
+  grid-area: value;
+}
+.fl-bc-relationships {
+  grid-area: relationships;
+}
+.fl-bc-channels {
+  grid-area: channels;
+}
+.fl-bc-segments {
+  grid-area: segments;
+}
+.fl-bc-costs {
+  grid-area: costs;
+}
+.fl-bc-revenue {
+  grid-area: revenue;
+}
+.fl-bc-segments,
+.fl-bc-revenue {
+  border-right: none;
+}
+.fl-bc-costs,
+.fl-bc-revenue {
+  border-bottom: none;
+}
+/* Only three boxes get an accent — the heart of the model, money out, money in. Everything else
+   stays neutral so the tints carry meaning instead of decoration. */
+.fl-bc-value {
+  --c: var(--presence);
+  background: color-mix(in oklab, var(--presence) 6%, transparent);
+}
+.fl-bc-costs {
+  --c: var(--warning);
+  background: color-mix(in oklab, var(--warning) 5%, transparent);
+}
+.fl-bc-revenue {
+  --c: var(--insight);
+  background: color-mix(in oklab, var(--insight) 5%, transparent);
+}
+.fl-bc-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+.fl-bc-head .ic {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 1px;
+  color: var(--c);
+}
+.fl-bc-headtext {
+  min-width: 0;
+  /* "Customer Relationships" in a fifth-width column wraps; never clip a region's name */
+  overflow-wrap: anywhere;
+}
+.fl-bc-region.is-empty .fl-bc-head {
+  opacity: 0.4;
+}
+.fl-bc-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* bounded box: past ~6 entries the region scrolls (cf-scroll) instead of stretching the canvas */
+  --cf-scroll-max: 176px;
+}
+/* full-height boxes span both top rows, so they may hold about twice as much before scrolling */
+.fl-bc-partners .fl-bc-items,
+.fl-bc-value .fl-bc-items,
+.fl-bc-segments .fl-bc-items {
+  --cf-scroll-max: 372px;
+}
+.fl-bc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.fl-bc-item::before {
+  content: '';
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.fl-bc-value .fl-bc-item {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+/* A narrow card can't hold five readable columns: stack to one, value proposition first — it is
+   the box the other eight exist to support. Keys off the CARD (.card is an inline-size container,
+   wow-polish.css), so a col-12 block on a phone and a squeezed col-8 both stack correctly. */
+@container (max-width: 600px) {
+  .fl-bc {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'value'
+      'segments'
+      'partners'
+      'activities'
+      'resources'
+      'relationships'
+      'channels'
+      'revenue'
+      'costs';
+  }
+  .fl-bc-region {
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .fl-bc-costs {
+    border-bottom: none;
+  }
+  /* stacked, the double-height allowance no longer applies */
+  .fl-bc-partners .fl-bc-items,
+  .fl-bc-value .fl-bc-items,
+  .fl-bc-segments .fl-bc-items {
+    --cf-scroll-max: 176px;
+  }
+}

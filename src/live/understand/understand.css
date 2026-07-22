@@ -1,0 +1,119 @@
+/* "Edit its mind" — a quiet strip of the model's constraint chips under the answer.
+   Tokens only; scoped under .understood so nothing leaks into Demo. */
+
+.understood {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+
+.understood-label {
+  font: 600 9.5px/1 var(--font-data, var(--font));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.understood-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  max-width: 100%;
+}
+
+.understood-help {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.understood-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid color-mix(in oklab, var(--text-muted) 42%, transparent);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--surface-elevated) 72%, transparent);
+  color: var(--text-muted);
+  cursor: help;
+  font: 700 10px/1 var(--font-data, var(--font));
+}
+
+.understood-help-btn:hover,
+.understood-help-btn:focus-visible {
+  border-color: color-mix(in oklab, var(--presence) 62%, transparent);
+  color: var(--presence);
+  outline: none;
+}
+
+.understood-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 90;
+  width: min(280px, calc(100vw - 32px));
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-floating);
+  font: 500 12px/1.35 var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.understood-help:hover .understood-tooltip,
+.understood-help:focus-within .understood-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.understood-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.understood-chip {
+  font: 600 11px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.understood-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.understood-chip:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+
+.understood-edit {
+  font: 700 11px/1 var(--font);
+  color: var(--presence);
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--presence);
+  border-radius: var(--r-full);
+  padding: 4px 11px;
+  outline: none;
+  min-width: 60px;
+}

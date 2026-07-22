@@ -1,0 +1,136 @@
+// "Your wedding vendors, at a glance", who's booked, who's still just a maybe, and what's
+// still owed before the day. A personal-life-event demo for the vendortracker block.
+import type { ConversationSpec } from '../conversation';
+
+export const wedding: ConversationSpec = {
+  id: 'wedding',
+  workspace: 'The wedding',
+  title: 'Your wedding vendors, at a glance',
+  sub: 'Six vendors, three confirmed, and one deposit due this week.',
+  opener:
+    'Photography and the venue are locked. The florist is still just an inquiry, worth a follow-up.',
+  switchSay: "Let's check on the wedding vendors.",
+  gather: 'Reading the vendor contracts + deposits',
+  found: 'Three confirmed, two booked, one still open.',
+  tint: '#e0a3c9',
+  context: [
+    { name: 'Vendor contracts', color: 'var(--presence-soft)' },
+    { name: 'Deposit receipts', color: 'var(--insight)' },
+    { name: 'Wedding budget', color: 'var(--text-muted)' },
+  ],
+  blocks: [
+    {
+      type: 'insight',
+      col: 5,
+      id: 'follow-up',
+      num: '1',
+      delay: 0,
+      props: {
+        title: 'The florist is the one to chase',
+        conf: 'strong',
+        summary: 'Still just an inquiry with 11 weeks out — the good ones book up first.',
+        sources: [{ file: 'Vendor contracts' }],
+      },
+    },
+    {
+      type: 'insight',
+      col: 7,
+      id: 'due',
+      num: '2',
+      delay: 90,
+      props: {
+        title: 'The DJ balance is due in 6 days',
+        stat: '$800',
+        delta: 'due Jul 8',
+        deltaDir: 'up',
+        conf: 'strong',
+        summary: 'Everything else is either paid in full or not due for another month.',
+        sources: [{ file: 'Deposit receipts' }],
+      },
+    },
+    {
+      type: 'vendortracker',
+      col: 12,
+      id: 'vendors',
+      delay: 180,
+      props: {
+        title: 'All six vendors',
+        icon: 'layers',
+        iconColor: 'var(--presence)',
+        vendors: [
+          {
+            name: 'Willow & Stone Catering',
+            category: 'catering',
+            status: 'confirmed',
+            contractSigned: true,
+            depositAmount: 1500,
+            depositPaid: true,
+            balanceDue: 3500,
+            dueDate: 'Aug 1',
+          },
+          {
+            name: 'The Old Mill Barn',
+            category: 'venue',
+            status: 'confirmed',
+            contractSigned: true,
+            depositAmount: 2000,
+            depositPaid: true,
+            balanceDue: 6000,
+            dueDate: 'Jul 20',
+          },
+          {
+            name: 'Marisol Reyes Photography',
+            category: 'photo',
+            status: 'confirmed',
+            contractSigned: true,
+            depositAmount: 900,
+            depositPaid: true,
+            balanceDue: 0,
+          },
+          {
+            name: 'DJ Nova Sound',
+            category: 'av',
+            status: 'booked',
+            contractSigned: true,
+            depositAmount: 300,
+            depositPaid: true,
+            balanceDue: 800,
+            dueDate: 'Jul 8',
+          },
+          {
+            name: 'Petal & Vine Florals',
+            category: 'decor',
+            status: 'inquired',
+          },
+          {
+            name: 'Sweetgrass Cake Co.',
+            category: 'other',
+            status: 'booked',
+            contractSigned: false,
+            depositAmount: 150,
+            depositPaid: false,
+            balanceDue: 450,
+            dueDate: 'Jul 15',
+          },
+        ],
+        footer:
+          'Catering and the venue are the big-ticket balances, both due within three weeks of each other, worth spacing out if the budget is tight.',
+      },
+    },
+  ],
+  proof: null,
+  extras: {},
+  group: 'home',
+  tryChip: { label: 'Check on the wedding vendors', route: 'topic:wedding' },
+  suggests: [
+    { label: 'Chase the florist', icon: 'mail', route: 'topic:wedding', lead: 'Try' },
+    { label: 'How should I budget?', icon: 'chart', route: 'topic:money' },
+    { label: "What's my week look like?", icon: 'clock', route: 'topic:week' },
+  ],
+  keywords: [
+    {
+      test: /\bwedding\b|\bvendors?\b.*(wedding|venue|caterer|florist|photographer)|wedding (vendor|venue|planning|budget)/i,
+      route: 'topic:wedding',
+    },
+  ],
+};

@@ -1,0 +1,379 @@
+/* shiphotspots.css — "the story behind any line." A two-pane layout: a list of load-bearing lines
+   on the left, the memory behind the selected one on the right. All color via the shared tokens and
+   the cls accents passed inline (haunted → danger, hot → warning, tuned → insight), so light/dark is
+   automatic. Every surface contains its overflow and dynamic text wraps. */
+
+.ripple-hot {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: var(--s-lg);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .ripple-hot {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── LEFT: the list of lines ── */
+.ripple-hot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ripple-hot-list-head {
+  margin-bottom: 4px;
+}
+.ripple-hot-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'cls symbol'
+    'cls file';
+  align-items: center;
+  gap: 2px 10px;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.ripple-hot-item:hover {
+  background: var(--surface-elevated-2);
+}
+.ripple-hot-item[data-active='true'] {
+  border-color: color-mix(in oklab, var(--presence) 38%, transparent);
+  background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
+}
+.ripple-hot-cls {
+  grid-area: cls;
+  align-self: center;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.ripple-hot-symbol {
+  grid-area: symbol;
+  min-width: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ripple-hot-file {
+  grid-area: file;
+  min-width: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── RIGHT: the memory behind the selected line ── */
+.ripple-hot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+  min-width: 0;
+}
+.ripple-hot-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 2px;
+}
+.ripple-hot-chip {
+  max-width: 100%;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 5px 11px;
+  word-break: break-word;
+}
+.ripple-hot-detail-file {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.ripple-hot-why {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ripple-hot-why p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── the incident memory, tinted by the cls accent ── */
+.ripple-hot-incident {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  padding: var(--s-2) 14px;
+}
+.ripple-hot-incident-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.ripple-hot-sev {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--surface-deep);
+  border-radius: var(--r-full);
+  padding: 2px 9px;
+}
+.ripple-hot-incident-id {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.ripple-hot-incident p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── the decision trail: a vertical timeline ── */
+.ripple-hot-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.ripple-hot-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ripple-hot-event {
+  position: relative;
+  display: flex;
+  gap: 13px;
+  padding-bottom: 14px;
+}
+.ripple-hot-event:last-child {
+  padding-bottom: 0;
+}
+/* the connecting spine — drawn down from each dot to the next, stopping at the last event */
+.ripple-hot-event::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 13px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+.ripple-hot-event:last-child::before {
+  display: none;
+}
+.ripple-hot-event-dot {
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 3px var(--surface-default);
+}
+.ripple-hot-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ripple-hot-event-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ripple-hot-event-date {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ripple-hot-event-kind {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--surface-elevated-2);
+  border-radius: var(--r-full);
+  padding: 2px 7px;
+}
+.ripple-hot-event-label {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── the two-col footer: who to ask + risk signals ── */
+.ripple-hot-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-md);
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .ripple-hot-cols {
+    grid-template-columns: 1fr;
+  }
+}
+.ripple-hot-ask,
+.ripple-hot-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px;
+}
+.ripple-hot-ask-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.ripple-hot-avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--surface-deep);
+  background: linear-gradient(
+    135deg,
+    var(--presence),
+    color-mix(in oklab, var(--presence) 55%, var(--insight))
+  );
+}
+.ripple-hot-ask-who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ripple-hot-ask-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ripple-hot-ask-team {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ripple-hot-ask-why {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-hot-ask-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--warning) 11%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 28%, transparent);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  text-wrap: pretty;
+}
+
+/* ── risk signals: k → v rows ── */
+.ripple-hot-signal-grid {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ripple-hot-signal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.ripple-hot-signal:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.ripple-hot-signal dt {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ripple-hot-signal dd {
+  margin: 0;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+/* ── empty state ── */
+.ripple-hot-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+.ripple-hot-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}

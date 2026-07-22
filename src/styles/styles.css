@@ -1,0 +1,21 @@
+/* ============================================================
+   MAVÉA · Presence OS — global stylesheet manifest
+   The styles are split by section into sibling files. They are
+   pulled back in below in their original top-to-bottom order, so
+   the cascade is identical to a single concatenated stylesheet.
+   Keep this order; CSS specificity ties resolve by source order.
+   ============================================================ */
+
+@import './tokens-base.css';
+@import './light-theme.css';
+@import './top-bar.css';
+@import './stage-layout.css';
+@import './presence-canvas.css';
+@import './composer.css';
+@import './mobile.css';
+@import './wow-polish.css';
+@import './friend-aliveness.css';
+@import './bloom.css';
+/* The lite performance tier's overrides — last so its html[data-perf='lite'] rules layer over the
+   surfaces they calm (presence, glass chrome, the flagship aurora). See perf-lite.css. */
+@import './perf-lite.css';

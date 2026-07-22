@@ -1,0 +1,153 @@
+/* dash-composer.css — the "track anything" home composer: the sticky ask bar + its ⌘K hint, plus
+   the two bits its plan-review sheet adds beyond the older template modal (dashboards.css) — the
+   honest search-volume estimate and the one-time static-fact answer card. The sheet's own chrome
+   (scrim, modal, head, back, close, loading) rides dashboards.css's existing xt- and tpl- rules so
+   both "track anything" entry points read as one surface, not two. Tokens only, light+dark auto. */
+
+.dash-composer-bar {
+  position: sticky;
+  bottom: 20px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 640px);
+  margin: 24px auto 0;
+  padding: 8px 8px 8px 20px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+}
+.dash-composer-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text-primary);
+}
+.dash-composer-input::placeholder {
+  color: var(--text-muted);
+}
+.dash-composer-input:focus {
+  outline: none;
+}
+.dash-composer-kbd {
+  flex: none;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  font-family: var(--font-data, var(--font));
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.dash-composer-submit {
+  flex: none;
+  border: none;
+  border-radius: var(--r-full);
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  color: var(--on-presence, #fff);
+  background: var(--presence);
+}
+.dash-composer-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+@media (max-width: 640px) {
+  .dash-composer-bar {
+    width: calc(100% - 32px);
+    bottom: 12px;
+  }
+  .dash-composer-kbd {
+    display: none;
+  }
+}
+
+/* ── static-fact answer card ─────────────────────────────────────────────────────────────── */
+.dash-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 22px;
+}
+.dash-answer-text {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.dash-answer-text--fallback {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.dash-answer-qualifier {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.dash-answer-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dash-answer-source {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease;
+}
+.dash-answer-source:hover {
+  border-color: var(--insight);
+  color: var(--text-primary);
+}
+.dash-answer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.dash-answer-badge {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint, var(--text-muted));
+}
+.dash-answer-track {
+  flex: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--presence);
+  cursor: pointer;
+}
+.dash-answer-track:hover {
+  text-decoration: underline;
+}

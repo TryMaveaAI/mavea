@@ -1,0 +1,359 @@
+/* ============================================================
+   Live · turn states — listening / working / speaking
+   The three moments of a turn get visible, honest chrome: a
+   transcript card while the mic is open, labeled skeletons while
+   the answer builds, and a speak ribbon whose phrases light up
+   with the voice. Scoped to .live-voice; tokens only.
+   ============================================================ */
+
+.mavea-app.live-voice {
+  /* the said-vs-shown highlight — warm marker ink in both themes */
+  --mark-bg: color-mix(in oklab, var(--warning) 30%, transparent);
+}
+:root[data-theme='light'] .mavea-app.live-voice {
+  --mark-bg: color-mix(in oklab, #fff3a0 75%, transparent);
+}
+
+/* ===== state 1 — listening ===== */
+.live-voice .listen-stage {
+  position: fixed;
+  left: var(--rail-w, 0px);
+  right: 0;
+  bottom: calc(var(--dock-h) + 14px);
+  z-index: 45;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.mavea-app.live-voice.has-scrubber .listen-stage {
+  bottom: calc(var(--dock-h) + 56px);
+}
+.live-voice .listen-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: min(520px, 86%);
+  padding: 13px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-floating);
+}
+.live-voice .listen-eq {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  margin-top: 2px;
+  flex: none;
+}
+.live-voice .listen-eq i {
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--presence);
+  animation: listen-eq 1s ease-in-out infinite;
+  transform-origin: center;
+}
+.live-voice .listen-eq i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.live-voice .listen-eq i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.live-voice .listen-eq i:nth-child(4) {
+  animation-delay: 0.36s;
+  background: var(--presence-soft);
+}
+.live-voice .listen-eq i:nth-child(5) {
+  animation-delay: 0.48s;
+  background: var(--presence-soft);
+}
+@keyframes listen-eq {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.live-voice .listen-line {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+.live-voice .listen-caret {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--presence);
+  animation: listen-caret 0.9s step-end infinite;
+}
+@keyframes listen-caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+.live-voice .listen-note {
+  padding-top: 5px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+/* the big card carries the moment — quiet the composer's inline duplicate */
+.live-voice .live-listen {
+  display: none;
+}
+
+/* ===== state 2 — working (labeled skeletons) ===== */
+/* The working state shares the answer canvas's centered column so skeletons + the streaming cue
+   line up with the cards above, never orphaned against the viewport edge. */
+.live-voice .working-col {
+  max-width: var(--canvas-col-max);
+  margin-inline: auto;
+}
+/* The skeleton vocabulary itself (.skel-grid/.skel-card/.skel-eyebrow/.skel-line + the
+   shimmer) moved to canvas/skeleton.css, unscoped, so the canvas family gate speaks the
+   same language; only the Live-specific composition below stays here. */
+/* the first turn builds on the empty stage — give the plan a centered column there */
+.live-voice .skel-stage {
+  position: absolute;
+  inset: 76px 26px auto;
+  display: flex;
+  justify-content: center;
+}
+.live-voice .skel-stage .skel-grid {
+  width: min(880px, 100%);
+}
+
+/* ===== streaming — the answer is still arriving ===== */
+/* A persistent, unmistakable "still working" line under the canvas while blocks stream in.
+   The skeleton card above shows WHAT is being built; this confirms the answer isn't done yet. */
+.live-voice .composing-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 8px 14px 8px 10px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.live-voice .composing-orb {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--presence-soft) 0%,
+    var(--presence) 55%,
+    var(--presence-deep) 100%
+  );
+  animation: speak-breathe 1.3s ease-in-out infinite;
+}
+.live-voice .composing-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.live-voice .composing-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--presence-soft);
+  animation: composing-bounce 1.2s ease-in-out infinite;
+}
+.live-voice .composing-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.live-voice .composing-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes composing-bounce {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* ===== working chips — what's being read, named ===== */
+.live-voice .turn-chips {
+  position: fixed;
+  left: calc(50% + var(--rail-w, 0px) / 2);
+  top: 18px;
+  transform: translateX(-50%);
+  z-index: 48;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(720px, 70vw);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.live-voice .turn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-raised);
+}
+.live-voice .turn-chip svg {
+  width: 14px;
+  height: 14px;
+  color: var(--presence-soft);
+}
+.live-voice .turn-chip.src {
+  font-family: var(--font-data);
+  font-size: 11px;
+}
+.live-voice .turn-chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: listen-caret 1.2s ease-in-out infinite;
+}
+
+/* Memory save — the orb in the corner gets a brief aura glow while the fact is being stored.
+   No text, no speech, no centering: just a quiet visual signal on the face itself. */
+@media (prefers-reduced-motion: no-preference) {
+  .presence-layer.is-mem-save.corner .presence .aura {
+    animation-duration: 1.2s !important;
+    filter: brightness(1.5) saturate(1.3);
+    transition: filter 0.4s ease;
+  }
+}
+@keyframes mem-aura-glow {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  40% {
+    filter: brightness(1.6) saturate(1.4);
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .presence-layer.is-mem-save.corner .presence .aura {
+    animation: mem-aura-glow 2.2s ease-in-out both;
+  }
+}
+
+/* ===== state 3 — speaking (pill + lit ribbon) =====
+   An ordinary row inside the dock's .dock-main column (same slot as .dock-modes/.voice-notice/
+   .attach-strip) — never a floating overlay, so it can't sit over the canvas at any viewport
+   width. The dock's own --dock-h measurement absorbs the row's height for everything that
+   offsets by it (the scrubber, the canvas padding). */
+.live-voice .speak-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.live-voice .speak-ribbon {
+  /* Wraps rather than truncating — the line is short-lived (it's replaced by the next spoken
+     line within seconds), so cutting it off with an ellipsis just hides content a reader could
+     otherwise get ahead of while Mavéa is still speaking it. */
+  flex: 1;
+  min-width: 0;
+  max-width: 70ch;
+  margin: 0;
+  padding-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: left;
+}
+.live-voice .speak-phrase {
+  transition: color var(--m-fast) var(--ease-out);
+}
+.live-voice .speak-phrase.said {
+  color: var(--text-primary);
+}
+.live-voice .speak-phrase .hero-accent {
+  color: inherit;
+  font-style: normal;
+  border-radius: 3px;
+  padding: 0 3px;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.live-voice .speak-phrase.said .hero-accent {
+  background: var(--mark-bg);
+  color: var(--text-primary);
+}
+/* Sampled from the Design source: a soft indigo-tinted pill (no border), gap 10, padding
+   7px 14px 7px 8px, radius 18px — not the plain bordered button an earlier pass had. */
+.live-voice .speak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 7px 14px 7px 8px;
+  border-radius: 18px;
+  border: none;
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--presence);
+  cursor: pointer;
+}
+.live-voice .speak-orb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--presence-soft) 0%,
+    var(--presence) 55%,
+    var(--presence-deep) 100%
+  );
+  animation: speak-breathe 1.3s ease-in-out infinite;
+}
+@keyframes speak-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-voice .listen-eq i,
+  .live-voice .listen-caret,
+  .live-voice .turn-chip-dot,
+  .live-voice .speak-orb,
+  .live-voice .composing-orb,
+  .live-voice .composing-dots i {
+    animation: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .live-voice .speak-strip .speak-ribbon {
+    display: none;
+  }
+}

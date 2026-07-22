@@ -1,0 +1,164 @@
+/* Check-log rail (CheckLogRail/CheckLogEntry) — reuses .card/.card-eyebrow for section chrome, so
+   it sits in the home surface or a detail page's column without inventing new frame styling. The
+   list caps its own height and scrolls internally so it behaves the same whether the caller puts
+   it in a sticky sidebar or lets it flow with the rest of the page. */
+.dash-log-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* Two-class selector deliberately outranks the shared .card-eyebrow's `white-space: nowrap`
+   (visualizations-extra.css) — that rule assumes a short static label ("CADENCE"); this eyebrow's
+   text is dynamic ("TODAY · N SEARCHES USED", or longer still with the "CHECK LOG · " prefix) and
+   was getting hard-clipped by .card's overflow:hidden instead of wrapping. */
+.dash-log-card .dash-log-head {
+  text-transform: uppercase;
+  white-space: normal;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.dash-log-empty {
+  margin: 8px 2px 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.dash-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.dash-log-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.dash-log-row:last-child {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+.dash-log-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dash-log-time {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.dash-log-chip {
+  flex: none;
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-log-chip--presence {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
+}
+.dash-log-chip--insight {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 35%, transparent);
+}
+.dash-log-chip--danger {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, transparent);
+}
+.dash-log-chip--plain {
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+}
+.dash-log-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.dash-log-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-log-apply-btn {
+  font: 600 12px/1 var(--font);
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 40%, transparent);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.dash-log-apply-btn:hover {
+  background: color-mix(in oklab, var(--insight) 24%, transparent);
+}
+.dash-log-dismiss-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: 600 12px/1 var(--font);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.dash-log-dismiss-btn:hover {
+  color: var(--text-secondary);
+}
+.dash-log-applied {
+  font: 700 12px/1 var(--font-data, var(--font));
+  letter-spacing: 0.03em;
+  color: var(--insight);
+}
+.dash-log-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-data, var(--font));
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dash-log-source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-log-cost {
+  flex: none;
+}
+.dash-log-dot {
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-faint, var(--text-muted));
+}

@@ -1,0 +1,160 @@
+name: Release
+
+# "Cut a release" = run this workflow (Actions tab → Run workflow, or `gh workflow run release.yml
+# -f bump=patch`). Pick patch/minor/major; everything else — bumping package.json, committing,
+# tagging, creating the GitHub Release, verifying, and publishing to npm — happens automatically
+# in one run. No standing bot PR, no manual package.json edits.
+#
+# The `release: published` trigger stays as a manual fallback: if you ever tag + publish a GitHub
+# Release yourself outside this workflow (version already bumped by hand), it still verifies the
+# tag matches package.json and publishes.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump size
+        required: true
+        default: patch
+        type: choice
+        options: [patch, minor, major]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  cut-release:
+    name: Bump version · tag · create GitHub Release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: main
+
+      - name: Require reviewed PolyForm release terms
+        run: node scripts/check-release-policy.mjs
+        env:
+          MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Bump package.json version
+        id: tag
+        run: |
+          NEW_VERSION=$(pnpm version "${{ inputs.bump }}" --no-git-tag-version | tail -1 | tr -d 'v')
+          echo "tag_name=v$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): ${{ steps.tag.outputs.tag_name }}"
+          git tag "${{ steps.tag.outputs.tag_name }}"
+          git push origin main "${{ steps.tag.outputs.tag_name }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ steps.tag.outputs.tag_name }}" --generate-notes
+
+  publish:
+    name: Verify · Publish to npm
+    needs: cut-release
+    # Runs whether we just cut the release above, or someone published a GitHub Release directly.
+    if: |
+      always() &&
+      (github.event_name == 'release' || needs.cut-release.result == 'success')
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write # required for npm provenance
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ needs.cut-release.outputs.tag_name || github.event.release.tag_name }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Tag must match package.json version
+        # Only meaningful on the release:published fallback path — cut-release always keeps them
+        # in sync by construction.
+        run: |
+          TAG="${{ needs.cut-release.outputs.tag_name || github.event.release.tag_name }}"
+          TAG_VERSION="${TAG#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Release tag $TAG (version $TAG_VERSION) does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Require reviewed PolyForm release terms
+        run: pnpm check:release-policy
+        env:
+          MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}
+
+      - name: Full verify (code, build, artifact, dead code, licenses, vulnerabilities)
+        run: pnpm verify:full
+
+      - name: Install release browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      - name: Re-run real-browser release gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec vite --host 127.0.0.1 > /tmp/mavea-release-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/mavea-release-vite.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/ >/dev/null
+          pnpm audit:ui
+          pnpm audit:tap
+          pnpm audit:interactions
+          pnpm audit:browsers
+          pnpm slides:gate
+          pnpm export:gate
+          pnpm audit:reel
+          pnpm perf -- --throttle 6
+          pnpm perf:memory -- --url http://127.0.0.1:5173 --cycles 6
+
+      - name: Publish to npm
+        run: pnpm publish --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}

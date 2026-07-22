@@ -1,0 +1,489 @@
+/* The conversation scrubber + Overview. Self-contained (imported by the components), tokens only —
+   light/dark flip automatically. Costs almost zero attention so it never competes with the canvas. */
+
+/* ---- scrubber strip ------------------------------------------------------------------------ */
+.scrubber {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.scrub-layers {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.scrub-layers:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass-strong);
+}
+.scrub-layers svg {
+  width: 16px;
+  height: 16px;
+}
+
+.scrub-tracks {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  /* no gap — chapter sections are flush, forming one unified pill */
+  gap: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.scrub-tracks::-webkit-scrollbar {
+  display: none;
+}
+
+.scrub-track {
+  flex: 1 1 0;
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.scrub-rail {
+  position: relative;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 2px;
+  padding: 0 12px;
+  /* no border-radius by default — ends are rounded by first/last rules below */
+  border-radius: 0;
+  background: color-mix(in oklab, var(--track-c) 10%, var(--surface-glass));
+  /* only top + bottom border; left/right are handled per-position */
+  border: 1px solid color-mix(in oklab, var(--track-c) 20%, transparent);
+  border-left: none;
+  border-right: none;
+}
+
+/* single chapter: full pill */
+.scrub-track:only-child .scrub-rail {
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--track-c) 20%, transparent);
+}
+
+/* first chapter: round the left end */
+.scrub-track:first-child:not(:only-child) .scrub-rail {
+  border-radius: var(--r-full) 0 0 var(--r-full);
+  border-left: 1px solid color-mix(in oklab, var(--track-c) 20%, transparent);
+}
+
+/* last chapter: round the right end */
+.scrub-track:last-child:not(:only-child) .scrub-rail {
+  border-radius: 0 var(--r-full) var(--r-full) 0;
+  border-right: 1px solid color-mix(in oklab, var(--track-c) 20%, transparent);
+}
+
+/* subtle hairline between adjacent chapters */
+.scrub-track:not(:first-child) .scrub-rail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: color-mix(in oklab, var(--line-strong) 55%, transparent);
+}
+
+.scrub-tick {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  /* larger hit area than the visible dot */
+  min-width: 20px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.scrub-tick:disabled {
+  cursor: default;
+}
+
+/* the visible pip */
+.scrub-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--tick-c) 35%, transparent);
+  transition:
+    width var(--m-fast) var(--ease-out),
+    height var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out);
+}
+
+/* past moments: you've been here — fill in more to read as a progress bar */
+.scrub-tick.is-past .scrub-dot {
+  background: color-mix(in oklab, var(--tick-c) 62%, transparent);
+}
+
+/* hover/focus: brighten the dot */
+.scrub-tick:hover .scrub-dot,
+.scrub-tick:focus-visible .scrub-dot {
+  background: color-mix(in oklab, var(--tick-c) 70%, transparent);
+}
+.scrub-tick:focus-visible {
+  outline: none;
+}
+
+/* current: large glowing dot — the landmark on the timeline */
+.scrub-tick.is-current .scrub-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--tick-c);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--tick-c) 18%, transparent),
+    0 0 10px color-mix(in oklab, var(--tick-c) 55%, transparent);
+}
+
+.scrub-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--track-c) 58%, var(--text-muted));
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ---- speech-bubble tooltip ------------------------------------------------------------------ */
+/* Appears above the hovered/focused tick; styled as a conversational callout, not a data label. */
+.scrub-tip {
+  position: absolute;
+  /* float above the rail — dock gradient provides visual clearance */
+  bottom: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 30;
+  width: max-content;
+  max-width: 220px;
+  padding: 8px 13px;
+  border-radius: 14px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 4px 20px color-mix(in oklab, var(--surface-deep) 18%, transparent),
+    0 1px 4px color-mix(in oklab, var(--surface-deep) 10%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur-faint);
+  backdrop-filter: var(--glass-blur-faint);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    transform var(--m-fast) var(--ease-out);
+}
+/* downward tail */
+.scrub-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--surface-elevated);
+  margin-top: -1px;
+}
+.scrub-tip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: var(--line);
+}
+.scrub-tip-q {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.scrub-tick:hover .scrub-tip,
+.scrub-tick:focus-visible .scrub-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Overview (the zoom-out) --------------------------------------------------------------- */
+.ovw-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: start center;
+  padding: clamp(24px, 6vh, 72px) 24px;
+  overflow-y: auto;
+  background: color-mix(in oklab, var(--surface-default) 68%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+  backdrop-filter: blur(18px) saturate(1.05);
+}
+
+.ovw-panel {
+  width: 100%;
+  max-width: 1040px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.ovw-title {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.ovw-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.ovw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ovw-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  border: 1px solid color-mix(in oklab, var(--card-c) 26%, var(--line));
+  box-shadow: var(--shadow-floating);
+}
+.ovw-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.ovw-card-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full);
+  background: var(--card-c);
+  box-shadow: 0 0 9px color-mix(in oklab, var(--card-c) 55%, transparent);
+}
+.ovw-card-title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ovw-card-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border-radius: var(--r-full);
+  padding: 1px 9px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.ovw-moments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ovw-moment {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--m-fast) var(--ease-out);
+}
+.ovw-moment:hover,
+.ovw-moment:focus-visible {
+  background: var(--surface-glass);
+  outline: none;
+  color: var(--text-primary);
+}
+.ovw-moment svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: color-mix(in oklab, var(--card-c) 66%, var(--text-muted));
+}
+.ovw-moment-q {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ovw-moment.is-current {
+  color: var(--text-primary);
+  font-weight: 600;
+  background: color-mix(in oklab, var(--card-c) 12%, transparent);
+  border-left: 2px solid var(--card-c);
+  padding-left: 7px;
+}
+
+/* the answer's elements — one nav level below the ask, so they read as its children: indented
+   under the moment glyph, smaller and quieter, hung off a faint chapter-tinted guide rail */
+.ovw-els {
+  list-style: none;
+  margin: 1px 0 4px;
+  padding: 0 0 0 15px;
+  margin-left: 7px;
+  border-left: 1px solid color-mix(in oklab, var(--card-c) 18%, var(--line));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ovw-el {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.ovw-el:hover,
+.ovw-el:focus-visible {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  outline: none;
+}
+.ovw-el svg {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: color-mix(in oklab, var(--card-c) 50%, var(--text-muted));
+}
+.ovw-el-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ovw-scrim {
+    animation: ovw-fade var(--m-normal) var(--ease-out);
+  }
+  .ovw-panel {
+    animation: ovw-rise var(--m-normal) var(--ease-out);
+  }
+  @keyframes ovw-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ovw-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.992);
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .ovw-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- "viewing an earlier moment" banner (over a jumped-to past canvas) --------------------- */
+.viewing-past {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 7px 14px;
+  border-radius: var(--r-full);
+  width: max-content;
+  max-width: 100%;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.viewing-past svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+.viewing-past-back {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--presence);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.viewing-past-back:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="7" y1="8" x2="25" y2="19" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#63e0bd" />
+      <stop offset="0.5" stop-color="#8aa0ff" />
+      <stop offset="1" stop-color="#ff8ab0" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="#0a0e15" />
+  <path d="M10 20 C9.4 23 10.6 24.6 9.8 27" stroke="#63e0bd" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M16 20.6 C16 23.4 15 24.8 16 27.4" stroke="#8aa0ff" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M22 20 C22.8 23 21.6 24.6 22.4 27" stroke="#ff8ab0" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M6 17 C6 9.8 10 5 16 5 C22 5 26 9.8 26 17 C26 19.4 23 20.6 16 20.6 C9 20.6 6 19.4 6 17 Z" fill="url(#g)" />
+  <circle cx="13" cy="13.5" r="1.5" fill="#fff" />
+  <circle cx="19" cy="13.5" r="1.5" fill="#fff" />
+  <circle cx="13" cy="13.7" r="0.85" fill="#252c55" />
+  <circle cx="19" cy="13.7" r="0.85" fill="#252c55" />
+  <path d="M14.4 16.2 Q16 17.4 17.6 16.2" stroke="#fff" stroke-width="0.9" stroke-linecap="round" fill="none" />
+</svg>

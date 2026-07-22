@@ -1,0 +1,136 @@
+/* ============================================================
+   MAVÉA · Presence OS — design tokens & base
+   Dark cinematic surface · 3 restrained accents · one grotesque
+   ============================================================ */
+
+/* Geometry is an application-wide invariant, not Live-only chrome. Without this reset, a
+   `width: 100%` control on the landing, gallery, or another lazy surface adds its padding and
+   border outside the declared width and can escape a narrow card. Pseudo-elements participate in
+   the same layout contract. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  /* --- surfaces --- */
+  --surface-default: #0a0e15;
+  --surface-deep: #070a10;
+  --surface-elevated: #131925;
+  --surface-elevated-2: #19202e;
+  --surface-glass: rgba(255, 255, 255, 0.045);
+  --surface-glass-strong: rgba(255, 255, 255, 0.07);
+
+  /* hairlines & borders */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --line-strong: rgba(255, 255, 255, 0.14);
+
+  /* --- text --- */
+  --text-primary: #eef2f8;
+  --text-secondary: #9aa7bb;
+  --text-muted: #798392; /* lightened from #5f6b7d — the old value failed WCAG AA (3.3-3.6:1) against surface-default/-elevated; this clears 4.5:1 against both */
+  --text-faint: #424c5b;
+
+  /* --- accents (calm, 3 voices) --- */
+  --presence: #6e8cff; /* the face / actions */
+  --presence-soft: #8aa0ff;
+  --presence-deep: #4458c9;
+  --insight: #3ed8a6; /* findings / verified */
+  --insight-soft: #6fe8c0;
+  --warning: #f5b95c; /* risk / inferred / uncertainty */
+  --warning-soft: #ffce8a;
+  --danger: #ff7a85; /* used sparingly */
+
+  /* glows */
+  --glow-presence: rgba(110, 140, 255, 0.35);
+  --glow-insight: rgba(62, 216, 166, 0.3);
+  --glow-warning: rgba(245, 185, 92, 0.32);
+
+  /* --- radii --- */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-full: 999px;
+
+  /* --- controls --- */
+  /* Shared sizing for pills/buttons/chips so a touch-target or padding tweak in one
+     place stays consistent across surfaces. Existing components keep their own values
+     until they opt in — these are reuse hooks, not a forced restyle. */
+  --btn-h: 38px;
+  --btn-pad: 0 14px;
+  --chip-pad: 6px 12px;
+
+  /* the shared standing-chrome-bar recipe — Live's topbar and Dashboards' nav both dress
+     a fixed-height glass strip in this exact frost, so the two read as one system */
+  --bar-glass-bg: color-mix(in oklab, var(--surface-deep) 82%, transparent);
+  --bar-glass-blur: blur(16px);
+  --bar-h: 60px;
+
+  /* Shared glass-blur strengths for every always-visible frosted surface (transcript rail,
+     composer, status pills, scrubber, overlay scrims, the gallery bar, flagship chrome). Routing
+     them through three tokens lets the lite perf tier zero ALL of them in one place —
+     backdrop-filter blur is a top GPU cost on an integrated-GPU laptop, re-blurring the content
+     behind it on every scroll/repaint. See styles/perf-lite.css. */
+  --glass-blur-strong: blur(16px);
+  --glass-blur-soft: blur(12px);
+  --glass-blur-faint: blur(10px);
+
+  /* --- spacing --- */
+  --s-xs: 4px;
+  --s-sm: 8px;
+  --s-2: 12px;
+  --s-md: 16px;
+  --s-lg: 24px;
+  --s-xl: 32px;
+  --s-2xl: 48px;
+  --s-3xl: 64px;
+
+  /* --- layout --- */
+  /* Canvas answer-column measure. Holds at 1280px through every common laptop/desktop
+     width, then grows fluidly on wide/ultrawide screens so the answer fills more of the
+     display instead of stranding it in empty gutters — bounded so prose line-length stays
+     readable (the responsive-grid hook keeps text in narrow spans; the extra width mostly
+     benefits full-bleed charts, tables, and code). 84vw crosses 1280 at ~1524px viewport
+     and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
+     stay readable rather than sprawling with content stranded against one edge. */
+  --canvas-col-max: clamp(1280px, 84vw, 1640px);
+
+  /* --- motion --- */
+  --m-instant: 80ms;
+  --m-fast: 160ms;
+  --m-normal: 280ms;
+  --m-expressive: 550ms;
+  --m-cinematic: 900ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* motion scale, controlled by Tweaks (1 = full) */
+  --motion-scale: 1;
+
+  /* shadows / elevation */
+  --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --shadow-floating: 0 18px 50px -18px rgba(0, 0, 0, 0.8), 0 2px 0 rgba(255, 255, 255, 0.05) inset;
+  --shadow-modal: 0 40px 120px -30px rgba(0, 0, 0, 0.85);
+
+  --font:
+    'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Geist Mono', monospace;
+  --topic-tint: #6e8cff;
+  --app-anchor: #0e1320;
+  --scrim-rgb: 4, 6, 10;
+
+  /* theme-flipping structural colors — charts/tracks/artifact backgrounds.
+     These are the ONLY non-token colors components may use; they invert in light mode. */
+  --grid-line: rgba(255, 255, 255, 0.06);
+  --grid-strong: rgba(255, 255, 255, 0.12);
+  --track: rgba(255, 255, 255, 0.07);
+  --hover-line: rgba(255, 255, 255, 0.18);
+  --cell-empty: rgba(255, 255, 255, 0.04);
+  --slide-bg: linear-gradient(150deg, #11182a, #0a0e15);
+  --replay-bg: linear-gradient(165deg, #15122a, #0a0e15);
+  --replay-stage-bg: radial-gradient(80% 80% at 50% 30%, #1a2342, #0a0e15);
+}

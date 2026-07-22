@@ -1,0 +1,568 @@
+/* dash-home.css — the Dashboards home surface: DashTopBar, DashboardHome's two-column layout, the
+   morning briefing card, the featured live-event card, metric chips, and the transient toast. All
+   the OLD gallery chrome (nav/stat-strip/cards) this replaces lived in dashboards.css; that file
+   now covers only detail/settings/overview + the shared xt-/tpl- modal chrome. Tokens only, so
+   light/dark stays automatic. */
+
+/* ── top bar ─────────────────────────────────────────────────────────────────────────────── */
+.dash-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: var(--bar-h);
+  padding: 0 var(--s-lg);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bar-glass-bg);
+  backdrop-filter: var(--bar-glass-blur);
+}
+.dash-topbar-brand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+/* The app-nav cluster (Explore menu + ⌘K search) sits right after the brand, mirroring Live's
+   bar; it reuses top-bar.css's .topbar-text-btn/.more-menu chrome so it reads identically. Kept
+   out of the scrolling status cluster below so the primary nav never scrolls off a narrow bar. */
+.dash-topbar-nav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Hairline between the app-nav (the menus + Search) and the board controls, mirroring Live's topbar
+   divider — voice.css scopes that one to `.live-voice`, so the Dashboards surface needs its own.
+   (The menu/appearance dropdown panels themselves are `.tpl-menu` popovers styled by templates.css,
+   which this surface loads for its TemplatePicker.) */
+.dash-topbar .topbar-divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+}
+.dash-topbar-scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  /* The pill + meter + link don't all fit on a narrow phone's one sticky row — scroll that
+     cluster instead of wrapping (which would grow the sticky bar's height on every scroll) or
+     letting it clip, the same idiom the old nav's link row used. */
+  min-width: 0;
+  overflow-x: auto;
+}
+.dash-topbar-link {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 140ms ease;
+}
+.dash-topbar-link:hover {
+  color: var(--text-primary);
+}
+.dash-topbar-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.dash-topbar-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 7px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-soft);
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+.dash-topbar-action:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in oklab, var(--presence) 40%, var(--line-soft));
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+}
+
+/* ── "N on watch" pill ───────────────────────────────────────────────────────────────────── */
+.dash-watch-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+  color: var(--insight);
+}
+/* Reuse .dash-live-dot verbatim (its reduced-motion override already covers it); just retint it. */
+.dash-watch-pill .dash-live-dot {
+  background: var(--insight);
+}
+.dash-watch-pill--live {
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+.dash-watch-pill--live .dash-live-dot {
+  background: var(--danger);
+}
+
+/* ── daily search-budget meter ───────────────────────────────────────────────────────────── */
+.dash-budget {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.dash-budget-track {
+  width: 56px;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--text-muted) 20%, transparent);
+  overflow: hidden;
+}
+.dash-budget-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--insight);
+  transition: width var(--m-normal) var(--ease-out);
+}
+.dash-budget-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.dash-budget--amber .dash-budget-fill {
+  background: var(--warning);
+}
+.dash-budget--amber .dash-budget-label {
+  color: var(--warning);
+}
+.dash-budget--paused {
+  padding: 4px 10px;
+  border: 1px solid color-mix(in oklab, var(--danger) 45%, transparent);
+  border-radius: var(--r-full);
+}
+.dash-budget--paused .dash-budget-label {
+  color: var(--danger);
+}
+
+/* ── home layout: main column + check-log rail ──────────────────────────────────────────── */
+.dash-home {
+  width: min(100%, var(--canvas-col-max));
+  margin: 0 auto;
+  /* Extra bottom padding so the sticky composer never overlaps the last row of real content. */
+  padding: 26px 26px 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dash-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 324px;
+  gap: 22px;
+  align-items: start;
+}
+.dash-home-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dash-home-rail {
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--bar-h) + 20px);
+}
+/* Below tablet width the rail's fixed column would squeeze the main pane to an unusable sliver —
+   stack it below instead, the same idiom Ripple's rail/main split uses at its own breakpoint. */
+@media (max-width: 1180px) {
+  .dash-home-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-home-rail {
+    position: static;
+  }
+}
+
+/* ── no model connected ──────────────────────────────────────────────────────────────────── */
+/* Manual is the default cadence, so a fresh tracker's ONLY chance at populating is its creation
+   fetch + a user pressing Check now/all — both of which no-op without a key. Rather than let
+   every tile just sit on an unexplained "—", say why, once, at the top of the page. */
+.dash-connect-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, var(--line-soft));
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--warning) 10%, var(--surface-elevated));
+}
+.dash-connect-banner-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.dash-connect-banner-link {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--presence);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dash-connect-banner-link:hover {
+  text-decoration: underline;
+}
+
+/* ── tracking grid ───────────────────────────────────────────────────────────────────────── */
+.dash-track {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dash-track-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.dash-track-eyebrow {
+  font-family: var(--font-data, var(--font));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+.dash-track-head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dash-track-honesty {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint, var(--text-muted));
+}
+.dash-check-all-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.dash-check-all-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.dash-check-all-btn:hover:not(:disabled) {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 40%, var(--line-soft));
+}
+.dash-check-all-btn:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+.dash-check-all-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.dash-track-grid {
+  display: grid;
+  /* min() lets a column shrink below 250px on a phone narrower than that instead of forcing
+     horizontal overflow — same idiom as every other card grid in this surface. */
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+/* ── empty state additions (ghost tiles + example chips) ────────────────────────────────── */
+.dash-home-main > .dash-empty--hero {
+  /* The base .dash-empty is centered prose sized for a full-width page; here it sits in the
+     narrower left column of a two-up layout, so it reads as a normal left-aligned card instead. */
+  width: 100%;
+  margin: 0;
+  max-width: none;
+  text-align: left;
+}
+.tile-frame--ghost {
+  border-style: dashed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+.dash-home-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.dash-home-example-chip {
+  font-family: var(--font-data, var(--font));
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 6px 12px;
+}
+
+/* ── morning briefing ────────────────────────────────────────────────────────────────────── */
+.briefing-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.briefing-hero-head {
+  display: flex;
+  /* flex-start, not center — the eyebrow is a long, often-wrapping line; centering would leave
+     the LISTEN button drifting to the middle of a two-line eyebrow instead of hugging its top. */
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.briefing-hero-eyebrow {
+  margin: 0;
+  /* Overrides the shared .card-eyebrow's `white-space: nowrap` (visualizations-extra.css) — that
+     rule assumes a short static label, but this one is a long, dynamic line ("MORNING BRIEFING ·
+     10:29 AM · COMPILED WHILE CHECKING YOUR DASHBOARDS") that needs to actually wrap instead of
+     getting hard-clipped by .card's overflow:hidden. */
+  white-space: normal;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.briefing-hero-listen {
+  flex: none;
+  border: 1px solid color-mix(in oklab, var(--presence) 40%, var(--line));
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  color: var(--presence);
+  border-radius: var(--r-full);
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.briefing-hero-listen:hover {
+  background: color-mix(in oklab, var(--presence) 18%, transparent);
+}
+.briefing-hero-listen[aria-pressed='true'] {
+  background: var(--presence);
+  color: var(--on-presence, #fff);
+}
+.briefing-hero-text {
+  margin: 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.briefing-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── featured live-event card ────────────────────────────────────────────────────────────── */
+.featured-live {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-decoration: none;
+  border-color: color-mix(in oklab, var(--danger) 32%, var(--line));
+}
+.featured-live:hover {
+  border-color: var(--danger);
+}
+.featured-live--fallback {
+  display: flex;
+}
+.featured-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.featured-live-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+}
+.featured-live-eyebrow .dash-live-dot {
+  background: var(--danger);
+}
+.featured-live-title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-voice, var(--font));
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.featured-live-check {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.featured-live-check-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.featured-live-check-value {
+  font-family: var(--font-data, var(--font));
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.featured-live-check-context {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.featured-live-foot {
+  font-family: var(--font-data, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint, var(--text-muted));
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+
+/* ── metric chip ─────────────────────────────────────────────────────────────────────────── */
+.metric-chip {
+  --tint: var(--presence);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-data, var(--font));
+  font-size: 11.5px;
+  padding: 5px 11px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--tint) 14%, transparent);
+  color: var(--tint);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 140ms ease;
+}
+.metric-chip:hover {
+  background: color-mix(in oklab, var(--tint) 22%, transparent);
+}
+.metric-chip--insight {
+  --tint: var(--insight);
+}
+.metric-chip--warning {
+  --tint: var(--warning);
+}
+.metric-chip-value {
+  font-weight: 700;
+}
+.metric-chip-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ── toast ───────────────────────────────────────────────────────────────────────────────── */
+.dash-toast {
+  --tint: var(--presence);
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 40px));
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--tint) 35%, var(--line));
+  background: color-mix(in oklab, var(--tint) 10%, var(--surface-elevated));
+  box-shadow: var(--shadow-modal);
+}
+.dash-toast--insight {
+  --tint: var(--insight);
+}
+.dash-toast--warning {
+  --tint: var(--warning);
+}
+.dash-toast--danger {
+  --tint: var(--danger);
+}
+.dash-toast-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.dash-toast-link {
+  text-decoration: none;
+}
+.dash-toast-link:hover {
+  text-decoration: underline;
+}
+.dash-toast-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dash-toast-close:hover {
+  color: var(--text-primary);
+}

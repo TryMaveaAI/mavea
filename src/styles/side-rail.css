@@ -1,0 +1,170 @@
+/* ============================================================
+   SIDE RAIL — the conversation (chat + suggestions + composer) lives on the
+   left; the canvas is the stage. Replaces the old bottom composer-dock.
+   ============================================================ */
+.mavea-app.with-rail {
+  --rail-w: 380px;
+}
+
+.side-rail {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--rail-w);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface-default));
+  border-right: 1px solid var(--line);
+}
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.rail-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.rail-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--presence-soft);
+}
+.rail-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.rail-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.rail-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.rail-history:hover {
+  color: var(--presence);
+  border-color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+/* Icon-only variant (Replay / Overview in the rail header): a compact square button. */
+.rail-icon {
+  gap: 0;
+  padding: 5px;
+}
+.rail-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.rail-chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* everything else lives in the stage, right of the rail */
+.with-rail .topbar {
+  left: var(--rail-w);
+}
+.with-rail .presence-stage,
+.with-rail .canvas-stage {
+  left: var(--rail-w);
+}
+.with-rail .canvas-stage {
+  padding-bottom: 28px;
+}
+/* Keep the canvas column a centered, bounded width within the post-rail stage. */
+.with-rail .canvas-scroll {
+  max-width: calc(var(--canvas-col-max) + 52px);
+  margin-inline: auto;
+  width: 100%;
+}
+.with-rail .presence-stage {
+  padding-bottom: 40px;
+}
+.with-rail .presence-layer {
+  left: var(--rail-w);
+}
+.with-rail .presence-scrim {
+  left: var(--rail-w);
+}
+.with-rail .center-caption {
+  left: calc(50% + var(--rail-w) / 2);
+}
+/* docked face: --home-x/--home-y are measured against the presence layer's own centre, so the same
+   dock transform is correct with or without the rail. Fallback approximates the brand slot. */
+.with-rail .presence-layer.corner .presence-positioner {
+  transform: translate(
+      var(--home-x, calc(-50vw + 33px + var(--rail-w) / 2)),
+      var(--home-y, calc(-50vh + 30px))
+    )
+    scale(calc(var(--home-scale, 0.14) * var(--dock-zoom, 1)));
+}
+
+@media (max-width: 920px) {
+  .mavea-app.with-rail {
+    --rail-w: 312px;
+  }
+}
+
+/* composer fits the narrow rail: let the input shrink (the key fix), tighten controls */
+.composer-input {
+  min-width: 0;
+}
+.rail-dock .composer {
+  gap: 7px;
+  padding: 7px 8px 7px 14px;
+}
+.rail-dock .composer .mic-btn,
+.rail-dock .composer .send-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.rail-dock .composer .mic-btn svg,
+.rail-dock .composer .send-btn svg {
+  width: 17px;
+  height: 17px;
+}
+.rail-dock .composer .composer-tool {
+  width: 31px;
+  height: 31px;
+  flex-shrink: 0;
+}
+.rail-dock .composer .composer-tool svg {
+  width: 16px;
+  height: 16px;
+}
+.rail-dock .composer-input {
+  font-size: 14px;
+}
+.rail-dock .suggest {
+  font-size: 12.5px;
+}

@@ -1,0 +1,95 @@
+/* ============================================================
+   Skeletons — the one loading vocabulary, shared by every
+   surface that waits on content: Live's working column, the
+   canvas family gate, dashboard tiles, the gallery stage.
+   Unscoped on purpose (it began life under .live-voice in
+   turnstate.css, which still owns the Live-only composition:
+   .skel-stage, .working-col). Tokens only; every animation is
+   gated by prefers-reduced-motion.
+   ============================================================ */
+
+.skel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(10px, 1.2vw, 16px);
+  margin-top: 14px;
+}
+.skel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface-default));
+  border: 1px solid var(--line-soft);
+}
+.skel-eyebrow {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The canvas gate can't name what's coming (Live's WorkingSkeletons can) — an empty
+   eyebrow renders as a short quiet bar instead of a labeled line. */
+.skel-eyebrow:empty {
+  height: 10px;
+  width: 38%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-glass) 25%,
+    var(--surface-glass-strong) 50%,
+    var(--surface-glass) 75%
+  );
+  background-size: 300px 100%;
+  animation: skel-shimmer 1.4s linear infinite;
+}
+.skel-line {
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-glass) 25%,
+    var(--surface-glass-strong) 50%,
+    var(--surface-glass) 75%
+  );
+  background-size: 300px 100%;
+  animation: skel-shimmer 1.4s linear infinite;
+}
+@keyframes skel-shimmer {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: 300px 0;
+  }
+}
+
+/* Anti-flash: hold the skeleton invisible for a beat before easing it in, so a chunk that
+   resolves within ~150ms never flashes placeholder chrome at all. `both` keeps the card at
+   the from-frame (opacity 0) through the delay — no JS timer needed. */
+.skel-fade {
+  animation: skel-fade-in 200ms var(--ease-out) 150ms both;
+}
+@keyframes skel-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel-eyebrow:empty,
+  .skel-line,
+  /* without the animation the `both` fill is gone too — the skeleton is simply visible */
+  .skel-fade {
+    animation: none;
+  }
+}

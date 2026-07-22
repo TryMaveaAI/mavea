@@ -1,0 +1,781 @@
+/*
+ * The Mavéa Reel surface — a self-contained cinematic art-board for the vertical share video.
+ *
+ * Three ideas make it work everywhere, in every format:
+ *  1) An inner `.reel-board` with `container-type: size` that FILLS its frame, so it adopts whatever
+ *     aspect the frame is (Story 9:16, Square 1:1, Landscape 16:9). The player tags it `data-aspect`.
+ *  2) Sizes are expressed in two aspect-stable design units, `--ru` (vertical/type) and `--rw`
+ *     (horizontal). They default to `1cqh`/`1cqw` (so a bare 9:16 board is pixel-identical to before),
+ *     and the player upgrades them to px keyed off the board's SMALLER dimension — so type stays
+ *     legible and cards never balloon when the board is short-and-wide. Because both units resolve to
+ *     plain px, the offscreen rasterizer (modern-screenshot) captures every format pixel-for-pixel.
+ *     POSITIONS (the stage band + chrome insets) are percentages, tuned per `data-aspect`, so each
+ *     format gets a generous, centered safe area that FitScale fits the finish into.
+ *  3) Color is a single set of CSS variables keyed off `data-palette`, so one slide component serves
+ *     all four palettes and there is no hex in the JSX.
+ *
+ * Type maps onto the fonts the app already loads (Hanken Grotesk · IBM Plex Mono · Newsreader) — no
+ * extra webfont, so the rasterizer never renders a fallback face.
+ */
+
+.reel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--reel-wash);
+  color: var(--reel-ink);
+  --reel-sans: var(--font, 'Hanken Grotesk', system-ui, sans-serif);
+  --reel-mono: var(--font-data, 'IBM Plex Mono', ui-monospace, monospace);
+  --reel-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --reel-tick: #e8742f;
+  --reel-draw: #c8763a;
+}
+/* The frame clips overflow (it's rasterized as a hard-edged board), so a default outline would draw
+   past the edge and vanish. An inset ring keeps keyboard focus visible for the interactive preview
+   (← → step, ↑ ↓ sections, space pauses) without adding any chrome when it isn't focused. */
+.reel:focus {
+  outline: none;
+}
+.reel:focus-visible {
+  box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--reel-accent) 70%, white 12%);
+}
+
+/* ---- palettes (the only place reel hex lives) ---- */
+.reel[data-palette='aurora'] {
+  --reel-accent: #4f46e5;
+  --reel-accent-2: #7c3aed;
+  --reel-glow: rgba(99, 91, 255, 0.55);
+  --reel-bg: linear-gradient(180deg, #edecfe 0%, #f8f7ff 62%, #efeefb 100%);
+  --reel-wash: radial-gradient(120% 90% at 50% 0%, #1a1840 0%, #0b0a18 60%, #07060f 100%);
+  --reel-ink: #1c1a3a;
+  --reel-orb-1: #6d6dff;
+  --reel-orb-2: #3a2db0;
+}
+.reel[data-palette='ember'] {
+  --reel-accent: #e0603a;
+  --reel-accent-2: #f4923c;
+  --reel-glow: rgba(224, 96, 58, 0.5);
+  --reel-bg: linear-gradient(180deg, #fde9de 0%, #fff6f1 62%, #fdeee6 100%);
+  --reel-wash: radial-gradient(120% 90% at 50% 0%, #3a160c 0%, #170a07 60%, #0d0605 100%);
+  --reel-ink: #34190f;
+  --reel-orb-1: #f4923c;
+  --reel-orb-2: #b5380f;
+}
+.reel[data-palette='ocean'] {
+  --reel-accent: #0f9bad;
+  --reel-accent-2: #2ad0e6;
+  --reel-glow: rgba(15, 170, 189, 0.5);
+  --reel-bg: linear-gradient(180deg, #e2f4f6 0%, #f1fbfc 62%, #e8f7f8 100%);
+  --reel-wash: radial-gradient(120% 90% at 50% 0%, #06343a 0%, #04181c 60%, #03090c 100%);
+  --reel-ink: #0c2b30;
+  --reel-orb-1: #2ad0e6;
+  --reel-orb-2: #0c6f7d;
+}
+.reel[data-palette='chalk'] {
+  --reel-accent: #6f7588;
+  --reel-accent-2: #9aa1b4;
+  --reel-glow: rgba(125, 131, 152, 0.4);
+  --reel-bg: linear-gradient(180deg, #eaecf1 0%, #f8f9fb 62%, #eef0f4 100%);
+  --reel-wash: radial-gradient(120% 90% at 50% 0%, #2a2d3a 0%, #131520 60%, #0c0d14 100%);
+  --reel-ink: #2a2d3a;
+  --reel-orb-1: #c3c8d6;
+  --reel-orb-2: #7d8398;
+}
+
+/* ---- the board: the coordinate space every slide is measured in ---- */
+.reel-board {
+  /* Aspect-stable design units. Defaults equal 1cqh / 1cqw so a bare 9:16 board is identical to the
+     original; the player overrides them with px (keyed off the smaller board edge) for every format. */
+  --ru: 1cqh;
+  --rw: 1cqw;
+  container-type: size;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--reel-bg);
+  isolation: isolate;
+  color: var(--reel-ink);
+}
+
+/* A full-bleed dark wash the player drops behind finishes built for a dark backdrop. It sits above
+   the light board surface but below the orb + content, and flips the chrome to light. */
+.reel-darkwash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--reel-wash);
+}
+.reel-board[data-surface='dark'] {
+  /* On the dark wash, flip the ink light so finishes that draw text in var(--reel-ink) stay legible. */
+  --reel-ink: #eef1ff;
+}
+.reel-board[data-surface='dark'] .reel-wordmark {
+  color: #fff;
+}
+.reel-board[data-surface='dark'] .reel-seg {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* The orb's ambient glow, drifting behind everything. */
+.reel-board::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  width: calc(var(--ru) * 80);
+  height: calc(var(--ru) * 80);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 50% 50%, var(--reel-glow) 0%, transparent 62%);
+  animation: reel-glow-drift 24s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* ---- top chrome ---- */
+.reel-top {
+  position: absolute;
+  inset: calc(var(--ru) * 3.2) calc(var(--rw) * 4.4) auto calc(var(--rw) * 4.4);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ru) * 1.4);
+}
+.reel-progress {
+  position: absolute;
+  inset: calc(var(--ru) * 2) calc(var(--rw) * 4.4) auto calc(var(--rw) * 4.4);
+  z-index: 5;
+  display: flex;
+  gap: calc(var(--rw) * 1);
+}
+/* Each segment is wrapped in a hit target so it can be clicked to scrub the preview. The wrapper
+   carries the flex sizing + (when interactive) a generous vertical pad so it's easy to tap. */
+.reel-seg-hit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+}
+.reel-progress[data-interactive='true'] .reel-seg-hit {
+  cursor: pointer;
+  padding-block: calc(var(--ru) * 1.4);
+  margin-block: calc(var(--ru) * -1.4);
+}
+.reel-progress[data-interactive='true'] .reel-seg-hit:hover .reel-seg {
+  background: color-mix(in oklab, var(--reel-ink) 30%, transparent);
+}
+.reel-seg {
+  width: 100%;
+  height: calc(var(--ru) * 0.55);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--reel-ink) 16%, transparent);
+  overflow: hidden;
+}
+.reel-seg > i {
+  display: block;
+  height: 100%;
+  width: var(--fill, 0%);
+  background: var(--reel-accent);
+  border-radius: inherit;
+}
+.reel-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--ru) * 1.1);
+  font: 600 calc(var(--ru) * 2.4) / 1 var(--reel-sans);
+  color: var(--reel-ink);
+}
+.reel-dot {
+  width: calc(var(--ru) * 1.3);
+  height: calc(var(--ru) * 1.3);
+  border-radius: 50%;
+  background: var(--reel-accent);
+  animation: reel-pulse 1.8s ease-in-out infinite;
+}
+.reel-palettename {
+  margin-left: auto;
+  font: 500 calc(var(--ru) * 2) / 1 var(--reel-mono);
+  letter-spacing: 0.18em;
+  color: var(--reel-accent);
+  text-transform: uppercase;
+}
+
+/* ---- the brand jelly ---- */
+/* The one creature, drawn from the living face's shared geometry (ReelJelly.tsx) and tinted by the
+   template palette's orb slots — never a lookalike. The 200×220 view space INCLUDES the trailing
+   strands, so this box is the mark's honest footprint: the per-aspect sizes below are chosen so the
+   whole jelly (strands and all) clears the stage band instead of drifting over the finish text. */
+.reel-jelly {
+  /* The bell fills ~62% of the view space's width — these boxes are sized so the BELL keeps the
+     old mark's presence while the whole footprint still clears the stage band. */
+  width: calc(var(--ru) * 18);
+  height: calc(var(--ru) * 19.8);
+  filter: drop-shadow(0 calc(var(--ru) * 1.4) calc(var(--ru) * 4.5) var(--reel-glow));
+  animation: reel-floaty 5.5s ease-in-out infinite;
+}
+.reel-jelly svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.reel-jelly[data-size='sm'] {
+  width: calc(var(--ru) * 13);
+  height: calc(var(--ru) * 14.3);
+}
+/* Bell gradient: the palette's two orb hues with a soft mid blend. */
+.reel-jelly-stop.s1 {
+  stop-color: var(--reel-orb-1);
+}
+.reel-jelly-stop.s2 {
+  stop-color: color-mix(in oklab, var(--reel-orb-1) 45%, var(--reel-orb-2));
+}
+.reel-jelly-stop.s3 {
+  stop-color: var(--reel-orb-2);
+}
+.reel-jelly-bell {
+  opacity: 0.96;
+}
+.reel-jelly-sheen {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.reel-jelly-strands path {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.reel-jelly-strands .c1 {
+  stroke: var(--reel-orb-1);
+}
+.reel-jelly-strands .c2 {
+  stroke: var(--reel-accent-2);
+}
+.reel-jelly-strands .c3 {
+  stroke: var(--reel-accent);
+}
+.reel-jelly-strands .c4 {
+  stroke: var(--reel-orb-2);
+}
+/* Face constants — the same on every palette (like the blob's old inline face colors): white
+   sparkly eyes, navy pupils, the pink cheeks. Not palette slots on purpose: the face never re-tints. */
+.reel-jelly-cheek {
+  fill: #ff9fb6;
+  opacity: 0.35;
+}
+.reel-jelly-ball,
+.reel-jelly-glint {
+  fill: #fff;
+}
+.reel-jelly-pupil {
+  fill: #252c55;
+}
+.reel-jelly-smile {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3.6;
+  stroke-linecap: round;
+}
+/* The jelly floats at the top of the board; the wrapper centers it so its own transform stays free.
+   9:16: box bottom lands at 8.5% + 19.8ru ≈ 28.3% — just clear of the 29% stage top. */
+.reel-jelly-pos {
+  position: absolute;
+  top: 8.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+/* ---- the content stage: a DEFINITE-size safe band FitScale fits the finish into ---- */
+.reel-stage {
+  /* Must have a real size (not collapse to content) and clear the top chrome so nothing hides.
+     Percentages so the band is a consistent, tuned fraction of whatever aspect the board is. The
+     bottom margin isn't chrome of ours — it stands in for the platform's OWN UI that overlays the
+     lower frame on a real vertical post (TikTok/Reels/Shorts' caption strip, the like/share/follow
+     action rail), so a beat exported here still reads once it lands on the platform. */
+  position: absolute;
+  inset: 29% 0 12%;
+  z-index: 3;
+}
+/* Full-bleed finishes own the frame (no orb), so they get the whole board minus the top chrome and
+   that same platform-UI clearance at the bottom. */
+.reel-board[data-bleed='true'] .reel-stage {
+  inset: 11% 0 10%;
+}
+
+/* Remix-only finishes arrive behind an async boundary. Keep the composition stable while a slow
+   connection fetches that wardrobe; canonical first-preview slides never show this placeholder. */
+.reel-finish-loading {
+  width: min(72%, 280px);
+  height: min(46%, 240px);
+  margin: auto;
+  border: 1px solid color-mix(in oklab, var(--reel-accent) 22%, transparent);
+  border-radius: calc(var(--ru) * 2.4);
+  background: color-mix(in oklab, var(--reel-accent) 8%, transparent);
+}
+
+/* Space bar pause: a quiet confirmation that playback actually froze (rather than just looking stuck),
+   fading in over the whole board. Purely decorative (the progress bar's own animation-play-state is
+   the real freeze), so it stays out of the accessibility tree. */
+.reel-pause-badge {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.reel-pause-badge[data-show='true'] {
+  opacity: 1;
+}
+.reel-pause-glyph {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ru) * 1);
+  width: calc(var(--ru) * 12);
+  height: calc(var(--ru) * 12);
+  border-radius: 50%;
+  justify-content: center;
+  background: color-mix(in oklab, black 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+.reel-pause-glyph span {
+  width: calc(var(--ru) * 1.6);
+  height: calc(var(--ru) * 5.2);
+  border-radius: calc(var(--ru) * 0.4);
+  background: #fff;
+}
+
+/* ---- square (1:1): a touch more vertical room, smaller jelly higher up. In ru terms a square
+   board is only ~56ru tall, so the jelly must stay compact for its strands to clear the band. ---- */
+.reel-board[data-aspect='1:1'] .reel-jelly-pos {
+  top: 6.5%;
+}
+.reel-board[data-aspect='1:1'] .reel-jelly {
+  width: calc(var(--ru) * 9);
+  height: calc(var(--ru) * 9.9);
+}
+.reel-board[data-aspect='1:1'] .reel-stage {
+  inset: 27% 3% 10%;
+}
+.reel-board[data-aspect='1:1'][data-bleed='true'] .reel-stage {
+  inset: 13% 2% 9%;
+}
+.reel-board[data-aspect='1:1']::before {
+  top: 10%;
+}
+
+/* ---- landscape (16:9): jelly to the left, card to the right — a horizontal split so non-bleed
+   finishes read as composed-for-wide, not a portrait card marooned in a sea of wash. ---- */
+.reel-board[data-aspect='16:9'] .reel-jelly-pos {
+  top: 50%;
+  left: 21%;
+  transform: translate(-50%, -50%);
+}
+.reel-board[data-aspect='16:9'] .reel-jelly {
+  /* The wide split gives the jelly its own column — room for a bigger creature. */
+  width: calc(var(--ru) * 22);
+  height: calc(var(--ru) * 24.2);
+}
+.reel-board[data-aspect='16:9'] .reel-stage {
+  inset: 14% 6% 10% 39%;
+}
+/* Bleed finishes still own the whole wide frame (they bring their own layout). */
+.reel-board[data-aspect='16:9'][data-bleed='true'] .reel-stage {
+  inset: 12% 6% 9%;
+}
+.reel-board[data-aspect='16:9']::before {
+  left: 21%;
+  top: 50%;
+}
+
+/* Slide-to-slide transition layer: fills the band (so FitScale still fits to it) and plays a varied
+   entrance each time a beat mounts. The finish's own content animations layer on top. */
+.reel-trans {
+  position: absolute;
+  inset: 0;
+}
+/* `forwards` (not `both`): a backgrounded tab can stall a CSS animation before it ever plays, and a
+   `backwards` fill would hold every slide at its 0%-opacity "from" frame — invisible until refocus —
+   for as long as the tab stays hidden. Every entrance here has zero delay, so dropping `backwards`
+   costs nothing on a visible tab (the animation still takes over immediately) while guaranteeing the
+   slide renders at its natural opacity instead of staying blank through a recorded export pass. */
+.reel-trans[data-trans='fade'] {
+  animation: reel-trans-fade 0.5s ease forwards;
+}
+.reel-trans[data-trans='up'] {
+  animation: reel-trans-up 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.reel-trans[data-trans='left'] {
+  animation: reel-trans-left 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.reel-trans[data-trans='zoom'] {
+  animation: reel-trans-zoom 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.reel-trans[data-trans='wipe'] {
+  animation: reel-trans-wipe 0.62s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes reel-trans-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes reel-trans-up {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--ru) * 7));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes reel-trans-left {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--rw) * 9));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes reel-trans-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes reel-trans-wipe {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+.reel-card {
+  position: relative;
+  width: calc(var(--rw) * 84);
+  max-width: 92%;
+  padding: calc(var(--ru) * 4) calc(var(--rw) * 4.4);
+  border-radius: calc(var(--ru) * 4);
+  background: color-mix(in oklab, #fff 88%, var(--reel-accent) 6%);
+  border: 1px solid color-mix(in oklab, var(--reel-ink) 12%, transparent);
+  box-shadow:
+    0 calc(var(--ru) * 6) calc(var(--ru) * 14) calc(var(--ru) * -6) rgba(20, 16, 44, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+.reel-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ru) * 1.2);
+  /* Wraps to a second line rather than overflowing when a derived heading and the "part N of M"
+     chip together outrun the card's width (a long heading, a landscape board, a double-digit part). */
+  row-gap: calc(var(--ru) * 0.8);
+  flex-wrap: wrap;
+  font: 500 calc(var(--ru) * 2) / 1 var(--reel-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--reel-ink) 62%, transparent);
+}
+.reel-part-chip {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--ru) * 3.2);
+  padding: 0 calc(var(--rw) * 1.6);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--reel-accent) 18%, transparent);
+  color: var(--reel-accent);
+  white-space: nowrap;
+}
+
+/* ---- intro / outro (rendered inside .reel-stage; the orb + chrome are the player's) ---- */
+.reel-frame-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--ru) * 3);
+  text-align: center;
+}
+.reel-prompt {
+  font: 700 calc(var(--ru) * 7.4) / 1.12 var(--reel-sans);
+  letter-spacing: -0.02em;
+  color: var(--reel-ink);
+  max-width: calc(var(--rw) * 88);
+  text-wrap: balance;
+}
+.reel-prompt .q {
+  color: var(--reel-accent);
+}
+.reel-caret {
+  display: inline-block;
+  width: calc(var(--rw) * 0.5);
+  height: calc(var(--ru) * 6);
+  vertical-align: text-bottom;
+  margin-left: calc(var(--rw) * 0.6);
+  background: var(--reel-accent);
+  animation: reel-blink 1s step-end infinite;
+}
+.reel-wordmark-xl {
+  font: 200 calc(var(--ru) * 18) / 1 var(--reel-sans);
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, var(--reel-orb-1), var(--reel-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.reel-tagline {
+  font: 500 calc(var(--ru) * 3) / 1.3 var(--reel-sans);
+  color: color-mix(in oklab, var(--reel-ink) 64%, transparent);
+  text-wrap: balance;
+}
+
+/* ---- shared finish primitives ---- */
+.reel-card h3 {
+  margin: calc(var(--ru) * 2.4) 0 0;
+  font: 700 calc(var(--ru) * 4.6) / 1.08 var(--reel-sans);
+  letter-spacing: -0.01em;
+  color: var(--reel-ink);
+  text-wrap: balance;
+}
+.reel-bignum {
+  font: 700 calc(var(--ru) * 17) / 0.92 var(--reel-sans);
+  letter-spacing: -0.03em;
+  color: var(--reel-accent);
+}
+/* `forwards`, not `both` — see the `.reel-trans` comment above: this zero-delay fade backs most
+   finishes' whole-card entrance, so a stalled-while-hidden animation would otherwise blank the card. */
+.reel-fade {
+  animation: reel-fade-up 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+/* ---- flashcard finish ---- */
+.reel-flipcard {
+  position: relative;
+  width: 100%;
+  height: calc(var(--ru) * 38);
+  transform-style: preserve-3d;
+  animation: reel-flip 3.6s cubic-bezier(0.6, 0, 0.2, 1) 0.5s both;
+}
+.reel-flipface {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: calc(var(--ru) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--ru) * 1.6);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: calc(var(--ru) * 3) calc(var(--rw) * 4);
+  font: 600 calc(var(--ru) * 3.6) / 1.32 var(--reel-sans);
+  background: color-mix(in oklab, var(--reel-ink) 6%, transparent);
+  color: var(--reel-ink);
+}
+.reel-flipback {
+  background: linear-gradient(135deg, var(--reel-accent), var(--reel-accent-2));
+  color: #fff;
+  transform: rotateY(180deg);
+}
+.reel-flipkick {
+  font: 600 calc(var(--ru) * 2) / 1 var(--reel-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ---- spotlight pull-quote finish ---- */
+.reel-quote {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--ru) * 2);
+  max-width: calc(var(--rw) * 84);
+}
+.reel-quote-mark {
+  font: 700 calc(var(--ru) * 18) / 0.5 var(--reel-serif);
+  color: var(--reel-accent);
+}
+.reel-quote-body {
+  margin: 0;
+  font: 700 calc(var(--ru) * 5.6) / 1.28 var(--reel-sans);
+  letter-spacing: -0.01em;
+  color: var(--reel-ink);
+  text-wrap: balance;
+}
+.reel-quote-body mark {
+  background: color-mix(in oklab, var(--reel-accent) 28%, transparent);
+  color: inherit;
+  padding: 0 calc(var(--rw) * 0.4);
+  border-radius: calc(var(--ru) * 0.6);
+}
+
+/* ---- keyframes ---- */
+@keyframes reel-glow-drift {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-50%, -46%) scale(1.16);
+    opacity: 1;
+  }
+}
+@keyframes reel-floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--ru) * -2.4));
+  }
+}
+@keyframes reel-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+@keyframes reel-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes reel-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--ru) * 2));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes reel-grow-bar {
+  from {
+    transform: scaleY(0.12);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes reel-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes reel-draw {
+  from {
+    stroke-dashoffset: var(--len, 1);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes reel-ring {
+  to {
+    stroke-dashoffset: var(--to, 0);
+  }
+}
+@keyframes reel-flip {
+  0%,
+  38% {
+    transform: rotateY(0deg);
+  }
+  62%,
+  100% {
+    transform: rotateY(180deg);
+  }
+}
+@keyframes reel-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes reel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--ru) * 3));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes reel-sheen {
+  to {
+    background-position: 200% 50%;
+  }
+}
+@keyframes reel-seg-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Respect reduced motion: stop the ambient brand loops, and reduce every in-stage animation to a
+   single instant frame. The stage-wide selector matters because the ~40 full-bleed finishes render
+   directly in `.reel-stage > .reel-trans` (NOT inside `.reel-card`), so their internal marquees,
+   sheens and looping draws would otherwise keep moving — a `.reel-card *` rule only tamed the
+   card-based finishes. `.reel-stage *` covers the entrance transitions, the intro/outro and every
+   finish (card and bleed alike); the `!important` duration override beats a finish's inline
+   `animation` shorthand. The progress fill lives outside the stage and stays as a time indicator. */
+@media (prefers-reduced-motion: reduce) {
+  .reel-jelly,
+  .reel-board::before,
+  .reel-dot,
+  .reel-drawing {
+    animation: none !important;
+  }
+  .reel-stage * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

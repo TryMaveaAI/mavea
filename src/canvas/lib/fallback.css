@@ -1,0 +1,39 @@
+/* fallback.css — the graceful-degradation card (FallbackCard): plain, readable lines of a
+   block's real content when its designed component can't render. Kept deliberately quiet so
+   it reads as a simple list card, never as an error state. */
+
+.fb-lines {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.fb-line {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.fb-line::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 55%, transparent);
+}
+
+.fb-more {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fb-more::before {
+  display: none;
+}

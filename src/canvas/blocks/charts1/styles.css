@@ -1,0 +1,1023 @@
+/* charts1 family styles — tokens only; light/dark via existing token overrides. */
+
+/* ── overflow containment (scoped to this family's cards via .c1 root) ──
+   long titles wrap instead of spilling past the rounded border; the global
+   .card-eyebrow is white-space:nowrap, so relax it only for our cards. The SVG
+   charts already use viewBox + width:100% so they scale within the padded box. */
+.c1 .card-eyebrow {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c1 .insight-summary {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* ── shared legend / breadcrumb / swatch primitives ── */
+.c1-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+.c1-swatch-inline {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.c1-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  /* Scale legend text with the card width too, so it tracks the larger chart on wide figures. */
+  font-size: clamp(12.5px, 1.4cqi, 16px);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    color var(--m-fast),
+    opacity var(--m-fast);
+}
+.c1-legend-row:hover {
+  background: var(--surface-glass);
+  border-color: var(--line);
+}
+.c1-legend-row.active {
+  background: var(--surface-glass-strong);
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.c1-legend-row.muted {
+  opacity: 0.45;
+}
+.c1-legend-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c1-legend-check {
+  width: 14px;
+  height: 14px;
+  color: var(--insight);
+  flex-shrink: 0;
+  transition: opacity var(--m-fast);
+}
+/* A second, wrapping line under .c1-legend-label — for rows with descriptive prose
+   (TamSam's market definitions) rather than just a short name. */
+.c1-legend-desc {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 0.86em;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ── tamsam ──
+   Concentric rings bloom in from the center, staggered by --i (outermost → innermost). Gated
+   behind prefers-reduced-motion: no-preference; reduced-motion users see the settled rings. */
+.c1-ts-svg {
+  width: 100%;
+  max-width: 340px;
+  display: block;
+  margin-inline: auto;
+}
+.c1-ts-ring {
+  cursor: pointer;
+  transition:
+    fill-opacity var(--m-fast) var(--ease-out),
+    stroke-opacity var(--m-fast) var(--ease-out),
+    stroke-width var(--m-fast) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .c1-ts-ring {
+    animation: c1RingBloom var(--m-expressive) var(--ease-spring) backwards;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+}
+@keyframes c1RingBloom {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.c1-ts-center {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── treemap ── */
+.c1-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.c1-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+.c1-crumb {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 3px 6px;
+  border-radius: var(--r-sm);
+  transition:
+    color var(--m-fast),
+    background var(--m-fast);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.c1-crumb:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+.c1-crumb.active {
+  color: var(--presence-soft);
+  font-weight: 600;
+}
+.c1-crumb-sep {
+  width: 13px;
+  height: 13px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+.c1-treemap text {
+  pointer-events: none;
+  user-select: none;
+}
+/* Cells grow in on mount and again on every drill (the group is re-keyed by drill path, so
+   React remounts it and the animation replays). Gated behind prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .c1-tm-cell {
+    animation: c1CellGrow var(--m-normal) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 35ms);
+  }
+}
+@keyframes c1CellGrow {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.c1-tm-rect {
+  transition:
+    fill var(--m-fast) var(--ease-out),
+    stroke-width var(--m-fast) var(--ease-out),
+    transform var(--m-fast) var(--ease-out);
+}
+
+/* ── sunburst ── */
+.c1-sun-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.c1-sunburst {
+  max-width: 300px;
+  width: 100%;
+}
+.c1-sun-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* ── radar ── */
+.c1-radar-wrap {
+  display: grid;
+  /* Content-sized columns, not stretchy fr units: on a wide card the chart + legend stay a balanced
+     pair centred in the card (margin-inline:auto + justify-content) instead of pinning the chart far
+     left and stranding the legend mid-card with dead space on the right. */
+  grid-template-columns: minmax(0, 520px) minmax(0, max-content);
+  gap: clamp(20px, 6%, 64px);
+  align-items: center;
+  justify-content: center;
+  max-width: 1040px;
+  margin-inline: auto;
+}
+.c1-radar {
+  /* Scale the chart with the card's own width (cqi resolves against .card) so a wide figure gets a
+     larger radar — and its SVG-unit labels scale up with it — instead of a tiny capped chart. */
+  width: 100%;
+  max-width: clamp(300px, 42cqi, 520px);
+}
+.c1-radar-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* responsive: stack legends under the chart on narrow cards */
+@media (max-width: 560px) {
+  .c1-sun-wrap,
+  .c1-radar-wrap {
+    grid-template-columns: 1fr;
+  }
+  .c1-sunburst,
+  .c1-radar {
+    max-width: 260px;
+    margin: 0 auto;
+  }
+}
+
+/* respect reduced motion — kill the per-element transitions that loop on hover */
+@media (prefers-reduced-motion: reduce) {
+  .c1-legend-row,
+  .c1-legend-check,
+  .c1-crumb,
+  .c1-crumb-sep,
+  .c1-tm-rect,
+  .c1-ts-ring {
+    transition: none;
+  }
+}
+
+/* ── venn: set-overlap diagram ── */
+.c1-venn-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Height follows width via the viewBox — cap the measure (and centre) so the figure
+     doesn't dwarf the card on a wide canvas. */
+  max-width: 420px;
+  margin-inline: auto;
+}
+.c1-venn-val {
+  fill: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+.c1-venn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.c1-venn-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.c1-venn-leg i {
+  width: 11px;
+  height: 11px;
+  border-radius: var(--r-full);
+  display: inline-block;
+}
+.c1-venn-leg.on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ───────────────────────── piedonut ───────────────────────── */
+.c1-pd {
+  display: flex;
+  justify-content: center;
+}
+.c1-pd-svg {
+  width: 100%;
+  max-width: clamp(160px, 60cqi, 240px);
+  height: auto;
+}
+.c1-pd-arc {
+  transition:
+    opacity var(--m-fast),
+    transform var(--m-fast);
+  transform-origin: 60px 60px;
+  cursor: pointer;
+}
+.c1-pd-cval {
+  fill: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.c1-pd-clbl {
+  fill: var(--text-muted);
+  font-size: 7px;
+}
+
+/* ───────────────────────── quadrant ───────────────────────── */
+
+/*
+  Layout: optional rotated y-label sits left of a column that contains the 2×2 grid + x-label.
+  The grid uses a border-based cross — a 1px solid line on the right of col-1 cells and the
+  bottom of row-1 cells — rather than SVG, so all content is plain HTML for accessibility.
+*/
+.qd-outer {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Y-axis label wrapper: same height as the grid, no width of its own beyond the rotated text */
+.qd-ylabel-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+}
+.qd-ylabel {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transform: rotate(-90deg);
+  transform-origin: center center;
+  writing-mode: horizontal-tb;
+  /* Use a max-width matching the grid height so long labels don't overflow */
+  max-width: clamp(80px, 36cqi, 180px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Flex column: grid on top, x-label below */
+.qd-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 5px;
+}
+
+/* 2×2 grid — dividing lines via border on col-1 cells (right) and row-1 cells (bottom) */
+.qd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  /* Outer border gives the grid a defined boundary */
+  border: 1px solid color-mix(in oklab, var(--text-primary) 22%, transparent);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  min-height: clamp(160px, 54cqi, 380px);
+}
+
+/* Individual quadrant cell */
+.qd-cell {
+  position: relative;
+  padding: 8px 9px 8px 8px;
+  min-width: 0;
+  /* Internal dividers — 1px line at half-opacity of the primary text so they read clearly in
+     both light and dark without competing with the content. */
+  border-right: 1px solid color-mix(in oklab, var(--text-primary) 22%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 22%, transparent);
+}
+/* Kill the right border on column-2 cells */
+.qd-cell:nth-child(2n) {
+  border-right: none;
+}
+/* Kill the bottom border on row-2 cells */
+.qd-cell:nth-child(3),
+.qd-cell:nth-child(4) {
+  border-bottom: none;
+}
+
+/* Faint corner label for the quadrant name — floated into the correct corner */
+.qd-qlabel {
+  position: absolute;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0.55;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  line-height: 1.2;
+}
+.qd-qlabel--tr {
+  top: 5px;
+  right: 6px;
+  text-align: right;
+}
+.qd-qlabel--tl {
+  top: 5px;
+  left: 6px;
+  text-align: left;
+}
+.qd-qlabel--bl {
+  bottom: 5px;
+  left: 6px;
+  text-align: left;
+}
+.qd-qlabel--br {
+  bottom: 5px;
+  right: 6px;
+  text-align: right;
+}
+
+/* Compact list of items inside a cell — no built-in list chrome */
+.qd-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  /* Push items below the corner label to avoid overlap */
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* One item row: coloured dot + label/note stacked */
+.qd-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+.qd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.qd-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.qd-item-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.qd-item-note {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* X-axis label — centred below the grid */
+.qd-xlabel {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Reduced motion — nothing animates in this component, but keep the rule for completeness */
+@media (prefers-reduced-motion: reduce) {
+  .qd-cell {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── distributioncurve ───────────────────────── */
+.c1-dist-svg {
+  width: 100%;
+  height: clamp(160px, 60cqi, 360px);
+  display: block;
+  overflow: visible;
+}
+.c1-dist-curve {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.c1-dist-shade.tail {
+  fill: color-mix(in oklab, var(--warning) 28%, transparent);
+}
+.c1-dist-shade.ci {
+  fill: color-mix(in oklab, var(--presence) 20%, transparent);
+}
+.c1-dist-mklbl {
+  fill: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* ───────────────────────── latencydist ───────────────────────── */
+/* Headline row under the chart: the tail value + a coloured SLO verdict pill. */
+.c1-ld-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.c1-ld-stat {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.c1-ld-verdict {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-full, 999px);
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.c1-ld-pct text,
+.c1-ld-pct line {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ───────────────────────── captable ───────────────────────── */
+/* Stacked ownership bar — segments sit flush; first/last round the bar ends. */
+.c1-cap-bar {
+  display: flex;
+  width: 100%;
+  height: 18px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin: 4px 0 14px;
+  background: color-mix(in oklab, var(--text-muted) 14%, transparent);
+}
+.c1-cap-seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  transition:
+    opacity var(--m-fast),
+    width var(--m-fast);
+  cursor: default;
+}
+.c1-cap-seg-pct {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--surface-elevated);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+  /* Readable over any accent: a faint dark wash behind the light glyphs. */
+  mix-blend-mode: normal;
+}
+
+/* Ledger — scrolls horizontally on a narrow card rather than overflowing. */
+.c1-cap-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.c1-cap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-xs, 12px);
+}
+.c1-cap-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0 10px 6px 0;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.c1-cap-table th.num,
+.c1-cap-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.c1-cap-table td {
+  padding: 7px 10px 7px 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  vertical-align: middle;
+}
+.c1-cap-table tr.on td {
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+}
+.c1-cap-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full, 999px);
+  margin-right: 7px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.c1-cap-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.c1-cap-class {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.c1-cap-table tfoot td {
+  border-bottom: none;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c1-cap-seg {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── lifewheel ───────────────────────── */
+/* Reuses the radar wrap (.c1-radar-wrap / .c1-radar) for the figure + its
+   responsive stacking; only the felt-scale chrome and the side balance panel
+   are bespoke. The polygon's roundness reads "balance" at a glance. */
+.c1-lw-score {
+  pointer-events: none;
+  user-select: none;
+  paint-order: stroke;
+  stroke: var(--surface-elevated);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+/* Side panel: a headline balance number over per-domain felt bars. */
+.c1-lw-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.c1-lw-balance {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.c1-lw-avg {
+  font-size: clamp(22px, 8cqi, 30px);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.c1-lw-avg-lbl {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.c1-lw-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.c1-lw-leg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px 18px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  transition: color var(--m-fast);
+}
+.c1-lw-leg.on {
+  color: var(--text-primary);
+}
+.c1-lw-leg-label {
+  font-size: 12px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.c1-lw-leg-track {
+  height: 6px;
+  border-radius: var(--r-full, 999px);
+  background: var(--track);
+  overflow: hidden;
+}
+.c1-lw-leg-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--presence);
+  transition: width var(--m-normal);
+}
+.c1-lw-leg-score {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c1-lw-leg,
+  .c1-lw-leg-fill {
+    transition: none;
+  }
+}
+
+/* ───────────────────────── shared fade+rise entrance ─────────────────────────
+   Boxplot's per-group whisker/box clusters and ViolinPlot's per-group density
+   paths both want the same "fade in while sliding a few px toward rest" beat,
+   staggered by an index — only the travel direction differs (violins settle
+   downward off the axis line, boxplot groups rise up like list items), so a
+   single primitive parameterized by --rise covers both instead of two
+   near-identical keyframes. Gated behind prefers-reduced-motion: no-preference,
+   same convention as .c1-ts-ring / .c1-tm-cell above. */
+@media (prefers-reduced-motion: no-preference) {
+  .c1-bp-group {
+    --rise: 4px;
+    animation: c1FadeRise var(--m-normal) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+  .c1-violin-path {
+    --rise: -8px;
+    animation: c1FadeRise var(--m-normal) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+}
+@keyframes c1FadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ───────────────────────── network ─────────────────────────
+   Nodes bloom in with a light scale-up; edges follow the same beat but faster
+   and slightly offset, so links seem to snap taut between settled nodes.
+   Both staggered by --i. Gated behind prefers-reduced-motion: no-preference. */
+@media (prefers-reduced-motion: no-preference) {
+  .c1-network-node {
+    animation: c1NetworkNodeGrow var(--m-normal) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 50ms);
+  }
+  .c1-network-edge {
+    animation: c1NetworkNodeGrow calc(var(--m-normal) * 0.8) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 35ms);
+  }
+}
+@keyframes c1NetworkNodeGrow {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ───────────────────────── waterfall ─────────────────────────
+   Bars rise from their baseline on mount, staggered by --bar-idx. The salient
+   bar (the running total, or the largest delta) gets an extra glow pulse once
+   its entrance settles, so the eye lands on the number that matters. */
+@media (prefers-reduced-motion: no-preference) {
+  .c1-waterfall-bar {
+    transform-box: fill-box;
+    transform-origin: bottom center;
+    animation: c1BarEnter var(--m-normal) var(--ease-out) backwards;
+    animation-delay: calc(var(--bar-idx, 0) * 50ms);
+  }
+  .c1-waterfall-bar[data-mark='circle'] {
+    animation:
+      c1BarEnter var(--m-normal) var(--ease-out) backwards,
+      c1BarGlow 0.6s var(--ease-out) calc(var(--bar-idx, 0) * 50ms + var(--m-normal)) backwards;
+  }
+}
+@keyframes c1BarEnter {
+  from {
+    opacity: 0;
+    transform: scaleY(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@keyframes c1BarGlow {
+  from {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--presence) 70%, transparent));
+  }
+  to {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* ───────────────────────── correlationheatmap ─────────────────────────
+   A CSS-grid matrix, same shell as learn/GridMatrix: a scrollable wrapper so an N×N grid
+   never stretches the card past its bounds, a fixed-width row-header column, and equal-width
+   data columns that won't collapse below MIN_CELL. Entrance uses the shared row-stagger
+   primitive (motion.css) — a whole row fades/rises in together, not cell-by-cell. */
+.c1-corr-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
+  margin: 6px 0 2px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+}
+.c1-corr-grid {
+  display: grid;
+  min-width: 0;
+}
+.c1-corr-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  min-height: 36px;
+  overflow: hidden;
+  border-right: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  box-sizing: border-box;
+}
+/* Header row + row-header column read as labels, not data — quieter ink, no numeric tint. */
+.c1-corr-corner,
+.c1-corr-colhdr,
+.c1-corr-rowhdr {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 600;
+}
+.c1-corr-colhdr span,
+.c1-corr-rowhdr span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* A flex item's min-width defaults to its content size, not 0 — without this a long,
+     unbroken variable name refuses to shrink below its full text width, which forces the
+     cell (and the grid track behind it) to balloon instead of ellipsizing. */
+  min-width: 0;
+}
+.c1-corr-rowhdr {
+  justify-content: flex-start;
+  text-align: left;
+}
+.c1-corr-rowhdr span {
+  width: 100%;
+}
+.c1-corr-data {
+  font-size: var(--fs-xs, 11.5px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+/* The diagonal (a variable against itself) is always r = 1 — always the hottest cell in the
+   row by construction, not a genuine finding. A distinct ring keeps it from reading as "the
+   strongest relationship in the data" at a glance. */
+.c1-corr-diag {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--presence) 55%, transparent);
+}
+/* Once a fill gets dark enough to swamp the default ink, flip to a color that stays legible
+   against either accent — same threshold/approach as ConfusionMatrix's count label. */
+.c1-corr-strong {
+  color: #fff;
+}
+.c1-corr-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.c1-corr-legend i {
+  width: 16px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.c1-corr-leg-lbl {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.c1-corr-empty {
+  font-size: var(--fs-xs, 12px);
+  padding: 12px 0;
+}
+
+/* ───────────────────────── bcgmatrix ───────────────────────── */
+.c1-bcg {
+  position: relative;
+}
+.c1-bcg-svg {
+  width: 100%;
+  /* Height tracks the card's inline size (cqi) so the near-square 400×270 plot scales UP toward the
+     card width instead of being letterboxed into a narrow centred strip with dead space either side.
+     The taller ceiling lets a tiled (~half-width) card fill; the floor keeps it readable when small. */
+  height: clamp(200px, 66cqi, 440px);
+  display: block;
+  overflow: visible;
+}
+.c1-bcg-median {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+  opacity: 0.6;
+}
+.c1-bcg-corner {
+  fill: var(--text-muted);
+  font-size: clamp(7.5px, 2.2cqi, 9px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.c1-bcg-tip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 200px;
+  padding: 5px 9px;
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-xs, 11.5px);
+  pointer-events: none;
+  z-index: 4;
+}
+.c1-bcg-tip b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.c1-bcg-tip .faint {
+  font-size: var(--fs-2xs, 10.5px);
+}
+.c1-bcg-tip-note {
+  color: var(--text-secondary);
+  font-size: var(--fs-2xs, 10.5px);
+  white-space: normal;
+}
+
+/* ───────────────────────── flowchord ───────────────────────── */
+.c1-fc-svg {
+  width: 100%;
+  max-width: 620px;
+  margin-inline: auto;
+  display: block;
+}

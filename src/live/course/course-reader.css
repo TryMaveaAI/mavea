@@ -1,0 +1,266 @@
+/* course-reader.css — the dedicated course-lesson reader (#/course). A contained, calm reading
+   stage: the CourseRail chrome above a static TopicCanvas, centered in a single reading column —
+   the same editorial feel as Deep Zoom's reading stage, none of Live's conversation chrome. Tokens
+   only, so it rides the chosen theme in light and dark. Prefix: clr- (course lesson reader). */
+
+.clr-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-deep, var(--surface-default));
+  color: var(--text-primary);
+  font-family: var(--font);
+}
+
+/* .mavea-app is height:100% + overflow:hidden, so the reader is its OWN scroll container. */
+.clr-stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(18px, 3vw, 34px) clamp(16px, 3vw, 30px) 72px;
+}
+.clr-stage-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The single reading column — a bounded measure so wide screens read editorially and full-bleed
+   charts inside the canvas can't balloon (see the canvas-width memory note). */
+.clr-col {
+  width: 100%;
+  max-width: var(--canvas-col-max, 1080px);
+  margin-inline: auto;
+}
+
+.clr-canvas {
+  margin-top: 2px;
+}
+
+/* ── loading / error stage (fills the space under the rail) ─────────────────────────────────── */
+.clr-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: clamp(40px, 9vh, 96px) 24px;
+}
+.clr-state-head {
+  font: 700 17px/1.3 var(--font);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.clr-state-sub {
+  max-width: 460px;
+  font: 500 13.5px/1.55 var(--font);
+  color: var(--text-muted);
+}
+.clr-state-error {
+  color: var(--danger);
+}
+.clr-lesson-outline {
+  display: grid;
+  width: min(100%, 560px);
+  gap: 8px;
+  margin-top: 6px;
+  text-align: left;
+}
+.clr-lesson-outline-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+}
+.clr-lesson-outline-row > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 13%, transparent);
+  color: var(--presence);
+  font: 700 11px/1 var(--font);
+}
+.clr-lesson-outline-row > strong {
+  font: 600 13px/1.35 var(--font);
+  color: var(--text-secondary);
+}
+.clr-state-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-glass);
+  color: var(--text-muted);
+}
+.clr-state-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.clr-state-icon-warn {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+}
+
+/* Three-dot "composing" pulse — a quiet, on-brand loader rather than a spinning ring. */
+.clr-lens {
+  display: flex;
+  gap: 7px;
+}
+.clr-lens span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--presence);
+  opacity: 0.35;
+  animation: clr-pulse 1.1s ease-in-out infinite;
+}
+.clr-lens span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.clr-lens span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes clr-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* The lesson uses Live's one existing stream: narration appears first, then the canvas below grows
+   one finished block at a time. This compact strip stays above partial content until it settles. */
+.clr-stream {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--presence) 24%, var(--line-soft));
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--presence) 5%, var(--surface-glass));
+}
+.clr-stream-pulse {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--presence);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 35%, transparent);
+  animation: clr-stream-pulse 1.4s ease-out infinite;
+}
+.clr-stream-copy {
+  min-width: 0;
+}
+.clr-stream-label {
+  color: var(--presence);
+  font: 700 11px/1.2 var(--font);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.clr-stream-copy p {
+  margin: 5px 0 0;
+  max-width: 760px;
+  color: var(--text-secondary);
+  font: 500 14px/1.5 var(--font);
+}
+@keyframes clr-stream-pulse {
+  70%,
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+/* ── missing-course state ──────────────────────────────────────────────────────────────────── */
+.clr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  max-width: 400px;
+  padding: 32px;
+}
+.clr-empty-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.clr-empty-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.clr-empty-head {
+  font: 700 17px/1.2 var(--font);
+  color: var(--text-primary);
+}
+.clr-empty-sub {
+  font: 500 13.5px/1.55 var(--font);
+  color: var(--text-muted);
+}
+
+/* ── buttons ───────────────────────────────────────────────────────────────────────────────── */
+.clr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font: 600 13px/1 var(--font);
+  padding: 9px 16px;
+  cursor: pointer;
+  transition:
+    background var(--m-quick),
+    border-color var(--m-quick);
+}
+.clr-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.clr-btn:hover {
+  background: var(--surface-glass);
+  border-color: var(--line-strong);
+}
+.clr-btn-primary {
+  background: var(--presence);
+  border-color: var(--presence);
+  color: #fff;
+}
+.clr-btn-primary:hover {
+  background: color-mix(in oklab, var(--presence) 88%, #000);
+  border-color: color-mix(in oklab, var(--presence) 88%, #000);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clr-lens span {
+    animation: none;
+    opacity: 0.7;
+  }
+  .clr-stream-pulse {
+    animation: none;
+  }
+}

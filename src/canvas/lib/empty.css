@@ -1,0 +1,23 @@
+/* Shared sparse/empty placeholder for canvas blocks (canvas/lib/empty.tsx). */
+
+.cx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: clamp(80px, 22cqi, 140px);
+  padding: var(--sp-fluid-md, 16px);
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.cx-empty-msg {
+  font-size: var(--fs-sm, 13px);
+  font-weight: 500;
+}
+
+.cx-empty-hint {
+  font-size: var(--fs-xs, 11.5px);
+  opacity: 0.8;
+}

@@ -1,0 +1,235 @@
+// synthesis/demoSpec.ts — a small, hand-built settled corpus for the #/synlab QA surface and visual
+// regression. It exercises every object type the Synthesis World renders: themes as regions, cards,
+// a HARD contradiction (with a numeric delta), a soft in-tension one (downgraded on a timeframe
+// mismatch, the honest "not directly comparable" state), a consensus cluster with a band, and two
+// gaps. Every quote here appears verbatim in the matching corpus page, so clicking a card highlights
+// real text — the same contract the live pipeline guarantees. Not shipped in the Live path; QA only.
+import type { CorpusSpec } from './types';
+
+/** Per-source page text (corpus[source][page-1]). Each source is a single page holding its quotes. */
+export const DEMO_CORPUS: string[][] = [
+  [
+    'Foci et al. 2024. In the treatment arm we observed 42% improvement at 12 weeks on the primary endpoint. No serious adverse events were reported over the study period.',
+  ],
+  [
+    'Maso et al. 2023. Across the full cohort there was no significant effect at 24 weeks on the relapse rate, a secondary endpoint.',
+  ],
+  [
+    'Nyra 2024. The trial recorded 38% improvement at 12 weeks in the treatment arm, with mild adverse events in 12% of patients. Adoption remains limited outside academic centers.',
+  ],
+  [
+    'Cost Review 2023. The analysis finds the annual treatment cost is $18,400 per patient at list price.',
+  ],
+  ['Ledger 2022. After rebates, the intervention costs $9,200 per patient annually.'],
+  [
+    'Adoption Survey 2024. Among surveyed sites, 62% of clinics adopted the protocol within the first year.',
+  ],
+];
+
+/** The settled corpus. Claim ids follow the pipeline's `s{source}c{i}` scheme; regions are theme names. */
+export const DEMO_SPEC: CorpusSpec = {
+  sources: [
+    { id: 's0', fileName: 'foci-2024.pdf', kind: 'pdf', pageCount: 1, label: 'Foci et al. 2024' },
+    { id: 's1', fileName: 'maso-2023.pdf', kind: 'pdf', pageCount: 1, label: 'Maso et al. 2023' },
+    { id: 's2', fileName: 'nyra-2024.pdf', kind: 'pdf', pageCount: 1, label: 'Nyra 2024' },
+    {
+      id: 's3',
+      fileName: 'cost-review-2023.pdf',
+      kind: 'pdf',
+      pageCount: 1,
+      label: 'Cost Review 2023',
+    },
+    { id: 's4', fileName: 'ledger-2022.pdf', kind: 'pdf', pageCount: 1, label: 'Ledger 2022' },
+    {
+      id: 's5',
+      fileName: 'adoption-survey-2024.pdf',
+      kind: 'pdf',
+      pageCount: 1,
+      label: 'Adoption Survey 2024',
+    },
+  ],
+  themes: [
+    { id: 'Efficacy', name: 'Efficacy', sourceCount: 3, claimCount: 3 },
+    { id: 'Safety', name: 'Safety', sourceCount: 2, claimCount: 2 },
+    { id: 'Cost', name: 'Cost', sourceCount: 2, claimCount: 2 },
+    { id: 'Adoption', name: 'Adoption', sourceCount: 2, claimCount: 2 },
+  ],
+  claims: [
+    {
+      id: 's0c0',
+      quote: '42% improvement at 12 weeks on the primary endpoint',
+      page: 1,
+      kind: 'stat',
+      title: '42% improvement at 12 weeks',
+      ask: 'On which endpoint?',
+      role: 'load-bearing',
+      region: 'Efficacy',
+      source: 0,
+    },
+    {
+      id: 's1c0',
+      quote: 'no significant effect at 24 weeks on the relapse rate',
+      page: 1,
+      kind: 'finding',
+      title: 'No effect at 24 weeks',
+      ask: 'Which endpoint?',
+      role: 'load-bearing',
+      region: 'Efficacy',
+      source: 1,
+    },
+    {
+      id: 's2c0',
+      quote: '38% improvement at 12 weeks in the treatment arm',
+      page: 1,
+      kind: 'stat',
+      title: '38% improvement at 12 weeks',
+      ask: 'How measured?',
+      role: 'supporting',
+      region: 'Efficacy',
+      source: 2,
+    },
+    {
+      id: 's0c1',
+      quote: 'No serious adverse events were reported',
+      page: 1,
+      kind: 'finding',
+      title: 'No serious adverse events',
+      ask: 'Over what period?',
+      role: 'supporting',
+      region: 'Safety',
+      source: 0,
+    },
+    {
+      id: 's2c1',
+      quote: 'mild adverse events in 12% of patients',
+      page: 1,
+      kind: 'risk',
+      title: 'Mild adverse events in 12%',
+      ask: 'Which events?',
+      role: 'supporting',
+      region: 'Safety',
+      source: 2,
+    },
+    {
+      id: 's3c0',
+      quote: 'annual treatment cost is $18,400 per patient',
+      page: 1,
+      kind: 'stat',
+      title: 'Cost $18,400 per patient',
+      ask: 'List or net price?',
+      role: 'load-bearing',
+      region: 'Cost',
+      source: 3,
+    },
+    {
+      id: 's4c0',
+      quote: 'the intervention costs $9,200 per patient annually',
+      page: 1,
+      kind: 'stat',
+      title: 'Cost $9,200 per patient',
+      ask: 'Before or after rebates?',
+      role: 'load-bearing',
+      region: 'Cost',
+      source: 4,
+    },
+    {
+      id: 's5c0',
+      quote: '62% of clinics adopted the protocol',
+      page: 1,
+      kind: 'stat',
+      title: '62% of clinics adopted',
+      ask: 'Over what window?',
+      role: 'supporting',
+      region: 'Adoption',
+      source: 5,
+    },
+    {
+      id: 's2c2',
+      quote: 'Adoption remains limited outside academic centers',
+      page: 1,
+      kind: 'finding',
+      title: 'Limited outside academia',
+      ask: 'Why limited?',
+      role: 'context',
+      region: 'Adoption',
+      source: 2,
+    },
+  ],
+  threads: [
+    { a: 's0c0', b: 's1c0', relation: 'in-tension', crossDoc: true },
+    { a: 's3c0', b: 's4c0', relation: 'contradicts', crossDoc: true },
+    { a: 's0c0', b: 's2c0', relation: 'agrees', crossDoc: true },
+  ],
+  contradictions: [
+    {
+      id: 'x0',
+      theme: 'Efficacy',
+      a: 's0c0',
+      b: 's1c0',
+      relation: 'in-tension',
+      sharedQuantity: 'drug efficacy',
+      comparable: false,
+      caveat: 'timeframe',
+      label: 'Two trials disagree on efficacy',
+      seedQuestion:
+        'Are these comparable? "42% improvement at 12 weeks" (12week) vs "No effect at 24 weeks" (24week) — do they measure the same endpoint, population, and timeframe?',
+    },
+    {
+      id: 'x1',
+      theme: 'Cost',
+      a: 's3c0',
+      b: 's4c0',
+      relation: 'contradicts',
+      sharedQuantity: 'annual treatment cost',
+      comparable: true,
+      matchPhrase: 'per patient',
+      delta: { aValue: 18400, bValue: 9200, unit: '$' },
+      label: 'Sources disagree on annual treatment cost',
+      seedQuestion:
+        'Are these comparable? "Cost $18,400 per patient" (unspecified scope) vs "Cost $9,200 per patient" (unspecified scope) — do they measure the same endpoint, population, and timeframe?',
+    },
+  ],
+  gaps: [
+    {
+      id: 'g0',
+      theme: 'Safety',
+      facet: {
+        id: 'f0',
+        label: 'Pediatric population',
+        surfaceForms: ['pediatric', 'paediatric', 'children', 'under 18'],
+      },
+      sourcesScanned: 6,
+      coveredCount: 0,
+      kind: 'absent',
+      searchedForms: ['pediatric', 'paediatric', 'children', 'under 18'],
+      label: 'No coverage — Pediatric population',
+    },
+    {
+      id: 'g1',
+      theme: 'Efficacy',
+      facet: {
+        id: 'f1',
+        label: 'Long-term outcomes',
+        surfaceForms: ['long-term', 'long term', 'follow-up', '5-year'],
+      },
+      sourcesScanned: 6,
+      coveredCount: 0,
+      kind: 'absent',
+      searchedForms: ['long-term', 'long term', 'follow-up', '5-year'],
+      label: 'No coverage — Long-term outcomes',
+    },
+  ],
+  consensus: [
+    {
+      id: 'c0',
+      theme: 'Efficacy',
+      proposition: 'The treatment improves the primary endpoint at 12 weeks.',
+      memberClaimIds: ['s0c0', 's2c0'],
+      sourceCount: 2,
+      corpusSize: 6,
+      band: { unit: '%', min: 38, max: 42 },
+    },
+  ],
+  counts: { contradictions: 2, gaps: 2, consensus: 2 },
+  pageCount: 6,
+};

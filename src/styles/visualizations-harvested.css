@@ -1,0 +1,462 @@
+/* ===================================================================== *
+ * HARVESTED VISUALIZATIONS (from mavea_mockup_1, restyled to OUR tokens).
+ * Donut · Gauge · Scoreboard · Standings · Pipeline · KpiGrid ·
+ * QuoteBlock · ProgressChecklist. All live inside our `.card` shell.
+ * ===================================================================== */
+
+/* shared stat header (Pipeline) */
+.stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+  margin-bottom: 10px;
+}
+.big-stat {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.delta.accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+}
+
+/* ---------- Donut ---------- */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.donut {
+  flex: none;
+  animation: donutPop 0.7s var(--ease-out) backwards;
+}
+.donut-seg {
+  transition: stroke-dashoffset 0.6s var(--ease-out);
+}
+@keyframes donutPop {
+  from {
+    transform: rotate(-16deg) scale(0.86);
+  }
+  to {
+    transform: none;
+  }
+}
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.donut-legend .sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.donut-legend .dl-label {
+  flex: 1;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.donut-legend .dl-pct {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+/* The ring is drawn at a fixed size and never gives way, so on a folded-phone card it took the whole
+   width and the legend's percentages were pushed out past the card's edge — but the ring is the shape
+   and the legend is the reading. Stack them: ring centred, legend full-width underneath. Must sit
+   after `.donut-legend`, whose `flex: 1` would otherwise reset the basis back to zero. */
+@container (max-width: 340px) {
+  .donut-wrap {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  .donut {
+    max-width: 100%;
+    height: auto;
+  }
+  .donut-legend {
+    flex-basis: 100%;
+  }
+}
+
+/* ---------- Gauge (risk / NPS / readiness) ---------- */
+.risk-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.gauge-host {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.gauge-arc {
+  transition: stroke-dashoffset 1.1s var(--ease-out);
+}
+.gauge-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.gauge-num {
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.gauge-band {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.risk-driver {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.risk-driver strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+/* ---------- Scoreboard ---------- */
+.score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.game {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+}
+.game.hot {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.g-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.g-team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.g-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.g-score {
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--text-primary);
+}
+.g-status {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex: none;
+}
+.g-status.live {
+  color: var(--insight);
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--insight);
+  box-shadow: 0 0 8px var(--glow-insight);
+}
+
+/* ---------- Standings ---------- */
+.stand-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stand {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 6px;
+  font-size: 13px;
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast) var(--ease-out);
+}
+.stand:hover {
+  background: var(--surface-glass);
+}
+.stand-rank {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 12px;
+}
+.stand-team {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.stand-rec {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+.stand-gb {
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ---------- Pipeline (funnel) ---------- */
+.funnel {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.funnel-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 54px;
+  align-items: center;
+  gap: 10px;
+}
+.funnel-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.funnel-track {
+  height: 22px;
+  border-radius: 7px;
+  background: var(--surface-glass);
+  overflow: hidden;
+}
+.funnel-fill {
+  display: block;
+  height: 100%;
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--presence-deep), var(--presence));
+  animation: barGrow 0.8s var(--ease-out);
+  animation-delay: calc(var(--ti) * 80ms);
+}
+.funnel-val {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+}
+@keyframes barGrow {
+  from {
+    width: 0 !important;
+  }
+}
+
+/* ---------- KpiGrid ---------- */
+/* The stat card is a flex column so the row-fill stretch (fce8a47: a short card next to a
+   tall row-mate grows to the row height) distributes gracefully: the eyebrow stays put and
+   the stats center in the leftover space, instead of pooling at the top over a void. In an
+   unstretched card the auto margins collapse to zero — nothing changes. */
+.card.kpi-card {
+  display: flex;
+  flex-direction: column;
+}
+.kpi-card .kpi-grid {
+  margin-block: auto;
+}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--kpi-cols, 2), 1fr);
+  gap: 15px;
+}
+.kpi-val {
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--presence);
+  line-height: 1;
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* ---------- QuoteBlock ---------- */
+.quote-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.quote-item {
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--text-muted);
+  animation: cardUp 0.5s var(--ease-out) backwards;
+  animation-delay: calc(var(--ti) * 90ms + 60ms);
+}
+.quote-item.q-pos {
+  border-left-color: var(--insight);
+}
+.quote-item.q-neg {
+  border-left-color: var(--danger);
+}
+.quote-item.q-warn {
+  border-left-color: var(--warning);
+}
+.quote-text {
+  margin: 0 0 7px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 550;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.quote-who {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+@keyframes cardUp {
+  from {
+    transform: translateY(18px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ---------- ProgressChecklist ---------- */
+.plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+}
+.plan-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line-strong);
+  color: var(--surface-default);
+}
+.plan-row.st-done .plan-check {
+  background: var(--insight);
+  border-color: var(--insight);
+}
+.plan-row.st-done .plan-t {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+.plan-row.st-doing .plan-check {
+  border-color: var(--presence);
+}
+.plan-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: bloomPulse 1.6s ease-in-out infinite;
+}
+.plan-row.st-doing .plan-t {
+  color: var(--text-primary);
+}
+.plan-row.st-todo .plan-t {
+  color: var(--text-secondary);
+}
+@keyframes bloomPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (max-width: 700px) {
+  .score-list,
+  .quote-list {
+    grid-template-columns: 1fr;
+  }
+}

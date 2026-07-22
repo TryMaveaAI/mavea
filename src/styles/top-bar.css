@@ -1,0 +1,433 @@
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--s-sm);
+  padding: 0 var(--s-lg);
+  z-index: 40;
+  background: var(--bar-glass-bg);
+  backdrop-filter: var(--bar-glass-blur);
+  -webkit-backdrop-filter: var(--bar-glass-blur);
+}
+/* The icon buttons carry a default margin-left for OTHER nav contexts; inside the bar the flex
+   `gap` already spaces every control evenly, so drop the extra margin here or the controls cluster
+   reads as more spread-out than the menus beside it. */
+.topbar .topbar-icon-btn {
+  margin-left: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  /* How "docked" the jelly is in the brand slot: the home scroll-dock by default, forced to 1 the
+     moment a canvas parks the real face there (.face-homed). Drives the wordmark shift below. */
+  --slot: var(--scroll-dock, 0);
+}
+.mavea-app.face-homed .brand {
+  --slot: 1;
+}
+/* Make room for the docking jelly. When the mascot is away (slot 0 — the home at the top of scroll,
+   or a live turn before its canvas exists) the wordmark slides LEFT over the empty (invisible) dot
+   slot, so "Mavéa" sits flush at the brand's edge instead of after an orphaned gap. As the face
+   docks — scrolling the home (--scroll-dock → 1) or a canvas arriving (.face-homed) — it slides
+   RIGHT to reveal the jelly landing in its place. The dot keeps its fixed 21px box (below) so
+   measureHome still finds the exact dock target and scale. */
+.brand-name,
+.brand-sep,
+.workspace-name {
+  transform: translateX(calc((var(--slot, 0) - 1) * 31px));
+  transition: transform 220ms var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-name,
+  .brand-sep,
+  .workspace-name {
+    transition: none;
+  }
+}
+/* The brand rendered as a real <button> when it navigates back — strip button chrome so it
+   looks identical to the static brand, and give keyboard focus a visible ring. */
+.brand-link {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: inherit;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.brand-link:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 4px;
+}
+/* The brand mark is a tiny one-element jelly: the span is the bell, ::before paints the eyes,
+   ::after the three trailing strands. Same aurora as the living face, so the logo and the
+   mascot are one creature. Shared shape — any surface showing the Mavéa wordmark reuses this
+   class (see BrandMark.tsx); the topbar additionally pairs it with .brand-dot for docking. */
+.jelly-mark {
+  position: relative;
+  width: 21px;
+  height: 17px;
+  border-radius: 52% 52% 30% 30% / 68% 68% 22% 22%;
+  background: linear-gradient(135deg, #63e0bd, #a4b4ff 55%, #ffa5c3);
+  box-shadow: 0 0 10px var(--glow-presence);
+}
+.jelly-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* the real face in miniature, at the living face's own proportions (eyes ~14% of the
+     bell, pupils inside, a small mouth, a blush of cheek) — the gradient lengths are
+     RADII, so these read half the number. Hollow or googly eyes read creepy. */
+  background:
+    radial-gradient(0.9px 0.9px at 34% 53%, #252c55 92%, transparent),
+    radial-gradient(0.9px 0.9px at 66% 53%, #252c55 92%, transparent),
+    radial-gradient(1.5px 1.5px at 34% 51%, #fff 92%, transparent),
+    radial-gradient(1.5px 1.5px at 66% 51%, #fff 92%, transparent),
+    radial-gradient(2.2px 0.7px at 50% 73%, #fff 88%, transparent),
+    radial-gradient(1.6px 1.2px at 21% 66%, rgba(255, 159, 182, 0.6) 92%, transparent),
+    radial-gradient(1.6px 1.2px at 79% 66%, rgba(255, 159, 182, 0.6) 92%, transparent);
+}
+.jelly-mark::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 88%;
+  height: 8px;
+  background:
+    linear-gradient(to bottom, #63e0bd, transparent) no-repeat 4% 0 / 2px 100%,
+    linear-gradient(to bottom, #a4b4ff, transparent) no-repeat 50% 0 / 2px 100%,
+    linear-gradient(to bottom, #ffa5c3, transparent) no-repeat 96% 0 / 2px 100%;
+}
+/* Docking behavior only — the jelly shape itself lives in .jelly-mark, always paired with this
+   class in the topbar. Invisible by default: the REAL presence face is the brand jelly — it
+   docks into this slot, and the placeholder would otherwise sit under the slid wordmark. The
+   .jelly-mark box stays as measureHome's dock anchor regardless of this opacity. */
+.brand-dot {
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+  /* Bias the dock target so the docked bell rides clearly ABOVE the wordmark's cap height,
+     never below it. Measured, not eyeballed: at margin 0 the bell top sat ~1px under the M's
+     cap top (≈23.3px in a 16px/18px line box); each -1px lifts the landing 1:1, and -3px puts
+     the bell ~2.5px proud of the M — the "slightly higher" the brand wants. The face centers
+     its tentacles-included box on this dot, so the target tracks this margin exactly. */
+  margin-top: -3px;
+}
+/* Once a canvas exists, the real animated face rests on the brand slot and IS the dot. */
+.mavea-app.face-homed .brand-dot {
+  opacity: 0;
+}
+/* Never two jellies at once. While the real face is CENTERED on the stage (an active turn that
+   isn't docked to the corner, and isn't the setup wizard whose small face reads differently), the
+   big face is the one-and-only Mavéa — so hide the topbar placeholder mini-jelly. It stays an
+   (invisible) anchor the face still docks onto: opacity doesn't affect its measured position, so
+   the face-docking geometry is untouched. In the wizard the placeholder is the sole mark, so it
+   stays; once the face docks (.face-homed) the rule above has already hidden it. */
+.mavea-app.live-voice:not(.face-homed):not(.in-wizard) .brand-dot {
+  opacity: 0;
+}
+.brand-name {
+  font-size: 16px;
+}
+/* The docked real face (~42px, see .presence-layer.corner) reads much bigger than the 21px
+   brand-dot box the flex gap was sized for — without extra clearance here its glow overlaps
+   the wordmark. Only widen the gap in this state; the plain dot sits close to the text fine. */
+.mavea-app.face-homed .brand-name {
+  margin-left: 12px;
+}
+.brand-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 2px;
+}
+.workspace-name {
+  color: var(--text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.ctrl-cluster {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Let the cluster shrink past its content width so a long control row never
+     forces the topbar to overflow horizontally on narrow phones. */
+  min-width: 0;
+}
+
+/* ---- per-button tooltip (data-tip attr → CSS ::after) ---- */
+.ctrl[data-tip],
+.pill-btn[data-tip] {
+  position: relative;
+}
+.ctrl[data-tip]::after,
+.pill-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-3px);
+  /* An inverted pill: always dark with light text in BOTH themes. Using a fixed
+     light text colour (not --text-primary, which goes dark in light mode and made
+     the tip dark-on-dark) keeps it legible; the shadow lifts it off a dark app
+     background where the faint border alone wasn't enough to see. */
+  background: rgba(20, 24, 33, 0.96);
+  color: #f3f5fb;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+  z-index: 200;
+}
+.ctrl[data-tip]:hover::after,
+.pill-btn[data-tip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.ctrl {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    background var(--m-fast),
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.ctrl:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.ctrl.active {
+  color: var(--presence-soft);
+  background: rgba(110, 140, 255, 0.12);
+  border-color: rgba(110, 140, 255, 0.25);
+}
+.ctrl.warn-off {
+  color: var(--warning);
+}
+.ctrl svg {
+  width: 19px;
+  height: 19px;
+}
+
+.pill-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition:
+    background var(--m-fast),
+    border-color var(--m-fast),
+    transform var(--m-fast);
+}
+.pill-btn:hover {
+  background: var(--surface-glass-strong);
+  border-color: var(--line-strong);
+}
+.pill-btn:active {
+  transform: translateY(1px);
+}
+.pill-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- topbar text buttons + named category menus (Explore, etc.) ---- */
+/* Base styles live here (not scoped to .live-voice) so they apply in both Demo and Live. */
+.topbar-text-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.topbar-text-btn:hover {
+  color: var(--presence-soft);
+}
+/* The persistent feature-search button — reads as the fifth menu (search IS discovery), so it
+   uses the same text-button type as Create/Practice/Share/Explore, with a magnifier + a ⌘K cap. */
+.topbar-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar-search-ic {
+  width: 13px;
+  height: 13px;
+}
+.topbar-search-kbd {
+  letter-spacing: 0;
+  text-transform: none;
+}
+.cmdk-kbd {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: var(--surface-glass);
+  color: var(--text-faint);
+  font-family: var(--font-data);
+  font-size: 10px;
+}
+/* Mostly a touch context by 768px — the key hint is noise. Below 430px the topbar menus collapse
+   away (see mobile.css), but this standalone button survives untouched, so drop just the label and
+   keep the magnifier: the palette (and the ~dozen features only it reaches) stays tappable. */
+@media (max-width: 768px) {
+  .topbar-search-kbd {
+    display: none;
+  }
+}
+@media (max-width: 430px) {
+  .topbar-search-label {
+    display: none;
+  }
+}
+.topbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.more-menu-root {
+  position: relative;
+  display: inline-flex;
+}
+.more-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.more-menu-caret {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.55;
+}
+.more-menu {
+  right: 0;
+  left: auto;
+  width: min(320px, calc(100vw - 28px));
+  /* A full category (Explore carries nine entries) can be taller than a short viewport — a laptop
+     with the URL bar showing, or a phone in landscape. Cap it to the space below the bar and let it
+     scroll so the last items (Delegate, Deep Zoom) never fall off an unreachable bottom edge. */
+  max-height: calc(100dvh - 72px);
+  overflow-y: auto;
+}
+.more-menu-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.more-menu-row:hover,
+.more-menu-row:focus-visible {
+  background: var(--surface-glass-strong);
+  outline: none;
+}
+.more-menu-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.more-menu-blurb {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+/* MorePanel: the unified ··· panel that replaces the four separate menus. */
+.more-panel {
+  width: min(360px, calc(100vw - 28px));
+  max-height: min(80vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* The ··· trigger uses wider letter-spacing so the dots read as a control, not ellipsis. */
+.more-panel-trigger {
+  letter-spacing: 0.16em;
+}
+.more-panel-section {
+  display: flex;
+  flex-direction: column;
+}
+.more-panel-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 6px;
+}
+.more-panel-heading {
+  padding: 6px 12px 3px;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

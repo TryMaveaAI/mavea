@@ -1,0 +1,409 @@
+/* =====================================================================
+   GestureTrack — the timestamped log of every stroke Mavéa draws this
+   turn. Floats in the lower-right of the canvas stage so it never
+   displaces content. Compact, dismissable, adapts to light + dark.
+   ===================================================================== */
+
+/* Inline — sits in the scroll flow below the canvas, never floats over the dock.
+   Aligns to the right within the topic-wrap via margin-left:auto so it reads as
+   answer metadata, not a content block. */
+.gesture-track {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+  margin: 12px 0 0 auto;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow-raised);
+  animation: gesture-track-in 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes gesture-track-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Header ── */
+
+.gesture-track-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gesture-track-eyebrow {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Pen on/off toggle pill */
+.gesture-track-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.gesture-track-toggle.on {
+  background: color-mix(in oklab, var(--ink-gesture) 14%, transparent);
+  border-color: color-mix(in oklab, var(--ink-gesture) 30%, transparent);
+  color: var(--ink-gesture);
+}
+
+.gesture-track-toggle.off {
+  background: var(--surface-default);
+  border-color: var(--line);
+  color: var(--text-muted);
+}
+
+.gesture-track-toggle-icon {
+  font-size: 9px;
+  line-height: 1;
+}
+
+.gesture-track-toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  width: 22px;
+  height: 12px;
+  border-radius: var(--r-full);
+  margin-left: 3px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.gesture-track-toggle.on .gesture-track-toggle-switch {
+  background: var(--ink-gesture);
+}
+
+.gesture-track-toggle.off .gesture-track-toggle-switch {
+  background: color-mix(in oklab, var(--text-muted) 30%, transparent);
+}
+
+.gesture-track-toggle-knob {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  transition: left 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.gesture-track-toggle.on .gesture-track-toggle-knob {
+  left: 12px;
+}
+
+.gesture-track-toggle.off .gesture-track-toggle-knob {
+  left: 2px;
+}
+
+/* ── Entry list ── */
+
+.gesture-track-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gesture-track-entry {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The clickable row — scrolls to and flashes the matching card. */
+.gesture-track-entry-btn {
+  display: grid;
+  grid-template-columns: 28px 18px 1fr;
+  align-items: baseline;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 4px 4px 2px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  transition: background 0.12s;
+}
+
+.gesture-track-entry-btn:hover {
+  background: var(--surface-glass);
+}
+
+/* Hidden entry: dimmed and the target text is struck through. */
+.gesture-track-entry.is-hidden .gesture-track-entry-btn {
+  opacity: 0.38;
+}
+
+.gesture-track-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.gesture-track-icon {
+  color: var(--ink-gesture);
+  font-size: 11px;
+  text-align: center;
+}
+
+.gesture-track-desc {
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gesture-track-verb {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* "Step N" prefix on an entry that's part of a multi-mark teaching sequence. */
+.gesture-track-step {
+  color: var(--ink-gesture);
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 3px;
+}
+
+.gesture-track-target {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Eye toggle — show/hide individual annotation. */
+.gesture-track-eye {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition:
+    color 0.12s,
+    background 0.12s;
+  opacity: 0;
+}
+
+.gesture-track-entry:hover .gesture-track-eye,
+.gesture-track-entry.is-hidden .gesture-track-eye {
+  opacity: 1;
+}
+
+.gesture-track-eye:hover {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+
+.gesture-track-eye[aria-pressed='true'] {
+  color: var(--ink-gesture);
+}
+
+/* ── Hint ── */
+
+.gesture-track-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+  padding-top: 2px;
+  border-top: 1px solid var(--line);
+}
+
+/* ── Action buttons ── */
+
+.gesture-track-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gesture-track-btn {
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    opacity 0.12s;
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-secondary);
+}
+
+.gesture-track-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.gesture-track-btn.primary {
+  background: color-mix(in oklab, var(--ink-gesture) 12%, var(--surface-default));
+  border-color: color-mix(in oklab, var(--ink-gesture) 28%, transparent);
+  color: var(--ink-gesture);
+}
+
+.gesture-track-btn.primary:hover {
+  background: color-mix(in oklab, var(--ink-gesture) 20%, var(--surface-default));
+}
+
+.gesture-track-btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.gesture-track-btn.ghost:hover {
+  color: var(--text-secondary);
+}
+
+/* Narrow viewports: stretch full-width so the panel doesn't feel cramped. */
+@media (max-width: 480px) {
+  .gesture-track {
+    max-width: 100%;
+    margin-left: 0;
+  }
+}
+
+/* ── Pen anchor + popover ─────────────────────────────────────────────────────
+   The anchor sits in the canvas header; the pill opens a floating popover that
+   contains the full GestureTrack panel. Closes on outside click.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pen-anchor {
+  position: relative;
+}
+
+/* The popover floats below the pill, right-aligned to it. */
+.pen-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  min-width: 260px;
+  max-width: 320px;
+  animation: gesture-track-in 0.2s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* Inside the popover the gesture-track has no external margin. */
+.pen-popover .gesture-track {
+  margin: 0;
+}
+
+/* ── Pen toggle pill ─────────────────────────────────────────────────────────
+   Lives in the canvas header (next to Focus / Everything tabs); clicking it
+   opens or closes the pen popover panel.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pen-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+/* On = clearly "live ink": the gesture accent fills the pill so the active state reads at a
+   glance. Off = a quiet neutral chip. The contrast is what tells you whether the pen is armed. */
+.pen-toggle-pill.on {
+  background: color-mix(in oklab, var(--ink-gesture) 18%, transparent);
+  border-color: color-mix(in oklab, var(--ink-gesture) 42%, transparent);
+  color: var(--ink-gesture);
+}
+
+.pen-toggle-pill.off {
+  background: var(--surface-default);
+  border-color: var(--line);
+  color: var(--text-muted);
+}
+
+/* Slightly more opaque when the popover is open — acts as a pressed state. */
+.pen-toggle-pill.open {
+  opacity: 0.75;
+}
+
+.pen-toggle-pill:hover {
+  opacity: 0.8;
+}
+
+/* Count of marks logged this turn, shown on the pill only while the panel is closed — the
+   quiet cue that Mavéa drew something, replacing the panel that used to pop over the canvas. */
+.pen-ink-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  margin-left: 1px;
+  border-radius: var(--r-full);
+  background: var(--ink-gesture);
+  color: var(--surface-default);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The entry animations use fill-mode `both`, so disabling them leaves the panel/popover at
+   their natural (fully visible) end state for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .gesture-track,
+  .pen-popover {
+    animation: none;
+  }
+}

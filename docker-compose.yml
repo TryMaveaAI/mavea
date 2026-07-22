@@ -1,0 +1,33 @@
+# Mavéa — the one container: the voice.
+#
+#   pnpm dev               →  starts this container AND the dev server (the normal way in)
+#   docker compose up -d   →  Kokoro TTS on http://localhost:8880, on its own
+#
+# Everything else runs on the host: `pnpm dev` serves the app at http://localhost:5173 and
+# proxies /tts → localhost:8880, so the browser never talks to Kokoro directly (no CORS).
+# Without this container Mavéa still works — lines show as captions instead of being spoken.
+# The optional actions gateway is plain Node (`pnpm actions`), no container needed.
+
+services:
+  # Kokoro TTS — OpenAI-compatible /v1/audio/speech on :8880. Mavéa's only voice. The server
+  # (kokoro-fastapi) and the Kokoro-82M model weights it downloads are both Apache-2.0.
+  # CPU image; the first-run model download means the first few lines may be silent
+  # until it's ready — speak() no-ops gracefully until then.
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    restart: unless-stopped
+    environment:
+      # How many cores the voice is allowed. Left to itself, torch sizes its pool from
+      # hardware_concurrency() and takes every one — past the peak of this model's curve. Measured
+      # end-to-end on an 8-vCPU VM, one clause of speech: 4 threads renders at 4.23x realtime on
+      # 387% CPU, 8 threads at 4.01x on 543%. Slower AND a third more CPU, because an 82M-param
+      # model spends the extra threads in OpenMP barriers rather than matmuls.
+      #
+      # 4 is the safe default: it is the measured peak, and a host with 4 cores or fewer already
+      # picks 4 or fewer on its own, so it only binds where the collapse lives. But the right number
+      # is a property of the machine, not of this file — synthesis only has to outrun a playhead
+      # moving at 1x, and a fast machine clears that on 2 threads while a slow one needs every core
+      # it has. `pnpm dev` measures this box once and sets the value; see scripts/dev.mjs.
+      OMP_NUM_THREADS: ${MAVEA_VOICE_THREADS:-4}
+    ports:
+      - '8880:8880'

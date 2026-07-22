@@ -1,0 +1,1085 @@
+/* ============================================================
+   Live · atlas — months of conversation as a flyable galaxy.
+   Self-contained (imported by AtlasView.tsx), tokens only.
+   Three tiers: galaxy → neighborhood constellation → one night.
+   ============================================================ */
+
+.atlas-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 2.5vw;
+  background: rgba(var(--scrim-rgb), 0.72);
+  backdrop-filter: blur(8px);
+}
+/* Fill most of the viewport so the galaxy has room (no wasted empty space); the expand toggle pushes
+   it edge-to-edge. */
+.atlas-panel {
+  width: min(1700px, 100%);
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-xl);
+  /* The atlas is its own night sky, regardless of the app theme. */
+  background: #14151b;
+  border: 1px solid #2a2c36;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  color: #e7e8ef;
+}
+.atlas-scrim[data-expanded='true'] {
+  padding: 0;
+}
+.atlas-scrim[data-expanded='true'] .atlas-panel {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+/* ---- header: breadcrumb · meta · fly-to · tour ---- */
+.atlas-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: #14151b;
+  border-bottom: 1px solid #24262f;
+}
+.atlas-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.atlas-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid #2e3039;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9aa0b4;
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.atlas-back:hover {
+  color: #e7e8ef;
+  border-color: #3a3d49;
+}
+.atlas-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.atlas-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f2f2f6;
+  white-space: nowrap;
+}
+.atlas-meta {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #6e7390;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Transparent on wide screens — .atlas-fly and .atlas-tour sit directly in .atlas-head's own flex
+   row exactly as if this wrapper didn't exist. Below the mobile breakpoint (further down) it
+   becomes a real flex row of its own, so the search + tour button restructure onto a dedicated
+   full-width line instead of just shrinking until they collide with the crumbs. */
+.atlas-head-search {
+  display: contents;
+}
+.atlas-fly {
+  position: relative;
+  margin-left: auto;
+  width: min(320px, 38%);
+}
+.atlas-fly-input {
+  width: 100%;
+  padding: 7px 14px;
+  border-radius: var(--r-full);
+  border: 1px solid #2e3039;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e7e8ef;
+  font: inherit;
+  font-size: 12px;
+}
+.atlas-fly-input::placeholder {
+  color: #7e8294;
+}
+.atlas-fly-input:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.atlas-fly-matches {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 12;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: #1c1e27;
+  border: 1px solid #2e3039;
+  box-shadow: var(--shadow-floating);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.atlas-fly-match {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: #b6bccb;
+  font: inherit;
+  font-size: 12.5px;
+}
+.atlas-fly-match:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2f2f6;
+}
+.atlas-fly-match-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-fly-match-ago {
+  flex: none;
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: #6e7390;
+}
+.atlas-tour {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  border: none;
+  background: var(--presence);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px var(--glow-presence);
+}
+.atlas-tour:hover {
+  filter: brightness(1.08);
+}
+.atlas-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #2e3039;
+  border-radius: 50%;
+  background: none;
+  color: #7e8294;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.atlas-close:hover {
+  color: #f2f2f6;
+  border-color: #3a3d49;
+}
+
+/* ---- mobile: the header restructures onto two lines instead of just shrinking ----
+   Crumbs + the expand/close buttons keep the top line (they already shrink-to-fit via the
+   min-width: 0 + ellipsis above); the search box and "Fly the tour" — a full 320px input plus a
+   labelled button — move to a dedicated full-width line below rather than being squeezed down to
+   an unreadable sliver next to the title. */
+@media (max-width: 768px) {
+  .atlas-head {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .atlas-head-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Ordered after the (default-order) crumbs + expand/close buttons, and forced to its own line
+       by the 100% basis — no sibling can share a row with a 100%-basis flex item. */
+    order: 1;
+    flex: 1 1 100%;
+  }
+  .atlas-fly {
+    margin-left: 0;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .atlas-tour {
+    flex: 0 0 auto;
+  }
+}
+
+/* ---- the stage ---- */
+.atlas-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  /* a deep, slightly-blue void with a soft central glow */
+  background: radial-gradient(ellipse 90% 80% at 50% 42%, #1c1e27 0%, #131419 70%, #0e0f13 100%);
+  cursor: grab;
+  touch-action: none; /* let pointer-drag pan instead of the browser scrolling/zooming */
+}
+.atlas-viewport.is-panning {
+  cursor: grabbing;
+}
+/* while dragging, don't let a hover/press state flicker on the hoods under the pointer */
+.atlas-viewport.is-panning .atlas-hood {
+  pointer-events: none;
+}
+.atlas-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 18%;
+  text-align: center;
+  color: #8c90a0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---- starfield (viewport space, behind the world) ---- */
+.atlas-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.atlas-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.4;
+  animation: atlas-twinkle var(--tw-dur, 3s) ease-in-out var(--tw-delay, 0s) infinite;
+}
+@keyframes atlas-twinkle {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-star {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
+/* ---- the world (camera transform target) ---- */
+.atlas-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+  transition: transform 1150ms cubic-bezier(0.6, 0.02, 0.2, 1);
+  /* Counter-scale for labels (below): holds neighborhood/night text near its natural, legible size
+   * as the camera zooms out — which is nearly always once the galaxy holds more than a couple of
+   * neighborhoods (fitAll's scale shrinks with the world, which grows with the hood count). Without
+   * this, label text is rasterized at a fractional CSS scale and reads soft/blurry as well as small.
+   * Capped at 1.6 (mirrors Watch Me Think's --ms-counter) — layoutNeighborhoods already reserves each
+   * label's headroom assuming it renders near its natural size, so this stays inside that budget. */
+  --atlas-counter: clamp(1, calc(1 / var(--atlas-cam-scale, 1)), 1.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-world {
+    transition: none;
+  }
+  .atlas-hood,
+  .atlas-night {
+    transition: opacity 0.6s ease;
+  }
+}
+
+/* ---- TIER 1: neighborhoods as nebulae ---- */
+.atlas-hood {
+  position: absolute;
+  /* `left`/`top` are the centre; translate pulls the box back onto it, then the counter-scale keeps
+     the whole label (name + count + badges) a legible, near-constant size on screen — same trick as
+     Watch Me Think's atom cards — regardless of how far the camera has zoomed the galaxy out. */
+  transform: translate(-50%, -50%) scale(var(--atlas-counter, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  transition:
+    opacity 0.6s ease,
+    transform 1150ms cubic-bezier(0.6, 0.02, 0.2, 1);
+}
+.atlas-hood.is-dim {
+  opacity: 0.18;
+  pointer-events: none;
+}
+.atlas-hood-name {
+  position: relative;
+  font-size: var(--name-size, 16px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--hood-color);
+  text-shadow: 0 0 18px color-mix(in oklab, var(--hood-color) 55%, transparent);
+}
+.atlas-hood-count {
+  position: relative;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #6e7390;
+}
+.atlas-hood-core {
+  position: relative;
+  margin-top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--hood-color);
+  box-shadow: 0 0 14px 3px color-mix(in oklab, var(--hood-color) 60%, transparent);
+}
+.atlas-hood-loop {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--warning) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, transparent);
+  font-family: var(--font-data);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warning);
+}
+.atlas-hood-loop-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: atlas-loop-pulse 1.4s ease-in-out infinite;
+}
+@keyframes atlas-loop-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-hood-loop-dot {
+    animation: none;
+  }
+}
+.atlas-hood-badge {
+  position: relative;
+  margin-top: 3px;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: #b6bccb;
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ---- cross-life connections ---- */
+.atlas-connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+.atlas-connections path {
+  stroke: #9ba2ff;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.atlas-conn-label {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #b9bffb;
+  background: rgba(155, 162, 255, 0.16);
+  border: 1px solid rgba(155, 162, 255, 0.45);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ---- tonight's trail ---- */
+.atlas-trail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.atlas-trail polyline {
+  stroke: #fff;
+  stroke-width: 1.4;
+  stroke-dasharray: 1 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.atlas-trail circle {
+  fill: #fff;
+  opacity: 0.7;
+}
+.atlas-trail-pulse {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 7px var(--glow-presence));
+  animation: atlas-trail-pulse 2.4s ease-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes atlas-trail-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  65% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-trail-pulse {
+    animation: none;
+  }
+}
+.atlas-trail-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 6;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+/* ---- TIER 2: the neighborhood constellation ---- */
+.atlas-constellation {
+  position: absolute;
+  inset: 0;
+}
+.atlas-night-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.atlas-night-links line {
+  stroke: var(--hood-color);
+  stroke-width: 1;
+  stroke-dasharray: 1 5;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+.atlas-night {
+  position: absolute;
+  /* Same counter-scale as the galaxy's hood labels (above) — a constellation of many nights still
+     zooms the camera out to fit them all, and the date/title text would otherwise shrink and blur
+     right along with it. */
+  transform: translate(-50%, -50%) scale(var(--atlas-counter, 1));
+  transition: transform 1150ms cubic-bezier(0.6, 0.02, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 188px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+.atlas-night-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--hood-color);
+  box-shadow: 0 0 16px 4px color-mix(in oklab, var(--hood-color) 50%, transparent);
+}
+.atlas-night.is-new .atlas-night-dot {
+  box-shadow:
+    0 0 16px 4px color-mix(in oklab, var(--hood-color) 50%, transparent),
+    0 0 0 3px color-mix(in oklab, var(--presence) 45%, transparent);
+}
+.atlas-night.is-found .atlas-night-card {
+  border-color: var(--hood-color);
+  box-shadow: 0 0 0 1.5px var(--hood-color);
+}
+.atlas-night-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid #2e3039;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(3px);
+  text-align: left;
+}
+.atlas-night:hover .atlas-night-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #3a3d49;
+}
+.atlas-night-date {
+  font-family: var(--font-data);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hood-color);
+}
+.atlas-night-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f2f2f6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* TIER 2 chrome (viewport-anchored) */
+.atlas-hood-chrome {
+  position: absolute;
+  left: 22px;
+  top: 18px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.atlas-hood-chrome-hint {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.atlas-hood-deeper {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 50%, transparent);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  color: var(--presence);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.atlas-hood-deeper:hover {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+}
+
+/* ---- TIER 3: the rehydrated night ---- */
+.atlas-night-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 42%,
+    color-mix(in oklab, var(--hood-color, var(--presence)) 14%, transparent) 0%,
+    rgba(14, 15, 19, 0.78) 70%
+  );
+  backdrop-filter: blur(2px);
+  animation: atlas-rehydrate-in 0.4s ease both;
+}
+@keyframes atlas-rehydrate-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.atlas-rehydrate {
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: #181a21;
+  border: 1px solid #2c2e38;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  padding: 0;
+}
+.atlas-rehydrate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid #24262f;
+}
+.atlas-rehydrate-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--hood-color, var(--presence));
+}
+.atlas-rehydrate-tag-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hood-color, var(--presence));
+  box-shadow: 0 0 10px 2px color-mix(in oklab, var(--hood-color, var(--presence)) 60%, transparent);
+  animation: atlas-loop-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .atlas-rehydrate-tag-dot {
+    animation: none;
+  }
+}
+.atlas-rehydrate-asis {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  color: #6e7390;
+}
+.atlas-rehydrate-title {
+  margin: 0;
+  padding: 20px 26px 0;
+  font-size: 21px;
+  font-weight: 600;
+  color: #f2f2f6;
+  line-height: 1.2;
+}
+.atlas-rehydrate-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 26px 4px;
+}
+.atlas-rehydrate-q {
+  align-self: flex-end;
+  max-width: 78%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--presence);
+  color: #fff;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.atlas-rehydrate-a {
+  align-self: flex-start;
+  display: flex;
+  gap: 10px;
+  max-width: 92%;
+}
+.atlas-rehydrate-orb {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: 48% 52% 50% 50% / 52% 50% 50% 48%;
+  background: radial-gradient(circle at 34% 28%, #a9afff 0%, var(--presence) 55%, #3a43c9 100%);
+}
+.atlas-rehydrate-art {
+  display: flex;
+  align-items: stretch;
+  gap: 13px;
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2a2c36;
+}
+.atlas-rehydrate-art-kind {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  flex: none;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--hood-color, var(--presence)) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--hood-color, var(--presence)) 30%, transparent);
+  font-family: var(--font-data);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--hood-color, var(--presence));
+}
+.atlas-rehydrate-art-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+  flex: 1;
+}
+.atlas-rehydrate-art-line {
+  height: 3px;
+  background: #2e313b;
+  border-radius: 2px;
+}
+.atlas-rehydrate-art-open {
+  align-self: center;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  color: var(--hood-color, var(--presence));
+}
+.atlas-rehydrate-foot {
+  margin: 0;
+  padding: 14px 26px 0;
+  font-size: 11px;
+  color: #6e7390;
+  border-top: 1px solid #24262f;
+}
+.atlas-rehydrate-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 26px 22px;
+}
+.atlas-rehydrate-land {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: none;
+  background: var(--presence);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.atlas-rehydrate-land:hover {
+  filter: brightness(1.08);
+}
+.atlas-rehydrate-back {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid #2e3039;
+  background: none;
+  color: #b6bccb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.atlas-rehydrate-back:hover {
+  color: #f2f2f6;
+  border-color: #3a3d49;
+}
+
+/* ---- "Mavéa noticed" panel ---- */
+.atlas-noticed {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  /* Never wider than the viewport can actually give it — a bare 300px clips against the left edge
+     on a narrow phone (18px right inset + 300px leaves only 2px of margin at 320px wide). */
+  width: min(300px, calc(100% - 36px));
+  z-index: 8;
+  background: rgba(18, 19, 25, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid #2e3039;
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.atlas-noticed-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 15px;
+}
+.atlas-noticed-orb {
+  width: 18px;
+  height: 18px;
+  border-radius: 48% 52% 50% 50% / 52% 50% 50% 48%;
+  background: radial-gradient(circle at 34% 28%, #a9afff 0%, var(--presence) 55%, #3a43c9 100%);
+}
+.atlas-noticed-title {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #9aa0b4;
+}
+.atlas-noticed-sub {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 9px;
+  color: #6e7390;
+}
+.atlas-noticed-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #2e3039;
+  background: none;
+  color: #9aa0b4;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.atlas-noticed-collapse:hover {
+  color: #f2f2f6;
+  border-color: #3a3d49;
+}
+/* collapsed: a small corner pill that never covers the neighborhoods */
+.atlas-noticed-pill {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  background: rgba(18, 19, 25, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid #2e3039;
+  border-radius: var(--r-full);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.atlas-noticed-pill:hover {
+  border-color: #3a3d49;
+}
+.atlas-noticed-pill .atlas-noticed-orb {
+  width: 15px;
+  height: 15px;
+}
+.atlas-noticed-pill-label {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #9aa0b4;
+}
+.atlas-noticed-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--presence) 26%, transparent);
+  color: #c7caff;
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.atlas-noticed-item {
+  display: flex;
+  gap: 11px;
+  width: 100%;
+  padding: 11px 15px;
+  border: none;
+  border-top: 1px solid #1e2027;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.atlas-noticed-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.atlas-noticed-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--ins-color, var(--presence));
+  box-shadow: 0 0 10px 2px color-mix(in oklab, var(--ins-color, var(--presence)) 55%, transparent);
+}
+.atlas-noticed-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.atlas-noticed-kind {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--ins-color, var(--presence));
+}
+.atlas-noticed-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #d7dae4;
+}
+.atlas-noticed-cta {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ins-color, var(--presence));
+}
+
+/* ---- idle hint ---- */
+.atlas-idle-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  text-align: center;
+}
+/* The trail caption ("TONIGHT — …") also lives bottom-centre. When both show, stack them: the
+   caption stays pinned to the bottom edge and the idle hint floats above it, so the two never
+   collide into one unreadable smear. :has() is supported in every browser this app targets. */
+.atlas-viewport:has(.atlas-trail-caption) .atlas-idle-hint {
+  bottom: 44px;
+}
+
+/* connection time-window switcher — top-left, clear of the bottom hint + the bottom-right pill */
+.atlas-range {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 5px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 21, 27, 0.72);
+  backdrop-filter: blur(8px);
+}
+.atlas-range-label {
+  font-family: var(--font-data);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-right: 2px;
+}
+.atlas-range-btn {
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+.atlas-range-btn:hover {
+  color: #fff;
+}
+.atlas-range-btn.is-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---- footer ---- */
+.atlas-foot {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 13px 22px;
+  background: #14151b;
+  border-top: 1px solid #24262f;
+}
+.atlas-foot-line {
+  margin: 0;
+  font-size: 12.5px;
+  color: #6e7390;
+}
+.atlas-foot-line em {
+  font-style: normal;
+  font-weight: 700;
+  color: #b6bccb;
+}
+.atlas-keep {
+  margin-left: auto;
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid #2e3039;
+  background: none;
+  color: #b6bccb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.atlas-keep:hover {
+  color: #f2f2f6;
+  border-color: #3a3d49;
+}

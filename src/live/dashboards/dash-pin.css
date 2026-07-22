@@ -1,0 +1,374 @@
+/* dash-pin.css — the two "put something on a board" surfaces: the pin-to-dashboard sheet Live
+   opens over an answer card, and the add-widget palette on the dashboard detail (edit bar, or
+   the AddWidgetButton trigger in the header). Design tokens only; light/dark ride the tokens. */
+
+/* ── pin sheet — a small centered sheet over a dim scrim ─────────────────────────────────── */
+.pin-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in oklab, var(--text-primary) 28%, transparent);
+  backdrop-filter: blur(2px);
+}
+.pin-sheet {
+  width: min(400px, 100%);
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+}
+.pin-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+.pin-eyebrow {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pin-subject {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── the board list — one click on a row pins right there ────────────────────────────────── */
+.pin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pin-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.pin-row:hover,
+.pin-row:focus-visible {
+  background: var(--surface-glass-strong);
+  border-color: var(--line);
+  outline: none;
+}
+.pin-row-ic {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+  color: var(--presence);
+}
+.pin-row-ic svg {
+  width: 15px;
+  height: 15px;
+}
+.pin-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.pin-row-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pin-row-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+/* The row's schedule chip: same face + heat as the composer's presets (dash-composer.css's
+   .dcp-cad), so a board's search appetite reads identically everywhere it's shown. */
+.pin-row-cad {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-family: var(--font-data, var(--font));
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: color-mix(in oklab, var(--cad, var(--presence)) 14%, transparent);
+  color: var(--cad, var(--presence));
+}
+.pin-row-cad--fast {
+  --cad: var(--warning);
+}
+.pin-row-cad--steady {
+  --cad: var(--presence);
+}
+.pin-row-cad--calm {
+  --cad: var(--insight);
+}
+.pin-new {
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--presence) 35%, var(--line));
+}
+
+/* ── the one compact "New dashboard" step: name + cadence + create ───────────────────────── */
+.pin-new-step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pin-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pin-name-input {
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.pin-name-input:focus-visible {
+  outline: none;
+  border-color: var(--presence);
+}
+.pin-plan-label {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pin-plan-cadence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pin-cadence-seg {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.pin-cadence-opt {
+  font-family: var(--font-data, var(--font));
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.pin-cadence-opt:hover {
+  border-color: var(--presence);
+}
+.pin-cadence-opt.is-active {
+  color: var(--on-presence, var(--surface-elevated));
+  background: var(--presence);
+  border-color: var(--presence);
+}
+.pin-plan-estimate {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.pin-plan-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pin-plan-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: var(--on-presence, var(--surface-elevated));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pin-plan-confirm:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pin-secondary {
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pin-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── add-widget palette — anchored under its trigger (edit bar or header button) ─────────── */
+.dash-add-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.dash-palette {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  min-width: 200px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-modal);
+}
+/* Inside the edit bar the palette hangs off the bar itself — keep it tucked under the button. */
+.dash-edit-bar > .dash-palette {
+  right: 14px;
+}
+.dash-palette-item {
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.dash-palette-item:hover,
+.dash-palette-item:focus-visible {
+  background: var(--surface-glass);
+  outline: none;
+}
+/* "Track a number" leads the menu — the one addition that makes a board more alive. */
+.dash-palette-lead {
+  font-weight: 600;
+  color: var(--presence);
+}
+
+/* ── the "Track a number" step inside the palette ────────────────────────────────────────── */
+.dash-ptrack {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 248px;
+  padding: 4px 5px 5px;
+}
+.dash-ptrack-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dash-ptrack-back {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.dash-ptrack-back:hover {
+  color: var(--text-primary);
+}
+.dash-ptrack-kicker {
+  font-family: var(--font-data, var(--font));
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.dash-ptrack-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-ptrack-input {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.dash-ptrack-input:focus-visible {
+  outline: none;
+  border-color: var(--presence);
+}
+.dash-ptrack-go {
+  align-self: flex-end;
+  padding: 7px 12px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: var(--on-presence, var(--surface-elevated));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dash-ptrack-go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.dash-ptrack-err {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--warning);
+}
+.dash-ptrack-gate {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.dash-ptrack-gate a {
+  color: var(--presence);
+}

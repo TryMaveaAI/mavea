@@ -1,0 +1,20 @@
+dist
+coverage
+node_modules
+pnpm-lock.yaml
+*.svg
+.playwright-mcp
+.mavea-review
+# generated fixtures — baked by scripts/build-tour-*.mts, not hand-edited
+src/tour/corpus/*.generated.json
+src/demo/corpus/*.generated.json
+src/live/select/referenceExamples.generated.json
+
+# Generated, family-sharded gallery fixtures — machine-written and kept compact for parse cost
+src/gallery/fixtures.generated.ts
+src/gallery/fixtures/
+
+# Generated compact catalog index — machine-written, kept dense on purpose (pnpm gen:catalog)
+src/canvas/blocks/catalog/facts.generated.ts
+src/canvas/blocks/catalog/structures.generated.ts
+src/canvas/blocks/catalog/details/

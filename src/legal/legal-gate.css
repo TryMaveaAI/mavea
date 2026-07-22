@@ -1,0 +1,141 @@
+.legal-gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  color: var(--text-primary);
+  background:
+    radial-gradient(
+      circle at 50% 15%,
+      color-mix(in oklab, var(--presence) 14%, transparent),
+      transparent 34rem
+    ),
+    var(--bg);
+  font-family: var(--font);
+}
+
+.legal-gate-card {
+  width: min(580px, 100%);
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: color-mix(in oklab, var(--surface-elevated) 94%, transparent);
+  box-shadow: 0 28px 80px color-mix(in oklab, #000 28%, transparent);
+}
+
+.legal-gate-kicker {
+  color: var(--presence);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.legal-gate h1 {
+  margin: 10px 0 14px;
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+.legal-gate p,
+.legal-gate li,
+.legal-gate-consent {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.legal-gate-points {
+  margin: 22px 0;
+  padding-left: 19px;
+}
+
+.legal-gate-points li + li {
+  margin-top: 7px;
+}
+
+.legal-gate-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 18px;
+  margin: 0 0 22px;
+}
+
+.legal-gate-links a {
+  color: var(--presence);
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
+
+.legal-gate-consent {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--surface) 90%, var(--presence) 10%);
+  cursor: pointer;
+}
+
+.legal-gate-consent input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: var(--presence);
+}
+
+.legal-gate-error {
+  margin: 12px 0 0;
+  color: var(--danger);
+}
+
+.legal-gate-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.legal-gate-actions button {
+  min-height: 42px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, var(--presence), var(--presence-deep));
+  font: 650 13px/1 var(--font);
+  cursor: pointer;
+}
+
+.legal-gate-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.legal-gate-back {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+@media (max-width: 520px) {
+  .legal-gate {
+    padding: 14px;
+  }
+
+  .legal-gate-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    text-align: center;
+  }
+
+  .legal-gate-actions button {
+    width: 100%;
+  }
+}

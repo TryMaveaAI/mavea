@@ -1,0 +1,343 @@
+/* ============================================================
+   CANVAS VIEW — this answer's cards as a spatial board joined by the Mavéa thread.
+   The camera is a CSS transform on .cv-world; "flying" is a transition on that transform
+   (instant under reduced motion). Cards counter-scale so text stays legible as the world
+   zooms out. Nothing here touches .presence or its ancestors.
+   ============================================================ */
+
+/* ── The takeover: the board owns the whole viewport ────────────────────────────────────────
+   A modal you enter for space and leave with one tap (or Esc): a slim header carries the
+   answer's identity and the single way back; the stage gets everything else. */
+.cv-takeover {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-default);
+  animation: cv-takeover-in 300ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes cv-takeover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cv-takeover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-elevated);
+}
+.cv-takeover-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cv-takeover-glyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+  font-size: 15px;
+  flex: none;
+}
+.cv-takeover-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.cv-takeover-eyebrow {
+  font: 700 10.5px / 1 var(--font);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.cv-takeover-title {
+  font: 600 15px / 1.3 var(--font);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cv-takeover-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+/* A card pinned via Ask no longer exits the board (asking about several things back-to-back used
+   to force a full-screen close-and-reopen for each one) — this pill is the confirmation that
+   would otherwise have lived on the surface the takeover covers. */
+.cv-takeover-selection {
+  font: 600 12.5px / 1 var(--font);
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+}
+.cv-takeover-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  color: var(--text-primary);
+  font: 600 13.5px / 1 var(--font);
+  cursor: pointer;
+  flex: none;
+  transition:
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.cv-takeover-close:hover {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+}
+.cv-takeover-close kbd {
+  font: 600 10.5px / 1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 3px 5px;
+  background: var(--surface-sunken, transparent);
+}
+/* Inside the takeover the stage fills everything under the header — no card chrome. */
+.cv-takeover .cv-viewport {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-takeover {
+    animation: none;
+  }
+}
+
+.cv-viewport {
+  position: relative;
+  width: 100%;
+  /* A comfortable inline board that fits on screen with the header + composer, so the fit shows
+     every card at once (zoom in for detail). Plain page scroll passes through (see the wheel
+     handler), so anything below is still reachable. */
+  height: clamp(420px, 60vh, 680px);
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 1px 1px, var(--grid-line) 1px, transparent 0) 0 0 / 26px 26px,
+    linear-gradient(180deg, var(--surface-default), var(--surface-sunken, var(--surface-default)));
+  touch-action: none;
+  cursor: grab;
+}
+.cv-viewport.is-panning {
+  cursor: grabbing;
+}
+.cv-viewport:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: -2px;
+}
+
+.cv-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+.cv-controls button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast);
+}
+.cv-controls button:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+
+.cv-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cv-world {
+    transition: transform 1100ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  }
+}
+
+/* The Mavéa thread — one continuous path through the node centres, drawn on when the board opens
+   (reusing the bloom stroke-dashoffset idiom). vector-effect keeps it crisp at every zoom. */
+.cv-thread-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.cv-thread {
+  fill: none;
+  stroke: var(--presence);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cv-thread.cv-draw {
+    animation: cv-draw-on var(--m-cinematic) var(--ease-out) both;
+  }
+}
+@keyframes cv-draw-on {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* A node: a content-sized card anchored at its top-left, with a title bar so every card reads at a
+   glance and its block below (full height — nothing clipped). Cards scale with the camera
+   (Figma-style): zoom in to read, fit to see them all. */
+.cv-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-default);
+  box-shadow: var(--shadow-raised);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cv-node {
+    transition:
+      box-shadow var(--m-normal),
+      border-color var(--m-normal);
+  }
+}
+
+/* Title bar — the one always-visible label. The block's own eyebrow is folded into it below, so
+   there's no double header. The title reads in the SAME small-caps/mono voice as every card's own
+   .card-eyebrow elsewhere in the app (templates.css/visualizations-extra.css) — a plain sentence-
+   case sans title here read as a jarring font swap the instant a card's own eyebrow was hidden. */
+.cv-node-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in oklab, var(--surface-elevated) 60%, transparent);
+}
+.cv-node-step {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  color: var(--presence-soft);
+  font: 700 10px / 1 var(--font);
+}
+.cv-node-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cv-node-inner {
+  flex: 1;
+  min-height: 0;
+  /* The node's width is fixed (NODE_W drives the board's column math) but a block's natural
+     content — a wide compare table, a dense grid — can need more than that. Scroll the excess
+     horizontally rather than clipping it outright; height stays hidden since it's already
+     measured and the node grows to fit it. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+/* The block fills the node body — drop its own frame + eyebrow so the node IS the card (one border,
+   one header). Specificity (.cv-node-inner .card) intentionally beats the base .card rule. */
+.cv-node-inner .card {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.cv-node-inner .card-eyebrow {
+  display: none;
+}
+.cv-node.is-selected {
+  border-color: var(--presence);
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.cv-node.is-spot {
+  border-color: var(--presence);
+  box-shadow:
+    0 0 0 2px var(--presence),
+    0 0 26px -4px var(--glow-presence);
+}
+.cv-node.is-spot .cv-node-label {
+  background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+}
+
+.cv-node-ask {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font: 600 12px / 1 var(--font);
+  cursor: pointer;
+}
+.cv-node-ask:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}

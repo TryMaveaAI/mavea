@@ -1,0 +1,1360 @@
+/* ============================================================
+   MAVÉA · Presence (the aurora jelly) + Canvas components
+   ============================================================ */
+
+/* ---------------------------------------------------------------
+   PRESENCE — the aurora jelly (she carries no name on purpose). Mood is hue, state is current:
+   the bell's gradient drifts toward one color when something matters
+   (indigo calm · teal verified · rose delight · embers when dim), and
+   the four tentacle curtains carry what she's doing — smooth ribbons
+   at rest, bead tubes racing data upward at work, one sweeping out to
+   point when she finds something, curling up to draw a glyph for
+   earned moments. The face is two sparkly eyes, blush cheeks and a
+   ripple smile; speaking opens the mouth against the live voice.
+   --------------------------------------------------------------- */
+.presence {
+  position: relative;
+  --face-size: 180px;
+  /* The mood palette — seven color slots + a glow. Every retint anywhere (states, emotions,
+     templates, personalities, the setup wizard's waking amber) is a rebind of these slots;
+     the SVG below never names a color of its own. Default is the soft aurora calm. */
+  --mascot-bell-1: #63e0bd;
+  --mascot-bell-2: #a4b4ff;
+  --mascot-bell-3: #ffa5c3;
+  --mascot-cur-1: #63e0bd;
+  --mascot-cur-2: #a4b4ff;
+  --mascot-cur-3: #c3a5ff;
+  --mascot-cur-4: #ffa5c3;
+  --mascot-bell-op: 0.9;
+  --mascot-glow: rgba(158, 176, 255, 0.34);
+  /* One knob per theme, not per palette: every stop is mixed toward a deep slate anchor by
+     --mascot-mix's complement, so the light theme deepens ALL palettes (mood, template,
+     personality) without re-declaring any of them. 100% = the palette verbatim. */
+  --mascot-mix: 100%;
+  --mascot-anchor: #26324e;
+  /* Legacy aura channel — still defined because the tour's end-orb and the clip/share chrome
+     read these names, and the halo below is tinted through them. Derived from the mood slots,
+     so every retint flows through automatically. */
+  --aura-conic: conic-gradient(
+    from 0deg,
+    var(--mascot-cur-1),
+    var(--mascot-cur-2),
+    var(--mascot-cur-3),
+    var(--mascot-cur-4),
+    var(--mascot-cur-1)
+  );
+  --aura-spin: 9s;
+  --aura-glow: var(--mascot-glow);
+  --aura-halo: var(--mascot-glow);
+  width: var(--face-size);
+  height: var(--face-size);
+  display: grid;
+  place-items: center;
+  transition:
+    transform var(--m-expressive) var(--ease-spring),
+    filter var(--m-normal) var(--ease-out);
+  will-change: transform;
+}
+/* Light theme: pastel aurora stops wash out on a bright page — deepen every palette through
+   the mix knob and soften the halo, leaving the mood/template rebinds themselves untouched. */
+:root[data-theme='light'] .presence {
+  --mascot-mix: 80%;
+  --aura-halo: color-mix(in srgb, var(--mascot-glow) 50%, transparent);
+}
+
+/* outer halo — a soft pool of the mood's light behind the bell, breathing with her */
+.presence .aura {
+  position: absolute;
+  inset: -24%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, var(--aura-halo), transparent 66%);
+  filter: blur(12px);
+  opacity: 0.9;
+  transition:
+    background var(--m-normal),
+    opacity var(--m-normal);
+  animation: breathe calc(3800ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
+}
+
+/* ---- the jelly ----
+   One SVG, sized off --face-size. The drawing is taller than wide (200×220: bell up top,
+   curtains trailing), so it rides a bit low in the square box — the margin drops it until
+   the eye line sits where the old face's eyes did, and the curtains are allowed to trail
+   past the box edge (the presence layer doesn't catch pointer events). Body loops split
+   across three levels so they compose instead of fighting: bob on .mascot, joy/giggle/tilt
+   on .jelly, swell on .bell. */
+.presence .mascot {
+  width: calc(var(--face-size) * var(--mascot-fit, 1.1));
+  height: calc(var(--face-size) * var(--mascot-fit, 1.1) * 1.1);
+  margin-top: calc(var(--face-size) * 0.15);
+  overflow: visible;
+  animation: mascot-bob calc(5400ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
+}
+
+/* curtains — layered strokes over the same path: a wide translucent tube, the bright strand,
+   sleeping data beads, and a white shimmer that breathes. All four carry the mood color. */
+.presence .mascot .curtain {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.presence .mascot .curtains.long .curtain {
+  animation: mascot-curtain calc(5800ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
+}
+.presence .mascot .curtain.c1 {
+  --cur: color-mix(in oklab, var(--mascot-cur-1) var(--mascot-mix), var(--mascot-anchor));
+}
+.presence .mascot .curtain.c2 {
+  --cur: color-mix(in oklab, var(--mascot-cur-2) var(--mascot-mix), var(--mascot-anchor));
+  animation-delay: -1.3s;
+}
+.presence .mascot .curtain.c3 {
+  --cur: color-mix(in oklab, var(--mascot-cur-3) var(--mascot-mix), var(--mascot-anchor));
+  animation-delay: -2.6s;
+}
+.presence .mascot .curtain.c4 {
+  --cur: color-mix(in oklab, var(--mascot-cur-4) var(--mascot-mix), var(--mascot-anchor));
+  animation-delay: -3.9s;
+}
+.presence .mascot .curtain path {
+  fill: none;
+  stroke: var(--cur);
+  stroke-linecap: round;
+  transition:
+    stroke-width var(--m-normal) var(--ease-out),
+    opacity var(--m-normal) var(--ease-out);
+}
+.presence .mascot .curtain .tube {
+  stroke-width: 10;
+  opacity: 0.2;
+}
+.presence .mascot .curtain .strand {
+  stroke-width: 3.5;
+  opacity: 0.65;
+}
+.presence .mascot .curtain .beads {
+  stroke-width: 3.8;
+  stroke-dasharray: 0.1 8;
+  opacity: 0.38;
+}
+.presence .mascot .curtain .shimmer {
+  stroke: #ffffff;
+  stroke-width: 1.4;
+  opacity: 0.3;
+  animation: mascot-shimmer calc(4400ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
+}
+/* quiet beads drift while she's alive; work states retime these to a race below */
+.presence .mascot .curtains.long .beads {
+  animation: mascot-flow calc(11000ms / var(--motion-scale, 1)) linear infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. The per-curtain .c2/.c3/.c4 rules below only
+     restate animation-duration/-delay, so they inherit this play-state longhand. */
+  animation-play-state: var(--ambient-play, running);
+}
+.presence .mascot .curtains.long .c2 .beads {
+  animation-duration: calc(13000ms / var(--motion-scale, 1));
+  animation-delay: -2.3s;
+}
+.presence .mascot .curtains.long .c3 .beads {
+  animation-duration: calc(15000ms / var(--motion-scale, 1));
+  animation-delay: -4.6s;
+}
+.presence .mascot .curtains.long .c4 .beads {
+  animation-duration: calc(17000ms / var(--motion-scale, 1));
+  animation-delay: -6.9s;
+}
+.presence .mascot .curtains.long .c2 .shimmer {
+  animation-delay: -0.9s;
+}
+.presence .mascot .curtains.long .c3 .shimmer {
+  animation-delay: -1.8s;
+}
+.presence .mascot .curtains.long .c4 .shimmer {
+  animation-delay: -2.7s;
+}
+/* the short curled set and the pointing tentacle wait for their states */
+.presence .mascot .curtains.short {
+  display: none;
+}
+.presence .mascot .curtains.short .tube {
+  stroke-width: 9;
+}
+.presence .mascot .curtain.found {
+  display: none;
+  /* always mint — "found it" is a fixed signal, not a mood */
+  --cur: #3ed8a6;
+}
+
+/* strand glyphs — the tentacles trace a shape in light beneath her, then it dissolves */
+.presence .mascot .glyph {
+  display: none;
+}
+.presence .mascot .glyph .stroke {
+  fill: none;
+  stroke-width: 4.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+}
+.presence .mascot .glyph.question .stroke {
+  stroke: #c3a5ff;
+}
+.presence .mascot .glyph.question .dot {
+  fill: #c3a5ff;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.presence .mascot .glyph.heart .stroke {
+  stroke: #ff8ab0;
+}
+.presence .mascot .glyph.idea .stroke {
+  stroke: #ffe9b0;
+}
+.presence .mascot .glyph.idea .halo {
+  fill: #ffe9b0;
+  opacity: 0.14;
+}
+.presence .mascot .glyph.check .stroke {
+  stroke: #3ed8a6;
+}
+
+/* the bell — mood-gradient body, inner highlight, faint aurora bands. The swell owns .bell's
+   transform (user-space origin at the bell's heart), so nothing else may transform it; the
+   showing lean composes through the independent `rotate` property instead. */
+.presence .mascot .bell {
+  transform-origin: 100px 80px;
+  animation: mascot-swell calc(4600ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. Pausing the swell also freezes the drop-shadow
+     below into a single raster (it stops re-compositing every frame) — the main GPU win here. */
+  animation-play-state: var(--ambient-play, running);
+  filter: drop-shadow(0 0 8px var(--mascot-glow));
+  transition:
+    filter var(--m-normal) var(--ease-out),
+    rotate var(--m-normal) var(--ease-out);
+}
+.presence .mascot .bell-body {
+  opacity: var(--mascot-bell-op);
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+.presence .mascot .bell-stop {
+  transition: stop-color 600ms var(--ease-out);
+}
+.presence .mascot .bell-stop.s1 {
+  stop-color: color-mix(in oklab, var(--mascot-bell-1) var(--mascot-mix), var(--mascot-anchor));
+}
+.presence .mascot .bell-stop.s2 {
+  stop-color: color-mix(in oklab, var(--mascot-bell-2) var(--mascot-mix), var(--mascot-anchor));
+}
+.presence .mascot .bell-stop.s3 {
+  stop-color: color-mix(in oklab, var(--mascot-bell-3) var(--mascot-mix), var(--mascot-anchor));
+}
+.presence .mascot .bell-sheen {
+  fill: none;
+  stroke: #eafff6;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+.presence .mascot .band {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+}
+.presence .mascot .band.b1 {
+  stroke-width: 5;
+  opacity: 0.1;
+}
+.presence .mascot .band.b2 {
+  stroke-width: 4;
+  opacity: 0.08;
+}
+
+/* ---- the face ----
+   Blink and emotion sizing live on DIFFERENT nodes on purpose: the lid squash animates
+   .blink while emotions scale .eye — put them on the same node and whichever wins the
+   cascade silently cancels the other. */
+.presence .mascot .cheek {
+  fill: #ff9fb6;
+  opacity: 0.35;
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+.presence .mascot .brow {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    opacity var(--m-normal) var(--ease-out),
+    transform var(--m-normal) var(--ease-out);
+}
+.presence .mascot .eyes {
+  transition: transform var(--m-normal) var(--ease-out);
+}
+.presence .mascot .eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--m-normal) var(--ease-out);
+}
+.presence .mascot .blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink calc(5200ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+.presence .mascot .ball {
+  fill: #ffffff;
+}
+.presence .mascot .pupil {
+  fill: #252c55;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--m-normal) var(--ease-out);
+}
+.presence .mascot .glint {
+  fill: #ffffff;
+}
+.presence .mascot .glint.g2 {
+  opacity: 0.85;
+}
+.presence .mascot .crescent,
+.presence .mascot .closed {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity var(--m-normal) var(--ease-out);
+}
+.presence .mascot .crescent {
+  stroke-width: 5;
+}
+.presence .mascot .closed {
+  stroke-width: 4.6;
+}
+.presence .mascot .mouth path,
+.presence .mascot .mouth circle {
+  transition:
+    opacity var(--m-normal) var(--ease-out),
+    transform var(--m-normal) var(--ease-out);
+}
+.presence .mascot .smile {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.6;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+}
+.presence .mascot .frown {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  opacity: 0;
+}
+.presence .mascot .oo {
+  fill: #ffffff;
+  opacity: 0;
+}
+/* the talking mouth — hinged at the lip line so it opens downward like the reference's
+   delighted grin; speaking drives its scaleY from the live voice energy below */
+.presence .mascot .mouth-open {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+}
+.presence .mascot .mouth-fill {
+  fill: #ffffff;
+}
+.presence .mascot .tongue {
+  fill: #ffb3c0;
+}
+
+/* celebrate sparks + the sleepy drift */
+.presence .mascot .sparks {
+  opacity: 0;
+}
+.presence .mascot .sparks path {
+  fill: none;
+  stroke: #c3d0ff;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.presence .mascot .zzz {
+  opacity: 0;
+}
+.presence .mascot .zzz text {
+  fill: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  /* the drifting z leaves the bell — a neutral dark shadow keeps it readable on any page */
+  filter: drop-shadow(0 1px 2px rgba(24, 18, 30, 0.6));
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.presence .mascot .zzz text + text {
+  font-size: 11px;
+}
+
+/* ---- state styling ----
+   Body loops/transforms never go on .presence directly except the speaking fallback pulse —
+   .presence is the seam friend-aliveness scales against the real voice. */
+
+.presence[data-state='idle'] {
+  transform: none;
+}
+/* idle, eyes forward: every so often the jelly glances around the room */
+.presence[data-state='idle'][data-gaze='center'] .mascot .eyes {
+  animation: mascot-look 9s var(--ease-in-out) infinite;
+}
+
+/* listening: she brightens and stills — full attention, no current. The sway slows, the
+   sleeping beads pause, the bell comes to full opacity and the eyes open a touch wider. */
+.presence[data-state='listening'],
+.presence[data-state='loading'] {
+  --mascot-bell-op: 1;
+}
+.presence[data-state='listening'] .aura,
+.presence[data-state='loading'] .aura {
+  opacity: 1;
+  animation-duration: calc(2400ms / var(--motion-scale, 1));
+}
+.presence[data-state='listening'] .mascot .eye {
+  transform: scale(1.1);
+}
+.presence[data-state='listening'] .mascot .curtains.long .curtain {
+  animation-duration: calc(9000ms / var(--motion-scale, 1));
+}
+.presence[data-state='listening'] .mascot .curtains.long .beads {
+  animation-play-state: paused;
+  opacity: 0.22;
+}
+
+/* loading — Live's working state: the curtains become translucent tubes with beads of data
+   racing up inside, so a turn in flight reads as her actually streaming your answer. */
+.presence[data-state='loading'] .mascot .curtains.long .tube {
+  stroke-width: 13;
+  opacity: 0.18;
+}
+.presence[data-state='loading'] .mascot .curtains.long .strand {
+  stroke-width: 7;
+  opacity: 0.35;
+}
+.presence[data-state='loading'] .mascot .curtains.long .shimmer {
+  opacity: 0;
+}
+.presence[data-state='loading'] .mascot .curtains.long .beads {
+  stroke-width: 4.2;
+  opacity: 1;
+  animation-duration: calc(2400ms / var(--motion-scale, 1));
+}
+.presence[data-state='loading'] .mascot .curtains.long .c2 .beads {
+  animation-duration: calc(2800ms / var(--motion-scale, 1));
+  animation-delay: -0.7s;
+}
+.presence[data-state='loading'] .mascot .curtains.long .c3 .beads {
+  animation-duration: calc(3200ms / var(--motion-scale, 1));
+  animation-delay: -1.4s;
+}
+.presence[data-state='loading'] .mascot .curtains.long .c4 .beads {
+  animation-duration: calc(3600ms / var(--motion-scale, 1));
+  animation-delay: -2.1s;
+}
+.presence[data-state='loading'] .mascot .eye {
+  transform: scale(0.85);
+}
+
+/* reading: settled, small steady eyes over the page */
+.presence[data-state='reading'] .mascot .eye {
+  transform: scale(0.88);
+}
+
+/* thinking: the curtains curl up short and slowly trace a question mark beneath her while
+   one eye goes wide — the "hold on, working something out" face. */
+.presence[data-state='thinking'] .mascot .curtains.long {
+  display: none;
+}
+.presence[data-state='thinking'] .mascot .curtains.short {
+  display: inline;
+}
+.presence[data-state='thinking'] .mascot .glyph.question {
+  display: inline;
+}
+.presence[data-state='thinking'] .mascot .glyph.question .stroke {
+  animation: mascot-drawin calc(5000ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-state='thinking'] .mascot .glyph.question .dot {
+  animation: mascot-glyphpop calc(5000ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-state='thinking'] .mascot .eye.l {
+  transform: scale(1.12);
+}
+.presence[data-state='thinking'] .mascot .eye.r {
+  transform: scale(0.76);
+}
+.presence[data-state='thinking'] .mascot .smile {
+  opacity: 0;
+}
+.presence[data-state='thinking'] .mascot .oo {
+  opacity: 1;
+}
+
+/* speaking: the ripple smile yields to a real mouth. When live TTS energy is published
+   (data-voice-sync) the mouth and the whole body track the actual words (friend-aliveness
+   owns the body seam); without it, fixed-tempo fallback loops carry the same read. */
+.presence[data-state='speaking'] {
+  animation: mascot-talk-body calc(1100ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-state='speaking'] .aura {
+  opacity: 1;
+  animation-duration: calc(1700ms / var(--motion-scale, 1));
+}
+.presence[data-state='speaking'] .mascot .bell {
+  animation-duration: calc(2600ms / var(--motion-scale, 1));
+}
+.presence[data-state='speaking'] .mascot .smile {
+  opacity: 0.35;
+}
+.presence[data-state='speaking'] .mascot .mouth-open {
+  animation: mascot-talk calc(900ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+:root[data-voice-sync='on'] .presence[data-state='speaking'] .mascot .mouth-open {
+  animation: none;
+  transition: none;
+  opacity: clamp(0, calc(var(--voice-energy, 0) * 6), 1);
+  transform: scaleY(calc(0.25 + 0.75 * var(--voice-energy, 0)));
+}
+:root[data-voice-sync='on'] .presence[data-state='speaking'] .mascot .smile {
+  transition: none;
+  opacity: clamp(0.15, calc(1 - var(--voice-energy, 0) * 3), 0.6);
+}
+
+/* interjecting — Mavéa speaks up on her own (speaking + surprised is exactly that pairing in
+   presenceMap): the curtains curl and trace the lightbulb, "this couldn't wait" */
+.presence[data-state='speaking'][data-emotion='surprised'] .mascot .curtains.long {
+  display: none;
+}
+.presence[data-state='speaking'][data-emotion='surprised'] .mascot .curtains.short {
+  display: inline;
+}
+.presence[data-state='speaking'][data-emotion='surprised'] .mascot .glyph.idea {
+  display: inline;
+}
+.presence[data-state='speaking'][data-emotion='surprised'] .mascot .glyph.idea .stroke {
+  animation: mascot-drawin calc(5000ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-state='speaking'][data-emotion='surprised']
+  .mascot
+  .glyph.idea
+  .stroke:nth-of-type(2) {
+  animation-delay: 0.18s;
+}
+.presence[data-state='speaking'][data-emotion='surprised']
+  .mascot
+  .glyph.idea
+  .stroke:nth-of-type(3) {
+  animation-delay: 0.36s;
+}
+
+/* memory saved — while the aura glow pulses (.is-mem-save, 2.6s), the strands draw one quiet
+   mint check beneath her: held, verified, kept. One-shot, matched to the glow window. */
+.presence-layer.is-mem-save .presence .mascot .glyph.check {
+  display: inline;
+}
+.presence-layer.is-mem-save .presence .mascot .glyph.check .stroke {
+  animation: mascot-drawin 2.6s var(--ease-in-out) both;
+}
+
+/* acting: doing something real for you — the bell settles verified teal and one tentacle
+   sweeps out to point at it, a mint bead glowing at the tip. */
+.presence[data-state='acting'] {
+  --mascot-bell-1: #63e0bd;
+  --mascot-bell-2: #7dd8c0;
+  --mascot-bell-3: #a4b4ff;
+  --mascot-cur-1: #63e0bd;
+  --mascot-cur-2: #7dd8c0;
+  --mascot-cur-3: #8fe8cc;
+  --mascot-cur-4: #a4b4ff;
+  --mascot-bell-op: 0.92;
+  --mascot-glow: rgba(62, 216, 166, 0.36);
+}
+.presence[data-state='acting'] .mascot .curtains.long .curtain.c2 {
+  display: none;
+}
+.presence[data-state='acting'] .mascot .curtain.found {
+  display: inline;
+  --cur: #3ed8a6;
+}
+.presence[data-state='acting'] .mascot .curtain.found .beads {
+  stroke-width: 4.2;
+  opacity: 1;
+  animation: mascot-flow calc(2600ms / var(--motion-scale, 1)) linear infinite;
+}
+.presence[data-state='acting'] .mascot .found-dot {
+  fill: #3ed8a6;
+  animation: mascot-shimmer calc(2200ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-state='acting'] .mascot .blink {
+  opacity: 0;
+  animation-play-state: paused;
+}
+.presence[data-state='acting'] .mascot .crescent {
+  opacity: 1;
+}
+
+/* ---- the expression library (data-emotion) ----
+   One emotion at a time; celebrate is reserved for moments that earn it (≤1 a session).
+   The hue channel rides along: warmth flushes the bell rose, worry banks it to embers. */
+
+/* happy (warm): crescent-squint eyes, the bell flushes rose from the crown */
+.presence[data-emotion='warm'],
+.presence[data-emotion='celebrate'],
+.presence[data-emotion='laugh'] {
+  --mascot-bell-1: #ffa5c3;
+  --mascot-bell-2: #c3a5ff;
+  --mascot-bell-3: #a4b4ff;
+  --mascot-cur-1: #ffa5c3;
+  --mascot-cur-2: #ffc3d3;
+  --mascot-cur-3: #c3a5ff;
+  --mascot-cur-4: #a4b4ff;
+  --mascot-bell-op: 0.92;
+  --mascot-glow: rgba(255, 138, 176, 0.36);
+}
+.presence[data-emotion='warm'] .mascot .blink,
+.presence[data-emotion='celebrate'] .mascot .blink,
+.presence[data-emotion='laugh'] .mascot .blink {
+  opacity: 0;
+  animation-play-state: paused;
+}
+.presence[data-emotion='warm'] .mascot .crescent,
+.presence[data-emotion='celebrate'] .mascot .crescent,
+.presence[data-emotion='laugh'] .mascot .crescent {
+  opacity: 1;
+}
+.presence[data-emotion='warm'] .aura {
+  opacity: 1;
+}
+
+/* empathy (concerned): brows knit in, the smile turns down, the aurora banks to warm
+   embers — care, not alarm */
+.presence[data-emotion='concerned'] {
+  --mascot-bell-1: #d8a58e;
+  --mascot-bell-2: #a49ac0;
+  --mascot-bell-3: #d093a8;
+  --mascot-cur-1: #d8a58e;
+  --mascot-cur-2: #a49ac0;
+  --mascot-cur-3: #b893c0;
+  --mascot-cur-4: #d093a8;
+  --mascot-bell-op: 0.78;
+  --mascot-glow: var(--glow-warning);
+}
+.presence[data-emotion='concerned'] .mascot .brow {
+  opacity: 0.9;
+}
+.presence[data-emotion='concerned'] .mascot .brow.l {
+  transform: rotate(10deg) translateY(2px);
+}
+.presence[data-emotion='concerned'] .mascot .brow.r {
+  transform: rotate(-10deg) translateY(2px);
+}
+.presence[data-emotion='concerned'] .mascot .smile {
+  opacity: 0;
+}
+.presence[data-emotion='concerned'] .mascot .frown {
+  opacity: 1;
+}
+.presence[data-emotion='concerned'] .mascot .eyes {
+  transform: translateY(2px);
+}
+.presence[data-emotion='concerned'] .mascot .curtains.long .curtain {
+  animation-duration: calc(8600ms / var(--motion-scale, 1));
+}
+.presence[data-emotion='concerned'] .aura {
+  opacity: 1;
+}
+
+/* celebrate: open delight — held-open mouth, sparkling water, and the curled strands
+   trace a heart beneath her while the whole jelly bounces */
+.presence[data-emotion='celebrate'] .mascot .curtains.long {
+  display: none;
+}
+.presence[data-emotion='celebrate'] .mascot .curtains.short {
+  display: inline;
+}
+.presence[data-emotion='celebrate'] .mascot .glyph.heart {
+  display: inline;
+}
+.presence[data-emotion='celebrate'] .mascot .glyph.heart .stroke {
+  animation: mascot-drawin calc(5000ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+.presence[data-emotion='celebrate'] .mascot .smile,
+.presence[data-emotion='laugh'] .mascot .smile {
+  opacity: 0;
+}
+.presence[data-emotion='celebrate'] .mascot .mouth-open,
+.presence[data-emotion='laugh'] .mascot .mouth-open {
+  opacity: 1;
+}
+.presence[data-emotion='celebrate'] .mascot .sparks {
+  opacity: 1;
+  animation: mascot-shimmer 1.4s var(--ease-in-out) infinite;
+}
+.presence[data-emotion='celebrate'] .mascot .jelly {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-joy calc(1700ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+
+/* laugh: the same open grin with a quick giggle wobble */
+.presence[data-emotion='laugh'] .mascot .jelly {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-giggle calc(650ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+
+/* wink: one playful crescent */
+.presence[data-emotion='wink'] .mascot .eye.r .blink {
+  opacity: 0;
+  animation-play-state: paused;
+}
+.presence[data-emotion='wink'] .mascot .eye.r .crescent {
+  opacity: 1;
+}
+
+/* surprised: both eyes wide, pupils shrink, a small o of a mouth, the bell breathes quick */
+.presence[data-emotion='surprised'] .mascot .eye {
+  transform: scale(1.25);
+}
+.presence[data-emotion='surprised'] .mascot .pupil {
+  transform: scale(0.8);
+}
+.presence[data-emotion='surprised'] .mascot .smile {
+  opacity: 0;
+}
+.presence[data-emotion='surprised'] .mascot .oo {
+  opacity: 1;
+}
+.presence[data-emotion='surprised'] .mascot .bell {
+  animation-duration: calc(2200ms / var(--motion-scale, 1));
+}
+
+/* curious: one eye wide, one narrowed, a raised brow, the whole jelly cocks gently */
+.presence[data-emotion='curious'] .mascot .eye.l {
+  transform: scale(1.14);
+}
+.presence[data-emotion='curious'] .mascot .eye.r {
+  transform: scale(0.78);
+}
+.presence[data-emotion='curious'] .mascot .brow.r {
+  opacity: 0.9;
+  transform: translateY(-3px);
+}
+.presence[data-emotion='curious'] .mascot .smile {
+  opacity: 0;
+}
+.presence[data-emotion='curious'] .mascot .oo {
+  opacity: 1;
+}
+.presence[data-emotion='curious'] .mascot .jelly {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-tilt calc(3200ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+}
+
+/* sleepy: lids close, the aurora fades to embers, the currents still, a z drifts off the crown */
+.presence[data-emotion='sleepy'] {
+  --mascot-bell-1: #2a6e58;
+  --mascot-bell-2: #3c4a86;
+  --mascot-bell-3: #7a4a62;
+  --mascot-cur-1: #2a6e58;
+  --mascot-cur-2: #3c4a86;
+  --mascot-cur-3: #5a4a86;
+  --mascot-cur-4: #7a4a62;
+  --mascot-bell-op: 0.6;
+  --mascot-glow: rgba(90, 110, 140, 0.25);
+}
+.presence[data-emotion='sleepy'] .mascot .blink {
+  opacity: 0;
+  animation-play-state: paused;
+}
+.presence[data-emotion='sleepy'] .mascot .closed {
+  opacity: 1;
+}
+.presence[data-emotion='sleepy'] .mascot .curtains.long .beads,
+.presence[data-emotion='sleepy'] .mascot .curtains.long .shimmer {
+  opacity: 0;
+}
+.presence[data-emotion='sleepy'] .mascot .curtains.long .curtain {
+  animation-duration: calc(11000ms / var(--motion-scale, 1));
+}
+.presence[data-emotion='sleepy'] .mascot .bell {
+  filter: none;
+  animation-duration: calc(7000ms / var(--motion-scale, 1));
+}
+.presence[data-emotion='sleepy'] .mascot .cheek {
+  opacity: 0.2;
+}
+.presence[data-emotion='sleepy'] .mascot .zzz {
+  opacity: 1;
+}
+.presence[data-emotion='sleepy'] .mascot .zzz text {
+  animation: mascot-zzz 2.6s var(--ease-in-out) infinite;
+}
+.presence[data-emotion='sleepy'] .mascot .zzz text + text {
+  animation-delay: 1.3s;
+}
+
+/* focused: steady little eyes and a flattened smile — reading the currents, no glancing about */
+.presence[data-emotion='focused'] .mascot .eye {
+  transform: scale(0.78);
+}
+.presence[data-emotion='focused'] .mascot .smile {
+  transform: scaleY(0.55);
+}
+.presence[data-emotion='focused'] .mascot .eyes {
+  animation: none;
+}
+
+/* gaze targets (presets; the eyes group carries the sweep, the pupils add the life,
+   and looking canvas-ward leans the bell through the independent rotate channel) */
+.presence[data-gaze='down'] .mascot .eyes {
+  transform: translateY(4px);
+}
+.presence[data-gaze='down'] .mascot .pupil {
+  transform: translateY(1.5px);
+}
+.presence[data-gaze='left'] .mascot .eyes {
+  transform: translateX(-6px);
+}
+.presence[data-gaze='left'] .mascot .pupil {
+  transform: translateX(-1.8px);
+}
+.presence[data-gaze='right'] .mascot .eyes {
+  transform: translateX(6px);
+}
+.presence[data-gaze='right'] .mascot .pupil {
+  transform: translateX(1.8px);
+}
+.presence[data-gaze='right'] .mascot .bell {
+  rotate: -2deg;
+}
+.presence[data-gaze='up'] .mascot .eyes {
+  transform: translateY(-3px);
+}
+.presence[data-gaze='up'] .mascot .pupil {
+  transform: translateY(-1.5px);
+}
+
+/* ---- keyframes ---- */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5%);
+  }
+}
+@keyframes mascot-swell {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.035, 0.97);
+  }
+}
+@keyframes mascot-blink {
+  0%,
+  91%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  93.5% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes mascot-look {
+  0%,
+  34%,
+  100% {
+    transform: translateX(0);
+  }
+  40%,
+  56% {
+    transform: translateX(-4px);
+  }
+  62%,
+  78% {
+    transform: translateX(3px);
+  }
+}
+@keyframes mascot-curtain {
+  0%,
+  100% {
+    transform: skewX(0deg);
+  }
+  50% {
+    transform: skewX(3.5deg);
+  }
+}
+@keyframes mascot-flow {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+@keyframes mascot-drawin {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  38% {
+    stroke-dashoffset: 0;
+  }
+  82% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94% {
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+}
+@keyframes mascot-glyphpop {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  42%,
+  82% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  94%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes mascot-shimmer {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes mascot-talk {
+  0%,
+  100% {
+    transform: scaleY(0.2);
+    opacity: 0.65;
+  }
+  45% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes mascot-talk-body {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(1.05);
+  }
+  48% {
+    transform: scale(1.015);
+  }
+  74% {
+    transform: scale(1.06);
+  }
+}
+@keyframes mascot-joy {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.08, 0.92);
+  }
+  60% {
+    transform: scale(0.96, 1.05);
+  }
+  80% {
+    transform: scale(1.03, 0.98);
+  }
+}
+@keyframes mascot-giggle {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+@keyframes mascot-tilt {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes mascot-zzz {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  30%,
+  70% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes idle-perk {
+  /* a faint brighten that rides along with the glance so the gesture reads as "awake" */
+  0%,
+  46%,
+  82%,
+  100% {
+    opacity: 1;
+  }
+  56%,
+  72% {
+    opacity: 1.35;
+  }
+}
+
+/* Reduced motion: the jelly stays colorful but STILL — the bob/swell/sway/flow loops stop and the
+   glyphs render fully drawn; state is still legible from palette, glow, bead pattern and the
+   eyes. The brief blink survives — it is tiny, rare, and carries "alive". */
+@media (prefers-reduced-motion: reduce) {
+  .presence .aura,
+  .presence .mascot,
+  .presence .mascot .jelly,
+  .presence .mascot .bell,
+  .presence .mascot .curtain,
+  .presence .mascot .beads,
+  .presence .mascot .shimmer,
+  .presence .mascot .glyph .stroke,
+  .presence .mascot .glyph .dot,
+  .presence .mascot .sparks,
+  .presence .mascot .zzz text,
+  .presence .mascot .eyes,
+  .presence[data-state] {
+    animation: none;
+  }
+  .presence .mascot .glyph .stroke {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  .presence .mascot .glyph .dot {
+    opacity: 1;
+  }
+  .presence .mascot .zzz text {
+    opacity: 0.85;
+  }
+  /* a modest, motionless open mouth still reads "speaking" */
+  .presence[data-state='speaking'] .mascot .mouth-open {
+    opacity: 1;
+    transform: scaleY(0.55);
+  }
+}
+
+/* Corner orb renders at ~54px. Body loops and the glow filter look wrong (and raster soft) at
+   that size — swap to the curled chibi silhouette, drop the filter, and let the aura carry the
+   state signal instead. */
+.presence-layer.corner .presence {
+  --mascot-fit: 1.3;
+}
+.presence-layer.corner .presence[data-state='listening'],
+.presence-layer.corner .presence[data-state='thinking'],
+.presence-layer.corner .presence[data-state='loading'],
+.presence-layer.corner .presence[data-state='speaking'] {
+  animation: none;
+  transform: none;
+}
+.presence-layer.corner .presence .mascot {
+  margin-top: calc(var(--face-size) * 0.06);
+  animation: none;
+}
+.presence-layer.corner .presence .mascot .jelly {
+  animation: none;
+}
+.presence-layer.corner .presence .mascot .bell {
+  filter: none;
+}
+.presence-layer.corner .presence .mascot .curtains.long {
+  display: none;
+}
+.presence-layer.corner .presence .mascot .curtains.short {
+  display: inline;
+}
+.presence-layer.corner .presence .mascot .band,
+.presence-layer.corner .presence .mascot .glint.g2,
+.presence-layer.corner .presence .mascot .bell-sheen {
+  display: none;
+}
+/* big chibi eyes + a bolder smile — the readable, cute features at small size */
+.presence-layer.corner .presence .mascot .eye {
+  transform: scale(1.3);
+}
+.presence-layer.corner .presence .mascot .smile {
+  stroke-width: 5;
+}
+.presence-layer.corner .presence[data-state='listening'] .aura {
+  background: radial-gradient(circle at 50% 42%, rgba(138, 160, 255, 0.65), transparent 66%);
+  opacity: 1;
+}
+.presence-layer.corner .presence[data-state='speaking'] .aura {
+  opacity: 1;
+  animation-duration: calc(1200ms / var(--motion-scale, 1));
+}
+/* keep the glow a crisp halo, not a muddy ring, once shrunk */
+.presence-layer.corner .presence .aura {
+  inset: -22%;
+  filter: blur(8px);
+}
+
+/* ---- presence LAYER: animates between center (conversation) and corner (visualization) ---- */
+.presence-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.presence-positioner {
+  transition: transform var(--m-cinematic) var(--ease-spring);
+  will-change: transform;
+}
+.presence-layer .presence {
+  --face-size: 150px;
+}
+/* Centre stage (no corner/idlehome modifier) is the conversational moment — the face is the
+   whole show while it hears the ask and speaks the opening line, and 150px reads lost on a big
+   display. Scale with the viewport, capped so laptops stay calm. Sizing rides the --face-size
+   custom property (never a transform on .presence), so bob/swell/blink keyframes are untouched;
+   corner and idle-home keep their own sizes. */
+.presence-layer:not(.corner):not(.idlehome) .presence {
+  --face-size: clamp(160px, 24vmin, 248px);
+}
+/* The centred face — hearing your ask, speaking the opening line, or composing over a canvas — sits
+   a touch above the vertical midpoint. Dead-centre reads as low against the content/skeletons above
+   it, so lift it on the positioner WRAPPER (never .presence, so the bob / swell / blink keyframes
+   stay untouched — the same lever the corner dock uses). Applies to every centred moment (with or
+   without a caption); corner + idle-home own their own positioning. This covers Live and the
+   walkthrough (both use the centred face); the demo's face rides idle-home/corner and already sits
+   high. */
+.presence-layer:not(.corner):not(.idlehome) .presence-positioner {
+  transform: translateY(-9dvh);
+}
+/* docked state: the resting face flies to the brand anchor (measured into --home-x/--home-y on
+   .mavea-app) and becomes the brand-dot. The fallback docks it top-left before the first measure. */
+.presence-layer.corner .presence-positioner {
+  transform: translate(var(--home-x, calc(-50vw + 33px)), var(--home-y, calc(-50vh + 30px)))
+    scale(calc(var(--home-scale, 0.14) * var(--dock-zoom, 1)));
+}
+/* While the window is actively resizing, the viewport-relative corner transform would animate to
+   catch up each step — the layout re-centres the face instantly but the transform transitions over
+   --m-cinematic, so the docked orb visibly slides. Drop the position transition during resize
+   (set via <html data-resizing> by useResizeQuiet); it restores the instant resizing settles, so
+   the corner ↔ centre fly is unaffected. */
+:root[data-resizing] .presence-positioner {
+  transition: none;
+}
+
+/* ── Docked "chibi" jelly — crisp + cute at small size ────────────────────────
+   Resting in the corner the face is scaled to ~14%, where the full jelly (trailing curtains,
+   glow filter, shimmer strokes) reads muddy and rasterises soft/blocky on a HiDPI screen.
+   Scoped to the docked corner ONLY — the centre conversation face is untouched: (a) a gentle
+   size bump (--dock-zoom) so the downscale is less extreme = sharper raster and a more
+   characterful little jelly; (b) de-promote the wrapper layer so it rasterises at native
+   resolution. The simplification itself (short curls, big eyes) lives with the corner rules
+   above. */
+.presence-layer.corner {
+  /* Bumped for the jelly: its bell is narrower than the old full-box orb, so the same
+     brand-slot measurement leaves her reading small — zoom compensates. */
+  --dock-zoom: 1.55;
+}
+.presence-layer.corner .presence-positioner,
+.presence-layer.corner .presence {
+  will-change: auto;
+}
+
+/* A gentle focus glow behind the centered face — a soft edge vignette, not a heavy wash.
+   The center stays clear and the content behind stays readable; the surround is only lightly
+   de-emphasized so the centered face reads as a deliberate moment (no backdrop blur). */
+.presence-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  background: radial-gradient(78% 78% at 50% 44%, transparent 38%, rgba(var(--scrim-rgb), 0.22));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--m-expressive) var(--ease-out);
+}
+.presence-scrim.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The answer "seed" — a one-shot ripple that releases from the orb as each answer arrives, pairing
+   with the card bloom on the canvas. It's an absolutely-centred child of the positioner (which owns
+   the fly-to-corner transform), so it emanates from the face wherever it sits and never touches
+   .presence. Presence-tinted via the global glow token; compositor-only (opacity + transform). */
+.presence-positioner {
+  position: relative;
+}
+.presence-seed {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--glow-presence) 0%, transparent 68%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.4);
+  animation: presence-seed-burst var(--m-cinematic) var(--ease-out) both;
+}
+@keyframes presence-seed-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  28% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .presence-seed {
+    display: none;
+  }
+}
+
+/* caption when face is centered. A spoken line can be two or three sentences, so the measure must
+   be wide enough that it wraps to a few lines — not the tall ~12-line column the old 22ch produced,
+   which ran clean off the bottom of the screen and over the composer. Width is also capped to the
+   content area (viewport minus the side rail) so it never spills past the right edge, and a
+   max-height backstop guarantees an over-long line is clipped above the composer rather than under
+   it. */
+.center-caption {
+  position: fixed;
+  left: 50%;
+  /* Sits just under the lifted, talking face (which CSS shifts up 9dvh while a caption shows), with
+     a max-height that always stops it above the composer/scrubber — no spoken line can reach the
+     bottom chrome on any viewport. */
+  top: calc(50% - 9dvh + 96px);
+  transform: translateX(-50%);
+  z-index: 47;
+  text-align: center;
+  max-width: min(54ch, calc(100vw - var(--rail-w, 0px) - 64px));
+  max-height: calc(58dvh - 232px);
+  overflow: hidden;
+  font-size: clamp(18px, 2vw, 25px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.3;
+  /* `pretty` (not `balance`): balance shrinks the block to even out line lengths, which fights the
+     wide measure and yields MORE lines; pretty fills the width and only tidies the last line. */
+  text-wrap: pretty;
+  animation: capIn var(--m-normal) var(--ease-out);
+  pointer-events: none;
+}
+@keyframes capIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.center-caption {
+  animation: capInCenter var(--m-normal) var(--ease-out);
+}
+@keyframes capInCenter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+/* hidden / text-only */
+.presence.is-hidden {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+/* While the orb is invisible (text-only mode, or a canvas has fully taken over), stop its infinite
+   loops — breathe/bob/swell/blink/mascot-* would otherwise keep the compositor repainting an element
+   no one can see, pure idle-CPU cost on weak hardware. animation-play-state doesn't inherit, so
+   pause the container, every descendant, and their pseudo-elements. `!important` because the orb
+   is usually hidden *mid-state* (a canvas takeover leaves it in the corner with data-state/emotion
+   set), and those state/emotion/corner `animation: …` shorthands are more specific — they'd
+   otherwise re-assert `running`. No visual effect either way: the element is at opacity 0, so
+   paused vs. running is identical. */
+.presence.is-hidden,
+.presence.is-hidden *,
+.presence.is-hidden *::before,
+.presence.is-hidden *::after {
+  animation-play-state: paused !important;
+}
+
+/* mic-muted slash on listen */
+.muted-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  color: var(--warning);
+}
+.muted-badge svg {
+  width: 13px;
+  height: 13px;
+}

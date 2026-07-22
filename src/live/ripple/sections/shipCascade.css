@@ -1,0 +1,261 @@
+/* shipCascade.css — the cascade section. One causal chain per cascade: a presence-tinted trigger,
+   risk-tinted hops, then a dark incident card, all wrapping on small widths; below it, the
+   resolution line. All color via the shared tokens, so light/dark is automatic. Cards tint
+   themselves from a single --casc-tint custom prop set per step in the tsx. */
+
+.ripple-casc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+}
+
+.ripple-casc-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ripple-casc-lede {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.ripple-casc-empty {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ── one cascade ── */
+.ripple-casc-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.ripple-casc-divider {
+  height: 1px;
+  margin-bottom: var(--s-2);
+  background: var(--line);
+}
+
+/* the clickable summary bar (collapses the chain) */
+.ripple-casc-bar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+.ripple-casc-bar:hover {
+  background: var(--surface-elevated-2);
+  border-color: color-mix(in oklab, var(--text-muted) 40%, var(--line));
+}
+.ripple-casc-bar-sev {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--casc-sev);
+  background: color-mix(in oklab, var(--casc-sev) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--casc-sev) 36%, transparent);
+  border-radius: var(--r-full);
+  padding: 2px 8px;
+}
+.ripple-casc-bar-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ripple-casc-bar-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ripple-casc-bar-arrow {
+  color: var(--text-muted);
+}
+.ripple-casc-bar-toggle {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ripple-casc-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+/* keep the chain readable on narrow panels: it wraps where it can, scrolls where it can't */
+.ripple-casc-scroll {
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--s-2));
+  padding: 4px var(--s-2);
+}
+
+/* ── the chain ── */
+.ripple-casc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--s-2);
+}
+.ripple-casc-step {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.ripple-casc-chevron {
+  flex: none;
+  align-self: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+/* a step card: trigger / hop / incident all share the box; tint comes from --casc-tint */
+.ripple-casc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 200px;
+  min-width: 184px;
+  max-width: 320px;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.ripple-casc-trigger,
+.ripple-casc-hop {
+  background: color-mix(in oklab, var(--casc-tint) 10%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--casc-tint) 34%, transparent);
+}
+/* the tinted left edge that marks where on the chain you are */
+.ripple-casc-trigger {
+  box-shadow: inset 3px 0 0 var(--casc-tint);
+}
+.ripple-casc-hop {
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--casc-tint) 70%, transparent);
+}
+
+.ripple-casc-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.ripple-casc-ref {
+  flex: 1;
+  min-width: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ripple-casc-hop-eyebrow {
+  color: var(--casc-tint);
+}
+.ripple-casc-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+/* the incident — a deliberately darker, heavier card; this is where it lands */
+.ripple-casc-incident {
+  flex: 1 1 200px;
+  min-width: 184px;
+  max-width: 320px;
+  background: var(--surface-elevated-2);
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, var(--line));
+  box-shadow:
+    inset 3px 0 0 var(--danger),
+    0 10px 26px color-mix(in oklab, var(--danger) 16%, transparent);
+}
+.ripple-casc-incident-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ripple-casc-sev {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--casc-sev);
+  background: color-mix(in oklab, var(--casc-sev) 18%, transparent);
+  border: 1px solid color-mix(in oklab, var(--casc-sev) 42%, transparent);
+  border-radius: var(--r-full);
+  padding: 2px 9px;
+}
+.ripple-casc-incident-label {
+  color: color-mix(in oklab, var(--danger) 80%, var(--text-secondary));
+}
+.ripple-casc-incident-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+/* ── the resolution line ── */
+.ripple-casc-resolution {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--insight) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--insight) 26%, transparent);
+}
+.ripple-casc-resolution-icon {
+  flex: none;
+  display: flex;
+  margin-top: 1px;
+  color: var(--insight);
+}
+.ripple-casc-check {
+  width: 18px;
+  height: 18px;
+}
+.ripple-casc-resolution-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.ripple-casc-resolution-text strong {
+  color: var(--insight);
+  font-weight: 600;
+}

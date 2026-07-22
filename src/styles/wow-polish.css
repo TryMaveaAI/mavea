@@ -1,0 +1,707 @@
+/* ============================================================
+   WOW POLISH — subtle premium flourishes (additive, tasteful)
+   ============================================================ */
+/* eyebrow icons get a faint halo in their own accent */
+.card-eyebrow .ic {
+  filter: drop-shadow(0 0 5px currentColor);
+}
+/* hovering a canvas card lifts it gently (life without distraction) */
+.card-grid .card {
+  transition:
+    transform var(--m-normal) var(--ease-out),
+    border-color var(--m-normal),
+    box-shadow var(--m-normal);
+}
+.card-grid > div:not(.dimmed):hover .card {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+}
+
+/* ── Live: follow-up chips ───────────────────────────────────────────────── */
+.live-chip {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.live-chip:hover:not(:disabled) {
+  border-color: var(--presence);
+  background: var(--surface-glass-strong);
+}
+.live-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- Live settings: session-only key indicator + export/import footer ---- */
+
+/* Subtle pill shown next to "API key" label when rememberKey is off. */
+.settings-session-only {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass-strong);
+  border: 1px solid var(--line-strong);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--warning);
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+/* Row that holds the Export / Import buttons at the bottom of settings. */
+.settings-transfer-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+/* Ghost buttons — low visual weight so they don't compete with real actions. */
+.settings-transfer-btn {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.settings-transfer-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--text-secondary);
+}
+
+/* Inline error message shown when an import file fails to parse. */
+.settings-import-error {
+  font-size: 12px;
+  color: var(--warning);
+  flex: 1 1 100%;
+}
+
+/* ---- LiveSettings tabbed layout ---- */
+.ls-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--track);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.ls-tab {
+  flex: 1;
+  padding: 7px 10px;
+  border: none;
+  border-radius: calc(var(--r-md) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.ls-tab.active {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.ls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: min(480px, calc(100vh - 220px));
+  padding-right: 2px;
+}
+
+/* One measurable connection region for the walkthrough: the real five-provider picker, model,
+   masked BYOK field, readiness, and storage choice. The wrapper preserves .ls-body's prior rhythm. */
+.settings-model-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.settings-api-key-field {
+  scroll-margin-block: 80px;
+}
+
+/* Shared Connect/Settings disclosure: conspicuous without impersonating an error state. */
+.provider-responsibility {
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, var(--warning) 12%);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.provider-responsibility strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.provider-responsibility p {
+  margin: 0;
+}
+
+.provider-responsibility p + p {
+  margin-top: 8px;
+}
+
+.provider-responsibility-link {
+  display: inline-block;
+  color: var(--presence);
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.provider-responsibility-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+
+.provider-responsibility-link:hover,
+.provider-responsibility-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Canvas fluid-type scale  (Wave 0 quality-floor — added by features session)
+
+   The block library hardcoded hundreds of px font-sizes, so content didn't scale
+   when a card got narrower (a 6-col card reflowed to 4-col but its text stayed
+   13px) or when the user changed their font size. These tokens give every block a
+   *fluid* type ramp: a min, a card-relative preferred term (`cqi` = 1% of the
+   card's inline size), and a max. Because `.card` is a container, the preferred
+   term tracks the card's own width, not the viewport — so the same component is
+   compact in a narrow slot and generous in a wide one, with no JS.
+
+   Adoption is opt-in and additive: a block swaps `font-size: 13px` for
+   `font-size: var(--fs-sm)`. Nothing here changes a component that hasn't opted
+   in.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Reading text size (Settings/Appearance → Text size): a Kindle-style multiplier over the whole
+     ramp below, stamped onto <html data-font-scale> by LiveApp from the user's fontScale choice.
+     'normal' never sets the attribute, so this stays at its unscaled default. */
+  --fs-scale: 1;
+
+  /* Fluid type ramp. clamp(min, card-relative, max). Tuned so a token reads at
+     its max in a full-width (col-12 ≈ 1100px) card and floors gracefully in a
+     col-3 (~250px) card. 1cqi ≈ 2.5px at col-12, ≈ 1.3px at col-4. Every bound is
+     scaled by --fs-scale, so the ramp shrinks/grows as one piece — a narrow card
+     stays proportionally smaller than a wide one at every text size. */
+  --fs-2xs: clamp(
+    calc(9px * var(--fs-scale)),
+    calc(2.6cqi * var(--fs-scale)),
+    calc(10.5px * var(--fs-scale))
+  );
+  --fs-xs: clamp(
+    calc(10px * var(--fs-scale)),
+    calc(3cqi * var(--fs-scale)),
+    calc(11.5px * var(--fs-scale))
+  );
+  --fs-sm: clamp(
+    calc(11px * var(--fs-scale)),
+    calc(3.4cqi * var(--fs-scale)),
+    calc(13px * var(--fs-scale))
+  );
+  --fs-md: clamp(
+    calc(12.5px * var(--fs-scale)),
+    calc(3.9cqi * var(--fs-scale)),
+    calc(14.5px * var(--fs-scale))
+  );
+  --fs-lg: clamp(
+    calc(14px * var(--fs-scale)),
+    calc(4.6cqi * var(--fs-scale)),
+    calc(17px * var(--fs-scale))
+  );
+  --fs-xl: clamp(
+    calc(17px * var(--fs-scale)),
+    calc(6cqi * var(--fs-scale)),
+    calc(22px * var(--fs-scale))
+  );
+  --fs-2xl: clamp(
+    calc(22px * var(--fs-scale)),
+    calc(9cqi * var(--fs-scale)),
+    calc(34px * var(--fs-scale))
+  );
+  /* Display sizes for hero numbers — scale hard with the card so a big stat fills
+     it at any width yet never overflows a narrow one. */
+  --fs-stat: clamp(
+    calc(28px * var(--fs-scale)),
+    calc(13cqi * var(--fs-scale)),
+    calc(56px * var(--fs-scale))
+  );
+  --fs-hero: clamp(
+    calc(34px * var(--fs-scale)),
+    calc(17cqi * var(--fs-scale)),
+    calc(72px * var(--fs-scale))
+  );
+
+  /* Fluid spacing, same idea — padding/gaps that tighten as the card narrows. Left off --fs-scale
+     on purpose: layout rhythm shouldn't balloon just because the reading text got bigger. */
+  --sp-fluid-xs: clamp(4px, 1.4cqi, 7px);
+  --sp-fluid-sm: clamp(7px, 2.4cqi, 11px);
+  --sp-fluid-md: clamp(11px, 3.4cqi, 16px);
+}
+
+/* Settings/Appearance → Text size. Smaller/Larger nudge the whole ramp above at once. */
+:root[data-font-scale='smaller'] {
+  --fs-scale: 0.9;
+}
+:root[data-font-scale='larger'] {
+  --fs-scale: 1.2;
+}
+
+/* Make every card a containment context so the cqi units above resolve against
+   the card's own inline size. `inline-size` (not `size`) so block height stays
+   content-driven — only width drives the type scale. */
+.card {
+  container-type: inline-size;
+}
+
+/* ── Per-block action row — Ask / Fuse / Watch ───────────────────────────────────────────
+   All three card-chrome buttons live in a single flex row anchored to the card's top-right,
+   so they can never overlap regardless of how wide any individual button grows. The row is
+   the only absolutely-positioned element; the buttons inside it are plain flex children. */
+.askable {
+  position: relative;
+}
+.block-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Pointer events only where the buttons are — don't block card content. */
+  pointer-events: none;
+  /* The cluster floats in the card's top-right corner, where many blocks place their OWN controls
+     (a measure toggle, a "mark all", a tab strip). Revealing it on hover/focus instead of at rest
+     means it never sits on top of those controls when the user isn't reaching for it — one rule
+     that holds for every block type, present and future. A card captured to flashcards keeps its
+     badge shown so that status stays legible. Demo/gallery cards aren't interactive, so they have
+     no cluster. */
+  opacity: 0;
+  transition: opacity var(--m-fast) var(--ease-out);
+}
+:where(.askable, .addable, .flashcardable):hover > .block-actions,
+:where(.askable, .addable, .flashcardable):focus-within > .block-actions,
+.focus-hero-card:hover .block-actions,
+.block-actions:has(.is-flashed) {
+  opacity: 1;
+}
+/* Coarse-pointer devices (touch) have no hover — a hover-only reveal would leave Ask (and its
+   siblings) silently invisible until the card happens to gain focus, undiscoverable rather than
+   just unobtrusive. Surface the cluster at rest there instead. */
+@media (hover: none) {
+  .block-actions {
+    opacity: 1;
+  }
+}
+.block-actions > * {
+  pointer-events: auto;
+}
+/* Buffer for the action cluster: it floats in the card's top-right corner, so a block that puts its
+   OWN controls there (a table's measure toggle, etc.) collides with the buttons. Scoped to
+   interactive (Live) cards via .askable/.addable so the demo + gallery keep their tight layout.
+   Two parts: pad the header so a long title clears the corner zone, and let the title take the whole
+   first line so the control wraps onto its own row — clear of the buttons whatever their width
+   (icons at rest, wider once a standing badge reveals). */
+:where(.askable, .addable, .flashcardable) {
+  --block-actions-w: 140px;
+}
+:where(.askable, .addable, .flashcardable) .tbl-head {
+  padding-right: var(--block-actions-w);
+}
+:where(.askable, .addable, .flashcardable) .tbl-head > .card-eyebrow {
+  flex: 1 1 100%;
+}
+/* Controls that live INSIDE the eyebrow (a toggle, "Reload", "Mark all") normally pin to its right
+   edge via margin-left:auto — exactly where the cluster sits. In interactive cards, let the eyebrow
+   wrap and sit the control next to the title instead, so it stays clear of the buttons even while
+   they're revealed (and their labels expanded) on hover. Covers every eyebrow control, present and
+   future, so this class of collision can't recur. */
+/* Controls that live INSIDE the eyebrow (a toggle, "Reload", "Mark all") pin to its right edge —
+   right where the cluster sits. Reserve the corner so the right-pinned control clears the buttons,
+   and let the eyebrow wrap so a long title drops the control onto its own line instead of colliding.
+   :is() (not :where()) so this carries enough specificity to beat each component's own eyebrow
+   rule (.card .card-eyebrow = 0,2,0); :where() is zero-specificity and lost. */
+:is(.askable, .addable, .flashcardable) .card-eyebrow {
+  flex-wrap: wrap;
+  padding-right: var(--block-actions-w);
+}
+/* ── shared action-pill base ─────────────────────────────────────────────────────────────
+   Every per-card affordance — Ask, Dashboard (+), Flashcards — is the SAME pill, so the cluster
+   reads as one consistent set. A button layers only its own semantic accent/active state on top.
+   One base means a new affordance can't drift in size, weight, background, or hover behaviour
+   from its siblings. */
+.block-action-pill,
+.block-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+.block-action-pill svg,
+.block-ask svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+/* Icon-only at rest (each button carries an aria-label + a native title tooltip) so the cluster
+   never widens leftward over a card's own top-right controls. A button reveals its word only as a
+   standing badge once it enters an active state (added) — never on plain hover, which is what
+   used to balloon the cluster to ~260px and clip those controls. */
+.block-pill-label {
+  display: none;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+/* Brighten the WHOLE cluster on a card hover/focus, and keep each button keyboard-usable — the
+   single rule that makes all the pills light up together. */
+:where(.askable, .addable, .flashcardable):hover .block-action-pill,
+:where(.askable, .addable, .flashcardable) .block-action-pill:focus-visible,
+.focus-hero-card:hover .block-action-pill {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
+/* Ask — pinned for a follow-up: the button stays lit + accented and the card wears a soft presence
+   ring so the on-screen selection is obviously tied to the chips above the composer. */
+.picked .block-ask {
+  border-color: var(--presence);
+  color: var(--presence);
+}
+/* The second selector re-reaches .card through a FitBox host (see fitPolicy.ts), which sits
+   where the direct `> .card` child used to be. */
+.card-grid > div.picked > .card,
+.card-grid > div.picked > .fit-box .card {
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line-strong));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--presence) 45%, transparent),
+    var(--shadow-raised);
+}
+/* Active state — a solid accent tint + a standing word badge. The hover-inclusive selector keeps
+   the badge winning over the cluster-hover rule above. Flashcards ("Added") reads as "this is
+   on", so it wears the insight accent. */
+.block-cards.is-flashed,
+:where(.askable, .addable, .flashcardable):hover .block-cards.is-flashed {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
+  border-color: var(--insight);
+}
+.block-cards.is-flashed .block-pill-label {
+  display: inline;
+}
+
+/* ── chrome safe-band — the action row never sits on the card's first line ─────────────────
+   The action chrome floats absolutely over the card's top-right (top: 10px, ~24px tall) and
+   widens leftward as its labels reveal on hover, so a card whose first row carries its own
+   controls (a header toggle, a right-aligned badge) can read UNDER the buttons. Reserve a top
+   band on any card that actually carries chrome — `:has(~ .block-actions)` — so its content
+   always begins below the button row, whatever the chrome's hover width. Scoped to cards that
+   lead with an eyebrow so full-bleed media (which intentionally lets chrome float over it) is
+   left alone. The band is constant, so nothing shifts as the buttons reveal on hover.
+   A FitBox-wrapped block (see fitPolicy.ts) puts its own host div — not the card — where
+   `.block-actions` expects a sibling, so the plain `~` match below can't see past it; the
+   second selector re-establishes the same sibling relationship one level up. */
+.card:has(~ .block-actions):has(> .card-eyebrow:first-child),
+.fit-box:has(~ .block-actions) .card:has(> .card-eyebrow:first-child) {
+  padding-top: 40px;
+}
+
+/* Zoom — blows a single card up full-screen over a dim scrim, mirroring .app-scrim/.app-launch. */
+.zoom-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: color-mix(in oklab, var(--text-primary) 28%, transparent);
+  backdrop-filter: blur(2px);
+}
+.zoom-sheet {
+  position: relative;
+  width: min(920px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 32px;
+  border-radius: var(--r-lg);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-modal);
+}
+/* The close + zoom controls sit in their own sticky row so they stay reachable while a scaled-up
+   block is scrolled/panned, instead of being absolutely positioned over content that can scroll
+   underneath them. */
+.zoom-sheet-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: -32px -32px 12px;
+  padding: 12px;
+  background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid var(--line);
+}
+.zoom-sheet-zoom-btn,
+.zoom-sheet-x {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface-glass-strong);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.zoom-sheet-zoom-btn:hover,
+.zoom-sheet-x:hover {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
+.zoom-sheet-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.zoom-sheet-zoom-btn svg,
+.zoom-sheet-x svg {
+  width: 15px;
+  height: 15px;
+}
+.zoom-sheet-zoom-level {
+  min-width: 3.5ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.zoom-sheet-body {
+  /* Magnify with the `zoom` property, not `transform: scale` — `zoom` affects layout, so the
+     sheet's scrollable area grows to match the enlarged content instead of clipping the painted
+     overflow while reporting the pre-scale (smaller) scroll bounds. That mismatch was why the
+     zoomed view used to cut off content and couldn't be fully panned. */
+  margin-bottom: 24px;
+}
+.zoom-sheet-body .block-actions {
+  display: none;
+}
+
+/* DashPill reuses .cards-pill's frame (see flashpill.css) but the confirmation text carries a
+   variable dashboard title — allow it to wrap instead of the base class's single-line nowrap, or
+   a long title would force the fixed-width pill to overflow (overflow containment is a hard rule). */
+.dash-pill-text {
+  white-space: normal;
+}
+.dash-pill .cards-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.dash-pill .cards-pill-btn svg {
+  width: 13px;
+  height: 13px;
+}
+/* The affordance has no place on a dimmed (spotlight-backgrounded) card. */
+.card-grid > div.dimmed .block-actions {
+  display: none;
+}
+/* Touch devices have no hover to reveal the cluster on, so show it at rest — still icon-only, so
+   the 116px corner reserve keeps it clear of the card's own top-right controls. Mirrors the
+   hover/focus-within selector above exactly (same three affordance classes) — any future
+   hover-revealed control in this file should get its own arm of a `(hover: none)` rule the
+   same way, applying whatever "revealed" state its `:hover`/`:focus-within` rule sets. */
+@media (hover: none) {
+  :is(.askable, .addable, .flashcardable) > .block-actions {
+    opacity: 1;
+  }
+}
+
+/* Touch targets: pointers without hover are fingers. Grow the small composer and
+   topbar controls to the 44px minimum (WCAG 2.5.5 / platform HIG) so they're
+   reliably tappable. Visuals are unchanged on hover-capable (mouse) devices. */
+@media (hover: none) {
+  .composer-tool,
+  .rail-dock .composer .mic-btn,
+  .rail-dock .composer .send-btn,
+  .rail-dock .composer .composer-tool {
+    width: 44px;
+    height: 44px;
+  }
+  .ctrl {
+    width: 44px;
+    height: 44px;
+  }
+  .pill-btn {
+    min-height: 44px;
+  }
+}
+
+/* Pinned-elements dock above the Live composer: removable chips for each selected block,
+   then a row of one-tap follow-up suggestions (reusing .live-chip). Mirrors .attach-strip. */
+.pin-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pin-strip,
+.pin-suggests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line));
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.pin-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--presence);
+}
+.pin-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.pin-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  flex: none;
+  cursor: pointer;
+  transition: color var(--m-fast);
+}
+.pin-remove:hover {
+  color: var(--text-primary);
+}
+/* The fuse chip sits in the suggests row and inherits .live-chip — just a subtle
+   presence tint so it reads as "the action that connects all of these". */
+.pin-fuse-chip {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 35%, var(--line));
+}
+.pin-fuse-chip:hover {
+  border-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+
+/* One-time coach hint pointing out the per-element affordance. */
+.ask-hint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.ask-hint > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--presence);
+}
+.ask-hint strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ask-hint-x {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  flex: none;
+  cursor: pointer;
+  transition: color var(--m-fast);
+}
+.ask-hint-x:hover {
+  color: var(--text-primary);
+}
+.ask-hint-x svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Light theme spotlight: the floating shadow is already softer here; quiet the ring a touch and
+   keep the tinted underlay faint so the color never reads as a smudge on the bright surface. */
+:root[data-theme='light'] .card-grid > div.spotlit > .card,
+:root[data-theme='light'] .card-grid > div.spotlit > .fit-box .card {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--topic-tint) 45%, transparent),
+    var(--shadow-floating),
+    0 22px 48px -30px color-mix(in oklab, var(--topic-tint) 55%, transparent);
+}

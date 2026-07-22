@@ -1,0 +1,92 @@
+.root-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface-default);
+  color: var(--text-primary);
+}
+
+.root-fallback-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--presence) 70%, transparent);
+}
+
+.root-fallback-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.root-fallback-body {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.root-fallback-action {
+  margin-top: 4px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--presence);
+  color: var(--surface-default);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.root-fallback-action:hover {
+  filter: brightness(1.06);
+}
+
+.surface-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-default);
+}
+
+.surface-fallback-orb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in oklab, var(--presence) 70%, white 12%),
+    var(--presence)
+  );
+  animation: surface-fallback-pulse 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-fallback-orb {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+@keyframes surface-fallback-pulse {
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

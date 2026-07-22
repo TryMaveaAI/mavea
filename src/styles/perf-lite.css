@@ -1,0 +1,88 @@
+/* ==========================================================================================
+   LITE PERFORMANCE TIER  (html[data-perf='lite'])
+   ------------------------------------------------------------------------------------------
+   The calm-down layer for weak / integrated-GPU machines (a 2016 Intel MacBook). It is applied
+   as a single attribute on <html> (see lib/perfTier.ts) and does its work in pure CSS: it pauses
+   the always-on ambient animations, drops every backdrop-filter blur, and swaps the landing's
+   95px-blur aurora for a cheap static one. The face stays ALIVE — blink, mood color, and the
+   talk/listen/state reactions are deliberately NOT touched here (only the idle ambient loops are),
+   so lite reads as a quieter version of the same character, never a broken one.
+
+   Composes cleanly with the other two levers:
+     - prefers-reduced-motion (a different, stricter intent) already sets `animation: none` on the
+       same ambient elements, which simply wins — lite ∧ reduced-motion = a still, blur-free face.
+     - .presence.is-hidden pauses EVERYTHING with !important — also wins, as it should.
+   ========================================================================================== */
+
+/* 1 — Ambient face loops. Every ambient animation carries `animation-play-state:
+   var(--ambient-play, running)` at its declaration site (grep the AMBIENT-loop comments in
+   presence-canvas.css / friend-aliveness.css / presence-styles.css). One line pauses them all;
+   blink / talk / gaze / state animations don't read this var, so they keep running. */
+:root[data-perf='lite'] {
+  --ambient-play: paused;
+
+  /* 2 — Glass. Zero every frosted-chrome blur token. backdrop-filter blur re-blurs the content
+     behind it on every scroll/repaint — one of the biggest integrated-GPU costs — and buys almost
+     nothing on the calmer lite surfaces. The bar background goes fully opaque so the (now
+     un-blurred) strip still reads as solid chrome, not a translucent wash. */
+  --bar-glass-blur: none;
+  --bar-glass-bg: var(--surface-deep);
+  --glass-blur-strong: none;
+  --glass-blur-soft: none;
+  --glass-blur-faint: none;
+}
+
+/* 3 — The aura becomes a cheap static glow: the radial-gradient halo is already soft, so dropping
+   the 12px blur (and, via --ambient-play, its breathe loop) leaves a still pool of mood-colored
+   light. The bell keeps its drop-shadow — static once the swell is paused, it rasters just once. */
+:root[data-perf='lite'] .presence .aura {
+  filter: none;
+}
+
+/* 4 — Opaque backgrounds for the frosted surfaces whose blur we just removed. Their translucent
+   fills (surface-glass is only ~4.5% opacity) rely on the blur to read; without it they'd nearly
+   vanish, so give them a solid surface. All via theme-aware surface tokens → light/dark automatic. */
+:root[data-perf='lite'] .transcript {
+  background: var(--surface-elevated);
+}
+:root[data-perf='lite'] .suggest,
+:root[data-perf='lite'] .status-pill {
+  background: var(--surface-elevated);
+}
+:root[data-perf='lite'] .vlib-bar {
+  background: var(--surface-deep);
+}
+:root[data-perf='lite'] .fl-composer {
+  background: var(--surface-elevated);
+}
+:root[data-perf='lite'] .fl-dock,
+:root[data-perf='lite'] .fl-node {
+  background: var(--surface-elevated-2);
+}
+
+/* 5 — Compound backdrop-filters (blur + saturate) can't route through the blur token — a token
+   value of `none` would produce the invalid `none saturate(...)`. Kill the whole property here.
+   The full-screen scrims stay a semi-opaque veil (they exist to focus the rising panel). */
+:root[data-perf='lite'] .fl-composer {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-perf='lite'] .ovw-scrim,
+:root[data-perf='lite'] .lib-ov-scrim {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: color-mix(in oklab, var(--surface-default) 92%, transparent);
+}
+
+/* 6 — The landing aurora: swap the 95px blur + animated conic gradients for the blur-free calm
+   radials, and stop the drift entirely. (The blur-free swap is shared with reduced-motion, which
+   sets the same vars in flagship.css.) */
+:root[data-perf='lite'] .fl-landing {
+  --fl-aurora-blur: none;
+  --fl-aurora-bg-a: var(--fl-aurora-calm-a);
+  --fl-aurora-bg-b: var(--fl-aurora-calm-b);
+}
+:root[data-perf='lite'] .fl-landing::before,
+:root[data-perf='lite'] .fl-landing::after {
+  animation: none;
+}

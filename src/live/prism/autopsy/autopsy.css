@@ -1,0 +1,201 @@
+/* autopsy.css — the Forecast Autopsy dock. Tokens only, matching the same elevated-surface + blur
+   recipe as the ask dock (.prism-ask in ask.css) so it reads as one system and follows light/dark like
+   the rest of the stage. Each row is a little scoreboard (PREDICTED → ACTUAL → seal), the seal tinted
+   by how the prediction fared. */
+
+.prism-fa {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 46vw);
+  max-height: min(64%, 540px);
+  box-sizing: border-box;
+  background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  animation: prism-ask-in 0.32s ease both;
+}
+
+.prism-fa-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.prism-fa-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-fa-spark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--warning) 70%, transparent);
+}
+.prism-fa-min {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.prism-fa-min:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
+}
+
+.prism-fa-standing {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--line);
+}
+.prism-fa-standing strong {
+  color: var(--text-primary);
+}
+.prism-fa-missn {
+  color: color-mix(in oklab, var(--danger) 80%, #fff) !important;
+}
+
+.prism-fa-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prism-fa-empty {
+  margin: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.prism-fa-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: prism-ask-pulse 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-fa-dot {
+    animation: none;
+  }
+}
+
+.prism-fa-row {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.prism-fa-row:hover {
+  background: var(--surface-glass);
+}
+.prism-fa-row.is-active {
+  border-color: color-mix(in oklab, var(--fa-color, var(--presence)) 70%, transparent);
+}
+
+.prism-fa-seal {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  border-radius: 999px;
+  color: color-mix(in oklab, var(--fa-color) 85%, #fff);
+  background: color-mix(in oklab, var(--fa-color) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--fa-color) 38%, transparent);
+}
+.prism-fa-seal[data-status='not-due'],
+.prism-fa-seal[data-status='incomparable'],
+.prism-fa-seal[data-status='unknown'] {
+  border-style: dashed;
+}
+
+.prism-fa-tag {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.prism-fa-pred,
+.prism-fa-act {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.prism-fa-page {
+  color: var(--text-muted);
+}
+.prism-fa-delta {
+  color: color-mix(in oklab, var(--danger) 80%, #fff);
+  font-weight: 600;
+}
+.prism-fa-cite {
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.4;
+  color: color-mix(in oklab, var(--insight) 58%, var(--text-secondary));
+  text-decoration: none;
+}
+.prism-fa-cite:hover {
+  text-decoration: underline;
+}
+.prism-fa-host {
+  font-style: normal;
+  color: var(--text-muted);
+}
+.prism-fa-note {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Below tablet width, `46vw` shrinks the whole scoreboard into a sliver too narrow to actually read.
+   The dock restructures to a near-full-width sheet anchored to both edges instead of scaling the
+   same cramped column down further. */
+@media (max-width: 560px) {
+  .prism-fa {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}

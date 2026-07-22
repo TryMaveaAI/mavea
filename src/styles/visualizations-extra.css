@@ -1,0 +1,1401 @@
+/* ===== extra visualizations (canvas3) ===== */
+/* RingStat */
+.ring-row {
+  display: flex;
+  gap: 10px;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  margin: 6px 0 2px;
+}
+.ring-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 92px;
+}
+.ring-svg {
+  width: 116px;
+  height: 116px;
+}
+.ring-arc {
+  transition: stroke-dashoffset var(--m-cinematic) var(--ease-out);
+}
+.ring-val {
+  fill: var(--text-primary);
+  font-size: 25px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.ring-unit {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.ring-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 2px;
+  text-align: center;
+  white-space: nowrap;
+}
+.ring-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* BarChart (vertical) */
+/* A descriptive unit ("fit score (1-10)") is shown once here as an axis caption rather than
+   repeated over every bar, where its width overran the bar and collided with neighbours. */
+.bars-unit {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.bars-chart {
+  margin-top: 8px;
+  /* Headroom so the value label above the tallest bar clears the eyebrow. */
+  padding-top: 18px;
+}
+/* The plot area. Bars AND the goal line both measure against this single region, so a bar
+   whose value equals the goal meets the goal line exactly (no separate reference heights). */
+.bars-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  height: 150px;
+}
+/* Ground line at the foot of the bars (the plot baseline). */
+.bars-plot::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-top: 1px solid var(--line);
+  pointer-events: none;
+}
+.bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.bar-fill {
+  width: 72%;
+  max-width: 46px;
+  min-height: 4px;
+  border-radius: 7px 7px 3px 3px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  transition: height var(--m-cinematic) var(--ease-out);
+}
+/* Rides just above each bar's top. Centred on the bar and width-bounded to the column with
+   wrapping (never `nowrap`), so a long per-bar label wraps within its own column instead of
+   bleeding sideways over the neighbouring bars. */
+.bar-val {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  max-width: 12ch;
+  text-align: center;
+  line-height: 1.2;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+/* Labels live in their own row below the plot so they never eat into the bar/goal scale. */
+.bars-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.bar-label {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.bars-goal {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-top: 1.5px dashed color-mix(in oklab, var(--text-muted) 60%, transparent);
+}
+.bars-goal-label {
+  position: absolute;
+  right: 0;
+  top: -16px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* StackedBar */
+.stack-total {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 2px 0 12px;
+}
+.stack-bar {
+  display: flex;
+  height: 18px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  gap: 2px;
+  background: var(--surface-deep);
+}
+.stack-seg {
+  transition: width var(--m-cinematic) var(--ease-out);
+}
+.stack-seg:first-child {
+  border-radius: var(--r-full) 0 0 var(--r-full);
+}
+.stack-seg:last-child {
+  border-radius: 0 var(--r-full) var(--r-full) 0;
+}
+.stack-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 16px;
+}
+.stack-leg {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+}
+.stack-leg .sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.stack-leg-name {
+  color: var(--text-secondary);
+  flex: 1;
+}
+.stack-leg-val {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Heatmap */
+.heat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+  overflow-x: auto;
+}
+.heat-cols,
+.heat-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.heat-rowhead {
+  width: 52px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: right;
+  padding-right: 6px;
+}
+.heat-col-label {
+  flex: 1;
+  min-width: 22px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.heat-cell {
+  flex: 1;
+  min-width: 22px;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.heat-cell.sm {
+  flex: none;
+  width: 15px;
+  aspect-ratio: 1;
+}
+.heat-mark {
+  font-size: 11px;
+  color: #fff;
+  font-weight: 700;
+}
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+.heat-legend .faint {
+  font-size: 11px;
+}
+
+/* FlowSteps */
+.flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.flow-step {
+  flex: 1;
+  min-width: 120px;
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 13px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.flow-step::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--sc);
+}
+.flow-num {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--sc) 18%, transparent);
+  color: var(--sc);
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.flow-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin-bottom: 3px;
+}
+.flow-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.flow-arrow {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  flex: 0 0 auto;
+  align-self: center;
+}
+.flow-arrow svg {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 720px) {
+  .flow-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* bar sheen */
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 45%);
+  pointer-events: none;
+}
+
+/* WebSnippets */
+.web-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--insight);
+  text-transform: none;
+}
+.web-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--insight);
+  box-shadow: 0 0 8px var(--glow-insight);
+  animation: dotpulse 1.6s var(--ease-in-out) infinite;
+}
+.web-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.web-result {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--r-md);
+  background: none;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--m-fast);
+  position: relative;
+}
+.web-result:hover {
+  background: var(--surface-glass);
+}
+.web-fav {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+.web-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.web-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--presence-soft);
+  line-height: 1.3;
+}
+.web-url {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.web-excerpt {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin-top: 3px;
+}
+.web-excerpt mark {
+  background: rgba(245, 185, 92, 0.24);
+  color: var(--warning-soft);
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.web-ext {
+  width: 15px;
+  height: 15px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.web-result:hover .web-ext {
+  color: var(--text-secondary);
+}
+
+/* Gallery */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+.img-tile {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.img-ph {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(
+      120% 90% at 25% 18%,
+      color-mix(in oklab, var(--h1) 78%, white 6%),
+      transparent 60%
+    ),
+    radial-gradient(120% 120% at 85% 95%, color-mix(in oklab, var(--h2) 90%, black 8%), var(--h2));
+  display: grid;
+  place-items: center;
+}
+.img-ph::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.34));
+}
+.img-ph-ic {
+  width: 26px;
+  height: 26px;
+  color: rgba(255, 255, 255, 0.45);
+}
+/* A real image fills the tile (the gradient shows only while it loads); the ::after scrim and
+   the tag/source chips sit on top for legibility. */
+.img-real {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.img-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(6px);
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+}
+.img-src {
+  position: absolute;
+  bottom: 7px;
+  left: 9px;
+  z-index: 1;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+}
+.img-cap {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* CodeMap (blast radius) */
+.codemap {
+  margin-top: 4px;
+}
+.codemap-pulse {
+  animation: codepulse 2.4s var(--ease-in-out) infinite;
+  transform-origin: center;
+}
+@keyframes codepulse {
+  0%,
+  100% {
+    r: 11;
+    opacity: 0.4;
+  }
+  50% {
+    r: 17;
+    opacity: 0;
+  }
+}
+
+/* DiffView */
+.diff {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.diff-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--line);
+}
+.diff-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+.diff-stat {
+  font-size: 12px;
+}
+.diff-stat .add {
+  color: var(--insight);
+}
+.diff-stat .del {
+  color: var(--danger);
+}
+.diff-body {
+  font-size: 12.5px;
+  line-height: 1.7;
+  padding: 8px 0;
+  background: var(--surface-deep);
+  overflow-x: auto;
+}
+.diff-line {
+  display: flex;
+  gap: 10px;
+  padding: 0 12px;
+  white-space: pre;
+}
+.diff-line.add {
+  background: rgba(62, 216, 166, 0.1);
+}
+.diff-line.del {
+  background: rgba(255, 122, 133, 0.1);
+}
+.diff-gutter {
+  width: 10px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+.diff-line.add .diff-gutter {
+  color: var(--insight);
+}
+.diff-line.del .diff-gutter {
+  color: var(--danger);
+}
+.diff-code {
+  color: var(--text-secondary);
+}
+.diff-line.add .diff-code,
+.diff-line.del .diff-code {
+  color: var(--text-primary);
+}
+.diff-code .k {
+  color: var(--presence-soft);
+}
+.diff-code .s {
+  color: var(--insight-soft);
+}
+.diff-code .c {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* Checks (tests) */
+.checks-summary {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 2px 0 12px;
+}
+.checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.check2-row {
+  display: flex;
+  /* The name is a mono test id and the note trails it right-aligned — on a phone the two together are
+     wider than the card and the note ran off the end. Let the row wrap so the note drops beneath. */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+.check2-ic {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.check2-ic svg {
+  width: 13px;
+  height: 13px;
+}
+.check2-row.pass .check2-ic {
+  background: rgba(62, 216, 166, 0.14);
+  color: var(--insight);
+}
+.check2-row.fail .check2-ic {
+  background: rgba(255, 122, 133, 0.16);
+  color: var(--danger);
+}
+.check2-row.skip .check2-ic {
+  background: var(--surface-glass);
+  color: var(--text-muted);
+}
+.check2-name {
+  color: var(--text-primary);
+  /* a long unbroken test id (a.b.c::case) breaks rather than pushing the row past the card */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.check2-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+  text-align: right;
+}
+.check2-row.fail .check2-note {
+  color: var(--danger);
+}
+
+/* comparison matrix */
+.cmp {
+  display: grid;
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.cmp > div {
+  background: var(--surface-default);
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cmp-corner {
+  background: var(--surface-elevated) !important;
+}
+.cmp-opt {
+  background: var(--surface-elevated) !important;
+  gap: 5px;
+}
+.cmp-opt.pick {
+  background: rgba(110, 140, 255, 0.1) !important;
+}
+.cmp-opt-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.cmp-opt-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.cmp-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--presence-soft);
+  background: rgba(110, 140, 255, 0.16);
+  padding: 2px 7px;
+  border-radius: var(--r-full);
+}
+.cmp-crit {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  justify-content: center;
+}
+.cmp-val {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  flex-direction: row !important;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.3;
+}
+.cmp-val.in-pick {
+  background: rgba(110, 140, 255, 0.05) !important;
+}
+.cmp-val.win {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.cmp-tick {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: rgba(62, 216, 166, 0.16);
+  color: var(--insight);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.cmp-rec {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.cmp-rec b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* heard transcript in composer */
+.live-listen.heard {
+  font-style: italic;
+  font-size: 15px;
+}
+
+/* grid of cards */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  /* Gap breathes on wide screens and tightens on mobile without a hard breakpoint. */
+  gap: clamp(10px, 1.2vw, 16px);
+  /* A DEFINITE width is load-bearing, not cosmetic. When a card-grid is nested inside a
+     flex-column parent (the depth "sections" and their Go-deeper drawers wrap cards in an
+     inner .card-grid, and .depth-section is display:flex), the `margin: 0 auto` below is an
+     auto cross-axis margin. Per the flexbox spec, an auto cross-axis margin SUPPRESSES the
+     item's `align-items: stretch`, so without an explicit width the grid falls back to its
+     content size — and repeat(12, 1fr) with min-width:0 cells collapses to min-content,
+     shredding every card into a ~1-char vertical column. width:100% makes the cross size
+     definite so the grid always fills its column (capped by max-width) in both block and
+     flex parents. Verified: nested grid 176px → 1640px. */
+  width: 100%;
+  max-width: var(--canvas-col-max);
+  margin: 0 auto;
+}
+/* Full set of 12-col grid spans.  col-1/col-2 exist as safety valves — the
+   useResponsiveGrid hook should never produce them under normal budgets, but
+   they're needed so the CSS is complete and no unknown class hits span:auto. */
+.col-1 {
+  grid-column: span 1;
+}
+.col-2 {
+  grid-column: span 2;
+}
+.col-3 {
+  grid-column: span 3;
+}
+.col-4 {
+  grid-column: span 4;
+}
+.col-5 {
+  grid-column: span 5;
+}
+.col-6 {
+  grid-column: span 6;
+}
+.col-7 {
+  grid-column: span 7;
+}
+.col-8 {
+  grid-column: span 8;
+}
+.col-9 {
+  grid-column: span 9;
+}
+.col-10 {
+  grid-column: span 10;
+}
+.col-11 {
+  grid-column: span 11;
+}
+.col-12 {
+  grid-column: span 12;
+}
+
+/* ── Overflow safety net (design-system level) ──────────────────────────────
+   Block content is authored by the model or the user, so its length is
+   unbounded — it must reflow INSIDE its card, never spill past it. Three guards
+   that apply to every kit:
+     1. grid cells may shrink below their content (default min-width:auto would
+        let a wide/long-word card push out of its 12-col track),
+     2. long text breaks rather than overflowing horizontally,
+     3. embedded media is capped to the card width.
+   Components that intentionally overflow (dropdowns/tooltips/sheets) portal to
+   <body>, so they're unaffected by this. */
+.card-grid > [class*='col-'] {
+  /* Allows grid cells to shrink below content's natural min-width.
+     Without this, a wide word or chart would force its track to expand and
+     push other tracks out of their 1fr allocation. */
+  min-width: 0;
+  /* Even rows: the grid already stretches each col-* cell to its row's tallest block, but a plain
+     .card then sits at its OWN content height inside that stretched cell — so a short card next to
+     a tall one leaves a ragged transparent gap below it (verified live: a 231px card floating in
+     its 236px cell; a short insight next to a map, far worse). Make the cell a flex column so the
+     card fills the cell height — flex-grow resolves reliably where a bare `height:100%` against a
+     content-sized grid item does not. The row-mate's height is capped elsewhere (e.g. the geomap
+     max-height) so filling never blows a short card up into a huge empty box. */
+  display: flex;
+  flex-direction: column;
+}
+/* Scoped to a DIRECT .card child: a FitBox-wrapped block (.col > .fit-box > … > .card) keeps its
+   own measured height so the width-scaler is untouched. A .card-frame block distributes into the
+   extra height; a plain one just gets breathing room below its content — never clipped (overflow
+   stays hidden on .card). block-actions is position:absolute, so it sits outside this flow. */
+.card-grid > [class*='col-'] > .card {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+.card {
+  overflow-wrap: break-word;
+  /* Hard stop: no card content may escape the card's box. Scrollable sub-lists
+     handle large data; this is the last-resort backstop for anything we missed. */
+  overflow: hidden;
+  /* Long unbreakable strings (URLs, code) wrap rather than punch through the edge. */
+  word-break: break-word;
+}
+/* `:where()` keeps this guard at ZERO specificity, so it's only ever a fallback: a
+   component that intentionally caps its own media (e.g. a chart's `max-width`) always
+   wins. Without :where(), `.card svg` (0,1,1) silently overrode every single-class
+   chart cap and let those charts balloon to the full card width. */
+:where(.card) :where(img, svg, video, canvas) {
+  max-width: 100%;
+}
+/* A full-bleed chart SVG (a viewBox + width="100%" and no fixed height) takes its
+   HEIGHT from the card width, so on a wide canvas it balloons to many hundreds of
+   px tall — unreadable, and impossible to take in without scrolling. Cap such a
+   chart to a comfortable measure and centre it, so it always fits the viewport no
+   matter how wide its card is. Only the full-bleed core charts carry the literal
+   width="100%" attribute, so this leaves every other svg (icons, insets) alone. */
+.card > svg[width='100%'],
+.chart-wrap > svg[width='100%'],
+.codemap > svg[width='100%'] {
+  display: block;
+  max-width: 720px;
+  margin-inline: auto;
+}
+/* The cap above only matched width="100%". A chart authored with an explicit pixel
+   width (width="600") or a stretch ratio (preserveAspectRatio="none") ignores the
+   card's measure and can spill a narrow cell. Constrain those too — width never
+   exceeds the card, height follows the viewBox — so no SVG, however authored, can
+   overflow. :where() keeps it a zero-specificity fallback any deliberate cap beats. */
+:where(.card) :where(svg[width$='px'], svg[preserveAspectRatio='none']) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Smart layout contract (.card-frame) ─────────────────────────────────────
+   The net above keeps content INSIDE the card; this contract makes it look
+   COMPOSED there — any content (a one-word caption or a 300-word one, three
+   options or three hundred), any card width, zero runtime cost. New and
+   model-generated blocks opt in by structuring content as `.card-frame` with the
+   slots below; the universal sub-rules also harden blocks that never adopt it.
+   Pairs with the JS budget reflow (useResponsiveGrid) — that picks the card's
+   width, this makes the block fit whatever width it gets. */
+.card-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-fluid-sm);
+  /* Fill the card so a block never floats in dead space at the top of a tall cell. */
+  block-size: 100%;
+  min-block-size: 0;
+}
+/* The body is the one slot allowed to grow and, if its content is a scrollable
+   region, take the slack — title/caption/footer stay their natural height. */
+.card-frame > .cf-body {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+/* Text slots: wrap hard, break unbreakable strings, and clamp to a line budget so
+   an over-long title or caption ellipsizes instead of pushing the card taller than
+   its neighbours. `pretty` balances the last line where the browser supports it. */
+.cf-eyebrow,
+.cf-title,
+.cf-caption,
+.cf-footer,
+.card-text-safe {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: pretty;
+}
+.cf-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.cf-caption,
+.cf-footer {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+/* Opt-in line clamps for any slot that must not grow unbounded. Uses the modern
+   `line-clamp` with the -webkit-* fallback for engines that still need it. */
+.cf-clamp-1,
+.cf-clamp-2,
+.cf-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cf-clamp-1 {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+.cf-clamp-2 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.cf-clamp-3 {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+/* Many-items net: a list/option region of unknown length (a 200-row radiogroup, a
+   long glossary) scrolls within a sane height instead of growing the card past the
+   viewport. Blocks opt in with .cf-scroll; the affordance is a soft fade so users
+   see there's more. Default ceiling is generous but bounded. */
+.cf-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-block-size: var(--cf-scroll-max, 360px);
+  /* Stable gutter so the scrollbar's appearance doesn't reflow content width. */
+  scrollbar-gutter: stable;
+}
+/* Aspect helpers: a block opts into a ratio so it fills its cell predictably. On a
+   narrow card a wide ratio (16:9 at 320px ≈ 180px tall) gets illegible, so below a
+   container-width threshold the ratio relaxes to auto and the block stacks/grows
+   naturally. Container query, not media query — it keys off the CARD, so the same
+   block is right whether it's col-3 on desktop or full-width on a phone. */
+.cf--wide {
+  aspect-ratio: 16 / 9;
+}
+.cf--square {
+  aspect-ratio: 1 / 1;
+}
+.cf--tall {
+  aspect-ratio: 4 / 5;
+}
+@container (max-width: 360px) {
+  .cf--wide,
+  .cf--square,
+  .cf--tall {
+    aspect-ratio: auto;
+  }
+}
+
+/* ── Responsive card density ────────────────────────────────────────────────
+   No col-* span overrides here — useResponsiveGrid rewrites block.col at each
+   viewport budget so the JS handles which blocks are wide vs. narrow. The CSS
+   only adjusts spacing and padding to match the tighter density at small sizes.
+   A no-JS/SSR fallback is provided for very narrow screens where even col-6
+   would be cramped: collapse to single column at/below 640px. */
+@media (max-width: 640px) {
+  .card {
+    padding: 14px;
+    border-radius: var(--r-md, 10px);
+  }
+  .card-grid {
+    gap: 10px;
+  }
+  .slide-card {
+    padding: 22px 24px;
+  }
+  .slide-head {
+    font-size: 22px;
+  }
+
+  /* Narrow-viewport safety net: if JS hasn't computed responsive cols yet (or
+     is unavailable), force single-column layout so content stays readable.
+     Covers large phones / small tablets in portrait, where two columns of the
+     12-col grid get too cramped to read before the JS layout kicks in. */
+  .col-1,
+  .col-2,
+  .col-3,
+  .col-4,
+  .col-5,
+  .col-6,
+  .col-7,
+  .col-8,
+  .col-9,
+  .col-10,
+  .col-11 {
+    grid-column: span 12;
+  }
+}
+
+/* base card */
+.card {
+  position: relative;
+  /* Never force a grid/flex track wider than its share: in a constrained cell a card
+     without this keeps its content's intrinsic width, so long text can't wrap and
+     spills into a 1-char-wide vertical column that overlaps its neighbours. The grid
+     cells (.card-grid > col-*, .dash-tile) already carry min-width:0; the card is the
+     last link in that shrink chain. */
+  min-width: 0;
+  background: linear-gradient(180deg, var(--surface-elevated), var(--surface-default));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-raised);
+  transition:
+    border-color var(--m-normal),
+    box-shadow var(--m-normal),
+    transform var(--m-normal);
+}
+.card.spotlight {
+  border-color: rgba(110, 140, 255, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(110, 140, 255, 0.35),
+    0 26px 60px -22px var(--glow-presence);
+}
+.card.dimmed {
+  opacity: 0.42;
+  filter: saturate(0.7);
+}
+
+/* spotlight ANY area Mavéa is speaking about — lift + a crisp tinted ring, dim the rest.
+   Focus reads as elevation and contrast, never a halo: the dimmed neighbors do most of the
+   work, the spotlit card just comes toward you with a clean topic-colored outline. */
+.card-grid > div {
+  transition:
+    transform 520ms var(--ease-out),
+    opacity 380ms var(--ease-out),
+    filter 380ms var(--ease-out);
+}
+.card-grid > div.spotlit {
+  transform: scale(1.03);
+  z-index: 6;
+  position: relative;
+}
+/* Full-width cards have no room to scale — suppress the zoom to avoid side-clipping. */
+.card-grid > div.spotlit.col-12 {
+  transform: none;
+}
+/* The second selector re-reaches .card through a FitBox host (see canvas/layout/fitPolicy.ts),
+   which sits where the direct `> .card` child used to be. */
+.card-grid > div.spotlit > .card,
+.card-grid > div.spotlit > .fit-box .card {
+  border-color: color-mix(in oklab, var(--topic-tint) 60%, var(--line-strong));
+  box-shadow:
+    /* crisp 1px ring in the topic color — the outline the eye lands on */
+    0 0 0 1px color-mix(in oklab, var(--topic-tint) 50%, transparent),
+    /* the system floating elevation — the card is simply nearer than its neighbors */
+    var(--shadow-floating),
+    /* a grounded wash of the topic color beneath the card, not around it */ 0 26px 56px -30px
+      var(--topic-tint);
+}
+.card-grid > div.dimmed {
+  opacity: 0.34;
+  filter: saturate(0.65);
+  transform: scale(0.984);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-grid > div.spotlit {
+    transform: none;
+  }
+  .card-grid > div.dimmed {
+    transform: none;
+  }
+}
+.card-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* The label here is written by the model, so its length is not ours to assume. `nowrap` pushed a
+     long one straight out of the card on a narrow screen; it wraps to a second line instead. */
+  flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: calc(12px * var(--fs-scale, 1));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+/* Holds canvas height while the lazily-loaded block library chunk arrives (first canvas only),
+   so the surface doesn't jump as it swaps in. */
+.canvas-loading {
+  min-height: 240px;
+}
+.card-eyebrow .ic {
+  width: 15px;
+  height: 15px;
+}
+
+/* composite — a model-arranged sub-grid of other blocks (the on-the-fly layout primitive).
+   Each region carries a 1..12 span on the composite's own 12-col grid; cells collapse to a
+   single column on narrow viewports so a composed layout never overflows its card. The inner
+   block's own .card chrome is flattened so a composite reads as ONE cohesive panel, not a box
+   of boxes. */
+.cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.cmp-cell {
+  grid-column: span var(--cmp-span, 6);
+  min-width: 0;
+}
+.cmp-cell > .card {
+  height: 100%;
+  background: var(--surface-glass);
+  box-shadow: none;
+  border-color: var(--line);
+}
+/* A region rendered through a FitBox host (see canvas/layout/fitPolicy.ts) sits one level
+   deeper than the direct `> .card` case above — carry the same stretch and flattened chrome
+   through it so a FitBox-wrapped region reads as part of the panel too, not a boxed-in one. */
+.cmp-cell > .fit-box {
+  height: 100%;
+}
+.cmp-cell > .fit-box > div {
+  height: 100%;
+}
+.cmp-cell > .fit-box .card {
+  height: 100%;
+  background: var(--surface-glass);
+  box-shadow: none;
+  border-color: var(--line);
+}
+.cmp-foot {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+@media (max-width: 640px) {
+  .cmp-cell {
+    grid-column: 1 / -1;
+  }
+}
+
+/* insight card */
+.insight-num {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.insight-title {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 2px 0 8px;
+  text-wrap: pretty;
+}
+.insight-summary {
+  font-size: calc(14.5px * var(--fs-scale, 1));
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.insight-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0 12px;
+  flex-wrap: wrap;
+}
+.insight-stat .big {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  /* A short stat ("$5,000", "+18%") stays on one line; a long value the model put
+     here wraps inside the card instead of spilling past its edge. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.insight-stat .delta {
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.delta.up {
+  color: var(--warning);
+}
+.delta.good {
+  color: var(--insight);
+}
+.delta.down {
+  color: var(--insight);
+}
+
+.card-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  /* The two groups (sources on the left, confidence/actions on the right) sat on one unbreakable
+     row, so on a phone they simply ran out of the card — this is the single rule that clipped the
+     footer on dozens of otherwise-fine blocks, `insight` included. Let them stack. */
+  flex-wrap: wrap;
+}
+.card-foot > * {
+  min-width: 0;
+}
+.card-foot-l {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* source chip */
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  background: rgba(110, 140, 255, 0.1);
+  border: 1px solid rgba(110, 140, 255, 0.22);
+  font-size: 11.5px;
+  color: var(--presence-soft);
+  font-weight: 500;
+  transition: background var(--m-fast);
+}
+.source-chip:hover {
+  background: rgba(110, 140, 255, 0.2);
+}
+.source-chip .mono {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+.source-chip svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.8;
+}
+
+/* confidence badge */
+.conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+}
+.conf .bars {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 11px;
+}
+.conf .bars i {
+  width: 3px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.conf.strong {
+  color: var(--insight);
+  background: rgba(62, 216, 166, 0.12);
+}
+.conf.strong .bars i {
+  opacity: 1;
+}
+.conf.partial {
+  color: var(--warning);
+  background: rgba(245, 185, 92, 0.12);
+}
+.conf.partial .bars i:nth-child(3) {
+  opacity: 0.3;
+}
+.conf.inferred {
+  color: var(--warning);
+  background: rgba(245, 185, 92, 0.1);
+}
+.conf.inferred .bars i:nth-child(2),
+.conf.inferred .bars i:nth-child(3) {
+  opacity: 0.3;
+}
+
+/* small ghost/secondary buttons inside cards */
+.mini-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--m-fast);
+}
+.mini-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+.mini-btn.accent {
+  color: var(--presence-soft);
+  border-color: rgba(110, 140, 255, 0.3);
+}
+.mini-btn.accent:hover {
+  background: rgba(110, 140, 255, 0.12);
+}
+.mini-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* trend chart */
+.chart-wrap {
+  position: relative;
+  margin-top: 6px;
+}
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.legend-item .sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -120%);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  transition: opacity var(--m-fast);
+  z-index: 5;
+}

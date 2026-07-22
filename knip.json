@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["src/canvas/blocks/*/types.ts"],
+  "ignoreFiles": [
+    "src/canvas/controls/ControlStrip.tsx",
+    "src/canvas/controls/ParamSlider.tsx",
+    "src/canvas/controls/useDragHandle.ts"
+  ],
+  "ignoreIssues": {
+    "src/live/ripple/cache.ts": ["exports"],
+    "src/live/ripple/ingest/generate.ts": ["exports"],
+    "src/live/semantic/client.ts": ["exports"],
+    "src/live/srs/store.ts": ["exports"]
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["python3", "open", "xdg-open", "brew", "winget"]
+}

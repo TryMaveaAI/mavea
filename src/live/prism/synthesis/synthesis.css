@@ -1,0 +1,292 @@
+/* synthesis.css — the corpus-only chrome layered on top of Prism's shared overlay (PrismOverlay):
+   the lens switcher in the header, the three map objects (contradiction / gap / consensus), and the
+   object-detail panel (Tale-of-the-Tape / gap receipt / consensus). Everything else — the scrim, the
+   pan/zoom stage, the cards, the source panel, the toolbar — is Prism's own (prism.css). Uses the
+   global tokens so light + dark both hold; every text surface truncates or scrolls. */
+
+/* ── Lens switcher (header) ─────────────────────────────────────────────────────────────────────── */
+.syn-lenses {
+  display: flex;
+  gap: 2px;
+  margin-inline: auto;
+  padding: 3px;
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full, 999px);
+  max-width: 100%;
+  overflow: hidden;
+}
+.syn-lens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--r-full, 999px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.syn-lens:hover {
+  color: var(--text-primary);
+}
+.syn-lens.is-active {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.syn-lens-n {
+  min-width: 18px;
+  padding: 0 5px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--r-full, 999px);
+  background: var(--presence);
+  color: #fff;
+  font-family: var(--font-data, monospace);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Map objects: contradiction, gap, consensus (positioned in Prism's prism-world coordinate space) ── */
+.syn-obj {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 220px;
+  padding: 7px 12px;
+  border-radius: var(--r-full, 999px);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    opacity 0.2s,
+    transform 0.12s;
+  z-index: 3;
+}
+.syn-obj:hover {
+  transform: translate(-50%, -50%) scale(1.04);
+}
+.syn-obj.is-dim {
+  opacity: 0.14;
+}
+.syn-obj-contradicts {
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface-elevated));
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+.syn-obj-in-tension {
+  background: color-mix(in srgb, var(--warning) 16%, var(--surface-elevated));
+  border: 1px solid var(--warning);
+  color: color-mix(in srgb, var(--warning) 80%, var(--text-primary));
+}
+.syn-obj-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.syn-gap {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--surface-deep),
+    var(--surface-deep) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  border: 1px dashed var(--line-strong);
+  color: var(--text-secondary);
+}
+.syn-consensus {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--insight) 55%, transparent);
+  background: color-mix(in srgb, var(--insight) 7%, transparent);
+  cursor: pointer;
+  z-index: 1;
+  transition: opacity 0.2s;
+}
+.syn-consensus.is-dim {
+  opacity: 0.12;
+}
+.syn-consensus-badge {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 9px;
+  border-radius: var(--r-full, 999px);
+  background: var(--insight);
+  color: #fff;
+  font-family: var(--font-data, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Object-detail panel (reuses Prism's source-panel slot; prism-page-wrap gives the width) ────────── */
+.syn-detail-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-elevated);
+}
+.syn-detail-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+.syn-detail {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.syn-detail-kind {
+  align-self: flex-start;
+  font-family: var(--font-data, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--r-full, 999px);
+  background: var(--surface-deep);
+  color: var(--text-muted);
+}
+.syn-detail-kind[data-rel='contradicts'] {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.syn-detail-kind[data-rel='in-tension'] {
+  color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.syn-detail-kind[data-rel='agrees'] {
+  color: var(--insight);
+  background: color-mix(in srgb, var(--insight) 12%, transparent);
+}
+.syn-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+.syn-banner {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm, 10px);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--line));
+  color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
+  font-size: 12.5px;
+}
+.syn-tape,
+.syn-members {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.syn-tape-side,
+.syn-member {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--r-sm, 10px);
+  border: 1px solid var(--line);
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.syn-tape-side:hover,
+.syn-member:hover {
+  border-color: var(--line-strong);
+}
+.syn-tape-cite {
+  font-family: var(--font-data, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.syn-tape-quote {
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.syn-delta {
+  margin: 0;
+  font-family: var(--font-data, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.syn-interrogate {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: var(--r-sm, 10px);
+  border: 1px solid var(--presence);
+  background: color-mix(in srgb, var(--presence) 12%, transparent);
+  color: var(--presence);
+  font-weight: 650;
+  font-size: 13px;
+  cursor: pointer;
+}
+.syn-interrogate:hover {
+  background: color-mix(in srgb, var(--presence) 20%, transparent);
+}
+.syn-receipt,
+.syn-consensus-count {
+  margin: 0;
+  font-size: 14px;
+}
+.syn-searched-label {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.syn-searched {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.syn-searched li {
+  font-family: var(--font-data, monospace);
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: var(--r-full, 999px);
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  color: var(--text-secondary);
+}
+.syn-proposition {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.syn-note,
+.syn-proposition-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}

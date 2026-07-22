@@ -1,0 +1,470 @@
+/* Focus mode — one hero card on a center stage, the rest in a quiet filmstrip rail.
+   Self-contained: tokens only (light/dark automatic), no edits to the shared styles.css.
+   The rail is a SECOND, in-canvas rail on the right; it deliberately uses its own width var
+   (--focus-rail-w) so it never collides with the left conversation rail's --rail-w. */
+
+.focus-stage {
+  --focus-rail-w: 268px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--focus-rail-w);
+  gap: 28px;
+  align-items: start;
+}
+
+/* ---- the Focus / Everything switch (lives in the canvas header) ---- */
+.focus-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+/* Win over `.canvas-header > div { flex-direction: column }` when docked in the header. */
+.canvas-header > .focus-toggle {
+  flex-direction: row;
+}
+.focus-toggle-opt {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 5px 13px;
+  border-radius: var(--r-full);
+  font: 500 12.5px/1 var(--font);
+  color: var(--text-muted);
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.focus-toggle-opt:hover {
+  color: var(--text-secondary);
+}
+.focus-toggle-opt:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.focus-toggle-opt.active {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-raised);
+}
+
+/* ---- the stage ---- */
+/* The hero column: the card on the stage with its per-slide caption stacked beneath it. A wrapper
+   (not two grid children) so the caption always tracks the hero's column and the rail is untouched. */
+.focus-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.focus-hero {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* The model's one-line explanation of the current slide — a calm caption under the card, matched to
+   the card's max width and centered. Keyed by hero id, so it crossfades in as the slide changes. */
+.focus-caption {
+  width: 100%;
+  text-wrap: pretty;
+  font: 400 15px/1.55 var(--font);
+  color: var(--text-secondary);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .focus-caption {
+    animation: focusCaptionIn var(--m-expressive) var(--ease-out) both;
+  }
+}
+@keyframes focusCaptionIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.focus-hero-card {
+  position: relative;
+  width: 100%;
+}
+/* The hero floats two pieces of chrome over the card's top corners — the "Speaking" pill
+   (top-left, over the eyebrow) and the Ask pill (top-right). Reserve a top band on the hero
+   card so its first row always clears that chrome. Always on (not only while speaking) so the
+   card never reflows as the pill appears and fades between turns; scoped to eyebrow-led cards
+   so a full-bleed media hero isn't inset. Mirrors the grid's .block-actions safe-band. */
+/* The second selector re-reaches .card through a FitBox host (see
+   canvas/layout/fitPolicy.ts), which sits where the direct `> .card` child used to be. */
+.focus-hero-card > .card:has(> .card-eyebrow:first-child),
+.focus-hero-card > .fit-box .card:has(> .card-eyebrow:first-child) {
+  padding-top: 40px;
+}
+/* The outgoing card during a swap: an overlay, full-width so it tracks the incoming card exactly.
+   Pointer-inert; it's removed once the crossfade finishes. */
+.focus-hero-card.focus-out {
+  position: absolute;
+  inset: 0 0 auto 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .focus-hero-card.focus-in {
+    animation: focusHeroIn var(--m-expressive) var(--ease-out) both;
+  }
+  .focus-hero-card.focus-out {
+    animation: focusHeroOut var(--m-expressive) var(--ease-out) both;
+  }
+}
+@keyframes focusHeroIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes focusHeroOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-16px) scale(0.99);
+  }
+}
+/* The stage conveys focus by LAYOUT, so neutralize the grid's spotlight/dim treatment on the hero
+   (the live tour keeps moving `spot` in the background; the pinned hero must never read as dimmed). */
+.focus-hero .card.spotlight,
+.focus-hero .card.dimmed {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+/* ---- the filmstrip rail ---- */
+.filmstrip-rail {
+  position: sticky;
+  top: 4px;
+  align-self: start;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 140px);
+}
+.filmstrip-eyebrow {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+.filmstrip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.filmstrip-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out),
+    transform var(--m-fast) var(--ease-out);
+}
+.filmstrip-entry:hover {
+  background: var(--surface-glass);
+}
+.filmstrip-entry:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.filmstrip-entry.active {
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  border-color: color-mix(in oklab, var(--presence) 42%, transparent);
+}
+.filmstrip-entry.active .filmstrip-thumb {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--presence) 55%, transparent);
+}
+
+/* The live thumbnail: a real card rendered at a comfortable design width, scaled into the box.
+   76 / 340 ≈ 0.224 (matches FilmstripThumb's THUMB_DESIGN_W). The rail is capped (RAIL_CAP) and each
+   thumb is a cheap scaled snapshot, so we render them all eagerly: `content-visibility: auto` here
+   left off-screen thumbs unpainted until a scroll or re-render forced them in, which read as "the
+   filmstrip only half-loaded until I toggled something". Correctness of first paint beats the skip. */
+.filmstrip-thumb {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 54px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--surface-elevated);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.filmstrip-thumb-design {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  transform: scale(0.224);
+  pointer-events: none;
+}
+/* A thumbnail is a uniform glance — never let the live spotlight/dim treatment bleed in. */
+.filmstrip-thumb .card.spotlight,
+.filmstrip-thumb .card.dimmed {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.filmstrip-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.filmstrip-kind {
+  font: 600 9.5px/1.2 var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.filmstrip-entry.active .filmstrip-kind {
+  color: color-mix(in oklab, var(--presence) 80%, var(--text-secondary));
+}
+.filmstrip-title {
+  font: 500 12.5px/1.3 var(--font);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.filmstrip-entry.active .filmstrip-title {
+  color: var(--text-primary);
+}
+.filmstrip-more {
+  font: 500 11.5px/1.3 var(--font);
+  color: var(--text-muted);
+  padding: 6px 8px;
+}
+
+/* ---- "Mavéa is describing this" indicator (hero pill + rail dot) ---- */
+.focus-speaking {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 9px;
+  border-radius: var(--r-full);
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.03em;
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 13%, var(--surface-elevated));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--presence) 34%, transparent),
+    var(--shadow-raised);
+  pointer-events: none;
+}
+.focus-speaking-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 11px;
+}
+.focus-speaking-bars i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+/* The quiet pulsing dot on the rail entry Mavéa is describing. */
+.filmstrip-speaking {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--presence);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .focus-speaking-bars i {
+    animation: focusSpeakBars 1s var(--ease-in-out, ease-in-out) infinite;
+  }
+  .focus-speaking-bars i:nth-child(2) {
+    animation-delay: 0.18s;
+  }
+  .focus-speaking-bars i:nth-child(3) {
+    animation-delay: 0.36s;
+  }
+  .filmstrip-speaking {
+    animation: focusSpeakPulse 1.6s var(--ease-out) infinite;
+  }
+}
+@keyframes focusSpeakBars {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes focusSpeakPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 50%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--presence) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 0%, transparent);
+  }
+}
+
+/* ---- narrow viewports: the rail drops below the hero as a horizontal strip ---- */
+@media (max-width: 920px) {
+  .focus-stage {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .filmstrip-rail {
+    position: static;
+    max-height: none;
+  }
+  .filmstrip-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+  }
+  .filmstrip-entry {
+    flex: 0 0 auto;
+    width: 190px;
+  }
+}
+
+/* ---- Mavéa's notes — the muted walk's written trail beside the stage ---- */
+/* A third column on the LEFT when the trail exists (the filmstrip owns the right): notes stack
+   newest-first, the active card's note lit. The full spatial handout lives in Everything view;
+   this is its Focus-sized cut, doubling as navigation (a note tap re-stages its card). */
+.focus-stage.has-notes {
+  --focus-notes-w: 216px;
+  grid-template-columns: var(--focus-notes-w) minmax(0, 1fr) var(--focus-rail-w);
+}
+.focus-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+}
+.focus-notes-eyebrow {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+.focus-notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+  scrollbar-width: thin;
+}
+/* The same calm note-card language as the grid rail (.margin-note in annotate.css): the words
+   stay typeset and readable; the hand lives in the strokes, not the prose. */
+.focus-note {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 8px 10px 8px 12px;
+  border: none;
+  border-left: 2.5px solid var(--ink-gesture, var(--warning));
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ink-gesture, var(--warning)) 6%, var(--surface-elevated));
+  box-shadow: var(--shadow-raised);
+  color: var(--text-primary);
+  font: italic 400 12px/1.5 var(--font);
+  animation: focus-note-in 420ms var(--ease-out, ease) both;
+  transition: box-shadow var(--m-fast, 160ms) var(--ease-out, ease);
+}
+.focus-note:hover {
+  box-shadow:
+    var(--shadow-raised),
+    0 0 0 1px var(--line-soft);
+}
+.focus-note:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 1px;
+}
+.focus-note.active {
+  border-left-color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 8%, var(--surface-elevated));
+}
+@keyframes focus-note-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* Not enough room for a third column: the trail steps aside (the caption + pen log still carry
+   the words) rather than squeezing the stage. */
+@media (max-width: 1259px) {
+  .focus-stage.has-notes {
+    grid-template-columns: minmax(0, 1fr) var(--focus-rail-w);
+  }
+  .focus-notes {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-note {
+    animation: none;
+  }
+}

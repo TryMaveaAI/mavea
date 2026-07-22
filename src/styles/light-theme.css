@@ -1,0 +1,91 @@
+/* ===================== LIGHT THEME ===================== */
+:root[data-theme='light'] {
+  --surface-default: #f3f5fb;
+  --surface-deep: #e9edf5;
+  --surface-elevated: #ffffff;
+  --surface-elevated-2: #f6f8fc;
+  --surface-glass: rgba(28, 40, 66, 0.045);
+  --surface-glass-strong: rgba(28, 40, 66, 0.08);
+
+  --line: rgba(28, 40, 66, 0.12);
+  --line-soft: rgba(28, 40, 66, 0.07);
+  --line-strong: rgba(28, 40, 66, 0.2);
+
+  --text-primary: #161c2b;
+  --text-secondary: #4d5a70;
+  --text-muted: #606876; /* darkened from #7c8798 — the old value failed WCAG AA (3.3-3.6:1) against surface-default/-elevated; this clears 4.5:1 against both with margin */
+  --text-faint: #a7afbe;
+
+  --presence-deep: #3346b0;
+  --glow-presence: rgba(110, 140, 255, 0.16);
+  --glow-insight: rgba(20, 160, 110, 0.14);
+  --glow-warning: rgba(214, 150, 40, 0.16);
+
+  --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 26px -16px rgba(30, 45, 80, 0.3);
+  --shadow-floating:
+    0 20px 50px -22px rgba(30, 45, 80, 0.3), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  --shadow-modal: 0 40px 110px -34px rgba(30, 45, 80, 0.4);
+
+  --app-anchor: #ffffff;
+  --scrim-rgb: 232, 237, 246;
+
+  /* structural colors invert for light surfaces */
+  --grid-line: rgba(28, 40, 66, 0.08);
+  --grid-strong: rgba(28, 40, 66, 0.16);
+  --track: rgba(28, 40, 66, 0.08);
+  --hover-line: rgba(28, 40, 66, 0.24);
+  --cell-empty: rgba(28, 40, 66, 0.05);
+  --slide-bg: linear-gradient(150deg, #ffffff, #eef2fb);
+  --replay-bg: linear-gradient(165deg, #f6f3ff, #eaf0fb);
+  --replay-stage-bg: radial-gradient(80% 80% at 50% 30%, #dfe6ff, #eef2fb);
+}
+:root[data-theme='light'] ::selection {
+  background: rgba(110, 140, 255, 0.22);
+}
+:root[data-theme='light'] *::-webkit-scrollbar-thumb {
+  background: rgba(28, 40, 66, 0.16);
+  background-clip: padding-box;
+}
+
+/* toast */
+#mavea-toasts {
+  position: fixed;
+  left: 50%;
+  top: 70px;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-radius: var(--r-full);
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  transition:
+    opacity var(--m-normal) var(--ease-out),
+    transform var(--m-normal) var(--ease-out);
+}
+.toast.show {
+  opacity: 1;
+  transform: none;
+}
+.toast-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--insight);
+  box-shadow: 0 0 6px var(--glow-insight);
+}

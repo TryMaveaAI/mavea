@@ -1,0 +1,215 @@
+/* Semantic zoom — the conversation at altitude. Tokens only; self-contained. */
+
+.zoom-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--surface-deep) 78%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.zoom-deck {
+  width: min(720px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  border-radius: 14px;
+  background: var(--surface-elevated);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    var(--shadow-floating);
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zoom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
+.zoom-levelbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+}
+
+.zoom-level {
+  border: none;
+  border-radius: var(--r-full);
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: 650 11px/1 var(--font-data, var(--font));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zoom-level.active {
+  background: var(--presence);
+  color: var(--surface-elevated);
+}
+
+.zoom-level:not(.active):hover {
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+
+.zoom-level:focus-visible,
+.zoom-close:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+
+.zoom-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.zoom-close:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+
+.zoom-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- one breath ---- */
+.zoom-breath {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px 8px 28px;
+  text-align: center;
+}
+.zoom-breath-line {
+  margin: 0;
+  font: 400 clamp(22px, 3.4vw, 34px) / 1.35 var(--font-voice, var(--font));
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+.zoom-breath-topic {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+  border-radius: 4px;
+}
+.zoom-breath-topic:hover {
+  color: var(--presence);
+}
+.zoom-breath-topic:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+
+/* ---- chapters ---- */
+.zoom-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.zoom-title {
+  font: 600 19px/1.2 var(--font);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.zoom-meta {
+  font: 500 11px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.zoom-rows {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.zoom-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 15px;
+  cursor: zoom-in;
+  transition: border-color 140ms ease;
+}
+.zoom-row:hover {
+  border-color: var(--line-strong);
+}
+.zoom-row:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+.zoom-row-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font: 600 13.5px/1.3 var(--font);
+  color: var(--text-primary);
+}
+.zoom-row-clock {
+  font: 500 10.5px/1 var(--font-data, var(--font));
+  color: var(--text-muted);
+}
+.zoom-row-line {
+  font: 400 12px/1.5 var(--font);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.zoom-row-corrected {
+  font: 600 10px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+
+@media (max-width: 560px) {
+  .zoom-deck {
+    width: min(94vw, 720px);
+    padding: 14px;
+  }
+  .zoom-toolbar {
+    align-items: flex-start;
+  }
+  .zoom-levelbar {
+    flex: 1;
+    min-width: 0;
+  }
+  .zoom-level {
+    flex: 1;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+}

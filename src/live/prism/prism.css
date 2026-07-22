@@ -1,0 +1,1933 @@
+/* ============================================================
+   Live · Prism — drop a document, watch it bloom into a world.
+   Self-contained (imported by PrismOverlay.tsx), tokens only.
+   idle → igniting (shard burst) → blooming → settled (the map).
+   ============================================================ */
+
+.prism-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 2.5vw;
+  background: rgba(var(--scrim-rgb), 0.72);
+  backdrop-filter: blur(8px);
+}
+/* Fill most of the viewport so the map + source page both have room (no wasted empty space). The
+   "expand" toggle pushes it edge-to-edge. */
+.prism-panel {
+  width: min(1700px, 100%);
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-xl);
+  background: var(--surface-deep);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  color: var(--text-primary);
+}
+.prism-scrim[data-expanded='true'] {
+  padding: 0;
+}
+.prism-scrim[data-expanded='true'] .prism-panel {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+/* ---- top bar ---- */
+.prism-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 20px;
+  background: var(--surface-deep);
+  border-bottom: 1px solid var(--line);
+}
+/* source legend — which document is which (multi-PDF) */
+.prism-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 9px 20px;
+  background: var(--surface-deep);
+  border-bottom: 1px solid var(--line);
+}
+.prism-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.prism-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.prism-legend-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prism-legend-count {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+}
+.prism-legend-cross {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--danger) 80%, white 20%);
+}
+.prism-file {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.prism-file-name {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* a flex item shrinks to zero width by default once its siblings (the mode buttons on the right)
+     run out of room — without a floor the name doesn't just truncate, it disappears entirely. */
+  min-width: 42px;
+}
+.prism-file-pages {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: none;
+}
+.prism-head-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+.prism-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+.prism-phase-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--presence);
+  opacity: 0.35;
+}
+.prism-phase[data-active='true'] .prism-phase-dot {
+  opacity: 1;
+  animation: prism-pulse 1.5s ease-in-out infinite;
+}
+@keyframes prism-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.prism-replay,
+.prism-close {
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+.prism-replay {
+  padding: 6px 13px;
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.prism-replay:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.prism-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.prism-close:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+
+/* ---- the split: map stage | divider | source page panel ---- */
+.prism-split {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ---- the stage ---- */
+.prism-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse 80% 72% at 50% 46%,
+    var(--surface-elevated) 0%,
+    var(--surface-deep) 100%
+  );
+}
+/* PDF-only: the page took the whole split — collapse the map entirely */
+.prism-split[data-pdfonly='true'] .prism-stage {
+  display: none;
+}
+
+/* ---- draggable divider ---- */
+.prism-divider {
+  flex: none;
+  width: 10px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-deep);
+  border-left: 1px solid var(--line);
+  touch-action: none;
+}
+.prism-divider:hover,
+.prism-divider:focus-visible {
+  background: color-mix(in oklab, var(--presence) 18%, var(--surface-deep));
+  outline: none;
+}
+.prism-divider-grip {
+  width: 2px;
+  height: 36px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+.prism-divider:hover .prism-divider-grip,
+.prism-divider:focus-visible .prism-divider-grip {
+  background: var(--presence);
+}
+
+/* ---- source page panel ---- */
+.prism-page-wrap {
+  flex: none;
+  /* the split's share (%), set per-instance via --pdf-pct so a narrow-viewport media query below can
+     override the SAME property without fighting an inline style (which would need `!important`). */
+  width: var(--pdf-pct, 44%);
+  min-width: 0;
+  display: flex;
+  min-height: 0;
+  /* positioning context for the floating pen caption */
+  position: relative;
+}
+/* Below tablet width, a side-by-side map + source page both get too narrow to actually read (a claim
+   map squeezed to a sliver, a PDF page rendered at postage-stamp width) — the two-pane split doesn't
+   just need smaller text, it needs to stop being two panes. So the source page takes the FULL stage
+   and the map (plus the drag divider, meaningless without room to drag) steps aside; the page's own
+   ✕ close button is already the way back to the map, so no new "switch pane" control is needed. */
+@media (max-width: 720px) {
+  .prism-split[data-split='true'] .prism-stage {
+    display: none;
+  }
+  .prism-divider {
+    display: none;
+  }
+  .prism-page-wrap {
+    width: 100%;
+  }
+}
+
+/* Page through the whole document — a compact control that lives IN the panel header, beside the page
+   number, rather than a separate bar (which read as redundant chrome over the "p.N" the header already shows). */
+.prism-page-nav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.prism-page-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.12s ease;
+}
+.prism-page-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.prism-page-nav-btn:not(:disabled):hover {
+  background: var(--surface-elevated);
+}
+.prism-page-nav-at {
+  white-space: nowrap;
+  font-family: var(--font-data);
+  letter-spacing: 0.04em;
+}
+.prism-page-nav-of {
+  color: var(--text-muted);
+}
+.prism-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-deep);
+  animation: prism-page-in 0.32s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes prism-page-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-page {
+    animation: none;
+  }
+}
+.prism-page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.prism-page-tag {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.prism-page-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prism-page-zoom {
+  margin-left: auto;
+  display: inline-flex;
+  flex: none;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+}
+.prism-page-zoom button {
+  width: 26px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.prism-page-zoom button:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.prism-page-zoom button + button {
+  border-left: 1px solid var(--line-strong);
+}
+.prism-page-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.prism-page-close:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.prism-page-scroll {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  /* Keep the scrollbar's lane reserved even while nothing scrolls. The app gives scrollbars real
+     width (the ::-webkit-scrollbar rules), so without the gutter a fit-width page whose height
+     lands near the container's oscillates: scrollbar appears → container narrows → PageView refits
+     smaller → page fits → scrollbar leaves → container widens → refits bigger → … a per-frame
+     shake that also starves the sharpness re-render, leaving the page blurry. */
+  scrollbar-gutter: stable;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+/* Grab-to-pan (useDragScroll): raster surfaces let the reader drag the page to move around a
+   zoomed view. The grab cursor advertises it; while dragging, suppress selection/highlight so the
+   whole surface moves as one. */
+.prism-page-scroll.is-pannable {
+  cursor: grab;
+}
+.prism-page-scroll.is-panning {
+  cursor: grabbing;
+  user-select: none;
+}
+.prism-page-frame {
+  position: relative;
+  flex: none; /* don't let the flex parent shrink it — it must keep its zoomed size, scroll instead */
+  margin: auto; /* centre when smaller than the scroll area */
+}
+.prism-page-holder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.prism-page-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-sm);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.prism-page-status {
+  padding: 40px 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.prism-page-fallback {
+  width: min(560px, calc(100% - 32px));
+  margin: auto;
+  padding: clamp(24px, 5vw, 44px);
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg, 18px);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface-elevated) 94%, var(--presence) 6%),
+    var(--surface)
+  );
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+}
+.prism-page-fallback-kicker {
+  font-family: var(--font-data, var(--font));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+.prism-page-fallback > strong {
+  font-family: var(--font-display, var(--font));
+  font-size: clamp(20px, 3vw, 28px);
+  line-height: 1.15;
+}
+.prism-page-fallback blockquote,
+.prism-page-fallback p {
+  margin: 0;
+  font-family: var(--font-body, var(--font));
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+.prism-page-fallback blockquote {
+  padding-left: 18px;
+  border-left: 3px solid color-mix(in srgb, var(--presence) 70%, transparent);
+}
+.prism-page-fallback-note {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+/* image-deck source: the real slide picture + the transcribed quote beneath it */
+.prism-slide-figure {
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* the stage renders at its own zoomed pixel size — centre it when narrower
+                           than the panel, instead of the old width:100% that stretched (and blurred)
+                           the fixed-resolution slide to fill whatever width the panel happened to be */
+  justify-content: center;
+  gap: 14px;
+  min-height: 100%;
+}
+.prism-slide-stage {
+  position: relative;
+  line-height: 0; /* kill the inline-image gap so the stage's box matches the image exactly */
+  flex: none; /* keep its zoomed size — the scroll container handles overflow, not shrink */
+}
+.prism-slide-img {
+  display: block;
+  width: 100%;
+  height: 100%; /* the stage carries the zoomed pixel size (naturalWidth/Height × zoom); the image
+                   just fills it, so it scales sharply instead of the browser upscaling a fixed CSS
+                   width past the slide's real resolution */
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: #fff;
+}
+/* The verbatim quote, prominent beneath the slide — this is the grounding proof now that there's no
+   box on the slide. A card with a kind-colored left accent (the accent color comes from the inline
+   borderColor; the other edges have no width, so only the left rule shows). Stretched to the panel's
+   width regardless of how wide the (possibly zoomed/centred) slide above it is. */
+.prism-slide-quote {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  padding: 11px 14px;
+  border-radius: 8px;
+  border-left: 3px solid;
+  background: var(--surface-elevated);
+}
+.prism-slide-quote-label {
+  font-family: var(--font-data);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── SlideSurface (PowerPoint with real text) — a fixed 960×540 "page", scaled by a CSS transform
+   (never reflowed, unlike TextSurface) so the title/body layout below never has to know the current
+   zoom. .prism-slide-unit centres the frame + its reserved note gutter as one block, exactly like
+   .prism-page-unit does for the PDF surface. */
+.prism-slide-unit {
+  position: relative;
+  flex: none;
+  margin: auto;
+}
+.prism-slide-frame {
+  position: relative;
+  flex: none; /* don't let the flex parent shrink it — it must keep its zoomed size, scroll instead */
+  margin: 0; /* centring happens on .prism-slide-unit, the outer block */
+}
+.prism-slide-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 960px;
+  height: 540px;
+  transform-origin: 0 0;
+  box-sizing: border-box;
+  padding: 64px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  overflow: hidden; /* an unusually text-dense slide clips at the slide's own edge rather than
+                       spilling into the rest of the panel — the font-size heuristics above keep this
+                       rare, not a substitute for it */
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--shadow-raised);
+  color: var(--text-secondary);
+}
+.prism-slide-title {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.prism-slide-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  line-height: 1.45;
+  overflow: hidden;
+}
+.prism-slide-body-line {
+  margin: 0;
+}
+.prism-slide-flat {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+/* the highlight overlay sits in the same pixel box as the canvas (the frame is canvas-sized) */
+.prism-page-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.prism-page-mark {
+  position: absolute;
+  border-radius: 2px;
+  animation: prism-mark-in 0.5s ease 0.15s both;
+}
+/* a figure/chart is OUTLINED (not filled) so the graphic stays fully visible inside the box */
+.prism-page-figure {
+  position: absolute;
+  border: 2.5px solid;
+  border-radius: 6px;
+  animation: prism-mark-in 0.5s ease 0.15s both;
+}
+@keyframes prism-mark-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-page-mark,
+  .prism-page-figure {
+    animation: none;
+  }
+}
+/* the pen: Mavéa's hand-drawn mark over the cited passage, in the same canvas-pixel box as the marks
+   overlay (the element is scaled by zoom). Paths carry pathLength=1, so one dash "writes" the line on.
+   Color comes from the element's own `color` (a concrete ink), via currentColor — theme-agnostic so it
+   matches the exported reel. Self-contained (not coupled to the Live annotate stylesheet). */
+.prism-pen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+.prism-pen-stroke,
+.prism-pen-halo,
+.prism-pen-head {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: prism-pen-draw 1s cubic-bezier(0.45, 0, 0.3, 1) var(--ink-delay, 0ms) forwards;
+}
+.prism-pen-stroke {
+  stroke-width: 4.6;
+  opacity: 0.92;
+}
+.prism-pen-halo {
+  stroke-width: 12;
+  opacity: 0.13;
+}
+.prism-pen-head {
+  stroke-width: 4.2;
+  opacity: 0.92;
+  animation-duration: 0.28s;
+  animation-delay: calc(var(--ink-delay, 0ms) + 0.96s);
+}
+@keyframes prism-pen-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* A written glyph beside a stroke (the question accent's "?") — the live pen's hand font over
+   the page, fading in after its stroke lands. Size comes inline (canvas-pixel space); color is
+   the group's currentColor, concrete like every pen ink so the reel matches. */
+.prism-pen-glyph {
+  fill: currentColor;
+  font-family: 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', 'Marker Felt', cursive;
+  font-weight: 700;
+  opacity: 0;
+  animation: prism-glyph-in 0.4s ease-out calc(var(--ink-delay, 0ms) + 0.6s) forwards;
+}
+@keyframes prism-glyph-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.92;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-pen-stroke,
+  .prism-pen-halo,
+  .prism-pen-head {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .prism-pen-glyph {
+    animation: none;
+    opacity: 0.92;
+  }
+}
+/* the pen's explanation: a floating caption over the page (the explanation, since Prism is silent by
+   default), with a quiet 🔊 to opt into narration. */
+.prism-pen-caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface-deep) 88%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  animation: prism-mark-in 0.4s ease both;
+}
+.prism-pen-caption-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.prism-pen-mute {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-elevated);
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.prism-pen-mute:hover {
+  border-color: var(--line-strong);
+}
+.prism-pen-mute[aria-pressed='true'] {
+  border-color: color-mix(in oklab, var(--presence) 60%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-pen-caption {
+    animation: none;
+  }
+}
+.prism-page-foot {
+  flex: none;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+/* Shared highlight styling for a `<mark>` run in a reflowable text surface (TextSurface) — the box/
+   glow tint comes from the inline style (the claim's accent color); this just sets the shape. */
+.prism-office-mark {
+  border-radius: 2px;
+  padding: 0 1px;
+  color: inherit;
+}
+
+/* ── TextSurface (Word/TXT/Markdown/code) — a page-like sheet with real font-scale zoom (never a
+   CSS transform, which would blur reflowable text) and full ink/margin-note support via the shared
+   AnnotationLayer. .prism-doc-unit centres the sheet + its reserved note gutter as one block, exactly
+   like .prism-page-unit does for the PDF surface. .prism-doc-sheet and .prism-doc-text are the SAME element
+   (both classes on one div) and it is .prism-doc-unit's DIRECT, flush child — exactly like .prism-page-
+   frame is flush inside .prism-page-unit — so MarginNotes' `left: frameW + 24` (measured from THAT same
+   parent) lines up with the sheet's actual right edge instead of landing short by whatever padding
+   sat between them. Padding is fine on the anchor itself (it only insets content, it doesn't move
+   the anchor's own origin) but a REAL border would (position:absolute children align to the padding
+   edge, one border-width shy of the border box getBoundingClientRect reports) — so the "page" ring
+   is a box-shadow instead of a border. */
+.prism-doc-unit {
+  position: relative;
+  width: 100%;
+  margin: auto;
+}
+.prism-doc-sheet {
+  /* max-width is set inline (TextSurface's SHEET_MAX_WIDTH), shrunk by the note gutter's width when
+     margin notes are present — one source of truth instead of a number duplicated in CSS. */
+  box-sizing: border-box;
+  padding: 32px 40px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--shadow-raised);
+}
+.prism-doc-text {
+  position: relative;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── SheetSurface (CSV/XLSX) — a real <table>, not raw delimited text in a column. Zoom scales the
+   FONT SIZE, same as TextSurface (a real table reflows; there's no fixed raster to transform-scale).
+   .prism-sheet-unit mirrors .prism-doc-unit's centring + note-gutter reservation. .prism-sheet-scroll is its
+   OWN horizontal-scroll region — unlike prose, a wide table doesn't reflow to fit, it needs to
+   scroll — with scrollbar-gutter:stable so a classic scrollbar's appearance never perturbs anything
+   upstream that measures this box (copied from .prism-page-scroll's shake-prevention fix). .prism-sheet-
+   inner (width:max-content, min-width:100%) is the part that actually scrolls AND the measurement
+   anchor for useAnchoredRects/AnnotationMarks — both the table and its highlight overlay live inside
+   it, so they move together in lockstep as the reader scrolls horizontally. */
+.prism-sheet-unit {
+  position: relative;
+  width: 100%;
+  margin: auto;
+}
+.prism-sheet-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-gutter: stable;
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.prism-sheet-inner {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+}
+.prism-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface-elevated);
+  font-size: inherit;
+}
+.prism-sheet-table th,
+.prism-sheet-table td {
+  padding: 7px 12px;
+  text-align: left;
+  vertical-align: baseline;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--line);
+}
+.prism-sheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: var(--font-data);
+  font-size: 0.85em;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--line-strong);
+}
+.prism-sheet-table tbody tr:hover td {
+  background: var(--surface-glass);
+}
+.prism-sheet-num {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* the located quote's row is highlighted by AnnotationMarks' rect overlay (shared with every other
+   surface); this is the lighter, purely visual bonus for the SPECIFIC cell(s) the match narrowed
+   to, when sheetLocate.ts could tell (best-effort — see its file header). */
+.prism-sheet-cell-hit {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-sheet-truncated {
+  margin: 8px 2px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* connection walk — step between linked claims without leaving the page view */
+.prism-page-conns {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-deep);
+  overflow-x: auto;
+}
+.prism-page-conns-label {
+  flex: none;
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.prism-page-conns-list {
+  display: flex;
+  gap: 6px;
+}
+.prism-page-conn {
+  flex: none;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.prism-page-conn:hover {
+  border-color: color-mix(in oklab, var(--presence) 50%, var(--line-strong));
+  color: var(--text-primary);
+}
+
+/* ---- idle/igniting: the document + shard burst ---- */
+.prism-doc {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+}
+.prism-doc[data-igniting='true'] .prism-doc-page {
+  animation: prism-doc-out 0.7s ease forwards;
+}
+@keyframes prism-doc-out {
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+.prism-doc-page {
+  width: 196px;
+  height: 256px;
+  padding: 20px 18px;
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.45),
+    6px 6px 0 -1px var(--surface-elevated),
+    12px 12px 0 -2px var(--surface-deep);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.prism-doc-eyebrow {
+  font-family: var(--font-data);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.prism-doc-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.prism-doc-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+}
+.prism-doc-line {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.prism-shock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1.5px solid var(--presence);
+  transform: translate(-50%, -50%);
+  animation: prism-shock 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes prism-shock {
+  0% {
+    transform: translate(-50%, -50%) scale(0.35);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.4);
+    opacity: 0;
+  }
+}
+.prism-shard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  animation: prism-shard 1.2s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  pointer-events: none;
+}
+@keyframes prism-shard {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--sx), var(--sy)) rotate(var(--sr));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-shock,
+  .prism-shard,
+  .prism-doc[data-igniting='true'] .prism-doc-page {
+    animation: none;
+  }
+}
+
+/* ---- blooming ticker ---- */
+.prism-blooming {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.prism-bloom-orb {
+  width: 46px;
+  height: 46px;
+  border-radius: 48% 52% 50% 50% / 52% 50% 50% 48%;
+  background: radial-gradient(circle at 34% 28%, #a9afff 0%, var(--presence) 55%, #3a43c9 100%);
+  animation: prism-breathe 1.4s ease-in-out infinite;
+}
+@keyframes prism-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-bloom-orb {
+    animation: none;
+  }
+}
+.prism-bloom-label {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* ---- error ---- */
+.prism-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 18%;
+  text-align: center;
+}
+.prism-error-msg {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.prism-error-retry {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.prism-error-retry:hover {
+  border-color: var(--line-strong);
+}
+
+/* ---- settled: the world ---- */
+/* The world is sized to the claim count (layout.ts) and moved by a pan/zoom camera (usePanZoom):
+   it frames to fit on open, re-frames when the source panel opens, and the user can drag + zoom. */
+.prism-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  animation: prism-world-in 0.6s ease both;
+  will-change: transform;
+}
+@keyframes prism-world-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* reduced-motion floor for the settle fade-in and the looping phase-dot pulse — the map appears at
+   once and the dot rests fully lit. (The camera frame is already an instant set, not a tween.) */
+@media (prefers-reduced-motion: reduce) {
+  .prism-world {
+    animation: none;
+  }
+  .prism-phase[data-active='true'] .prism-phase-dot {
+    animation: none;
+  }
+}
+/* ---- pan/zoom affordances ---- */
+.prism-stage {
+  cursor: grab;
+  touch-action: none;
+}
+.prism-stage.is-panning {
+  cursor: grabbing;
+}
+.prism-stage.is-panning .prism-claim {
+  pointer-events: none;
+}
+.prism-zoom {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in oklab, var(--surface-elevated) 90%, transparent);
+  backdrop-filter: blur(8px);
+}
+.prism-zoom button {
+  width: 32px;
+  height: 30px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.prism-zoom button:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.prism-zoom button + button {
+  border-top: 1px solid var(--line-strong);
+}
+
+/* region nebulae */
+.prism-region {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.prism-region-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 340px;
+  height: 260px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    color-mix(in oklab, var(--region-color) 16%, transparent) 0%,
+    transparent 70%
+  );
+}
+/* The label is positioned (by layout.ts) just above its cluster, on a soft backplate, so it's always
+   legible and never overdrawn by a card. Centred on the region's (cx, cy) — no extra CSS offset. */
+.prism-region-name {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  padding: 3px 11px;
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--surface-deep) 85%, transparent);
+  border: 1px solid color-mix(in oklab, var(--region-color) 30%, var(--line-strong));
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--region-color) 70%, var(--text-primary) 30%);
+  white-space: nowrap;
+}
+
+/* contradiction threads */
+/* faint structural backbone, drawn beneath the cards (z below .prism-claim) */
+.prism-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.prism-links line {
+  stroke: color-mix(in oklab, var(--presence) 22%, transparent);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+.prism-threads {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+/* The thread palette (matches the legend): relation drives BOTH color and line style, so the kind of
+   relationship reads at a glance even before the label. Contradicts = dashed coral (a clash you can
+   follow to both pages); in-tension = dotted (a softer pull, not a clash); agrees = solid insight
+   (two passages propping each other up — the "supports" line). */
+.prism-thread {
+  --thread-color: var(--danger);
+}
+.prism-thread[data-relation='in-tension'] {
+  --thread-color: var(--warning);
+}
+.prism-thread[data-relation='agrees'] {
+  --thread-color: var(--insight);
+}
+.prism-thread path {
+  stroke: var(--thread-color);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+/* contradicts — a dashed coral line you can follow to both pages */
+.prism-thread[data-relation='contradicts'] path {
+  stroke-dasharray: 5 3;
+}
+/* in-tension — a finer dotted line: a softer pull, deliberately distinct from a contradiction */
+.prism-thread[data-relation='in-tension'] path {
+  stroke-dasharray: 1 4;
+  stroke-width: 1.7;
+}
+/* agrees / supports — a solid line: one claim propping up another */
+.prism-thread[data-relation='agrees'] path {
+  stroke-dasharray: none;
+  stroke-width: 1.7;
+}
+/* cross-document links are the headline of multi-PDF — make them a touch bolder + more present */
+.prism-thread[data-cross='true'] path {
+  stroke-width: 2;
+  opacity: 0.7;
+}
+.prism-thread.prism-thread-hot path {
+  opacity: 1;
+  stroke-width: 2.2;
+}
+.prism-thread-label {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--thread-color) 70%, var(--text-primary) 30%);
+  white-space: nowrap;
+}
+
+/* claim cards */
+.prism-claim {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: max-content;
+  max-width: 184px;
+  padding: 8px 11px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--kind-color) 45%, var(--line-strong));
+  background: var(--surface-elevated);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition:
+    opacity 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+  z-index: 5;
+}
+.prism-claim:hover {
+  border-color: var(--kind-color);
+}
+.prism-claim.is-open {
+  z-index: 20;
+  max-width: 240px;
+  box-shadow: 0 16px 38px color-mix(in oklab, var(--kind-color) 30%, rgba(0, 0, 0, 0.4));
+}
+.prism-claim.is-flagged {
+  border-color: color-mix(in oklab, var(--danger) 60%, var(--line-strong));
+}
+.prism-claim.is-dim {
+  opacity: 0.16;
+}
+/* Ask It — a card on a page an answer cited lights up with a presence ring, so the cited evidence
+   reads at a glance. Wins over the resting border; sits above neighbours but below an open card. */
+.prism-claim.is-cited:not(.is-dim) {
+  border-color: color-mix(in oklab, var(--presence) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--presence) 55%, transparent),
+    0 0 24px color-mix(in oklab, var(--presence) 32%, transparent);
+  z-index: 10;
+}
+/* Reconcile — the "stated ≠ computed" badge on a red contradiction thread (bolder than a normal thread
+   label so the mismatch reads at a glance), and the danger tint on the reconcile standing line's dot. */
+.prism-recon-label {
+  font-weight: 700;
+  color: color-mix(in oklab, var(--danger) 88%, #fff);
+  background: color-mix(in oklab, var(--danger) 18%, var(--surface-deep));
+  border-color: color-mix(in oklab, var(--danger) 48%, transparent);
+}
+.prism-standing[data-recon='true'] .prism-standing-dot {
+  background: var(--danger);
+}
+/* Cross-Examine — a load-bearing claim the document never answers wears a danger ring. */
+.prism-claim.is-objected:not(.is-dim) {
+  border-color: color-mix(in oklab, var(--danger) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--danger) 55%, transparent),
+    0 0 24px color-mix(in oklab, var(--danger) 30%, transparent);
+  z-index: 9;
+}
+/* answer-first hierarchy — the handful of load-bearing claims bloom brighter and a touch larger so
+   the eye lands on what carries the document's case first; context claims sit back. The footprint
+   stays within the layout's CARD_W/CARD_H, so emphasis never causes an overlap. Gated with :not(.is-dim)
+   so the contradiction lens's dimming always wins. */
+.prism-claim[data-role='load-bearing']:not(.is-dim) {
+  max-width: 200px;
+  border-color: color-mix(in oklab, var(--kind-color) 78%, transparent);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in oklab, var(--kind-color) 40%, transparent),
+    0 0 22px color-mix(in oklab, var(--kind-color) 26%, transparent);
+  z-index: 8;
+}
+.prism-claim[data-role='load-bearing'] .prism-claim-title {
+  font-size: 14px;
+}
+.prism-claim[data-role='context']:not(.is-dim):not(.is-open) {
+  opacity: 0.84;
+}
+.prism-claim[data-role='context']:not(.is-dim):hover {
+  opacity: 1;
+}
+/* the KEY badge on a load-bearing card — the at-a-glance "this is what the document leans on" */
+.prism-claim-key {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: color-mix(in oklab, var(--kind-color) 80%, var(--text-primary) 20%);
+  white-space: nowrap;
+}
+.prism-claim-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prism-claim-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--kind-color);
+}
+.prism-claim-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--kind-color);
+}
+.prism-claim-page {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.prism-claim-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.prism-claim-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+.prism-claim-quote {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  border-left: 2px solid var(--kind-color);
+  padding-left: 8px;
+}
+.prism-claim-flag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 600;
+  color: color-mix(in oklab, var(--danger) 70%, var(--text-primary) 30%);
+}
+.prism-claim-hint {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--kind-color);
+  opacity: 0.7;
+}
+/* state pill — the card's certainty in the mockup's vocabulary (anchored · ready / in contradiction).
+   A neutral anchored card reads quiet; a threaded one is tinted by its relation so it stands out. */
+.prism-claim-state {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--text-muted);
+}
+.prism-claim-state[data-state='anchored'],
+.prism-claim-state[data-state='agrees'] {
+  color: color-mix(in oklab, var(--insight) 62%, var(--text-primary) 38%);
+}
+.prism-claim-state[data-state='in-tension'] {
+  color: color-mix(in oklab, var(--warning) 70%, var(--text-primary) 30%);
+}
+.prism-claim-state[data-state='contradicts'] {
+  color: color-mix(in oklab, var(--danger) 70%, var(--text-primary) 30%);
+}
+
+/* ---- veracity: the "is this TRUE?" layer ---- */
+/* the seal on a load-bearing card — its standing against the live world, tinted by verdict. The tint
+   keys off --seal-color (set inline from the verdict's token), so it adapts to light/dark. */
+.prism-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--seal-color) 42%, transparent);
+  background: color-mix(in oklab, var(--seal-color) 14%, transparent);
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: color-mix(in oklab, var(--seal-color) 78%, var(--text-primary) 22%);
+}
+.prism-seal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--seal-color);
+}
+/* an unsupported seal reads QUIET (it's the honest "couldn't verify", not an alarm) */
+.prism-seal[data-verdict='unsupported'] {
+  border-style: dashed;
+}
+
+/* receipt 2 — the world's verdict + the gated web citation, shown when the card is open. Deliberately
+   styled DISTINCT from the document's own quote (receipt 1): a web-cited source is honestly weaker
+   (a search snippet, not the page itself), so it never shares the document-verbatim treatment. */
+.prism-claim-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 7px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in oklab, var(--seal-color) 30%, transparent);
+  background: color-mix(in oklab, var(--seal-color) 8%, transparent);
+}
+.prism-verdict-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.prism-verdict-label {
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: color-mix(in oklab, var(--seal-color) 82%, var(--text-primary) 18%);
+}
+.prism-verdict-note {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+/* the web citation: a DASHED frame + a small globe glyph cue → "this came from the web, snippet-level".
+   Never the solid left-rule the document quote uses. */
+.prism-verdict-cite {
+  display: block;
+  padding: 5px 8px;
+  border: 1px dashed color-mix(in oklab, var(--seal-color) 40%, transparent);
+  border-radius: var(--r-xs, 6px);
+  background: color-mix(in oklab, var(--seal-color) 6%, transparent);
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.prism-verdict-cite::before {
+  content: '🌐 ';
+  font-style: normal;
+}
+.prism-verdict-cite:hover {
+  border-color: var(--seal-color);
+}
+.prism-verdict-host {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--seal-color) 70%, var(--text-muted) 30%);
+}
+
+/* the dropped counter in the header — the grounding gate working for the reader, in the open */
+.prism-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--insight) 24%, transparent);
+  background: color-mix(in oklab, var(--insight) 8%, transparent);
+  font-family: var(--font-data);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.prism-counter strong {
+  color: color-mix(in oklab, var(--insight) 72%, #fff 28%);
+  font-weight: 700;
+}
+/* the header packs a lot on the right (counter · phase · replay · fullscreen · close); on a narrow
+   viewport drop the counter so the header never overflows — the same numbers live in the footer. */
+/* the header packs a lot on the right (counter · phase · read/replay · fullscreen · close); below
+   tablet width the full sentence-length chrome no longer fits next to the filename, so it sheds down
+   to its icons — the tooltip/aria-label still carries the full word for anyone who needs it. */
+@media (max-width: 560px) {
+  .prism-counter,
+  .prism-phase-label,
+  .prism-replay-label {
+    display: none;
+  }
+  .prism-head {
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .prism-head-right {
+    gap: 8px;
+  }
+  .prism-replay {
+    padding: 6px 10px;
+  }
+}
+
+/* the Standing strip — the one honest line summarizing how the checked claims fared */
+.prism-standing {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 18px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in oklab, var(--warning) 7%, transparent);
+}
+.prism-standing[data-verifying='true'] {
+  background: color-mix(in oklab, var(--insight) 6%, transparent);
+}
+.prism-standing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--warning);
+  flex: none;
+}
+.prism-standing[data-verifying='true'] .prism-standing-dot {
+  background: var(--insight);
+  animation: prism-standing-pulse 1.4s ease-in-out infinite;
+}
+.prism-standing-text {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+@keyframes prism-standing-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-standing[data-verifying='true'] .prism-standing-dot {
+    animation: none;
+  }
+}
+
+/* ---- action bar ---- */
+.prism-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 13px 22px;
+  background: var(--surface-deep);
+  border-top: 1px solid var(--line);
+}
+.prism-foot-quiet {
+  justify-content: center;
+}
+/* The footer packs a growing set of mode buttons (Ask/Brief/Annotate/Reconcile/Cross-examine/
+   Autopsy/Levers/…) next to the honesty stat line. Neither side may force the other to collapse:
+   the stat gets a real minimum column so its sentence never crushes into one-word-per-line, and the
+   actions wrap onto their own row(s) — keeping every button's label intact — instead of overflowing
+   the panel's right edge (the flex:none + no-wrap combo did exactly that once ~10 buttons were live). */
+.prism-foot-stat {
+  flex: 1 1 200px;
+  min-width: 160px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.prism-foot-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+  flex: 2 1 auto;
+}
+/* Each cluster reads as one unit — a quiet capsule with a caption naming when to reach for it,
+   so eleven near-identical pills don't collapse into a single wall of buttons. */
+.prism-foot-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 3px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface-elevated) 55%, transparent);
+}
+.prism-foot-group-label {
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 1px 0 5px;
+  white-space: nowrap;
+}
+.prism-foot-group--quiet {
+  gap: 4px;
+  padding-left: 12px;
+  margin-left: 4px;
+  background: none;
+  border-left: 1px solid var(--line);
+}
+.prism-foot-btn {
+  padding: 8px 15px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.prism-foot-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+.prism-foot-btn--primary {
+  border-color: transparent;
+  background: var(--presence-deep);
+  color: #fff;
+}
+.prism-foot-btn--primary:hover:not(:disabled) {
+  color: #fff;
+  opacity: 0.88;
+}
+.prism-foot-btn.is-active {
+  border-color: color-mix(in oklab, var(--danger) 55%, transparent);
+  color: color-mix(in oklab, var(--danger) 70%, var(--text-primary) 30%);
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+}
+.prism-foot-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- palette legend ---- */
+.prism-legend-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 40px;
+  padding: 18px 22px 20px;
+  background: var(--surface-deep);
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 720px) {
+  .prism-legend-panel {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+.prism-legend-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.prism-legend-title {
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.prism-legend-kinds,
+.prism-legend-threads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 18px;
+}
+.prism-legend-threads {
+  grid-template-columns: 1fr;
+}
+.prism-legend-kind,
+.prism-legend-thread {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+}
+.prism-legend-kind-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.prism-legend-kind-name,
+.prism-legend-thread-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prism-legend-kind-desc,
+.prism-legend-thread-desc {
+  color: var(--text-muted);
+}
+.prism-legend-thread-line {
+  flex: none;
+  overflow: visible;
+}
+.prism-legend-thread-line line {
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+.prism-legend-thread-line[data-relation='agrees'] line {
+  stroke: var(--insight);
+}
+.prism-legend-thread-line[data-relation='contradicts'] line {
+  stroke: var(--danger);
+  stroke-dasharray: 5 3;
+}
+.prism-legend-thread-line[data-relation='in-tension'] line {
+  stroke: var(--warning);
+  stroke-dasharray: 1 4;
+}
+.prism-legend-note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.prism-legend-note strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ── Margin notes — a reader's notes in the page gutter, tied to their passages by hand-drawn
+   arrows. Professional class-notes: small, calm type on a soft card with the claim's ink. ── */
+.prism-margin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.prism-margin-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 8px 10px 8px 12px;
+  border-left: 2.5px solid var(--note-c, var(--presence));
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--note-c, var(--presence)) 6%, var(--surface-elevated));
+  box-shadow: var(--shadow-raised);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0;
+  animation: prism-note-in 420ms var(--ease-out, ease) both;
+  animation-delay: var(--ink-delay, 0ms);
+}
+@keyframes prism-note-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.prism-note-arrows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.prism-note-arrow,
+.prism-note-arrow-head {
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: prism-note-draw 600ms var(--ease-out, ease) forwards;
+  animation-delay: calc(var(--ink-delay, 0ms) + 120ms);
+}
+.prism-note-arrow-head {
+  animation-delay: calc(var(--ink-delay, 0ms) + 620ms);
+  animation-duration: 220ms;
+}
+@keyframes prism-note-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prism-margin-note {
+    animation: none;
+    opacity: 1;
+  }
+  .prism-note-arrow,
+  .prism-note-arrow-head {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* The page + its margin-note gutter centre as ONE unit, so notes never hang past the panel. */
+.prism-page-unit {
+  position: relative;
+  flex: none;
+  margin: auto;
+}
+.prism-page-unit > .prism-page-frame {
+  margin: 0;
+}

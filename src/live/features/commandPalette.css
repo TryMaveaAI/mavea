@@ -1,0 +1,141 @@
+/* Command palette (⌘K — find anything Mavéa can do). Owned by the palette so it styles itself on
+   ANY surface it renders on — Live, the marketing landing, anywhere — rather than depending on a
+   host to have loaded voice.css (which the landing does not). Tokens only, so light/dark is
+   automatic. Also carries .cmdk-kbd, shared with the topbar Search button (which imports this too). */
+.cmdk-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.cmdk-panel {
+  width: min(560px, 100%);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+.cmdk-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.cmdk-search:focus-within {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: -2px;
+}
+.cmdk-search-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--presence);
+  flex: none;
+}
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.cmdk-input::placeholder {
+  color: var(--text-faint);
+}
+/* Demo-surface intro — sets the "these are previews" mental model. A quiet muted line under the
+   search, separated from the list by the same hairline the search uses. */
+.cmdk-note {
+  margin: 0;
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.cmdk-list {
+  overflow-y: auto;
+  padding: 6px;
+}
+/* Row + its optional "See how" chip sit side by side; the row takes the space, the chip trails. */
+.cmdk-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cmdk-row {
+  flex: 1;
+  min-width: 0;
+}
+.cmdk-row.is-active {
+  background: var(--surface-glass-strong);
+}
+.cmdk-row.is-unavailable {
+  opacity: 0.66;
+}
+/* The row's active highlight belongs to the whole row, so mirror it onto the wrapper when the
+   option inside is the active one (keeps the See-how chip's strip highlighted too). */
+.cmdk-row-wrap:has(.cmdk-row.is-active) {
+  background: var(--surface-glass-strong);
+  border-radius: var(--r-sm);
+}
+/* "See how" — a quiet pill; brightens to the presence accent on hover/focus. Always visible (not
+   hover-revealed) so touch users are first-class. */
+.cmdk-watch {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  margin-right: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+.cmdk-watch:hover,
+.cmdk-watch:focus-visible {
+  color: var(--presence);
+  border-color: color-mix(in srgb, var(--presence) 55%, var(--line-soft));
+  background: color-mix(in srgb, var(--presence) 8%, var(--surface-glass));
+  outline: none;
+}
+.cmdk-watch-ic {
+  width: 11px;
+  height: 11px;
+}
+.cmdk-kbd {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--text-faint);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 1px 5px;
+  flex: none;
+}
+.cmdk-empty {
+  padding: 22px 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}

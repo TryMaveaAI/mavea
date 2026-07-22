@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="The Mavéa presence">
+  <defs>
+    <linearGradient id="bell" x1="40" y1="60" x2="160" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#57baa6" />
+      <stop offset="0.5" stop-color="#8998d9" />
+      <stop offset="1" stop-color="#d08dab" />
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.42" r="0.5">
+      <stop offset="0" stop-color="#8495d9" stop-opacity="0.34" />
+      <stop offset="0.66" stop-color="#8495d9" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <ellipse cx="100" cy="88" rx="98" ry="96" fill="url(#halo)" />
+    <g stroke="#57baa6" fill="none" stroke-linecap="round">
+      <path d="M62 118 C56 142 66 158 56 186" stroke-width="10" opacity="0.2" />
+      <path d="M62 118 C56 142 66 158 56 186" stroke-width="3.5" opacity="0.65" />
+    </g>
+    <g stroke="#8998d9" fill="none" stroke-linecap="round">
+      <path d="M84 121 C84 146 74 162 84 194" stroke-width="10" opacity="0.2" />
+      <path d="M84 121 C84 146 74 162 84 194" stroke-width="3.5" opacity="0.65" />
+    </g>
+    <g stroke="#a18cd9" fill="none" stroke-linecap="round">
+      <path d="M108 121 C110 144 100 162 110 192" stroke-width="10" opacity="0.2" />
+      <path d="M108 121 C110 144 100 162 110 192" stroke-width="3.5" opacity="0.65" />
+    </g>
+    <g stroke="#d08dab" fill="none" stroke-linecap="round">
+      <path d="M130 118 C138 140 128 156 138 184" stroke-width="10" opacity="0.2" />
+      <path d="M130 118 C138 140 128 156 138 184" stroke-width="3.5" opacity="0.65" />
+    </g>
+  <g>
+    <path d="M38 96 C38 52 62 26 100 26 C138 26 162 52 162 96 C162 110 146 116 100 116 C54 116 38 110 38 96 Z" fill="url(#bell)" opacity="0.9" />
+    <path d="M48 88 C48 58 66 38 92 36" fill="none" stroke="#eafff6" stroke-width="4" stroke-linecap="round" opacity="0.5" />
+    <path d="M52 74 C70 62 130 62 148 74" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.1" />
+    <path d="M58 56 C76 46 124 46 142 56" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.08" />
+    <g>
+      <ellipse cx="66" cy="86" rx="8" ry="5" fill="#ff9fb6" opacity="0.35" />
+      <ellipse cx="134" cy="86" rx="8" ry="5" fill="#ff9fb6" opacity="0.35" />
+      <g>
+        <circle cx="80" cy="72" r="9" fill="#ffffff" />
+        <circle cx="80" cy="72.7" r="5.2" fill="#252c55" />
+        <circle cx="82.5" cy="69.3" r="2.3" fill="#ffffff" />
+        <circle cx="78" cy="75.1" r="1.2" fill="#ffffff" opacity="0.85" />
+      </g>
+      <g>
+        <circle cx="120" cy="72" r="9" fill="#ffffff" />
+        <circle cx="120" cy="72.7" r="5.2" fill="#252c55" />
+        <circle cx="122.5" cy="69.3" r="2.3" fill="#ffffff" />
+        <circle cx="118" cy="75.1" r="1.2" fill="#ffffff" opacity="0.85" />
+      </g>
+      <path d="M92 91 Q100 97 108 91" fill="none" stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

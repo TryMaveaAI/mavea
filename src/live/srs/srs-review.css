@@ -1,0 +1,278 @@
+.srs-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--scrim-rgb), 0.72);
+  backdrop-filter: blur(8px);
+  padding: 24px;
+}
+
+.srs-shell {
+  position: relative;
+  width: min(520px, 100%);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-soft);
+  border-radius: 20px;
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.srs-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.srs-eyebrow {
+  font: 700 10.5px/1 var(--font);
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.srs-progress {
+  margin-left: auto;
+  font: 600 13px/1 var(--font);
+  color: var(--text-secondary);
+}
+
+.srs-close-btn {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color var(--m-quick),
+    border-color var(--m-quick);
+}
+.srs-close-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--line-mid);
+}
+
+/* when progress is visible, close sits directly after it (no auto-margin) */
+.srs-header:has(.srs-progress) .srs-close-btn {
+  margin-left: 0;
+}
+
+.srs-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 24px;
+}
+
+.srs-tag {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--presence-soft);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
+  border-radius: var(--r-full);
+  padding: 4px 12px;
+}
+
+.srs-flip-scene {
+  perspective: 1000px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.srs-flip-card {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  transform-style: preserve-3d;
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.srs-flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.srs-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  padding: 28px 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.srs-face-front {
+  background: var(--surface-elevated-2);
+  border: 1px solid var(--line-soft);
+}
+
+.srs-face-back {
+  background: color-mix(in oklab, var(--insight) 8%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--insight) 28%, transparent);
+  transform: rotateY(180deg);
+}
+
+.srs-face-label {
+  font: 700 9.5px/1 var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.srs-face-text {
+  font: 450 18px/1.55 var(--font);
+  color: var(--text-primary);
+  flex: 1;
+  word-break: break-word;
+}
+
+.srs-tap-hint {
+  margin-top: auto;
+  font: 450 11.5px/1 var(--font);
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.srs-grades {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+/* Four-in-a-row only has room for "Again" (the longest label) on a wide-enough shell — below
+   that the row cramps into wrapped, uneven-height buttons. A 2x2 grid keeps every button roomy
+   and equal-sized instead of just shrinking the same layout. */
+@media (max-width: 480px) {
+  .srs-grades {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* A plain pile of cards has two answers, not four. Left at full width they read as a pair of
+   oversized slabs on a wide shell, so cap them — two buttons should look designed, not left over
+   from a layout built for four. */
+.srs-grades[data-count='2'] {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.srs-grade-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 11px 8px;
+  border-radius: var(--r-md);
+  background: none;
+  cursor: pointer;
+  transition: background var(--m-quick);
+}
+.srs-grade-btn:hover {
+  background: var(--surface-glass);
+}
+
+.srs-grade-label {
+  display: block;
+  font: 600 13.5px/1 var(--font);
+  color: var(--text-primary);
+}
+
+.srs-grade-key {
+  display: block;
+  font: 500 10px/1 var(--font);
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.srs-flip-prompt {
+  font: 450 11.5px/1 var(--font);
+  color: var(--text-faint);
+  text-align: center;
+}
+
+/* ── empty / done state ── */
+.srs-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 24px 40px;
+  text-align: center;
+}
+
+.srs-big-icon {
+  font-size: 48px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.srs-done-head {
+  font: 700 22px/1.2 var(--font);
+  color: var(--text-primary);
+}
+
+.srs-done-sub {
+  font: 450 14px/1.55 var(--font);
+  color: var(--text-secondary);
+  max-width: 320px;
+}
+
+/* Per-grade tally on the summary screen — each chip wears the matching difficulty hue. */
+.srs-done-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.srs-done-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--line-mid);
+  border-radius: var(--r-full);
+  font: 500 12px/1 var(--font);
+  color: var(--text-secondary);
+}
+
+.srs-done-chip-n {
+  font: 700 13px/1 var(--font);
+  color: var(--text-primary);
+}
+
+.srs-close-action {
+  margin-top: 8px;
+  padding: 10px 28px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-mid);
+  background: none;
+  color: var(--text-primary);
+  font: 600 14px/1 var(--font);
+  cursor: pointer;
+  transition:
+    background var(--m-quick),
+    border-color var(--m-quick);
+}
+.srs-close-action:hover {
+  background: var(--surface-glass);
+}

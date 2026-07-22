@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest an idea or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that's hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: submission
+    attributes:
+      label: Submission checks
+      description: Suggestions may be used under the repository Terms; external implementations are not accepted.
+      options:
+        - label: I am submitting an idea only, without code, patches, documentation changes, secrets, personal data, or confidential information.
+          required: true
