@@ -132,26 +132,38 @@ jobs:
 
       - name: Re-run real-browser release gates
         shell: bash
+        # Mirrors ci.yml's browser-quality job exactly — same servers, same flags — so a release
+        # can never fail on a configuration the weekly sweep already proved green. The DOM/layout
+        # audits drive the dev server (what they are written against); the perf/memory probes
+        # measure the BUILT artifact via the real CLI server, unthrottled, because this 2-core
+        # runner already is the slow machine the budgets describe. `verify:full` above has already
+        # produced dist/, so the CLI server has its artifact.
         run: |
           set -euo pipefail
           pnpm exec vite --host 127.0.0.1 > /tmp/mavea-release-vite.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..60}; do
-            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then break; fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/mavea-release-vite.log; exit 1; fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:5173/ >/dev/null
+          vite_pid=$!
+          node bin/mavea.mjs > /tmp/mavea-release-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$vite_pid" "$preview_pid" 2>/dev/null || true' EXIT
+          wait_for() {
+            for attempt in {1..60}; do
+              if curl --fail --silent "$1" >/dev/null; then return 0; fi
+              if ! kill -0 "$2" 2>/dev/null; then cat "$3"; return 1; fi
+              sleep 1
+            done
+            cat "$3"; return 1
+          }
+          wait_for http://127.0.0.1:5173/ "$vite_pid" /tmp/mavea-release-vite.log
+          wait_for http://127.0.0.1:4173/ "$preview_pid" /tmp/mavea-release-preview.log
           pnpm audit:ui
           pnpm audit:tap
-          pnpm audit:interactions
+          pnpm audit:interactions -- --slow-machine
           pnpm audit:browsers
           pnpm slides:gate
           pnpm export:gate
           pnpm audit:reel
-          pnpm perf -- --throttle 6
-          pnpm perf:memory -- --url http://127.0.0.1:5173 --cycles 6
+          pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
+          pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
 
       - name: Publish to npm
         run: pnpm publish --no-git-checks --provenance

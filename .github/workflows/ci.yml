@@ -8,11 +8,13 @@ on:
       - 'CHANGELOG.md'
   pull_request:
     paths-ignore: *docs-only
-  # Forward-compatibility sweep (see the node-next job): the toolchain requires Node 24+, and
-  # re-running every gate on a second Node version per push bought no signal a browser-asset app
-  # can use. Once a week is the right cadence for "does the toolchain still build on Node 26".
+  # Weekly sweep: the node-next forward-compat check and the full real-browser gauntlet
+  # (browser-quality). Neither belongs on every push — see each job's own note.
   schedule:
     - cron: '0 6 * * 1'
+  # Run the browser gauntlet by hand when a change touches layout, reels, or the perf budgets:
+  # Actions tab → CI → Run workflow (or `gh workflow run ci.yml`).
+  workflow_dispatch:
 
 # Cancel superseded PR runs to save minutes, but NEVER cancel a push to main — a quick second
 # push must not kill the first run (and its uploaded artifact) mid-flight.
@@ -29,6 +31,9 @@ permissions:
 jobs:
   verify:
     name: Lint · Typecheck · Test · Build · Dead code · Dependency audit
+    # Push/PR only — the weekly schedule exists for node-next and browser-quality, and re-running
+    # this job then would re-verify a commit it already verified when it landed.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     # Merged with the old standalone "quality" job: both need the full dependency install anyway,
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
@@ -111,6 +116,21 @@ jobs:
 
   browser-quality:
     name: Responsive · Touch · Artifacts · Slow CPU · Memory
+    # Weekly + on-demand, NOT per-push. Two reasons, both learned the expensive way:
+    #
+    # Cost — this is the longest job in the workflow (~9-15 min of Playwright driving 600 gallery
+    # tiles, ~500 reel remounts, and the perf/memory probes), and it was billed on every push of a
+    # metered private repo.
+    #
+    # Determinism — its checks measure RENDERED GEOMETRY, so a verdict can flip on a 1px platform
+    # font difference (claimgrid tripped at 390px on one run and passed the next, byte-identical
+    # tree). A gate that can go red without a code change cannot be a per-push gate; as a weekly
+    # sweep a marginal finding is a report to act on, not a blocked push.
+    #
+    # Nothing ships unswept: the release workflow runs this same gauntlet as a hard gate, the
+    # weekly run catches drift within days, and a layout-touching change can trigger it on demand
+    # (Actions tab → CI → Run workflow, or `gh workflow run ci.yml`).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -135,12 +155,6 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
-      # These gates are BREADTH sweeps over the whole 200-block library, not per-commit regression
-      # locks: the full pass is 10 widths × 2 themes of gallery mounts, ~500 reel tiles remounted
-      # 24×, 10 slide skins, and 6 memory cycles over 9 routes. Running all of it on every push was
-      # the second-largest line on the CI bill. A pull request gets the same gates at reduced
-      # breadth (the 3 widths that actually catch layout breaks, 2 memory cycles); push-to-main and
-      # the release workflow keep the exhaustive sweep, so nothing reaches a user unswept.
       # `--throttle 1` here is not a relaxation. The flag simulates a slow DEVICE by dividing a
       # developer laptop's CPU, and its budgets are calibrated for that. A 2-core cloud runner is
       # already that slow device — throttling it a further 6x models hardware no user owns, and the
@@ -158,8 +172,6 @@ jobs:
         run: pnpm exec vite build
       - name: Run real-browser release gates
         shell: bash
-        env:
-          FULL_SWEEP: ${{ github.event_name != 'pull_request' && '1' || '' }}
         run: |
           # NOTE: deliberately not `set -e`. These gates are independent checks, and aborting at
           # the first failure means one run can only ever reveal one problem — the next is hidden
@@ -197,22 +209,14 @@ jobs:
             echo "::endgroup::"
           }
 
-          if [ -n "$FULL_SWEEP" ]; then
-            gate audit:ui           pnpm audit:ui
-            gate audit:tap          pnpm audit:tap
-            gate audit:interactions pnpm audit:interactions -- --slow-machine
-            gate slides:gate        pnpm slides:gate
-            gate export:gate        pnpm export:gate
-            gate audit:reel         pnpm audit:reel
-            gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
-            gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
-          else
-            gate audit:ui           pnpm audit:ui -- --widths 320,768,1440
-            gate audit:tap          pnpm audit:tap
-            gate audit:interactions pnpm audit:interactions -- --slow-machine
-            gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
-            gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 2
-          fi
+          gate audit:ui           pnpm audit:ui
+          gate audit:tap          pnpm audit:tap
+          gate audit:interactions pnpm audit:interactions -- --slow-machine
+          gate slides:gate        pnpm slides:gate
+          gate export:gate        pnpm export:gate
+          gate audit:reel         pnpm audit:reel
+          gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
+          gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo ""
@@ -248,6 +252,9 @@ jobs:
   # the two share a runner cleanly.
   security:
     name: Secret scan · SAST · Published CLI smoke (Node 20)
+    # Push/PR only, like verify — the tree does not change between pushes, so a weekly rescan of
+    # the same commit finds nothing a push scan did not.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read

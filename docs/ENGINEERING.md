@@ -120,7 +120,10 @@ then pass `--url http://localhost:4173`).
 
 - **Automated** — CI runs `typecheck · lint · format · test · build` on every push and PR, and a
   **pre-push hook** runs `pnpm typecheck` and `pnpm lint` locally as a fast sanity check before
-  anything reaches CI. Pre-commit hooks format and lint staged files; commit messages are
+  anything reaches CI. The real-browser gauntlet (layout, touch, interaction, reel, perf and
+  memory audits) runs weekly, on demand from the Actions tab, and as a hard gate in the release
+  workflow — it measures rendered geometry, which is machine-sensitive, so it reports on a
+  schedule rather than blocking every push. Pre-commit hooks format and lint staged files; commit messages are
   Conventional-Commit-linted; Dependabot keeps dependencies fresh; `pnpm knip` flags unused
   files, exports, and dependencies; and a
   leak-guard test mounts then unmounts every block under fake timers and fails if any timer is
