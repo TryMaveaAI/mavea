@@ -79,6 +79,13 @@ export function OrbitMapSlide({ slots }: SlideProps<'conceptmap'>) {
               left: `${left}%`,
               top: `${top}%`,
               transform: 'translate(-50%, -50%)',
+              // The chip is centred on its orbit point, so it reaches half its own width to each
+              // side. Its width comes from a model-written label, so on a wider face the outermost
+              // nodes ran past the board edge. Cap it at twice the distance to the nearer edge —
+              // the widest a centred box can be and still fit — so containment is geometry rather
+              // than a bet on how many pixels a given font needs.
+              maxWidth: `${2 * Math.min(left, 100 - left)}%`,
+              boxSizing: 'border-box',
               padding: 'calc(var(--ru) * 1.1) calc(var(--rw) * 2.2)',
               borderRadius: 999,
               fontWeight: 600,

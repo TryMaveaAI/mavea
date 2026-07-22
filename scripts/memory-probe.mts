@@ -141,8 +141,35 @@ async function main(): Promise<void> {
   const cdp = await context.newCDPSession(page);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(`page: ${error.message}`));
+  // This probe measures memory OUR app retains, so a failed load only counts when it is ours to
+  // fix. Two kinds are not:
+  //   • the voice/model backends (/tts, /stt, /llm) are optional and proxied — without the Kokoro
+  //     container the server answers 502, which is the documented "no Docker, so captions instead
+  //     of speech" path, not a defect;
+  //   • third-party origins, which answer a datacenter IP however they like (a 403 from an
+  //     external API says nothing about this codebase).
+  // Everything else — our own assets and chunks — still fails the soak, now named by URL, which
+  // the console message alone never carried.
+  const OPTIONAL_BACKEND = /^\/(tts|stt|llm)\//;
+  const ownOrigin = new URL(baseUrl).origin;
+  page.on('response', (response) => {
+    if (response.status() < 400) return;
+    let url: URL;
+    try {
+      url = new URL(response.url());
+    } catch {
+      return;
+    }
+    if (url.origin !== ownOrigin) return;
+    if (OPTIONAL_BACKEND.test(url.pathname)) return;
+    errors.push(`http ${response.status()}: ${response.url()}`);
+  });
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+    if (message.type() !== 'error') return;
+    // Reported by the response listener above, with the URL attached; counting it here too would
+    // double-report the same failure and hide which resource it was.
+    if (/Failed to load resource/i.test(message.text())) return;
+    errors.push(`console: ${message.text()}`);
   });
   await cdp.send('Performance.enable');
 
