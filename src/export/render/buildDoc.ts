@@ -5,7 +5,7 @@ import type { ConversationSpec } from '../../data/conversation';
 import type { ContentsEntry, ExportDoc, ExportMeta, Section } from '../model/ExportDoc';
 import { buildMeta, normalize, plain } from '../model/normalize';
 import { measureDoc } from '../paginate/measure';
-import { expandOversized, paginate } from '../paginate/paginate';
+import { paginate } from '../paginate/paginate';
 import type { PageFormat } from '../paginate/geometry';
 import type { TemplateSkin } from '../skins/types';
 
@@ -16,13 +16,16 @@ import type { TemplateSkin } from '../skins/types';
 const MAX_LAYOUT_PASSES = 4;
 
 /**
- * Lay out already-normalized sections into a paginated document for a skin: measure → split
- * over-tall sections → RE-MEASURE the split fragments → repeat until a pass produces no further
- * splitting (or the pass cap is hit) → pack. The re-measure step is the fit guarantee: a split
- * fragment's first height is only an arithmetic estimate (uniform per item/char) that under-counts
- * variable content (wrapped cells, multi-line bodies, a code line that wraps) and would silently
- * overflow the fixed page sheet; re-measuring and, if a fragment is still oversized, splitting it
- * again is what actually guarantees nothing clips. We only pay for another measure pass when
+ * Lay out already-normalized sections into a paginated document for a skin: measure → pack →
+ * RE-MEASURE whatever fragments packing split off → repeat until a pack pass splits nothing (or
+ * the pass cap is hit). Packing splits in two places — a section taller than a whole page, and a
+ * split-to-fit head cut to fill a page's remaining space — and both produce fragments whose first
+ * height is only an arithmetic estimate (uniform per item/char) that under-counts variable content
+ * (wrapped cells, multi-line bodies, a code line that wraps). Re-measuring the real DOM and packing
+ * again is the fit guarantee: the loop only converges on a pass whose every placement used a
+ * measured height. If the pass cap is ever hit first, a final strict pass packs with splitting
+ * disabled entirely, so no unverified estimate is ever placed — a still-over-tall section then
+ * lands atomically, the documented last resort. We only pay for another measure pass when
  * something actually split.
  */
 export async function layoutDoc(
@@ -38,17 +41,25 @@ export async function layoutDoc(
     contentHRest,
   } = await measureDoc(meta, sections, skin, accent, format);
 
+  let pages = paginate(measured, { contentH1, contentHRest });
+  let converged = false;
   for (let pass = 0; pass < MAX_LAYOUT_PASSES; pass += 1) {
-    const expanded = expandOversized(measured, Math.min(contentH1, contentHRest));
-    if (expanded.length === measured.length) break; // no further splitting — converged
-    const m = await measureDoc(meta, expanded, skin, accent, format);
+    const flat = pages.flatMap((p) => p.sections);
+    // Splitting only ever adds fragments, so an unchanged count means this pass split nothing —
+    // every section it placed carried a real measured height.
+    if (flat.length === measured.length) {
+      converged = true;
+      break;
+    }
+    const m = await measureDoc(meta, flat, skin, accent, format);
     measured = m.sections;
     contentH1 = m.contentH1;
     contentHRest = m.contentHRest;
+    pages = paginate(measured, { contentH1, contentHRest });
   }
+  if (!converged) pages = paginate(measured, { contentH1, contentHRest, fill: false });
 
-  const pages = paginate(measured, { contentH1, contentHRest });
-  return { meta, sections: measured, pages, format };
+  return { meta, sections: pages.flatMap((p) => p.sections), pages, format };
 }
 
 /** How many sources the masthead's own inline "READING · a · b · c · d +N more" caption shows

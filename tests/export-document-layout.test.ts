@@ -678,6 +678,129 @@ describe('paginate', () => {
   });
 });
 
+// Split-to-fit: the packer no longer bounces a whole section to the next page when the section's
+// own head could fill the space left on this one. The splitter keeps the typography judgment
+// (orphan guards, sentence boundaries); the packer only asks. This is the fix for half-empty
+// pages — especially page 1, whose masthead makes it the shortest.
+describe('paginate — split-to-fit fills a page remainder instead of stranding it', () => {
+  it('fills the rest of page 1 with the head of a splittable list', () => {
+    // a=300 leaves 276px on page 1 — room for a heading and five ~44px rows of b. (b itself fits
+    // a page, so the whole-page pre-split never fires; only split-to-fit is in play.)
+    const pages = paginate([prose('a', 300), list('b', 12, 580)], OPTS);
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a', 'b~0']);
+    const head = pages[0].sections[1];
+    // A meaningful head (no orphan), sized to the space that was actually left.
+    expect(head.kind === 'rankedList' && head.data.items.length).toBeGreaterThanOrEqual(2);
+    expect(head.measuredH ?? 0).toBeLessThanOrEqual(OPTS.contentH1 - 300 - SECTION_GAP);
+    // The page is genuinely full now, not half empty.
+    expect(pageHeight(pages[0].sections)).toBeGreaterThan(OPTS.contentH1 * 0.9);
+    // Every row survives across the fragments and no page overflows.
+    const totalRows = pages
+      .flatMap((p) => p.sections)
+      .reduce((n, s) => n + (s.kind === 'rankedList' ? s.data.items.length : 0), 0);
+    expect(totalRows).toBe(12);
+    pages.forEach((p, i) => {
+      const cap = i === 0 ? OPTS.contentH1 : OPTS.contentHRest;
+      expect(pageHeight(p.sections)).toBeLessThanOrEqual(cap + 1);
+    });
+  });
+
+  it('still pushes whole when the remainder is below the minimum window', () => {
+    // a=500 leaves 76px — a sliver not worth a "(cont.)" heading.
+    const pages = paginate([prose('a', 500), list('b', 12, 580)], OPTS);
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a']);
+    expect(pages[1].sections.map((s) => s.id)).toEqual(['b']);
+  });
+
+  it('still pushes whole when the splitter declines (nothing meaningful fits)', () => {
+    // prose with a one-character body cannot yield a worthwhile first fragment.
+    const pages = paginate([prose('a', 300), prose('big', 500)], OPTS);
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a']);
+    expect(pages[1].sections.map((s) => s.id)).toEqual(['big']);
+  });
+
+  it('declines a one-row head — the orphan guard beats the fill', () => {
+    // 196px remainder fits only one ~107px row under the 56px heading.
+    const pages = paginate([prose('a', 380), list('b', 5, 590)], OPTS);
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a']);
+    expect(pages[1].sections.map((s) => s.id)).toEqual(['b']);
+  });
+
+  it('splits prose at a sentence boundary and conserves every character', () => {
+    // Short enough that the prose section fits a page whole — only split-to-fit cuts it.
+    const body = Array.from(
+      { length: 14 },
+      (_, i) => `Sentence number ${i} carries a modest amount of body text onward.`,
+    ).join(' ');
+    const p: Section = {
+      kind: 'prose',
+      id: 'p',
+      source: 0,
+      lead: false,
+      measuredH: 56 + body.length * 0.5,
+      data: { heading: 'Long', body },
+    };
+    const pages = paginate([prose('a', 300), p], OPTS);
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a', 'p~0']);
+    const rejoined = pages
+      .flatMap((pg) => pg.sections)
+      .filter((s) => s.kind === 'prose' && s.id.startsWith('p~'))
+      .map((s) => (s.data as { body: string }).body)
+      .join(' ');
+    expect(rejoined).toBe(body);
+    pages.forEach((pg, i) => {
+      const cap = i === 0 ? OPTS.contentH1 : OPTS.contentHRest;
+      expect(pageHeight(pg.sections)).toBeLessThanOrEqual(cap + 1);
+    });
+  });
+
+  it('honors fill: false — the strict pass never splits, so no estimated height is placed', () => {
+    const pages = paginate([prose('a', 300), list('b', 20, 1000)], { ...OPTS, fill: false });
+    expect(pages[0].sections.map((s) => s.id)).toEqual(['a']);
+    // The over-tall list lands atomically (the documented last resort), not as fragments whose
+    // heights would be unverified arithmetic estimates.
+    expect(pages[1].sections.map((s) => s.id)).toEqual(['b']);
+    expect(
+      pages[1].sections[0].kind === 'rankedList' && pages[1].sections[0].data.items.length,
+    ).toBe(20);
+  });
+
+  it('splits rows taller than half a page one-per-page instead of refusing and clipping', () => {
+    // Three 500px rows: only one fits any page. The orphan guard must not fire on a whole-page
+    // window — refusing to split here places the 1556px section atomically and clips it.
+    const pages = paginate([list('t', 3, 1556)], OPTS);
+    expect(auditPages(pages, OPTS)).toEqual([]);
+    const counts = pages
+      .flatMap((p) => p.sections)
+      .map((s) => (s.kind === 'rankedList' ? s.data.items.length : 0));
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(3);
+    expect(Math.max(...counts)).toBe(1);
+  });
+
+  it('an oversized section starting mid-page leaves no seams — one fragment per page, one "(cont.)"', () => {
+    // The exact target case: an intro, then a long table. One split scheme means the head fills
+    // page 1's remainder and each continuation fills a whole page — never two fragments of the
+    // same section stacked on one page, never a doubled "(cont.)".
+    const pages = paginate([prose('a', 300), list('big', 40, 2000)], OPTS);
+    expect(auditPages(pages, OPTS)).toEqual([]);
+    const base = (id: string) => id.split('~')[0];
+    for (const p of pages) {
+      const bigs = p.sections.filter((s) => base(s.id) === 'big');
+      expect(bigs.length).toBeLessThanOrEqual(1);
+    }
+    const headings = pages
+      .flatMap((p) => p.sections)
+      .map((s) => ('heading' in s.data ? (s.data.heading ?? '') : ''));
+    expect(headings.some((h) => h.includes('(cont.) (cont.)'))).toBe(false);
+    const totalRows = pages
+      .flatMap((p) => p.sections)
+      .reduce((n, s) => n + (s.kind === 'rankedList' ? s.data.items.length : 0), 0);
+    expect(totalRows).toBe(40);
+    // And the point of it all: page 1 is genuinely full.
+    expect(pageHeight(pages[0].sections)).toBeGreaterThan(OPTS.contentH1 * 0.9);
+  });
+});
+
 // The four archetypes that could NOT split before this change: prose (long body text),
 // findingCallout / spotlightCard (a header card whose summary/body ran long), and a FLOW-class
 // figure (a code-family block that grows by line). Each gets its own fragment splitter in

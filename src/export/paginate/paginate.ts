@@ -1,10 +1,10 @@
-// Greedy first-fit pagination. Pure: given sections with measured heights and the usable
-// content height of page 1 vs. later pages, it packs them onto pages so none overflows — format-
-// agnostic, since both caps already reflect whichever page size (Letter/A4) the caller measured
-// against (see measure.ts). A section taller than a whole page is split across pages by `split.ts`'s
-// per-archetype
-// splitters before packing; a kind with no splitter (or one that can't usefully split further,
-// e.g. a single giant row) is placed alone rather than dropped.
+// Greedy first-fit pagination with inline splitting. Pure: given sections with measured heights
+// and the usable content height of page 1 vs. later pages, it packs them onto pages so none
+// overflows — format-agnostic, since both caps already reflect whichever page size (Letter/A4)
+// the caller measured against (see measure.ts). A section that exceeds the window in front of it
+// (the remainder of the current page, or a whole page at the top of one) is cut by `split.ts`'s
+// per-archetype splitters to fill that window exactly; a kind with no splitter (or one that
+// can't usefully split further, e.g. a single giant row) is placed alone rather than dropped.
 import { SECTION_GAP } from './geometry';
 import { SPLIT_REGISTRY } from './split';
 import type { ExportPage, Section } from '../model/ExportDoc';
@@ -14,9 +14,23 @@ export interface PaginateOpts {
   contentH1: number;
   /** Usable content height on pages 2+ (under the slim running header). */
   contentHRest: number;
+  /** Allow splitting at page boundaries (default true). `layoutDoc` disables it for a final
+   *  strict pass when its measure→pack loop runs out of passes: with fill off, paginate performs
+   *  NO splitting of any kind, so every placement carries a DOM-measured height — an unsplittable
+   *  over-tall section lands atomically (the documented last resort) rather than as fragments
+   *  with unverified estimated heights. */
+  fill?: boolean;
 }
 
-/** Split any section taller than a page into page-fitting fragments; pass others through. */
+/** The smallest bottom-of-page remainder worth filling with a split fragment. Below this, a cut
+ *  buys a sliver of content plus a "(cont.)" heading on the next page — worse typography than the
+ *  gap it removes. Heading chrome (~56px) plus a few lines of real content. */
+export const MIN_SPLIT_WINDOW = 180;
+
+/** Split any section taller than a page into page-fitting fragments; pass others through.
+ *  (Retained for tests and offline tooling — `paginate` itself now splits inline at page
+ *  boundaries, so a first fragment is sized to the page it actually lands on rather than to the
+ *  smallest cap.) */
 export function expandOversized(sections: Section[], capH: number): Section[] {
   const out: Section[] = [];
   for (const s of sections) {
@@ -26,7 +40,7 @@ export function expandOversized(sections: Section[], capH: number): Section[] {
       out.push(s);
       continue;
     }
-    const parts = splitter(s, capH);
+    const parts = splitter(s, { first: capH, rest: capH });
     if (parts.length <= 1) {
       out.push(s);
       continue;
@@ -61,11 +75,16 @@ export function auditPages(pages: ExportPage[], opts: PaginateOpts): PageOverflo
   return overflows;
 }
 
-/** Pack sections into pages. Page 1 uses `contentH1`; every page after uses `contentHRest`. */
+/** Pack sections into pages. Page 1 uses `contentH1`; every page after uses `contentHRest`.
+ *
+ *  ONE split scheme, driven by the packer: whenever a section exceeds the window in front of it —
+ *  the remainder of the current page mid-page, the whole page at the top of one — its splitter is
+ *  asked to cut a head sized to that exact window, with continuations sized to full later pages.
+ *  (An earlier draft pre-split oversized sections to the smallest cap and then split-to-fit cut
+ *  those fragments again; the two schemes' boundaries never aligned, which seamed adjacent
+ *  "(cont.)" fragments onto one page and wasted the taller pages' extra room.) */
 export function paginate(sections: Section[], opts: PaginateOpts): ExportPage[] {
-  const { contentH1, contentHRest } = opts;
-  // Split to the smaller cap so a fragment fits whichever page it lands on (page 1 is shortest).
-  const items = expandOversized(sections, Math.min(contentH1, contentHRest));
+  const { contentH1, contentHRest, fill = true } = opts;
   const pages: ExportPage[] = [];
   let cur: Section[] = [];
   let used = 0;
@@ -79,15 +98,46 @@ export function paginate(sections: Section[], opts: PaginateOpts): ExportPage[] 
     }
   };
 
-  for (const s of items) {
+  // A queue rather than a plain loop: a split below re-queues the section's continuation
+  // fragments, and those must be packed (and possibly split again) before anything that follows.
+  const queue = sections.slice();
+  while (queue.length) {
+    const s = queue.shift()!;
     const h = s.measuredH ?? 0;
     // A new answer's lead heading starts a fresh page (unless we're already at the top).
     if (s.lead && cur.length) flush();
     const gap = cur.length ? SECTION_GAP : 0;
-    const cap = capFor();
-    if (cur.length > 0 && used + gap + h > cap) flush();
+    const remaining = capFor() - used - gap;
+    if (h <= remaining) {
+      cur.push(s);
+      used += gap + h;
+      continue;
+    }
+    // Too tall for the window in front of it. Ask its splitter for a head cut to that window —
+    // the splitter owns the typography judgment (orphan guards, sentence boundaries) and a
+    // single-part result means it declined. Mid-page, a sliver below MIN_SPLIT_WINDOW is never
+    // worth a "(cont.)"; at the top of a page the window is the whole page, so always ask.
+    const midPage = cur.length > 0;
+    const splitter = fill ? SPLIT_REGISTRY[s.kind] : undefined;
+    if (splitter && (!midPage || remaining >= MIN_SPLIT_WINDOW)) {
+      const parts = splitter(s, { first: remaining, rest: contentHRest, fromRemainder: midPage });
+      if (parts.length > 1 && (parts[0].measuredH ?? 0) <= remaining) {
+        cur.push(parts[0]);
+        used += gap + (parts[0].measuredH ?? 0);
+        queue.unshift(...parts.slice(1));
+        continue;
+      }
+    }
+    if (midPage) {
+      // Retry at the top of a fresh page, where the window is the whole cap.
+      flush();
+      queue.unshift(s);
+      continue;
+    }
+    // Taller than a whole page and unsplittable (or the splitter declined): the documented last
+    // resort — place it atomically rather than drop or silently truncate it.
     cur.push(s);
-    used += (cur.length > 1 ? SECTION_GAP : 0) + h;
+    used += h;
   }
   flush();
 

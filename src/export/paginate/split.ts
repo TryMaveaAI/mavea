@@ -24,20 +24,39 @@ import type {
 /** Roughly how much of a section's height is fixed chrome (heading + padding) vs. per-item/char. */
 export const HEADING_OVERHEAD = 56;
 
-/** Turn one oversized section into its ordered fragments, sized to fit `capH`. A single-element
- *  result (the section unchanged) means "couldn't usefully split" — `expandOversized` treats that
- *  the same as no splitter at all. */
-export type FragmentSplitter = (section: Section, capH: number) => Section[];
+/** The page windows a split fills: `first` is the space available where the section starts (the
+ *  remainder of the current page when the packer splits-to-fit, or a whole page when a section is
+ *  simply taller than one), `rest` is the cap of every later page a continuation lands on. The two
+ *  differ whenever a split starts mid-page — sizing every fragment to one shared cap either wastes
+ *  the tail of the current page or overflows the next. */
+export interface SplitCaps {
+  first: number;
+  rest: number;
+  /** True when `first` is a mid-page remainder (a split-to-fit) rather than a whole page. Enables
+   *  the head-orphan guards: a two-row/80-char minimum is good typography for filling the bottom
+   *  of a page, but on a whole-page window the same guard would refuse to split a section whose
+   *  rows are taller than half a page — reintroducing the clipping the splitters exist to stop.
+   *  Whole-page splits keep the old one-item-per-page floor instead. */
+  fromRemainder?: boolean;
+}
+
+/** Turn one oversized section into its ordered fragments — the first sized to `caps.first`, the
+ *  rest to `caps.rest`. A single-element result (the section unchanged) means "couldn't usefully
+ *  split" — callers treat that the same as no splitter at all. */
+export type FragmentSplitter = (section: Section, caps: SplitCaps) => Section[];
 
 /* ── shared widow-safe chunk sizing ───────────────────────────────────────────────────────────── */
 
-/** Chunk sizes covering `total` items at up to `perPage` each. Widow control: never strand a lone
- *  final item — borrow one back from the previous chunk instead (it always has room: that chunk
- *  was already full), because an orphaned single row/frame reads as a typesetting mistake. */
-function chunkSizes(total: number, perPage: number): number[] {
-  const sizes: number[] = [];
-  for (let i = 0; i < total; i += perPage) sizes.push(Math.min(perPage, total - i));
-  if (sizes.length >= 2 && sizes[sizes.length - 1] === 1 && perPage >= 2) {
+/** Chunk sizes covering `total` items: up to `firstPer` in the opening chunk (the current page's
+ *  remaining window), up to `restPer` in each later one (a full page). Widow control: never strand
+ *  a lone final item — borrow one back from the previous chunk when it has one to spare, because
+ *  an orphaned single row/frame reads as a typesetting mistake. */
+function chunkSizes(total: number, firstPer: number, restPer: number): number[] {
+  const sizes: number[] = [Math.min(firstPer, total)];
+  for (let done = sizes[0]; done < total; done += restPer) {
+    sizes.push(Math.min(restPer, total - done));
+  }
+  if (sizes.length >= 2 && sizes[sizes.length - 1] === 1 && sizes[sizes.length - 2] >= 2) {
     sizes[sizes.length - 1] = 2;
     sizes[sizes.length - 2] -= 1;
   }
@@ -52,6 +71,12 @@ type Accessor = {
   set: (data: unknown, items: unknown[], cont: boolean) => unknown;
 };
 
+/** Append the continuation marker exactly once — a fragment that is itself re-split on a later
+ *  measure pass (or at a page boundary) must read "X (cont.)", never "X (cont.) (cont.)". */
+function contHeading(heading: string): string {
+  return heading.endsWith(' (cont.)') ? heading : `${heading} (cont.)`;
+}
+
 function listAccessor(key: string, headingKey = 'heading'): Accessor {
   return {
     get: (data) => ((data as Record<string, unknown>)[key] as unknown[]) ?? [],
@@ -61,23 +86,33 @@ function listAccessor(key: string, headingKey = 'heading'): Accessor {
       return {
         ...d,
         [key]: items,
-        ...(cont && typeof heading === 'string' ? { [headingKey]: `${heading} (cont.)` } : {}),
+        ...(cont && typeof heading === 'string' ? { [headingKey]: contHeading(heading) } : {}),
       };
     },
   };
 }
 
-/** An array-payload splitter over `acc`: chunk its item array to fit `capH`, uniform per-item
- *  height assumed (a fair approximation for rows/tiles/cells of similar size). */
+/** An array-payload splitter over `acc`: chunk its item array to fit the page windows, uniform
+ *  per-item height assumed (a fair approximation for rows/tiles/cells of similar size). */
 function arraySplitter(acc: Accessor): FragmentSplitter {
-  return (s, capH) => {
+  return (s, caps) => {
     const h = s.measuredH ?? 0;
     const items = acc.get(s.data);
     if (items.length <= 1) return [s];
     const perItem = Math.max(1, (h - HEADING_OVERHEAD) / items.length);
-    const perPage = Math.max(1, Math.floor((capH - HEADING_OVERHEAD) / perItem));
-    if (perPage >= items.length) return [s];
-    const sizes = chunkSizes(items.length, perPage);
+    // A whole-page window keeps the one-item-per-page floor (a row taller than half a page still
+    // spills page by page rather than clipping); a mid-page remainder may hold zero.
+    const firstPer = Math.max(
+      caps.fromRemainder ? 0 : 1,
+      Math.floor((caps.first - HEADING_OVERHEAD) / perItem),
+    );
+    const restPer = Math.max(1, Math.floor((caps.rest - HEADING_OVERHEAD) / perItem));
+    if (firstPer >= items.length) return [s];
+    const sizes = chunkSizes(items.length, firstPer, restPer);
+    // Split-to-fit only: a head of fewer than two rows under its heading reads as an orphan — not
+    // worth the "(cont.)" it buys. Checked on the FINAL sizes, because the widow borrow above can
+    // thin the head (3 rows at 2-per-window chunk to [2,1], then rebalance to [1,2]).
+    if (caps.fromRemainder && sizes[0] < 2) return [s];
     const out: Section[] = [];
     for (let i = 0, c = 0; c < sizes.length; i += sizes[c], c += 1) {
       const chunk = items.slice(i, i + sizes[c]);
@@ -133,14 +168,22 @@ function findCut(text: string, target: number): number {
   return Math.min(text.length, Math.max(1, target)); // no whitespace anywhere — forced hard cut
 }
 
-/** Split `text` into ordered fragments, each aiming for `target` characters and breaking at a
- *  sentence (or, failing that, a word) boundary — so a long paragraph/summary spills across
- *  continuation fragments without ever cutting mid-word or losing a single character. */
-function cutText(text: string, target: number): string[] {
+/** The fewest characters a split-to-fit opening fragment is allowed to carry. A couple of words
+ *  under a heading, alone at the bottom of a page, reads as an orphan — below this, give up and
+ *  let the packer push the section whole. (A whole-page window always clears it by orders of
+ *  magnitude.) */
+const MIN_FIRST_CHARS = 80;
+
+/** Split `text` into ordered fragments — the first aiming for `firstTarget` characters, later ones
+ *  for `restTarget` — breaking at a sentence (or, failing that, a word) boundary, so a long
+ *  paragraph/summary spills across continuation fragments without ever cutting mid-word or losing
+ *  a single character. */
+function cutText(text: string, firstTarget: number, restTarget: number): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
   const out: string[] = [];
   let rest = trimmed;
+  let target = firstTarget;
   // 15% slack absorbs the arithmetic estimate's rounding noise without forcing a near-empty
   // trailing fragment.
   while (rest.length > target * 1.15) {
@@ -150,25 +193,27 @@ function cutText(text: string, target: number): string[] {
     if (!head || tail.length >= rest.length) break; // no real progress — stop rather than loop
     out.push(head);
     rest = tail;
+    target = restTarget;
   }
   if (rest) out.push(rest);
   return out;
 }
 
-function splitProse(s: Section, capH: number): Section[] {
+function splitProse(s: Section, caps: SplitCaps): Section[] {
   if (s.kind !== 'prose') return [s];
   const data: ProseData = s.data;
   if (!data.body) return [s];
   const h = s.measuredH ?? 0;
-  const target = targetChars(data.body.length, h, capH);
-  const fragments = cutText(data.body, target);
+  const firstTarget = targetChars(data.body.length, h, caps.first);
+  if (caps.fromRemainder && firstTarget < MIN_FIRST_CHARS) return [s];
+  const fragments = cutText(data.body, firstTarget, targetChars(data.body.length, h, caps.rest));
   if (fragments.length <= 1) return [s];
   const pxPerChar = Math.max(0.01, (h - HEADING_OVERHEAD) / Math.max(1, data.body.length));
   return fragments.map((frag, i) => ({
     ...s,
     id: `${s.id}~${i}`,
     data: {
-      heading: i === 0 ? data.heading : data.heading ? `${data.heading} (cont.)` : undefined,
+      heading: i === 0 ? data.heading : data.heading ? contHeading(data.heading) : undefined,
       body: frag,
     },
     measuredH: HEADING_OVERHEAD + frag.length * pxPerChar,
@@ -176,13 +221,18 @@ function splitProse(s: Section, capH: number): Section[] {
   }));
 }
 
-function splitFindingCallout(s: Section, capH: number): Section[] {
+function splitFindingCallout(s: Section, caps: SplitCaps): Section[] {
   if (s.kind !== 'findingCallout') return [s];
   const data: FindingCalloutData = s.data;
   if (!data.summary) return [s];
   const h = s.measuredH ?? 0;
-  const target = targetChars(data.summary.length, h, capH);
-  const fragments = cutText(data.summary, target);
+  const firstTarget = targetChars(data.summary.length, h, caps.first);
+  if (caps.fromRemainder && firstTarget < MIN_FIRST_CHARS) return [s];
+  const fragments = cutText(
+    data.summary,
+    firstTarget,
+    targetChars(data.summary.length, h, caps.rest),
+  );
   if (fragments.length <= 1) return [s];
   const pxPerChar = Math.max(0.01, (h - HEADING_OVERHEAD) / Math.max(1, data.summary.length));
   return fragments.map((frag, i) => ({
@@ -196,13 +246,14 @@ function splitFindingCallout(s: Section, capH: number): Section[] {
   }));
 }
 
-function splitSpotlightCard(s: Section, capH: number): Section[] {
+function splitSpotlightCard(s: Section, caps: SplitCaps): Section[] {
   if (s.kind !== 'spotlightCard') return [s];
   const data: SpotlightCardData = s.data;
   if (!data.body) return [s];
   const h = s.measuredH ?? 0;
-  const target = targetChars(data.body.length, h, capH);
-  const fragments = cutText(data.body, target);
+  const firstTarget = targetChars(data.body.length, h, caps.first);
+  if (caps.fromRemainder && firstTarget < MIN_FIRST_CHARS) return [s];
+  const fragments = cutText(data.body, firstTarget, targetChars(data.body.length, h, caps.rest));
   if (fragments.length <= 1) return [s];
   const pxPerChar = Math.max(0.01, (h - HEADING_OVERHEAD) / Math.max(1, data.body.length));
   return fragments.map((frag, i) => ({
@@ -235,7 +286,7 @@ const FLOW_ITEM_PROP: Readonly<Record<string, string>> = {
   componentapi: 'props',
 };
 
-function splitFigureFlow(s: Section, capH: number): Section[] {
+function splitFigureFlow(s: Section, caps: SplitCaps): Section[] {
   if (s.kind !== 'figure') return [s];
   const data: FigureData = s.data;
   if (data.embed !== 'flow') return [s]; // fluid figures are atomic — scale, never split
@@ -246,10 +297,16 @@ function splitFigureFlow(s: Section, capH: number): Section[] {
 
   const h = s.measuredH ?? 0;
   const perItem = Math.max(1, (h - HEADING_OVERHEAD) / items.length);
-  const perPage = Math.max(1, Math.floor((capH - HEADING_OVERHEAD) / perItem));
-  if (perPage >= items.length) return [s];
+  const firstPer = Math.max(
+    caps.fromRemainder ? 0 : 1,
+    Math.floor((caps.first - HEADING_OVERHEAD) / perItem),
+  );
+  const restPer = Math.max(1, Math.floor((caps.rest - HEADING_OVERHEAD) / perItem));
+  if (firstPer >= items.length) return [s];
+  const sizes = chunkSizes(items.length, firstPer, restPer);
+  // Same orphan guard as the array splitters — split-to-fit only, on the final sizes.
+  if (caps.fromRemainder && sizes[0] < 2) return [s];
 
-  const sizes = chunkSizes(items.length, perPage);
   const out: Section[] = [];
   for (let i = 0, c = 0; c < sizes.length; i += sizes[c], c += 1) {
     const chunk = items.slice(i, i + sizes[c]);
@@ -261,7 +318,7 @@ function splitFigureFlow(s: Section, capH: number): Section[] {
         ...data,
         // Real block, real type — only the declared item array shrinks to this page's slice.
         block: { ...data.block, props: { ...props, [prop]: chunk } } as FigureData['block'],
-        heading: c === 0 ? data.heading : data.heading ? `${data.heading} (cont.)` : undefined,
+        heading: c === 0 ? data.heading : data.heading ? contHeading(data.heading) : undefined,
         caption: isLast ? data.caption : undefined,
       },
       measuredH: HEADING_OVERHEAD + chunk.length * perItem,

@@ -284,7 +284,9 @@ export interface ExportPage {
 /** The fully-resolved document a skin renders into pages. */
 export interface ExportDoc {
   meta: ExportMeta;
-  /** Flat ordered sections, kept so the doc can re-paginate when the skin changes. */
+  /** Flat ordered sections as PACKED — including the page-boundary fragments pagination cut
+   *  ("~n" ids, "(cont.)" headings). A skin change re-lays-out from the original answers via
+   *  buildExportDoc, never by re-paginating these already-cut fragments. */
   sections: Section[];
   pages: ExportPage[];
   /** Paper size this layout was measured/paginated against (defaults to Letter). */
