@@ -13,6 +13,32 @@ permissions:
   contents: read
 
 jobs:
+  # Moved off ci.yml's per-push path: none of these three depend on THIS push's code — they drift
+  # with dependencies over time (a previously-clean package can grow a new CVE with zero code
+  # change here), so a weekly cadence catches drift that per-push gating on an unchanged lockfile
+  # never would anyway. A dependency bump PR still exercises these via this same job on-demand.
+  dependency-hygiene:
+    name: Dead code · License gate · Dependency audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Dead code / unused deps (knip)
+        run: pnpm knip
+      - name: License gate (commercial-resale-safe deps only)
+        run: pnpm check:licenses
+      - name: Dependency vulnerability audit
+        # npm retired the legacy endpoints used by this pnpm line. Query OSV's maintained batch
+        # API against every exact package version in the installed graph instead.
+        run: pnpm check:vulnerabilities
+
   browser-quality:
     name: Responsive · Touch · Artifacts · Slow CPU · Memory
     # Weekly + on-demand, NOT per-push. Two reasons, both learned the expensive way:
@@ -26,8 +52,11 @@ jobs:
     # tree). A gate that can go red without a code change cannot be a per-push gate; as a weekly
     # sweep a marginal finding is a report to act on, not a blocked push.
     #
-    # Nothing ships unswept: release.yml runs this same gauntlet as a hard gate — keep its gate
-    # block mirrored with this one when either changes.
+    # NOTE: release.yml no longer re-runs this gauntlet as a release-time hard gate — it was
+    # re-proving what ci.yml + this weekly sweep already prove for a diff that's just a version
+    # bump. This weekly cadence is therefore the only place these checks run; a release can ship
+    # between sweeps without them re-confirming green. Formalize a real gate later if that gap
+    # matters more than the ~15min it was costing every release.
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:

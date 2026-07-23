@@ -78,6 +78,16 @@ for (const engine of ENGINES) {
             waitUntil: 'domcontentloaded',
             timeout: 15_000,
           });
+          // Every connected surface except landing/gallery sits behind the one-time legal
+          // acknowledgement (src/legal/LegalGate.tsx); without accepting it here the ready
+          // selector below never appears and every gated route times out identically.
+          try {
+            await page.waitForSelector('.legal-gate input[type="checkbox"]', { timeout: 3_000 });
+            await page.check('.legal-gate input[type="checkbox"]');
+            await page.click('.legal-gate button:has-text("Continue to Mavéa")');
+          } catch {
+            // This surface bypasses the gate (landing, gallery, prerecorded demos) — nothing to accept.
+          }
           // A lazy surface may mount its shell, discover another lazy child, and briefly suspend
           // again. Also, Synthesis and Prism intentionally share the same root selector. Wait for
           // the requested hash AND a meaningful, fallback-free render in one atomic predicate so
