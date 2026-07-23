@@ -7,10 +7,11 @@ import {
 } from '../src/live/whisper/quietHours';
 import { setVoiceGain } from '../src/voice/streamTts';
 
-// Whisper mode: the clock window is exactly 22:00–06:00, the opt-out persists, and the
-// ember gain is a real reduction that the TTS setter accepts.
+// Whisper mode: the clock window is exactly 22:00–06:00, it stays OFF until the user opts in
+// (an unexplained late-night dim reads as broken sound), and the ember gain is a real
+// reduction that the TTS setter accepts.
 
-afterEach(() => setQuietHoursEnabled(true));
+afterEach(() => setQuietHoursEnabled(false));
 
 describe('quiet hours', () => {
   it('runs 22:00 through 05:59 and nowhere else', () => {
@@ -22,12 +23,12 @@ describe('quiet hours', () => {
     expect(isQuietHour(21)).toBe(false);
   });
 
-  it('the opt-out persists and re-enabling clears it', () => {
-    expect(quietHoursEnabled()).toBe(true);
-    setQuietHoursEnabled(false);
+  it('is off by default; opting in persists and opting back out clears it', () => {
     expect(quietHoursEnabled()).toBe(false);
     setQuietHoursEnabled(true);
     expect(quietHoursEnabled()).toBe(true);
+    setQuietHoursEnabled(false);
+    expect(quietHoursEnabled()).toBe(false);
   });
 
   it('the whisper gain is a real, sane reduction', () => {

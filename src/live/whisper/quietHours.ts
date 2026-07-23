@@ -1,7 +1,9 @@
 // Whisper in, whisper out — the quiet-hours half. Late at night Mavéa dims its chrome and
 // drops its voice to an ember instead of broadcasting at full daytime energy. The trigger
 // is the local clock (a mic-amplitude "whisper detected" needs mic-side energy the VAD
-// doesn't expose yet — honest scope, noted in settings copy). Opt-out is persisted.
+// doesn't expose yet — honest scope, noted in settings copy). OFF unless the user opts in:
+// an unexplained late-night dim + near-silent voice reads as "the sound is broken", so the
+// softer behavior has to be chosen, never discovered.
 import { useEffect, useState } from 'react';
 
 /** Quiet hours run from 22:00 to 06:00 local. */
@@ -9,22 +11,22 @@ export function isQuietHour(hour: number): boolean {
   return hour >= 22 || hour < 6;
 }
 
-const OPT_OUT_KEY = 'mavea-live-quiet-hours-off';
+const OPT_IN_KEY = 'mavea-live-quiet-hours-on';
 /** Broadcast when the toggle flips, so the live surface re-dims without waiting a minute. */
-export const QUIET_HOURS_EVENT = OPT_OUT_KEY;
+export const QUIET_HOURS_EVENT = OPT_IN_KEY;
 
 export function quietHoursEnabled(): boolean {
   try {
-    return localStorage.getItem(OPT_OUT_KEY) !== '1';
+    return localStorage.getItem(OPT_IN_KEY) === '1';
   } catch {
-    return true;
+    return false;
   }
 }
 
 export function setQuietHoursEnabled(on: boolean): void {
   try {
-    if (on) localStorage.removeItem(OPT_OUT_KEY);
-    else localStorage.setItem(OPT_OUT_KEY, '1');
+    if (on) localStorage.setItem(OPT_IN_KEY, '1');
+    else localStorage.removeItem(OPT_IN_KEY);
   } catch {
     /* storage unavailable — session-only behavior */
   }
