@@ -8,7 +8,7 @@ describe('FeatureUseNotice', () => {
     vi.restoreAllMocks();
   });
 
-  it('remembers dismissal and leaves a compact monitoring reminder', () => {
+  it('dismissal hides the notice entirely and persists across mounts', () => {
     const first = render(<FeatureUseNotice kind="monitoring" />);
 
     expect(screen.getByText(/you provide the API keys or connected accounts/i)).toBeInTheDocument();
@@ -17,30 +17,19 @@ describe('FeatureUseNotice', () => {
       screen.getByRole('button', { name: 'Dismiss Not an alerting or monitoring service notice' }),
     );
 
-    expect(screen.queryByText(/Refreshes can be delayed/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Show full notice/ })).toHaveTextContent(
-      'Not real-time',
-    );
-    expect(screen.getByRole('link', { name: 'Details' })).toHaveAttribute(
-      'href',
-      '#/legal?from=home',
-    );
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    expect(localStorage.getItem('mavea-feature-notice-dismissed-v1:monitoring')).toBe('1');
 
     first.unmount();
     render(<FeatureUseNotice kind="monitoring" />);
-    expect(screen.getByRole('button', { name: /Show full notice/ })).toHaveTextContent(
-      'Not real-time',
-    );
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 
-  it('can restore the full notice from its compact reminder', () => {
+  it('renders nothing for a previously dismissed kind', () => {
     localStorage.setItem('mavea-feature-notice-dismissed-v1:learning', '1');
-    render(<FeatureUseNotice kind="learning" />);
+    const { container } = render(<FeatureUseNotice kind="learning" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Show full notice/ }));
-
-    expect(screen.getByText(/Lessons and study material are AI-generated/)).toBeInTheDocument();
-    expect(localStorage.getItem('mavea-feature-notice-dismissed-v1:learning')).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('keeps action-specific warnings fully visible', () => {
@@ -54,7 +43,7 @@ describe('FeatureUseNotice', () => {
     );
   });
 
-  it('still collapses for the session when storage is unavailable', () => {
+  it('still hides for the session when storage is unavailable', () => {
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
@@ -62,8 +51,6 @@ describe('FeatureUseNotice', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Dismiss/ }));
 
-    expect(screen.getByRole('button', { name: /Show full notice/ })).toHaveTextContent(
-      'Simulation',
-    );
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 });

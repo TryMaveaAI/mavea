@@ -51,68 +51,33 @@
   text-underline-offset: 2px;
 }
 
-.feature-use-notice-dismiss,
-.feature-use-notice-reopen {
-  appearance: none;
-  border: 0;
-  font: inherit;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
 .feature-use-notice-dismiss {
+  appearance: none;
   display: grid;
   width: 32px;
   height: 32px;
   flex: none;
   place-items: center;
   padding: 0;
+  border: 0;
   border-radius: 7px;
   background: transparent;
+  font: inherit;
   font-size: 18px;
   line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .feature-use-notice-dismiss:hover,
-.feature-use-notice-dismiss:focus-visible,
-.feature-use-notice-reopen:hover,
-.feature-use-notice-reopen:focus-visible {
+.feature-use-notice-dismiss:focus-visible {
   color: var(--text-primary);
   background: color-mix(in oklab, var(--text-primary) 7%, transparent);
   outline: none;
 }
 
-.feature-use-notice-dismiss:focus-visible,
-.feature-use-notice-reopen:focus-visible {
+.feature-use-notice-dismiss:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--presence) 65%, transparent);
-}
-
-.feature-use-notice.feature-use-notice--compact {
-  width: max-content;
-  max-width: 100%;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 6px;
-}
-
-.feature-use-notice-reopen {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  gap: 7px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: transparent;
-  font-weight: 700;
-}
-
-.feature-use-notice-reopen .feature-use-notice-dot {
-  margin-top: 0;
-}
-
-.feature-use-notice--compact > a {
-  padding: 5px 7px;
 }
 
 @media (max-width: 560px) {
@@ -128,9 +93,5 @@
   .feature-use-notice-dismiss {
     width: 36px;
     height: 36px;
-  }
-
-  .feature-use-notice.feature-use-notice--compact {
-    grid-template-columns: auto auto;
   }
 }
