@@ -863,6 +863,18 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
     expect(fake.lastReq?.system).toContain('SEARCH WITH TODAY IN MIND');
   });
 
+  it('sends the in-depth prompt fragment when the level is deep (setting or spoken trigger)', async () => {
+    fake.raw = OK_RESPONSE;
+    await generateLive('how do transformers work', [], cfg, undefined, {
+      caps: { explainLevel: 'deep' },
+    });
+    expect(fake.lastReq?.system).toContain('EXPLANATION LEVEL — IN-DEPTH');
+    await generateLive('go deeper on the attention math', [], cfg, undefined, { caps: {} });
+    expect(fake.lastReq?.system).toContain('EXPLANATION LEVEL — IN-DEPTH');
+    await generateLive('how do transformers work', [], cfg, undefined, { caps: {} });
+    expect(fake.lastReq?.system).not.toContain('EXPLANATION LEVEL');
+  });
+
   it('omits the date-anchor nudge for a turn that will not ground', async () => {
     fake.raw = OK_RESPONSE;
     fake.nativeWebSearch = true;

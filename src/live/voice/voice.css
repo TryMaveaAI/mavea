@@ -556,9 +556,9 @@
   border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
 }
 
-/* Explanation-level chip: tap to flip Standard/Simple. Same pill language as the voice-speed and
-   model chips beside it; tints toward presence while Simple is active so the dock reflects it at
-   a glance, not just on hover. */
+/* Explanation-level chip: tap to cycle Standard → In-depth → Simple. Same pill language as the
+   voice-speed and model chips beside it; tints toward presence while Simple is active and toward
+   insight while In-depth is, so the dock reflects it at a glance, not just on hover. */
 .live-voice .explain-chip {
   flex: none;
   padding: 6px 11px;
@@ -584,6 +584,11 @@
   color: var(--presence);
   border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
   background: color-mix(in oklab, var(--surface-elevated) 85%, var(--presence) 15%);
+}
+.live-voice .explain-chip.is-deep {
+  color: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 55%, var(--line));
+  background: color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%);
 }
 
 /* ===== bottom dock — the composer's fixed home ===== */

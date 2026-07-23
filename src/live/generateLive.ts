@@ -45,6 +45,7 @@ import {
   multiPartDirective,
   effectiveExplainLevel,
   simpleLevelMenu,
+  deepLevelMenu,
   analyzeIntent,
   GENERATIVE_BLOCK_TYPES,
   shouldSynthesize,
@@ -128,9 +129,10 @@ export interface LiveCaps {
    *  menu + schema, so a paid model is never offered them and spends no tokens on them. */
   generativeBlocks?: boolean;
   /** Explanation level for this turn: 'simple' makes BOTH the words and the visuals plainer;
-   *  defaults to 'standard'. A per-turn voice trigger ("explain like I'm 5") can force 'simple'
-   *  for one turn regardless of the persisted setting (see effectiveExplainLevel). */
-  explainLevel?: 'standard' | 'simple';
+   *  'deep' gives the full-rigor treatment; defaults to 'standard'. A per-turn voice trigger
+   *  ("explain like I'm 5" / "go deeper") can force a level for one turn regardless of the
+   *  persisted setting (see effectiveExplainLevel). */
+  explainLevel?: 'standard' | 'simple' | 'deep';
 }
 
 /** A coarse, user-visible activity so the surface can show what's happening and make
@@ -993,9 +995,11 @@ export async function generateLive(
   const planningDepthLine = wantsPlanningDepth
     ? 'OPEN-ENDED PLANNING — this is a broad "what could I do / how should I approach this", not a single fact, so a short generic list is a FAILURE here. Decompose it the way a sharp expert would and answer each facet as its own varied block: the real OPTIONS grouped by type; the DECISION POINTS the user actually faces (timing/season, area/neighborhood, budget, who it is for, trade-offs); concrete STANDOUTS (the few unmissable picks AND a couple of non-obvious ones); and a sensible WAY TO SEQUENCE it (a day-by-day or step ordering, e.g. a timeline or itinerary block). Be specific — real names, places, and numbers — so it reads like a hand-built guide, not a thin summary.'
     : '';
-  // SIMPLE explanation level: plainer words AND simpler visuals. Orthogonal to block count —
-  // the canvas can still be full; it's the language and the visual choices that get simpler.
-  const simpleLine = explainLevel === 'simple' ? simpleLevelMenu() : '';
+  // Explanation level: SIMPLE = plainer words AND simpler visuals; IN-DEPTH = the full-rigor
+  // treatment. Both orthogonal to block count — it's the language and the visual choices that
+  // shift, never the completeness.
+  const levelLine =
+    explainLevel === 'simple' ? simpleLevelMenu() : explainLevel === 'deep' ? deepLevelMenu() : '';
 
   // Hoist search mode here — needed by noLiveDataLine below, which must be part of the
   // system prompt constructed before the search/grounding section runs later.
@@ -1151,7 +1155,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     multiPartLine,
     relatedLine,
     planningDepthLine,
-    simpleLine,
+    levelLine,
     arc.directive,
     complexity === 'rich' ? rhythmDirective() : '',
     complexity === 'rich' && heroPicks.length >= 2

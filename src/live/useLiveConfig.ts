@@ -68,10 +68,11 @@ export interface LiveConfigV2 {
    *  conversation, which read as confusing and bled into the session you actually started. When you
    *  want it, this opts you in. */
   morningBrief: boolean;
-  /** Explanation level: 'standard' (default) or 'simple'. When 'simple', BOTH the words and
-   *  the visuals get plainer — short sentences, everyday analogies, fewer/simpler diagram
-   *  blocks, more captions. Switchable in settings or by voice ("explain like I'm 5"). */
-  explainLevel: 'standard' | 'simple';
+  /** Explanation level: 'standard' (default), 'simple', or 'deep'. 'simple' makes BOTH the
+   *  words and the visuals plainer — short sentences, everyday analogies, fewer/simpler diagram
+   *  blocks, more captions. 'deep' is the full-rigor treatment — mechanisms, numbers, edge
+   *  cases. Switchable in settings or by voice ("explain like I'm 5" / "go deeper"). */
+  explainLevel: 'standard' | 'simple' | 'deep';
   /** Reading text size across canvas answers — a Kindle-style scale over the fluid `--fs-*` type
    *  ramp and card body copy. 'normal' (default) is untouched; 'smaller'/'larger' shrink or bump
    *  both the floor and ceiling of the ramp via `--fs-scale` (see wow-polish.css) so it stays
@@ -164,7 +165,7 @@ function coerceQuality(v: unknown): QualityPref {
   return v === 'fast' || v === 'balanced' || v === 'thorough' ? v : DEFAULT.quality;
 }
 function coerceExplainLevel(v: unknown): LiveConfigV2['explainLevel'] {
-  return v === 'simple' ? 'simple' : DEFAULT.explainLevel;
+  return v === 'simple' || v === 'deep' ? v : DEFAULT.explainLevel;
 }
 function coerceFontScale(v: unknown): LiveConfigV2['fontScale'] {
   return v === 'smaller' || v === 'larger' ? v : DEFAULT.fontScale;

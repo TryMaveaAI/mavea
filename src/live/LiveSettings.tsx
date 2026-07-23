@@ -753,20 +753,23 @@ export function LiveSettings({
             </div>
 
             {/* Explanation level — Standard by default; Simple makes both the words and the visuals
-            plainer. Switchable by voice too ("explain like I'm 5" / "go deeper"). */}
+            plainer; In-depth is the full-rigor treatment. Switchable by voice too ("explain like
+            I'm 5" / "go deeper"). */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>Explanation level</span>
               <SegRow
                 value={cfg.explainLevel}
                 options={[
-                  { value: 'standard', label: 'Standard', badge: 'default' },
                   { value: 'simple', label: 'Simple', badge: "like I'm 5" },
+                  { value: 'standard', label: 'Standard', badge: 'default' },
+                  { value: 'deep', label: 'In-depth', badge: 'full rigor' },
                 ]}
                 onPick={(v) => setLiveConfigV2({ explainLevel: v as typeof cfg.explainLevel })}
               />
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 Simple uses shorter sentences, everyday analogies, and fewer, more-labelled visuals.
-                You can also just say "explain it simpler" or "go deeper".
+                In-depth goes further — mechanisms, numbers, edge cases. You can also just say
+                "explain it simpler" or "go deeper".
               </span>
             </div>
 

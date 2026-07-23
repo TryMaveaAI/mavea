@@ -1,27 +1,37 @@
 import { useCallback, type ReactElement } from 'react';
 import { useLiveConfig } from './useLiveConfig';
+import type { ExplainLevel } from './select';
 
 /** The persistent explanation-level control in the dock, beside the voice-speed and model chips.
- *  Tap to flip Standard/Simple without leaving the conversation for Settings — the same field
- *  voice ("explain it simpler" / "go deeper") and the Settings toggle both read and write, so all
- *  three stay in lockstep. */
+ *  Tap to cycle Standard → In-depth → Simple without leaving the conversation for Settings — the
+ *  same field voice ("explain it simpler" / "go deeper") and the Settings picker both read and
+ *  write, so all three stay in lockstep. */
+const CYCLE: Record<ExplainLevel, ExplainLevel> = {
+  standard: 'deep',
+  deep: 'simple',
+  simple: 'standard',
+};
+const LABEL: Record<ExplainLevel, string> = {
+  simple: 'Simple',
+  standard: 'Standard',
+  deep: 'In-depth',
+};
+
 export function ExplainLevelChip(): ReactElement {
   const [cfg, setCfg] = useLiveConfig();
-  const simple = cfg.explainLevel === 'simple';
-  const toggle = useCallback(
-    () => setCfg({ explainLevel: simple ? 'standard' : 'simple' }),
-    [setCfg, simple],
-  );
+  const level = cfg.explainLevel;
+  const cycle = useCallback(() => setCfg({ explainLevel: CYCLE[level] }), [setCfg, level]);
   return (
     <button
       type="button"
-      className={'explain-chip' + (simple ? ' is-simple' : '')}
-      onClick={toggle}
-      aria-pressed={simple}
-      aria-label={`Explanation level: ${simple ? 'Simple' : 'Standard'}. Tap to switch.`}
-      title="How plain the words and visuals are — or just say 'explain it simpler' / 'go deeper'"
+      className={
+        'explain-chip' + (level === 'simple' ? ' is-simple' : level === 'deep' ? ' is-deep' : '')
+      }
+      onClick={cycle}
+      aria-label={`Explanation level: ${LABEL[level]}. Tap for ${LABEL[CYCLE[level]]}.`}
+      title="How plain or rigorous the words and visuals are — or just say 'explain it simpler' / 'go deeper'"
     >
-      {simple ? 'Simple' : 'Standard'}
+      {LABEL[level]}
     </button>
   );
 }

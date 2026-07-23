@@ -32,9 +32,11 @@ export {
 export { classifyAsk, isTeachingAsk, type AskComplexity } from './complexity';
 export {
   simpleAsk,
+  deepAsk,
   standardAsk,
   effectiveExplainLevel,
   simpleLevelMenu,
+  deepLevelMenu,
   type ExplainLevel,
 } from './simpleLevel';
 export { analyzeIntent, type IntentSignals, type IntentDomain } from './intent';

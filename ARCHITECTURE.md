@@ -573,7 +573,7 @@ interface LiveConfigV2 {
   teachMode: boolean;
   annotationsEnabled: boolean;
   morningBrief: boolean;
-  explainLevel: 'standard' | 'simple';
+  explainLevel: 'standard' | 'simple' | 'deep';
   pttKey: string;
   pttSide: 'any' | 'left' | 'right';
   fontScale: 'smaller' | 'normal' | 'larger'; // canvas reading text size
