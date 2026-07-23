@@ -161,6 +161,10 @@ function coerceFrame(v: unknown): TurnFrame | null {
     narration: typeof o.narration === 'string' ? o.narration : '',
     ...(typeof o.spoken === 'string' ? { spoken: o.spoken } : {}),
     mode: isMode(o.mode) ? o.mode : 'replace',
+    // The subject boundary must survive the round trip: dropping it would make every restored
+    // streamed follow-up (render mode 'replace') fall back to the mode boundary and re-split
+    // the session rail into one chapter per turn — the exact bug topicShift exists to fix.
+    ...(typeof o.topicShift === 'boolean' ? { topicShift: o.topicShift } : {}),
     tour: coerceTour(o.tour, o.spec.blocks.length),
     spec: o.spec,
     at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0,

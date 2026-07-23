@@ -129,6 +129,57 @@ export function topicOverlap(prior: TurnSnapshot, next: TurnSnapshot): number {
   return jaccard(topicTokens(text(prior)), topicTokens(text(next)));
 }
 
+/** Words that ask to keep going rather than name a subject — the vocabulary of "more please".
+ *  Stripped before judging whether a question introduces its own topic: "tell me more" and
+ *  "go deeper with another example" name nothing, they lean on what's already on screen. */
+const CONTINUATION_WORDS: ReadonlySet<string> = new Set([
+  'more',
+  'deeper',
+  'deep',
+  'further',
+  'detail',
+  'details',
+  'detailed',
+  'elaborate',
+  'expand',
+  'explain',
+  'continue',
+  'keep',
+  'go',
+  'going',
+  'dive',
+  'depth',
+  'again',
+  'else',
+  'another',
+  'example',
+  'examples',
+  'ok',
+  'okay',
+  'yes',
+  'sure',
+]);
+
+/**
+ * Pre-turn guess at whether `question` is a follow-up to `prior` — before the answer exists,
+ * so there's no narration/title to compare and no model hint yet. Jaccard is the wrong tool
+ * here: a four-word follow-up against a forty-token prior turn scores near zero even when
+ * every word matches. So this reads two honest signals instead: a question whose content
+ * words are all continuation vocabulary is anaphoric ("tell me more", "why?" — it leans on
+ * what's on screen), and one whose own subject words mostly already appear in the prior turn
+ * is drilling into it. A short question that names a NEW subject ("what is bitcoin?") passes
+ * neither and stays a fresh topic.
+ */
+export function likelyFollowUp(prior: TurnSnapshot | null, question: string): boolean {
+  if (!prior) return false;
+  const subject = [...topicTokens(question)].filter((t) => !CONTINUATION_WORDS.has(t));
+  if (subject.length === 0) return true;
+  const p = topicTokens(`${prior.question} ${prior.narration} ${prior.title}`);
+  let inter = 0;
+  for (const t of subject) if (p.has(t)) inter++;
+  return inter / subject.length >= 0.5;
+}
+
 /**
  * Decide the canvas mode for `next` given the `prior` turn, the model's optional
  * `hint`, and the model `tier`. Deterministic safety first: no prior, or a topic

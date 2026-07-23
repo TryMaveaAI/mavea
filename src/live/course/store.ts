@@ -361,6 +361,8 @@ function coerceFrame(v: unknown): TurnFrame | null {
     narration: typeof o.narration === 'string' ? o.narration : '',
     ...(typeof o.spoken === 'string' ? { spoken: o.spoken } : {}),
     mode: isMode(o.mode) ? o.mode : 'replace',
+    // Keep the subject boundary across the cache round trip (see session/store.ts coerceFrame).
+    ...(typeof o.topicShift === 'boolean' ? { topicShift: o.topicShift } : {}),
     tour: coerceTour(o.tour, o.spec.blocks.length),
     spec: o.spec,
     at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0,

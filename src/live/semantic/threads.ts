@@ -11,8 +11,8 @@
 // tie band and would reorganize the rail under the user).
 //
 // Pure, dependency-free, never throws. Fail-open per frame: with no vector (cold/slow/weak device, or
-// empty text) it falls back to that frame's `mode`, so the rail is byte-identical to today whenever
-// the embedder isn't warm.
+// empty text) it falls back to that frame's own settled claim — `topicShift` (the topic decision,
+// model hint honored) when present, else the legacy `mode` boundary for frames saved before it existed.
 import type { TurnFrame } from '../history';
 import { cosine } from './encode';
 
@@ -29,6 +29,14 @@ function hasSignal(v: Float32Array | null): v is Float32Array {
   return v != null && cosine(v, v) > 1e-6;
 }
 
+/** The frame's own claim of whether it opened a new subject: the settled `topicShift` when present
+ *  (the topic decision — render path excluded), else the legacy render-mode boundary for frames
+ *  saved before the field existed. Exported so every surface that chapters a conversation (the
+ *  rail here, the reel's sections) splits on the SAME boundary. */
+export function opensNewSubject(f: TurnFrame): boolean {
+  return f.topicShift ?? f.mode === 'replace';
+}
+
 /**
  * For each frame, whether it OPENS a new thread (true) or continues the current one (false) — the
  * boundary the rail chapters on. `vectors[i]` is frame `i`'s embedding (question + narration + title),
@@ -38,7 +46,7 @@ function hasSignal(v: Float32Array | null): v is Float32Array {
  * The current thread is summarized by a running centroid kept as the SUM of its members' unit vectors;
  * a frame's similarity to the thread is `cosine(v, sum) / |sum|` (v is unit, so this is the cosine to
  * the mean direction). Three bands: ≥ KEEP continue; < UNRELATED split; in between, follow the frame's
- * `mode` hint (a `replace` splits, an augment/refine continues — the conservative default is to stay).
+ * own settled boundary (a topic shift splits, a follow-up continues — the conservative default is to stay).
  */
 export function threadStarts(
   frames: readonly TurnFrame[],
@@ -53,12 +61,12 @@ export function threadStarts(
     if (i === 0) {
       start = true;
     } else if (!signal || centroid === null) {
-      start = frames[i].mode === 'replace'; // fail-open to today's boundary
+      start = opensNewSubject(frames[i]); // fail-open to the frame's own settled boundary
     } else {
       const centroidNorm = Math.sqrt(cosine(centroid, centroid));
       const sim = centroidNorm > 0 ? cosine(v, centroid) / centroidNorm : 0;
       if (sim < THREAD_UNRELATED) start = true;
-      else if (sim < THREAD_KEEP) start = frames[i].mode === 'replace';
+      else if (sim < THREAD_KEEP) start = opensNewSubject(frames[i]);
       else start = false;
     }
     starts.push(start);

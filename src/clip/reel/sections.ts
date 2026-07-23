@@ -3,12 +3,15 @@
 // tests can reason about them directly instead of the render/generation path branching on "how many
 // topics does this reel cover".
 //
-// A section boundary mirrors what the user actually perceives: a turn that REPLACED the canvas started
-// a fresh subject, while an augment/refine kept building the same one — the same signal
-// `live/scrubber/chapters.ts` already folds into the scrubber's chapters. The very first frame always
-// opens the first section, whatever its own mode, so a reel that opens on a continuation turn (the
-// window's oldest frame happens to be an augment) still gets a home instead of an orphan section.
+// A section boundary mirrors what the user actually perceives: a turn that opened a NEW SUBJECT
+// started a fresh section, while a follow-up kept building the same one — the same boundary
+// `live/scrubber/chapters.ts` chapters the session rail on (`opensNewSubject`: the settled
+// topicShift, falling back to the render mode for frames saved before the field existed). The very
+// first frame always opens the first section, whatever its own claim, so a reel that opens on a
+// continuation turn (the window's oldest frame happens to be a follow-up) still gets a home
+// instead of an orphan section.
 import type { TurnFrame } from '../../live/history';
+import { opensNewSubject } from '../../live/semantic/threads';
 import { clampText, SLOT_BUDGET } from './reelScript';
 
 /** Partition frames into topic runs, in order. Length 1 for the common single-topic conversation —
@@ -16,7 +19,7 @@ import { clampText, SLOT_BUDGET } from './reelScript';
 export function sectionFrames(frames: readonly TurnFrame[]): TurnFrame[][] {
   const sections: TurnFrame[][] = [];
   for (const frame of frames) {
-    const startsSection = sections.length === 0 || frame.mode === 'replace';
+    const startsSection = sections.length === 0 || opensNewSubject(frame);
     if (startsSection) sections.push([frame]);
     else sections[sections.length - 1].push(frame);
   }

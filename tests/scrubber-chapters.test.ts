@@ -13,11 +13,17 @@ function block(type: string, props: Record<string, unknown>, id?: string): Block
   return { type, col: 12, ...(id ? { id } : {}), props } as unknown as Block;
 }
 
-function frame(question: string, mode: Mode, spec: Partial<ConversationSpec> = {}): TurnFrame {
+function frame(
+  question: string,
+  mode: Mode,
+  spec: Partial<ConversationSpec> = {},
+  topicShift?: boolean,
+): TurnFrame {
   return {
     question,
     narration: '',
     mode,
+    ...(topicShift !== undefined ? { topicShift } : {}),
     tour: [],
     spec: { id: 'live', title: '', sub: '', blocks: [], suggests: [], ...spec } as ConversationSpec,
     at: 0,
@@ -42,6 +48,20 @@ describe('deriveChapters — grouping frames into chapters + moments', () => {
     expect(chapters[1].moments.map((m) => m.frameIndex)).toEqual([3, 4]);
     expect(chapters[0].title).toBe('Tokyo Itinerary');
     expect(chapters[1].title).toBe('Monthly Budget');
+  });
+
+  it('keeps streamed follow-ups (mode replace, topicShift false) in ONE chapter', () => {
+    // The reported bug: streaming forced every frame's render mode to 'replace', so each ask —
+    // even "tell me more" — became its own chapter and "See this thread together" never enabled.
+    const chapters = deriveChapters([
+      frame('Plan three days in Tokyo', 'replace', { title: 'Tokyo Itinerary' }, true),
+      frame('How to book high-end sushi?', 'replace', {}, false),
+      frame('tell me more', 'replace', {}, false),
+      frame('How should I budget my money', 'replace', { title: 'Monthly Budget' }, true),
+    ]);
+    expect(chapters).toHaveLength(2);
+    expect(chapters[0].moments.map((m) => m.frameIndex)).toEqual([0, 1, 2]);
+    expect(chapters[1].moments.map((m) => m.frameIndex)).toEqual([3]);
   });
 
   it('treats the first surviving frame as a chapter start even if it is an augment (cap drop)', () => {

@@ -31,6 +31,15 @@ describe('sectionFrames', () => {
     expect(sections[0]).toHaveLength(4);
   });
 
+  it('splits on the SUBJECT boundary: a streamed follow-up (mode replace, topicShift false) stays put', () => {
+    const sections = sectionFrames([
+      { ...frame('What are eigenvalues?', 'replace'), topicShift: true },
+      { ...frame('tell me more', 'replace'), topicShift: false },
+      { ...frame('How do I make espresso?', 'replace'), topicShift: true },
+    ]);
+    expect(sections.map((s) => s.length)).toEqual([2, 1]);
+  });
+
   it('a replace mid-conversation opens a new section', () => {
     const frames = [
       frame('What are eigenvalues?', 'replace'),

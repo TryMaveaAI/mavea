@@ -15,7 +15,7 @@ import type { ModelConfig } from '../types/mavea';
 import type { LiveActivity, LiveCaps, LiveError, LiveResult } from './generateLive';
 const turnEngine = () => import('./generateLive');
 import type { TourMark } from '../engine/liveSchema';
-import { resolveMode, type Mode, type TurnSnapshot } from './lifecycle';
+import { likelyFollowUp, type Mode, type TurnSnapshot } from './lifecycle';
 import { settleTurn } from './settleTurn';
 import { mergeNodes } from './memory/store';
 import { extractUserFacts } from './memory/extract';
@@ -655,14 +655,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // will REPLACE the canvas (a new topic, or the very first turn): then blocks can
       // grow in as they generate, with no prior canvas to merge against. A follow-up
       // that augments/refines waits for the final merge so it never jumps mid-stream.
-      // Tier is irrelevant to this hint-free replace check, so we pass a neutral 'mid'.
-      const willStream =
-        resolveMode(
-          prior,
-          { question: userText, narration: '', title: '', blockTypes: [] },
-          undefined,
-          'mid',
-        ) === 'replace';
+      // The pre-turn read is likelyFollowUp, not resolveMode: only the question exists yet
+      // (no narration/title to overlap against), and Jaccard against a full prior turn
+      // dilutes a four-word follow-up to near zero — so "tell me more" would stream-wipe
+      // the canvas it's asking about.
+      const willStream = !likelyFollowUp(prior, userText);
 
       // Session answer cache: dedupes a re-ask of the exact same question at the same
       // conversation depth (zero extra model calls). Skipped for turns with attachments or

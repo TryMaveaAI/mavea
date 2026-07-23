@@ -53,6 +53,12 @@ export interface TurnFrame {
   spoken?: string;
   /** What this turn did to the canvas — replace / augment / refine (for a history label). */
   mode: Mode;
+  /** Whether this turn opened a NEW SUBJECT — the deterministic topic decision with the
+   *  model's continuity hint honored, independent of the render path (a follow-up that
+   *  streamed renders as a replace but is still the same subject). The session rail
+   *  chapters on this; absent on frames saved before it existed (readers fall back to
+   *  `mode === 'replace'`). */
+  topicShift?: boolean;
   /** The model-or-derived spotlight order, so replay reproduces the original walkthrough. */
   tour: FrameTourStep[];
   /** The canvas after this turn (what replay renders + animates). */

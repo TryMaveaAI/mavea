@@ -111,6 +111,22 @@ describe('session store — round-trip', () => {
     expect(s!.frames[1].narration).toBe('About and my savings?.');
   });
 
+  it('keeps the subject boundary (topicShift) across the round trip', () => {
+    // A streamed follow-up renders as a replace but is NOT a new subject — if the round trip
+    // dropped topicShift, every restored follow-up would fall back to the mode boundary and the
+    // session rail would re-split into one chapter per turn (the bug topicShift exists to fix).
+    const opener = { ...frame('three days in tokyo'), topicShift: true };
+    const followUp = { ...frame('tell me more'), topicShift: false };
+    saveSession(history('three days in tokyo', 'tell me more'), [opener, followUp], 1000);
+
+    const s = loadSession(1000);
+    expect(s!.frames[0].topicShift).toBe(true);
+    expect(s!.frames[1].topicShift).toBe(false);
+    // A legacy frame saved before the field existed stays absent, not defaulted.
+    saveSession([], [frame('legacy')], 1000);
+    expect(loadSession(1000)!.frames[0].topicShift).toBeUndefined();
+  });
+
   it('restores display and pronunciation twins without mixing them', () => {
     const f = frame('Omakase');
     f.spoken = 'About oh-mah-kah-seh.';

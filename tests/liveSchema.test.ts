@@ -816,6 +816,16 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     expect(liveSystemPrompt('frontier')).toContain('YOU CANNOT PERFORM ACTIONS');
     expect(liveSystemPrompt('small')).toContain('YOU CANNOT PERFORM ACTIONS');
   });
+  // Regression: the validator read `continuity` from day one, but the prompt never asked for it —
+  // so no model ever emitted the hint, the keep branch of resolveMode could never fire, and every
+  // follow-up settled as a fresh topic. The prompt must request exactly what the validator accepts.
+  it('every tier is asked for the continuity hint, with the exact values the validator reads', () => {
+    for (const tier of ['frontier', 'mid', 'small'] as const) {
+      const prompt = liveSystemPrompt(tier);
+      expect(prompt).toContain('"continuity": "replace"|"augment"|"refine"');
+      expect(prompt).toContain('- "continuity":');
+    }
+  });
   it('does not give its own conflicting narration-length spec (that lives in one place: spokenLine)', () => {
     // Regression: the base prompt used to say "a friendly sentence or two", while generateLive's
     // per-turn SPOKEN LINE directive separately said "two or three short sentences" for the same

@@ -73,6 +73,24 @@ describe('settleTurn', () => {
     );
     expect(settled.mode).toBe('replace');
     expect(settled.frame.spec.blocks).toHaveLength(1);
+    // The render path was forced, but the SUBJECT didn't change — the frame says so, so the
+    // session rail keeps chaptering on topic, not on how the canvas happened to render.
+    expect(settled.frame.topicShift).toBe(false);
+  });
+
+  it('stamps topicShift from the topic decision, not the render path', () => {
+    // A genuine new subject: shift on, whether or not the turn streamed.
+    const fresh = settleTurn(null, [], 'chart my savings', result([blk('stat', 'Total')]));
+    expect(fresh.frame.topicShift).toBe(true);
+
+    const shifted = settleTurn(
+      prior('how should i budget my monthly money'),
+      [{ ...blk('stat', 'Total'), id: 'live-1' }],
+      'plan a three day trip to tokyo',
+      result([blk('barchart', 'Days')]),
+      { forceReplace: true },
+    );
+    expect(shifted.frame.topicShift).toBe(true);
   });
 
   it('an overcrowded augment falls back to a clean replace', () => {
@@ -91,6 +109,8 @@ describe('settleTurn', () => {
     );
     expect(settled.mode).toBe('replace');
     expect(settled.frame.spec.blocks).toHaveLength(2);
+    // Overflow is a crowding fallback, not a change of subject.
+    expect(settled.frame.topicShift).toBe(false);
   });
 
   it('drops a bend on non-replace turns (its block id belongs to the unmerged canvas)', () => {

@@ -42,9 +42,12 @@ export function settleTurn(
     title: result.spec.title,
     blockTypes: result.spec.blocks.map((b) => b.type),
   };
-  let mode: Mode = opts?.forceReplace
-    ? 'replace'
-    : resolveMode(prior, snap, result.continuity, result.tier);
+  // The turn's TOPIC relation, decided from the full answer and the model's own continuity
+  // hint. Kept separate from the render mode below: a streamed turn must RENDER as a replace
+  // (it already revealed a fresh canvas), and an overcrowded augment falls back to one — but
+  // neither makes it a new SUBJECT, and the session rail chapters on subject, not render path.
+  const naturalMode = resolveMode(prior, snap, result.continuity, result.tier);
+  let mode: Mode = opts?.forceReplace ? 'replace' : naturalMode;
   let merge = mergeForMode(priorBlocks, result.spec.blocks, mode);
   if (mode !== 'replace' && merge.overflow) {
     mode = 'replace';
@@ -67,6 +70,7 @@ export function settleTurn(
     narration: result.narration,
     ...(result.spoken ? { spoken: result.spoken } : {}),
     mode,
+    topicShift: naturalMode === 'replace',
     tour,
     spec: renderedSpec,
     at: Date.now(),

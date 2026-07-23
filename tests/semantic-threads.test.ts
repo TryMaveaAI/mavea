@@ -14,11 +14,12 @@ import type { TurnFrame } from '../src/live/history';
 import type { Mode } from '../src/live/lifecycle';
 import type { ConversationSpec } from '../src/data/conversation';
 
-function frame(mode: Mode, question = ''): TurnFrame {
+function frame(mode: Mode, question = '', topicShift?: boolean): TurnFrame {
   return {
     question,
     narration: '',
     mode,
+    ...(topicShift !== undefined ? { topicShift } : {}),
     tour: [],
     spec: {
       id: 'live',
@@ -104,6 +105,32 @@ describe('threadStarts — fail-open', () => {
     const zero = new Float32Array(8);
     const starts = threadStarts([frame('augment'), frame('augment')], [zero, zero]);
     expect(starts).toEqual([true, false]); // both fail-open to mode 'augment'
+  });
+});
+
+describe('threadStarts — topicShift outranks the render mode', () => {
+  it('a streamed follow-up (mode replace, topicShift false) CONTINUES its thread with no vectors', () => {
+    // The reported bug: every follow-up streamed, so every frame's mode was 'replace' and the
+    // rail split each into its own chapter. The settled topicShift is the true boundary.
+    const frames = [
+      frame('replace', 'three days in tokyo', true),
+      frame('replace', 'how to book high-end sushi?', false),
+      frame('replace', 'tell me more', false),
+    ];
+    expect(threadStarts(frames, null)).toEqual([true, false, false]);
+  });
+
+  it('a genuine shift (topicShift true) SPLITS even when the render merged', () => {
+    const frames = [frame('replace', 'budget', true), frame('augment', 'tokyo trip', true)];
+    expect(threadStarts(frames, null)).toEqual([true, true]);
+  });
+
+  it('defers to topicShift, not mode, inside the semantic tie band', () => {
+    const mid = unitAt(0.3); // UNRELATED < 0.3 < KEEP
+    const follow = frame('replace', '', false);
+    const shift = frame('augment', '', true);
+    expect(threadStarts([frame('replace', '', true), follow], [E1, mid])).toEqual([true, false]);
+    expect(threadStarts([frame('replace', '', true), shift], [E1, mid])).toEqual([true, true]);
   });
 });
 

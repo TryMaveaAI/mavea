@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveMode,
   topicOverlap,
+  likelyFollowUp,
   diffBlocks,
   blockSignature,
   mergeForMode,
@@ -56,6 +57,33 @@ describe('resolveMode', () => {
     expect(resolveMode(prior, next, 'augment', 'frontier')).toBe('augment');
     // No guidance + low overlap → treat as a new topic and clear.
     expect(resolveMode(prior, next, undefined, 'frontier')).toBe('replace');
+  });
+});
+
+describe('likelyFollowUp (the pre-turn streaming guess)', () => {
+  const tokyo = snap(
+    'three days in tokyo, food first',
+    'Tokyo rewards eating your way through it — sushi at Tsukiji, ramen in Shinjuku.',
+    'Tokyo: A 3-Day Foodie Itinerary',
+  );
+
+  it('is never a follow-up on the first turn', () => {
+    expect(likelyFollowUp(null, 'tell me more')).toBe(false);
+  });
+
+  it('reads pure continuation asks as follow-ups (they name no subject of their own)', () => {
+    expect(likelyFollowUp(tokyo, 'tell me more')).toBe(true);
+    expect(likelyFollowUp(tokyo, 'go deeper with another example')).toBe(true);
+    expect(likelyFollowUp(tokyo, 'why?')).toBe(true);
+  });
+
+  it('reads a drill-in whose subject words are already on screen as a follow-up', () => {
+    expect(likelyFollowUp(tokyo, 'best ramen in shinjuku')).toBe(true);
+  });
+
+  it('keeps a short question that names a NEW subject a fresh topic', () => {
+    expect(likelyFollowUp(tokyo, 'what is bitcoin?')).toBe(false);
+    expect(likelyFollowUp(tokyo, 'how does photosynthesis work')).toBe(false);
   });
 });
 
