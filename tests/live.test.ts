@@ -850,6 +850,28 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
     expect(fake.lastReq?.system).not.toContain('LIVE STATUS, NOT JUST A SCHEDULE');
   });
 
+  it('anchors an undated games/scores ask to TODAY (the "yesterday\'s MLB games" miss)', async () => {
+    // "tell me the mlb games and the scores" names no day at all: the game word sits BEFORE the
+    // score word (the old lookahead never saw it), and nothing told the model to date its search
+    // query — so the index ranked yesterday's completed games first and the answer was a day old.
+    fake.raw = OK_RESPONSE;
+    fake.nativeWebSearch = true;
+    await generateLive('tell me the mlb games and the scores', [], cfg, undefined, {
+      caps: { searchMode: 'realtime' },
+    });
+    expect(fake.lastReq?.system).toContain('LIVE STATUS, NOT JUST A SCHEDULE');
+    expect(fake.lastReq?.system).toContain('SEARCH WITH TODAY IN MIND');
+  });
+
+  it('omits the date-anchor nudge for a turn that will not ground', async () => {
+    fake.raw = OK_RESPONSE;
+    fake.nativeWebSearch = true;
+    await generateLive('explain how compound interest works', [], cfg, undefined, {
+      caps: { searchMode: 'realtime' },
+    });
+    expect(fake.lastReq?.system).not.toContain('SEARCH WITH TODAY IN MIND');
+  });
+
   it('still requires citing sources on a live ask that trips needsLiveData without tripping needsFreshInfo', async () => {
     // "at the moment" (needsLiveData) carries no needsFreshInfo trigger word (no "now"/"today"/
     // "score"/who's/what's/etc) — without OR'ing needsLiveData into mayGround's gate, this ask

@@ -23,7 +23,7 @@ export function getSearchProvider(id?: SearchProviderId): SearchProvider {
 // deliberately conservative: searching adds latency, so we only do it when the
 // question looks like a lookup, not a creative/opinion/coding prompt.
 const FRESH_HINTS =
-  /\b(latest|current|currently|today|tonight|tomorrow|now|recent|recently|this (week|weekend|month|year)|upcoming|next (?:week(?:end)?|month|game|match|season)|fixtures?|schedule[ds]?|line[- ]?ups?|kick[- ]?off|who(?:'s| is| are)? (?:playing|plays)|202\d|news|update|price|cost|stock|score|weather|forecast|release[ds]?|version|who(?:'s| is| are| was)|what(?:'s| is| are| was)|when (is|was|did)|where (is|was)|how (much|many)|population|capital|ceo|founded|net worth|statistics?|stats)\b/i;
+  /\b(latest|current|currently|today|tonight|tomorrow|now|recent|recently|this (week|weekend|month|year)|upcoming|next (?:week(?:end)?|month|game|match|season)|fixtures?|schedule[ds]?|line[- ]?ups?|kick[- ]?off|who(?:'s| is| are)? (?:playing|plays)|202\d|news|update|price|cost|stock|scores?|weather|forecast|release[ds]?|version|who(?:'s| is| are| was)|what(?:'s| is| are| was)|when (is|was|did)|where (is|was)|how (much|many)|population|capital|ceo|founded|net worth|statistics?|stats)\b/i;
 
 // A trip/travel ask anchored to an explicit near-future calendar date ("plan a trip to Chicago
 // from July 3", "visiting Tokyo in December") genuinely benefits from live grounding — weather,
@@ -81,7 +81,18 @@ const LIVE_HINTS = new RegExp(
   [
     `live score|final score|half[- ]?time|who'?s winning`,
     `who won (?:the )?(?:game|match|race|fight|bout|series|final)`,
-    `\\bscores?\\b(?=.*\\b(?:today|tonight|last night|now|live|game|match)\\b)`,
+    // The music/quality sense of "scores" (a composer's, Metacritic's, a review's) is evergreen,
+    // not live — excluded by the word right before it, so "which composers wrote scores for
+    // famous games" or "the video games with the best review scores" never trips the live gate
+    // (a wrong trip becomes a wrongful "no live access" refusal when search is off).
+    `(?<!\\b(?:wrote|writes|writing|composed|film|music|movie|metacritic|review|test|exam)\\s)\\bscores?\\b(?=.*\\b(?:today|tonight|last night|now|live|games?|match(?:es)?)\\b)`,
+    // The mirror direction — "the games and the scores" names the game context BEFORE the score
+    // word, which the lookahead above can't see, and a present-tense games+scores ask with no
+    // date means NOW (the reported miss: it fell through to a stale "yesterday's games" answer).
+    // Kept tight: a determiner'd, non-video/board/card game word and a short gap to the score
+    // word, so evergreen asks ("top 10 video games by metacritic scores") stay quiet and
+    // PAST_ANCHOR still wins.
+    `\\b(?:the|today'?s|tonight'?s|current)\\s+(?:\\w+\\s+){0,2}?(?<!\\b(?:video|board|card)\\s)(?:games?|match(?:es)?)\\b[^.?!]{0,30}\\bscores?\\b`,
     `\\bstandings?\\b|league table`,
     // A sport/event SCHEDULE tied to a near-future window (this weekend's games, tonight's
     // fixtures, tomorrow's matches) shifts with the live tournament calendar, so an encyclopedia

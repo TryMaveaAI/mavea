@@ -1060,6 +1060,15 @@ export async function generateLive(
       ? 'LIVE STATUS, NOT JUST A SCHEDULE — this is a genuinely live/volatile ask. A search result is often a static schedule or fixtures page, not a live scoreboard — reading only a kickoff time off it and reporting "upcoming" can be WRONG if the event is actually in progress or already finished relative to the current time above. Specifically look for and trust live-status language in what you find (in progress, live, final, ET/minute markers, final score) over an assumed schedule time. If your sources genuinely don\'t show live/final status, say so honestly rather than guessing — but don\'t default to "upcoming" just because a schedule page is what you found first.\n\nNO SOURCE, NO NUMBER — this is the single most important rule for this turn. EVERY specific score, stat, or status you state as fact (a final score, "1–2", "40 minutes in", "live") must come from an actual page your search returned, and that page must appear in your "sources" array. Before writing any specific number, check: did a real source actually state this, or am I filling in a plausible-sounding value? If you are not certain a source stated it verbatim, DO NOT write it as fact — say exactly what you could and could not confirm (e.g. "I found that USA vs Belgium is underway, but couldn\'t confirm the current score" beats a confident but invented "1–2"). A vague, partial, honestly-hedged answer is ALWAYS better than a fluent, specific, unsourced one — confident invention is the single worst failure mode for this question, worse than any refusal.'
       : '';
 
+  // Native grounding leaves the QUERY to the model, and a query with no date ("MLB games and
+  // scores") lets the search index rank yesterday's completed games above today's slate — the
+  // model then faithfully reports the wrong day. dateLine above tells it what today IS; this
+  // makes it CARRY that date into any time-sensitive search and read result dates against it.
+  // Gated exactly like the citation rule: any fresh-looking ask that will actually ground.
+  const searchDateLine = mayGround
+    ? 'SEARCH WITH TODAY IN MIND — an undated question about games, scores, schedules, prices, or weather means TODAY (the current date above), never whichever recent day a search happens to rank first. When you search for anything time-sensitive, put the actual current date in the query itself (e.g. "MLB scores <today\'s date>") — a search index cannot resolve a bare "today" — and check each result\'s OWN date before trusting it: yesterday\'s completed games are the wrong answer to an undated ask, even from the top-ranked page. If you can only confirm an earlier day\'s results, say plainly which day they are from — never present them as current.'
+    : '';
+
   // (The icon vocabulary is fixed text too — it rides in the cached prefix, not here.)
 
   // "Go deeper" / "more detail" / a bare "more" → the user wants a fuller answer. Give the model
@@ -1151,6 +1160,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     noLiveDataLine,
     groundedSourcesLine,
     liveStatusLine,
+    searchDateLine,
     narrationFirst,
     spokenLine,
     recentLine,
