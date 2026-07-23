@@ -772,7 +772,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Quiet by default — appears on chapter hover/focus, in the chapter's own colour. */
+/* Present whenever a thread has moments to compose (the button only renders then) — quiet in
+   the chapter's own colour, brightening on hover. Hidden-until-hover made the feature
+   undiscoverable; a visible-but-calm resting state is the honest middle. */
 .live-voice .sess-together {
   flex: none;
   display: flex;
@@ -787,7 +789,7 @@
   background: none;
   cursor: pointer;
   color: color-mix(in oklab, var(--ch-c, var(--presence)) 70%, var(--text-muted));
-  opacity: 0;
+  opacity: 0.55;
   transition:
     opacity 0.12s,
     color 0.12s,
@@ -805,16 +807,6 @@
   opacity: 1;
   background: var(--surface-glass);
   color: color-mix(in oklab, var(--ch-c, var(--presence)) 90%, var(--text-primary));
-}
-.live-voice .sess-together:disabled {
-  cursor: default;
-}
-.live-voice .sess-chapter:hover .sess-together:disabled,
-.live-voice .sess-together:disabled:hover,
-.live-voice .sess-together:disabled:focus-visible {
-  opacity: 0.35;
-  background: none;
-  color: color-mix(in oklab, var(--ch-c, var(--presence)) 70%, var(--text-muted));
 }
 /* Wrapper holds the row button + the bookmark star side by side. */
 .live-voice .sess-row-wrap {

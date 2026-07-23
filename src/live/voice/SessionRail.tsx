@@ -153,22 +153,17 @@ export function SessionRail({
                 <div className="sess-chapter-label" title={ch.title}>
                   {ch.title}
                 </div>
-                {onSeeTogether && (
+                {/* Only when there is genuinely something to compose: a one-moment thread is
+                    already fully on screen, and a disabled ghost there was pure noise. Always
+                    visible (not hover-revealed) so the feature is discoverable the moment a
+                    thread earns it. */}
+                {onSeeTogether && ch.moments.length >= 2 && (
                   <button
                     type="button"
                     className="sess-together"
                     onClick={() => onSeeTogether(ch)}
-                    disabled={ch.moments.length < 2}
-                    title={
-                      ch.moments.length >= 2
-                        ? `See all ${ch.moments.length} moments of this thread together on one canvas`
-                        : 'This thread is one moment — already fully on screen'
-                    }
-                    aria-label={
-                      ch.moments.length >= 2
-                        ? `See all ${ch.moments.length} moments of this thread together`
-                        : 'This thread is one moment — already fully on screen'
-                    }
+                    title={`See all ${ch.moments.length} moments of this thread together on one canvas`}
+                    aria-label={`See all ${ch.moments.length} moments of this thread together`}
                   >
                     <Icon.table />
                   </button>
