@@ -4,7 +4,7 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.11] - 2026-07-23
 
 ### Fixed — the pre-launch pass
 
@@ -140,6 +140,23 @@ Everything below was found by measuring, not by reading.
   `children`/`nodes` keys at 4 items; render time dropped from >20 s to 6 ms.
 - **Canvas** — `BlockBoundary` now calls `console.error` in `componentDidCatch` so block render
   failures are visible in the browser console without crashing the canvas or the voice track.
+
+### Fixed — shipping the npm package
+
+- **`npx @mavea/mavea` silently did nothing.** npm/npx installs `bin` entries as a symlink, and
+  the CLI's "is this the main module" check compared an unresolved symlink path against the
+  module's real path — they never matched, so `main()` ran zero times with no error and exit
+  code 0. Fixed by resolving both sides through the real filesystem path before comparing, and
+  added a regression test that reproduces npm's actual symlink mechanism (the existing smoke
+  test invoked the file directly, with no symlink involved, so it could never have caught this).
+- **Published under `@mavea/mavea`, not `mavea`.** npm's anti-typosquatting check blocks new
+  unscoped package names it judges too similar to existing ones; scoping sidesteps it.
+- **The README's mascot images didn't render on npm's package page.** Relative image paths
+  resolve against GitHub's raw-content host, which requires authentication for a private repo —
+  they now load from jsDelivr's npm CDN instead, which serves straight from the published
+  package regardless of the source repo's visibility.
+- Release publishing no longer requests npm provenance attestation, which npm rejects outright
+  for a private source repository.
 
 ### Removed
 

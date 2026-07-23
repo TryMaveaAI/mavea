@@ -27,6 +27,14 @@ the tour stays reachable afterward from the "Take the tour" nav link, ⌘K, or a
 To work on Live mode, click **Open Mavéa** and paste a hosted provider key (Live is BYOK:
 Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok).
 
+Voice runs through [Kokoro](https://github.com/remsky/Kokoro-FastAPI) in Docker; `pnpm dev` and
+`pnpm preview` both start it for you automatically. To run or stop it on its own:
+
+```sh
+docker compose up -d     # Kokoro TTS on :8880 — dev and preview both proxy /tts to it
+docker compose down      # stop it (it otherwise stays up between dev sessions)
+```
+
 ## Before a maintainer opens a PR
 
 Run the full gate before opening a PR (the pre-push hook only runs typecheck + lint):

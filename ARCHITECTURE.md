@@ -1,5 +1,39 @@
 # Architecture
 
+## The turn contract
+
+However a turn is triggered — voice, text, a chip, or a replayed demo frame — it resolves to the
+same shape:
+
+```
+ask ─▶ generateLive ─▶ validate/repair ─▶ settle (merge + tour) ─▶ Presence (the face) + Canvas (the blocks)
+```
+
+The canvas is data, not components: every answer is a list of typed `{ type, props }` blocks
+(`data/conversation.ts`). A model never emits UI — it emits those same blocks, which
+`live/generateLive` streams, validates, and repairs into the `ConversationSpec` contract. The
+demo replays are frozen outputs of this exact pipeline, so they render through the same
+contract and renderer. The generated selection catalog contains **600 component contracts across
+23 families**, and the gallery production-renders every one of them — including the types that
+are gated or surface-owned rather than offered in ordinary model selection. Every provider sits
+behind one `ProviderAdapter`; Live credentials and prompts cross the same-origin proxy operated
+by whoever runs the deployment before reaching the selected provider. This repository does not
+include a hosted account, analytics, or data-retention service.
+
+## Stack
+
+A deliberately small stack — React 19, TypeScript 6, Vite 8 — with no chart library and no UI
+framework beyond React: every chart, dial, diagram, and the face is hand-rolled SVG/CSS. Beyond
+`react`/`react-dom`, the runtime stays lean: `@ricky0123/vad-web` (Silero VAD for end-of-speech)
+plus a handful of feature-scoped libraries — KaTeX, Leaflet, jsPDF, pdfjs-dist, openchemlib,
+mediabunny, modern-screenshot, pptxgenjs, and Shiki — each lazy-loaded only when that feature is
+used and bundled rather than fetched from a CDN. JavaScript/TypeScript snippets run only after an
+explicit click in a bounded Worker; Python execution is disabled until it has an equally isolated
+runtime. The face is one hand-drawn SVG animated purely by CSS off `data-*` attributes — JS never
+transforms it.
+
+## Routing and the landing
+
 Mavéa is one product with one component library and one stylesheet. `main.tsx` routes on the
 URL hash: `#/live` mounts **Live** (`live/LiveApp.tsx`, the real experience), `#/gallery` the
 visual library, and anything else mounts the **landing** (`flagship/FlagshipHost.tsx`, the
