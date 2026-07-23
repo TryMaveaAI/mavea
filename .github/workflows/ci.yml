@@ -27,7 +27,7 @@ permissions:
 # trailing comment; Dependabot bumps the SHA and the comment together.
 jobs:
   verify:
-    name: Lint · Typecheck · Test · Build · Dead code · Dependency audit
+    name: Lint · Typecheck · Build · Dead code · Dependency audit
     # Merged with the old standalone "quality" job: both need the full dependency install anyway,
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
@@ -70,9 +70,6 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-      - name: Test
-        run: pnpm test
-
       - name: Build
         # `pnpm build` is `tsc --noEmit && vite build`; the Typecheck step above already ran that
         # tsc pass and gates this one, so call the bundler directly instead of typechecking twice.
@@ -107,6 +104,37 @@ jobs:
         # npm retired the legacy endpoints used by this pnpm line. Query OSV's maintained batch
         # API against every exact package version in the installed graph instead.
         run: pnpm check:vulnerabilities
+
+  # Split out of `verify` into its own sharded job: ubuntu-latest runners are 2 vCPU / 7GB, which
+  # caps the in-process worker pool hard regardless of per-file speedups. Four shards across four
+  # separate runners cuts wall-clock roughly 4x for the same total compute — each shard pays its
+  # own checkout + install, but that's seconds against a step that otherwise ran 10+ minutes serial.
+  test:
+    name: Test (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Test (shard ${{ matrix.shard }}/4)
+        run: pnpm test -- --shard=${{ matrix.shard }}/4
 
   # Also carries the Node 20 CLI smoke. GitHub bills every job rounded up to a whole minute, and
   # that check was a single `--help` invocation against a dependency-free entry point — its own
