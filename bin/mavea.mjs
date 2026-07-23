@@ -1,11 +1,19 @@
 #!/usr/bin/env node
-// mavea CLI — serves the prebuilt app locally, same-origin proxies included, so `npx mavea`
+// mavea CLI — serves the prebuilt app locally, same-origin proxies included, so `npx @mavea/mavea`
 // works exactly the way `pnpm dev` does in the source repo (see vite.config.ts, which this
 // mirrors) without needing Node deps, a clone, or a build step.
 import { createServer } from 'node:http';
 import http from 'node:http';
 import https from 'node:https';
-import { createReadStream, existsSync, statSync, mkdirSync, renameSync, unlinkSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  statSync,
+  mkdirSync,
+  renameSync,
+  unlinkSync,
+  realpathSync,
+} from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
@@ -48,7 +56,7 @@ export const LOCAL_SECURITY_HEADERS = Object.freeze({
 });
 
 // The ONNX runtime WASM (13MB) and Silero VAD model (2.3MB) are real functional assets voice
-// mode needs, not waste — but bundling them into every `npx mavea` download costs everyone that
+// mode needs, not waste — but bundling them into every `npx @mavea/mavea` download costs everyone that
 // weight even if they never touch voice (most turns are text). Both are ALSO already public,
 // permanently-versioned npm package assets, so instead of shipping them in dist/ (see the `files`
 // exclusion in package.json), they're fetched ONCE from jsDelivr's npm CDN the first time voice
@@ -68,7 +76,7 @@ const LAZY_ASSETS = {
 };
 
 // Standard per-OS cache location (the same convention env-paths/XDG use) — persists across
-// `npx mavea` invocations (npx's own package cache does NOT persist these, since they're fetched
+// `npx @mavea/mavea` invocations (npx's own package cache does NOT persist these, since they're fetched
 // at runtime, not installed), so a user only pays the download once, ever, per machine.
 function lazyCacheDir() {
   const plat = platform();
@@ -899,12 +907,12 @@ async function offerDockerInstall() {
 
   const later =
     '  To enable voice later: install Docker (https://docker.com/get-started),\n' +
-    '  then re-run `npx mavea` — it will detect Docker and set voice up for you.';
+    '  then re-run `npx @mavea/mavea` — it will detect Docker and set voice up for you.';
 
   if (process.platform === 'darwin' && commandExists('brew')) {
     const yes = await askYesNo(
       '  Install Docker now via Homebrew? [Y/n]  (~600 MB, then launch Docker\n' +
-        '  Desktop once and re-run `npx mavea` — voice will offer to start itself) ',
+        '  Desktop once and re-run `npx @mavea/mavea` — voice will offer to start itself) ',
     );
     if (!yes) return console.log('  Skipping.\n' + later);
     const r = spawn('brew', ['install', '--cask', 'docker'], { stdio: 'inherit' });
@@ -912,7 +920,7 @@ async function offerDockerInstall() {
       console.log(
         code === 0
           ? '  ✓ Docker installed. Launch Docker Desktop once (to accept its service\n' +
-              '    agreement), then re-run `npx mavea` to enable voice.'
+              '    agreement), then re-run `npx @mavea/mavea` to enable voice.'
           : '  Homebrew install failed.\n' + later,
       );
     });
@@ -922,7 +930,7 @@ async function offerDockerInstall() {
   if (process.platform === 'win32' && commandExists('winget')) {
     const yes = await askYesNo(
       '  Install Docker Desktop now via winget? [Y/n]  (then launch it once and\n' +
-        '  re-run `npx mavea` — voice will offer to start itself) ',
+        '  re-run `npx @mavea/mavea` — voice will offer to start itself) ',
     );
     if (!yes) return console.log('  Skipping.\n' + later);
     const r = spawn('winget', ['install', '-e', '--id', 'Docker.DockerDesktop'], {
@@ -931,7 +939,7 @@ async function offerDockerInstall() {
     r.on('exit', (code) => {
       console.log(
         code === 0
-          ? '  ✓ Docker installed. Launch Docker Desktop once, then re-run `npx mavea`.'
+          ? '  ✓ Docker installed. Launch Docker Desktop once, then re-run `npx @mavea/mavea`.'
           : '  winget install failed.\n' + later,
       );
     });
@@ -942,7 +950,9 @@ async function offerDockerInstall() {
     // Docker's install script needs sudo — print it, never run it on the user's behalf.
     console.log('  To install Docker, run:\n');
     console.log('    curl -fsSL https://get.docker.com | sh\n');
-    console.log('  then re-run `npx mavea` — it will detect Docker and set voice up for you.');
+    console.log(
+      '  then re-run `npx @mavea/mavea` — it will detect Docker and set voice up for you.',
+    );
     return;
   }
 
@@ -957,7 +967,9 @@ async function offerDockerStart() {
   if (process.platform === 'darwin' || process.platform === 'win32') {
     const yes = await askYesNo('  Start Docker Desktop now? [Y/n] ');
     if (!yes) {
-      console.log('  Skipping — captions only. Start Docker Desktop and re-run `npx mavea`.');
+      console.log(
+        '  Skipping — captions only. Start Docker Desktop and re-run `npx @mavea/mavea`.',
+      );
       return;
     }
     if (process.platform === 'darwin') {
@@ -972,14 +984,14 @@ async function offerDockerStart() {
     const up = await waitForDocker();
     if (!up) {
       console.log('\n  Docker did not come up in time — captions only for now.');
-      console.log('  Once Docker Desktop is running, re-run `npx mavea` to enable voice.');
+      console.log('  Once Docker Desktop is running, re-run `npx @mavea/mavea` to enable voice.');
       return;
     }
     console.log('✓');
     startKokoro();
     return;
   }
-  console.log('  Start it (e.g. `sudo systemctl start docker`), then re-run `npx mavea`.');
+  console.log('  Start it (e.g. `sudo systemctl start docker`), then re-run `npx @mavea/mavea`.');
 }
 
 async function maybeOfferVoice() {
@@ -988,7 +1000,7 @@ async function maybeOfferVoice() {
   if (!existsSync(COMPOSE_FILE) || !process.stdin.isTTY) {
     console.log(
       "Voice (Kokoro TTS) isn't running — lines will show as captions only. " +
-        'Re-run `npx mavea` in a terminal to set it up, or start Kokoro yourself on :8880.',
+        'Re-run `npx @mavea/mavea` in a terminal to set it up, or start Kokoro yourself on :8880.',
     );
     return;
   }
@@ -997,7 +1009,7 @@ async function maybeOfferVoice() {
   console.log(VOICE_INTRO);
   const yes = await askYesNo('  Start it now? [Y/n] ');
   if (!yes) {
-    console.log('  Skipping — captions only. Re-run `npx mavea` any time to enable voice.');
+    console.log('  Skipping — captions only. Re-run `npx @mavea/mavea` any time to enable voice.');
     return;
   }
   startKokoro();
@@ -1016,7 +1028,7 @@ async function main() {
   if (args.help) {
     console.log(`mavea — run the Mavéa app locally
 
-Usage: npx mavea [options]
+Usage: npx @mavea/mavea [options]
 
 Options:
   --port, -p <n>   Port to serve on (default 4173, or $PORT)
@@ -1070,7 +1082,20 @@ Terms, privacy, disclaimer, and third-party notices ship with this package.
   if (args.voice) await maybeOfferVoice();
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+// npm/npx installs `bin` entries as a symlink (node_modules/.bin/mavea -> ../@mavea/mavea/bin/
+// mavea.mjs). Node's ESM loader resolves that symlink when setting import.meta.url to this
+// module's REAL path, but path.resolve(process.argv[1]) does not dereference symlinks — it stays
+// the symlink's own path, so the two never matched and `npx @mavea/mavea` silently ran main() 0 times.
+// realpathSync resolves both sides to the same real filesystem path before comparing.
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(resolve(process.argv[1])) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+const isMain = isMainModule();
 if (isMain) {
   void main().catch((error) => {
     console.error(`mavea: ${error instanceof Error ? error.message : String(error)}`);

@@ -3,8 +3,8 @@
 # Mavéa
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/mascot-dark.svg" />
-  <img src="docs/media/mascot-light.svg" width="150" alt="The Mavéa presence" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/mascot-dark.svg" />
+  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/mascot-light.svg" width="150" alt="The Mavéa presence" />
 </picture>
 
 ### Talk to AI. See what it means.
@@ -20,7 +20,9 @@ and evidence you can check, marking the exact figure each line is about.
 [See it in motion →](docs/FEATURES.md)
 
 <p>
-  <a href="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml"><img src="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <!-- No CI status badge: GitHub Actions badges for a PRIVATE repo require authentication, so
+       they 404 for anyone viewing this README anonymously (e.g. on npm's package page). Add one
+       back the day this repo goes public. -->
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 6" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />

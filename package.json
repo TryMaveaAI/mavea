@@ -13,6 +13,7 @@
     "!dist/ort-wasm-simd-threaded.wasm",
     "!dist/silero_vad_v5.onnx",
     "bin",
+    "docs/media",
     "docker-compose.yml",
     "gateway",
     "!gateway/.gateway-data/**",
