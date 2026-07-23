@@ -175,7 +175,10 @@ const ROUTE_BUDGETS = [
   // shared DropSelect menu (~1 kB for picker consistency), and the shared reveal hook grew an
   // arrival guarantee (scroll-settle/visibility fallbacks) that every deferred surface funds
   // (~0.7 kB here). Each alone fit in 22; the route now carries both.
-  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 23 },
+  // 24 (was 23): the answer-shaping prompts this route's engine closure carries grew on purpose —
+  // the continuity hint, the search date anchor, and the In-depth explanation level are product
+  // behavior, not padding, and prompt text is the one payload that can't move to a lazy chunk.
+  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 24 },
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],
