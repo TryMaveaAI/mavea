@@ -32,6 +32,7 @@ vi.mock('../src/voice/kokoro', () => ({
   },
   cancelKokoro: () => void kokoro.cancelled++,
   kokoroSpeaking: () => false,
+  kokoroSynthesizing: () => false,
   kokoroKnownAvailable: () => kokoro.known,
   subscribeKokoroSpeaking: () => () => {},
 }));

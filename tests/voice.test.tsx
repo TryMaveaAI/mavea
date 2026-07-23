@@ -526,7 +526,12 @@ describe('voice-capability honesty', () => {
       expect(kokoroSpeaking()).toBe(true);
       await expect(line).resolves.toBe(false);
       expect(kokoroSpeaking()).toBe(false);
-      expect(transitions).toEqual([true, false]);
+      // Listeners also wake for synthesizing transitions (the "preparing" signal shares the
+      // subscription), so the SPEAKING value may repeat between wakes — consumers snapshot and
+      // dedupe (useSyncExternalStore semantics). What matters: it rose once, fell once, and no
+      // wake ever fires while the queue is idle.
+      const speakingChanges = transitions.filter((v, i) => i === 0 || v !== transitions[i - 1]);
+      expect(speakingChanges).toEqual([true, false]);
 
       unsubscribe();
     });

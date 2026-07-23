@@ -22,6 +22,7 @@
 // the real waveform.
 
 import { sharedAudioContext, tapPlaybackNode } from './voiceEnergy';
+import { PCM_CACHE_MAX_CLIP_BYTES } from './pcmCache';
 
 /** Kokoro's native PCM sample rate. */
 const SAMPLE_RATE = 24000;
@@ -214,11 +215,19 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  * window where the visuals used to run ahead of the voice. It can fire and then be cancelled a
  * beat later (buffer scheduled, then torn down by an interrupt) — callers that care about
  * interrupts watch their own cancel flags, not this.
+ *
+ * `onSynthDone` fires once when Kokoro has finished RENDERING the line (the response body is
+ * fully read) while its tail may still be playing — the moment the synthesizer goes idle, which
+ * is exactly when a caller can start the next line's synthesis without ever running two at
+ * once. It receives the complete raw PCM (for the replay cache), or null when the clip was too
+ * large to keep. Not called for a cancelled or never-started line.
  */
 export async function streamSpeak(
   text: string,
   voice: string,
   onStart?: () => void,
+  onSynthDone?: (pcm: Uint8Array | null) => void,
+  speed?: number,
 ): Promise<boolean> {
   const ctx = sharedAudioContext();
   if (!ctx) return false; // no WebAudio → caller uses the blob path
@@ -250,7 +259,9 @@ export async function streamSpeak(
         input: text,
         voice,
         response_format: 'pcm',
-        speed: voiceSpeed,
+        // The caller may pass the speed it keyed its cache entry on — the module value could
+        // move under a slider drag between that read and this one, mislabeling the audio.
+        speed: speed ?? voiceSpeed,
       }),
       signal: abort.signal,
     });
@@ -357,6 +368,10 @@ export async function streamSpeak(
     scheduleBuffer(merged);
   };
 
+  // The raw PCM as it arrives, kept for the replay cache — null once the clip outgrows the
+  // cache's per-clip cap (a monologue isn't worth evicting the hot lines for).
+  let raw: Uint8Array[] | null = onSynthDone ? [] : null;
+  let rawLen = 0;
   try {
     const reader = res.body.getReader();
     let carry: number | null = null;
@@ -370,6 +385,11 @@ export async function streamSpeak(
       const { done, value } = await reader.read();
       if (state.cancelled || done) break;
       if (!value || value.length === 0) continue;
+      if (raw) {
+        rawLen += value.length;
+        if (rawLen > PCM_CACHE_MAX_CLIP_BYTES) raw = null;
+        else raw.push(value);
+      }
       const decoded = decodePcm16(value, carry);
       carry = decoded.carry;
       if (decoded.samples.length) {
@@ -396,6 +416,24 @@ export async function streamSpeak(
   }
 
   if (!state.cancelled && started) {
+    // Synthesis is over (the body is fully read) but the tail is still scheduled to play — the
+    // one window where the next line can synthesize without ever doubling Kokoro's load.
+    if (onSynthDone) {
+      let whole: Uint8Array | null = null;
+      if (raw) {
+        whole = new Uint8Array(rawLen);
+        let off = 0;
+        for (const part of raw) {
+          whole.set(part, off);
+          off += part.length;
+        }
+      }
+      try {
+        onSynthDone(whole);
+      } catch {
+        /* a listener must never break playback */
+      }
+    }
     // Pace the queue on real playback: resolve only once the last scheduled buffer ends.
     await new Promise<void>((resolve) => {
       const ms = Math.max(0, (nextTime - ctx.currentTime) * 1000) + 40;
@@ -416,5 +454,118 @@ export async function streamSpeak(
   }
   // Hard-stop → report "played" so the caller never re-speaks the line. Otherwise true iff a
   // sample actually played; false means nothing was heard and the caller falls back.
+  return cancelled || started;
+}
+
+/** Chunk cached playback into ~1s buffers — few audio nodes, and a cancel still lands between
+ *  buffers that haven't started rather than waiting out one monolithic clip. */
+const CACHED_BUFFER_SECONDS = 1;
+
+/**
+ * Play a fully-synthesized PCM clip (see pcmCache.ts) through the same graph, face-energy tap,
+ * and recorder tap as a streamed line — a cache hit must be indistinguishable from a fresh
+ * synthesis except for starting instantly. Every buffer exists up front, so this path can never
+ * underrun (and never counts one). Resolves like streamSpeak: true when audio played or the
+ * clip was hard-stopped, false only when playback could not start (caller re-synthesizes).
+ */
+export async function playPcmBytes(
+  bytes: Uint8Array,
+  text: string,
+  onStart?: () => void,
+): Promise<boolean> {
+  const ctx = sharedAudioContext();
+  if (!ctx || bytes.length < 2) return false;
+  // Same cancel-during-the-gap guard as streamSpeak: the resume() await below is a window where
+  // a hard stop can land before this clip publishes to `active` — without the epoch check the
+  // whole cached clip would then schedule and play AFTER the interrupt.
+  const myEpoch = streamEpoch;
+  if (ctx.state !== 'running') {
+    try {
+      await ctx.resume();
+    } catch {
+      /* no-op */
+    }
+  }
+  if (ctx.state !== 'running') return false;
+  if (myEpoch !== streamEpoch) return true; // superseded by a cancel — never re-speak it
+
+  const gain = ctx.createGain();
+  gain.gain.value = effectiveGain();
+  const state: ActiveStream = {
+    sources: new Set(),
+    releaseTap: tapPlaybackNode(gain),
+    gain,
+    abort: new AbortController(),
+    cancelled: false,
+  };
+  if (active) {
+    active.cancelled = true;
+    teardown(active);
+  }
+  active = state;
+
+  const tap = streamTap;
+  try {
+    tap?.begin(text);
+  } catch {
+    /* a tap must never break playback */
+  }
+
+  const { samples } = decodePcm16(bytes, null);
+  try {
+    tap?.push(samples);
+  } catch {
+    /* a tap must never break playback */
+  }
+
+  let nextTime = ctx.currentTime + LEAD_SECONDS;
+  let started = false;
+  const chunk = Math.round(CACHED_BUFFER_SECONDS * SAMPLE_RATE);
+  for (let off = 0; off < samples.length && !state.cancelled; off += chunk) {
+    const slice = samples.subarray(off, Math.min(off + chunk, samples.length));
+    const buffer = ctx.createBuffer(1, slice.length, SAMPLE_RATE);
+    buffer.getChannelData(0).set(slice);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(gain);
+    src.start(nextTime);
+    nextTime += buffer.duration;
+    if (!started) {
+      try {
+        onStart?.();
+      } catch {
+        /* a listener must never break playback */
+      }
+    }
+    started = true;
+    state.sources.add(src);
+    src.onended = () => {
+      state.sources.delete(src);
+      try {
+        src.disconnect();
+      } catch {
+        /* no-op */
+      }
+    };
+  }
+
+  if (!state.cancelled && started) {
+    await new Promise<void>((resolve) => {
+      const ms = Math.max(0, (nextTime - ctx.currentTime) * 1000) + 40;
+      const timer = setTimeout(resolve, ms);
+      state.finishEarly = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+    });
+  }
+
+  const cancelled = state.cancelled;
+  teardown(state);
+  try {
+    tap?.end(started);
+  } catch {
+    /* a tap must never break playback */
+  }
   return cancelled || started;
 }

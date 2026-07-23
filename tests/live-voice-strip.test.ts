@@ -60,12 +60,14 @@ describe('the unified capsule holds Mavéa’s output settings, not the topbar',
   });
 
   it('keeps the pulsing "Speaking" pill gated on active voicing', () => {
-    // The pill (not the transcript) is the speaking indicator — it appears only while she's voicing,
-    // so a muted turn shows the line without falsely claiming she's talking.
+    // The pill (not the transcript) is the speaking indicator — it appears only while she's
+    // voicing, so a muted turn shows the line without falsely claiming she's talking. It also
+    // yields to the preparing beat: while the next line is still synthesizing, nothing is
+    // audible, and a pulsing "Speaking" over silence is exactly the lie the quiet orb replaces.
     const pillIdx = strip.indexOf('className="vc-status"');
     expect(pillIdx, '.vc-status pill not found').toBeGreaterThan(-1);
-    const before = strip.slice(Math.max(0, pillIdx - 120), pillIdx);
-    expect(before).toMatch(/speakingSticky \? \(/);
+    const before = strip.slice(Math.max(0, pillIdx - 160), pillIdx);
+    expect(before).toMatch(/speakingSticky && !voicePreparing \? \(/);
   });
 
   it('shows the honest "Preparing" beat only while the walk barrier holds, never as Speaking', () => {

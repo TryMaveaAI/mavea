@@ -120,6 +120,11 @@
   height: 7px;
   opacity: 0.75;
 }
+/* The recurring per-stop synthesis beat: the same held, halo-breathing orb with NO words — the
+   barrier pill above explains itself once per turn; text repeated at every stop would nag. */
+.live-voice .vc-status.vc-quiet {
+  padding: 7px 8px;
+}
 .live-voice .vc-status-label {
   font-size: 12px;
   font-weight: 700;

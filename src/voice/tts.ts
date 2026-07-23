@@ -18,8 +18,10 @@
 
 import {
   speakKokoroLine,
+  primeKokoroLine,
   cancelKokoro,
   kokoroSpeaking,
+  kokoroSynthesizing,
   kokoroKnownAvailable,
   subscribeKokoroSpeaking,
   type KokoroLine,
@@ -159,6 +161,18 @@ export function speakLine(text: string, who: Speaker): SpokenLine {
   return withBrowserFallback(text, who);
 }
 
+/**
+ * Announce the line that will be spoken NEXT (not yet queued), so the Kokoro path can
+ * synthesize it into its cache while the current line's audio still plays — the reveal walk
+ * calls this per stop to hide the next stop's synthesis latency. A no-op for the browser voice
+ * (it starts instantly) and whenever Kokoro isn't the voice that would actually speak.
+ */
+export function primeLine(text: string, who: Speaker): void {
+  if (voiceMode() === 'browser') return;
+  if (kokoroKnownAvailable() !== true || kokoroFallsBehind()) return;
+  primeKokoroLine(text, who);
+}
+
 /** Speak through Kokoro, and if the line never becomes audible, say it in the browser voice
  *  instead. The composed handle reports whichever voice actually spoke, so a caller awaiting
  *  `started` is told the truth about audio rather than about Kokoro. */
@@ -197,6 +211,13 @@ export function cancelSpeech(): void {
 /** True while a line is actively playing or queued in either voice (drives waitForSpeech). */
 export function isSpeaking(): boolean {
   return kokoroSpeaking() || webSpeechSpeaking();
+}
+
+/** True while the next line is still being SYNTHESIZED — queued and coming, but not yet audible.
+ *  Only Kokoro contributes (the browser voice starts effectively instantly); the voice strip
+ *  shows this window as an honest "Preparing voice…" instead of "Speaking" over silence. */
+export function isVoicePreparing(): boolean {
+  return kokoroSynthesizing();
 }
 
 /** Subscribe to speaking transitions without keeping a polling timer alive. */

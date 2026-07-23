@@ -69,6 +69,7 @@ import { Icon } from '../icons/icons';
 import { useVoiceController } from '../voice/useVoiceController';
 import {
   speakLine as speakLineTwoVoice,
+  primeLine,
   cancelSpeech,
   isSpeaking,
   type SpokenLine,
@@ -249,6 +250,7 @@ import {
   ComposingStatus,
   TurnActivityChips,
   useSpeaking,
+  useVoicePreparing,
   skeletonPlan,
 } from './turnstate';
 // pendingCard is catalog-free now (it takes the pre-resolved data shape from the turn state), but
@@ -2099,6 +2101,24 @@ export function LiveApp(): ReactElement {
         },
       );
     };
+    // The line a beat will voice, if any — the same derivation step() uses (the voice-ready
+    // twin keyed by the stop's block, else the shown caption).
+    const spokenLineOf = (b: (typeof beats)[number]): string | undefined => {
+      const s = b.set && 'spot' in b.set ? b.set.spot : undefined;
+      const c = b.set && 'caption' in b.set ? b.set.caption : undefined;
+      return (s ? tourSpokenById.get(s) : undefined) ?? c;
+    };
+    // Hand the voice layer the next stop's line ahead of time, so its synthesis can run while
+    // the current stop's audio still plays (the one-ahead prefetch in voice/kokoro.ts).
+    const primeNextSpoken = (idx: number): void => {
+      for (let n = idx + 1; n < beats.length; n++) {
+        const next = spokenLineOf(beats[n]);
+        if (next) {
+          primeLine(next, 'mavea');
+          return;
+        }
+      }
+    };
     // One spoken stop, paced by its OWN line's lifecycle instead of polling the global queue on
     // a wall clock: enqueue the line, hold the previous stop until this line is audible, light
     // the block WITH the audio, advance when the line has finished. On a slow machine the old
@@ -2117,6 +2137,7 @@ export function LiveApp(): ReactElement {
       // the walk starts moving exactly when the opener stops talking.
       if (idx === 0 || !spokenLine) {
         applyStop(spot, line);
+        primeNextSpoken(idx);
         await waitQueueQuiet({ floorMs: MIN_STOP_MS, capMs: finishCapMs(estimateMs) });
         if (bail()) return;
         advance(spot);
@@ -2126,6 +2147,10 @@ export function LiveApp(): ReactElement {
       const heard = await waitLineStart(handle);
       if (bail()) return;
       applyStop(spot, line);
+      // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
+      // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
+      // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
+      primeNextSpoken(idx);
       if (heard) {
         await waitLineEnd(handle, estimateMs);
       } else {
@@ -2150,10 +2175,10 @@ export function LiveApp(): ReactElement {
       const idx = i;
       const beat = beats[i++];
       const line = beat.set && 'caption' in beat.set ? beat.set.caption : undefined;
+      const spot = beat.set && 'spot' in beat.set ? beat.set.spot : undefined;
       // Show the shown caption, but VOICE the spoken twin for this stop when the model gave one
       // (so a figure or term in the line is said the way a person would), falling back to the caption.
-      const spot = beat.set && 'spot' in beat.set ? beat.set.spot : undefined;
-      const spokenLine = (spot ? tourSpokenById.get(spot) : undefined) ?? line;
+      const spokenLine = spokenLineOf(beat);
       if (spokenWalk) {
         void runSpokenStop(beat, idx, spot, line, spokenLine);
       } else {
@@ -3582,6 +3607,9 @@ export function LiveApp(): ReactElement {
   // The speaking state: the voice is audibly playing, and the line it's reading. Tour stops
   // update spokenNow as they fire; the opener falls back to the turn's narration.
   const speakingNow = useSpeaking();
+  // The per-stop synthesis window (queued, not yet audible, longer than the anti-flash beat) —
+  // the voice strip must call this "Preparing", never a pulsing "Speaking" over silence.
+  const voicePreparing = useVoicePreparing();
   const turnAudioVersion = useSyncExternalStore(
     subscribeTurnAudio,
     getTurnAudioVersion,
@@ -4764,7 +4792,7 @@ export function LiveApp(): ReactElement {
                   still worth reading, and the row's width is already reserved). The pulsing
                   "Speaking" pill earns its place ONLY while she's actually voicing; the settings on
                   the right (voice, model) stay anchored regardless. Clicking the pill interrupts. */}
-              {speakingSticky ? (
+              {speakingSticky && !voicePreparing ? (
                 <button
                   type="button"
                   className="vc-status"
@@ -4790,6 +4818,24 @@ export function LiveApp(): ReactElement {
                     <i></i>
                   </span>
                   <span className="vc-status-label">Preparing voice…</span>
+                </div>
+              ) : voicePreparing && !muted ? (
+                /* A stop's line is still synthesizing (seconds of engaged-but-silent queue on a
+                   slow machine). The barrier's pill above already taught the words once this
+                   turn; repeating text at every stop would nag, so this recurring beat is the
+                   same held orb with no label — quiet, honest, still announced to a screen
+                   reader. */
+                <div
+                  className="vc-status vc-preparing vc-quiet"
+                  role="status"
+                  aria-busy="true"
+                  aria-label="Preparing voice"
+                >
+                  <span className="vc-orb" aria-hidden="true">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </span>
                 </div>
               ) : null}
               <div className="vc-transcript" aria-hidden="true">

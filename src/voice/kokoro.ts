@@ -20,7 +20,14 @@
 import { sayable, type Speaker } from './tts';
 import { pronounceForSpeech } from './pronounce';
 import { voiceEnergyTap, resetVoiceEnergy } from './voiceEnergy';
-import { streamSpeak, cancelActiveStream, getVoiceSpeed } from './streamTts';
+import {
+  streamSpeak,
+  playPcmBytes,
+  cancelActiveStream,
+  getVoiceSpeed,
+  streamUnderruns,
+} from './streamTts';
+import { pcmCacheKey, pcmCacheGet, pcmCacheHas, pcmCachePut } from './pcmCache';
 import { findPreset, DEFAULT_MAVEA_VOICE_ID, DEFAULT_USER_VOICE_ID } from './presets';
 
 /** Voice ids per speaker. Override at runtime via setKokoroVoice (e.g. user pref). The defaults
@@ -69,17 +76,27 @@ interface Job {
 
 const queue: Job[] = [];
 let pumping = false; // a clip is currently being fetched/played
+let synthPending = false; // the head line is being synthesized but is not yet audible
+let synthActive = false; // Kokoro is RENDERING a line right now (stream, blob, or prefetch join)
+let cancelEpoch = 0; // bumped by cancelKokoro — a job in flight across a cancel must not play late
+/** The line the surface has announced as coming NEXT (see primeKokoroLine). The reveal walk
+ *  holds at most one line in the queue at a time, so `queue[0]` alone would never see the next
+ *  stop — this is what lets the one-ahead prefetch actually fire between walk stops. */
+let primed: { text: string; voice: string } | null = null;
 let current: HTMLAudioElement | null = null;
 let currentUrl: string | null = null; // object URL to revoke after the clip ends
 let currentFetch: AbortController | null = null; // aborts the in-flight blob fetch on cancel
 const speakingListeners = new Set<() => void>();
 let lastSpeaking = false;
+let lastSynthesizing = false;
 
-/** Notify React/UI subscribers only when the observable speaking state actually changes. */
+/** Notify React/UI subscribers only when an observable state actually changes. */
 function emitSpeakingChange(): void {
   const speaking = kokoroSpeaking();
-  if (speaking === lastSpeaking) return;
+  const synthesizing = kokoroSynthesizing();
+  if (speaking === lastSpeaking && synthesizing === lastSynthesizing) return;
   lastSpeaking = speaking;
+  lastSynthesizing = synthesizing;
   for (const listener of speakingListeners) listener();
 }
 
@@ -94,19 +111,137 @@ function revokeCurrentUrl(): void {
   }
 }
 
+// ---- one-ahead prefetch -----------------------------------------------------
+// A tour stop's dead-air is the synthesis of ITS line — seconds on an older machine — while the
+// PREVIOUS line's tail is still playing and the synthesizer sits idle. So at every
+// synthesizer-idle moment (a line's synthesis just completed, a cached clip started playing, or
+// a prime arrived while nothing renders), the NEXT line — `queue[0]`, or the surface-announced
+// `primed` line — is synthesized into the cache. One prefetch at a time, joined (never raced)
+// by the line's own turn, so two syntheses never overlap and peak CPU stays exactly what a
+// single line costs — the whole point on the weak machines in scope.
+
+let prefetchCtl: AbortController | null = null;
+let prefetchKey: string | null = null;
+let prefetchPromise: Promise<void> | null = null;
+
+/** Best-effort synthesis of the next known line into the cache. Skipped entirely once playback
+ *  has ever outrun synthesis on this machine (no headroom to hide anything in), and before the
+ *  health probe has confirmed Kokoro (a doomed request would just 502-spam the console). */
+function prefetchNext(): void {
+  const next = queue[0] ?? primed;
+  if (!next) return;
+  if (streamUnderruns() > 0 || kokoroKnownAvailable() !== true) return;
+  // One speed read for BOTH the key and the request body — a slider drag between two reads
+  // would cache audio at one speed under the other speed's key.
+  const speed = getVoiceSpeed();
+  const key = pcmCacheKey(next.voice, speed, next.text);
+  if (pcmCacheHas(key) || prefetchKey === key) return;
+  prefetchCtl?.abort();
+  const ctl = new AbortController();
+  prefetchCtl = ctl;
+  prefetchKey = key;
+  prefetchPromise = (async () => {
+    try {
+      const res = await fetch('/tts/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'kokoro',
+          input: next.text,
+          voice: next.voice,
+          response_format: 'pcm',
+          speed,
+        }),
+        signal: ctl.signal,
+      });
+      if (res.ok) {
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        if (bytes.length) pcmCachePut(key, bytes);
+      }
+    } catch {
+      /* prefetch is best-effort — the line just synthesizes normally when its turn comes */
+    } finally {
+      if (prefetchCtl === ctl) {
+        prefetchCtl = null;
+        prefetchKey = null;
+        prefetchPromise = null;
+      }
+    }
+  })();
+}
+
 /**
- * Play one line. Tries the streaming PCM path first — it starts on the first audio chunk
- * (~hundreds of ms) instead of waiting for the whole clip to synthesize, so the voice keeps
- * pace with the streaming canvas. Streaming returns false only when it could not start and
- * nothing was heard; we then fall back to the whole-clip blob path below. Never throws.
+ * Announce the line that will be spoken NEXT, before it is queued. The reveal walk enqueues one
+ * stop at a time (stop N+1 only after stop N finished), so without this the prefetch would only
+ * ever see an empty queue between stops — exactly the dead-air it exists to hide. Fired
+ * immediately when the synthesizer is idle, otherwise picked up at the next idle moment.
+ * Overwritten by each newer prime; cleared on cancel and when the line becomes a real job.
+ */
+export function primeKokoroLine(text: string, who: Speaker): void {
+  const clean = pronounceForSpeech(sayable(text));
+  if (!clean) return;
+  primed = { text: clean, voice: VOICE[who] ?? VOICE.mavea };
+  if (!synthActive) prefetchNext();
+}
+
+/**
+ * Play one line. A cache hit (an earlier playthrough or the one-ahead prefetch) plays from
+ * memory — instant start, zero synthesis. A prefetch of this exact line still in flight is
+ * JOINED, never raced with a second synthesis. Otherwise the streaming PCM path — it starts on
+ * the first audio chunk (~hundreds of ms) instead of waiting for the whole clip to synthesize,
+ * so the voice keeps pace with the streaming canvas — caching the finished clip and kicking the
+ * next line's prefetch the moment its own synthesis (not playback) completes. Streaming returns
+ * false only when it could not start and nothing was heard; we then fall back to the whole-clip
+ * blob path below. Never throws.
  */
 async function playJob(job: Job): Promise<boolean> {
+  const speed = getVoiceSpeed();
+  const key = pcmCacheKey(job.voice, speed, job.text);
+  if (primed && primed.text === job.text) primed = null; // it's a real job now
   try {
-    if (await streamSpeak(job.text, job.voice, () => job.start(true))) return true;
+    let cached = pcmCacheGet(key);
+    if (!cached && prefetchKey === key && prefetchPromise) {
+      await prefetchPromise;
+      cached = pcmCacheGet(key);
+    }
+    if (cached) {
+      // No synthesis is running during cached playback — prefetch the next line immediately.
+      prefetchNext();
+      if (await playPcmBytes(cached, job.text, () => job.start(true))) return true;
+    }
+    // A prefetch for a DIFFERENT line must never run underneath this line's own synthesis.
+    if (prefetchCtl && prefetchKey !== key) {
+      prefetchCtl.abort();
+      prefetchCtl = null;
+      prefetchKey = null;
+      prefetchPromise = null;
+    }
+    synthActive = true;
+    try {
+      const streamed = await streamSpeak(
+        job.text,
+        job.voice,
+        () => job.start(true),
+        (pcm) => {
+          synthActive = false;
+          if (pcm) pcmCachePut(key, pcm);
+          prefetchNext();
+        },
+        speed,
+      );
+      if (streamed) return true;
+    } finally {
+      synthActive = false;
+    }
   } catch {
     /* fall through to the blob path */
   }
-  return playJobBlob(job);
+  synthActive = true;
+  try {
+    return await playJobBlob(job);
+  } finally {
+    synthActive = false;
+  }
 }
 
 /**
@@ -181,11 +316,32 @@ async function pump(): Promise<void> {
   pumping = true;
   try {
     while (queue.length) {
-      const job = queue.shift() as Job;
+      const raw = queue.shift() as Job;
+      // Track the synthesis window per line: pending from the moment work starts until the
+      // line first becomes audible (or definitively never will). This is what lets the UI say
+      // an honest "Preparing voice…" instead of a silent "Speaking" while Kokoro renders.
+      synthPending = true;
+      emitSpeakingChange();
+      const job: Job = {
+        ...raw,
+        start: (heard) => {
+          synthPending = false;
+          emitSpeakingChange();
+          raw.start(heard);
+        },
+      };
       // Gate every line on the cached health probe: when Kokoro is down, each spoken line
       // would otherwise fire two doomed requests (stream, then blob) — a long demo session
       // 502-spams the console dozens of times. Captions still show; lines just stay silent.
-      const ok = (await kokoroAvailable()) && (await playJob(job));
+      // The epoch checks close a cancel race: a hard-stop that lands while this job is between
+      // awaits (probe resolved, fetch not yet in flight) has nothing to abort — the job must
+      // notice it was cancelled and settle false rather than playing after the interrupt.
+      const epoch = cancelEpoch;
+      const ok =
+        (await kokoroAvailable()) &&
+        epoch === cancelEpoch &&
+        (await playJob(job)) &&
+        epoch === cancelEpoch;
       // Settle guarantee: whatever path the job took, `started` resolves (latched no-op when
       // playback already fired it) strictly before `finished` — a caller awaiting started can
       // never outlive the line.
@@ -252,8 +408,17 @@ export function speakKokoroResult(text: string, who: Speaker): Promise<boolean> 
 
 /** Stop the current clip and clear the queue, resolving every pending promise. */
 export function cancelKokoro(): void {
+  cancelEpoch++;
   // Stop any in-flight streaming clip (its own teardown rests the face energy).
   cancelActiveStream();
+  // A prefetch (or primed line) for speech the user just interrupted is work nobody will hear.
+  primed = null;
+  if (prefetchCtl) {
+    prefetchCtl.abort();
+    prefetchCtl = null;
+    prefetchKey = null;
+    prefetchPromise = null;
+  }
   // Abort an in-flight whole-clip fetch so its mp3 download stops and it can't create/play a
   // late object URL after we've already torn everything down below.
   if (currentFetch) {
@@ -282,6 +447,7 @@ export function cancelKokoro(): void {
   }
   revokeCurrentUrl();
   current = null;
+  synthPending = false; // nothing is being prepared for anyone anymore — say so immediately
   resetVoiceEnergy(); // a hard-stop should rest the face even if the clip's own release didn't fire
   emitSpeakingChange();
 }
@@ -289,6 +455,13 @@ export function cancelKokoro(): void {
 /** True while a Kokoro clip is playing or lines are queued (for waitForSpeech parity). */
 export function kokoroSpeaking(): boolean {
   return pumping || queue.length > 0 || current !== null;
+}
+
+/** True while the head line is still being SYNTHESIZED — engaged but not yet audible. The gap
+ *  the voice strip must call "Preparing", not "Speaking": on a slow machine it is seconds long,
+ *  and a pulsing "Speaking" pill over silence reads as broken sound. */
+export function kokoroSynthesizing(): boolean {
+  return pumping && synthPending;
 }
 
 /** Subscribe to true/false speaking transitions. No timer, no work while the queue is idle. */
