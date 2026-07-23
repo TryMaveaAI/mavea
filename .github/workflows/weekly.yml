@@ -26,8 +26,11 @@ jobs:
     # tree). A gate that can go red without a code change cannot be a per-push gate; as a weekly
     # sweep a marginal finding is a report to act on, not a blocked push.
     #
-    # Nothing ships unswept: release.yml runs this same gauntlet as a hard gate — keep its gate
-    # block mirrored with this one when either changes.
+    # NOTE: release.yml no longer re-runs this gauntlet as a release-time hard gate — it was
+    # re-proving what ci.yml + this weekly sweep already prove for a diff that's just a version
+    # bump. This weekly cadence is therefore the only place these checks run; a release can ship
+    # between sweeps without them re-confirming green. Formalize a real gate later if that gap
+    # matters more than the ~15min it was costing every release.
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
