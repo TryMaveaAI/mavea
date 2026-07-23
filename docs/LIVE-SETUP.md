@@ -61,7 +61,7 @@ verifies the key + model before you commit.
 
 Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural local TTS —
 the one service that runs in Docker. You don't normally start it yourself: `pnpm dev` brings the
-container up alongside Vite, and `pnpm preview` — the same server `npx mavea` runs — does the
+container up alongside Vite, and `pnpm preview` — the same server `npx @mavea/mavea` runs — does the
 same when serving the production build. Both proxy `/tts` to `localhost:8880` (override with
 `KOKORO_URL`).
 
@@ -118,7 +118,7 @@ flowchart TD
 ```
 
 All arrows go through the local same-origin proxy — Vite's in dev, the `pnpm preview` /
-`npx mavea` server for the production build — so the browser makes same-origin requests. The
+`npx @mavea/mavea` server for the production build — so the browser makes same-origin requests. The
 browser necessarily holds the BYOK credential the user entered, and the proxy can see it in transit;
 neither the app nor proxy logs or persists it. A production deploy must replicate the `/llm/*`
 (and, if used, `/tts`, `/stt`) proxies at the infrastructure level and secure that trust
@@ -144,9 +144,9 @@ the site. The composer surfaces the exact cause inline when it can.
 
 **Port conflicts**
 
-| Port | Service                                           | Override                        |
-| ---- | ------------------------------------------------- | ------------------------------- |
-| 5173 | Vite dev server                                   | `--port` flag on `pnpm dev`     |
-| 4173 | Production preview (`pnpm preview` / `npx mavea`) | `--port` flag or `PORT` env var |
-| 8880 | Kokoro TTS                                        | configure in `KOKORO_URL`       |
-| 8100 | Whisper STT                                       | configure in `WHISPER_URL`      |
+| Port | Service                                                  | Override                        |
+| ---- | -------------------------------------------------------- | ------------------------------- |
+| 5173 | Vite dev server                                          | `--port` flag on `pnpm dev`     |
+| 4173 | Production preview (`pnpm preview` / `npx @mavea/mavea`) | `--port` flag or `PORT` env var |
+| 8880 | Kokoro TTS                                               | configure in `KOKORO_URL`       |
+| 8100 | Whisper STT                                              | configure in `WHISPER_URL`      |

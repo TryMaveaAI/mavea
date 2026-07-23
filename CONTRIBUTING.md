@@ -72,7 +72,7 @@ the complete list).
 | `dev`     | Full local stack: brings up the Kokoro voice container, then Vite. Serves the app without voice (captions only) if Docker isn't running. |
 | `dev:web` | Vite alone, no voice container.                                                                                                          |
 | `build`   | Typecheck, then production build to `dist/`.                                                                                             |
-| `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx mavea` runs.                                                                  |
+| `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx @mavea/mavea` runs.                                                           |
 | `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                               |
 | `actions` | Starts the actions gateway (`:8910`) that proxies Live's confirm-to-execute actions (Calendar, Gmail, Slack, …) to third-party APIs.     |
 
@@ -353,7 +353,7 @@ reproduction is the fastest way to a fix.
 ## Troubleshooting
 
 **`pnpm install` fails — Node version mismatch**
-Mavéa requires Node ≥ 24.11 (the published `npx mavea` CLI runs on Node ≥ 20.19). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
+Mavéa requires Node ≥ 24.11 (the published `npx @mavea/mavea` CLI runs on Node ≥ 20.19). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
 
 **TypeScript errors after adding a block**
 Check that (a) the `Block` union or extended-block union includes the new type, (b) the canvas renderer handles the new `type` key, and (c) `canvas/blocks/index.ts` imports the new family.

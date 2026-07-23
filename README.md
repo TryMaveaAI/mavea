@@ -26,7 +26,7 @@ and evidence you can check, marking the exact figure each line is about.
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
 </p>
 
-**Try it in one command:** `npx mavea`
+**Try it in one command:** `npx @mavea/mavea`
 
 </div>
 
@@ -76,7 +76,7 @@ labels its estimates honestly.
 Just want to run it? All you need is **Node 20.19+**:
 
 ```sh
-npx mavea                # → http://localhost:4173 — tour + demo replays, no model key required
+npx @mavea/mavea                # → http://localhost:4173 — tour + demo replays, no model key required
 ```
 
 Working on the source? Use pnpm instead (`corepack enable` once to get the pinned version):
@@ -85,17 +85,17 @@ Working on the source? Use pnpm instead (`corepack enable` once to get the pinne
 pnpm install
 pnpm dev                  # → http://localhost:5173 — dev server, with voice
 pnpm build                # → dist/ — production build
-pnpm preview              # → http://localhost:4173 — serves dist/ exactly as npx mavea does, voice included
+pnpm preview              # → http://localhost:4173 — serves dist/ exactly as npx @mavea/mavea does, voice included
 ```
 
-| Command        | What it does                                                                                                                                                                                                                                                      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`     | Starts everything: brings up the Kokoro voice container, then Vite. If Docker isn't running, it says so and serves the app anyway — answers appear as captions instead of being spoken.                                                                           |
-| `pnpm dev:web` | Vite alone, no voice container. Faster to start if you don't need speech.                                                                                                                                                                                         |
-| `pnpm build`   | Type-checks, then produces the production bundle in `dist/`.                                                                                                                                                                                                      |
-| `pnpm preview` | Serves the `dist/` build with the exact server `npx mavea` runs: same-origin `/tts` + `/llm` proxies included, and it offers to bring up the Kokoro voice container when Docker is present. Without Docker it says so in one line and answers appear as captions. |
-| `pnpm test`    | Runs the Vitest suite once.                                                                                                                                                                                                                                       |
-| `pnpm verify`  | The full pre-PR gate: reference-example + gallery-fixture freshness → typecheck → lint → format check → test → build → bundle-size budget → artifact + package boundary checks. Run this before opening a PR.                                                     |
+| Command        | What it does                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`     | Starts everything: brings up the Kokoro voice container, then Vite. If Docker isn't running, it says so and serves the app anyway — answers appear as captions instead of being spoken.                                                                                  |
+| `pnpm dev:web` | Vite alone, no voice container. Faster to start if you don't need speech.                                                                                                                                                                                                |
+| `pnpm build`   | Type-checks, then produces the production bundle in `dist/`.                                                                                                                                                                                                             |
+| `pnpm preview` | Serves the `dist/` build with the exact server `npx @mavea/mavea` runs: same-origin `/tts` + `/llm` proxies included, and it offers to bring up the Kokoro voice container when Docker is present. Without Docker it says so in one line and answers appear as captions. |
+| `pnpm test`    | Runs the Vitest suite once.                                                                                                                                                                                                                                              |
+| `pnpm verify`  | The full pre-PR gate: reference-example + gallery-fixture freshness → typecheck → lint → format check → test → build → bundle-size budget → artifact + package boundary checks. Run this before opening a PR.                                                            |
 
 That's the everyday set. The rest of the scripts (linting, evals, one-off audits, internal tooling)
 are documented in full in [CONTRIBUTING.md](./CONTRIBUTING.md#scripts-reference).
@@ -135,7 +135,7 @@ left that you never think about any of it. Any browser in
 on macOS, Windows, or Linux.
 
 For reference, Mavéa itself asks for far less, and it's worth knowing which part costs what.
-`npx mavea` serves a static build and the work happens in your browser tab: the page it loads
+`npx @mavea/mavea` serves a static build and the work happens in your browser tab: the page it loads
 is 89 kB over the wire, and every surface becomes usable in under half a second on a CPU throttled
 6×. The toolchain is heavier and still modest — a production build peaks around 1.6 GB of memory and
 finishes in ~12 s, a full typecheck of all 2,200 TypeScript files peaks under 1 GB and takes ~3 s,

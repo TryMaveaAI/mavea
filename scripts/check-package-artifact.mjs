@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Pack exactly what npm would receive, then enforce the public CLI artifact boundary. This catches
 // regressions that a dist/ scan cannot: accidental source/test publication, production dependency
-// creep, and large optional voice models leaking back into every `npx mavea` install.
+// creep, and large optional voice models leaking back into every `npx @mavea/mavea` install.
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';

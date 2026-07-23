@@ -45,7 +45,7 @@ describe('production build and package-manager policy', () => {
 
   it('serves `pnpm preview` through the CLI server, not the proxy-less `vite preview`', () => {
     // Raw `vite preview` has no /tts or /llm/* forwarders, so voice and Live silently break on
-    // the production build — preview must stay on the same server `npx mavea` runs.
+    // the production build — preview must stay on the same server `npx @mavea/mavea` runs.
     const scripts = pkg.scripts as Record<string, string>;
     expect(scripts.preview).toBe('node bin/mavea.mjs');
   });
