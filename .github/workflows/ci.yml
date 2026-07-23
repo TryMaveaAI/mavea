@@ -27,10 +27,15 @@ permissions:
 # trailing comment; Dependabot bumps the SHA and the comment together.
 jobs:
   verify:
-    name: Lint · Typecheck · Build · Dead code · Dependency audit
+    name: Lint · Typecheck · Build
     # Merged with the old standalone "quality" job: both need the full dependency install anyway,
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
+    #
+    # knip, the license gate, and the vulnerability audit moved to weekly.yml: none of the three
+    # depend on THIS push's code — they drift with dependencies over time, not with each commit
+    # (a previously-clean package can grow a new CVE with zero code change here), so gating every
+    # push on them was the wrong cadence. Same reasoning already applied to the browser gauntlet.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -60,6 +65,17 @@ jobs:
           key: toolcache-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.js', 'tsconfig.json') }}-${{ github.sha }}
           restore-keys: |
             toolcache-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.js', 'tsconfig.json') }}-
+
+      # Vite/Vitest pre-bundles this project's dependency graph (openchemlib, pdfjs-dist,
+      # playwright, leaflet, katex, shiki, and the rest) from scratch on every cold invocation —
+      # measured at ~500s of FIXED cost paid identically whether one file or the whole suite runs,
+      # independent of node_modules/.cache above (that one covers eslint/tsc, not Vite's own
+      # optimizeDeps store). Shared across this job and every test shard below via the same key.
+      - name: Restore Vite dependency pre-bundle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.vite
+          key: vite-deps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
 
       - name: Typecheck
         run: pnpm typecheck
@@ -96,15 +112,6 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      - name: Dead code / unused deps (knip)
-        run: pnpm knip
-      - name: License gate (commercial-resale-safe deps only)
-        run: pnpm check:licenses
-      - name: Dependency vulnerability audit
-        # npm retired the legacy endpoints used by this pnpm line. Query OSV's maintained batch
-        # API against every exact package version in the installed graph instead.
-        run: pnpm check:vulnerabilities
-
   # Split out of `verify` into its own sharded job: ubuntu-latest runners are 2 vCPU / 7GB, which
   # caps the in-process worker pool hard regardless of per-file speedups. Four shards across four
   # separate runners cuts wall-clock roughly 4x for the same total compute — each shard pays its
@@ -132,6 +139,16 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
+
+      # Same fixed-cost problem as the verify job above, paid by EVERY shard independently — this
+      # is why all 4 shards took ~10-11min despite each running only 1/4 of the files. Restoring
+      # the same cache key here lets a shard reuse whichever shard (or the verify job) populated
+      # it first; on a cache hit this collapses most of that fixed cost to near zero.
+      - name: Restore Vite dependency pre-bundle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.vite
+          key: vite-deps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
 
       - name: Test (shard ${{ matrix.shard }}/4)
         run: pnpm test -- --shard=${{ matrix.shard }}/4
