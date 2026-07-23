@@ -68,17 +68,19 @@ describe('sectionFrames', () => {
   });
 
   it('three real topic changes make three sections, in order', () => {
+    // Real pivots use different vocabulary — a shared generic word ("topic") would honestly
+    // read as related, so the fixture speaks like actual asks do.
     const frames = [
-      frame('Topic A', 'replace'),
-      frame('Topic B', 'replace'),
-      frame('More on B', 'augment'),
-      frame('Topic C', 'replace'),
+      frame('How do eigenvalues work?', 'replace'),
+      frame('Best espresso beans to buy?', 'replace'),
+      frame('More on the beans', 'augment'),
+      frame('Plan a weekend in Lisbon', 'replace'),
     ];
     const sections = sectionFrames(frames);
     expect(sections.map((s) => s.map((f) => f.question))).toEqual([
-      ['Topic A'],
-      ['Topic B', 'More on B'],
-      ['Topic C'],
+      ['How do eigenvalues work?'],
+      ['Best espresso beans to buy?', 'More on the beans'],
+      ['Plan a weekend in Lisbon'],
     ]);
   });
 

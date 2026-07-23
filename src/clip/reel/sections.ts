@@ -11,18 +11,20 @@
 // continuation turn (the window's oldest frame happens to be a follow-up) still gets a home
 // instead of an orphan section.
 import type { TurnFrame } from '../../live/history';
-import { opensNewSubject } from '../../live/semantic/threads';
+import { threadStarts } from '../../live/semantic/threads';
 import { clampText, SLOT_BUDGET } from './reelScript';
 
-/** Partition frames into topic runs, in order. Length 1 for the common single-topic conversation —
- *  every caller must treat that as the plain, unsectioned reel (no title beyond the first). */
+/** Partition frames into topic runs, in order — the SAME boundary the session rail chapters on
+ *  (threadStarts' lexical path; the reel renders offline, so no embedder vectors here). Length 1
+ *  for the common single-topic conversation — every caller must treat that as the plain,
+ *  unsectioned reel (no title beyond the first). */
 export function sectionFrames(frames: readonly TurnFrame[]): TurnFrame[][] {
   const sections: TurnFrame[][] = [];
-  for (const frame of frames) {
-    const startsSection = sections.length === 0 || opensNewSubject(frame);
-    if (startsSection) sections.push([frame]);
+  const starts = threadStarts(frames, null);
+  frames.forEach((frame, i) => {
+    if (sections.length === 0 || starts[i]) sections.push([frame]);
     else sections[sections.length - 1].push(frame);
-  }
+  });
   return sections;
 }
 

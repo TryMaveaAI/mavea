@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveMode,
   topicOverlap,
+  topicCohesion,
   likelyFollowUp,
   diffBlocks,
   blockSignature,
   mergeForMode,
   AUGMENT_CAP,
+  SAME_SUBJECT_FLOOR,
   type TurnSnapshot,
 } from '../src/live/lifecycle';
 import { validateLiveResponse } from '../src/engine/liveSchema';
@@ -57,6 +59,39 @@ describe('resolveMode', () => {
     expect(resolveMode(prior, next, 'augment', 'frontier')).toBe('augment');
     // No guidance + low overlap → treat as a new topic and clear.
     expect(resolveMode(prior, next, undefined, 'frontier')).toBe('replace');
+  });
+});
+
+describe('topicCohesion — same subject survives a full rewording; a pivot does not', () => {
+  // Realistic turns: verbose answers about ONE subject share almost no sentence structure but
+  // keep re-mentioning the subject vocabulary. Jaccard reads these pairs as unrelated (the
+  // union of two long texts swamps the quotient) — the whole reason cohesion exists.
+  const tokyoPlan = snap(
+    'three days in tokyo, food first',
+    'Here is a three day Tokyo itinerary built around food — Tsukiji market mornings, ramen in Shinjuku, and a sushi splurge to finish.',
+    'Tokyo: A 3-Day Culinary Journey',
+  );
+  const tokyoPlanIt = snap(
+    'plan it',
+    'Day one covers Asakusa street snacks, day two is Shibuya and Harajuku eats, and day three ends with omakase in Ginza — the full Tokyo food plan.',
+    'Tokyo: A 3-Day Foodie Itinerary',
+  );
+  const bitcoin = snap(
+    'how does bitcoin work',
+    'Bitcoin is a decentralized ledger — miners verify transactions and the network agrees on one shared history.',
+    'How Bitcoin Works',
+  );
+
+  it('holds above the floor for a reworded same-subject pair the Jaccard check calls unrelated', () => {
+    expect(topicOverlap(tokyoPlan, tokyoPlanIt)).toBeLessThan(0.15);
+    expect(topicCohesion(tokyoPlan, tokyoPlanIt)).toBeGreaterThanOrEqual(SAME_SUBJECT_FLOOR);
+  });
+
+  it('stays below the floor for a genuine pivot', () => {
+    expect(topicCohesion(tokyoPlanIt, bitcoin)).toBeLessThan(SAME_SUBJECT_FLOOR);
+    expect(topicCohesion(tokyoPlan, snap('how should i budget my monthly money'))).toBeLessThan(
+      SAME_SUBJECT_FLOOR,
+    );
   });
 });
 

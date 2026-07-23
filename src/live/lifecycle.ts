@@ -106,7 +106,7 @@ const STOPWORDS: ReadonlySet<string> = new Set([
 ]);
 
 /** Lowercased, stopword-free, length≥2 word set — the topic fingerprint of some text. */
-function topicTokens(text: string): Set<string> {
+export function topicTokens(text: string): Set<string> {
   const out = new Set<string>();
   for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
     if (raw.length >= 2 && !STOPWORDS.has(raw)) out.add(raw);
@@ -123,10 +123,34 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / (a.size + b.size - inter);
 }
 
+const snapText = (s: TurnSnapshot): string => `${s.question} ${s.narration} ${s.title}`;
+
 /** How much two turns are about the same thing (their question + narration + title). */
 export function topicOverlap(prior: TurnSnapshot, next: TurnSnapshot): number {
-  const text = (s: TurnSnapshot) => `${s.question} ${s.narration} ${s.title}`;
-  return jaccard(topicTokens(text(prior)), topicTokens(text(next)));
+  return jaccard(topicTokens(snapText(prior)), topicTokens(snapText(next)));
+}
+
+/** Below this cohesion two consecutive turns are genuinely different SUBJECTS. Tuned against
+ *  realistic pairs (see live-lifecycle tests): same-subject answers in different words land
+ *  ~0.2–0.6 (the subject nouns recur even when everything else changes), a real pivot
+ *  ~0.0–0.1 (only conversational filler survives the stopword strip) — the band holds. */
+export const SAME_SUBJECT_FLOOR = 0.15;
+
+/**
+ * How much two turns share a SUBJECT: the fraction of the smaller turn's topic vocabulary
+ * contained in the larger's (the overlap coefficient). This is deliberately NOT Jaccard:
+ * two verbose, differently-worded answers about one subject grow the union until the Jaccard
+ * quotient reads "unrelated", while their shared subject vocabulary (the place, the food, the
+ * names) is still all there — containment of the smaller set is what "same subject" means.
+ */
+export function topicCohesion(prior: TurnSnapshot, next: TurnSnapshot): number {
+  const a = topicTokens(snapText(prior));
+  const b = topicTokens(snapText(next));
+  if (a.size === 0 || b.size === 0) return a.size === b.size ? 1 : 0;
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+  let inter = 0;
+  for (const t of small) if (large.has(t)) inter++;
+  return inter / small.size;
 }
 
 /** Words that ask to keep going rather than name a subject — the vocabulary of "more please".

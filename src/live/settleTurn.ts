@@ -4,7 +4,14 @@
 // corpus baker (scripts/build-demo-corpus.mts) settles baked turns through EXACTLY the code
 // the live surface runs — a replayed demo can never drift from what a real session shows.
 import type { Block, ConversationSpec } from '../data/conversation';
-import { resolveMode, mergeForMode, type Mode, type TurnSnapshot } from './lifecycle';
+import {
+  resolveMode,
+  mergeForMode,
+  topicCohesion,
+  SAME_SUBJECT_FLOOR,
+  type Mode,
+  type TurnSnapshot,
+} from './lifecycle';
 import { remapTour } from './tourRemap';
 import type { TurnFrame } from './history';
 import type { LiveResult } from './generateLive';
@@ -42,11 +49,18 @@ export function settleTurn(
     title: result.spec.title,
     blockTypes: result.spec.blocks.map((b) => b.type),
   };
-  // The turn's TOPIC relation, decided from the full answer and the model's own continuity
+  // The turn's canvas relation, decided from the full answer and the model's own continuity
   // hint. Kept separate from the render mode below: a streamed turn must RENDER as a replace
-  // (it already revealed a fresh canvas), and an overcrowded augment falls back to one — but
-  // neither makes it a new SUBJECT, and the session rail chapters on subject, not render path.
+  // (it already revealed a fresh canvas), and an overcrowded augment falls back to one.
   const naturalMode = resolveMode(prior, snap, result.continuity, result.tier);
+  // The SUBJECT boundary the session rail chapters on. The canvas hint is not the subject: a
+  // model may legitimately ask to REPLACE the canvas for a fresh take on the same thread
+  // ("plan it" after an itinerary), or omit the hint entirely (smaller models often do) — and
+  // Jaccard between two verbose, differently-worded answers about one subject reads as
+  // unrelated, which is how every Tokyo follow-up once became its own chapter. So a replace
+  // only opens a new subject when the two turns' vocabulary genuinely moved on.
+  const topicShift =
+    !prior || (naturalMode === 'replace' && topicCohesion(prior, snap) < SAME_SUBJECT_FLOOR);
   let mode: Mode = opts?.forceReplace ? 'replace' : naturalMode;
   let merge = mergeForMode(priorBlocks, result.spec.blocks, mode);
   if (mode !== 'replace' && merge.overflow) {
@@ -70,7 +84,7 @@ export function settleTurn(
     narration: result.narration,
     ...(result.spoken ? { spoken: result.spoken } : {}),
     mode,
-    topicShift: naturalMode === 'replace',
+    topicShift,
     tour,
     spec: renderedSpec,
     at: Date.now(),

@@ -30,8 +30,22 @@ describe('needsLiveData — games and scores in either order', () => {
   });
 });
 
-describe('needsFreshInfo — the games/scores ask searches at all', () => {
+describe('needsFreshInfo — time-sensitive asks open the search gate broadly, not per-league', () => {
   it('opens the search gate for the undated scores ask', () => {
     expect(needsFreshInfo('tell me the mlb games and the scores')).toBe(true);
+  });
+
+  it('covers the common time-sensitive shapes (each also gets the date-anchor prompt line)', () => {
+    for (const ask of [
+      'nba scores',
+      'premier league fixtures',
+      'weather in seattle',
+      'bitcoin price',
+      'latest ai news',
+      'nvidia stock',
+      "who's playing tonight",
+    ]) {
+      expect(needsFreshInfo(ask), ask).toBe(true);
+    }
   });
 });
