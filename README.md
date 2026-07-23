@@ -28,11 +28,32 @@ and evidence you can check, marking the exact figure each line is about.
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
 </p>
 
-**Try it in one command:** `npx @mavea/mavea`
+```sh
+npx @mavea/mavea
+```
+
+Opens `http://localhost:4173` — no install, no account, no model key required.
 
 </div>
 
 ---
+
+## Get started
+
+All you need is **Node 20.19+**. That command above opens the tour and demo replays immediately
+— nothing else to set up.
+
+**To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
+Gemini / Grok / OpenRouter key. It stays in memory unless you opt into encrypted local
+remembering, and each provider request carries it through your same-origin proxy to that
+provider — your key and prompts never pass through Mavéa's own servers, because there aren't
+any. Full options — models, actions, hosting, and the trust boundary — are in
+[docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
+
+**The voice:** Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural
+local text-to-speech model that runs in Docker. The first time you start it, Mavéa offers to set
+Docker up for you; without it, every line just appears as a caption instead — nothing else
+changes.
 
 ## What it does
 
@@ -66,29 +87,6 @@ is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
   model output.
 - **Live** — bring your own model (Anthropic, OpenAI, Gemini, xAI Grok, or OpenRouter) and ask
   anything by voice or text, answered on the same canvas.
-
-## Get started
-
-All you need is **Node 20.19+**:
-
-```sh
-npx @mavea/mavea
-```
-
-That opens `http://localhost:4173` — the tour and demo replays work immediately, no model key
-required.
-
-**To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
-Gemini / Grok / OpenRouter key. It stays in memory unless you opt into encrypted local
-remembering, and each provider request carries it through your same-origin proxy to that
-provider — your key and prompts never pass through Mavéa's own servers, because there aren't
-any. Full options — models, actions, hosting, and the trust boundary — are in
-[docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
-
-**The voice:** Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural
-local text-to-speech model that runs in Docker. The first time you start it, Mavéa offers to set
-Docker up for you; without it, every line just appears as a caption instead — nothing else
-changes.
 
 ## What it needs
 
