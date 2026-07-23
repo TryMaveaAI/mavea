@@ -79,15 +79,6 @@ A few specific things worth trying:
 The full tour — Atlas, Rehearsal, living dashboards, Ripple, Share-as-a-Mavéa-Story, and ~30 more —
 is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
-## Two ways in
-
-- **Demo replays** — recorded persona sessions (for example, a CFO reviewing her quarter or a
-  parent planning dinner). Each answer was generated once by a real model and frozen; it replays
-  on the same Live surface, without a key. The characters are fictional; the answers are real
-  model output.
-- **Live** — bring your own model (Anthropic, OpenAI, Gemini, xAI Grok, or OpenRouter) and ask
-  anything by voice or text, answered on the same canvas.
-
 ## What it needs
 
 Mavéa runs on your machine, not in a cloud.
