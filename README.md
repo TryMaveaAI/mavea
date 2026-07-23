@@ -111,26 +111,6 @@ roughly 1.3 GB resident, and Docker Desktop itself adds another ~1.5 GB before a
 At the 8 GB minimum, leaving voice off is usually the better trade — every line becomes a caption
 and nothing else changes. `docker compose down` reclaims it whenever you want it back.
 
-## Documentation
-
-| Doc                                        | What's in it                                                 |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| [docs/FEATURES.md](./docs/FEATURES.md)     | The detailed product feature tour                            |
-| [docs/LIVE-SETUP.md](./docs/LIVE-SETUP.md) | Running Live: models, voice, actions, troubleshooting        |
-| [docs/BENCHMARK.md](./docs/BENCHMARK.md)   | The eval as a benchmark — score any model, leaderboard       |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)       | How Mavéa is built: the turn lifecycle, stack, and the seams |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)       | Maintainer setup, scripts, conventions, and feedback rules   |
-| [SECURITY.md](./SECURITY.md)               | The BYOK security model and how to report a vulnerability    |
-| [TERMS.md](./TERMS.md)                     | Terms for using the software and connected features          |
-| [PRIVACY.md](./PRIVACY.md)                 | Local, provider, proxy, storage, and transfer data flows     |
-| [DISCLAIMER.md](./DISCLAIMER.md)           | Plain-language AI and third-party risk summary               |
-
-## Feedback
-
-Issues with code-free bug reports and feature suggestions are welcome. This repository does not
-accept external code, patch, or documentation pull requests; see
-[CONTRIBUTING.md](./CONTRIBUTING.md) for the maintainer workflow and feedback rules.
-
 ## 📄 License
 
 Mavéa is **source-available under the
