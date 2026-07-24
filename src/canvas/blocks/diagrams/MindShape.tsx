@@ -8,6 +8,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Presence } from '../../../presence/Presence';
 import { useSpatialCanvas } from '../../spatial/useSpatialCanvas';
+// Both sheets ride with the COMPONENT, never with the diagrams registry: the live Watch Me
+// Think overlay and the read-only viewer mount MindShape directly, without the answer-block
+// chunk — when the base rules lived in the registry's styles.css they never loaded there and
+// the whole surface rendered as raw unstyled HTML.
+import './mindshape.css';
 import './mindshape-world.css';
 import type {
   MindAtom,

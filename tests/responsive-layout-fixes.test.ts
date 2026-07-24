@@ -153,7 +153,7 @@ describe('Watch Me Think action bar wraps instead of overflowing', () => {
     // A settled map with a hero tension can show Answer/Plan/That's it/Add more/Not quite at
     // once; without flex-wrap that row overflows sideways past the canvas on any narrow card
     // instead of the bar growing a second line.
-    const css = read('src/canvas/blocks/diagrams/styles.css');
+    const css = read('src/canvas/blocks/diagrams/mindshape.css');
     const rule = css.match(/^\.ms-actions\s*\{[^}]*\}/m);
     expect(rule).not.toBeNull();
     expect(rule![0]).toContain('flex-wrap: wrap');
