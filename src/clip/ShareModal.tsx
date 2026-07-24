@@ -20,10 +20,8 @@ import { ReelPlayer } from './reel/ReelPlayer';
 import { buildReelFallback, generateReel, reseedFinishes } from './reel/director';
 import {
   renderReelAudio,
-  bufferToStream,
   makePreviewAudio,
   type ReelAudio,
-  type ReelAudioStream,
   type ReelPreviewAudio,
 } from './reel/audioTrack';
 import { PALETTES } from './reel/palette';
@@ -133,7 +131,9 @@ export function ShareModal({
 
   const frameElRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<StoryRecorder | null>(null);
-  const audioRef = useRef<ReelAudioStream | null>(null);
+  // The narration, rendered offline into one clean buffer — handed to the recorder as data (it
+  // muxes it deterministically), never replayed through a realtime stream on this path.
+  const audioRef = useRef<AudioBuffer | null>(null);
   const recTimingsRef = useRef<number[] | undefined>(undefined);
   const actionRef = useRef<'share' | 'download'>('share');
   const qualityRef = useRef<ClipQuality>('high');
@@ -156,12 +156,14 @@ export function ShareModal({
   );
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  // Below ~760px the side-by-side modal crushes the preview, so it stacks into one column. Tracked via
-  // a media query so rotating the device re-flows it.
+  // Below ~820px the side-by-side modal crushes the preview, so it stacks into one column. Tracked
+  // via a media query so rotating the device re-flows it. Matches the CSS stacking breakpoint
+  // exactly — a 760/820 split once left a band where the CSS reversed columns while the JS still
+  // laid out a row.
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(max-width: 760px)');
+    const mq = window.matchMedia('(max-width: 820px)');
     const apply = () => setNarrow(mq.matches);
     apply();
     mq.addEventListener('change', apply);
@@ -316,7 +318,6 @@ export function ShareModal({
   const cleanupExport = useCallback((next: Phase = 'idle') => {
     recorderRef.current?.cancel();
     recorderRef.current = null;
-    audioRef.current?.stop();
     audioRef.current = null;
     recTimingsRef.current = undefined;
     setRecording(false);
@@ -335,7 +336,7 @@ export function ShareModal({
     const narrationMs = (recTimingsRef.current ?? []).reduce((a, ms) => a + ms, 0);
     void startStoryRecording({
       el: frameElRef.current,
-      audioStream: audioRef.current?.stream ?? null,
+      audioBuffer: audioRef.current,
       aspect,
       quality: qualityRef.current,
       maxDurationMs: narrationMs ? narrationMs + 900 : undefined,
@@ -346,7 +347,6 @@ export function ShareModal({
           return;
         }
         recorderRef.current = r;
-        audioRef.current?.start();
         setRecPlaying(true);
       })
       .catch(() => {
@@ -380,7 +380,7 @@ export function ShareModal({
           audioCacheRef.current = { sig, ...audio };
           const { buffer, timings, missing } = audio;
           recTimingsRef.current = timings;
-          audioRef.current = buffer ? bufferToStream(buffer) : null;
+          audioRef.current = buffer;
           // Be honest if a line or two couldn't be voiced — the clip still includes the ones that did.
           if (missing > 0)
             toast(

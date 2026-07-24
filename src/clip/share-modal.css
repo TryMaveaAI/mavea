@@ -262,12 +262,16 @@
 }
 
 .shm-stage {
-  flex: 0 0 auto;
+  /* Must be allowed to SHRINK: a fixed stage next to the 480px control panel is how the
+     Landscape frame once crushed the controls to a ~150px sliver on 14-inch screens. */
+  flex: 0 1 auto;
+  min-width: 0;
   display: grid;
   place-items: center;
 }
 .shm-frame {
   position: relative;
+  min-width: 0;
   overflow: hidden;
   box-shadow:
     0 40px 120px -28px #000,
@@ -296,7 +300,12 @@
   border-radius: 28px;
 }
 .shm-frame[data-aspect='16:9'] {
-  width: min(66vw, 880px);
+  /* Capped so the full-width control panel still fits beside it inside the 1100px modal:
+     1100 − 72px gap − 480px panel ≈ 548. The old min(66vw, 880px) monopolized the row on a
+     14-inch laptop and crushed the controls into a wrapped ribbon. Height-guarded too, so a
+     short landscape window never pushes the frame past the viewport. */
+  width: min(48vw, 548px);
+  max-height: min(70vh, 640px);
   aspect-ratio: 16 / 9;
   border-radius: 22px;
 }
