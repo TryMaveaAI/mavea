@@ -13,6 +13,8 @@ import type { ClipQuality } from '../src/clip/types';
 
 /** Frames handed to the muxer by the MP4 path: [timestamp, duration], in seconds. */
 const mp4 = vi.hoisted(() => ({ added: [] as [number, number][], finalized: 0 }));
+/** Audio buffers handed to the deterministic mux (never a realtime stream on the MP4 path). */
+const aud = vi.hoisted(() => ({ added: [] as unknown[], closed: 0 }));
 
 vi.mock('modern-screenshot', () => ({
   // A rasterized snapshot is just a source image to the recorder — a bare {width,height} stands in.
@@ -35,14 +37,20 @@ vi.mock('mediabunny', () => {
     }
     cancel(): void {}
   }
+  class AudioBufferSource {
+    async add(buffer: unknown): Promise<void> {
+      aud.added.push(buffer);
+    }
+    close(): void {
+      aud.closed++;
+    }
+  }
   return {
     CanvasSource,
     Output,
     Mp4OutputFormat: class {},
     BufferTarget: class {},
-    MediaStreamAudioTrackSource: class {
-      errorPromise = Promise.resolve();
-    },
+    AudioBufferSource,
     canEncodeVideo: async () => true,
   };
 });
@@ -93,6 +101,8 @@ const stage = (): HTMLElement => {
 beforeEach(() => {
   mp4.added = [];
   mp4.finalized = 0;
+  aud.added = [];
+  aud.closed = 0;
   toBlob.mockClear();
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     fillStyle: '',
@@ -121,7 +131,7 @@ describe('startStoryRecording — MP4 path (WebCodecs + mediabunny)', () => {
   it('never encodes the poster inside the frame loop, and stamps the first frame at zero', async () => {
     const rec = await startStoryRecording({
       el: stage(),
-      audioStream: null,
+      audioBuffer: null,
       aspect: '9:16',
       // Past the ≈1.2s mark where the poster is banked, so a poster encode in the loop would show up.
       maxDurationMs: 1500,
@@ -142,13 +152,32 @@ describe('startStoryRecording — MP4 path (WebCodecs + mediabunny)', () => {
     const stamps = mp4.added.map(([t]) => t);
     expect([...stamps].sort((a, b) => a - b)).toEqual(stamps);
   }, 15_000);
+
+  it('muxes the narration buffer deterministically — whole, once, then closed', async () => {
+    // The choppy-export bug: the offline-rendered narration used to be REPLAYED through a
+    // realtime MediaStream and re-captured while the rasterizer saturated the main thread,
+    // dropping samples into the file. The buffer must be handed to the encoder as data.
+    const buffer = { duration: 3.2 } as unknown as AudioBuffer;
+    const rec = await startStoryRecording({
+      el: stage(),
+      audioBuffer: buffer,
+      aspect: '9:16',
+      maxDurationMs: 120,
+    });
+    await new Promise((r) => setTimeout(r, 200));
+    const clip = await rec.stop();
+
+    expect(aud.added).toEqual([buffer]); // the whole buffer, exactly once
+    expect(aud.closed).toBe(1); // and the track was closed so finalize can trim cleanly
+    expect(clip.hasAudio).toBe(true);
+  }, 10_000);
 });
 
 describe('startStoryRecording — MediaRecorder fallback (no WebCodecs)', () => {
   it('still resolves stop() when the duration cap already stopped the recorder', async () => {
     const rec = await startStoryRecording({
       el: stage(),
-      audioStream: null,
+      audioBuffer: null,
       aspect: '9:16',
       // So short the paint loop stops the recorder itself, long before the caller asks it to. 'stop'
       // then fires once, before stop() is ever called — the exact shape that used to hang forever.
@@ -163,7 +192,7 @@ describe('startStoryRecording — MediaRecorder fallback (no WebCodecs)', () => 
   }, 10_000);
 
   it('cancel() releases the stream without producing a clip', async () => {
-    const rec = await startStoryRecording({ el: stage(), audioStream: null, aspect: '1:1' });
+    const rec = await startStoryRecording({ el: stage(), audioBuffer: null, aspect: '1:1' });
     await new Promise((r) => setTimeout(r, 60));
     expect(() => rec.cancel()).not.toThrow();
   });

@@ -213,9 +213,20 @@ describe('reel director — what survives the slide budget', () => {
   });
 
   it('keeps a many-topic session inside the reel ceiling, covering the freshest topics', () => {
-    const frames = Array.from({ length: 8 }, (_, i) =>
-      frame(`Topic ${i} question?`, `Answer about topic ${i}, in one line.`, [], 'replace'),
-    );
+    // Eight genuinely DISTINCT subjects — real pivots use different vocabulary, and the section
+    // boundary now reads meaning-bearing words ("Topic 0…Topic 7" fixtures share their only
+    // content token, which honestly reads as one subject).
+    const TOPICS: [string, string][] = [
+      ['Eigenvalues', 'They scale the axes a transformation stretches.'],
+      ['Espresso', 'Grind finer until the shot runs thirty seconds.'],
+      ['Kyoto', 'Temples cluster along the eastern Higashiyama hills.'],
+      ['Marathons', 'Negative splits beat even pacing for most runners.'],
+      ['Sourdough', 'A lively starter doubles within six hours of feeding.'],
+      ['Chess', 'Control the center before developing the flank pieces.'],
+      ['Auroras', 'Solar wind electrons excite oxygen into green light.'],
+      ['Tidepools', 'Barnacles zone themselves by tolerance for drying out.'],
+    ];
+    const frames = TOPICS.map(([t, a]) => frame(`${t} question?`, a, [], 'replace'));
     const reel = buildReelFallback(frames);
     // Eight topics used to recut into a 25-slide, multi-minute "reel"; the ceiling is the ceiling.
     expect(reel.slides.length).toBeLessThanOrEqual(6);
@@ -223,13 +234,13 @@ describe('reel director — what survives the slide budget', () => {
     expect(titles.length).toBeGreaterThanOrEqual(1);
     // The topics it carries are the ones the user just explored — and the part chips count only those.
     const questions = titles.map((t) => (t.slots as { question: string }).question);
-    expect(questions[questions.length - 1]).toContain('Topic 7');
+    expect(questions[questions.length - 1]).toContain('Tidepools');
     for (const t of titles) {
       const part = (t.slots as { part?: { count: number } }).part;
       if (part) expect(part.count).toBe(titles.length);
     }
     // And the reel is ABOUT what's in it — its question comes from a covered turn, not a dropped one.
-    expect(reel.question).not.toContain('Topic 0');
+    expect(reel.question).not.toContain('Eigenvalues');
   });
 });
 

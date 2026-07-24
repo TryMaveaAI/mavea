@@ -20,4 +20,21 @@ describe('ShareModal production styling contract', () => {
     expect(scrim).toMatch(/height:\s*100dvh/);
     expect(scrim).toMatch(/scrollbar-gutter:\s*stable both-edges/);
   });
+
+  it('the Landscape frame leaves room for the control panel beside it (the 14-inch crush)', () => {
+    // The modal caps at 1100px with a 480px panel and ~72px gap; a landscape frame wider than
+    // ~548px monopolizes the row and wraps the controls into a ragged sliver. The width cap and
+    // the stage's ability to shrink are both load-bearing.
+    const landscape = shareModalCss.match(/\[data-aspect='16:9'\]\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    const cap = Number(landscape.match(/width:\s*min\([^,]+,\s*(\d+)px\)/)?.[1] ?? Infinity);
+    expect(cap).toBeLessThanOrEqual(560);
+    const stage = shareModalCss.match(/\.shm-stage\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    expect(stage).toMatch(/flex:\s*0\s+1\s+auto/);
+    expect(stage).toMatch(/min-width:\s*0/);
+  });
+
+  it('the JS stacking breakpoint matches the CSS one (no reversed-column band)', () => {
+    const cssBreak = shareModalCss.match(/@media\s*\(max-width:\s*(\d+)px\)/)?.[1];
+    expect(shareModalSource).toContain(`(max-width: ${cssBreak}px)`);
+  });
 });

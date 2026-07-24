@@ -12,6 +12,7 @@
 // a clip, never weighing down the eager bundle.
 import type * as Mediabunny from 'mediabunny';
 import type * as ModernScreenshot from 'modern-screenshot';
+import { bufferToStream } from './reel/audioTrack';
 import type { ClipAspect, ClipQuality, ClipResult } from './types';
 
 /** Quality tiers → frame rate CEILING + video bitrate (bps). 30 fps keeps the offscreen rasterizer
@@ -38,7 +39,7 @@ type MediabunnyRuntime = Pick<
   | 'Mp4OutputFormat'
   | 'BufferTarget'
   | 'CanvasSource'
-  | 'MediaStreamAudioTrackSource'
+  | 'AudioBufferSource'
   | 'canEncodeVideo'
 >;
 
@@ -52,7 +53,7 @@ async function loadMediabunny(): Promise<MediabunnyRuntime | null> {
       Mp4OutputFormat,
       BufferTarget,
       CanvasSource,
-      MediaStreamAudioTrackSource,
+      AudioBufferSource,
       canEncodeVideo,
     } = await import('mediabunny');
     return {
@@ -60,7 +61,7 @@ async function loadMediabunny(): Promise<MediabunnyRuntime | null> {
       Mp4OutputFormat,
       BufferTarget,
       CanvasSource,
-      MediaStreamAudioTrackSource,
+      AudioBufferSource,
       canEncodeVideo,
     };
   } catch {
@@ -104,9 +105,11 @@ export interface StoryRecorder {
 export interface StartOpts {
   /** The stage frame to rasterize, read fresh each frame as it animates. */
   el: HTMLElement;
-  /** Narration as a MediaStream — the reel renders its whole voiceover to one buffer up front and
-   *  plays it into this stream, so the muxed track is complete and in sync (null = silent clip). */
-  audioStream: MediaStream | null;
+  /** The narration, fully rendered offline into one clean buffer (null = silent clip). Muxed
+   *  DETERMINISTICALLY on the MP4 path — never replayed through a realtime stream, which used to
+   *  drop samples whenever the rasterizer saturated the main thread (the choppy exported audio
+   *  on slower machines). */
+  audioBuffer: AudioBuffer | null;
   aspect: ClipAspect;
   /** Quality tier (fps + bitrate). Defaults to 'high'. `fps` overrides the tier's frame rate. */
   quality?: ClipQuality;
@@ -124,7 +127,6 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
   const tier = QUALITY[opts.quality ?? 'high'];
   const fps = opts.fps ?? tier.fps;
   const { w, h } = DIMS[opts.aspect];
-  const audioTrack = opts.audioStream?.getAudioTracks()[0] ?? null;
 
   const screenshot = await loadScreenshot();
   if (!screenshot) throw new Error('rasterizer-unavailable');
@@ -211,15 +213,26 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     });
     const videoSource = new MB.CanvasSource(canvas, { codec: 'avc', bitrate: tier.bitrate });
     output.addVideoTrack(videoSource);
-    if (audioTrack) {
-      const audioSource = new MB.MediaStreamAudioTrackSource(audioTrack, {
-        codec: 'aac',
-        bitrate: 192e3,
-      });
-      audioSource.errorPromise.catch(() => {});
+    // The narration buffer is muxed deterministically, decoupled from wall-clock and from the
+    // rasterization loop — the same guarantee the video path gets from timestamped add() calls.
+    // (The realtime MediaStream capture it replaces pulled samples on the main thread while
+    // domToCanvas saturated it, and every dropped pull baked a gap into the exported track.)
+    let feedAudio: (() => Promise<void>) | null = null;
+    if (opts.audioBuffer) {
+      const audioSource = new MB.AudioBufferSource({ codec: 'aac', bitrate: 192e3 });
       output.addAudioTrack(audioSource);
+      const buffer = opts.audioBuffer;
+      feedAudio = async () => {
+        try {
+          await audioSource.add(buffer);
+          audioSource.close();
+        } catch {
+          /* output cancelled before the track finished — nothing to release */
+        }
+      };
     }
     await output.start();
+    void feedAudio?.();
 
     let running = true;
     let firstFrame = true;
@@ -259,7 +272,6 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
 
     const teardown = (): void => {
       running = false;
-      audioTrack?.stop();
       canvas.width = canvas.height = 0;
       posterCanvas.width = posterCanvas.height = 0;
     };
@@ -276,7 +288,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
           blob,
           type: 'video/mp4',
           poster,
-          hasAudio: !!audioTrack,
+          hasAudio: !!opts.audioBuffer,
           durationMs: Math.round(performance.now() - t0),
         };
       },
@@ -290,8 +302,13 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
 
   // ---- Fallback path (MediaRecorder → WebM) ----
   // captureStream samples the output canvas at `fps`; we just keep painting the latest snapshot.
+  // MediaRecorder can only mux a LIVE stream, so this path alone still replays the narration
+  // buffer in realtime (and keeps that fragility on a saturated main thread) — it only runs
+  // where WebCodecs is unavailable at all.
   const outStream = canvas.captureStream(fps);
   const combined = new MediaStream(outStream.getVideoTracks());
+  const rtAudio = opts.audioBuffer ? bufferToStream(opts.audioBuffer) : null;
+  const audioTrack = rtAudio?.stream.getAudioTracks()[0] ?? null;
   if (audioTrack) combined.addTrack(audioTrack);
   const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
     ? 'video/webm;codecs=vp9,opus'
@@ -314,6 +331,9 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     }
   };
   rec.start();
+  // Start the realtime replay only once the recorder is consuming the track, so the muxed
+  // narration opens at the top of the clip rather than mid-word.
+  rtAudio?.start();
 
   let running = true;
   const t0 = performance.now();
@@ -339,7 +359,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
   const teardown = (): void => {
     running = false;
     for (const t of combined.getTracks()) t.stop();
-    audioTrack?.stop();
+    rtAudio?.stop();
     canvas.width = canvas.height = 0;
     posterCanvas.width = posterCanvas.height = 0;
   };
