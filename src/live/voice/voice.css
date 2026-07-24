@@ -433,6 +433,12 @@
   right: 0;
   left: auto;
   width: min(320px, calc(100vw - 28px));
+  /* MUST match styles/top-bar.css's cap (a test pins the two together). This Live copy shipped
+     without it, and the app shell is overflow:hidden with no page scroll — so on a short window
+     a tall category's last items were simply CLIPPED, no scrollbar, unreachable. */
+  max-height: calc(100dvh - 72px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .more-menu-row {
