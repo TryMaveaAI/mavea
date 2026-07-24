@@ -767,26 +767,30 @@ export function LiveSettings({
                 onPick={(v) => setLiveConfigV2({ explainLevel: v as typeof cfg.explainLevel })}
               />
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Simple uses shorter sentences, everyday analogies, and fewer, more-labelled visuals.
-                In-depth goes further — mechanisms, numbers, edge cases. You can also just say
-                "explain it simpler" or "go deeper".
+                How answers are written: Simple uses shorter sentences, everyday analogies, and
+                fewer, more-labelled visuals; In-depth goes further — mechanisms, numbers, edge
+                cases. You can also just say "explain it simpler" or "go deeper". (How long Mavéa
+                thinks is Thinking time, below.)
               </span>
             </div>
 
-            {/* Answer quality — Balanced is the default; Fast is the snappiest. */}
+            {/* Thinking time (cfg.quality) — how long the model REASONS, a speed/care dial.
+                Deliberately named apart from Explanation level: "Answer quality" next to
+                Simple/Standard/In-depth read as the same dial in different words. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Answer quality</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Thinking time</span>
               <SegRow
                 value={cfg.quality}
                 options={[
-                  { value: 'fast', label: 'Fast', badge: 'quickest' },
+                  { value: 'fast', label: 'Fast', badge: 'snappiest' },
                   { value: 'balanced', label: 'Balanced', badge: 'default' },
-                  { value: 'thorough', label: 'Thorough' },
+                  { value: 'thorough', label: 'Thorough', badge: 'thinks longer' },
                 ]}
                 onPick={(v) => setLiveConfigV2({ quality: v as typeof cfg.quality })}
               />
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Fast keeps replies snappy; Thorough lets the model think more on hard questions.
+                How long Mavéa reasons before answering — speed versus care on hard questions. (How
+                the answer is written is Explanation level, above.)
               </span>
             </div>
 
