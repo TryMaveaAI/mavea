@@ -20,13 +20,7 @@
 import { sayable, type Speaker } from './tts';
 import { pronounceForSpeech } from './pronounce';
 import { voiceEnergyTap, resetVoiceEnergy } from './voiceEnergy';
-import {
-  streamSpeak,
-  playPcmBytes,
-  cancelActiveStream,
-  getVoiceSpeed,
-  streamUnderruns,
-} from './streamTts';
+import { streamSpeak, playPcmBytes, cancelActiveStream, getVoiceSpeed } from './streamTts';
 import { pcmCacheKey, pcmCacheGet, pcmCacheHas, pcmCachePut } from './pcmCache';
 import { findPreset, DEFAULT_MAVEA_VOICE_ID, DEFAULT_USER_VOICE_ID } from './presets';
 
@@ -124,13 +118,15 @@ let prefetchCtl: AbortController | null = null;
 let prefetchKey: string | null = null;
 let prefetchPromise: Promise<void> | null = null;
 
-/** Best-effort synthesis of the next known line into the cache. Skipped entirely once playback
- *  has ever outrun synthesis on this machine (no headroom to hide anything in), and before the
- *  health probe has confirmed Kokoro (a doomed request would just 502-spam the console). */
+/** Best-effort synthesis of the next known line into the cache. Slow machines benefit the MOST
+ *  — a cached clip plays with zero synthesis wait and can never stutter — and the idle-moment
+ *  firing plus the join in playJob already guarantee one synthesis at a time, so there is no
+ *  underrun gate here. Skipped only before the health probe has confirmed Kokoro (a doomed
+ *  request would just 502-spam the console). */
 function prefetchNext(): void {
   const next = queue[0] ?? primed;
   if (!next) return;
-  if (streamUnderruns() > 0 || kokoroKnownAvailable() !== true) return;
+  if (kokoroKnownAvailable() !== true) return;
   // One speed read for BOTH the key and the request body — a slider drag between two reads
   // would cache audio at one speed under the other speed's key.
   const speed = getVoiceSpeed();

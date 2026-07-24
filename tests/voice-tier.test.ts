@@ -16,11 +16,6 @@ const web = vi.hoisted(() => ({
   lines: [] as string[],
   cancelled: 0,
 }));
-const stream = vi.hoisted(() => ({ underruns: 0 }));
-
-vi.mock('../src/voice/streamTts', () => ({
-  streamUnderruns: () => stream.underruns,
-}));
 
 vi.mock('../src/voice/kokoro', () => ({
   speakKokoroLine: (text: string) => {
@@ -58,7 +53,6 @@ beforeEach(() => {
   web.available = true;
   web.lines = [];
   web.cancelled = 0;
-  stream.underruns = 0;
   localStorage.clear();
 });
 afterEach(() => localStorage.clear());
@@ -108,18 +102,11 @@ describe('voice tier', () => {
       expect(web.lines).toEqual(['Hello there']);
     });
 
-    it('stops using Kokoro once playback has proven it cannot keep up', async () => {
-      // The 2017-Mac case, and the one no health probe can see: Kokoro is reachable and answering,
-      // it simply renders slower than speech plays, so every line stutters and drifts behind the
-      // words. Reachability says yes; the audio says no. The audio is right.
-      stream.underruns = 2;
-      await speakLine('Hello there', 'mavea').finished;
-      expect(kokoro.lines).toEqual([]);
-      expect(web.lines).toEqual(['Hello there']);
-    });
-
-    it('tolerates a single stutter — a cold model load is not a slow machine', async () => {
-      stream.underruns = 1;
+    it('never trades the natural voice away for slowness — Kokoro keeps speaking on a slow machine', async () => {
+      // The 2017-Mac case: Kokoro is reachable but renders slower than speech plays. This used
+      // to demote to the browser's robotic voice after two stutters — which read as the app
+      // breaking mid-conversation. Slowness is now absorbed by the preparing indicator and the
+      // one-ahead cache; only genuine unavailability (probe false, or a silent line) hands off.
       await speakLine('Hello there', 'mavea').finished;
       expect(kokoro.lines).toEqual(['Hello there']);
       expect(web.lines).toEqual([]);

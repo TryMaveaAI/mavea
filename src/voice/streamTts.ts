@@ -35,22 +35,6 @@ const FLUSH_SECONDS = 0.2;
  *  response can't balloon memory on a low-RAM device. Resumes as the cursor drains. */
 const MAX_AHEAD_SECONDS = 2;
 
-// An underrun is the playhead catching the synthesizer: the next chunk was due before it existed,
-// so the clip is re-anchored to now and the line audibly stutters and drifts behind the words. A
-// machine that renders faster than 1x never does this once; one that can't does it on nearly every
-// line, and no tuning fixes that — it is simply too slow to speak in real time. Reachability can't
-// see this and neither can a health probe: only playback knows. So count them, and let the voice
-// tier stop insisting on a voice this machine cannot carry.
-let underruns = 0;
-function noteUnderrun(): void {
-  underruns += 1;
-}
-
-/** How many times playback has outrun synthesis this session. */
-export function streamUnderruns(): number {
-  return underruns;
-}
-
 /**
  * Decode a chunk of signed 16-bit little-endian PCM into Float32 samples in [-1, 1), carrying a
  * single leftover byte across chunk boundaries (a sample can straddle two reads). `carry` is the
@@ -319,10 +303,10 @@ export async function streamSpeak(
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(gain);
-    if (nextTime < ctx.currentTime) {
-      nextTime = ctx.currentTime + 0.02; // resync after an underrun
-      noteUnderrun();
-    }
+    // An underrun: the playhead caught the synthesizer. Re-anchor and keep going — the voice
+    // stutters for a beat but recovers, and it stays the NATURAL voice: slowness never demotes
+    // to the robotic one (the preparing indicator and the one-ahead cache absorb the waits).
+    if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.02;
     src.start(nextTime);
     nextTime += buffer.duration;
     if (!started) {

@@ -1,16 +1,15 @@
 // Two-voice text-to-speech for Mavéa: a distinct voice for Mavéa and for the person, so the
 // back-and-forth reads like two people talking.
 //
-// Kokoro is the voice — natural speech from the local Kokoro server — and it stays the default
-// wherever it fits. It did not fit everywhere. It is a 4.9GB image holding ~1.3GB of memory, and on
-// an older machine it renders slower than the playhead consumes it, so the audio arrives late and
-// drifts out of sync. Those machines used to get captions and silence: the one thing Mavéa is built
-// around was the first thing the weakest hardware lost, and a stuttering good voice was defended as
-// better than a plain one that keeps up. It isn't.
-//
-// So there are three tiers, and the machine picks: Kokoro where it fits, the browser's own
-// synthesizer where it doesn't, captions where there is no voice at all (Chrome on Linux ships the
-// API with no voices). The choice is a default, never a gate — see voiceMode(); anyone can force
+// Kokoro is the voice — natural speech from the local Kokoro server — and once someone has it,
+// slowness never takes it away. A slow machine used to be silently demoted to the browser's
+// robotic synthesizer after a couple of playback stutters; hearing the good voice replaced
+// mid-conversation read as the app breaking, and the honest tools now exist instead — the voice
+// strip says "preparing" while a line renders, and the one-ahead cache (voice/kokoro.ts) hides
+// most of the wait behind the previous line's playback. So the tiers are about AVAILABILITY
+// only: Kokoro when it is reachable, the browser's own synthesizer when it isn't (or a line
+// produces no audio at all), captions when there is no voice (Chrome on Linux ships the API
+// with no voices). The choice is a default, never a gate — see voiceMode(); anyone can force
 // either voice on any machine.
 //
 // Kept separate from the VoiceController seam (which owns the live mic / STT); this module
@@ -33,7 +32,6 @@ import {
   webSpeechSpeaking,
   subscribeWebSpeechSpeaking,
 } from './webSpeech';
-import { streamUnderruns } from './streamTts';
 import { forSpeech } from '../lib/spokenText';
 
 /** Whose line this is — selects the voice profile. */
@@ -129,24 +127,16 @@ export function speak(text: string, who: Speaker): void {
  *  `started` settles first. */
 export type SpokenLine = KokoroLine;
 
-/** How many stutters it takes to conclude this machine cannot speak in real time. Two is not a
- *  blip: an underrun means the playhead reached audio that had not been rendered yet, which a
- *  machine keeping up never does even once. But one can be a cold model load or the OS stealing a
- *  slice, so wait for the pattern before taking someone's good voice away. */
-const UNDERRUN_LIMIT = 2;
-
-/** Whether Kokoro has proven it cannot keep up on this machine. Reachability is not the question —
- *  a reachable Kokoro rendering slower than speech plays is worse than a plainer voice that
- *  doesn't stutter, and that is the case no probe can see and only playback can report. */
-function kokoroFallsBehind(): boolean {
-  return streamUnderruns() >= UNDERRUN_LIMIT;
-}
-
 /**
  * Queue a spoken line AND get its lifecycle handle back. The reveal walk uses this to hold each
  * spotlight until its own line is audible and advance only when the line has finished — the
  * fire-and-forget speak() can't distinguish "queued" from "playing", which on a slow machine is
  * a gap of seconds. Same queue and voices as speak(); the handle never rejects.
+ *
+ * Slowness NEVER reroutes a line to the browser voice: a stuttery-but-natural voice being
+ * silently swapped for a robotic one mid-conversation reads as the app breaking. The preparing
+ * indicator and the one-ahead cache absorb a slow machine's waits; only genuine unavailability
+ * (the probe said no, or a line produced no audio at all) hands off.
  */
 export function speakLine(text: string, who: Speaker): SpokenLine {
   const mode = voiceMode();
@@ -155,9 +145,7 @@ export function speakLine(text: string, who: Speaker): SpokenLine {
   // Under `auto`, the health probe answers definitively after the first line — before that it is
   // null, and guessing wrong would cost the opening line. So try Kokoro and let the line itself
   // report: a line that never became audible hands off to the browser voice mid-flight.
-  if (kokoroKnownAvailable() === false || kokoroFallsBehind()) {
-    return speakWebSpeechLine(text, who);
-  }
+  if (kokoroKnownAvailable() === false) return speakWebSpeechLine(text, who);
   return withBrowserFallback(text, who);
 }
 
@@ -169,7 +157,7 @@ export function speakLine(text: string, who: Speaker): SpokenLine {
  */
 export function primeLine(text: string, who: Speaker): void {
   if (voiceMode() === 'browser') return;
-  if (kokoroKnownAvailable() !== true || kokoroFallsBehind()) return;
+  if (kokoroKnownAvailable() !== true) return;
   primeKokoroLine(text, who);
 }
 
