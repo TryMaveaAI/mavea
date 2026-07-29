@@ -3,6 +3,22 @@
   "version": "1.0.15",
   "type": "module",
   "description": "Mavéa — an AI Presence interface. Talk to AI. See what it means.",
+  "keywords": [
+    "ai",
+    "assistant",
+    "voice",
+    "voice-first",
+    "llm",
+    "chat",
+    "data-visualization",
+    "canvas",
+    "byok",
+    "text-to-speech",
+    "gemini",
+    "claude",
+    "openai",
+    "local-first"
+  ],
   "license": "PolyForm-Noncommercial-1.0.0",
   "bin": {
     "mavea": "./bin/mavea.mjs"
