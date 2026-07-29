@@ -23,7 +23,12 @@
 }
 
 .ms-stage-fill {
-  position: absolute;
+  /* FIXED, not absolute: the takeover must own the whole viewport no matter what state the
+     app shell is in. Mounted absolute it inherited its container's coordinate space — a
+     spotlight-panned stage, or the overflow-hidden shell nudged sideways by a focus scroll —
+     and covered a shifted rectangle with the old answer bleeding around it. (It mounts at the
+     app root, so no transformed ancestor can capture this fixed position.) */
+  position: fixed;
   inset: 0;
   z-index: 2;
   display: flex;
@@ -38,7 +43,7 @@
      page background. Tokens handle light/dark automatically. */
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
-    var(--surface-raised) 0%,
+    var(--surface-elevated) 0%,
     var(--surface-default) 100%
   );
   transition: background 0.8s ease;
@@ -48,7 +53,7 @@
 .ms-stage-fill[data-phase='settled'] {
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
-    color-mix(in oklab, var(--surface-raised) 85%, var(--insight) 15%) 0%,
+    color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
     var(--surface-default) 100%
   );
 }

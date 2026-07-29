@@ -196,7 +196,11 @@ button {
   position: relative;
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  /* clip, not hidden: a hidden-overflow box still SCROLLS programmatically — a focus jump
+     toward content sticking out of the shell (a spotlight-panned stage) once shoved the whole
+     app sideways and every absolutely-positioned overlay went with it. clip forbids scrolling
+     entirely; the shell is a fixed frame, never a scroller. */
+  overflow: clip;
   background: radial-gradient(
     130% 100% at 50% -15%,
     color-mix(in oklab, var(--topic-tint) 22%, var(--app-anchor)) 0%,
