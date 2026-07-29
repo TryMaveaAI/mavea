@@ -503,8 +503,9 @@ export function LiveSettings({
         ? 'Reachable — model not found'
         : info.needsKey && !key
           ? 'Add your API key'
-          : ready?.statusCode === 401
-            ? 'Invalid API key'
+          : ready?.statusCode === 401 || ready?.statusCode === 400
+            ? // Google reports a bad key as 400 API_KEY_INVALID; OpenAI-style providers use 401.
+              'Invalid API key'
             : ready?.statusCode === 403
               ? 'Key lacks permission'
               : ready?.statusCode === 404
