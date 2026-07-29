@@ -1,5 +1,6 @@
 // The presentation lab's overflow audit — factored out of SlidesLab so both the interactive
 // #/slidelab toggle and a headless driver (scripts/slide-gate.mts) run the exact same check.
+import { auditCardOverlap } from '../../gallery/overflowAudit';
 import type { Slide } from '../model/Slide';
 
 /** Walk a rendered slide and report the first element whose content is being genuinely clipped —
@@ -80,6 +81,18 @@ export function auditDeck(root: ParentNode, deck: Slide[]): SlideAuditFailure[] 
   pages.forEach((page, index) => {
     const reason = auditPage(page);
     if (reason) failures.push({ index, kind: deck[index]?.kind ?? '?', reason });
+    // Clipping is only half the failure space: a grid item that ESCAPES its track (a shrink-
+    // wrapped table cell wider than its column) clips nothing — the cells simply pile on top of
+    // each other, which is how a split table's continuation slide once shipped illegible. The
+    // gallery's sibling-collision detector catches exactly that class.
+    const overlap = auditCardOverlap(page, 3);
+    if (overlap) {
+      failures.push({
+        index,
+        kind: deck[index]?.kind ?? '?',
+        reason: `overlap ${Math.round(overlap.px)}px² between “${overlap.a}” and “${overlap.b}”`,
+      });
+    }
   });
   return failures;
 }

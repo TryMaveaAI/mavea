@@ -10,6 +10,7 @@
 // clipped one measure identically by box comparison alone — `.figure-embed` (FigureEmbed scales the
 // real component to its frame) and `[data-fit-line]` (FitLine shrinks a single line of text to its
 // box — see parts.tsx for why).
+import { auditCardOverlap } from '../../gallery/overflowAudit';
 
 /** A short, human-scannable identifier for a failing element: its tag, first class, and a text
  *  snippet when it has no element children (so a report reads as "span.ex-toc-page \"12\"" instead
@@ -58,13 +59,22 @@ export interface ExportAuditFailure {
 }
 
 /** Sweep every `.ex-page` under `root`, in document order, and return only the pages that are
- *  actually clipping — an empty array means the whole preview audited clean. */
+ *  actually clipping or colliding — an empty array means the whole preview audited clean. */
 export function auditDoc(root: ParentNode): ExportAuditFailure[] {
   const pages = root.querySelectorAll<HTMLElement>('.ex-page');
   const failures: ExportAuditFailure[] = [];
   pages.forEach((page, index) => {
     const reason = auditPage(page);
     if (reason) failures.push({ page: index + 1, reason });
+    // Same rationale as the deck audit: unclipped text piling onto sibling text (an escaped
+    // grid item) is invisible to the scroll-vs-client check — collision detection covers it.
+    const overlap = auditCardOverlap(page, 3);
+    if (overlap) {
+      failures.push({
+        page: index + 1,
+        reason: `overlap ${Math.round(overlap.px)}px² between “${overlap.a}” and “${overlap.b}”`,
+      });
+    }
   });
   return failures;
 }

@@ -366,6 +366,21 @@ export function buildTortureDeck(): Slide[] {
         `$${24 + i * 6}`,
       ]),
     }),
+    // Over the per-slide row cap AND wordy in every cell, so compose splits it into a first
+    // slide plus a "(cont.)" slide whose cells are all wider than their 1fr tracks — the exact
+    // shape that once shipped with every data cell of the continuation piled onto one spot.
+    // The overlap half of the audit is what holds this honest; the clip check alone never saw it.
+    t('specTable', {
+      heading: 'Top hangout spots (what to do + where)',
+      columns: ['Place', 'Area', 'Best for', 'Address', 'Why go'],
+      rows: Array.from({ length: 10 }, (_, i) => [
+        `Discovery World Annex ${i + 1}`,
+        'Downtown lakefront district on the harbor',
+        'Museum-hall crawl with a full afternoon of exhibits',
+        `${500 + i} N Harbor Dr, Milwaukee, WI 53202`,
+        'Beautiful walkable stretch, better than a bar crawl.',
+      ]),
+    }),
     t('checklist', {
       heading: 'Five readiness steps with long bodies',
       items: Array.from({ length: 5 }, (_, i) => ({

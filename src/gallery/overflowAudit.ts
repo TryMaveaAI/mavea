@@ -305,6 +305,18 @@ export function auditCardOverlap(card: Element, tol = 3): OverlapHit | undefined
       const a = boxes[i];
       const b = boxes[j];
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      // A tight display lockup (a huge numeral at sub-1 line-height with its caption tucked
+      // close) deliberately lets GLYPH BOXES overlap while the ink stays clear — box collision
+      // is its design, not a defect. The container says so with data-tight-lockup, and only
+      // pairs INSIDE the same lockup are exempt: the lockup colliding with a NEIGHBOR is still
+      // a real failure and still reported.
+      const lockup = a.el.closest('[data-tight-lockup]');
+      if (lockup !== null && lockup === b.el.closest('[data-tight-lockup]')) continue;
+      // Map markers sit at real geographic coordinates — two nearby places genuinely collide at
+      // the fitted zoom, and nudging them apart would lie about where they are. Their overlap is
+      // data, not layout jumble, so marker-pane pairs are exempt; anything ELSE overlapping the
+      // map (a caption, a neighboring card) is still a real failure and still reported.
+      if (a.el.closest('.leaflet-marker-pane') && b.el.closest('.leaflet-marker-pane')) continue;
       // Two runs carrying the SAME text drawn on top of each other are a layered effect, not a
       // collision: the canonical case is a star rating's gold "★★★★★" fill clipped over its grey
       // "★★★★★" track, but the same holds for any duplicate drawn as a shadow/echo. The reader

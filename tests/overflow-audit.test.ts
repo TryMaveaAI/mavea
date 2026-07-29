@@ -207,6 +207,32 @@ describe('auditCardOverlap', () => {
     expect(auditCardOverlap(card)).toBeUndefined();
   });
 
+  it('exempts pairs inside the SAME tight lockup, but not the lockup against a neighbor', () => {
+    const card = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 } });
+    const lockup = make('div', { rect: { left: 0, right: 100, top: 0, bottom: 60 }, parent: card });
+    lockup.setAttribute('data-tight-lockup', '');
+    // A display numeral at sub-1 line-height whose glyph box catches its own caption — by design.
+    textRun('span', '2.4M', { left: 0, right: 80, top: 0, bottom: 40 }, lockup);
+    textRun('span', 'daily riders', { left: 0, right: 90, top: 30, bottom: 50 }, lockup);
+    expect(auditCardOverlap(card)).toBeUndefined();
+    // The same lockup colliding with an OUTSIDE label is still a real failure.
+    textRun('span', 'neighbor', { left: 60, right: 140, top: 20, bottom: 45 }, card);
+    expect(auditCardOverlap(card)).toBeTruthy();
+  });
+
+  it('exempts leaflet map markers colliding with each other, but not a caption over the map', () => {
+    const card = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 } });
+    const pane = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 }, parent: card });
+    pane.className = 'leaflet-marker-pane';
+    // Two pins at close geographic coordinates — their overlap is data, not layout.
+    textRun('span', '1', { left: 40, right: 66, top: 40, bottom: 66 }, pane);
+    textRun('span', '3', { left: 55, right: 81, top: 50, bottom: 76 }, pane);
+    expect(auditCardOverlap(card)).toBeUndefined();
+    // A text label outside the marker pane overlapping a pin is still a real failure.
+    textRun('span', 'legend', { left: 50, right: 120, top: 45, bottom: 70 }, card);
+    expect(auditCardOverlap(card)).toBeTruthy();
+  });
+
   it('does not flag a low-alpha fill decoration overlapping a label', () => {
     const card = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 } });
     textRun('text', 'ghost', { left: 0, right: 60, top: 0, bottom: 20 }, card, {

@@ -96,6 +96,225 @@ const splitProse = (body: string, max = PROSE_MAX): string[] => {
   return out;
 };
 
+/* ── Compose-time text budgets ──────────────────────────────────────────────────────────────────
+ * Every text slot has a hard character ceiling, enforced once at the composer's exit, so no
+ * layout ever receives more text than its frame can seat. The numbers are calibrated to the fit
+ * ladders in `skins/layouts/fit.ts`: each cap lands at (or under) the boundary where a slot would
+ * fall to its smallest tier and lean on the line-clamp's mid-thought ellipsis — this way the
+ * render-side clamp stays a backstop that never actually fires, and every surface (Present, PDF,
+ * PPTX raster) sees the same deterministic text. Two honesty rules govern the trims:
+ *   • Prose-like slots trim on a word boundary with an ellipsis — an honest "text continues".
+ *   • Data slots (the keyFigure hero value, stat/bar/row values, totals, dates) are NEVER
+ *     trimmed: truncating "2,600,000" to "2,600…" would falsify the figure. They are short by
+ *     construction (formatted numbers), and their ladders/nowrap styles absorb the width.
+ */
+const BUDGET = {
+  coverTitle: 180, // COVER_TIERS keeps ≥84px above this
+  title: 90, //       framed-layout headlines (TITLE_TIERS' 2-line mid tier)
+  heading: 100, //    prose/press headings (PROSE_HEADING_TIERS' mid tier)
+  divider: 80, //     section-divider + closing headlines (their ladders' mid boundary)
+  subtitle: 180, //   cover/divider/closing standfirsts
+  kicker: 36, //      eyebrow labels
+  itemTitle: 72, //   agenda/process/roadmap/team entry titles
+  itemBody: 160, //   entry bodies and agenda subs
+  label: 44, //       single-line stat/bar/row labels beside a value
+  columnHead: 28, //  table column headers
+  cell: 80, //        table cells (prose cells ellipsize; real values never run this long)
+  note: 180, //       footnote strips under tables/charts/comparisons
+  quote: 240, //      QUOTE_TIERS keeps ≥64px up to here
+  attribution: 60,
+} as const;
+
+/** Word-boundary trim to a budget; `undefined` passes through so optional slots stay optional. */
+function clip(s: string, max: number): string;
+function clip(s: string | undefined, max: number): string | undefined;
+function clip(s: string | undefined, max: number): string | undefined {
+  if (s === undefined) return undefined;
+  const t = s.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const sp = cut.lastIndexOf(' ');
+  let head = sp > max * 0.6 ? cut.slice(0, sp) : cut;
+  // Never leave a dangling surrogate half or trailing punctuation in front of the ellipsis.
+  const last = head.charCodeAt(head.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) head = head.slice(0, -1);
+  return head.replace(/[\s,;:.!?–—-]+$/, '') + '…';
+}
+
+/** Apply the budget table to one composed slide — structure and data values untouched. */
+function fitSlideText(s: Slide): Slide {
+  const kicker = clip(s.kicker, BUDGET.kicker);
+  switch (s.kind) {
+    case 'cover':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.coverTitle),
+          subtitle: clip(s.data.subtitle, BUDGET.subtitle),
+          presenter: clip(s.data.presenter, BUDGET.attribution),
+        },
+      };
+    case 'sectionDivider':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.divider),
+          subtitle: clip(s.data.subtitle, BUDGET.subtitle),
+        },
+      };
+    case 'agenda':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          items: s.data.items.map((it) => ({
+            ...it,
+            title: clip(it.title, BUDGET.itemTitle),
+            sub: clip(it.sub, BUDGET.itemBody),
+          })),
+        },
+      };
+    case 'keyFigure':
+      // The hero value is data — untouched; the unit, body, and stat labels are prose.
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          unit: clip(s.data.unit, BUDGET.label),
+          body: clip(s.data.body, BUDGET.itemBody),
+          stats: s.data.stats.map((st) => ({ ...st, label: clip(st.label, BUDGET.label) })),
+        },
+      };
+    case 'comparison':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          note: clip(s.data.note, BUDGET.note),
+          columns: s.data.columns.map((c) => ({
+            ...c,
+            label: clip(c.label, BUDGET.kicker),
+            title: clip(c.title, BUDGET.itemTitle),
+            rows: c.rows.map((r) => ({ ...r, label: clip(r.label, BUDGET.label) })),
+          })),
+        },
+      };
+    case 'dataTable':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          note: clip(s.data.note, BUDGET.note),
+          columns: s.data.columns.map((c) => clip(c, BUDGET.columnHead)),
+          rows: s.data.rows.map((row) => row.map((cell) => clip(cell, BUDGET.cell))),
+        },
+      };
+    case 'roadmap':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          phases: s.data.phases.map((p) => ({
+            ...p,
+            title: clip(p.title, BUDGET.itemTitle),
+            body: clip(p.body, BUDGET.itemBody),
+          })),
+        },
+      };
+    case 'process':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          steps: s.data.steps.map((st) => ({
+            ...st,
+            title: clip(st.title, BUDGET.itemTitle),
+            body: clip(st.body, BUDGET.itemBody),
+          })),
+        },
+      };
+    case 'chart':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          body: clip(s.data.body, BUDGET.itemBody),
+          note: clip(s.data.note, BUDGET.note),
+          bars: s.data.bars.map((b) => ({ ...b, label: clip(b.label, BUDGET.label) })),
+        },
+      };
+    case 'quote':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          body: clip(s.data.body, BUDGET.quote),
+          attribution: clip(s.data.attribution, BUDGET.attribution),
+        },
+      };
+    case 'teamGrid':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.title),
+          members: s.data.members.map((m) => ({
+            ...m,
+            name: clip(m.name, BUDGET.itemTitle),
+            role: clip(m.role, BUDGET.label),
+            bio: clip(m.bio, BUDGET.itemBody),
+          })),
+        },
+      };
+    case 'fullBleed':
+      return { ...s, kicker, data: { ...s.data, title: clip(s.data.title, BUDGET.title) } };
+    case 'prose':
+      // The body's length is governed upstream by splitProse/PROSE_MAX; only the heading caps here.
+      return { ...s, kicker, data: { ...s.data, heading: clip(s.data.heading, BUDGET.heading) } };
+    case 'closing':
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          title: clip(s.data.title, BUDGET.divider),
+          subtitle: clip(s.data.subtitle, BUDGET.subtitle),
+          sources: s.data.sources.map((n) => clip(n, BUDGET.attribution)),
+        },
+      };
+    case 'figure':
+      // The raw block renders at full fidelity by design; only the flattened headline/caption cap.
+      return {
+        ...s,
+        kicker,
+        data: {
+          ...s.data,
+          heading: clip(s.data.heading, BUDGET.heading),
+          caption: clip(s.data.caption, BUDGET.itemBody),
+        },
+      };
+  }
+}
+
 /** Map one normalized section to one or more slide drafts. */
 function draftsForSection(s: Section): SlideDraft[] {
   switch (s.kind) {
@@ -453,7 +672,8 @@ export function composeSlides(sections: Section[], meta: ExportMeta): Slide[] {
     });
   }
 
-  return out;
+  // The budget pass — one choke point over every slide, whatever path drafted it.
+  return out.map(fitSlideText);
 }
 
 /** Convenience: compose straight from selected answers (used by export + Present). */

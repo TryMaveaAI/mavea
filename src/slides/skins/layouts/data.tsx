@@ -112,8 +112,13 @@ export const KeyFigure: SlideLayout<'keyFigure'> = ({ slide, skin, ctx }) => {
       <div style={{ display: 'flex', gap: 96, alignItems: 'center', minWidth: 0 }}>
         {/* Flex column (not block flow) so the value slot's ink-headroom negative margins
             (see nowrapEllipsis) can never collapse with the unit/body marginTop below —
-            flex keeps the spacing math exact. */}
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            flex keeps the spacing math exact. data-tight-lockup: the display numeral's sub-1
+            line-height means its GLYPH box deliberately overlaps the caption's box while the
+            ink stays clear — the overlap audit exempts pairs inside this container only. */}
+        <div
+          data-tight-lockup
+          style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}
+        >
           <div
             data-fit-tier={value.size}
             style={{
@@ -163,6 +168,9 @@ export const KeyFigure: SlideLayout<'keyFigure'> = ({ slide, skin, ctx }) => {
           {d.stats.map((s, i) => (
             <div
               key={i}
+              // Same deal as the hero lockup: the 54px/1 value's ink-headroom box may brush its
+              // own row label's box by design; rows never exempt each other.
+              data-tight-lockup
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -595,6 +603,14 @@ export const DataTable: SlideLayout<'dataTable'> = ({ slide, skin, ctx }) => {
                         textAlign: ci === 0 ? 'left' : 'right',
                         minWidth: 0,
                         justifySelf: ci === 0 ? 'start' : 'end',
+                        // justify-self shrink-wraps a grid item to its CONTENT — and the content
+                        // is a nowrap line, so a wordy cell used to grow past its track and pin
+                        // to the track's end, sprawling leftward ACROSS the neighbouring columns
+                        // (several cells superimposed on a split table's continuation slide).
+                        // Capping at the grid area keeps the item inside its column, which is
+                        // what finally lets the inner ellipsis engage.
+                        maxWidth: '100%',
+                        overflow: 'hidden',
                       }}
                     >
                       {asRating ? (
