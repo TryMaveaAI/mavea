@@ -45,8 +45,6 @@ index, or open the **Explore** menu in the top bar.
   into the **themes that emerge from your own words** (never a fixed set of categories) with the
   tension threads between what pulls against what. When you settle the shape, it becomes a kept canvas
   — ask about it, share it as a Mavéa Story, or let it stay as the prompt for what's next.
-- 🎭 **The Rehearsal** — practice the conversation you're dreading. Mavéa plays the other side,
-  grounded only in context you supply, with a coach card between takes.
 
 ## Time as a medium
 
@@ -97,10 +95,12 @@ index, or open the **Explore** menu in the top bar.
   real-time provider grounding (Gemini's cited Google search), fired only on asks that need it.
 - 🧾 **Share-to-Mavéa, the receipts machine** — paste or drop any link or screenshot and the claim-check
   ask is ready: what's true, what's shaky, what's missing context, grounded in real sources.
-- 🤝 **The Table** — scout a negotiation before you have it: your Mavéa argues your side against a
-  stand-in grounded in your notes, your stated boundaries enforced in code, and a debrief tells you
-  what moved them, where you're exposed, and what to open with. The rehearsal context is sent to
-  your selected model provider; no outside action is executed.
+- 🎭 **The Rehearsal** — prepare a hard conversation before you have it, in whichever seat helps.
+  Send your Mavéa: it argues your side against a stand-in grounded in your notes, your stated
+  boundaries enforced in code, and a debrief tells you what moved them, where you're exposed, and
+  what to open with. Or take the seat yourself: you say your own lines, the counterpart answers in
+  character (and out loud), and a coach card between takes says the one thing to change. The
+  brief's context is sent to your selected model provider; no outside action is executed.
 - 🎬 **Share as a Mavéa Story** — any session becomes a cinematic vertical clip of the _real_ components
   (face, cards, spotlight, drawn strokes), screen-captured to MP4. 📌 **Ask about this** pins any block
   so the next question is grounded in its exact on-screen data.
@@ -111,4 +111,4 @@ index, or open the **Explore** menu in the top bar.
 
 - ⌘ **Command palette** — press **⌘K** (or Ctrl-K) anywhere to search the feature index and jump
   straight to an available action; the **Explore** menu in the top bar opens the same index and surfaces the
-  easily-missed gems (Watch me think, The Table).
+  easily-missed gems (Watch me think, the Rehearsal).

@@ -1,4 +1,4 @@
-// The Rehearsal's engine — Mavéa plays the other side of the conversation you're dreading.
+// The Rehearsal's take-the-seat engine — Mavéa plays the other side while YOU say your own lines.
 // Two small side-channel calls on the user's own key (the ghost-glimpse pattern: bounded,
 // abortable, never throws): the counterpart's next line during a take, and one coach card
 // between takes. Honesty is structural: the persona is grounded ONLY in the context the
@@ -52,9 +52,11 @@ function coachSystem(): string {
   ].join('\n');
 }
 
-/** Bound the side-channel: short spoken lines, fast or not at all. */
-const REPLY_MAX_TOKENS = 220;
-const COACH_MAX_TOKENS = 260;
+/** Bound the side-channel. The caps stay generous because a reasoning model's thinking
+ *  counts against them — a tight cap gets eaten before the first JSON byte and the take
+ *  dies on "they didn't respond"; thinkingLevel below keeps the actual spend minimal. */
+const REPLY_MAX_TOKENS = 900;
+const COACH_MAX_TOKENS = 1000;
 
 function jsonOf(raw: string | object): Record<string, unknown> {
   try {
@@ -92,6 +94,7 @@ export async function counterpartReply(
         history,
         user: last.content,
         maxTokens: REPLY_MAX_TOKENS,
+        thinkingLevel: 'minimal',
       },
       cfg,
     );
@@ -129,7 +132,13 @@ export async function coachTake(
       .filter(Boolean)
       .join('\n');
     const out = await getAdapter(cfg.provider).generate(
-      { system: coachSystem(), history: [], user, maxTokens: COACH_MAX_TOKENS },
+      {
+        system: coachSystem(),
+        history: [],
+        user,
+        maxTokens: COACH_MAX_TOKENS,
+        thinkingLevel: 'minimal',
+      },
       cfg,
     );
     if (signal.aborted) return null;

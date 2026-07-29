@@ -16,6 +16,12 @@ function exploreMenuSource(): string {
   return liveApp.slice(start, liveApp.indexOf('];', start) + 2);
 }
 
+/** The practiceMenu array literal, same slice pattern as exploreMenuSource above. */
+function practiceMenuSource(): string {
+  const start = liveApp.indexOf('const practiceMenu');
+  return liveApp.slice(start, liveApp.indexOf('];', start) + 2);
+}
+
 describe('feature registry', () => {
   it('wires every Live feature to an action in LiveApp', () => {
     // Each feature id appears as an object key in the LiveApp action map — bare (`atlas:`) for
@@ -61,23 +67,31 @@ describe('feature registry', () => {
     expect(explore).toContain('featureActions.ripple.run');
   });
 
-  it('lists The Table (delegate) in the Explore topbar menu, not its retired background-task label', () => {
-    // The negotiation feature was renamed from "Delegate" (which read as a background-task
-    // hand-off it never was) to "The Table". The id stays 'delegate' for back-compat, but the
-    // menu — a curated, hardcoded list — must show the new, accurate label.
-    const explore = exploreMenuSource();
-    expect(explore).toContain("label: 'The Table'");
-    expect(explore).toContain('featureActions.delegate.run');
-    expect(explore).not.toContain("label: 'Delegate'");
+  it('lists Rehearse (delegate) in the Practice topbar menu, not its retired labels', () => {
+    // The feature has shed two names: "Delegate" (read as a background-task hand-off it never
+    // was) and "The Table" (its brief label after absorbing the old Rehearse feature). One
+    // Practice entry now covers both seats. The id stays 'delegate' for back-compat, but the
+    // menus — curated, hardcoded lists — must show the current label exactly once.
+    const practice = practiceMenuSource();
+    expect(practice).toContain("label: 'Rehearse'");
+    expect(practice).toContain('featureActions.delegate.run');
+    expect(practice).not.toContain("label: 'Delegate'");
+    expect(practice).not.toContain("label: 'The Table'");
+    expect(exploreMenuSource()).not.toContain("label: 'Rehearse'");
+    expect(exploreMenuSource()).not.toContain("label: 'The Table'");
   });
 
-  it('The Table is grouped with Rehearse, not filed under Setup, and keeps "delegate" as a search term', () => {
-    const table = FEATURES.find((f) => f.id === 'delegate');
-    expect(table?.label).toBe('The Table');
-    expect(table?.group).toBe('Your world');
-    expect(table?.keywords).toContain('negotiate');
-    expect(table?.keywords).toContain('delegate');
-    expect(table?.blurb.toLowerCase()).not.toContain('work on its own');
+  it('Rehearse absorbed both vocabularies: one entry, searchable by either', () => {
+    const rehearse = FEATURES.find((f) => f.id === 'delegate');
+    expect(rehearse?.label).toBe('Rehearse');
+    expect(rehearse?.group).toBe('Your world');
+    expect(rehearse?.keywords).toContain('negotiate');
+    expect(rehearse?.keywords).toContain('delegate');
+    expect(rehearse?.keywords).toContain('table');
+    expect(rehearse?.keywords).toContain('rehearse');
+    expect(rehearse?.keywords).toContain('practice');
+    expect(rehearse?.blurb.toLowerCase()).not.toContain('work on its own');
+    expect(FEATURES.find((f) => f.id === 'rehearse')).toBeUndefined();
   });
 
   it('has unique feature ids', () => {

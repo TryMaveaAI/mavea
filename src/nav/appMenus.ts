@@ -3,8 +3,8 @@
 // the Dashboards bar has none of that, but should still read as the same menu bar. So this mirrors
 // Live's exact categories, labels, order, and wording, and resolves each item the off-Live way:
 // a feature with its own surface navigates straight there; a feature that only exists inside a
-// conversation (Present / Export / Share a conversation, Rehearse, Atlas, The Table…) hands off to
-// Live. A category with nothing to show hides itself (TopbarMenu drops empty menus).
+// conversation (Present / Export / Share a conversation, Atlas, Rehearse…) hands off to Live.
+// A category with nothing to show hides itself (TopbarMenu drops empty menus).
 import type { TopbarMenuItem } from '../live/TopbarMenu';
 import { preloadRoute } from '../routes';
 import { PALETTE_SHORTCUT } from '../live/features/paletteShortcut';
@@ -47,7 +47,7 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
   return {
     create: [inLive('New', 'Start a fresh session')],
     practice: [
-      inLive('Rehearse', 'Practice a conversation before it happens'),
+      inLive('Rehearse', 'Practice a hard conversation — take the seat, or send your Mavéa'),
       // In Live these are two different things (study opens the session overlay in place); out
       // here both land on the same page, so offering them twice is just a longer menu.
       route('Study', 'Go through your flashcards, and organize your decks', '#/flashcards'),
@@ -80,7 +80,6 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
         'Dashboards that refresh on schedule while Mavéa is open',
         '#/dashboards',
       ),
-      inLive('The Table', 'Scout a negotiation — two Mavéas talk it out, you get the debrief'),
       route('Deep Zoom', 'Telescope any topic from big picture to finest detail', '#/deepzoom'),
     ],
   };

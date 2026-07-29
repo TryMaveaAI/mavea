@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DelegatePanel } from '../src/live/delegate/DelegatePanel';
 import type { ModelConfig } from '../src/live/providers/types';
 
-// The Table's panel test: two real jellies seat at the table (distinct gradient ids, the
+// The Rehearsal's negotiation-seat panel test: two real jellies seat at the table (distinct gradient ids, the
 // stand-in ghosted), the terminal emotion wiring reflects the real outcome, the debrief renders
 // only real cited excerpts, Stop skips the automatic debrief without skipping the manual one,
 // "Adjust the brief" round-trips the form, and "Bring this into the conversation" hands Live a
@@ -111,7 +111,9 @@ describe('DelegatePanel — the table', () => {
   it('a failed debrief still shows the result, and Try again re-attempts it', async () => {
     generate
       .mockResolvedValueOnce({ raw: move('Opening at 92k.', '$92k', 'offer') })
-      .mockResolvedValueOnce({ raw: move('No deal for me.', null, 'pass') })
+      .mockResolvedValueOnce({ raw: move('Counter at 84k.', '$84k', 'offer') })
+      // A LATER-move pass ends the run honestly (a first-move pass gets nudged now).
+      .mockResolvedValueOnce({ raw: move('Too far apart — stopping here.', null, 'pass') })
       .mockResolvedValueOnce({ raw: 'not json' })
       .mockResolvedValueOnce({ raw: debriefReply() });
     render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
@@ -129,18 +131,21 @@ describe('DelegatePanel — the table', () => {
     let resolveStaleDebrief: (v: { raw: string }) => void = () => {};
     generate
       .mockResolvedValueOnce({ raw: move('Opening at 92k.', '$92k', 'offer') })
-      .mockResolvedValueOnce({ raw: move('No deal for me.', null, 'pass') })
+      .mockResolvedValueOnce({ raw: move('Counter at 84k.', '$84k', 'offer') })
+      .mockResolvedValueOnce({ raw: move('Too far apart — stopping here.', null, 'pass') })
       .mockImplementationOnce(
         () =>
           new Promise<{ raw: string }>((resolve) => {
             resolveStaleDebrief = resolve;
           }),
       )
-      .mockResolvedValueOnce({ raw: move('Passing immediately.', null, 'pass') });
+      // Run 2: no readable reply ever arrives (every attempt comes back empty), so it ends
+      // at one honest line — short enough that it never asks for a debrief of its own.
+      .mockResolvedValue({ raw: '' });
     render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
     startFromSeed();
 
-    // Run 1 ends with 2 turns, so its debrief auto-fires — and is left hanging, in flight.
+    // Run 1 ends with 3 turns, so its debrief auto-fires — and is left hanging, in flight.
     await waitFor(() => expect(screen.getByText('No deal this run')).toBeTruthy());
     await waitFor(() => expect(screen.getByText('Reading back what happened…')).toBeTruthy());
 

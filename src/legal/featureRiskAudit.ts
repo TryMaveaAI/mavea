@@ -28,10 +28,14 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
   'pdf-world': { notice: 'upload', reviewed: ['document transmission', 'sensitive data'] },
   synthesis: { notice: 'upload', reviewed: ['multi-document transmission', 'third-party rights'] },
   ripple: { notice: 'code', reviewed: ['repository disclosure', 'security and deployment risk'] },
-  rehearse: { notice: 'simulation', reviewed: ['personal context', 'unpredictable real people'] },
   delegate: {
     notice: 'simulation',
-    reviewed: ['negotiation outcome', 'employment and legal risk'],
+    reviewed: [
+      'negotiation outcome',
+      'employment and legal risk',
+      'personal context',
+      'unpredictable real people',
+    ],
   },
   review: { notice: 'learning', reviewed: ['AI-authored study material', 'retention claims'] },
   flashcards: { notice: 'learning', reviewed: ['AI-authored study material', 'local persistence'] },

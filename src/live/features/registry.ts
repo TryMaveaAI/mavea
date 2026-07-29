@@ -170,22 +170,14 @@ export const FEATURES: Feature[] = [
     ],
   },
   {
-    id: 'rehearse',
-    label: 'Rehearse',
-    blurb: 'Practice a hard conversation before it happens',
-    group: 'Your world',
-    surface: 'live',
-    tourChapter: 'rehearse',
-    keywords: ['practice', 'interview', 'role play', 'prepare'],
-  },
-  {
     // id stays 'delegate' for back-compat (stored palette state, deep links); the user-facing
-    // name is The Table — your Mavéa scouts a negotiation across the table from a stand-in,
-    // then debriefs what it found. Rehearse is YOU practicing your own lines; The Table is
-    // your Mavéa doing the negotiating while you watch and get the report back.
+    // name is Rehearse — one table, two seats: take the seat yourself and practice your own
+    // lines against the counterpart in character, or send your Mavéa to negotiate against a
+    // stand-in while you watch and get the debrief. (Briefly labeled "The Table" between the
+    // Delegate rename and the Rehearse merge — 'table' stays a keyword for anyone who knew it.)
     id: 'delegate',
-    label: 'The Table',
-    blurb: 'Scout a negotiation before you have it — your Mavéa vs a stand-in, then a debrief',
+    label: 'Rehearse',
+    blurb: 'Practice a hard conversation — take the seat yourself, or send your Mavéa to scout it',
     group: 'Your world',
     surface: 'live',
     tourChapter: 'delegate',
@@ -203,6 +195,12 @@ export const FEATURES: Feature[] = [
       'scout',
       'boundaries',
       'delegate',
+      'table',
+      'rehearse',
+      'practice',
+      'role play',
+      'interview',
+      'prepare',
     ],
   },
   {

@@ -426,26 +426,15 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'Choose what stays live and how often',
   },
   {
-    id: 'rehearse',
+    id: 'delegate',
     title: 'Rehearse it first',
     mode: 'explain',
     coach:
-      'Practice a hard conversation before it happens. I play the other side while you find your words.',
-    action: { kind: 'showcase', featureId: 'rehearse' },
-    durationMs: 9000,
-    glyph: '🎭',
-    hook: 'Practice a hard conversation first',
-  },
-  {
-    id: 'delegate',
-    title: 'Scout a negotiation',
-    mode: 'explain',
-    coach:
-      'Scout a negotiation before you have it. I play the practice partner, then debrief what I found.',
+      'Prepare a hard conversation before you have it. Take the seat and practice your own lines, or send me to argue your side and read the debrief.',
     action: { kind: 'showcase', featureId: 'delegate' },
     durationMs: 9000,
     glyph: '🤝',
-    hook: 'Scout a negotiation, then a debrief',
+    hook: 'Practice it, or send me to scout it',
   },
   {
     id: 'just-listen',

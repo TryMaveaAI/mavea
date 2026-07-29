@@ -289,8 +289,8 @@ const MIC_HOLD_PREFERRED_STORAGE_KEY = 'mavea-mic-hold-preferred';
 const SETTLE_SILENCE_MS = 3000;
 
 // Overlays and modals that only ever mount on an explicit user action — open Prism, compare
-// sources, export, share the reel, replay a moment, pin to a dashboard, present, scout a
-// negotiation at The Table, review flashcards, resume the library. Each is heavy (the PDF
+// sources, export, share the reel, replay a moment, pin to a dashboard, present, rehearse a
+// hard conversation, review flashcards, resume the library. Each is heavy (the PDF
 // engine, jspdf, the reel director, the block-extraction preview) and none is needed for the
 // first Live paint or the first answer, so we split them off the route's initial download: each
 // chunk arrives only the first time the user
@@ -387,10 +387,6 @@ const synthesisOverlayLoad = createPreloadableLazy(() =>
   import('./prism/SynthesisOverlay').then((m) => ({ default: m.SynthesisOverlay })),
 );
 const SynthesisOverlay = synthesisOverlayLoad.Component;
-const rehearsalPanelLoad = createPreloadableLazy(() =>
-  import('./rehearsal/RehearsalPanel').then((m) => ({ default: m.RehearsalPanel })),
-);
-const RehearsalPanel = rehearsalPanelLoad.Component;
 const presentationDeckLoad = createPreloadableLazy(() =>
   import('./present/PresentationDeck').then((m) => ({ default: m.PresentationDeck })),
 );
@@ -598,7 +594,7 @@ export function LiveApp(): ReactElement {
   // The session recap overlay ("Tonight, so far.") — state lives up here because the
   // interjection gates read it during render.
   const [recapOpen, setRecapOpen] = useState(false);
-  // The Table: the Mavéa-to-Mavéa negotiation overlay (also gates interjections, like recap).
+  // The Rehearsal: both seats of the practice overlay (also gates interjections, like recap).
   const [delegateOpen, setDelegateOpen] = useState(false);
   // The atlas overlay — every saved conversation as a flyable map. The count gates the
   // topbar button (the index outlives Library eviction, so it can be >0 with an empty Library).
@@ -670,8 +666,6 @@ export function LiveApp(): ReactElement {
     open: false,
     spec: null,
   });
-  // The Rehearsal — a distinct practice mode, so its overlay also gates interjections.
-  const [rehearsalOpen, setRehearsalOpen] = useState(false);
   // Present mode: chrome falls away, the Focus stage fills the room, the mic stays live.
   // Frames born while presenting are room questions — the rail labels them honestly.
   const [presenting, setPresenting] = useState(false);
@@ -1735,7 +1729,6 @@ export function LiveApp(): ReactElement {
       setTourPrismDoc(null);
       setSynthesis(null);
       setFlashAdd(null);
-      setRehearsalOpen(false);
       setDelegateOpen(false);
       setExportOpen(false);
       setDashOpen(false);
@@ -3079,7 +3072,6 @@ export function LiveApp(): ReactElement {
       replayAt,
       recapOpen,
       atlasOpen,
-      rehearsalOpen,
       delegateOpen,
       srsOpen,
       zoomLevel,
@@ -3313,7 +3305,6 @@ export function LiveApp(): ReactElement {
         atlasOpen ||
         prismDocs !== null ||
         synthesis !== null ||
-        rehearsalOpen ||
         mindView.open ||
         zoomLevel !== null,
     },
@@ -3752,11 +3743,6 @@ export function LiveApp(): ReactElement {
       run: () => setRipple(SEED_SHIP),
       preload: rippleOverlayLoad.preload,
     },
-    rehearse: {
-      available: true,
-      run: () => setRehearsalOpen(true),
-      preload: rehearsalPanelLoad.preload,
-    },
     review: { available: true, run: () => setSrsOpen(true), preload: srsReviewLoad.preload },
     flashcards: {
       available: true,
@@ -3991,9 +3977,9 @@ export function LiveApp(): ReactElement {
   const practiceMenu: TopbarMenuItem[] = [
     {
       label: 'Rehearse',
-      blurb: 'Practice a conversation before it happens',
-      onClick: featureActions.rehearse.run,
-      preload: featureActions.rehearse.preload,
+      blurb: 'Practice a hard conversation — take the seat, or send your Mavéa',
+      onClick: featureActions.delegate.run,
+      preload: featureActions.delegate.preload,
       show: true,
     },
     {
@@ -4102,13 +4088,6 @@ export function LiveApp(): ReactElement {
           : 'Create a dashboard that refreshes on schedule while Mavéa is open',
       onClick: featureActions.dashboards.run,
       preload: featureActions.dashboards.preload,
-      show: true,
-    },
-    {
-      label: 'The Table',
-      blurb: 'Scout a negotiation — two Mavéas talk it out, you get the debrief',
-      onClick: featureActions.delegate.run,
-      preload: featureActions.delegate.preload,
       show: true,
     },
     {
@@ -4985,7 +4964,6 @@ export function LiveApp(): ReactElement {
       {/* main: the canvas once we have a spec, otherwise the welcome + settings */}
       {turn.spec ? (
         <div className="canvas-stage stage" data-active="1" ref={stageRef}>
-          {mindOverlay}
           {topicSweepKey != null && (
             <TopicSweep
               key={topicSweepKey}
@@ -5259,10 +5237,6 @@ export function LiveApp(): ReactElement {
         </div>
       ) : inWizard ? (
         <>
-          {/* always-on listening persists across sessions and can start thinking-aloud before the
-              user has said anything through the wizard itself — the takeover must still surface here,
-              not just in the two post-start branches. */}
-          {mindOverlay}
           <SetupWizard
             seed={seedQuery.current || undefined}
             speak={speak}
@@ -5311,9 +5285,6 @@ export function LiveApp(): ReactElement {
            first turn failed). The orb and dock convey progress; a failed first turn shows the
            error state here so it's never mistaken for Mavéa still working. */
         <div className="presence-stage stage" data-active="1">
-          {/* Thinking-aloud on a fresh session (no answer canvas yet) maps right here over the orb,
-              so the default voice experience is visible from the very first thought. */}
-          {mindOverlay}
           {errorPanel && <div className="live-error-stage">{errorPanel}</div>}
           {turn.busy && (
             <div className="skel-stage">
@@ -5322,6 +5293,13 @@ export function LiveApp(): ReactElement {
           )}
         </div>
       )}
+
+      {/* The Watch Me Think takeover mounts ONCE at the app root, never inside a stage: the
+          spotlight walk PANS the canvas stage with a transform, and an overlay mounted inside
+          inherits that pan — the map then covers a shifted rectangle with the old answer
+          bleeding around it. Out here `inset: 0` means the whole app, in every branch (canvas,
+          wizard, fresh session), which is also what the full-page takeover wants. */}
+      {mindOverlay}
 
       {/* Dragging a file over the surface — the only sign a document drop attaches at all,
           otherwise that capability is invisible until you stumble on the paperclip. */}
@@ -5537,6 +5515,13 @@ export function LiveApp(): ReactElement {
         <LazyOverlay>
           <DelegatePanel
             cfg={toModelConfig(cfg)}
+            memoryNodes={getMemoryNodes()}
+            speak={speak}
+            onDebrief={(ask) => {
+              // Back to the real conversation with the debrief opener staged in the composer.
+              setDelegateOpen(false);
+              setValue(ask);
+            }}
             onClose={() => setDelegateOpen(false)}
             onPrepTurn={(instruction, label) => {
               setDelegateOpen(false);
@@ -5649,21 +5634,6 @@ export function LiveApp(): ReactElement {
             speak={speak}
             showcase={tourMode.current}
             onClose={() => setRipple(null)}
-          />
-        </LazyOverlay>
-      )}
-      {rehearsalOpen && (
-        <LazyOverlay>
-          <RehearsalPanel
-            cfg={toModelConfig(cfg)}
-            memoryNodes={getMemoryNodes()}
-            speak={speak}
-            onDebrief={(ask) => {
-              // Back to the real conversation with the debrief opener staged in the composer.
-              setRehearsalOpen(false);
-              setValue(ask);
-            }}
-            onClose={() => setRehearsalOpen(false)}
           />
         </LazyOverlay>
       )}

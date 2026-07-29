@@ -59,8 +59,9 @@ changes.
 
 Mavéa is an AI you talk to and watch think. Ask out loud: a calm face listens, speaks the headline
 the instant it forms, then steps aside while a living canvas draws the answer in charts, timelines,
-and evidence you can check. As it talks, it draws on the answer, circling the exact figure each line
-is about. Sourced claims keep their links and estimates can be labelled.
+and evidence you can check — composed from a catalog of **600 block types**. As it talks, it draws
+on the answer, circling the exact figure each line is about. Sourced claims keep their links and
+estimates can be labelled.
 
 A few specific things worth trying:
 
@@ -76,7 +77,7 @@ A few specific things worth trying:
 - **The Blank Space.** When an answer needs a number only you have, Mavéa leaves a hole to fill —
   by voice, type, or a dragged card — instead of quietly guessing.
 
-The full tour — Atlas, Rehearsal, living dashboards, Ripple, Share-as-a-Mavéa-Story, and ~30 more —
+The full tour — Atlas, the Rehearsal, living dashboards, Ripple, Share-as-a-Mavéa-Story, and ~30 more —
 is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
 ## What it needs

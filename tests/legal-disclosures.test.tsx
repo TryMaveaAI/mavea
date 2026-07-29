@@ -87,7 +87,6 @@ describe('app-wide important information', () => {
       ['../src/live/dashboards/DashboardsApp.tsx', /FeatureUseNotice kind="monitoring"/],
       ['../src/clip/ShareModal.tsx', /FeatureUseNotice kind="publishing"/],
       ['../src/export/ExportModal.tsx', /FeatureUseNotice kind="publishing"/],
-      ['../src/live/rehearsal/RehearsalPanel.tsx', /FeatureUseNotice kind="simulation"/],
       ['../src/live/delegate/DelegatePanel.tsx', /FeatureUseNotice kind="simulation"/],
       ['../src/live/LiveApp.tsx', /FeatureUseNotice kind="voice-data"/],
       ['../src/live/LiveApp.tsx', /FeatureUseNotice kind="upload"/],

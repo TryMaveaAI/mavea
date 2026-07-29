@@ -1,17 +1,23 @@
-// The Table: hand Mavéa a negotiation to scout. The user writes the brief (the goal, what's on
-// the table, what's NEVER offered, and the other side's position as they understand it), and
-// two real agents talk it out on the user's key — your Mavéa versus a clearly-labeled stand-in
-// for the counterpart. The log is the actual exchange; a reached deal ends "pending both
-// humans": you hold to approve YOUR side, then send the summary yourself. A debrief afterward
-// reads the real transcript back — what moved them, where the case is exposed, what to open
-// with for real — and the whole run can be handed to Live as one grounded, honest turn.
+// The Rehearsal: prepare for a hard conversation before you have it, in whichever seat helps.
+// Send your Mavéa (the default): the user writes the brief (the goal, what's on the table,
+// what's NEVER offered, and the other side's position as they understand it), and two real
+// agents talk it out on the user's key — your Mavéa versus a clearly-labeled stand-in for the
+// counterpart. The log is the actual exchange; a reached deal ends "pending both humans": you
+// hold to approve YOUR side, then send the summary yourself. A debrief afterward reads the
+// real transcript back — what moved them, where the case is exposed, what to open with for
+// real — and the whole run can be handed to Live as one grounded, honest turn.
+// Or take the seat yourself: you say your own lines and the counterpart answers in character
+// (and out loud), with a coach card between takes — the TakeSeatStage below.
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
+import type { MemoryNode } from '../memory/store';
 import { Presence } from '../../presence/Presence';
 import { isHidden } from '../../lib/pageVisibility';
 import { getAdapter } from '../providers';
 import { useFocusTrap } from '../useFocusTrap';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
+import { TakeSeatStage } from './TakeSeat';
+import type { RehearsalSetup } from './rehearse';
 import {
   DEFAULT_MAX_ROUNDS,
   negotiate,
@@ -29,10 +35,14 @@ import './delegate.css';
  *  threaded into the request so Stop (or closing the panel) cancels the in-flight generation
  *  instead of letting it run to completion on the user's key after they've walked away.
  *  `maxTokens` defaults to a negotiation turn's budget; the debrief asks for a longer one. */
-function agentCall(cfg: ModelConfig, signal?: AbortSignal, maxTokens = 300) {
+function agentCall(cfg: ModelConfig, signal?: AbortSignal, maxTokens = 1200) {
   return async (system: string, user: string): Promise<string> => {
     const out = await getAdapter(cfg.provider).generate(
-      { system, history: [], user, maxTokens, temperature: 0.7, signal },
+      // The cap must leave room for a reasoning model's thinking, which counts against
+      // maxTokens on current providers — 300 was eaten before a single JSON byte arrived,
+      // so every run opened with an empty reply and died as an instant "no deal".
+      // thinkingLevel keeps that reasoning minimal: these are short in-character moves.
+      { system, history: [], user, maxTokens, temperature: 0.7, thinkingLevel: 'minimal', signal },
       cfg,
     );
     return typeof out.raw === 'string' ? out.raw : JSON.stringify(out.raw);
@@ -357,20 +367,34 @@ function DebriefSection({
 
 type Stage = 'brief' | 'running' | 'done';
 
+/** Whose chair the user's side is in: their Mavéa negotiating for them, or them practicing. */
+type Seat = 'mavea' | 'you';
+
 export function DelegatePanel({
   cfg,
   onClose,
   onPrepTurn,
+  memoryNodes,
+  speak,
+  onDebrief,
 }: {
   cfg: ModelConfig;
   onClose: () => void;
   /** Hand a finished run to Live as one normal, grounded turn — omit to hide the action. */
   onPrepTurn?: (instruction: string, label: string) => void;
+  /** Memory concepts the take-the-seat persona may ground in — opt-in per run. */
+  memoryNodes?: MemoryNode[];
+  /** Speak a counterpart line aloud (take-the-seat only) — the raw [[shown|said]] twin. */
+  speak?: (text: string) => void;
+  /** Stage the take-the-seat debrief ask in the Live composer — omit to hide the action. */
+  onDebrief?: (ask: string) => void;
 }): ReactElement {
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef);
   const logRef = useRef<HTMLOListElement>(null);
   const [stage, setStage] = useState<Stage>('brief');
+  const [seat, setSeat] = useState<Seat>('mavea');
+  const [useMemory, setUseMemory] = useState(false);
   const [counterpart, setCounterpart] = useState('');
   const [goal, setGoal] = useState('');
   const [mine, setMine] = useState('');
@@ -443,6 +467,16 @@ export function DelegatePanel({
     }),
     [counterpart, goal, mine, theirs, boundaryList],
   );
+  // The take-the-seat persona's grounding, mapped from the same brief fields the negotiation
+  // uses: the goal is the conversation, "their position" is everything the counterpart knows.
+  const rehearsalSetup = useMemo((): RehearsalSetup => {
+    const remembered = useMemory ? (memoryNodes ?? []).map((n) => n.body).join('. ') : '';
+    return {
+      scenario: goal.trim(),
+      counterpart: counterpart.trim(),
+      context: [theirs.trim(), remembered].filter(Boolean).join('\n'),
+    };
+  }, [goal, counterpart, theirs, useMemory, memoryNodes]);
   const standing = useMemo(() => standingOffer(events), [events]);
   const turns = events.filter((e) => e.side !== 'engine').length;
   const boundaryHit = events.some((e) => e.side === 'engine');
@@ -470,7 +504,12 @@ export function DelegatePanel({
   }, [stage, deal, approved, stopped, boundaryHit, whoseTurn, guarded, speaking]);
   const look = tableLook(tablePhase);
 
-  const ready = Boolean(counterpart.trim() && goal.trim() && mine.trim() && theirs.trim());
+  // Take-the-seat needs only the conversation and the counterpart (context is optional, as
+  // honest role-play degrades gracefully); the negotiation needs the full case to argue.
+  const ready =
+    seat === 'you'
+      ? Boolean(counterpart.trim() && goal.trim())
+      : Boolean(counterpart.trim() && goal.trim() && mine.trim() && theirs.trim());
   const themLabel = counterpart.trim() || 'the other side';
 
   const seedMatches = (s: Seed): boolean =>
@@ -498,7 +537,7 @@ export function DelegatePanel({
     setDebrief('loading');
     const ac = new AbortController();
     debriefAbortRef.current = ac;
-    void runDebrief(brief, evs, dealResult, agentCall(cfg, ac.signal, 500), ac.signal).then(
+    void runDebrief(brief, evs, dealResult, agentCall(cfg, ac.signal, 1600), ac.signal).then(
       (result) => {
         // A superseded debrief (aborted by a fresh "Run it again"/"Adjust the brief" while this
         // one was still in flight) still resolves — never let its late answer land on top of
@@ -589,7 +628,7 @@ export function DelegatePanel({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="The Table — scout a negotiation"
+        aria-label="The Rehearsal — practice a hard conversation"
         data-stage={stage}
       >
         <header className="dlg-head">
@@ -600,11 +639,13 @@ export function DelegatePanel({
               </span>
             )}
             <div className="dlg-title">
-              <h2>The Table</h2>
+              <h2>The Rehearsal</h2>
               <p className="dlg-kicker">
                 {stage === 'brief'
-                  ? 'Scout the deal before you have it for real'
-                  : 'Two agents, talking it out on your key'}
+                  ? 'Practice the conversation before you have it for real'
+                  : seat === 'you'
+                    ? 'Your take — say it like you will for real'
+                    : 'Two agents, talking it out on your key'}
               </p>
             </div>
           </div>
@@ -618,15 +659,44 @@ export function DelegatePanel({
             className="dlg-brief"
             onSubmit={(e) => {
               e.preventDefault();
-              begin();
+              if (seat === 'you') {
+                if (ready) setStage('running');
+              } else {
+                begin();
+              }
             }}
           >
+            {/* ONE line, and only the honesty facts: the kicker above already frames the purpose,
+                and the seat picker below is the only place the two modes are described — the
+                panel never says the same thing twice. */}
             <p className="dlg-lede">
-              Two agents talk it out on your key — your Mavéa against a <strong>stand-in</strong>{' '}
-              for the other side, built only from what you write here. A few short turns, then a
-              debrief of what moved them — about the cost of one answer. Nothing is sent to{' '}
-              {themLabel}.
+              The other side is a <strong>stand-in</strong>, played only from what you write here —
+              nothing is sent to them.
             </p>
+            <div className="dlg-seatpick" role="radiogroup" aria-label="Who sits on your side">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={seat === 'mavea'}
+                className="dlg-seatpick-opt"
+                onClick={() => setSeat('mavea')}
+              >
+                <span className="dlg-seatpick-name">Send your Mavéa</span>
+                <span className="dlg-seatpick-sub">Two agents talk it out while you watch</span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={seat === 'you'}
+                className="dlg-seatpick-opt"
+                onClick={() => setSeat('you')}
+              >
+                <span className="dlg-seatpick-name">Take the seat yourself</span>
+                <span className="dlg-seatpick-sub">
+                  You say your lines; they answer in character, out loud
+                </span>
+              </button>
+            </div>
             <FeatureUseNotice kind="simulation" from="live" />
 
             <div className="dlg-seeds" role="group" aria-label="Start from an example">
@@ -663,9 +733,22 @@ export function DelegatePanel({
                   placeholder="Budget's tight this quarter; she values retention and won't set precedents"
                 />
                 <span className="dlg-field-hint">
-                  This is all the stand-in knows — it argues only from this.
+                  {seat === 'you'
+                    ? "This is all they'll know — where it runs out, they play the role straight instead of pretending to know the real person."
+                    : 'This is all the stand-in knows — it argues only from this.'}
                 </span>
               </label>
+              {seat === 'you' && memoryNodes && memoryNodes.length > 0 && (
+                <label className="dlg-memory">
+                  <input
+                    type="checkbox"
+                    checked={useMemory}
+                    onChange={(e) => setUseMemory(e.target.checked)}
+                  />
+                  Also ground them in what Mavéa remembers ({memoryNodes.length}{' '}
+                  {memoryNodes.length === 1 ? 'concept' : 'concepts'})
+                </label>
+              )}
             </fieldset>
 
             <fieldset className={'dlg-group' + (seedPulse ? ' dlg-seed-fill' : '')}>
@@ -678,57 +761,76 @@ export function DelegatePanel({
                   placeholder="A raise to $95k, up from $82k, this cycle"
                 />
               </label>
-              <label className="dlg-field">
-                <span className="dlg-field-name">What you'll put on the table</span>
-                <textarea
-                  rows={2}
-                  value={mine}
-                  onChange={(e) => setMine(e.target.value)}
-                  placeholder="I led the billing migration; I can mentor two juniors"
-                />
-              </label>
-            </fieldset>
-
-            <fieldset className={'dlg-group dlg-group-line' + (seedPulse ? ' dlg-seed-fill' : '')}>
-              <legend>
-                Your line <span className="dlg-enforced">enforced</span>
-              </legend>
-              <p className="dlg-line-note">
-                Mavéa never offers these. Every proposal is checked in code, and any that crosses
-                your line is pulled back — not just discouraged.
-              </p>
-              <label className="dlg-field">
-                <span className="dlg-field-name sr-only">Never offer</span>
-                <input
-                  value={boundaries}
-                  onChange={(e) => setBoundaries(e.target.value)}
-                  placeholder="working weekends, a title bump instead of pay"
-                />
-              </label>
-              {boundaryList.length > 0 && (
-                <ul className="dlg-line-chips" aria-hidden="true">
-                  {boundaryList.map((b) => (
-                    <li key={b} className="dlg-line-chip">
-                      <ShieldIcon />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
+              {seat === 'mavea' && (
+                <label className="dlg-field">
+                  <span className="dlg-field-name">What you'll put on the table</span>
+                  <textarea
+                    rows={2}
+                    value={mine}
+                    onChange={(e) => setMine(e.target.value)}
+                    placeholder="I led the billing migration; I can mentor two juniors"
+                  />
+                </label>
               )}
             </fieldset>
 
+            {seat === 'mavea' && (
+              <fieldset
+                className={'dlg-group dlg-group-line' + (seedPulse ? ' dlg-seed-fill' : '')}
+              >
+                <legend>
+                  Your line <span className="dlg-enforced">enforced</span>
+                </legend>
+                <p className="dlg-line-note">
+                  Mavéa never offers these. Every proposal is checked in code, and any that crosses
+                  your line is pulled back — not just discouraged.
+                </p>
+                <label className="dlg-field">
+                  <span className="dlg-field-name sr-only">Never offer</span>
+                  <input
+                    value={boundaries}
+                    onChange={(e) => setBoundaries(e.target.value)}
+                    placeholder="working weekends, a title bump instead of pay"
+                  />
+                </label>
+                {boundaryList.length > 0 && (
+                  <ul className="dlg-line-chips" aria-hidden="true">
+                    {boundaryList.map((b) => (
+                      <li key={b} className="dlg-line-chip">
+                        <ShieldIcon />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </fieldset>
+            )}
+
             <div className="dlg-brief-actions">
               <button type="submit" className="dlg-start" disabled={!ready}>
-                Start the negotiation
+                {seat === 'you' ? 'Start take 1' : 'Start the negotiation'}
               </button>
               <span className="dlg-brief-cost">
-                ≈ one answer's worth of calls, debrief included
+                {seat === 'you'
+                  ? 'one short call per line, one for the coach'
+                  : "≈ one answer's worth of calls, debrief included"}
               </span>
             </div>
           </form>
         )}
 
-        {stage !== 'brief' && (
+        {stage !== 'brief' && seat === 'you' && (
+          <TakeSeatStage
+            setup={rehearsalSetup}
+            themLabel={themLabel}
+            cfg={cfg}
+            speak={speak}
+            onDebrief={onDebrief}
+            onAdjustBrief={() => setStage('brief')}
+          />
+        )}
+
+        {stage !== 'brief' && seat === 'mavea' && (
           <div className="dlg-table">
             <div className="dlg-tablescape">
               <div className="dlg-seat yours">

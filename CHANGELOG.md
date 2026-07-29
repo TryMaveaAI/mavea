@@ -4,6 +4,26 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The Rehearsal and The Table are one feature now: Rehearse.** One Practice-menu entry covers
+  both seats: send your Mavéa to negotiate against the stand-in (the old Table), or take the
+  seat yourself and say your own lines against the counterpart in character, spoken aloud, with
+  a coach card between takes (the old Rehearsal). Searching "table" in ⌘K still lands on it.
+
+### Fixed
+
+- A journey card (storystrip) no longer dies on **Next** when the model invents a panel icon —
+  unknown icon names fall back safely, and the schema now drops hallucinated icons at any depth
+  for every extended block.
+- Mavéa's drawn marks re-measure when a card's content moves under them (a chart re-sorting, a
+  trace expanding inside its own scroller), numbered pen chips no longer park on ink an earlier
+  mark already drew, a lasso in tight quarters hugs its words instead of grazing the labels
+  around them, and ink inside an inner scroll region is no longer drawn slightly off on a
+  spotlit card.
+
 ## [1.0.11] - 2026-07-23
 
 ### Fixed — the pre-launch pass

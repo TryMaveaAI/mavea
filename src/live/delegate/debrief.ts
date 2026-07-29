@@ -1,4 +1,4 @@
-// debrief.ts — the payoff of a run at The Table. One extra call turns the real transcript into
+// debrief.ts — the payoff of a Rehearsal run. One extra call turns the real transcript into
 // what moved them, where the user's case is exposed, and what to say first for real. It never
 // quotes from imagination: the model cites a turn NUMBER, and the panel looks up that event's
 // actual `say` line — every excerpt shown is a genuine line from the run, or nothing at all if
@@ -124,7 +124,7 @@ export function buildPrepInstruction(
   events: NegotiationEvent[],
   deal: string | null,
 ): string {
-  return `I ran a practice negotiation at The Table: my Mavéa argued my side against a stand-in for ${brief.counterpart}, built only from my own notes. Nothing was sent to anyone — this was a scouting run on my own key.
+  return `I ran a practice negotiation as a rehearsal: my Mavéa argued my side against a stand-in for ${brief.counterpart}, built only from my own notes. Nothing was sent to anyone — this was a scouting run on my own key.
 My goal: ${brief.goal}
 What I could offer: ${brief.mine}
 ${brief.counterpart}'s position, as I described it: ${brief.theirs}

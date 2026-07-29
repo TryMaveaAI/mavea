@@ -5,13 +5,15 @@ import {
   coachTake,
   debriefAsk,
   type RehearsalSetup,
-} from '../src/live/rehearsal/engine';
-import { RehearsalPanel } from '../src/live/rehearsal/RehearsalPanel';
+} from '../src/live/delegate/rehearse';
+import { DelegatePanel } from '../src/live/delegate/DelegatePanel';
+import type { MemoryNode } from '../src/live/memory/store';
 import type { ModelConfig } from '../src/live/providers/types';
 
-// The Rehearsal: the persona is grounded ONLY in supplied context (and told not to invent
-// the real person), replies/coach parse loose JSON and fail to nothing, and the panel walks
-// setup → take → coach with the counterpart's words on screen.
+// The Rehearsal's take-the-seat mode: the persona is grounded ONLY
+// in supplied context (and told not to invent the real person), replies/coach parse loose JSON
+// and fail to nothing, and the panel walks brief → take → coach with the counterpart's words
+// on screen — while the default seat keeps the full negotiation brief untouched.
 
 const generate = vi.fn();
 // A plain throw outside the spy: vitest's spy bookkeeping flags a rejection thrown INSIDE
@@ -33,13 +35,25 @@ const setup: RehearsalSetup = {
   context: 'She defers to budget freezes.',
 };
 
+/** Switch the brief to the take-the-seat seat and fill its two required fields. */
+function briefTakeSeat(scenario: string, counterpart: string): void {
+  fireEvent.click(screen.getByText('Take the seat yourself'));
+  fireEvent.change(screen.getByPlaceholderText('Priya, my manager'), {
+    target: { value: counterpart },
+  });
+  fireEvent.change(screen.getByPlaceholderText('A raise to $95k, up from $82k, this cycle'), {
+    target: { value: scenario },
+  });
+  fireEvent.click(screen.getByText('Start take 1'));
+}
+
 beforeEach(() => {
   generate.mockReset();
   networkDown = false;
 });
 afterEach(cleanup);
 
-describe('rehearsal engine', () => {
+describe('take-the-seat engine', () => {
   it('grounds the persona ONLY in the supplied context and forbids invention', async () => {
     generate.mockResolvedValue({ raw: '{"reply":"Budgets are locked until Q3."}' });
     const out = await counterpartReply(
@@ -104,17 +118,39 @@ describe('rehearsal engine', () => {
   });
 });
 
-describe('RehearsalPanel', () => {
-  it('walks setup → take: the counterpart answers in character on screen', async () => {
+describe('DelegatePanel — take the seat', () => {
+  it('the seat choice reshapes the brief: no offer/boundary fields, memory opt-in appears', () => {
+    const nodes = [{ body: 'Prefers written proposals' }] as unknown as MemoryNode[];
+    render(<DelegatePanel cfg={cfg} memoryNodes={nodes} onClose={vi.fn()} />);
+    // Default seat: the full negotiation brief.
+    expect(screen.getByText("What you'll put on the table")).toBeTruthy();
+    expect(
+      screen.getByPlaceholderText('working weekends, a title bump instead of pay'),
+    ).toBeTruthy();
+    expect(screen.getByText('Start the negotiation')).toBeTruthy();
+    expect(screen.queryByText(/what Mavéa remembers/)).toBeNull();
+    // Take the seat: practice needs no offer and no code-enforced line.
+    fireEvent.click(screen.getByText('Take the seat yourself'));
+    expect(screen.queryByText("What you'll put on the table")).toBeNull();
+    expect(
+      screen.queryByPlaceholderText('working weekends, a title bump instead of pay'),
+    ).toBeNull();
+    expect(screen.getByText('Start take 1')).toBeTruthy();
+    expect(screen.getByText(/what Mavéa remembers \(1 concept\)/)).toBeTruthy();
+  });
+
+  it('a seed fills the shared fields for both seats', () => {
+    render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('Ask for a raise'));
+    fireEvent.click(screen.getByText('Take the seat yourself'));
+    expect(screen.getByDisplayValue('Priya')).toBeTruthy();
+    expect(screen.getByDisplayValue('A raise to $95k, up from $82k, this cycle')).toBeTruthy();
+  });
+
+  it('walks brief → take: the counterpart answers in character on screen', async () => {
     generate.mockResolvedValue({ raw: '{"reply":"Can we revisit in Q3?"}' });
-    render(<RehearsalPanel cfg={cfg} memoryNodes={[]} onDebrief={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('asking my manager for the raise'), {
-      target: { value: 'the raise conversation' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('my manager'), {
-      target: { value: 'my manager' },
-    });
-    fireEvent.click(screen.getByText('Start take 1'));
+    render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
+    briefTakeSeat('the raise conversation', 'my manager');
     fireEvent.change(screen.getByLabelText('Your line'), {
       target: { value: 'I want to settle this now.' },
     });
@@ -128,22 +164,8 @@ describe('RehearsalPanel', () => {
     generate.mockResolvedValue({
       raw: '{"reply":"Let’s discuss [[Omakase|oh-mah-kah-seh]]."}',
     });
-    render(
-      <RehearsalPanel
-        cfg={cfg}
-        memoryNodes={[]}
-        speak={speak}
-        onDebrief={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
-    fireEvent.change(screen.getByPlaceholderText('asking my manager for the raise'), {
-      target: { value: 'dinner plans' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('my manager'), {
-      target: { value: 'my friend' },
-    });
-    fireEvent.click(screen.getByText('Start take 1'));
+    render(<DelegatePanel cfg={cfg} speak={speak} onClose={vi.fn()} />);
+    briefTakeSeat('dinner plans', 'my friend');
     fireEvent.change(screen.getByLabelText('Your line'), { target: { value: 'Where?' } });
     fireEvent.click(screen.getByText('Say it'));
     await waitFor(() => expect(screen.getByText('Let’s discuss Omakase.')).toBeTruthy());
@@ -156,31 +178,32 @@ describe('RehearsalPanel', () => {
       .mockResolvedValueOnce({
         raw: '{"note":"No hedging this time.","tip":"Lead with the 31%."}',
       });
-    render(<RehearsalPanel cfg={cfg} memoryNodes={[]} onDebrief={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('asking my manager for the raise'), {
-      target: { value: 'the raise' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('my manager'), { target: { value: 'her' } });
-    fireEvent.click(screen.getByText('Start take 1'));
+    render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
+    briefTakeSeat('the raise', 'her');
     fireEvent.change(screen.getByLabelText('Your line'), { target: { value: 'About my raise.' } });
     fireEvent.click(screen.getByText('Say it'));
     await waitFor(() => expect(screen.getByText('Budgets are locked.')).toBeTruthy());
     fireEvent.click(screen.getByText('End take · get coached'));
     await waitFor(() => expect(screen.getByText('COACH — BETWEEN TAKES')).toBeTruthy());
     expect(screen.getByText('No hedging this time.')).toBeTruthy();
-    expect(screen.getByText(/take 2/)).toBeTruthy();
+    expect(screen.getByText('Take 2')).toBeTruthy();
     expect(screen.queryByText('Budgets are locked.')).toBeNull(); // fresh take
   });
 
   it('Debrief hands the scenario-quoting ask back to Live', () => {
     const onDebrief = vi.fn();
-    render(<RehearsalPanel cfg={cfg} memoryNodes={[]} onDebrief={onDebrief} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('asking my manager for the raise'), {
-      target: { value: 'the raise' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('my manager'), { target: { value: 'her' } });
-    fireEvent.click(screen.getByText('Start take 1'));
+    render(<DelegatePanel cfg={cfg} onDebrief={onDebrief} onClose={vi.fn()} />);
+    briefTakeSeat('the raise', 'her');
     fireEvent.click(screen.getByText('Debrief the real one'));
     expect(onDebrief).toHaveBeenCalledWith(expect.stringContaining('the raise'));
+  });
+
+  it('Adjust the brief returns to the form with the fields preserved', () => {
+    render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
+    briefTakeSeat('the raise', 'her');
+    fireEvent.click(screen.getByText('Adjust the brief'));
+    expect(screen.getByDisplayValue('her')).toBeTruthy();
+    expect(screen.getByDisplayValue('the raise')).toBeTruthy();
+    expect(screen.getByText('Start take 1')).toBeTruthy();
   });
 });

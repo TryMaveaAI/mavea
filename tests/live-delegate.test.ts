@@ -138,6 +138,43 @@ describe('negotiate — two real agents, code-enforced boundaries', () => {
     expect(r.deal).toBeNull();
   });
 
+  it('re-asks for JSON instead of reading a hiccup as a decision (the instant-no-deal bug)', async () => {
+    // A truncated or prose reply used to count as "No further moves" and end every run on
+    // turn one. A hiccup is not a decision: the engine now nudges once for the bare JSON.
+    const { fn, calls } = scripted([
+      'Happy to help! Let me think about this negotiation…',
+      move('$88k now, six-month review.', '$88k now with a 6-month review', 'offer'),
+      move('Done — that works for Priya.', null, 'accept'),
+    ]);
+    const events: NegotiationEvent[] = [];
+    const r = await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(calls[1].user).toContain('ONLY');
+    expect(events[0]).toMatchObject({ side: 'yours', kind: 'offer' });
+    expect(r.deal).toBe('$88k now with a 6-month review');
+  });
+
+  it('nudges a first-move pass into a real move — nobody walks before making one', async () => {
+    const { fn, calls } = scripted([
+      move('Not worth discussing.', null, 'pass'),
+      move('$88k now, review in six months.', '$88k now with a 6-month review', 'offer'),
+      move('Deal.', null, 'accept'),
+    ]);
+    const events: NegotiationEvent[] = [];
+    const r = await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(calls[1].user).toContain('too early');
+    expect(events[0]).toMatchObject({ side: 'yours', kind: 'offer' });
+    expect(r.deal).toBe('$88k now with a 6-month review');
+  });
+
+  it('ends honestly when no readable reply ever arrives — never a fake "no further moves"', async () => {
+    const { fn } = scripted(['', '', '']);
+    const events: NegotiationEvent[] = [];
+    const r = await negotiate(BRIEF, fn, (e) => events.push(e));
+    expect(events).toHaveLength(1);
+    expect(events[0].say).toContain('No reply arrived');
+    expect(r.deal).toBeNull();
+  });
+
   it('accept with no standing offer ends as a pass, and rounds are capped', async () => {
     const eager = vi.fn(async () => move('Deal!', null, 'accept'));
     const r1 = await negotiate(BRIEF, eager, () => {});

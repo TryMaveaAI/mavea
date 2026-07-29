@@ -1,4 +1,4 @@
-/* The Table — the Mavéa-to-Mavéa negotiation overlay. Two surfaces in one panel: a mission
+/* The Rehearsal — the Mavéa-to-Mavéa negotiation overlay. Two surfaces in one panel: amission
    brief (setup), then the table, where two seated jellies carry the exchange — yours in full
    aurora, the stand-in drained of it — with the standing offer surfaced above the transcript
    and the engine stepping in as a referee when your line holds. Tokens only; identity comes
@@ -1225,6 +1225,177 @@
     opacity: 0;
     transform: translateY(24px);
   }
+}
+
+/* ---- the seat choice (brief) + take-the-seat mode ----
+   The counterpart's lines keep the warning hue — a different person, never Mavéa's own accent. */
+.dlg-seatpick {
+  display: flex;
+  gap: 10px;
+}
+.dlg-seatpick-opt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.dlg-seatpick-opt:hover {
+  border-color: var(--line-strong);
+}
+.dlg-seatpick-opt[aria-checked='true'] {
+  border-color: color-mix(in oklab, var(--presence) 55%, transparent);
+  background: color-mix(in oklab, var(--presence) 8%, transparent);
+}
+.dlg-seatpick-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dlg-seatpick-sub {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.dlg-memory {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.dlg-seat-you {
+  width: 44px;
+  height: 44px;
+  margin: 10px 0 6px;
+  border: 1.5px dashed color-mix(in oklab, var(--presence) 55%, transparent);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 7%, transparent);
+}
+.dlg-take-badge {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warning);
+}
+.dlg-failed {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.dlg-failed button {
+  border: none;
+  background: none;
+  color: var(--presence);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.dlg-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--warning) 11%, transparent);
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, transparent);
+}
+.dlg-coach-kicker {
+  font-family: var(--font-data);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--warning);
+  font-weight: 700;
+}
+.dlg-coach-note,
+.dlg-coach-tip {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+.dlg-coach-tip {
+  color: var(--text-secondary);
+}
+.dlg-coach-wait {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.dlg-compose {
+  display: flex;
+  gap: 9px;
+}
+.dlg-compose input {
+  flex: 1;
+  padding: 9px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+}
+.dlg-say {
+  flex: none;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dlg-say:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dlg-take-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.dlg-end-take,
+.dlg-real-debrief {
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.dlg-end-take {
+  border-color: color-mix(in oklab, var(--warning) 45%, transparent);
+  color: var(--warning);
+}
+.dlg-end-take:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--warning) 10%, transparent);
+}
+.dlg-end-take:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dlg-real-debrief {
+  margin-left: auto;
+}
+.dlg-real-debrief:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {

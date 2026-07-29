@@ -63,12 +63,12 @@ function yourSystem(b: NegotiationBrief): string {
 THE GOAL: ${b.goal}
 YOU MAY OFFER (nothing else exists): ${b.mine}
 ${b.boundaries.length ? `HARD BOUNDARIES — these are NEVER offered, in any form: ${b.boundaries.join('; ')}` : ''}
-Negotiate firmly but fairly: open near the goal, concede in small steps, and accept a standing offer only when it clearly serves the goal. ${REPLY_SHAPE}`;
+You are at the table to REACH an agreement the goal can live with, not to demonstrate firmness: open your first move with a concrete offer near the goal (never pass on your first move), concede in small steps toward the middle, and accept a standing offer when it clearly serves the goal. Walking away is a last resort for a genuinely unacceptable table, not a default. ${REPLY_SHAPE}`;
 }
 
 function theirSystem(b: NegotiationBrief): string {
   return `You are a stand-in negotiator for ${b.counterpart}. Everything you know about ${b.counterpart}'s side: ${b.theirs}
-Argue that side's interest: counter for better value, concede only for real gains, and accept a standing offer when it is genuinely fair to ${b.counterpart}. Never invent assets the brief above doesn't mention. ${REPLY_SHAPE}`;
+Argue that side's interest in GOOD FAITH: counter with concrete terms rather than walking away, concede only for real gains, and accept a standing offer when it is genuinely fair to ${b.counterpart}. Never pass on your first move, and never invent assets the brief above doesn't mention. ${REPLY_SHAPE}`;
 }
 
 /** Lenient JSON extraction — models love fences and stray prose around the object. */
@@ -122,8 +122,10 @@ export function standingOffer(
 }
 
 /** Total turns across both sides before the engine calls a no-deal, unless the brief
- *  overrides it. Exported so the panel's progress meter counts against the same cap. */
-export const DEFAULT_MAX_ROUNDS = 6;
+ *  overrides it. Exported so the panel's progress meter counts against the same cap.
+ *  Four moves each: enough room to open, trade concessions twice, and land — six ended
+ *  runs mid-convergence once both sides actually engaged. */
+export const DEFAULT_MAX_ROUNDS = 8;
 
 /**
  * Split the user's free-typed never-offer field into distinct items — trimmed, empties
@@ -186,13 +188,32 @@ export async function negotiate(
     const system = side === 'yours' ? yourSystem(brief) : theirSystem(brief);
     let user = `Negotiation so far:\n${transcript(events, brief)}\nYour move.`;
 
-    // One retry when the user's side trips a boundary — the engine never lets it ship.
+    // Up to two extra attempts per move, each with its own nudge: a reply the engine can't
+    // parse (truncated, fenced, or a transport hiccup) is asked again for the bare JSON — a
+    // hiccup is not a decision, and treating it as one is how every run used to die on turn
+    // one with "No further moves". A first-move "pass" gets a too-early-to-walk nudge (both
+    // sides owe the table one real move). A boundary trip is withheld and retried. Only a
+    // repeated failure ends the talks.
     let move: AgentMove | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const firstMove = !events.some((e) => e.side === side);
+    let unparsed = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
       const raw = await call(system, user).catch(() => '');
       if (signal?.aborted) break;
       move = parseMove(raw);
-      if (!move) break;
+      if (!move) {
+        unparsed = true;
+        user +=
+          '\nYour last reply was not the required JSON object. Reply with ONLY {"say":…, "offer":…, "decision":…} — no prose, no fences.';
+        continue;
+      }
+      unparsed = false;
+      if (firstMove && move.decision === 'pass') {
+        user +=
+          '\nIt is too early to end the talks — the table deserves your best concrete move first. Make an offer or a counter.';
+        move = null;
+        continue;
+      }
       const tripped =
         side === 'yours' && move.offer ? violatedBoundary(move.offer, brief.boundaries) : null;
       if (!tripped) break;
@@ -207,7 +228,13 @@ export async function negotiate(
     if (signal?.aborted) break;
 
     if (!move) {
-      emit({ side, kind: 'pass', say: 'No further moves.' });
+      // An honest ending line: a side that never produced a readable reply did not "decide"
+      // anything, and saying so is what makes a transport problem visible instead of eerie.
+      emit({
+        side,
+        kind: 'pass',
+        say: unparsed ? 'No reply arrived — the run ended early.' : 'No further moves.',
+      });
       break;
     }
     if (move.decision === 'accept' && standing && standing.by !== side) {
