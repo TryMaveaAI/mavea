@@ -1,6 +1,6 @@
 {
   "name": "@mavea/mavea",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "type": "module",
   "description": "Mavéa — an AI Presence interface. Talk to AI. See what it means.",
   "license": "PolyForm-Noncommercial-1.0.0",
