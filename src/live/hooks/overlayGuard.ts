@@ -16,7 +16,6 @@ export interface AttentionOverlays {
   replayAt: number | null;
   recapOpen: boolean;
   atlasOpen: boolean;
-  rehearsalOpen: boolean;
   delegateOpen: boolean;
   srsOpen: boolean;
   zoomLevel: unknown;
@@ -35,7 +34,6 @@ export function anyOverlayOpen(o: AttentionOverlays): boolean {
     o.replayAt !== null ||
     o.recapOpen ||
     o.atlasOpen ||
-    o.rehearsalOpen ||
     o.delegateOpen ||
     o.srsOpen ||
     o.zoomLevel !== null ||

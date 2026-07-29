@@ -66,7 +66,8 @@ export interface MarkExtra {
   /** Pre-cleared placement for a written label — see `LabelPlace`. */
   place?: LabelPlace;
   /** The measure step found text directly under the target (a tight sub-label row): the
-   *  underline tucks close and flattens its sag so the stroke never runs through those words. */
+   *  underline tucks close and flattens its sag, and the lasso shrinks its breathing room,
+   *  so the stroke never runs through the words around the target. */
   tight?: boolean;
   /** Every line box of a wrapped highlight target — one marker band per line, the way a real
    *  highlighter re-touches each row. Absent (or a single box) keeps the one-band behavior. */
@@ -129,7 +130,7 @@ function penPath(pts: Pt[]): string {
 
 /** A lasso: one lap plus a ~60° overshoot so the stroke visibly closes over itself,
  *  tilted slightly off-axis, with per-point radial wobble. */
-function circle(r: Rect, host: Rect, rnd: () => number): string {
+function circle(r: Rect, host: Rect, rnd: () => number, tight = false): string {
   const cx = r.left + r.width / 2;
   const cy = r.top + r.height / 2;
   // Hug the target with a small constant gap past its box — enough to read as "around this", not
@@ -139,10 +140,19 @@ function circle(r: Rect, host: Rect, rnd: () => number): string {
   // surrounds the target, even one wider than the cap. A target hard against the card edge simply
   // extends a hair past it — the .ink-layer overflow clip then trims that sliver, so the mark
   // stays on its card without ever looping a neighbour. (Containment lives in CSS; encircling
-  // lives here.)
-  const rx = Math.max(Math.min(Math.max(r.width / 2 + 8, 14), host.width * 0.42), r.width / 2 + 2);
+  // lives here.) Tight (content pressing against the target — a step number beside a small
+  // caps label, a title right under it): halve the breathing room and drop the minimum-size
+  // floors, so the lasso hugs the words instead of grazing their neighbours.
+  const padX = tight ? 4 : 8;
+  const padY = tight ? 3.5 : 7;
+  const minRx = tight ? 9 : 14;
+  const minRy = tight ? 8 : 11;
+  const rx = Math.max(
+    Math.min(Math.max(r.width / 2 + padX, minRx), host.width * 0.42),
+    r.width / 2 + 2,
+  );
   const ry = Math.max(
-    Math.min(Math.max(r.height / 2 + 7, 11), host.height * 0.42),
+    Math.min(Math.max(r.height / 2 + padY, minRy), host.height * 0.42),
     r.height / 2 + 2,
   );
   const tilt = -0.07 + (rnd() - 0.5) * 0.05;
@@ -680,7 +690,7 @@ export function strokeFor(
     // squashed ellipse — a hand would underline that instead.
     const tooWide = r.width > host.width * 0.6 || r.width / Math.max(r.height, 1) > 5;
     if (tooWide) return { d: underline(r, host, rnd, extra?.tight), kind: 'underline' };
-    return { d: circle(r, host, rnd), kind };
+    return { d: circle(r, host, rnd, extra?.tight), kind };
   }
   if (kind === 'underline') return { d: underline(r, host, rnd, extra?.tight), kind };
   if (kind === 'highlight') {

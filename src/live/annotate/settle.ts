@@ -8,12 +8,24 @@ const POLL_MS = 100; // how often a not-yet-settled measurement is retried
 const MAX_POLLS = 18; // ~1.8s ceiling — generous for a reveal transition or a takeover's entrance
 const STABLE_STREAK = 2; // this many identical reads in a row reads as "stopped moving"
 
+/** Chrome the pen itself renders (or the badge state it stamps on the host) — mutations there
+ *  are our own echo, never a reason to re-measure. Without this filter every placement would
+ *  mutate the card, which would restart the poll, which would place again: a feedback loop. */
+const INK_CHROME = '.ink-layer, .ink-connect-layer, .note-rail';
+
+function isInkNode(n: Node): boolean {
+  const el = n instanceof Element ? n : n.parentElement;
+  return !!el?.closest(INK_CHROME);
+}
+
 /** Poll `measure` until its result's geometry (per `fingerprint`) stops changing for
  *  `STABLE_STREAK` reads in a row, or `MAX_POLLS` is exhausted — reporting every successful read
  *  along the way via `onResult`, never a null. That's the core of the contract: a caller's placed
  *  result is only ever REPLACED by a fresh, real placement, never cleared just because one attempt
  *  found nothing yet (a card mid-reveal, a host not mounted this tick). Also re-arms on the
- *  resolved host's own resize (a card that grows from streamed content) and on a window resize,
+ *  resolved host's own resize (a card that grows from streamed content), on a window resize, and
+ *  on any real content mutation inside the host (a block sorting its rows, a toggle revealing
+ *  more of them — neither changes the host's outer box, so only a mutation observer sees them),
  *  restarting the settle count rather than trusting a blind one-shot re-check. Returns a cleanup
  *  that stops every timer/observer it started. */
 export function pollUntilSettled<T>(
@@ -29,6 +41,7 @@ export function pollUntilSettled<T>(
   let streak = 0;
   let ro: ResizeObserver | undefined;
   let transitionHost: HTMLElement | undefined;
+  let mo: MutationObserver | undefined;
 
   const armHost = (host: HTMLElement): void => {
     if (!ro && typeof ResizeObserver !== 'undefined') {
@@ -41,6 +54,31 @@ export function pollUntilSettled<T>(
     if (!transitionHost) {
       transitionHost = host;
       host.addEventListener('transitionend', restart);
+    }
+    // Content can move INSIDE the host without changing its outer box or firing a transition —
+    // a chart re-sorting its rows, a trace expanding inside its own capped scroller. The marks
+    // anchor to text, so a re-measure lands them on the moved rows; only a mutation observer
+    // notices the move. Our own echo is filtered out: ink chrome mutations and the badge
+    // state/duration SpotInk stamps onto the host itself.
+    if (!mo && typeof MutationObserver !== 'undefined') {
+      const significant = (m: MutationRecord): boolean => {
+        if (isInkNode(m.target)) return false;
+        if (m.type === 'attributes') {
+          return !(
+            m.target === host &&
+            (m.attributeName === 'style' || m.attributeName === 'data-inking')
+          );
+        }
+        if (m.type === 'childList') {
+          const touched = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)];
+          return touched.some((n) => !isInkNode(n));
+        }
+        return true;
+      };
+      mo = new MutationObserver((muts) => {
+        if (muts.some(significant)) restart();
+      });
+      mo.observe(host, { subtree: true, childList: true, attributes: true, characterData: true });
     }
   };
 
@@ -80,6 +118,7 @@ export function pollUntilSettled<T>(
     window.clearTimeout(timer);
     window.removeEventListener('resize', restart);
     ro?.disconnect();
+    mo?.disconnect();
     transitionHost?.removeEventListener('transitionend', restart);
   };
 }

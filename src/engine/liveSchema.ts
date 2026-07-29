@@ -1424,6 +1424,15 @@ function coerceToReferenceShape(
         depth + 1,
       );
       if (coerced === INVALID_STRUCTURE) return INVALID_STRUCTURE;
+      // An `icon` at any depth is a registry key, not display text: a hallucinated name is
+      // dropped here (the item renders fine without one) instead of reaching a renderer whose
+      // `Icon[name]` lookup would come back undefined. Same contract coerceIcon enforces for
+      // the hand-written builders' top-level icons.
+      if (key === 'icon' && typeof coerced === 'string') {
+        const iconKey = coerceIcon(coerced);
+        if (iconKey) out[key] = iconKey;
+        continue;
+      }
       // A nested field with a pipe-enum catalog hint ("stage": 'inputs'|'activities'|…) is
       // normalized here, where required-ness is known. Snap-repair recovers the near-misses a
       // model actually writes ("Inputs", "activity"). When snapping fails, the ItemSpec's
@@ -1579,7 +1588,12 @@ function coerceGeneric(
       key,
     );
     if (coerced === INVALID_STRUCTURE) delete repaired[key];
-    else {
+    else if (key === 'icon' && typeof coerced === 'string') {
+      // Top-level icons on generic blocks get the same registry snap the nested walk applies.
+      const iconKey = coerceIcon(coerced);
+      if (iconKey) repaired[key] = iconKey;
+      else delete repaired[key];
+    } else {
       const enumValues = enumValuesFromHint(meta.propHints?.[key]);
       if (enumValues && typeof coerced === 'string') {
         const snapped = snapToEnum(coerced, enumValues);

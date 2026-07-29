@@ -86,6 +86,28 @@ describe('gesture geometry — hand strokes, not machine arcs', () => {
     expect(a.d).not.toBe(c.d);
   });
 
+  it('a tight lasso hugs its target instead of grazing the neighbours', () => {
+    // A small caps label with content pressing against it (a step number beside it, a title
+    // right under) — the measure step flags that `tight`, and the loop must shrink its
+    // breathing room while still fully encircling the words.
+    const label = rect(60, 40, 38, 13);
+    const loose = strokeFor('circle', label, HOST, 'seed')!;
+    const tight = strokeFor('circle', label, HOST, 'seed', { tight: true })!;
+    expect(tight.kind).toBe('circle');
+    const span = (d: string, axis: 'x' | 'y') => {
+      const vs = coords(d).map((p) => p[axis]);
+      return Math.max(...vs) - Math.min(...vs);
+    };
+    expect(span(tight.d, 'x')).toBeLessThan(span(loose.d, 'x'));
+    expect(span(tight.d, 'y')).toBeLessThan(span(loose.d, 'y'));
+    const xs = coords(tight.d).map((p) => p.x);
+    const ys = coords(tight.d).map((p) => p.y);
+    expect(Math.min(...xs)).toBeLessThanOrEqual(label.left);
+    expect(Math.max(...xs)).toBeGreaterThanOrEqual(label.left + label.width);
+    expect(Math.min(...ys)).toBeLessThanOrEqual(label.top);
+    expect(Math.max(...ys)).toBeGreaterThanOrEqual(label.top + label.height);
+  });
+
   it('strokes are pen lines (cubic splines), never perfect arcs', () => {
     for (const kind of ['circle', 'underline', 'point'] as const) {
       const s = strokeFor(kind, MARK, HOST, 'seed')!;

@@ -175,13 +175,37 @@ function scrollerOf(el: HTMLElement, card: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** Ink this stop's EARLIER marks (lower step number) already drew into the same container —
+ *  their strokes, dots, and written words, in viewport space. A later chip must not park on
+ *  what the pen has already drawn; only earlier marks count, so placement can never oscillate
+ *  (an earlier chip never dodges a later one). A layer whose own chip was dropped carries no
+ *  number and is skipped — there's no honest way to order against it. */
+function priorInkRects(container: HTMLElement, stepNumber: number): DOMRect[] {
+  const out: DOMRect[] = [];
+  for (const layer of Array.from(
+    container.querySelectorAll<SVGSVGElement>(':scope > .ink-layer'),
+  )) {
+    const n = Number(layer.querySelector('.ink-step-num')?.textContent);
+    if (!Number.isFinite(n) || n >= stepNumber) continue;
+    for (const el of Array.from(
+      layer.querySelectorAll<SVGGraphicsElement>(
+        '.ink-stroke, .ink-fill, .ink-step-dot, .ink-note',
+      ),
+    )) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) out.push(r);
+    }
+  }
+  return out;
+}
+
 function measure(
   spot: string,
   line?: string,
   mark?: TourMark,
   generous?: boolean,
   within?: HTMLElement | null,
-  wantsChip?: boolean,
+  stepNumber?: number,
 ): Placed | null {
   const hosts = (within ?? document).querySelectorAll<HTMLElement>(
     `[data-spot-id="${CSS.escape(spot)}"]`,
@@ -194,11 +218,8 @@ function measure(
   if (hostRect.width <= 0 || hostRect.height <= 0) return null;
   // If the target lives inside an inner scroll region (a many-items list), the ink must ride that
   // scroll, not the card — otherwise it stays pinned to a fixed spot while the list moves under it.
-  // Portal into the scroller and plot geometry in its CONTENT space: the origin is where scroll
-  // offset 0 sits in viewport coords (its rect minus its current scroll), the box spans the FULL
-  // scroll size, so a mark on a scrolled-out item lands at the right place in the content and simply
-  // clips until scrolled into view. A non-scrolling card is unchanged: container === host, origin ===
-  // hostRect, box === the host's visual rect.
+  // Portal into the scroller and plot geometry in its CONTENT space; a non-scrolling card is
+  // unchanged: container === host, geometry relative to the host's own visual rect.
   const scroller = target.el ? scrollerOf(target.el, host) : null;
   const container = scroller ?? host;
   if (scroller && getComputedStyle(scroller).position === 'static') {
@@ -206,25 +227,40 @@ function measure(
     // scroller so content coords map straight onto it. Idempotent; a no-op if already positioned.
     scroller.style.position = 'relative';
   }
-  const origin = scroller
-    ? (() => {
-        const r = scroller.getBoundingClientRect();
-        return { left: r.left - scroller.scrollLeft, top: r.top - scroller.scrollTop };
-      })()
-    : { left: hostRect.left, top: hostRect.top };
+  const scrRect = scroller ? scroller.getBoundingClientRect() : null;
+  // The scroller's content space is LAYOUT px — scrollWidth/scrollHeight (the SVG's viewBox and
+  // inline size below) ignore ancestor transforms — while every measured rect is VISUAL px
+  // (getBoundingClientRect bakes the spotlight's 1.03 in). Divide the visual deltas back by the
+  // ancestor scale so both live in layout space; without it a spotlit card draws its
+  // inner-scroller ink ~3% oversized and displaced. The card branch needs no correction: its SVG
+  // fills the host (layout size) with a viewBox of the host's VISUAL rect, so the two scales
+  // cancel by construction.
+  const scale =
+    scrRect && scrRect.width > 0 && scroller!.offsetWidth > 0
+      ? scrRect.width / scroller!.offsetWidth
+      : 1;
   const box = scroller
     ? { w: scroller.scrollWidth, h: scroller.scrollHeight }
     : { w: hostRect.width, h: hostRect.height };
-  // Geometry lives in VISUAL (on-screen) space via plain subtraction from the origin — no transform
-  // inversion, so any transform scaling the card (the spotlight's 1.03, a FitBox shrink) scales the
-  // ink identically, and the SVG's viewBox uses the same box. For a scroller the origin is the
-  // content's top-left, so the same subtraction yields content coordinates that scroll with the list.
-  const toLocal = (rect: DOMRect): Rect => ({
-    left: rect.left - origin.left,
-    top: rect.top - origin.top,
-    width: rect.width,
-    height: rect.height,
-  });
+  // For a plain card, geometry lives in VISUAL space via subtraction from the host's rect — any
+  // transform scaling the card scales the ink identically. For a scroller, the same subtraction
+  // runs from the content's top-left (its rect minus its scroll offsets), de-scaled into the
+  // content's own layout space, so a mark on a scrolled-out item lands at the right place in the
+  // content and simply clips until scrolled into view.
+  const toLocal = (rect: DOMRect): Rect =>
+    scroller && scrRect
+      ? {
+          left: (rect.left - scrRect.left) / scale + scroller.scrollLeft,
+          top: (rect.top - scrRect.top) / scale + scroller.scrollTop,
+          width: rect.width / scale,
+          height: rect.height / scale,
+        }
+      : {
+          left: rect.left - hostRect.left,
+          top: rect.top - hostRect.top,
+          width: rect.width,
+          height: rect.height,
+        };
   const local = toLocal(target.rect);
   const hostBox: Rect = { left: 0, top: 0, width: box.w, height: box.h };
   const extra: MarkExtra = {
@@ -273,7 +309,7 @@ function measure(
   // the first clear pocket around the target — up-left, beside, up-right, below — and stays
   // undrawn when every pocket holds content.
   let chip: { x: number; y: number } | undefined;
-  if (wantsChip) {
+  if (typeof stepNumber === 'number') {
     const cl = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
     const cands = [
       { x: local.left - CHIP_R - 2, y: local.top - CHIP_R - 2 },
@@ -284,16 +320,21 @@ function measure(
       x: cl(c.x, CHIP_R + 1, hostBox.width - CHIP_R - 1),
       y: cl(c.y, CHIP_R + 1, hostBox.height - CHIP_R - 1),
     }));
-    chip = cands.find(
-      (c) =>
-        !occupied().some((o) =>
-          intersects(
-            { left: c.x - CHIP_R, top: c.y - CHIP_R, width: CHIP_R * 2, height: CHIP_R * 2 },
-            o,
-            2,
-          ),
-        ),
-    );
+    // The pocket must clear the card's content AND whatever this stop's earlier marks already
+    // drew — chips are opaque UI, and two of them parked in the same gap (rows 1 and 2 of the
+    // same tight list) read as a scribble, not a sequence.
+    const inked = priorInkRects(container, stepNumber).map(toLocal);
+    chip = cands.find((c) => {
+      const box: Rect = {
+        left: c.x - CHIP_R,
+        top: c.y - CHIP_R,
+        width: CHIP_R * 2,
+        height: CHIP_R * 2,
+      };
+      return (
+        !occupied().some((o) => intersects(box, o, 2)) && !inked.some((o) => intersects(box, o, 2))
+      );
+    });
   }
   return {
     host,
@@ -348,8 +389,10 @@ function SpotInk({
     // measurement actually succeeds; if the old host turns out to be gone, its portal simply
     // renders into a detached node (invisible, harmless) until the new one resolves.
     return pollUntilSettled(
-      () => measure(spot, line, mark, generous, within, typeof stepNumber === 'number'),
-      (p) => p.stroke.d,
+      () => measure(spot, line, mark, generous, within, stepNumber),
+      // The chip joins the fingerprint: a chip that dodged an earlier mark's ink on a later
+      // read must count as movement, so the dodge gets its own confirming read before settling.
+      (p) => p.stroke.d + (p.chip ? `|${Math.round(p.chip.x)},${Math.round(p.chip.y)}` : ''),
       (p) => p.host,
       setPlaced,
     );

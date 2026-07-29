@@ -26,7 +26,6 @@ const surfaceFiles = [
   'live/memory/memory-graph.css',
   'live/turnstate/turnstate.css',
   'live/understand/understand.css',
-  'live/rehearsal/rehearsal.css',
   'live/srs/srs-review.css',
   'live/annotate/annotate.css',
   'live/annotate/gesture-track.css',

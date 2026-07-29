@@ -963,6 +963,42 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
     if (b.type !== 'breakdown') throw new Error('expected breakdown');
     expect(b.props.icon).toBeUndefined();
   });
+  it('drops hallucinated icons on GENERIC blocks too — top-level and nested item icons', () => {
+    // Extended-library blocks have no hand-written builder, so their icons flow through the
+    // reference-shape walk. A model-invented per-item icon used to survive it and crash the
+    // renderer's `Icon[name]` lookup on the very click that revealed the panel (the storystrip
+    // Next-button crash) — the registry snap must catch it at ANY depth, keeping the item.
+    const allowed = new Set<string>([...FRONTIER_BLOCK_TYPES, 'storystrip']);
+    const r = validateLiveResponse(
+      {
+        title: 'T',
+        sub: '',
+        narration: 'n',
+        blocks: [
+          {
+            type: 'storystrip',
+            props: {
+              title: 'Journey',
+              icon: 'not-a-real-icon',
+              panels: [
+                { heading: 'Day 1', icon: 'spark', body: 'Shinjuku' },
+                { heading: 'Day 2', icon: 'yakitori-alley', body: 'Shibuya' },
+              ],
+            },
+          },
+        ],
+      },
+      allowed,
+    );
+    const b = r!.blocks[0];
+    if (b.type !== 'storystrip') throw new Error('expected storystrip');
+    expect(b.props.icon).toBeUndefined();
+    expect(b.props.panels).toHaveLength(2); // a bad icon drops the icon, never the panel
+    expect(b.props.panels[0].icon).toBe('spark');
+    expect(b.props.panels[0].heading).toBe('Day 1');
+    expect(b.props.panels[1].icon).toBeUndefined();
+    expect(b.props.panels[1].heading).toBe('Day 2');
+  });
   it('carries a codeblock `code` string through verbatim — real angle brackets, no neutralization', () => {
     // `code` is the new preferred form: the model sends raw source, we highlight it client-side.
     // Tag-forming characters are REAL source here (`List<T>`, `<Button>`), so the coercer must NOT

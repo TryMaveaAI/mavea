@@ -21,7 +21,9 @@ export function Storystrip({
   const [idx, setIdx] = useState(Math.max(0, Math.min(start, last)));
   const cur = panels[idx];
   const color = cur?.color || 'var(--presence)';
-  const PIc = cur?.icon ? Icon[cur.icon] : Icon.spark;
+  // Guard the lookup like the eyebrow's: a panel icon name that isn't a real registry key
+  // must fall back, not render `undefined` and take the whole card down mid-walk.
+  const PIc = (cur?.icon && Icon[cur.icon]) || Icon.spark;
   // display count: never show "0" / leave Next enabled when there are no panels
   const count = Math.max(1, panels.length);
 
