@@ -436,7 +436,7 @@ async function runVerdictOnly(
  *  tapping "Check now" is never blocked by the daily automatic-spend cap. */
 export async function refreshDashboardNow(
   id: string,
-): Promise<'done' | 'busy' | 'no-model' | 'failed'> {
+): Promise<'done' | 'busy' | 'no-model' | 'failed' | 'unverified'> {
   if (inFlight.has(id)) return 'busy';
   const target = getDashboard(id);
   if (!target) return 'busy';
@@ -445,7 +445,12 @@ export async function refreshDashboardNow(
   inFlight.add(id);
   try {
     const outcomes = await runRefreshBatch([target], cfg, true, { manual: true });
-    return outcomes[id] === 'failed' ? 'failed' : 'done';
+    // 'unverified' surfaces as itself, never collapsed into 'done': the add-time reality gate
+    // and the manual Refresh button both need to know that the pass produced no sourced data
+    // (the engine already discarded the numbers; this is the caller-visible half of that).
+    if (outcomes[id] === 'failed') return 'failed';
+    if (outcomes[id] === 'unverified') return 'unverified';
+    return 'done';
   } finally {
     inFlight.delete(id);
   }

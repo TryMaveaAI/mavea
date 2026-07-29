@@ -166,7 +166,9 @@ describe('refreshDashboardNow', () => {
     });
 
     const result = await refreshDashboardNow('d1');
-    expect(result).toBe('done');
+    // The caller hears 'unverified' as itself, never collapsed into 'done' — the add-time
+    // reality gate and the manual Refresh button both act on exactly this distinction.
+    expect(result).toBe('unverified');
     // An attempt genuinely happened (refresh.ts already retried once internally) but never earned
     // real sources — "checked, couldn't verify" is honest; "no-change" would imply a grounded pass
     // that simply found nothing new, which is a different, stronger claim.

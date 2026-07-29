@@ -7,7 +7,7 @@
 // adding a card no longer requires entering layout editing first.
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { addWidget, ensureFirstCheck, foldInto, MAX_METRICS, MAX_WIDGETS } from './store';
-import { refreshDashboardNow } from './useDashboardLoop';
+import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { planTracker } from './planTracker';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
 import type { Block } from '../../data/conversation';
@@ -167,6 +167,7 @@ export function AddWidgetPalette({
       metricId: metric.id,
       fromSource: 'manual',
     };
+    const before = boardIds(dashboard);
     foldInto(dashboard.id, {
       metrics: [metric],
       tripwires: [],
@@ -183,7 +184,15 @@ export function AddWidgetPalette({
     // manual/no-key dashboard would otherwise never fetch this new metric until the user
     // remembers to hit Check now themselves.
     ensureFirstCheck(dashboard.id, now);
-    void refreshDashboardNow(dashboard.id);
+    // The add-time reality gate: the tile only stays once a grounded read confirms it returns
+    // real data — an unconfirmed addition is rolled back and the bar says so honestly.
+    const outcome = await confirmRealData(dashboard.id, before);
+    if (!alive.current) return;
+    if (outcome !== 'confirmed') {
+      setPlanning(false);
+      setTrackErr(confirmFailureMessage(outcome));
+      return;
+    }
     onClose();
   };
 

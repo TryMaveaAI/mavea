@@ -19,7 +19,7 @@ import {
   groundedDraft,
 } from './extract';
 import { relatedDashboard } from './relate';
-import { refreshDashboardNow } from './useDashboardLoop';
+import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { estimateSearchesPerMonth } from './cadence';
 import { dashHref } from './route';
 import type { Dashboard, DashboardDraft, DataCadenceMode } from './types';
@@ -201,35 +201,62 @@ export function ExtractionPreview({
     };
   };
 
-  const build = (): void => {
+  // The add-time reality gate: the first grounded read runs BEFORE the board is handed over,
+  // and an addition whose probe can't ground is rolled back with an honest line.
+  const [confirming, setConfirming] = useState(false);
+  const [confirmErr, setConfirmErr] = useState<string | null>(null);
+
+  // The modal stays dismissible while the probe runs (Escape/backdrop/×), so the post-await
+  // continuation must check it's still wanted: yanking the page to the new board's hash a
+  // minute after the user closed this and moved on reads as haunted, not helpful. The probe
+  // itself still settles either way — the board is confirmed or rolled back regardless.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const build = async (): Promise<void> => {
     const kept = keptDraft();
-    if (!kept || !current) return;
+    if (!kept || !current || confirming) return;
     const dash = buildDashboard(kept, {
       conversationId: norm(current.title),
       conversationTitle: current.title,
       cadence: { data: cadence, ai: 'manual' },
     });
     addDashboard(dash);
-    // A freshly built dashboard starts every metric at empty/AWAITING (buildDashboard never
-    // seeds a guess) — without this, it would sit there looking broken until the next cadence
-    // tick or a manual "Refresh now" click. This is a genuine model call, but only when there's
-    // actually something live-fetchable to ask for (refreshDashboardNow no-ops for free otherwise).
-    // buildDashboard already armed a durable first-check one-shot, so this survives being a no-op.
-    void refreshDashboardNow(dash.id);
+    setConfirming(true);
+    setConfirmErr(null);
+    const outcome = await confirmRealData(dash.id, null);
+    if (!alive.current) return;
+    setConfirming(false);
+    if (outcome !== 'confirmed') {
+      setConfirmErr(confirmFailureMessage(outcome));
+      return;
+    }
     onClose();
     window.location.hash = dashHref.detail(dash.id);
   };
 
-  const fold = (target: Dashboard): void => {
+  const fold = async (target: Dashboard): Promise<void> => {
     const kept = keptDraft();
-    if (!kept || !current) return;
+    if (!kept || !current || confirming) return;
+    const before = boardIds(target);
     foldDraftIntoDashboard(target, kept, current.title);
-    // Same reasoning as build(): any NEW metric this fold just added starts empty, so give it
-    // its first real read immediately instead of leaving it blank until the next tick.
     // foldDraftIntoDashboard doesn't arm a first-check itself, unlike a fresh build — a fold into
     // a manual/parked existing board would otherwise never fetch what it just added.
     ensureFirstCheck(target.id);
-    void refreshDashboardNow(target.id);
+    setConfirming(true);
+    setConfirmErr(null);
+    const outcome = await confirmRealData(target.id, before);
+    if (!alive.current) return;
+    setConfirming(false);
+    if (outcome !== 'confirmed') {
+      setConfirmErr(confirmFailureMessage(outcome));
+      return;
+    }
     onClose();
     window.location.hash = dashHref.detail(target.id);
   };
@@ -243,7 +270,7 @@ export function ExtractionPreview({
   // immediately.
   const attemptFold = (target: Dashboard): void => {
     if (foldArmed === target.id) {
-      fold(target);
+      void fold(target);
       return;
     }
     const kept = keptDraft();
@@ -253,7 +280,7 @@ export function ExtractionPreview({
       setFoldArmed(target.id);
       return;
     }
-    fold(target);
+    void fold(target);
   };
 
   return (
@@ -396,10 +423,16 @@ export function ExtractionPreview({
                       onChange={(e) => setName(e.target.value)}
                       aria-label="Dashboard name"
                     />
-                    <button type="button" className="xt-build" onClick={build}>
-                      Build dashboard →
+                    <button
+                      type="button"
+                      className="xt-build"
+                      disabled={confirming}
+                      onClick={() => void build()}
+                    >
+                      {confirming ? 'Confirming live data…' : 'Build dashboard →'}
                     </button>
                   </div>
+                  {confirmErr && <p className="dash-plan-estimate">{confirmErr}</p>}
 
                   {existing.length > 0 && (
                     <div className="xt-fold">

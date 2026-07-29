@@ -68,6 +68,18 @@ vi.mock('../src/live/library/store', () => ({
 vi.mock('../src/live/dashboards/store', () => ({
   addDashboard: vi.fn(),
   getDashboards: () => [],
+  // The add-time reality gate reads the just-built board back before probing it. Return one with
+  // a search-tracked metric so the gate takes the live path and actually fires the probe; the
+  // grounded value stands in for what the (mocked) probe pass would have filled.
+  getDashboard: (id: string) => ({
+    id,
+    title: 'Built board',
+    metrics: [{ id: 'm1', label: 'Members', query: 'current member count', lastValue: 812 }],
+    widgets: [],
+  }),
+  removeDashboard: vi.fn(),
+  updateDashboard: vi.fn(),
+  ensureFirstCheck: vi.fn(),
 }));
 
 const refreshDashboardNow = vi.fn((_id: string) => Promise.resolve('done' as const));
@@ -116,8 +128,8 @@ describe('ExtractionPreview — switching sources cancels a stale extraction', (
   });
 });
 
-describe('ExtractionPreview — a freshly built dashboard gets its first refresh immediately', () => {
-  it('calls refreshDashboardNow right after building, so metrics don’t sit at AWAITING until the next tick', async () => {
+describe('ExtractionPreview — a freshly built dashboard is probed through the reality gate', () => {
+  it('build runs the confirm probe (the grounded refresh) on the new board before finishing', async () => {
     vi.mocked(buildDashboard).mockReturnValue({ id: 'new-dash-id' } as ReturnType<
       typeof buildDashboard
     >);
@@ -131,6 +143,8 @@ describe('ExtractionPreview — a freshly built dashboard gets its first refresh
     fireEvent.click(getByText('Build dashboard →'));
 
     expect(buildDashboard).toHaveBeenCalled();
-    expect(refreshDashboardNow).toHaveBeenCalledWith('new-dash-id');
+    // The confirm probe IS the first refresh — same grounded engine, awaited by build() so an
+    // unverifiable board gets rolled back instead of sitting rendered as if it were fact.
+    await waitFor(() => expect(refreshDashboardNow).toHaveBeenCalledWith('new-dash-id'));
   });
 });

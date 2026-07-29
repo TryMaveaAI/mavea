@@ -1,10 +1,10 @@
 // NewFromTemplate — the "track anything" path onto a dashboard. Mirrors
 // dashboards-extraction-preview-race.test.tsx's own build() coverage for this sibling flow: a
-// create must fire its first refresh WITHOUT waiting on it before navigating away, and a
+// create runs the add-time reality gate (confirmAdd's grounded probe) before closing, and a
 // related-dashboard match must always surface as an explicit choice, never a silent fold. The
 // planner itself (planTracker) is mocked — its coercion honesty has its own unit tests.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup, screen, act } from '@testing-library/react';
+import { render, fireEvent, cleanup, screen, act, waitFor } from '@testing-library/react';
 import type { Dashboard } from '../src/live/dashboards/types';
 import type { TrackerPlan } from '../src/live/dashboards/planTracker';
 
@@ -13,6 +13,16 @@ let dashboardsList: Dashboard[] = [];
 vi.mock('../src/live/dashboards/store', () => ({
   addDashboard: (d: Dashboard) => addDashboard(d),
   getDashboards: () => dashboardsList,
+  // The reality gate reads the just-persisted board back before probing it — hand it whatever
+  // the component last added (with the array fields the template stub doesn't build), and let
+  // rollback be a no-op.
+  getDashboard: () => {
+    const d = addDashboard.mock.calls.at(-1)?.[0] as Partial<Dashboard> | undefined;
+    return d ? { ...d, metrics: d.metrics ?? [], widgets: d.widgets ?? [] } : null;
+  },
+  removeDashboard: () => {},
+  updateDashboard: () => {},
+  ensureFirstCheck: () => {},
 }));
 
 const refreshDashboardNow = vi.fn((_id: string) => Promise.resolve('done' as const));
@@ -101,12 +111,18 @@ afterEach(() => {
 });
 
 describe('NewFromTemplate — plan → review → create', () => {
-  it('plans the ask, shows the plan for review, and creates without waiting on the first refresh', async () => {
+  it('plans the ask, persists the board, and probes it for real data through the reality gate', async () => {
     newDashboardFromTemplate.mockReturnValue({
       id: 'new-dash-id',
       title: 'AAPL',
       question: 'AAPL stock price',
-    } as Dashboard);
+      // A search-tracked metric makes the board "live", so the gate must actually probe it; the
+      // grounded value stands in for what the (mocked) probe pass would have filled.
+      metrics: [
+        { id: 'm1', label: 'AAPL price', query: 'current AAPL stock price', lastValue: 190 },
+      ],
+      widgets: [],
+    } as unknown as Dashboard);
 
     render(<NewFromTemplate onClose={() => {}} />);
     await planIt('AAPL stock price');
@@ -120,10 +136,10 @@ describe('NewFromTemplate — plan → review → create', () => {
 
     expect(newDashboardFromTemplate).toHaveBeenCalled();
     expect(addDashboard).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-dash-id' }));
-    // refreshDashboardNow was invoked (a real promise it returns), but nothing in create() awaits
-    // it — the assertion above already ran synchronously past the click, proving navigation/close
-    // didn't sit around for that promise to settle first.
-    expect(refreshDashboardNow).toHaveBeenCalledWith('new-dash-id');
+    // The confirm probe IS the first refresh — the same grounded engine the refresh loop runs —
+    // and create() deliberately awaits it before closing, so a board that can't ground never
+    // silently joins the list (confirmAdd rolls it back instead).
+    await waitFor(() => expect(refreshDashboardNow).toHaveBeenCalledWith('new-dash-id'));
   });
 
   it('a chip toggled off is excluded and create disables when nothing is left', async () => {
@@ -171,7 +187,10 @@ describe('NewFromTemplate — a related dashboard is always an explicit choice, 
 
     render(<NewFromTemplate onClose={() => {}} />);
     await planIt('AAPL stock price');
-    fireEvent.click(screen.getByText('Create dashboard →'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('Create dashboard →'));
+      await Promise.resolve();
+    });
 
     expect(screen.queryByText(/fold this in instead of creating a new one/)).toBeNull();
     expect(newDashboardFromTemplate).toHaveBeenCalled();

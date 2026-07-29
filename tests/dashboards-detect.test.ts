@@ -1,13 +1,16 @@
-// The "Track it" nudge must be rare and earned — a one-off number is not a dashboard. The decision
-// is the model's (a 0–100 score on the spec), and the surface only offers tracking above a high
-// threshold. shouldOfferTrack is that gate; these tests pin the boundary.
+// The "Track it" nudge must be rare and earned — a one-off number is not a dashboard. Two gates
+// compose: the model's own 0–100 trackability score above a high threshold, AND the answer being
+// grounded in real sources — an ungrounded answer is the model's memory, and a dashboard seeded
+// from memory starts life as a made-up number wearing a live badge.
 import { describe, it, expect } from 'vitest';
 import { shouldOfferTrack, TRACK_THRESHOLD } from '../src/live/dashboards/detect';
 import type { ConversationSpec } from '../src/data/conversation';
 
-// shouldOfferTrack only reads spec.track, so a minimal stub is enough.
-function spec(track?: { score: number; reason: string }) {
-  return { track } as ConversationSpec;
+function spec(
+  track?: { score: number; reason: string },
+  sources: { title: string; url: string }[] = [{ title: 'MLB', url: 'https://mlb.com' }],
+) {
+  return { track, sources } as ConversationSpec;
 }
 
 describe('shouldOfferTrack — earned, not eager', () => {
@@ -27,5 +30,11 @@ describe('shouldOfferTrack — earned, not eager', () => {
     expect(shouldOfferTrack(spec(undefined))).toBe(false);
     expect(shouldOfferTrack(null)).toBe(false);
     expect(shouldOfferTrack(undefined)).toBe(false);
+  });
+
+  it('does not offer tracking on an UNGROUNDED answer, however trackable it scored', () => {
+    expect(shouldOfferTrack(spec({ score: 100, reason: 'live scores' }, []))).toBe(false);
+    const noSources = { track: { score: 100, reason: 'live scores' } } as ConversationSpec;
+    expect(shouldOfferTrack(noSources)).toBe(false);
   });
 });

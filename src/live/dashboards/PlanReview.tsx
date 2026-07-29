@@ -4,7 +4,7 @@
 // out of NewFromTemplate so the home composer's plan step and the older template modal's plan step
 // render from one place instead of drifting apart. Pure UI + assembly glue: the actual plan→
 // Dashboard shape comes from templates/instantiate.ts, unchanged.
-import { useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { relatedDashboard } from './relate';
 import {
   foldTemplateIntoDashboard,
@@ -12,7 +12,7 @@ import {
   planToTemplate,
 } from './templates/instantiate';
 import { addDashboard, ensureFirstCheck } from './store';
-import { refreshDashboardNow } from './useDashboardLoop';
+import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { estimateSearchesPerMonth } from './cadence';
 import type { Dashboard, DataCadenceMode } from './types';
 import type { TrackerPlan } from './planTracker';
@@ -59,8 +59,25 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
   const keptCount = metricOn.filter(Boolean).length + widgetOn.filter(Boolean).length;
   const searchesPerMonth = estimateSearchesPerMonth(cadence);
 
-  const create = (): void => {
-    if (keptCount === 0) return;
+  // The add-time reality gate: the first read runs BEFORE the board is handed over, and an
+  // addition whose probe can't ground gets rolled back with an honest line — a tile only joins
+  // the board once a real search has returned real data.
+  const [confirming, setConfirming] = useState(false);
+  const [confirmErr, setConfirmErr] = useState<string | null>(null);
+
+  // The host sheet stays dismissible while the probe runs, so the post-await continuation checks
+  // it's still wanted — onDone navigates, and navigating a user who closed this and moved on
+  // reads as haunted. The probe settles either way (confirm or roll back).
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const create = async (): Promise<void> => {
+    if (keptCount === 0 || confirming) return;
     const template = planToTemplate(plan);
     // Widget toggles index the template's widget array: one metric card per metric FIRST (those
     // follow their metric's own toggle), then the plan's rich widgets in order.
@@ -73,19 +90,34 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
     dash.title = title;
     dash.question = ask.trim();
     addDashboard(dash);
-    // Everything starts empty by construction — give it a real first read right away instead of
-    // leaving it blank until the next cadence tick (mirrors ExtractionPreview's build()). The
-    // builder already armed a durable first-check one-shot, so this survives being a no-op here.
-    void refreshDashboardNow(dash.id);
+    setConfirming(true);
+    setConfirmErr(null);
+    const outcome = await confirmRealData(dash.id, null);
+    if (!alive.current) return;
+    setConfirming(false);
+    if (outcome !== 'confirmed') {
+      setConfirmErr(confirmFailureMessage(outcome));
+      return;
+    }
     onDone(dash.id);
   };
 
-  const fold = (target: Dashboard): void => {
+  const fold = async (target: Dashboard): Promise<void> => {
+    if (confirming) return;
+    const before = boardIds(target);
     foldTemplateIntoDashboard(target, planToTemplate(plan), ask.trim());
     // Unlike create(), foldTemplateIntoDashboard doesn't arm a first-check itself — a fold into a
     // manual/parked existing board would otherwise never fetch what it just added.
     ensureFirstCheck(target.id);
-    void refreshDashboardNow(target.id);
+    setConfirming(true);
+    setConfirmErr(null);
+    const outcome = await confirmRealData(target.id, before);
+    if (!alive.current) return;
+    setConfirming(false);
+    if (outcome !== 'confirmed') {
+      setConfirmErr(confirmFailureMessage(outcome));
+      return;
+    }
     onDone(target.id);
   };
 
@@ -98,7 +130,7 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
       setMatched(match);
       return;
     }
-    create();
+    void create();
   };
 
   if (matched) {
@@ -109,13 +141,24 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
           creating a new one?
         </p>
         <div className="tpl-interstitial-actions">
-          <button type="button" className="tpl-fold-btn" onClick={() => fold(matched)}>
-            Fold into “{matched.title}”
+          <button
+            type="button"
+            className="tpl-fold-btn"
+            disabled={confirming}
+            onClick={() => void fold(matched)}
+          >
+            {confirming ? 'Confirming live data…' : `Fold into “${matched.title}”`}
           </button>
-          <button type="button" className="tpl-create-anyway" onClick={create}>
+          <button
+            type="button"
+            className="tpl-create-anyway"
+            disabled={confirming}
+            onClick={() => void create()}
+          >
             Create new anyway
           </button>
         </div>
+        {confirmErr && <p className="tpl-cadence-note">{confirmErr}</p>}
       </div>
     );
   }
@@ -205,11 +248,12 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
           type="button"
           className="tpl-create"
           onClick={attemptCreate}
-          disabled={keptCount === 0}
+          disabled={keptCount === 0 || confirming}
         >
-          Create dashboard →
+          {confirming ? 'Confirming live data…' : 'Create dashboard →'}
         </button>
       </div>
+      {confirmErr && <p className="tpl-cadence-note">{confirmErr}</p>}
     </div>
   );
 }

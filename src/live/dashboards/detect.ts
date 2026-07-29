@@ -10,8 +10,12 @@ import type { ConversationSpec } from '../../data/conversation';
  *  score only at 80+, so the extra margin to 95 reserves the nudge for answers it's most sure about. */
 export const TRACK_THRESHOLD = 95;
 
-/** True when this answer is worth offering as a living dashboard — i.e. the model judged it (and only
- *  it) trackable with enough confidence. No client heuristic guesses from block types anymore. */
+/** True when this answer is worth offering as a living dashboard — i.e. the model judged it (and
+ *  only it) trackable with enough confidence, AND the answer itself was grounded in real sources.
+ *  The second half is the free reality gate: an answer with no citations is the model's memory,
+ *  and a dashboard seeded from memory starts life as a made-up number wearing a live badge. */
 export function shouldOfferTrack(spec: ConversationSpec | null | undefined): boolean {
-  return spec?.track != null && spec.track.score >= TRACK_THRESHOLD;
+  return (
+    spec?.track != null && spec.track.score >= TRACK_THRESHOLD && (spec.sources?.length ?? 0) > 0
+  );
 }

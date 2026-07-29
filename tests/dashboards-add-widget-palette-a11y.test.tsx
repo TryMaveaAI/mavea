@@ -30,6 +30,7 @@ import {
   clearDashboards,
   createBlankDashboard,
   getDashboard,
+  updateDashboard,
 } from '../src/live/dashboards/store';
 import type { Dashboard } from '../src/live/dashboards/types';
 
@@ -142,6 +143,17 @@ describe('AddWidgetPalette — Track a number', () => {
     h.plan.mockResolvedValue(numberPlan);
     const dash = seedDashboard();
     const onClose = vi.fn();
+    // The reality gate keeps only tiles the probe actually fills. Capture what the probe sees
+    // (never a seeded guess) and fill the metric the way a grounded pass does.
+    let atProbe: Dashboard['metrics'] = [];
+    h.refresh.mockImplementationOnce((id: string) => {
+      const cur = getDashboard(id)!;
+      atProbe = cur.metrics;
+      updateDashboard(id, {
+        metrics: cur.metrics.map((m) => ({ ...m, lastValue: 67000, origin: 'search' as const })),
+      });
+      return Promise.resolve('done' as const);
+    });
     const { getByText, getByLabelText } = render(
       <AddWidgetPalette dashboard={dash} onClose={onClose} />,
     );
@@ -154,15 +166,17 @@ describe('AddWidgetPalette — Track a number', () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    const saved = getDashboard(dash.id)!;
-    expect(saved.metrics).toHaveLength(1);
-    expect(saved.metrics[0]).toMatchObject({
+    expect(atProbe).toHaveLength(1);
+    expect(atProbe[0]).toMatchObject({
       label: 'BTC price',
       query: 'current bitcoin price in USD',
       unit: '$',
-      lastValue: null, // never seeded with a guess
+      lastValue: null, // never seeded with a guess — only the grounded probe fills it
       origin: 'empty',
     });
+    const saved = getDashboard(dash.id)!;
+    expect(saved.metrics).toHaveLength(1);
+    expect(saved.metrics[0].lastValue).toBe(67000); // the confirmed tile keeps its grounded read
     expect(saved.widgets).toHaveLength(1);
     expect(saved.widgets[0].metricId).toBe(saved.metrics[0].id);
     expect(saved.widgets[0].block.type).toBe('insight');

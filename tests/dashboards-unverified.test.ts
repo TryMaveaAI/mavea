@@ -87,7 +87,8 @@ describe('unverified — the bounded grounding retry + honest outcome', () => {
     });
 
     const result = await refreshDashboardNow('d1');
-    expect(result).toBe('done');
+    // Surfaced as itself — the add gate and the Refresh button both need the honest outcome.
+    expect(result).toBe('unverified');
     expect(generateMock).toHaveBeenCalledTimes(2); // the base attempt + the sharpened retry
     expect(applyRefreshResult).toHaveBeenCalledWith(
       'd1',

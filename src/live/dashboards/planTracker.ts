@@ -6,7 +6,9 @@
 // subject, demands the CURRENT state, and picks the display shape that actually fits the data
 // (a scoreboard for games, a forecast for weather) instead of forcing everything into one mold.
 // No data is fetched here and nothing is fabricated — the plan is pure structure; real values
-// arrive later from refreshDashboard's grounded fetch.
+// arrive later from refreshDashboard's grounded fetch. That searchless-ness is safe BECAUSE of
+// the add-time gate downstream (confirmAdd.ts): a live-flavored plan only becomes a persisted
+// tile once that grounded probe confirms the metric actually returns sourced data.
 import { getAdapter } from '../providers';
 import type { ModelConfig } from '../../types/mavea';
 import type { GroundingSource } from '../providers/types';

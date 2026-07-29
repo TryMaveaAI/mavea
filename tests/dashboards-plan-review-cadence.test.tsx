@@ -11,6 +11,16 @@ const addDashboard = vi.fn();
 vi.mock('../src/live/dashboards/store', () => ({
   addDashboard: (d: Dashboard) => addDashboard(d),
   getDashboards: () => [],
+  // The add-time reality gate (confirmAdd) reads the persisted board back and rolls back on an
+  // unverified probe — hand it whatever the component just added (with the array fields the
+  // template stub here doesn't bother building), and let removal be a no-op.
+  getDashboard: () => {
+    const d = addDashboard.mock.calls.at(-1)?.[0] as Partial<Dashboard> | undefined;
+    return d ? { ...d, metrics: d.metrics ?? [], widgets: d.widgets ?? [] } : null;
+  },
+  removeDashboard: () => {},
+  updateDashboard: () => {},
+  ensureFirstCheck: () => {},
 }));
 
 const refreshDashboardNow = vi.fn((_id: string) => Promise.resolve('done' as const));

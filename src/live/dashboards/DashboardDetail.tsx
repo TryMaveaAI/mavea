@@ -79,11 +79,17 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
   // Manual refresh: the only way to update a dashboard on 'manual' cadence (its clock never
   // comes due on its own), and a way to force a fresher read on any other cadence without
   // waiting it out. Shares the exact same routine + billing gate as the automatic loop.
-  const [refreshState, setRefreshState] = useState<'idle' | 'busy' | 'no-model' | 'failed'>('idle');
+  const [refreshState, setRefreshState] = useState<
+    'idle' | 'busy' | 'no-model' | 'failed' | 'unverified'
+  >('idle');
   const handleRefresh = async (dashboardId: string): Promise<void> => {
     setRefreshState('busy');
     const result = await refreshDashboardNow(dashboardId);
-    setRefreshState(result === 'no-model' || result === 'failed' ? result : 'idle');
+    // 'unverified' is a real outcome, not a success: the pass ran but no sourced data came
+    // back, the previous values were kept, and the user deserves to hear that plainly.
+    setRefreshState(
+      result === 'no-model' || result === 'failed' || result === 'unverified' ? result : 'idle',
+    );
   };
 
   // On-demand AI read: fires analyzeMove directly (bypassing the automatic gate) so the user can
@@ -199,6 +205,11 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
         {refreshState === 'failed' && (
           <span className="dash-refresh-hint">
             Couldn’t reach your model — check its key or quota, then try again.
+          </span>
+        )}
+        {refreshState === 'unverified' && (
+          <span className="dash-refresh-hint">
+            Checked, but no source could verify new values — keeping the last real ones.
           </span>
         )}
         {dashboard.metrics.length > 0 && (

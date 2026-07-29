@@ -57,8 +57,12 @@ describe('schema buildTrack', () => {
 });
 
 describe('AnswerFooter — track chip', () => {
-  const spec = (track?: { score: number; reason: string }) =>
-    ({ sources: [], track }) as unknown as ConversationSpec;
+  // A grounded answer by default — shouldOfferTrack requires real citations, so the chip's
+  // positive cases must carry at least one source, and the sources-free case gets its own test.
+  const spec = (
+    track?: { score: number; reason: string },
+    sources: { title: string; url: string }[] = [{ title: 'MLB.com', url: 'https://mlb.com' }],
+  ) => ({ sources, track }) as unknown as ConversationSpec;
 
   it('shows the quiet chip only when the model scored above the threshold, and calls onTrack', () => {
     const onTrack = vi.fn();
@@ -95,6 +99,21 @@ describe('AnswerFooter — track chip', () => {
     render(
       <AnswerFooter
         spec={spec(undefined)}
+        followups={[]}
+        onAsk={() => {}}
+        onTrack={() => {}}
+        busy={false}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /track this live/i })).toBeNull();
+  });
+
+  it('hides the chip on an ungrounded answer even when the score clears the threshold', () => {
+    // No citations = the model's memory; a dashboard seeded from memory would start life as a
+    // made-up number wearing a live badge, so the offer never appears.
+    render(
+      <AnswerFooter
+        spec={spec({ score: TRACK_THRESHOLD, reason: 'monthly active users' }, [])}
         followups={[]}
         onAsk={() => {}}
         onTrack={() => {}}
