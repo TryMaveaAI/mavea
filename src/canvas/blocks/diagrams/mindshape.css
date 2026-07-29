@@ -58,15 +58,20 @@
   );
 }
 
-/* The canvas inside the stage fill: a contained 10:7 box that always fits the visible area.
-   width drives it but is capped both by the available height (× 10/7) and a sane max so cards
-   stay clustered and readable instead of spreading to the screen edges on a wide monitor. */
+/* The canvas inside the stage fill: the WHOLE stage. The takeover means the map owns
+   everything between the topbar and the dock — not a 10:7 panel floating in the middle with
+   the page peeking around it. The spatial engine measures the box it is given, so atom layout
+   follows whatever the screen affords; the panel look (own background, letterbox caps) goes
+   away so the map sits directly on the stage-fill's spotlight. */
 .ms-stage-fill .ms-canvas {
   width: 100%;
-  max-width: min(1100px, calc((100dvh - 238px) * 10 / 7));
-  max-height: 100%;
-  margin-inline: auto;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  margin-inline: 0;
   border-radius: 0;
+  background: transparent;
 }
 
 /* During listening the overlay stays at z-index 2 so the bottom dock/scrubber chrome remains on
