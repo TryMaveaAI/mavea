@@ -4,6 +4,7 @@
 // modal (NewFromTemplate) via PlanReview, so the two entry points never drift apart.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { AsyncSurface } from '../../components/AsyncSurface';
+import { cachedImport } from '../../lib/cachedImport';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import { useFocusTrap } from '../useFocusTrap';
 import { getDashboards } from './store';
@@ -14,11 +15,7 @@ import { AnswerCard } from './AnswerCard';
 import './dashboards.css';
 import './dash-composer.css';
 
-let plannerPromise: Promise<typeof import('./planTracker')> | undefined;
-function loadPlanner(): Promise<typeof import('./planTracker')> {
-  plannerPromise ??= import('./planTracker');
-  return plannerPromise;
-}
+const loadPlanner = cachedImport(() => import('./planTracker'));
 
 const planReview = createPreloadableLazy(() =>
   import('./PlanReview').then((module) => ({ default: module.PlanReview })),

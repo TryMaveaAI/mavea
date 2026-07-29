@@ -37,15 +37,14 @@ import type { RepoAskContext } from './ask/repoAsk';
 import { ShipVerdict } from './sections/ShipVerdict';
 import './ripple.css';
 import { AsyncSurface } from '../../components/AsyncSurface';
+import { cachedImport } from '../../lib/cachedImport';
 import { createPreloadableLazy, preloadIntentProps } from '../../lib/preloadableLazy';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 
 type RippleGeneration = typeof import('./ingest/generate');
-let rippleGenerationPromise: Promise<RippleGeneration> | undefined;
-const loadRippleGeneration = (): Promise<RippleGeneration> => {
-  rippleGenerationPromise ??= import('./ingest/generate');
-  return rippleGenerationPromise;
-};
+const loadRippleGeneration = cachedImport(
+  (): Promise<RippleGeneration> => import('./ingest/generate'),
+);
 const enrichShipModel = (...args: Parameters<RippleGeneration['enrichShipModel']>) =>
   loadRippleGeneration().then((module) => module.enrichShipModel(...args));
 const enrichIncident = (...args: Parameters<RippleGeneration['enrichIncident']>) =>
@@ -62,11 +61,9 @@ const gatherLessonCode = (...args: Parameters<RippleGeneration['gatherLessonCode
   loadRippleGeneration().then((module) => module.gatherLessonCode(...args));
 
 type GitHubBrowser = typeof import('./ingest/githubBrowser');
-let githubBrowserPromise: Promise<GitHubBrowser> | undefined;
-const loadGitHubBrowser = (): Promise<GitHubBrowser> => {
-  githubBrowserPromise ??= import('./ingest/githubBrowser');
-  return githubBrowserPromise;
-};
+const loadGitHubBrowser = cachedImport(
+  (): Promise<GitHubBrowser> => import('./ingest/githubBrowser'),
+);
 const fetchPrDiff = (...args: Parameters<GitHubBrowser['fetchPrDiff']>) =>
   loadGitHubBrowser().then((module) => module.fetchPrDiff(...args));
 const compareRefs = (...args: Parameters<GitHubBrowser['compareRefs']>) =>
@@ -75,18 +72,16 @@ const fetchRepoTree = (...args: Parameters<GitHubBrowser['fetchRepoTree']>) =>
   loadGitHubBrowser().then((module) => module.fetchRepoTree(...args));
 
 type OwnersModule = typeof import('./ingest/owners');
-let ownersPromise: Promise<OwnersModule> | undefined;
-const resolveOwners = (...args: Parameters<OwnersModule['resolveOwners']>) => {
-  ownersPromise ??= import('./ingest/owners');
-  return ownersPromise.then((module) => module.resolveOwners(...args));
-};
+const loadOwners = cachedImport((): Promise<OwnersModule> => import('./ingest/owners'));
+const resolveOwners = (...args: Parameters<OwnersModule['resolveOwners']>) =>
+  loadOwners().then((module) => module.resolveOwners(...args));
 
 type CodeContextModule = typeof import('./ingest/codeContext');
-let codeContextPromise: Promise<CodeContextModule> | undefined;
-const gatherCodeContext = (...args: Parameters<CodeContextModule['gatherCodeContext']>) => {
-  codeContextPromise ??= import('./ingest/codeContext');
-  return codeContextPromise.then((module) => module.gatherCodeContext(...args));
-};
+const loadCodeContext = cachedImport(
+  (): Promise<CodeContextModule> => import('./ingest/codeContext'),
+);
+const gatherCodeContext = (...args: Parameters<CodeContextModule['gatherCodeContext']>) =>
+  loadCodeContext().then((module) => module.gatherCodeContext(...args));
 const repoFromLabel = (label?: string): string | undefined =>
   label ? /^([\w.-]+\/[\w.-]+)/.exec(label.trim())?.[1] : undefined;
 

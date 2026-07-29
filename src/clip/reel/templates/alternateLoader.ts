@@ -1,9 +1,8 @@
 // One cached request shared by Remix intent preloading and every lazy finish component.
+import { cachedImport } from '../../../lib/cachedImport';
+
 export type AlternateFinishes = typeof import('./alternateFinishes');
 
-let promise: Promise<AlternateFinishes> | undefined;
-
-export function preloadAlternateFinishes(): Promise<AlternateFinishes> {
-  promise ??= import('./alternateFinishes');
-  return promise;
-}
+export const preloadAlternateFinishes = cachedImport(
+  (): Promise<AlternateFinishes> => import('./alternateFinishes'),
+);

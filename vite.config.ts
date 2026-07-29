@@ -312,6 +312,8 @@ export default defineConfig({
       'leaflet', // the map block
       'mediabunny', // reel encode
       'modern-screenshot', // export rasterisation
+      'openchemlib', // molecule blocks (SMILES)
+      'pdfjs-dist', // Prism's document explode
       'pptxgenjs', // deck export
       'shiki/core', // code highlighting
       'shiki/engine/javascript',

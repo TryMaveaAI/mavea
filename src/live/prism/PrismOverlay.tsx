@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 import type { Attachment } from '../attachments';
 import type { ModelConfig } from '../../types/mavea';
+import { cachedImport } from '../../lib/cachedImport';
 import { usePrismWorld } from './usePrismWorld';
 import { usePanZoom } from './usePanZoom';
 import { layout, CARD_W, CARD_H, type LayoutResult, type Placed } from './layout';
@@ -71,24 +72,24 @@ const ForecastPanel = forecastSurface.Component;
 const LeverPanel = leverSurface.Component;
 const WhyMachineOverlay = whySurface.Component;
 
-let reconcileRunner: Promise<typeof import('./reconcile/run')> | null = null;
-let crossExamRunner: Promise<typeof import('./crossexam/run')> | null = null;
-let autopsyRunner: Promise<typeof import('./autopsy/run')> | null = null;
-let leversRunner: Promise<typeof import('./levers/model')> | null = null;
-let whyRunner: Promise<typeof import('../why/explode')> | null = null;
-const loadReconcile = () => (reconcileRunner ??= import('./reconcile/run'));
-const loadCrossExam = () => (crossExamRunner ??= import('./crossexam/run'));
-const loadAutopsy = () => (autopsyRunner ??= import('./autopsy/run'));
-const loadLevers = () => (leversRunner ??= import('./levers/model'));
-const loadWhy = () => (whyRunner ??= import('../why/explode'));
+const loadReconcile = cachedImport(() => import('./reconcile/run'));
+const loadCrossExam = cachedImport(() => import('./crossexam/run'));
+const loadAutopsy = cachedImport(() => import('./autopsy/run'));
+const loadLevers = cachedImport(() => import('./levers/model'));
+const loadWhy = cachedImport(() => import('../why/explode'));
 
-let kokoroModule: Promise<typeof import('../../voice/kokoro')> | null = null;
+const loadKokoroModule = cachedImport(() => import('../../voice/kokoro'));
+// Tracks the latest requested load so cancel never imports the voice module just to silence it.
+let kokoroRequested: Promise<typeof import('../../voice/kokoro')> | null = null;
 function loadKokoro(): Promise<typeof import('../../voice/kokoro')> {
-  kokoroModule ??= import('../../voice/kokoro');
-  return kokoroModule;
+  return (kokoroRequested = loadKokoroModule());
 }
 function cancelKokoro(): void {
-  if (kokoroModule) void kokoroModule.then((m) => m.cancelKokoro());
+  if (kokoroRequested)
+    void kokoroRequested.then(
+      (m) => m.cancelKokoro(),
+      () => undefined,
+    );
 }
 function speakKokoroResult(text: string): void {
   void loadKokoro().then((m) => m.speakKokoroResult(text, 'mavea'));

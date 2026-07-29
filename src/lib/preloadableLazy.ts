@@ -1,4 +1,5 @@
 import { lazy, type ComponentType, type DOMAttributes, type LazyExoticComponent } from 'react';
+import { cachedImport } from './cachedImport';
 import { lazyRetry } from './lazyRetry';
 
 // React.lazy itself constrains components with `ComponentType<any>`; mirroring that here preserves
@@ -18,11 +19,10 @@ export interface PreloadableLazy<Component extends ComponentType<any>> {
 export function createPreloadableLazy<Component extends ComponentType<any>>(
   factory: () => Promise<{ default: Component }>,
 ): PreloadableLazy<Component> {
-  let promise: Promise<{ default: Component }> | undefined;
-  const load = (): Promise<{ default: Component }> => {
-    promise ??= lazyRetry(factory)();
-    return promise;
-  };
+  // cachedImport (not a bare `promise ??=`) so a rejection isn't pinned in OUR cache: preload()
+  // retries for real on the next intent. The React.lazy Component keeps its own one-shot state —
+  // its recovery is lazyRetry's single reload, then the error boundary.
+  const load = cachedImport(lazyRetry(factory));
 
   return {
     Component: lazy(load),

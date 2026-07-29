@@ -11,6 +11,7 @@
 // use, so it's code-split into its own chunk and chemistry pays for the engine only when it's
 // actually drawn.
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { cachedImport } from '../../../lib/cachedImport';
 import type { MoleculeAtom, MoleculeBond } from './types';
 
 export interface MoleculeGeometry {
@@ -85,17 +86,16 @@ export function normalizeMolecule(
   return { atoms, bonds };
 }
 
-let oclPromise: Promise<any | null> | null = null;
+const loadOclModule = cachedImport(() => import('openchemlib').then((m: any) => m.default ?? m));
 
 /** Lazy-load OpenChemLib once per session. Returns null if unavailable or under test, so callers
- *  fall back gracefully without ever hitting the network. */
+ *  fall back gracefully — and cachedImport keeps a transient load failure out of the cache, so a
+ *  later render genuinely retries instead of staying on the fallback for the page's life. */
 function loadOCL(): Promise<any | null> {
   // Skip the import in unit tests — the SMILES path is covered by mocks + the pure normalizer
   // above. Demos that carry a `smiles` prop then render the honest fallback in jsdom.
   if (import.meta.env?.MODE === 'test') return Promise.resolve(null);
-  if (oclPromise) return oclPromise;
-  oclPromise = import('openchemlib').then((m: any) => m.default ?? m).catch(() => null);
-  return oclPromise;
+  return loadOclModule().catch(() => null);
 }
 
 const clampOrder = (n: number): 1 | 2 | 3 => (n === 2 ? 2 : n === 3 ? 3 : 1);

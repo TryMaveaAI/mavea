@@ -9,27 +9,29 @@
 // Vite code-splits it into its own chunk, fetched only on first use.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { attachmentBytes, attachmentBytesImmediate, type Attachment } from '../attachments';
+import { cachedImport } from '../../lib/cachedImport';
 import { normalizePdfText } from './grounding';
 
-let pdfjsPromise: Promise<any | null> | null = null;
+const loadPdfjsModule = cachedImport(() =>
+  import('pdfjs-dist').then((m: any) => {
+    const lib = m.default ?? m;
+    if (lib?.GlobalWorkerOptions) {
+      // pdf.js's documented Vite integration: `new URL(..., import.meta.url)` resolves the
+      // worker to a same-origin, content-hashed build asset, so it needs no CSP allowance of
+      // its own (worker-src already permits 'self') and no separate CDN fetch/SRI dance.
+      lib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url,
+      ).href;
+    }
+    return lib;
+  }),
+);
+/** Null when pdf.js can't load — callers surface an honest error. cachedImport keeps a failed
+ *  import out of the cache, so the overlay's "Try again" genuinely retries instead of replaying
+ *  one transient hiccup for the rest of the page's life. */
 function loadPdfjs(): Promise<any | null> {
-  if (pdfjsPromise) return pdfjsPromise;
-  pdfjsPromise = import('pdfjs-dist')
-    .then((m: any) => {
-      const lib = m.default ?? m;
-      if (lib?.GlobalWorkerOptions) {
-        // pdf.js's documented Vite integration: `new URL(..., import.meta.url)` resolves the
-        // worker to a same-origin, content-hashed build asset, so it needs no CSP allowance of
-        // its own (worker-src already permits 'self') and no separate CDN fetch/SRI dance.
-        lib.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/build/pdf.worker.min.mjs',
-          import.meta.url,
-        ).href;
-      }
-      return lib;
-    })
-    .catch(() => null);
-  return pdfjsPromise;
+  return loadPdfjsModule().catch(() => null);
 }
 
 /** A text item with its on-page geometry (PDF user space: origin bottom-left, y grows upward). */
