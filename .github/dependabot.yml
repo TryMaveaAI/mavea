@@ -7,6 +7,13 @@ updates:
     # Each open PR costs a full CI run, so keep the burst small — the runtime dependency list is
     # deliberately just react + react-dom, and everything else lands in the grouped PRs below.
     open-pull-requests-limit: 3
+    # pnpm-workspace.yaml enforces minimumReleaseAge: 1440 (packages must be 24h+ old before pnpm
+    # will install them, a typosquat/supply-chain guard). Without a matching cooldown, Dependabot
+    # proposes versions the moment they publish and its own lockfile-only install fails inside the
+    # update job. The extra half-day of buffer covers the gap between Dependabot's scan and the
+    # update job actually running.
+    cooldown:
+      default-days: 2
     # Lowercase Conventional-Commit prefixes so Dependabot PRs pass commitlint/CI.
     commit-message:
       prefix: chore
