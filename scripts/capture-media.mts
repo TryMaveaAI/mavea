@@ -79,13 +79,37 @@ const SHOTS: Shot[] = [
   // The export studio, reached the way a person reaches it — the replay's own export beat is
   // minutes in, and waiting for it would make `pnpm gen:media` a coffee break.
   {
-    name: 'deck-export',
+    name: 'doc-export',
     from: 'demo',
     persona: 'dev',
     settleMs: 30_000,
     // The menu item is matched by its blurb: its label alone also matches the topbar trigger.
-    then: ['Share', 'Choose a template and export'],
+    // The studio's own chrome is a fixed dark lightbox (ExportModal's panel is hardcoded), so the
+    // Document tab — a white page filling the preview — is what keeps this from reading as a
+    // different product than the tiles beside it.
+    then: ['Share', 'Choose a template and export', 'Document'],
   },
+  {
+    name: 'deck-export',
+    from: 'demo',
+    persona: 'dev',
+    settleMs: 30_000,
+    // Slide 1 is the title card — the least interesting thing a generated deck contains. Step
+    // past it to a content slide, which is what someone is deciding about when they look at this.
+    then: [
+      'Share',
+      'Choose a template and export',
+      // A light deck skin, so the tile sits with the others rather than reading as a dark outlier.
+      'Lumen',
+      'Next slide',
+      'Next slide',
+      'Next slide',
+      'Next slide',
+    ],
+  },
+  // The trip, drawn: a real map with its stops numbered beside the hour-by-hour plan. Late in the
+  // replay, where the second answer has built — the frame is the answer, not the reveal.
+  { name: 'trip-plan', from: 'demo', persona: 'traveler', settleMs: 72_000, scrollTop: 650 },
   {
     name: 'deep-zoom',
     from: 'route',
@@ -156,8 +180,9 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     }
     if (shot.then) {
       await clickThrough(page, shot.then);
-      // The deck preview composes real slides from the answers so far — give it room to land.
-      await page.waitForTimeout(6000);
+      // Short: the replay is still playing underneath, and its own next beat (the palette, its
+      // export) would take the studio back off screen while we waited.
+      await page.waitForTimeout(1500);
     }
     return;
   }

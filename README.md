@@ -84,26 +84,28 @@ is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
 ## What it looks like
 
-Eight moments from the walkthrough and the recorded sessions. Every one of them replays with no
-key via `npx @mavea/mavea` — except the thought map, which needs a live model to draw its threads.
+Ten moments from the walkthrough and the recorded sessions. Every one replays with no key via
+`npx @mavea/mavea` — except the thought map, whose threads need a live model to draw.
 
-<!-- Generated, never hand-captured (the one exception is noted above): `pnpm gen:media` re-shoots
-     these against the current build (scripts/capture-media.mts), so a UI change can't quietly leave
-     the README a version behind. Repo-relative paths, so the strip renders in the working tree and
-     in any editor preview — an absolute raw.githubusercontent URL only resolves once the file is
-     pushed. A table, not a <p>: it is the only markup GitHub and npm both keep on one row. -->
+<!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these against the current build
+     (scripts/capture-media.mts), so a UI change can't quietly leave the README a version behind.
+     Repo-relative paths, so the strip renders in the working tree and in any editor preview — an
+     absolute raw.githubusercontent URL only resolves once the file is pushed. A table, not a <p>:
+     it is the only markup GitHub and npm both keep on one row. -->
 <table>
   <tr>
-    <td width="25%" valign="top"><img width="210" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Laid out in space, with the relationships drawn between them.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into cards and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes, and it names the tension you missed.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/deck-export.jpg" alt="The export studio: ten deck templates, accents, and a live slide preview built from the conversation" /><br /><sub><b>Then hand it over.</b> Any answer becomes a deck or a document, previewed before you export.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Laid out in space, with the relationships drawn between them.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/trip-plan.jpg" alt="A day trip drawn as a route map with numbered stops beside an hour-by-hour plan" /><br /><sub><b>It picks the right form.</b> A route becomes a map; a day becomes an hour-by-hour plan.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into themes and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes — and it names the tension you missed.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/impact-map.jpg" alt="A code change at the centre of a map, with labelled edges to what it changes, calls, covers and migrates" /><br /><sub><b>A change, followed out.</b> What it touches, what it breaks, the safest order to ship it.</sub></td>
   </tr>
   <tr>
-    <td width="25%" valign="top"><img width="210" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files and checkpoints.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/impact-map.jpg" alt="A code change at the centre of a map, with labelled edges to what it changes, calls, covers and migrates" /><br /><sub><b>A change, followed out.</b> What it touches, what it breaks, and the safest order to ship it.</sub></td>
-    <td width="25%" valign="top"><img width="210" src="docs/media/deep-zoom.jpg" alt="Deep Zoom descending through a leaf, from the whole plant down toward a photon" /><br /><sub><b>A topic, in powers of ten.</b> Telescope from the big picture down to the finest mechanism.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/deep-zoom.jpg" alt="Deep Zoom descending through a leaf, from the whole plant down toward a photon" /><br /><sub><b>A topic, in powers of ten.</b> Telescope from the big picture to the finest mechanism.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/deck-export.jpg" alt="The export studio previewing a generated slide, with PDF and PPTX downloads" /><br /><sub><b>Out as a deck.</b> Ten skins, a live preview, PDF or PowerPoint.</sub></td>
+    <td width="20%" valign="top"><img width="168" src="docs/media/doc-export.jpg" alt="The export studio previewing a generated document page in an editorial template" /><br /><sub><b>Or as a document.</b> The same answer set as a paper, ready to print or send.</sub></td>
   </tr>
 </table>
 
