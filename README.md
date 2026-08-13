@@ -30,32 +30,6 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 ---
 
-## What it looks like
-
-Every answer is typed data, not prose — so Mavéa draws it. The same answer reads as a column of
-cards, or opens as a spatial canvas with the relationships drawn between them.
-
-<!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these from the recorded demo
-     replays (scripts/capture-media.mts). Absolute URLs because npm's package page cannot resolve
-     repo-relative paths. A table, not a <p>: it is the only markup GitHub and npm both keep on one
-     row — images in a paragraph wrap and stack. -->
-<table>
-  <tr>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-lead.jpg" alt="The spoken answer above the canvas, with its inferred-claim marker" /></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-steps.jpg" alt="A step-by-step protocol walkthrough with per-step completion checks" /></td>
-  </tr>
-  <tr>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-code.jpg" alt="A generated request and its annotated implementation" /></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table with the recommended option marked" /></td>
-    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-risk.jpg" alt="Common pitfalls ranked by severity, with the security checklist above" /></td>
-  </tr>
-</table>
-
-A recorded session, replayable with no key via `npx @mavea/mavea`.
-
----
-
 ## Get started
 
 All you need is **Node 20.19+**. That command above opens the tour and demo replays immediately
@@ -107,6 +81,30 @@ A few specific things worth trying:
 The full tour — Atlas, the Rehearsal, living dashboards, Ripple, selective Conversation video,
 Mavéa Reels, and ~30 more —
 is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
+
+## What it looks like
+
+Six moments from the walkthrough and the recorded sessions — every one of them replayable with no
+key via `npx @mavea/mavea`.
+
+<!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these against the current build
+     (scripts/capture-media.mts), so a UI change can't quietly leave the README a version behind.
+     Repo-relative paths, so the strip renders in the working tree and in any editor preview — an
+     absolute raw.githubusercontent URL only resolves once the file is pushed, which means a fresh
+     shot reads as six broken images until then. A table, not a <p>: it is the only markup GitHub
+     and npm both keep on one row — images in a paragraph wrap and stack. -->
+<table>
+  <tr>
+    <td width="33%" valign="top"><img width="270" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's talking about.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
+    <td width="33%" valign="top"><img width="270" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Cards laid out in space, with the relationships drawn between them.</sub></td>
+    <td width="33%" valign="top"><img width="270" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted live into option, constraint, worry and person cards around the face" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into options, constraints and open loops as you speak.</sub></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><img width="270" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
+    <td width="33%" valign="top"><img width="270" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files and checkpoints.</sub></td>
+    <td width="33%" valign="top"><img width="270" src="docs/media/deep-zoom.jpg" alt="Deep Zoom descending through a leaf, from the whole plant down toward a photon" /><br /><sub><b>A topic, in powers of ten.</b> Telescope from the big picture down to the finest mechanism.</sub></td>
+  </tr>
+</table>
 
 ## What it needs
 
