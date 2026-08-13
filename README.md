@@ -9,12 +9,6 @@
 
 ### Talk to AI. See what it means.
 
-<!-- Screenshots are GENERATED, never hand-captured: `pnpm gen:media` re-shoots every image below
-     from the recorded demo replays (scripts/capture-media.mts), so refreshing them after a UI change
-     is a command rather than a chore. Served by absolute URL, not a repo-relative path: npm's
-     package page cannot resolve those, and raw.githubusercontent serves the file that is on main. -->
-<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/hero.jpg" alt="Mavéa answering a trip-planning question: the spoken line above a canvas of cards" width="820" />
-
 It listens, speaks the headline the instant it forms, then draws the answer — in charts, timelines,
 and evidence you can check, marking the exact figure each line is about.
 [See it in motion →](docs/FEATURES.md)
@@ -38,14 +32,18 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 ## What it looks like
 
-Every answer is typed data, not prose — so Mavéa draws it. The same question renders as comparison
-tables, checklists, timelines and figures, and the pen marks the exact claim it is talking about.
+Every answer is typed data, not prose — so Mavéa draws it. The same answer reads as a column of
+cards, or opens as a spatial canvas with the relationships drawn between them.
 
-<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="An OAuth walkthrough: a protocol comparison table and a security checklist with Mavéa's pen marks on two items" width="880" />
+<!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these from the recorded demo
+     replays (scripts/capture-media.mts). Absolute URLs because npm's package page cannot resolve
+     repo-relative paths. Kept small and side by side — a README is read, not toured. -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" width="420" />
+  <img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table and a security checklist, with Mavéa's pen marks on two items" width="420" />
+</p>
 
-<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-plan.jpg" alt="A three-day Lisbon itinerary built as day-by-day cards under the spoken answer" width="880" />
-
-Both are real recorded sessions — replay them yourself with no key via `npx @mavea/mavea`.
+A recorded session, replayable with no key via `npx @mavea/mavea`.
 
 ---
 

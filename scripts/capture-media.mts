@@ -33,11 +33,10 @@ interface Shot {
 }
 
 const SHOTS: Shot[] = [
-  // The finance persona is not shot at all, and the student replay is savings/interest — the
-  // README should show what the canvas does without leading with someone's money.
-  { name: 'hero', persona: 'traveler', settleMs: 24_000 },
+  // Subjects are deliberately explanatory rather than advisory, and never money, law or health:
+  // a protocol walkthrough, then the block library itself, which has no subject at all.
+  { name: 'canvas-view', persona: 'dev', settleMs: 26_000, asCanvas: true },
   { name: 'canvas-build', persona: 'dev', settleMs: 26_000, scrollTop: 360 },
-  { name: 'canvas-plan', persona: 'traveler', settleMs: 30_000, scrollTop: 360 },
 ];
 
 /** The README shows one look, not two: the paper template in light, which is what the product is
@@ -55,7 +54,7 @@ function readFlag(name: string, fallback: string): string {
 }
 
 /** Dismiss the replay's opening dialog and wait for a built canvas. */
-async function startReplay(page: Page, { settleMs, scrollTop = 0 }: Shot): Promise<void> {
+async function startReplay(page: Page, { settleMs, scrollTop = 0, asCanvas }: Shot): Promise<void> {
   const start = page.getByRole('button', { name: /start demo/i });
   await start.waitFor({ state: 'visible', timeout: 30_000 });
   await start.click();
@@ -73,6 +72,11 @@ async function startReplay(page: Page, { settleMs, scrollTop = 0 }: Shot): Promi
     document.querySelector('.canvas-scroll')?.scrollTo({ top });
     window.scrollTo({ top: 0 });
   }, scrollTop);
+  if (asCanvas) {
+    const toggle = page.getByRole('button', { name: /view as canvas/i });
+    await toggle.click({ timeout: 15_000 });
+    await page.waitForTimeout(2500);
+  }
   await page.waitForTimeout(400);
 }
 
@@ -105,8 +109,16 @@ async function main(): Promise<void> {
             legalVersion: LEGAL_ACCEPTANCE_VERSION,
           },
         );
-        await page.goto(`${baseUrl}/#/live?demo=${shot.persona}`, { waitUntil: 'load' });
-        await startReplay(page, shot);
+        if (shot.route) {
+          await page.goto(`${baseUrl}/${shot.route}`, { waitUntil: 'load' });
+          await page.waitForSelector('.vlib-tile', { timeout: 60_000 });
+          await page.waitForTimeout(9000);
+          await page.evaluate((top) => window.scrollTo({ top }), shot.scrollTop ?? 0);
+          await page.waitForTimeout(1200);
+        } else {
+          await page.goto(`${baseUrl}/#/live?demo=${shot.persona}`, { waitUntil: 'load' });
+          await startReplay(page, shot);
+        }
         const path = `${OUT_DIR}/${shot.name}.jpg`;
         await page.screenshot({ path, type: 'jpeg', quality: QUALITY });
         console.log(`✓ ${path}`);
