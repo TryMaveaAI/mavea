@@ -19,6 +19,16 @@ updates:
       prefix: chore
       prefix-development: chore
       include: scope
+    # Two packages are pinned below their latest on purpose, and an unfiltered group PR that always
+    # carries one of them can never go green. Both are re-checked by hand, not forgotten:
+    ignore:
+      # typescript-eslint refuses to load against TS 7 and fails lint outright
+      # (typescript-eslint#10940). Drop this the release it gains support.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # 1.53 pushes the reel encoder chunk past its raw budget (scripts/check-bundle-size.mjs).
+      # Drop this when the chunk has room or the budget is deliberately re-cut.
+      - dependency-name: mediabunny
     groups:
       dev-dependencies:
         dependency-type: development
