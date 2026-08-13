@@ -30,7 +30,9 @@ describe('documented block count', () => {
   const extended = CATALOG_FACTS.filter((fact) => fact.family !== 'core').length;
   const legitimate = new Set([total, extended]);
 
-  it.each([['README.md'], ['docs/FEATURES.md'], ['ARCHITECTURE.md']])(
+  // The README deliberately states no catalog size — it describes what the canvas does, not how
+  // many parts it has. The guard still holds for the documents that do quote a number.
+  it.each([['docs/FEATURES.md'], ['ARCHITECTURE.md']])(
     '%s quotes only real catalog sizes',
     (path) => {
       const counts = statedCounts(read(path));
@@ -44,8 +46,8 @@ describe('documented block count', () => {
     },
   );
 
-  it('the README tells a reader the whole catalog size, not just the extended half', () => {
-    expect(statedCounts(read('README.md'))).toContain(total);
+  it('the README states no catalog size at all', () => {
+    expect(statedCounts(read('README.md'))).toEqual([]);
   });
 
   it('the gallery offers every catalog type, so its count is the catalog count', async () => {

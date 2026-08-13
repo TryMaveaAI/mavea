@@ -37,11 +37,14 @@ cards, or opens as a spatial canvas with the relationships drawn between them.
 
 <!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these from the recorded demo
      replays (scripts/capture-media.mts). Absolute URLs because npm's package page cannot resolve
-     repo-relative paths. Kept small and side by side — a README is read, not toured. -->
-<p align="center">
-  <img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" width="420" />
-  <img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table and a security checklist, with Mavéa's pen marks on two items" width="420" />
-</p>
+     repo-relative paths. A table, not a <p>: it is the only markup GitHub and npm both keep on one
+     row — images in a paragraph wrap and stack. -->
+<table>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table and a security checklist, with Mavéa's pen marks on two items" /></td>
+  </tr>
+</table>
 
 A recorded session, replayable with no key via `npx @mavea/mavea`.
 
@@ -77,7 +80,7 @@ place of the spoken walk.
 
 Mavéa is an AI you talk to and watch think. Ask out loud: a calm face listens, speaks the headline
 the instant it forms, then steps aside while a living canvas draws the answer in charts, timelines,
-and evidence you can check — composed from a catalog of **608 block types**. As it talks, it draws
+and evidence you can check, choosing the right form for each one. As it talks, it draws
 on the answer, circling the exact figure each line is about. Sourced claims keep their links and
 estimates can be labelled.
 
@@ -121,39 +124,13 @@ whisper.cpp adds its local model and working memory; a desktop container VM adds
 At the 8 GB minimum, leaving local speech off can be the better trade. `podman compose down` (or the
 Docker equivalent) reclaims it whenever you want it back.
 
-## Third-party commercial-use policy
+## Third-party commercial use
 
-Generated videos stay inside an explicit open-media allowlist — AV1 video with Opus audio in an
-MP4 container where the browser can encode them, WebM (VP9/VP8 + Opus) otherwise. Mavéa does
-not generate H.264, H.265, or AAC files or silently fall back to them. Published source licences
-and patent commitments reduce risk but are not a universal patent-clearance opinion. Conversation and Reel direction, rendering, and
-encoding stay local; opening Reel never calls a configured model provider. Narration uses the local
-Kokoro service. Document and presentation exports use bundled permissively licensed libraries and
-self-hosted SIL OFL fonts. Maps use BSD-licensed MapLibre with
-OpenFreeMap, whose public service terms reviewed August 11, 2026 currently permit commercial use
-without request fees; the required map attribution
-stays visible. The Kokoro weights and wrapper are Apache-2.0; the separately pulled service image
-also contains GPL-3.0-or-later eSpeak NG, whose license permits commercial use. Mavéa communicates
-with that separate process over HTTP and does not bundle or link its code. whisper.cpp and its
-selected model are MIT. The Kokoro image is pinned by immutable digest; the speech source archive
-and model are revision-pinned and checksum-verified before execution. The npm package does not
-contain either model or a container image: the user's container runtime fetches/builds those
-artifacts directly. Podman is Apache-2.0 and recommended; Docker Desktop is not universally free
-for commercial organizations, so users who choose it must confirm its terms.
-
-`pnpm check:licenses` scans the installed dependency graph and fails on unapproved, noncommercial,
-or strong-copyleft licenses. The same gate rejects generated-media codecs outside the reviewed allowlist,
-provider-directed Reel generation, restricted tile-service fallbacks, and bundled
-MP4/M4A/AAC/MP3/MOV files. `pnpm verify` and package publication both run this gate. Permissive
-licenses can still require copyright notices or
-attribution; those are preserved in [`THIRD-PARTY.txt`](THIRD-PARTY.txt) and
-[`public/fonts/LICENSE.txt`](public/fonts/LICENSE.txt).
-
-This automated gate is an engineering control, not a legal opinion: it cannot eliminate patent,
-training-data, ownership-chain, provider-terms, or other third-party-claim risk. A commercial launch
-that needs formal assurance should have counsel review the release artifact, notices, provider
-terms, and the rights held by every Mavéa rights holder. Anyone who redistributes the Kokoro image
-itself must also satisfy the GPL obligations carried by eSpeak NG inside that image.
+Generated media, bundled libraries, fonts, maps, and the local speech services are held to an
+open-media and permissive-licence allowlist, enforced on every build by `pnpm check:licenses`.
+It is an engineering control, not a legal opinion — the full policy, what the gate does and does
+not cover, and the obligations that travel with the speech container are in
+[docs/THIRD-PARTY-POLICY.md](docs/THIRD-PARTY-POLICY.md).
 
 ## 📄 Mavéa license
 
