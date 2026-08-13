@@ -3930,3 +3930,312 @@
   color: var(--text-secondary);
   flex-shrink: 0;
 }
+
+/* ════════════════════════════════════════════════════════════
+   dosdonts — paired guidance: the recommended move sat next to the thing it
+   replaces, so the contrast reads ACROSS a row. Two columns of INDEPENDENT
+   lists (proscons) is the shape to stay away from — it reads as a decision
+   being weighed. Every cell is a grid child with min-width: 0, and the row
+   collapses to one column on a narrow card, where the column headers give way
+   to a per-cell side tag so the do/don't meaning never rests on color alone.
+   ════════════════════════════════════════════════════════════ */
+.lay-dd-heading {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.lay-dd-heads {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.lay-dd-head {
+  --dd: var(--presence);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.lay-dd-head .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--dd);
+}
+.lay-dd-head > span:not(.lay-dd-count) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lay-dd-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--dd);
+  background: color-mix(in oklab, var(--dd) 14%, transparent);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+}
+.lay-dd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.lay-dd-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.lay-dd-topic {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.lay-dd-cells {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+/* One side missing across the whole set — a second column would sit empty top to bottom. */
+.lay-dd--single .lay-dd-cells {
+  grid-template-columns: minmax(0, 1fr);
+}
+.lay-dd-cell {
+  --dd: var(--insight);
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--dd) 26%, var(--line-soft));
+  background: color-mix(in oklab, var(--dd) 7%, transparent);
+}
+/* This pair has no counterpart — let the surviving line take the whole row. */
+.lay-dd-cell.solo {
+  grid-column: 1 / -1;
+}
+.lay-dd-mark {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--dd);
+}
+.lay-dd-cell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+/* The column headers name the side; a cell only labels itself when they can't — an unpaired
+   line spanning the row, a one-sided set with no headers, or a card too narrow for two columns. */
+.lay-dd-tag {
+  display: none;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dd);
+  overflow-wrap: anywhere;
+}
+.lay-dd--single .lay-dd-tag,
+.lay-dd-cell.solo .lay-dd-tag {
+  display: block;
+}
+.lay-dd-text {
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-dd-why {
+  margin: 1px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-dd-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+.lay-dd-empty .ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+@container (max-width: 380px) {
+  .lay-dd-heads {
+    display: none;
+  }
+  .lay-dd-cells {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lay-dd-tag {
+    display: block;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   variantswitch — ONE answer re-framed along ONE axis, switched between rather
+   than stacked. A segmented pill group (not the tabs underline) says "same
+   content, different framing"; the active pill is filled, so nothing depends on
+   a sliding indicator whose width would have to be derived from the variant
+   count. Chips wrap, so any number of variants with any label length fits.
+   ════════════════════════════════════════════════════════════ */
+.lay-vs {
+  --vs-acc: var(--presence);
+}
+.lay-vs-subject {
+  margin: 0 0 12px;
+  padding: 7px 11px;
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--surface-glass);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-vs-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.lay-vs-axis {
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.lay-vs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-glass);
+}
+.lay-vs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+.lay-vs-chip > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lay-vs-chip:hover {
+  color: var(--text-secondary);
+}
+.lay-vs-chip.on {
+  color: var(--vs-acc);
+  background: color-mix(in oklab, var(--vs-acc) 16%, var(--surface-elevated));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--vs-acc) 34%, transparent);
+}
+.lay-vs-chip-ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.lay-vs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in oklab, var(--vs-acc) 34%, transparent);
+}
+.lay-vs-solo-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vs-acc);
+  overflow-wrap: anywhere;
+}
+.lay-vs-para {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-vs-when {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 11px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.lay-vs-when-ic {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.lay-vs-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+.lay-vs-empty .ic {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}

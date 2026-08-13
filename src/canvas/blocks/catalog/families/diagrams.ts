@@ -1037,4 +1037,45 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     intents: ['explain', 'teach', 'reference'],
     domains: ['code', 'education'],
   }),
+  createMeta('analogymap', {
+    family: 'diagrams',
+    dataShapes: ['relationship', 'text', 'comparison'],
+    // A bipartite correspondence figure, not a scored comparison table — cluster it with the
+    // node/edge diagrams so it is never deduped against comparematrix in a menu.
+    archetype: 'graph',
+    requires: ['title', 'familiar', 'target', 'pairs'],
+    optional: ['icon', 'iconColor', 'breaksDown', 'caption', 'footer'],
+    interactive: false,
+    wowWeight: 0.74,
+    tier: 'frontier',
+    colDefault: 8,
+    colMin: 6,
+    coercer: 'generic',
+    // Domain-neutral on purpose: an analogy is how you explain an unfamiliar thing in ANY field.
+    blurb:
+      'An analogy map: the familiar thing on the left, the concept being explained on the right, and one labelled correspondence line per mapped part ("your house key" → "the private key: the secret you never share"), plus an explicit `breaksDown` panel naming where the analogy stops holding. Use when an ask is "explain X like I already know Y", "what\'s a good analogy for X", or any first encounter with an abstract concept that has no literal shape to draw — exactly the case teachdiagram refuses. Unlike frayermodel (which explains a term on its own terms) this block\'s whole job is the bridge to PRIOR knowledge; unlike comparematrix it is not scoring two options against criteria, it is asserting that part-for-part they correspond.',
+    itemShapes: [
+      {
+        prop: 'pairs',
+        text: 'familiar',
+        textAliases: ['known', 'source', 'analog', 'from', 'left'],
+        // Both halves or nothing: a pair with no target draws a correspondence line to nothing.
+        requiredFields: ['target'],
+      },
+    ],
+    stringItems: ['breaksDown'],
+    propHints: {
+      familiar: 'the familiar domain the analogy borrows from, e.g. "A house and its keys"',
+      target: 'the unfamiliar concept being explained, e.g. "Public-key cryptography"',
+      'pairs[].familiar': 'the part of the FAMILIAR thing, e.g. "Your house key"',
+      'pairs[].target': 'the part of the concept it maps onto, e.g. "The private key"',
+      'pairs[].note':
+        'optional short gloss of what the correspondence IS, drawn on the connector, e.g. "the secret you never hand out"',
+      'pairs[].loose':
+        'optional true when the match is only approximate — the connector draws dashed rather than overstating it',
+      breaksDown:
+        'plain strings naming where the analogy fails, e.g. "A house key can be copied from a photo; a private key cannot be derived from the public one." Include it whenever the analogy could leave a wrong mental model.',
+    },
+    intents: ['explain', 'teach'],
+  }),
 ];

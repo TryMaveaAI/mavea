@@ -740,4 +740,81 @@ export const CATALOG_LAYOUT: ComponentCatalog = [
     },
     intents: ['comfort', 'reflect'],
   }),
+  createMeta('dosdonts', {
+    family: 'layout',
+    dataShapes: ['list', 'comparison'],
+    requires: ['title', 'pairs'],
+    optional: ['icon', 'iconColor', 'heading', 'doLabel', 'dontLabel', 'footer'],
+    interactive: false,
+    wowWeight: 0.62,
+    tier: 'base',
+    colDefault: 8,
+    colMin: 6,
+    coercer: 'generic',
+    // Deliberately no itemShapes: a pair's text lives in EITHER `do` or `dont`, and naming one of
+    // them as the item's text field would drop every pair carrying only the other — which is the
+    // uneven case (four dos, one don't) this block exists to render honestly.
+    blurb:
+      'The dos and don\'ts of something — paired guidance, each recommended move sat next to the thing it replaces, with an optional one-line why and a hazard flag for genuinely unsafe advice. For etiquette, technique, form, safety and interview coaching ("what do I say / not say", "how do I not screw this up"). Use INSTEAD of proscons for advice: pros/cons headers frame it as a decision the user never posed. Sides need not be even — leave a side out when a line has no counterpart.',
+    propHints: {
+      // The generic coercer projects each pair onto the reference shape, so a side sent under any
+      // other key is dropped silently and the card renders its empty state. With no itemShapes to
+      // alias a synonym onto (a pair's text lives in EITHER side, so neither is "the" text field),
+      // the exact spelling has to be taught here instead.
+      pairs:
+        "array of pair objects using exactly the keys `do` and `dont` — a side sent as `avoid`, `don't`, `bad`, or `good` is discarded",
+      'pairs[].do':
+        'the recommended move, under the key `do`, e.g. "Ask what success looks like in the first 90 days"',
+      'pairs[].dont':
+        'the thing it replaces, under the key `dont` (no apostrophe) — optional when a line has no counterpart, e.g. "Ask what the salary is"',
+      'pairs[].why': 'optional: one short line on why the contrast matters',
+      'pairs[].hazard':
+        'optional: true ONLY for a genuine safety/legal/irreversible risk, not ordinary bad form',
+      'pairs[].topic': 'optional: a short label for what the pair is about, e.g. "Opening line"',
+    },
+    intents: ['howto', 'explain'],
+  }),
+  createMeta('variantswitch', {
+    family: 'layout',
+    dataShapes: ['text', 'comparison'],
+    requires: ['title', 'variants'],
+    optional: ['icon', 'iconColor', 'axis', 'subject', 'defaultVariant', 'accent', 'footer'],
+    interactive: true,
+    wowWeight: 0.66,
+    tier: 'base',
+    colDefault: 8,
+    colMin: 6,
+    coercer: 'generic',
+    itemShapes: [{ prop: 'variants', text: 'label', textAliases: ['name', 'title', 'variant'] }],
+    blurb:
+      'The SAME answer re-framed along one axis — warm/neutral/firm, short/standard/detailed, for an exec vs an engineer vs a five-year-old — shown one framing at a time on a labelled switch, each body a few paragraphs. For "say that firmer / shorter / explain it for a 5-year-old". Pick over variants (compose) when the versions run to multiple paragraphs and stacking them all would be a wall of text, and over tabs, whose panels are different sections rather than the same content said differently. Text only — it cannot hold charts or nested blocks.',
+    // Multi-paragraph rewrites are the whole point, and the central fallbacks are calibrated for
+    // cards: `paragraphs` matches no key regex in contentBudget.ts, so every paragraph would be
+    // cut at the 240-grapheme default — silently, mid-sentence, on a block whose blurb promises
+    // "each body a few paragraphs". `subject` is worse: it falls in TITLE_KEYS at 96, though it
+    // quotes the text being re-framed. The panel scrolls, so the only real bound is readability.
+    contentBudget: {
+      fields: {
+        // A switch stops reading as a choice past a handful of chips.
+        variants: { maxItems: 6 },
+        'variants[].paragraphs': { maxItems: 10 },
+        // Newlines inside one paragraph collapse inside its <p>, so lines are not a layout axis
+        // here; the grapheme cap is what bounds it — ~150 words, a long but genuine paragraph.
+        'variants[].paragraphs[]': { maxGraphemes: 900, maxLines: 12 },
+        subject: { maxGraphemes: 240, maxLines: 4 },
+      },
+    },
+    propHints: {
+      axis: 'what the versions vary along, e.g. "Tone", "Length", "Audience"',
+      subject: 'optional: the shared thing being re-framed, quoted above the switch',
+      'variants[].label': 'the switch label, e.g. "Firm", "One paragraph", "For an exec"',
+      // The prompt's budget clause only names top-level and itemShape fields, so the per-paragraph
+      // limit has to be taught here or the model never hears it.
+      'variants[].paragraphs':
+        'the body of this framing as a plain array of paragraph strings, e.g. ["First para.", "Second para."] — 1–4 paragraphs of up to ~900 characters each, no HTML and no markdown',
+      'variants[].when': 'optional: one line on when to reach for this framing',
+      defaultVariant: 'index of the framing to show first (0-based)',
+    },
+    intents: ['draft', 'explain'],
+  }),
 ];

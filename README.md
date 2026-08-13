@@ -59,7 +59,7 @@ changes.
 
 Mavéa is an AI you talk to and watch think. Ask out loud: a calm face listens, speaks the headline
 the instant it forms, then steps aside while a living canvas draws the answer in charts, timelines,
-and evidence you can check — composed from a catalog of **600 block types**. As it talks, it draws
+and evidence you can check — composed from a catalog of **608 block types**. As it talks, it draws
 on the answer, circling the exact figure each line is about. Sourced claims keep their links and
 estimates can be labelled.
 

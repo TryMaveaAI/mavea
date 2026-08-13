@@ -29,7 +29,12 @@ After scaffolding you:
 
 1. Flesh out the component, its props, its styles, and the catalog `blurb`.
 2. **Add a demo** — a real instance of the block in a `src/data/topics/*` spec (see below).
-3. Verify: `pnpm gen:catalog && pnpm typecheck && pnpm test && pnpm knip`.
+3. Regenerate, **in this order** — each step reads the previous one's output:
+   `pnpm gen:reference-examples && pnpm gen:catalog && pnpm gen:gallery-fixtures`.
+   Your demo feeds the reference examples, which the catalog index reads to build the block's
+   structural reference; the gallery fixtures are derived from the regenerated catalog. Run
+   `gen:gallery-fixtures` before `gen:catalog` and your new block silently gets no fixture.
+4. Verify: `pnpm typecheck && pnpm test && pnpm knip`.
 
 ## The contract (what `new:block` wires, and what each piece is for)
 

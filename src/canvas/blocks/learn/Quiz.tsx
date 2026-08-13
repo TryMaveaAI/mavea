@@ -3,33 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { QuizProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
-
-/** Broadcast on every graded pick — any quiz block anywhere in the app, not just course lessons
- *  (courses just happen to be the first real listener; see live/course/mastery.ts). The question
- *  TEXT is the join key back to whichever checkpoint/lesson asked it, so it travels plain (HTML
- *  stripped) rather than as the rich markup the card itself renders. */
-export const QUIZ_RESULT_EVENT = 'mavea-quiz-result';
-
-export interface QuizResultDetail {
-  /** Plain text, HTML stripped. */
-  question: string;
-  correct: boolean;
-  at: number;
-}
-
-function plainText(html: string): string {
-  return html.replace(/<[^>]+>/g, '').trim();
-}
-
-function reportQuizResult(question: string, correct: boolean): void {
-  try {
-    if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
-    const detail: QuizResultDetail = { question: plainText(question), correct, at: Date.now() };
-    window.dispatchEvent(new CustomEvent<QuizResultDetail>(QUIZ_RESULT_EVENT, { detail }));
-  } catch {
-    /* best-effort telemetry — must never break the quiz UI itself */
-  }
-}
+import { reportQuizResult } from './quizResult';
 
 type Props = QuizProps & { delay?: number };
 
@@ -60,7 +34,11 @@ export function Quiz({
 
       <div className="lr-qz-q" dangerouslySetInnerHTML={richInnerHtml(question)} />
 
-      <div className="lr-qz-opts" role="radiogroup" aria-label="Answer options">
+      {/* A labelled group of plain buttons, matching quizsession: picking an option COMMITS and
+          grades it, which is button behaviour, not the freely-changeable selection role="radio"
+          promises (and neither surface implements the arrow-key roving focus that pattern
+          requires). The picked/correct state is announced by the visually-hidden tails below. */}
+      <div className="lr-qz-opts" role="group" aria-label="Answer options">
         {options.map((o, i) => {
           // After answering: mark the correct option and (if wrong) the chosen one.
           const state = !answered
@@ -83,9 +61,10 @@ export function Quiz({
                 setPicked(i);
                 reportQuizResult(question, !!o.correct);
               }}
-              disabled={answered}
-              role="radio"
-              aria-checked={i === picked}
+              // aria-disabled, never the `disabled` attribute — disabling the button the learner
+              // just pressed drops focus to <body>, stranding a keyboard user above the card.
+              // The onClick guard above is what actually keeps a graded pick final.
+              aria-disabled={answered}
             >
               <span className="lr-qz-mark" aria-hidden="true">
                 {answered && o.correct ? (
@@ -97,6 +76,11 @@ export function Quiz({
                 )}
               </span>
               <span className="lr-qz-opttext" dangerouslySetInnerHTML={richInnerHtml(o.text)} />
+              {answered && (o.correct || i === picked) && (
+                <span className="lr-qz-sr">
+                  {o.correct ? '— correct answer' : '— your answer, incorrect'}
+                </span>
+              )}
             </button>
           );
         })}

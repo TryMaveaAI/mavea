@@ -185,6 +185,37 @@ export interface GroupedBarsProps {
   footer?: HtmlString;
 }
 
+/* ── stackedbars: the grouped-bars twin — one column per group, its series stacked into a
+   single bar so each column reads as a whole AND as its parts. `mode: 'percent'` normalises
+   every column to 100%, so only the MIX compares (the magnitude the normalisation throws away
+   is printed back above each column as its real total). ── */
+export interface StackSeries {
+  name: string;
+  /** Accent for this segment in every column. Omitted — or anything outside the design-system
+   *  accents — cycles the token palette instead, so a raw colour never reaches the fill. */
+  color?: AccentVar;
+  /** One value per group, index-aligned with `groups`. Values must be ≥ 0 — a stack has no
+   *  baseline below zero, so a negative counts as 0 and the drop is declared on the card.
+   *  For signed +/− contributions use `bridge`. */
+  data: number[];
+}
+export interface StackedBarsProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  unit?: string;
+  /** Category labels, left → right — one bar each. */
+  groups: string[];
+  /** Segments in stacking order, bottom → top; also the legend order. */
+  series: StackSeries[];
+  /** 'absolute' (default): the y-axis carries real totals, so column HEIGHT compares.
+   *  'percent': every column is normalised to 100%, so only the composition compares. */
+  mode?: 'absolute' | 'percent';
+  /** Rotated value-axis title, e.g. "Revenue ($k)". */
+  yLabel?: string;
+  footer?: HtmlString;
+}
+
 /* ── calheat: GitHub-style activity calendar; days flow column-major into 7-day weeks,
    each cell shaded by an intensity level 0–4 ── */
 export interface CalHeatCell {
@@ -1092,6 +1123,7 @@ export type Charts2Block =
   | (BlockBase & { type: 'arearange'; props: AreaRangeProps })
   | (BlockBase & { type: 'waffle'; props: WaffleProps })
   | (BlockBase & { type: 'groupedbars'; props: GroupedBarsProps })
+  | (BlockBase & { type: 'stackedbars'; props: StackedBarsProps })
   | (BlockBase & { type: 'dotplot'; props: DotPlotProps })
   | (BlockBase & { type: 'controlchart'; props: ControlChartProps })
   | (BlockBase & { type: 'areaplot'; props: AreaPlotProps })

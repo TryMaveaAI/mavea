@@ -15,6 +15,7 @@ import { Bubble } from './Bubble';
 import { AreaRange } from './AreaRange';
 import { Waffle } from './Waffle';
 import { GroupedBars } from './GroupedBars';
+import { StackedBars } from './StackedBars';
 import { DualAxis } from './DualAxis';
 import { ScatterRegression } from './ScatterRegression';
 import { ControlChart } from './ControlChart';
@@ -78,6 +79,7 @@ export const charts2Registry: BlockRegistry = {
   arearange: entry(AreaRange),
   waffle: entry(Waffle),
   groupedbars: entry(GroupedBars),
+  stackedbars: entry(StackedBars),
   dualaxis: entry(DualAxis),
   scatterregression: (p, c) => (
     <ScatterRegression {...(p as ScatterRegressionProps)} delay={c.delay} />

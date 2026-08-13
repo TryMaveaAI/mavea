@@ -1,8 +1,8 @@
 // mastery.ts — turns locally-graded quiz answers into a lightweight per-topic mastery signal, at
 // zero model-call cost. Two jobs:
 //
-//   1. Listen for Quiz.tsx's QUIZ_RESULT_EVENT (any quiz block, anywhere in the app — courses are
-//      just its first real consumer, see Quiz.tsx's own header) and, once the answers for a course
+//   1. Listen for quizResult.ts's QUIZ_RESULT_EVENT (any quiz surface, anywhere in the app —
+//      courses are just its first real consumer) and, once the answers for a course
 //      lesson's own checkpoint list are all in (joined by question text — the only key the event
 //      carries), roll the result into the Stage C3 progress store via the SAME recordCheckpoint()
 //      CourseRail's self-check panel already calls. One "done" decision, regardless of which path
@@ -21,7 +21,7 @@
 // Real-data-only: a "gap" is a concept the learner's own graded answer says they missed, taken
 // verbatim from that lesson's own `concepts`; a missed-question card's back is the syllabus's own
 // authored answer — nothing here is ever invented.
-import { QUIZ_RESULT_EVENT, type QuizResultDetail } from '../../canvas/blocks/learn/Quiz';
+import { QUIZ_RESULT_EVENT, type QuizResultDetail } from '../../canvas/blocks/learn/quizResult';
 import { getCourses, getCachedCheckpoint, recordCheckpoint } from './store';
 import type { CheckpointQuestion, TopicCourse, TopicLesson } from './model';
 import type { DraftCard } from '../srs/suggestCards';
@@ -235,7 +235,7 @@ interface PendingCheckpoint {
   answers: Map<string, boolean>;
 }
 
-/** Question text (normalized) is the only join key a quiz result carries — see Quiz.tsx's
+/** Question text (normalized) is the only join key a quiz result carries — see quizResult.ts's
  *  QUIZ_RESULT_EVENT — so a checkpoint attempt in progress is buffered in memory only, keyed by
  *  course+lesson, until every one of that lesson's real checkpoint questions has a matching
  *  answer. Not persisted: a reload mid-checkpoint just starts the buffer over, same as any other

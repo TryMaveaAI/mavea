@@ -264,7 +264,8 @@ export type DiagramsBlock =
   | (BlockBase & { type: 'fivewhychain'; props: FiveWhyChainProps })
   | (BlockBase & { type: 'threatmodel'; props: ThreatModelProps })
   | (BlockBase & { type: 'foodweb'; props: FoodWebProps })
-  | (BlockBase & { type: 'primefactortree'; props: PrimeFactorTreeProps });
+  | (BlockBase & { type: 'primefactortree'; props: PrimeFactorTreeProps })
+  | (BlockBase & { type: 'analogymap'; props: AnalogyMapProps });
 
 /* ── cyclewheel: an illustrated closed loop — 3–8 stages spaced evenly AROUND a ring, each an
    icon + label + short caption, joined by curved arrows that flow one into the next and close
@@ -1493,5 +1494,45 @@ export interface ClassDiagramProps {
   iconColor?: AccentVar;
   classes: UmlClass[];
   relations: UmlRelation[];
+  footer?: HtmlString;
+}
+
+/* ── analogymap: explains an unfamiliar concept by mapping it PART BY PART onto a familiar one
+   ("a private key is like a house key; the public key is like the address on the envelope").
+   Two labelled columns — what the learner already knows on the left, the concept being explained
+   on the right — with one correspondence row per mapped part and an explicit connector drawn
+   between the two halves of that row. Where `teachdiagram` refuses abstract concepts (nothing
+   literal to draw) and `frayermodel` explains a term only on its own terms, this block's whole
+   job is the bridge to PRIOR knowledge. `breaksDown` is first-class rather than an afterthought:
+   an analogy that can't say where it stops holding teaches a wrong model. Use for "explain X
+   like I already know Y", "what's a good analogy for …", onboarding an unfamiliar domain.
+   domains: education, tech, science. ── */
+
+export interface AnalogyPair {
+  /** The part of the FAMILIAR thing (left column), e.g. "Your house key". */
+  familiar: string;
+  /** The part of the concept it maps onto (right column), e.g. "The private key". */
+  target: string;
+  /** What the correspondence actually IS — the shared role, drawn on the connector. */
+  note?: string;
+  /** Mark a correspondence that only roughly holds: the connector draws dashed and warning-tinted,
+   *  and the figure gains a legend line saying so. Use it rather than quietly overstating a match. */
+  loose?: boolean;
+}
+
+export interface AnalogyMapProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  /** The familiar domain the analogy borrows from, e.g. "A house and its keys". */
+  familiar: string;
+  /** The unfamiliar concept being explained, e.g. "Public-key cryptography". */
+  target: string;
+  /** One row per correspondence, in teaching order; 3–6 read best. */
+  pairs: AnalogyPair[];
+  /** Where the analogy stops holding — the wrong model a learner would otherwise carry away. */
+  breaksDown?: string[];
+  /** A one-line caption under the figure. */
+  caption?: string;
   footer?: HtmlString;
 }

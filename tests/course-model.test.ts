@@ -32,7 +32,7 @@ import {
   type MasteryCheckpointDetail,
   type TopicMastery,
 } from '../src/live/course/mastery';
-import { QUIZ_RESULT_EVENT } from '../src/canvas/blocks/learn/Quiz';
+import { QUIZ_RESULT_EVENT } from '../src/canvas/blocks/learn/quizResult';
 import { addCards, getAllCards, __resetSrsCacheForTests } from '../src/live/srs/store';
 import { buildLessonSpine } from '../src/live/course/lessonSpine';
 import { validateLiveResponse } from '../src/engine/liveSchema';
@@ -364,7 +364,7 @@ describe('course/store — local persistence', () => {
   });
 });
 
-// course/mastery.ts joins Quiz.tsx's generic QUIZ_RESULT_EVENT to a real course lesson's own
+// course/mastery.ts joins quizResult.ts's generic QUIZ_RESULT_EVENT to a real course lesson's own
 // checkpoint list (by question text) and, once every question in that list has a matching answer:
 // (1) records the attempt through the SAME recordCheckpoint() CourseRail's self-check panel uses —
 // one "done" decision, whichever path graded it — (2) updates this store's own taught/gaps, and

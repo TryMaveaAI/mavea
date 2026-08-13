@@ -184,6 +184,7 @@ describe('component catalog', () => {
       'arearange',
       'waffle',
       'groupedbars',
+      'stackedbars',
       'bridge',
       'calheat',
       'bump',
@@ -253,6 +254,8 @@ describe('component catalog', () => {
       'slidedeck',
       'screenplay',
       'socialpost',
+      'longread',
+      'ideaboard',
       'insight',
       'chart',
       'breakdown',
@@ -324,6 +327,7 @@ describe('component catalog', () => {
       'prooftree',
       'fishbone',
       'classdiagram',
+      'analogymap',
       'avatar',
       'avatargroup',
       'badgeset',
@@ -488,10 +492,13 @@ describe('component catalog', () => {
       'storyarc',
       'devicemark',
       'thoughtrecord',
+      'dosdonts',
+      'variantswitch',
       'equationblock',
       'numberline',
       'workedexample',
       'quiz',
+      'quizsession',
       'flashcard',
       'molecularstructure',
       'periodictable',
@@ -653,6 +660,7 @@ describe('component catalog', () => {
       'worldgrid',
       'warconflict',
       'posbreakdown',
+      'distinctioncard',
       'sparkstat',
       'counter',
       'herostat',
@@ -740,7 +748,7 @@ describe('component catalog', () => {
       'sponsorshiptracker',
       'caseload',
     ];
-    expect(RAW_CATALOG.length).toBe(600);
+    expect(RAW_CATALOG.length).toBe(608);
     expect(RAW_CATALOG.map((m) => m.type)).toEqual(ORDERED_TYPES);
   });
   it('every itemShape names a real prop on its component (no orphan item contracts)', () => {

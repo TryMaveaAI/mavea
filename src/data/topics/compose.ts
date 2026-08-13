@@ -283,6 +283,155 @@ export const compose: ConversationSpec = {
           'Inverted pyramid: the vote and its stakes lead, the who-said-what follows, history stays below the fold.',
       },
     },
+    {
+      type: 'ideaboard',
+      col: 8,
+      delay: 680,
+      props: {
+        title: 'Name Ideas',
+        icon: 'sparkle',
+        iconColor: 'var(--insight)',
+        ask: 'Name the newsletter — a weekly note about running small internet projects.',
+        ideas: [
+          {
+            angle: 'Plain and clear',
+            label: 'The Weekly Build',
+            note: 'Says exactly what it is; nobody has to guess.',
+          },
+          {
+            angle: 'Plain and clear',
+            label: 'Small Projects',
+            note: 'Boring on purpose, and it ages well.',
+          },
+          {
+            angle: 'Plain and clear',
+            label: 'Ship Notes',
+            note: 'Short enough to survive a screenshot.',
+          },
+          {
+            angle: 'With some edge',
+            label: 'Nothing Scales',
+            note: 'A wink at the advice everyone gives you.',
+          },
+          {
+            angle: 'With some edge',
+            label: 'Unfinished',
+            note: 'Honest about what a side project actually is.',
+          },
+          {
+            angle: 'With some edge',
+            label: 'Quietly Shipping',
+            note: 'Owns the lack of a launch announcement.',
+          },
+          {
+            angle: 'Left-field',
+            label: 'Tuesday Is a Verb',
+            note: 'Odd enough that people ask what it means.',
+          },
+          {
+            angle: 'Left-field',
+            label: 'The Long Tail Café',
+            note: 'Warm, a little silly, hard to forget.',
+          },
+          {
+            angle: 'Left-field',
+            label: 'Room 204',
+            note: 'Means nothing yet — that is the point.',
+          },
+          {
+            angle: 'Left-field',
+            label: 'Marginalia',
+            note: 'For readers who like footnotes more than headlines.',
+          },
+        ],
+        footer: 'Nothing here is ranked. Read across the angles first, then narrow.',
+      },
+    },
+    {
+      type: 'longread',
+      col: 7,
+      delay: 760,
+      props: {
+        title: 'Blog Post Draft',
+        icon: 'edit',
+        iconColor: 'var(--presence)',
+        standfirst:
+          'A year ago I sent the first issue to fifty-three people, most of whom I had met in person. Last Tuesday it went to 4,100. Here is the honest version of what happened in between, not the growth-hacking version.',
+        readingTime: 2,
+        copySections: true,
+        sections: [
+          {
+            heading: 'The first fifty were friends',
+            paragraphs: [
+              'For the first three months, nothing I did mattered much. I wrote on Sunday nights, published on Monday mornings, and watched the subscriber count move by two or three a week. The people opening it were people who would have opened anything I sent them, which is a lovely thing and a useless signal. I kept a spreadsheet anyway, because the alternative was admitting I had no idea whether any of it was working.',
+              'What that stretch bought me was a voice. By issue twelve I had stopped writing like someone auditioning for a job and started writing like someone talking to a friend on a train. Nobody subscribed because of that change — it is invisible from the outside — but almost everyone who has arrived since has stayed because of it, and I do not think the rest of the year happens without those quiet twelve weeks.',
+            ],
+          },
+          {
+            heading: 'What actually moved the needle',
+            paragraphs: [
+              'Three things, in order of how uncomfortable they were: writing about one narrow subject instead of five interesting ones, sending on a schedule I could survive rather than one that looked impressive, and asking once, in plain language, for readers to forward the issue to a single person who would like it.',
+              'The forward request was worth more than everything else combined. It added about nine hundred subscribers over six weeks, and every one of them arrived already trusting whoever sent it to them, which is an introduction no ad can buy. I tried paid acquisition twice, spent four hundred dollars, and got sixty subscribers, a third of whom were gone inside a month.',
+            ],
+          },
+          {
+            heading: "What I'd do differently",
+            paragraphs: [
+              'I would start the public archive on day one. For eight months the back issues lived only in inboxes, which meant a year of writing was invisible to anyone who found me later: no search results, nothing to send a friend, nothing for a new reader to judge me by. Moving it to a plain page doubled the traffic within a month and cost me one afternoon.',
+              'And I would have written less. The issues people quote back to me are the short ones — six hundred words, one idea, no preamble. The two-thousand-word essays I was proudest of are the ones nobody finished, and I can see it in the scroll map: attention falls off a cliff two screens in. That is a hard lesson to accept and an easy one to act on, which is the best kind.',
+            ],
+          },
+        ],
+        footer:
+          'Copy one section or take the whole piece — no filename, no page numbers, just the writing.',
+      },
+    },
+    {
+      type: 'variantswitch',
+      col: 8,
+      delay: 840,
+      props: {
+        title: 'Same news, three temperatures',
+        icon: 'sliders',
+        iconColor: 'var(--insight)',
+        accent: 'var(--insight)',
+        axis: 'Tone',
+        subject: 'Telling a client the launch slips two weeks.',
+        defaultVariant: 1,
+        variants: [
+          {
+            label: 'Warm',
+            icon: 'chat',
+            when: 'A long relationship you would rather protect than win.',
+            paragraphs: [
+              'I wanted to get ahead of this rather than let it surprise you: the launch is going to land two weeks later than we planned, on the 24th.',
+              'The short version is that the migration turned up far more legacy data than the audit found, and rushing it is the one thing that would make this worse instead of better.',
+              "I'll send the revised plan tomorrow morning, and I'm happy to walk you through it whenever suits.",
+            ],
+          },
+          {
+            label: 'Neutral',
+            when: 'The default — clear, unhedged, no temperature either way.',
+            paragraphs: [
+              'The launch date moves from the 10th to the 24th.',
+              'The migration surfaced about 40% more legacy records than the audit projected, and validating them properly takes two weeks.',
+              'A revised plan follows tomorrow. Nothing else in the scope changes.',
+            ],
+          },
+          {
+            label: 'Firm',
+            icon: 'alert',
+            when: 'The date has already slipped once and the reset has to stick.',
+            paragraphs: [
+              'The launch moves to the 24th, and that date is now fixed.',
+              'The migration carries 40% more legacy records than the audit we were handed, and we will not ship unvalidated customer data to meet a calendar.',
+              'The revised plan lands tomorrow. If the 24th does not work, the conversation we need is about scope, not about the date.',
+            ],
+          },
+        ],
+        footer: 'Same facts in all three — only the temperature moves.',
+      },
+    },
   ],
   proof: null,
   extras: {},

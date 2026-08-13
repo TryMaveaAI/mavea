@@ -1074,7 +1074,8 @@ export type LearnBlock =
   | (BlockBase & { type: 'guitartab'; props: GuitarTabProps })
   | (BlockBase & { type: 'karyotype'; props: KaryotypeProps })
   | (BlockBase & { type: 'frayermodel'; props: FrayerModelProps })
-  | (BlockBase & { type: 'numberbond'; props: NumberBondProps });
+  | (BlockBase & { type: 'numberbond'; props: NumberBondProps })
+  | (BlockBase & { type: 'quizsession'; props: QuizSessionProps });
 
 /* ──────────────────────────── chorddiagram ────────────────────────────
    Guitar/ukulele chord diagram: a fretboard grid with finger positions.
@@ -2371,5 +2372,39 @@ export interface NumberBondProps {
   factFamily?: boolean;
   /** Short caption under the bond, e.g. "Ways to make 10". */
   label?: string;
+  footer?: HtmlString;
+}
+
+/* ──────────────────────────── quizsession ────────────────────────────
+   A GRADED RUN of questions — "quiz me on chapter 7", "test me on the 50 states", "give me a
+   mock exam". `quiz` is one stateless card whose answer sits on screen the moment it renders;
+   a run is what a study ask actually wants: one question at a time, a rail tracking answered /
+   correct / missed, the explanation held back until the learner has committed, and a wrap-up
+   score that can re-queue only the questions they got wrong.
+
+   Real data only. The model supplies every question, its choices, which choice is right, and
+   the explanation; the score is counted from the learner's own picks. A question the component
+   cannot grade (no prompt, fewer than two choices, nothing marked correct) is dropped from the
+   run rather than shown as an unanswerable item that would silently sink the score. */
+export interface QuizSessionQuestion {
+  /** The question prompt (HTML). */
+  question: HtmlString;
+  /** The choices — shares `quiz`'s option shape, per-option feedback included. Exactly one
+   *  should be marked `correct`. */
+  options: QuizOption[];
+  /** Explanation revealed only AFTER this question is answered. */
+  explanation?: HtmlString;
+  /** Short label for the question — a chapter, sub-topic, or difficulty. */
+  tag?: string;
+}
+export interface QuizSessionProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  /** What the run covers, e.g. "Chapter 7 · Cellular respiration". Shown beside the title. */
+  subject?: string;
+  questions: QuizSessionQuestion[];
+  /** Pass threshold as a percentage (0–100). Omit when the run isn't pass/fail. */
+  passMark?: number;
   footer?: HtmlString;
 }

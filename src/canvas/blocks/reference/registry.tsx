@@ -22,6 +22,7 @@ import { OnThisDay } from './OnThisDay';
 import { CountryCard } from './CountryCard';
 import { WorldGrid } from './WorldGrid';
 import { WarConflict } from './WarConflict';
+import { DistinctionCard } from './DistinctionCard';
 // The family's own styles ride its chunk — cssCodeSplit inserts them before evaluation.
 import './styles.css';
 
@@ -34,7 +35,8 @@ import './styles.css';
  *  wave-7: HazardCard;
  *  wave-8: TermBase, SizeCompare, BaseConversion, HistoricalPerson, OnThisDay,
  *          CountryCard, WorldGrid, WarConflict;
- *  wave-9: PosBreakdown */
+ *  wave-9: PosBreakdown;
+ *  wave-10: DistinctionCard */
 export const referenceRegistry: BlockRegistry = {
   // ── wave 1: real components ──────────────────────────────────────────────
 
@@ -87,4 +89,8 @@ export const referenceRegistry: BlockRegistry = {
   // ── wave 9 ──────────────────────────────────────────────────────────────
 
   posbreakdown: entry(PosBreakdown),
+
+  // ── wave 10 ─────────────────────────────────────────────────────────────
+
+  distinctioncard: entry(DistinctionCard),
 };

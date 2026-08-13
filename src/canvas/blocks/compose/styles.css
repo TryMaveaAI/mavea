@@ -1,4 +1,5 @@
-/* ── compose block family ── messagedraft · chatthread · dialogue · variants · verse · slidedeck */
+/* ── compose block family ── messagedraft · chatthread · dialogue · variants · verse · slidedeck
+   · voicestyle · screenplay · socialpost · longread · ideaboard */
 
 /* ── messagedraft ── email/letter draft card */
 .md-draft {
@@ -769,5 +770,208 @@
   }
   .sp-name {
     max-width: 100px;
+  }
+}
+
+/* ── longread ── Mavéa's own prose, typeset to be read (no document chrome anywhere) */
+/* The reading column. `ch` resolves against this element's own font-size, so the measure is
+   pinned here rather than inherited from the card — 70ch minus the spine indent lands the
+   prose itself at the classic ~66-character line. */
+.lgr-wrap {
+  margin-top: 10px;
+  margin-inline: auto;
+  max-width: 70ch;
+  font-size: var(--fs-md);
+}
+.lgr-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.lgr-readtime {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Standfirst sits OUTSIDE the scrolling body, so the sentence that sets the piece up stays in
+   view while the reader moves through it. */
+.lgr-standfirst {
+  margin: 12px 0 0;
+  font-size: var(--fs-lg);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+/* A canvas card can't grow to 3000px for a 1500-word piece, so the body scrolls — the same
+   bargain every long-text block in this family makes (vs-stanzas, scp-page, sp-body). */
+.lgr-piece {
+  margin-top: 14px;
+  max-height: 620px;
+  overflow-y: auto;
+}
+/* The section spine: a continuous hairline down the left of the body with a marker at each
+   heading. Sections are separated by PADDING, never margin or gap — a gap would break the
+   line into dashes. Drawn only when at least one section is headed. */
+.lgr-piece--spine .lgr-section {
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+.lgr-section {
+  padding-bottom: 18px;
+}
+.lgr-section:last-child {
+  padding-bottom: 0;
+}
+.lgr-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  position: relative;
+  margin: 0 0 8px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+/* The spine marker, centred on the 1px rule (18px padding + 1px border → −22px for a 7px dot). */
+.lgr-piece--spine .lgr-heading::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: 0.45em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--presence) 70%, var(--surface-elevated));
+}
+.lgr-heading-text {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.lgr-section-copy {
+  flex-shrink: 0;
+  align-self: center;
+}
+.lgr-para {
+  margin: 0 0 0.85em;
+  line-height: 1.7;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.lgr-section .lgr-para:last-child {
+  margin-bottom: 0;
+}
+
+@container (max-width: 380px) {
+  /* A narrow card has no room for an 18px gutter as well as the prose — keep the rule, halve
+     the indent, and pull the marker in with it. */
+  .lgr-piece--spine .lgr-section {
+    padding-left: 10px;
+  }
+  .lgr-piece--spine .lgr-heading::before {
+    left: -14px;
+  }
+}
+
+/* ── ideaboard ── an unranked spread of ideas, grouped by angle */
+.ibd-ask {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--surface-glass);
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  overflow-wrap: break-word;
+}
+.ibd-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.ibd-angle {
+  min-width: 0;
+}
+.ibd-angle-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ibd-angle-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ibd-tint, var(--presence));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ibd-angle-count {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--track);
+  border-radius: var(--r-full);
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+/* A hairline that fades out — a divider between lenses, deliberately not a tier rail. */
+.ibd-angle-rule {
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--ibd-tint, var(--presence)) 40%, transparent),
+    transparent
+  );
+}
+/* auto-fill (not auto-fit) so three ideas stay three tiles instead of stretching across the
+   whole card, and a full two-dozen spread wraps dense — the board reads the same at either size. */
+.ibd-ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+}
+.ibd-idea {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in oklab, var(--ibd-tint, var(--presence)) 22%, var(--line));
+  background: color-mix(in oklab, var(--ibd-tint, var(--presence)) 7%, var(--surface-glass));
+}
+.ibd-idea-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.ibd-idea-note {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-muted);
+  overflow-wrap: break-word;
+}
+
+@container (max-width: 380px) {
+  /* Two 168px columns would leave a label and its note fighting for ~70px each — go single. */
+  .ibd-ideas {
+    grid-template-columns: 1fr;
   }
 }

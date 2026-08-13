@@ -34,6 +34,8 @@ import { PromptSet } from './PromptSet';
 import { ZoneLadder } from './ZoneLadder';
 import { PictureSequence } from './PictureSequence';
 import { Thoughtrecord } from './Thoughtrecord';
+import { DosDonts } from './DosDonts';
+import { VariantSwitch } from './VariantSwitch';
 // The family's own styles ride its chunk — cssCodeSplit inserts them before evaluation.
 import './styles.css';
 
@@ -74,4 +76,6 @@ export const layoutRegistry: BlockRegistry = {
   storyarc: entry(StoryArc),
   devicemark: entry(DeviceMark),
   thoughtrecord: entry(Thoughtrecord),
+  dosdonts: entry(DosDonts),
+  variantswitch: entry(VariantSwitch),
 };

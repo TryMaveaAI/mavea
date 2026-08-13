@@ -166,6 +166,37 @@ export const budget: ConversationSpec = {
       },
     },
     {
+      type: 'stackedbars',
+      col: 8,
+      delay: 370,
+      props: {
+        title: 'Where the money actually goes',
+        icon: 'chart',
+        iconColor: 'var(--presence)',
+        unit: '$',
+        mode: 'absolute',
+        yLabel: 'Monthly spend',
+        groups: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        series: [
+          {
+            name: 'Housing',
+            color: 'var(--presence)',
+            data: [2205, 2205, 2205, 2205, 2205, 2205],
+          },
+          { name: 'Groceries', color: 'var(--insight)', data: [620, 585, 710, 640, 595, 668] },
+          { name: 'Transport', color: 'var(--warning)', data: [240, 265, 210, 305, 288, 252] },
+          { name: 'Travel', color: 'var(--presence-soft)', data: [0, 0, 0, 740, 0, 246] },
+          {
+            name: 'Everything else',
+            color: 'var(--text-muted)',
+            data: [415, 462, 388, 505, 441, 470],
+          },
+        ],
+        footer:
+          'The mortgage is <b>$2,205</b> of every month no matter what. The only two travel bars are the Rome trip: the flights, booked in April, and your $246 share of everything on the ground in June.',
+      },
+    },
+    {
       type: 'budgetallocator',
       col: 6,
       delay: 420,
