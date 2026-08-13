@@ -40,7 +40,13 @@
   /* The stage is fixed to the whole viewport, so the session rail sits ON TOP of its left edge:
      without this the docked face and the leftmost cards were laid out underneath the rail, and the
      camera centred the map against a box a rail-width wider than what anyone can see. */
-  padding: 70px 32px calc(var(--dock-h, 76px) + 44px) calc(32px + var(--rail-w, 0px));
+  /* How much of the bottom the map must stay off. NOT the whole dock: --dock-h measures the dock
+     ELEMENT (337px on a 5K display with two notices up), and its top ~100px is empty air holding a
+     floating chip — reserving all of it left a dead band between the map and the composer. Reserve
+     the dock minus that slack, with a floor for when the notices are dismissed and the dock is
+     barely taller than the composer itself. */
+  --ms-bottom-reserve: max(120px, calc(var(--dock-h, 76px) - 56px));
+  padding: 70px 32px var(--ms-bottom-reserve) calc(32px + var(--rail-w, 0px));
   box-sizing: border-box;
   /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the
      page background. Tokens handle light/dark automatically. */
@@ -57,7 +63,7 @@
    which floats over the foot of the stage: without it the lowest theme label was drawn behind
    those chips, half-legible. */
 .ms-stage-fill[data-phase='settled'] {
-  padding-bottom: calc(var(--dock-h, 76px) + 44px);
+  padding-bottom: var(--ms-bottom-reserve);
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
     color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
@@ -798,7 +804,7 @@
    in open space. Fixed to the dock, it sits where every other bottom control does. */
 .ms-canvas[data-phase='settled'] .ms-actions {
   position: fixed;
-  bottom: calc(var(--dock-h, 76px) + 12px);
+  bottom: calc(var(--ms-bottom-reserve, 120px) - 46px);
   left: var(--rail-w, 0px);
   right: 0;
 }
