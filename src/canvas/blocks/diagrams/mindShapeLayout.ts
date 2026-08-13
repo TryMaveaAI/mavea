@@ -28,8 +28,8 @@ const LABEL_HH = 16;
  *  the clear zone has to be the hub's radius plus the card's own half-extent plus a gap, per axis —
  *  reserving only the radius would let every card's near edge sit inside the circle. */
 const HUB_R = 130;
-const HUB_KEEPOUT_X = HUB_R + CARD_HW + 20;
-const HUB_KEEPOUT_Y = HUB_R + CARD_HH + 20;
+const HUB_KEEPOUT_X = HUB_R + CARD_HW + 44;
+const HUB_KEEPOUT_Y = HUB_R + CARD_HH + 44;
 
 export const DOCK_X = 0.1 * VW;
 export const DOCK_Y = 0.12 * VH;
@@ -255,6 +255,20 @@ export function computeLayout(
     ],
     docked,
   );
+  // Spokes tether each card to its theme's centre, so that centre has to be where the theme's
+  // cards ENDED UP — not the seed ring they were thrown from. Stale centroids drew long stray
+  // threads out to empty space, which read as the map having connections it does not have.
+  for (const group of groups) {
+    const points = group.members
+      .map((atom) => positions.get(atom.id))
+      .filter((point): point is MindShapePoint => Boolean(point));
+    if (!points.length) continue;
+    const centroid = {
+      x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+      y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+    };
+    for (const atom of group.members) if (positions.has(atom.id)) centroidOf.set(atom.id, centroid);
+  }
   // Labels are placed against the SETTLED cards, not the seed ring they were spawned from.
   placeLabels(labels, positions, groups);
   return { positions, centroidOf, labels };

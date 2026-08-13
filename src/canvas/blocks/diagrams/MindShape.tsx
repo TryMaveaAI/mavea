@@ -637,9 +637,11 @@ export function MindShape({
       <div className="ms-center">
         {/* Signal chip: transient Mavéa reaction above the face during listening */}
         {currentSignal && phase !== 'settled' && <SignalChip signal={currentSignal} />}
-        {/* Settled: wear Live's own corner-orb rules (presence-canvas.css) so the docked face is
-            the same chibi silhouette people already know from a canvas takeover. */}
-        <div className={docked ? 'ms-center-pip-wrap presence-layer corner' : 'ms-center-pip-wrap'}>
+        {/* Settled: the docked face wears the same chibi silhouette Live's corner orb does. Its
+            APPEARANCE only (ms-orb, mindshape.css) — borrowing Live's `.presence-layer.corner`
+            class brought that layer's own positioning with it and parked the face in the middle of
+            the map it had just stepped out of. */}
+        <div className={docked ? 'ms-center-pip-wrap ms-orb' : 'ms-center-pip-wrap'}>
           <Presence state={presenceState} emotion="neutral" gaze="center" />
         </div>
         <div className="ms-center-label" aria-hidden="true">

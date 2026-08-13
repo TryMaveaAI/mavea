@@ -119,6 +119,11 @@ const LAB_ROUTES: RouteEntry[] = import.meta.env.DEV
       defineRoute('#/pageviewlab', () =>
         import('./live/prism/PageViewLab').then((m) => ({ default: m.PageViewLab })),
       ),
+      // The Mind lab (#/mindlab): the settled Watch-Me-Think map on a fixed spec, so its hub,
+      // keep-out and label placement can be judged without a model key or six typed thoughts.
+      defineRoute('#/mindlab', () =>
+        import('./live/mindshape/MindShapeLab').then((m) => ({ default: m.MindShapeLab })),
+      ),
       // The Why lab (#/whylab): the Why Machine overlay on its illustrative seed web, for layout +
       // counterfactual + light/dark QA.
       defineRoute('#/whylab', () =>

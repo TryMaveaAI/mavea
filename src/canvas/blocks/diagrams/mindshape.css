@@ -54,7 +54,7 @@
    which floats over the foot of the stage: without it the lowest theme label was drawn behind
    those chips, half-legible. */
 .ms-stage-fill[data-phase='settled'] {
-  padding-bottom: 232px;
+  padding-bottom: 168px;
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
     color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
@@ -247,7 +247,9 @@
 }
 
 .ms-hub-text {
-  font-size: calc(13px * var(--ms-card-scale, 1));
+  /* Floored like the cards' own type: the counter-scale keeps the hub in proportion as the camera
+     pulls back, but the question still has to be readable at the far end of it. */
+  font-size: max(11px, calc(13px * var(--ms-card-scale, 1)));
   font-weight: 500;
   line-height: 1.35;
   color: var(--text-primary);
@@ -267,6 +269,36 @@
     animation: none;
     opacity: 1;
   }
+}
+
+/* The docked orb: the curled chibi silhouette Live shows in its corner, at ~54px. Appearance only —
+   the positioning is .ms-center's, above. Body loops and the glow filter look wrong (and raster
+   soft) at this size, so they go; the bigger eyes and thicker strands keep it readable. */
+.ms-orb .presence[data-state='listening'],
+.ms-orb .presence[data-state='thinking'],
+.ms-orb .presence[data-state='loading'],
+.ms-orb .presence[data-state='speaking'] {
+  animation: none;
+  transform: none;
+}
+.ms-orb .presence .mascot,
+.ms-orb .presence .mascot .jelly {
+  animation: none;
+}
+.ms-orb .presence .mascot .bell {
+  filter: none;
+}
+.ms-orb .presence .mascot .curtains.long,
+.ms-orb .presence .mascot .band,
+.ms-orb .presence .mascot .glint.g2,
+.ms-orb .presence .mascot .bell-sheen {
+  display: none;
+}
+.ms-orb .presence .mascot .curtains.short {
+  display: inline;
+}
+.ms-orb .presence .mascot .eye {
+  transform: scale(1.25);
 }
 
 /* Settled: the listener steps aside to the corner — the same move Live makes when a canvas takes
@@ -289,9 +321,12 @@
 }
 
 .ms-canvas[data-phase='settled'] .ms-center-pip-wrap {
-  --face-size: 54px;
   grid-row: 1 / span 8;
   grid-column: 1;
+}
+
+.ms-canvas[data-phase='settled'] .ms-center-pip-wrap .presence {
+  --face-size: 54px;
 }
 
 /* The heading stacks beside the orb rather than under it, so the dock reads as one object. */
@@ -314,7 +349,10 @@
   padding: 0;
 }
 
-.ms-center-pip-wrap {
+.ms-center-pip-wrap .presence {
+  /* --face-size is declared ON .presence (presence-canvas.css), so setting it on this wrapper
+     never reached the face — it stayed at the 180px default. Target the element itself, the way
+     the setup wizard's own resize does. */
   --face-size: 80px;
 }
 /* At 80px the jelly's fine detail (shimmer strokes, aurora bands, the second glint) turns to
