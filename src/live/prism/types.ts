@@ -5,9 +5,28 @@
 import type { GroundableClaim } from './grounding';
 
 /** The kind palette — tints a claim card; does not organize layout (regions do that). `diagram`
- *  marks a claim ABOUT a figure/chart/table, so the source view outlines the graphic on the page. */
-export type ClaimKind =
-  'forecast' | 'stat' | 'finding' | 'risk' | 'definition' | 'method' | 'diagram';
+ *  marks a claim ABOUT a figure/chart/table, so the source view outlines the graphic on the page.
+ *  Data, not just a type: it is the one allowlist every claim from a model is coerced against. */
+export const CLAIM_KINDS = [
+  'forecast',
+  'stat',
+  'finding',
+  'risk',
+  'definition',
+  'method',
+  'diagram',
+] as const;
+
+export type ClaimKind = (typeof CLAIM_KINDS)[number];
+
+/** Coerce a model-authored kind onto the palette. Models invent neighbours of these words
+ *  ("prediction", "caveat"), and a kind outside the palette is looked up in per-kind maps that
+ *  only hold the seven — so an unrecognized label reads as a plain `finding` (the neutral kind)
+ *  rather than taking the surface down. */
+export function asClaimKind(value: unknown): ClaimKind {
+  const kind = String(value ?? '').toLowerCase();
+  return (CLAIM_KINDS as readonly string[]).includes(kind) ? (kind as ClaimKind) : 'finding';
+}
 
 /** How much weight a claim carries in the document's case — drives the answer-first hierarchy so the
  *  few claims that matter bloom large and the camera frames them, instead of dumping 20 equal cards.

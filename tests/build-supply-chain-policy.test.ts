@@ -90,6 +90,26 @@ describe('production build and package-manager policy', () => {
     expect(vite).toContain('sourcemap: false');
   });
 
+  it('ships the pdf.js image decoders everywhere a scanned page can be opened', () => {
+    // A scanned PDF is one big JBIG2/JPEG 2000 image, decoded in WebAssembly that pdf.js fetches
+    // from `wasmUrl` at run time. Miss any leg of this and the failure is silent and awful: pages
+    // rasterize blank white while the claim highlights, which come from the text layer, still land
+    // in exactly the right places. So pin the three legs together — the build copies the decoders,
+    // the app asks for them at that path, and the artifact gate refuses to ship without them.
+    const config = read('vite.config.ts');
+    const decoders = ['jbig2.wasm', 'openjpeg.wasm', 'qcms_bg.wasm'];
+    for (const decoder of decoders) expect(config).toContain(`'${decoder}'`);
+    expect(config).toContain('src: `node_modules/pdfjs-dist/wasm/${file}`');
+    // Redistributed binaries travel with their upstream notices.
+    for (const notice of ['LICENSE_JBIG2', 'LICENSE_OPENJPEG', 'LICENSE_QCMS']) {
+      expect(config).toContain(`'${notice}'`);
+      expect(read('scripts/check-licenses.mjs')).toContain('pdfjs-dist');
+    }
+    expect(read('src/live/prism/extractPdf.ts')).toContain('`${import.meta.env.BASE_URL}pdfjs/`');
+    const artifactGate = read('scripts/check-public-artifact.mjs');
+    for (const decoder of decoders) expect(artifactGate).toContain(`pdfjs/${decoder}`);
+  });
+
   it('keeps every top-level public/ entry on the reviewed inventory', () => {
     // Everything under public/ ships verbatim to every visitor, so a new entry is a provenance
     // decision, not a routine asset drop. Subset check only: public/semantic is generated and

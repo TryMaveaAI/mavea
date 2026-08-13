@@ -22,31 +22,16 @@ import { skimPagesToPrompt, parseSkimPages, selectedPagesToPrompt } from './mapp
 import { extractPdfPages } from './extractPdf';
 import type { OfficeImage } from './officeDoc';
 import { extractOfficeOffMain, extractTextOffMain } from './extractClientDocument';
+import { asClaimKind } from './types';
 import type {
   Claim,
   ClaimBox,
-  ClaimKind,
   ClaimRole,
   PrismSpec,
   Thread,
   ThreadRelation,
   CandidateClaim,
 } from './types';
-
-const KINDS: ClaimKind[] = [
-  'forecast',
-  'stat',
-  'finding',
-  'risk',
-  'definition',
-  'method',
-  'diagram',
-];
-
-function asKind(s: unknown): ClaimKind {
-  const k = String(s ?? '').toLowerCase();
-  return (KINDS as string[]).includes(k) ? (k as ClaimKind) : 'finding';
-}
 
 const ROLES: ClaimRole[] = ['load-bearing', 'supporting', 'context'];
 
@@ -537,7 +522,7 @@ async function mapOneDocument(
     id: `d${source}c${i}`,
     quote: c.quote,
     page: c.page,
-    kind: asKind(c.kind),
+    kind: asClaimKind(c.kind),
     title: c.title?.trim() || c.quote.slice(0, 40),
     ask: c.ask?.trim() || 'What does this mean?',
     role: asRole(c.role),

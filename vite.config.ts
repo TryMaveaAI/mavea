@@ -109,6 +109,32 @@ const VAD_ASSETS: { name: string; src: string }[] = [
   },
 ];
 
+// pdf.js decodes a scanned page's images (JBIG2, JPEG 2000) and its colour profiles in
+// WebAssembly, fetched at run time from whatever `wasmUrl` getDocument was given. With no such
+// directory to fetch from, every scan — the majority of PDFs anyone drops into Prism — rendered as
+// a blank white page under correctly-placed highlights. Served from a subdirectory (unlike the VAD
+// assets, which hardcode the site root) because pdf.js takes the base URL from us. Copied out of
+// the package rather than vendored into public/ so a dep bump can never leave a stale decoder
+// behind. The `*_nowasm_fallback.js` shims are deliberately NOT shipped: they are asm.js builds
+// several times the size of the wasm, for browsers below Mavéa's Baseline floor.
+const PDFJS_DIR = 'pdfjs';
+const PDFJS_ASSETS: { name: string; src: string }[] = [
+  'jbig2.wasm', // scanned bitonal pages
+  'openjpeg.wasm', // JPEG 2000 imagery
+  'qcms_bg.wasm', // ICC colour conversion
+  // Redistributed binaries carry their notices: PDFium (BSD-3-Clause), OpenJPEG (BSD-2-Clause),
+  // qcms (MIT), each with Mozilla's own wrapper license.
+  'LICENSE_JBIG2',
+  'LICENSE_OPENJPEG',
+  'LICENSE_QCMS',
+  'LICENSE_PDFJS_JBIG2',
+  'LICENSE_PDFJS_OPENJPEG',
+  'LICENSE_PDFJS_QCMS',
+].map((file) => ({
+  name: `${PDFJS_DIR}/${file}`,
+  src: `node_modules/pdfjs-dist/wasm/${file}`,
+}));
+
 const ASSET_MIME: Record<string, string> = {
   '.js': 'text/javascript',
   '.mjs': 'text/javascript', // ES module glue — must have a JS mime so import() accepts it
@@ -164,17 +190,20 @@ function legalDocsPlugin(): Plugin {
   };
 }
 
-// Make the VAD assets available at '/<name>' in BOTH dev and build. This replaces
+/** Every library runtime asset fetched by URL at run time rather than imported. */
+const RUNTIME_ASSETS = [...VAD_ASSETS, ...PDFJS_ASSETS];
+
+// Make each runtime asset available at '/<name>' in BOTH dev and build. This replaces
 // vite-plugin-static-copy, which is broken on Vite 8 two ways: (1) its dev middleware looks up
 // Vite internals by name (`viteServePublicMiddleware` etc.) that Vite 8 no longer exposes, so the
 // lookup returns -1 and it splices itself AFTER the SPA fallback — every asset then 404s to
 // index.html; (2) its build copy preserves the source path, writing to dist/node_modules/… instead
-// of the dist root. Either way the files aren't at '/', so Silero VAD silently fell back to
-// WebSpeech. This plugin serves them (dev) and copies them flat into the output root (build).
-function vadAssetsPlugin(): Plugin {
+// of the dist root. Either way the files aren't where the library looks, so Silero VAD silently
+// fell back to WebSpeech. This plugin serves them (dev) and copies them into the output (build).
+function runtimeAssetsPlugin(): Plugin {
   let root = process.cwd();
   return {
-    name: 'mavea-vad-assets',
+    name: 'mavea-runtime-assets',
     configResolved(c) {
       root = c.root;
     },
@@ -183,7 +212,7 @@ function vadAssetsPlugin(): Plugin {
       server.middlewares.use(
         (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
           const path = (req.url || '').split('?')[0].replace(/^\//, '');
-          const asset = VAD_ASSETS.find((a) => a.name === path);
+          const asset = RUNTIME_ASSETS.find((a) => a.name === path);
           if (!asset) return next();
           const file = resolve(root, asset.src);
           if (!existsSync(file)) return next();
@@ -196,17 +225,20 @@ function vadAssetsPlugin(): Plugin {
         },
       );
     },
-    // BUILD: copy each asset FLAT into the output root so '/<name>' resolves in production.
+    // BUILD: copy each asset to '<outDir>/<name>' so the same URL resolves in production.
     writeBundle(options) {
       const outDir = options.dir ?? resolve(root, 'dist');
-      for (const asset of VAD_ASSETS) {
+      for (const asset of RUNTIME_ASSETS) {
         const from = resolve(root, asset.src);
         if (existsSync(from)) {
-          copyFileSync(from, resolve(outDir, asset.name));
+          const to = resolve(outDir, asset.name);
+          mkdirSync(dirname(to), { recursive: true });
+          copyFileSync(from, to);
         } else {
-          // Loud, not silent: the onnxruntime-web@x.y.z path is version-pinned, so a dep bump can
-          // move it — surface that at build time instead of shipping a VAD that 404s its model.
-          this.warn(`VAD asset not found, omitted from build: ${asset.src}`);
+          // Loud, not silent: these package paths are version-pinned, so a dep bump can move one —
+          // surface that at build time instead of shipping a VAD that 404s its model, or a Prism
+          // that renders every scanned page blank.
+          this.warn(`Runtime asset not found, omitted from build: ${asset.src}`);
         }
       }
     },
@@ -330,7 +362,7 @@ export default defineConfig({
     // workflow all exercise the compiled output, so nothing ships untested by it.
     ...(process.env.VITEST ? [] : [babel({ presets: [reactCompilerPreset({ target: '19' })] })]),
     pdfProxyPlugin(),
-    vadAssetsPlugin(),
+    runtimeAssetsPlugin(),
     legalDocsPlugin(),
     dropDeadOpenchemlibResourcesPlugin(),
     dropDeadHtml2canvasChunkPlugin(),

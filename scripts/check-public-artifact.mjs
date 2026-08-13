@@ -62,6 +62,15 @@ const requiredRuntime = [
   'silero_vad_v5.onnx',
   'ort-wasm-simd-threaded.mjs',
   'ort-wasm-simd-threaded.wasm',
+  // pdf.js fetches these at run time to decode a scanned page's imagery; without them every scan
+  // rasterizes to a blank white page under correctly-placed highlights.
+  'pdfjs/jbig2.wasm',
+  'pdfjs/openjpeg.wasm',
+  'pdfjs/qcms_bg.wasm',
+  // The notices that must travel with those redistributed binaries.
+  'pdfjs/LICENSE_JBIG2',
+  'pdfjs/LICENSE_OPENJPEG',
+  'pdfjs/LICENSE_QCMS',
 ];
 const missingRuntime = requiredRuntime.filter((name) => !existsSync(resolve(DIST, name)));
 const requiredLegalDocs = [

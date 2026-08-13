@@ -25251,6 +25251,10 @@ Map tiles	OpenFreeMap public service / MIT server	https://openfreemap.org/
   required and is shown both interactively and in export-safe in-flow text. Vector-tile data is
   OpenMapTiles from OpenStreetMap under ODbL.
   OpenFreeMap's MIT-licensed production stack can be self-hosted if the public service changes)
+PDF image decoders	BSD-3-Clause / BSD-2-Clause / MIT	https://github.com/mozilla/pdf.js
+  (jbig2.wasm from PDFium, openjpeg.wasm from OpenJPEG, and qcms_bg.wasm from Mozilla's qcms,
+  redistributed via pdfjs-dist and served from dist/pdfjs/ so a scanned page renders; each carries
+  its upstream notice beside it as dist/pdfjs/LICENSE_*)
 Syntax-highlighting grammars & themes	MIT and other permissive	https://github.com/shikijs/textmate-grammars-themes
   (TextMate grammars and GitHub themes redistributed via @shikijs/langs / @shikijs/themes; upstream
   sources and per-grammar licenses are documented in that repository's tm-grammars / tm-themes metadata)

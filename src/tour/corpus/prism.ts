@@ -5,6 +5,7 @@
 // The generated JSON carries whole documents, so it loads lazily: the Live chunk stays lean and the
 // bytes only arrive when the tour's Prism chapter actually opens.
 import type { Attachment } from '../../live/attachments';
+import { asClaimKind } from '../../live/prism/types';
 import type { PrismSpec } from '../../live/prism/types';
 
 interface PrismDocRaw {
@@ -51,7 +52,10 @@ export async function loadTourPrism(): Promise<TourPrismDoc[]> {
     type: d.type,
     name: d.name,
     doc: { name: d.name, mime: d.mime, data: d.data, size: d.size },
-    spec: d.spec,
+    // The fixture is model-authored, so its claim kinds are coerced onto the palette here rather
+    // than trusted: a bake that returned a near-miss kind ("prediction") reached the per-kind
+    // colour/label maps as an undefined lookup and took the whole overlay down.
+    spec: { ...d.spec, claims: d.spec.claims.map((c) => ({ ...c, kind: asClaimKind(c.kind) })) },
     proposed: d.proposed,
   }));
   return cache;

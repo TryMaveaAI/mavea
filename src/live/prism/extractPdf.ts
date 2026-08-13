@@ -34,6 +34,16 @@ function loadPdfjs(): Promise<any | null> {
   return loadPdfjsModule().catch(() => null);
 }
 
+/** Where pdf.js fetches its image/colour decoders (JBIG2, JPEG 2000, ICC), which it compiles to
+ *  WebAssembly on demand. A SCANNED page is one big image in one of those codecs, so without this
+ *  the decode fails and the page rasterizes to blank white — with the claim highlights still
+ *  correctly placed over nothing, since the text layer comes from the PDF itself. The files are
+ *  served from the site's own origin by the runtime-assets plugin (vite.config.ts). */
+const PDFJS_WASM_URL = `${import.meta.env.BASE_URL}pdfjs/`;
+
+/** Options every getDocument call shares. */
+const DOC_OPTIONS = { wasmUrl: PDFJS_WASM_URL } as const;
+
 /** A text item with its on-page geometry (PDF user space: origin bottom-left, y grows upward). */
 interface PlacedItem {
   it: any;
@@ -141,7 +151,7 @@ export async function extractPdfPages(pdf: Attachment): Promise<string[] | null>
   try {
     const data = await attachmentBytes(pdf);
     // `data` is transferred to the worker; pass a copy so the caller's attachment stays intact.
-    const doc = await pdfjs.getDocument({ data: data.slice() }).promise;
+    const doc = await pdfjs.getDocument({ data: data.slice(), ...DOC_OPTIONS }).promise;
     const pages: string[] = [];
     for (let n = 1; n <= doc.numPages; n += 1) {
       const page = await doc.getPage(n);
@@ -241,7 +251,7 @@ export async function getRenderDoc(pdf: Attachment, pdfjs: any): Promise<any> {
     // Preserve the render cache's synchronous open ordering for existing base64/buffer-backed
     // attachments. Only a newly staged File needs an asynchronous read before pdf.js opens it.
     const bytes = attachmentBytesImmediate(pdf) ?? (await attachmentBytes(pdf));
-    const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+    const doc = await pdfjs.getDocument({ data: bytes.slice(), ...DOC_OPTIONS }).promise;
     if (epoch !== renderDocEpoch) {
       // destroyRenderDoc() ran while this open was in flight (the panel closed) — release it
       // immediately rather than caching a document past its owner's lifetime.
