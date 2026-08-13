@@ -41,8 +41,14 @@ cards, or opens as a spatial canvas with the relationships drawn between them.
      row — images in a paragraph wrap and stack. -->
 <table>
   <tr>
-    <td width="50%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /></td>
-    <td width="50%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table and a security checklist, with Mavéa's pen marks on two items" /></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-lead.jpg" alt="The spoken answer above the canvas, with its inferred-claim marker" /></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-steps.jpg" alt="A step-by-step protocol walkthrough with per-step completion checks" /></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-code.jpg" alt="A generated request and its annotated implementation" /></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="A protocol comparison table with the recommended option marked" /></td>
+    <td width="33%"><img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-risk.jpg" alt="Common pitfalls ranked by severity, with the security checklist above" /></td>
   </tr>
 </table>
 

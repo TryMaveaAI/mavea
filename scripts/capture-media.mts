@@ -37,6 +37,10 @@ const SHOTS: Shot[] = [
   // a protocol walkthrough, then the block library itself, which has no subject at all.
   { name: 'canvas-view', persona: 'dev', settleMs: 26_000, asCanvas: true },
   { name: 'canvas-build', persona: 'dev', settleMs: 26_000, scrollTop: 360 },
+  { name: 'canvas-steps', persona: 'dev', settleMs: 26_000, scrollTop: 1000 },
+  { name: 'canvas-code', persona: 'dev', settleMs: 26_000, scrollTop: 1750 },
+  { name: 'canvas-risk', persona: 'dev', settleMs: 26_000, scrollTop: 2500 },
+  { name: 'canvas-lead', persona: 'dev', settleMs: 26_000, scrollTop: 0 },
 ];
 
 /** The README shows one look, not two: the paper template in light, which is what the product is
@@ -109,7 +113,25 @@ async function main(): Promise<void> {
             legalVersion: LEGAL_ACCEPTANCE_VERSION,
           },
         );
-        if (shot.route) {
+        if (shot.chapter) {
+          await page.goto(`${baseUrl}/#/live?tour=1&ch=${shot.chapter}`, { waitUntil: 'load' });
+          await page.waitForSelector('.mavea-app', { timeout: 60_000 });
+          const startTour = page.getByRole('button', { name: /start the tour/i });
+          await startTour.waitFor({ state: 'visible', timeout: 30_000 });
+          await startTour.click();
+          await page.waitForTimeout(shot.settleMs);
+          // A lazily-imported surface can lose its first fetch on a cold headless run; the overlay
+          // offers exactly one honest retry, so take it rather than shooting the error state.
+          const retry = page.getByRole('button', { name: /^retry$/i });
+          if (await retry.isVisible().catch(() => false)) {
+            await retry.click();
+            await page.waitForTimeout(7000);
+          }
+          await page.addStyleTag({
+            content: '.demox, .ink-coach, .feature-use-notice { display: none !important; }',
+          });
+          await page.waitForTimeout(500);
+        } else if (shot.route) {
           await page.goto(`${baseUrl}/${shot.route}`, { waitUntil: 'load' });
           await page.waitForSelector('.vlib-tile', { timeout: 60_000 });
           await page.waitForTimeout(9000);
