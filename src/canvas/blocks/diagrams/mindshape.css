@@ -49,8 +49,12 @@
   transition: background 0.8s ease;
 }
 
-/* Subtle warmth at settle — signals the transition from "listening" to "found something". */
+/* Subtle warmth at settle — signals the transition from "listening" to "found something". The
+   extra bottom room is for the settled action bar ("Help me understand", "Turn into a plan", …),
+   which floats over the foot of the stage: without it the lowest theme label was drawn behind
+   those chips, half-legible. */
 .ms-stage-fill[data-phase='settled'] {
+  padding-bottom: 232px;
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
     color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
@@ -75,10 +79,12 @@
 }
 
 /* During listening the overlay stays at z-index 2 so the bottom dock/scrubber chrome remains on
-   top and usable (the on-map action bar sits in the clear space above the dock). Only a settled
-   map is raised above the dock. */
+   top and usable (the on-map action bar sits in the clear space above the dock). A settled map is
+   raised above the dock — but NOT above the top bar (z-index 40, top-bar.css). Watch Me Think is a
+   mode inside the session, not a different app: covering the navigation made a settled map read as
+   a dead end, with only the small exit pill to prove otherwise. */
 .ms-stage-fill[data-phase='settled'] {
-  z-index: 50;
+  z-index: 39;
 }
 
 /* The always-visible way back to the conversation — top-right of the overlay's content area,
@@ -1010,15 +1016,25 @@
    One-sentence summary fading in during the settle reveal. Appears below the center
    question so the hierarchy reads: label → question → synthesis → actions. */
 .ms-synthesis-line {
-  max-width: 200px;
-  font-size: 9.5px;
+  max-width: 220px;
+  font-size: 10px;
   font-style: italic;
   font-weight: 400;
-  color: var(--text-muted);
+  /* Muted grey italic, unbacked, with connection threads running straight through it — the one
+     sentence that explains the whole map was the least readable thing on it. It gets a backplate
+     of its own (same trick as the theme labels) and a step up in contrast. */
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--surface-elevated) 90%, transparent);
+  padding: 3px 9px;
+  border-radius: 9px;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.45;
   opacity: 0;
   transition: opacity 0.5s ease;
+  /* Scale with the camera, like the question above it: the centre is a fixed sibling the world
+     flies around, so unscaled text spills past the clear zone the atoms reserved for it. */
+  transform: scale(clamp(0.8, var(--ms-cam-scale, 1), 1));
+  transform-origin: center top;
 }
 
 .ms-canvas[data-phase='settled'] .ms-synthesis-line {
