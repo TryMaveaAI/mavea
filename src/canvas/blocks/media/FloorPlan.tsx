@@ -19,13 +19,18 @@ const ROOM_FILLS = [
 // so a single fixed length cutoff either wastes a wide room or overflows a narrow-to-medium one —
 // a name like "Living / Dining" at w=25 slips past a "w < 20" gate untouched and bleeds past the
 // rect edges. Budget from the rect's own width at the label's actual font-size (bold, ~0.62 ×
-// font-size average glyph advance in this viewBox's units) and always keep the untruncated name
+// font-size average glyph advance in this viewBox's units) and always keep the untruncated text
 // as a native <title> tooltip so it's never silently lost, only visually shortened.
 const FP_CHAR_ADVANCE = 0.62;
-function truncateRoomName(text: string, boxW: number, fontSize: number): string {
+function truncateRoomText(text: string, boxW: number, fontSize: number): string {
   const max = Math.max(3, Math.floor(boxW / (fontSize * FP_CHAR_ADVANCE)));
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
+
+// The plan is a 100-unit viewBox drawn at most 420px wide (.fp-wrap), so a label lands on screen
+// at roughly 4.2 × its font-size: the note's old 2 rendered at 8.4px, under the ~9px floor where
+// reading turns into squinting. 2.4 clears it with margin and still sits clear of the room name.
+const FP_NOTE_FONT_SIZE = 2.4;
 
 export function FloorPlan({
   title,
@@ -62,9 +67,11 @@ export function FloorPlan({
             const cx = room.x + room.w / 2;
             const cy = room.y + room.h / 2;
             // Leave a small inset on each side so the label never touches the room's stroke.
+            const inset = Math.max(0, room.w - 2);
             const nameFontSize = Math.min(room.w, room.h) < 14 ? 2.5 : 3;
-            const shortName = truncateRoomName(room.name, Math.max(0, room.w - 2), nameFontSize);
+            const shortName = truncateRoomText(room.name, inset, nameFontSize);
             const isTruncated = shortName !== room.name;
+            const shortNote = room.note && truncateRoomText(room.note, inset, FP_NOTE_FONT_SIZE);
 
             return (
               <g key={i}>
@@ -93,14 +100,16 @@ export function FloorPlan({
                 </text>
                 {room.note && (
                   <text
+                    className="fp-room-note"
                     x={cx}
                     y={cy + 4}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fontSize="2"
+                    fontSize={FP_NOTE_FONT_SIZE}
                     fill="var(--text-muted, #888)"
                   >
-                    {room.note}
+                    {shortNote !== room.note && <title>{room.note}</title>}
+                    {shortNote}
                   </text>
                 )}
               </g>

@@ -10,11 +10,11 @@ type Props = AreaPlotProps & { delay?: number };
 const PALETTE = ['var(--presence)', 'var(--insight)', 'var(--warning)', 'var(--danger)'];
 
 const W = 320;
-const H = 224;
+const H = 234;
 const padL = 34;
 const padR = 16;
 const padT = 14;
-const padB = 26;
+const padB = 36;
 const plotW = W - padL - padR;
 const plotH = H - padT - padB;
 
@@ -363,7 +363,7 @@ export function AreaPlot({
 
           {/* axis labels */}
           {xLabel && (
-            <text x={padL + plotW} y={padT + plotH + 12} className="apl-axlbl" textAnchor="end">
+            <text x={padL + plotW / 2} y={H - 4} className="apl-axlbl" textAnchor="middle">
               {xLabel}
             </text>
           )}

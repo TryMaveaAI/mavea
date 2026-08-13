@@ -30,16 +30,10 @@ async function settleImages(host: HTMLElement, perImageMs: number): Promise<void
   );
 }
 
-/** True while any embedded Leaflet map is still loading its tiles — a fixed-size map doesn't grow
- *  the host, so the height poll can't see it; this does. A map container with no tiles yet, or any
- *  tile not yet flagged `leaflet-tile-loaded`, counts as pending. */
+/** True while an embedded vector map is still loading — a fixed-size map doesn't grow the host,
+ *  so the height poll cannot see it; the map's own settled-state flag does. */
 function mapsPending(host: HTMLElement): boolean {
-  const maps = host.querySelectorAll('.leaflet-container');
-  for (const m of maps) {
-    if (!m.querySelector('.leaflet-tile')) return true; // map mounted, tiles not requested yet
-    if (m.querySelector('.leaflet-tile:not(.leaflet-tile-loaded)')) return true; // tiles in flight
-  }
-  return false;
+  return host.querySelector('.geo-map[aria-busy="true"]') !== null;
 }
 
 export interface FigureReadyOpts {
@@ -52,8 +46,8 @@ export interface FigureReadyOpts {
 /**
  * Wait for the figures under `host` to settle before capture — bounded by `timeoutMs`. Async
  * content lands in two ways: Shiki/KaTeX grow the rendered height (watched by the height poll), and
- * Leaflet maps load fixed-size tiles (watched explicitly). Once both are quiet, every `<img>` —
- * including map tiles — is decoded so the raster captures pixels, not blanks. Generic: a new
+ * MapLibre maps load into a fixed-size canvas (watched explicitly). Once both are quiet, every
+ * `<img>` is decoded so the raster captures pixels, not blanks. Generic: a new
  * embeddable family needs no change unless it loads async in a way neither signal catches. A no-op
  * where there is no layout (jsdom: no rAF / zero-size host), so it never stalls a test.
  */

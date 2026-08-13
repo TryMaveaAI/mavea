@@ -20,7 +20,9 @@ const NODES_TOP = 62;
 const BAND_H = 300;
 const CAP = 9; // visual node cap per layer; CAP-1 real dots + one "+N more" slot beyond it
 const NODE_R = 10;
-const MORE_R = 13;
+const MORE_R = 13; // half-height of the "+N more" slot — its row spacing matches a plain node's
+const MORE_F = 14; // px, viewBox units — must track .nn-more-label
+const AVG_CHAR_W = 0.62; // bold sans average glyph width as a fraction of the font size
 
 const NAME_MAX_CHARS = 13;
 const ACT_MAX_CHARS = 16;
@@ -147,6 +149,12 @@ export function NnArchitecture({
             const name =
               typeof c.layer?.name === 'string' && c.layer.name ? c.layer.name : `Layer ${li + 1}`;
             const slots = slotCount(c);
+            // The "+N more" slot has to hold a real count — a capped layer routinely hides
+            // hundreds or thousands of units — so it grows sideways into the gap between columns
+            // instead of as a circle, whose diameter would have to eat the rows above and below.
+            const moreLabel = `+${c.moreCount}`;
+            const moreW = moreLabel.length * MORE_F * AVG_CHAR_W + 12;
+            const moreY = nodeY(c.realCount, slots);
             return (
               <g key={li}>
                 <text x={c.colX} y={HEADER_Y} className="nn-name" textAnchor="middle">
@@ -164,19 +172,22 @@ export function NnArchitecture({
                 ))}
                 {c.hasMore && (
                   <g>
-                    <circle
-                      cx={c.colX}
-                      cy={nodeY(c.realCount, slots)}
-                      r={MORE_R}
-                      className="nn-more-dot"
+                    <rect
+                      x={c.colX - moreW / 2}
+                      y={moreY - MORE_R}
+                      width={moreW}
+                      height={MORE_R * 2}
+                      rx={MORE_R}
+                      className="nn-more-pill"
                     />
                     <text
                       x={c.colX}
-                      y={nodeY(c.realCount, slots) + 4}
+                      y={moreY}
                       className="nn-more-label"
                       textAnchor="middle"
+                      dominantBaseline="middle"
                     >
-                      +{c.moreCount}
+                      {moreLabel}
                     </text>
                   </g>
                 )}

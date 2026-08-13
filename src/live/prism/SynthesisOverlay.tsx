@@ -85,7 +85,9 @@ export function SynthesisOverlay({
   );
 
   // The attachments backing the source panels: the real surviving files (aligned to claim.source), or
-  // — in preview mode — lightweight text stand-ins so the panel can show the demo corpus text.
+  // — in preview mode — name-only stand-ins that carry no bytes. That's enough because the panel reads
+  // its page text from `world.corpus` (the same pages the claims were grounded against), never by
+  // re-extracting the attachment.
   const attachments: Attachment[] = useMemo(() => {
     if (demo)
       return (demo.spec.sources ?? []).map((s) => ({

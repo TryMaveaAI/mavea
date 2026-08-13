@@ -14,6 +14,7 @@ import { OrbitDiagram } from '../src/canvas/blocks/media/OrbitDiagram';
 import { PatternPiece } from '../src/canvas/blocks/media/PatternPiece';
 import { SkyChart } from '../src/canvas/blocks/media/SkyChart';
 import { SpaceFit } from '../src/canvas/blocks/media/SpaceFit';
+import { WeldSymbol } from '../src/canvas/blocks/media/WeldSymbol';
 import { SportsPitch } from '../src/canvas/blocks/media/SportsPitch';
 import type {
   ArtRegion,
@@ -224,6 +225,179 @@ describe('CutList', () => {
     expect(label?.textContent).toBe('Shelf');
     expect(container.querySelector('title')).toBeNull();
   });
+
+  // Regression coverage: the figure's viewBox IS the stock sheet, so a label sized in absolute
+  // user units means one millimetre of plywood on an 8×4 sheet and one centimetre on a metre of
+  // fabric. The stock label was authored at a flat 4 units and rendered at 0.9px — invisible, and
+  // clipped above the viewBox besides. Every figure label must be a fraction of the sheet, so the
+  // same stock reads identically whatever unit it was authored in.
+  it('sizes the figure labels from the sheet, so any unit scale stays legible', () => {
+    const shape = (k: number): CutPart[] => [{ label: 'Side', w: 100 * k, h: 50 * k, qty: 1 }];
+    const measured = [1, 10].map((k) => {
+      const { container } = render(
+        <CutList
+          title="Sheet Layout"
+          stock={{ w: 240 * k, h: 120 * k, label: 'Birch ply' }}
+          parts={shape(k)}
+        />,
+      );
+      const svg = container.querySelector('svg.cut-svg')!;
+      const vbW = Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+      const sheetLbl = container.querySelector<SVGTextElement>('text.cut-sheet-lbl')!;
+      const pieceLbl = container.querySelector<SVGTextElement>('text.cut-piece-lbl')!;
+      return {
+        vbW,
+        sheet: parseFloat(sheetLbl.style.fontSize) / vbW,
+        piece: parseFloat(pieceLbl.style.fontSize) / vbW,
+        labelY: Number(sheetLbl.getAttribute('y')),
+        sheetTop: Number(container.querySelector('rect.cut-sheet')!.getAttribute('y')),
+        fontPx: parseFloat(sheetLbl.style.fontSize),
+      };
+    });
+
+    // A tenfold change of unit leaves both labels at exactly the same share of the figure.
+    expect(measured[0].sheet).toBeCloseTo(measured[1].sheet, 6);
+    expect(measured[0].piece).toBeCloseTo(measured[1].piece, 6);
+    // The figure takes the wider half of the card and measures ~396px across in the block library
+    // at a 1536px viewport, so a label under ~2.3% of the viewBox lands below the ~9px floor where
+    // reading turns into squinting — the 1.8% stock label was measured at 7.0px there.
+    const FIGURE_PX = 396;
+    for (const key of ['sheet', 'piece'] as const) {
+      expect(
+        measured[0][key] * FIGURE_PX,
+        `the ${key} label renders too small to read`,
+      ).toBeGreaterThanOrEqual(9);
+    }
+
+    // The stock label hangs above the sheet: its baseline has to clear the top of the viewBox by a
+    // full ascender and still sit above the sheet's own edge, or it clips / collides.
+    for (const m of measured) {
+      expect(m.labelY).toBeGreaterThan(m.fontPx * 0.8);
+      expect(m.labelY).toBeLessThan(m.sheetTop);
+    }
+  });
+
+  it('truncates a stock label too long for the sheet, keeping the full text as a tooltip', () => {
+    const long = ' 18mm birch faced plywood, B/BB grade, 2440 × 1220 sheet, ex-yard'.repeat(3);
+    const { container } = render(
+      <CutList
+        title="Sheet Layout"
+        stock={{ w: 240, h: 120, label: long }}
+        parts={[{ label: 'Side', w: 100, h: 50, qty: 1 }]}
+      />,
+    );
+    const label = container.querySelector<SVGTextElement>('text.cut-sheet-lbl')!;
+    const rendered = visibleText(label);
+    expect(rendered.endsWith('…')).toBe(true);
+    // What is drawn must fit the sheet's own width at the label's own font-size.
+    const fontSize = parseFloat(label.style.fontSize);
+    expect(rendered.length).toBeLessThanOrEqual(Math.floor(240 / (fontSize * 0.6)));
+    expect(Array.from(container.querySelectorAll('title')).map((t) => t.textContent)).toContain(
+      long,
+    );
+  });
+});
+
+// Regression coverage: the AWS symbol is a viewBox drawing, so its callouts are user units — the
+// two figures shared one card row and each rendered ~150px wide, putting the size, length-pitch
+// and process text at 6.5–8.7px, under the ~9px floor. Two things are pinned here: the pair only
+// splits into columns when the CARD is wide enough (a container query — the viewport's width says
+// nothing about the card's), and the tail's open V actually encloses the process abbreviation it
+// is drawn around (it was 14 units long, shorter than "GMAW" at any size, so the glyphs sat
+// straight across its arms — invisible at 6.5px, obvious once the figure was legible).
+describe('WeldSymbol', () => {
+  // Deliberately looser than the component's own advance: a lower bound on the drawn width, so
+  // the assertions can't pass by re-deriving the layout they are checking.
+  const MIN_ADVANCE = 0.6;
+
+  function tailOf(container: HTMLElement) {
+    const text = container.querySelector<SVGTextElement>('text.wld-process')!;
+    const fontSize = parseFloat(text.style.fontSize);
+    const lines = Array.from(container.querySelectorAll('line.wld-ref'));
+    const ref = lines.find((l) => l.getAttribute('y1') === l.getAttribute('y2'))!;
+    const arms = lines.filter((l) => l !== ref);
+    expect(arms).toHaveLength(2);
+
+    const vertexX = Number(arms[0].getAttribute('x1'));
+    const tipX = Number(arms[0].getAttribute('x2'));
+    const halfH = Math.abs(Number(arms[0].getAttribute('y2')) - Number(arms[0].getAttribute('y1')));
+    const width = visibleText(text).length * fontSize * MIN_ADVANCE;
+    const centre = Number(text.getAttribute('x'));
+    return {
+      fontSize,
+      vertexX,
+      tipX,
+      halfH,
+      refEndX: Number(ref.getAttribute('x2')),
+      left: centre - width / 2,
+      right: centre + width / 2,
+    };
+  }
+
+  function expectTextInsideTail(t: ReturnType<typeof tailOf>) {
+    // Both arms spring from the same vertex and open symmetrically about the reference line.
+    expect(t.tipX).toBeGreaterThan(t.vertexX);
+    // The reference line has to run into the vertex — no gap, no overshoot past the tail.
+    expect(t.refEndX).toBe(t.vertexX);
+    // The text starts far enough along the V that the arms have opened past its cap height, and
+    // ends before the open tip. Cap height is ~0.7em, so half of it is ~0.35em.
+    const openingAtTextStart = ((t.left - t.vertexX) / (t.tipX - t.vertexX)) * t.halfH;
+    expect(openingAtTextStart).toBeGreaterThanOrEqual(t.fontSize * 0.35);
+    expect(t.right).toBeLessThanOrEqual(t.tipX);
+  }
+
+  it('draws a tail long enough to enclose the process abbreviation', () => {
+    const { container } = render(
+      <WeldSymbol title="Weld" joint="fillet" size="6" length="50" pitch="100" process="GMAW" />,
+    );
+    const text = container.querySelector<SVGTextElement>('text.wld-process')!;
+    expect(visibleText(text)).toBe('GMAW');
+    expectTextInsideTail(tailOf(container));
+  });
+
+  it('keeps a longer process code inside the tail by growing it, not by spilling out', () => {
+    const { container } = render(
+      <WeldSymbol title="Weld" joint="groove" size="8" process="GTAW-P" />,
+    );
+    const text = container.querySelector<SVGTextElement>('text.wld-process')!;
+    expect(visibleText(text)).toBe('GTAW-P');
+    const t = tailOf(container);
+    expectTextInsideTail(t);
+    // Growing the tail must not eat the reference line the weld glyph sits on (glyph spans 57–69).
+    expect(t.vertexX).toBeGreaterThan(72);
+  });
+
+  it('ellipsises a process string no tail could hold, keeping the full value as a tooltip', () => {
+    const long = 'Gas metal arc welding, short-circuit transfer';
+    const { container } = render(<WeldSymbol title="Weld" joint="butt" process={long} />);
+    const text = container.querySelector<SVGTextElement>('text.wld-process')!;
+    const rendered = visibleText(text);
+    expect(rendered.endsWith('…')).toBe(true);
+    expect(rendered.length).toBeLessThan(long.length);
+    expectTextInsideTail(tailOf(container));
+    expect(Array.from(container.querySelectorAll('title')).map((t) => t.textContent)).toContain(
+      long,
+    );
+  });
+
+  it('leaves the reference line alone when there is no process tail to draw', () => {
+    const { container } = render(<WeldSymbol title="Weld" joint="lap" size="5" />);
+    expect(container.querySelector('text.wld-process')).toBeNull();
+    expect(container.querySelectorAll('line.wld-ref')).toHaveLength(1);
+  });
+
+  it('splits the two figures on the card’s own width, not the viewport’s', () => {
+    const { container } = render(<WeldSymbol title="Weld" joint="fillet" process="GMAW" />);
+    // The query needs an element to measure, and it cannot be the grid it restyles.
+    expect(container.querySelector('.wld-wrap > .wld-grid')).toBeTruthy();
+    expect(rule('wld-wrap')).toMatch(/container-type:\s*inline-size/);
+    // Stacked by default; two columns only once the container is wide enough for both drawings.
+    expect(rule('wld-grid')).toMatch(/grid-template-columns:\s*1fr/);
+    const split = css.match(/@container \(min-width: (\d+)px\) \{\s*\.wld-grid \{([^}]*)\}/);
+    expect(split, 'expected a container query that splits .wld-grid into two columns').toBeTruthy();
+    expect(Number(split![1])).toBeGreaterThanOrEqual(400);
+    expect(split![2]).toMatch(/minmax\(0, 1fr\) minmax\(0, 1\.3fr\)/);
+  });
 });
 
 // Regression coverage: the viewBox is grown to fit every label's estimated text width so a
@@ -422,6 +596,39 @@ describe('FloorPlan', () => {
     const label = container.querySelector('text.fp-room-name');
     expect(visibleText(label!).length).toBeLessThan('Walk-In Closet Storage'.length);
     expect(visibleText(label!).endsWith('…')).toBe(true);
+  });
+
+  // Regression coverage: the plan is a 100-unit viewBox drawn at most .fp-wrap's max-width, so a
+  // label's on-screen size is its font-size × (that width / 100). The room note was authored at 2
+  // units — 8.4px on screen, under the ~9px floor where reading turns into squinting.
+  it('draws every room label above the legibility floor at the plan’s widest', () => {
+    const rooms: FloorRoom[] = [{ name: 'Kitchen', x: 2, y: 2, w: 46, h: 40, note: '15×11 ft' }];
+    const { container } = render(<FloorPlan title="Floor Plan" rooms={rooms} />);
+
+    const maxWidth = parseFloat(rule('fp-wrap').match(/max-width:\s*([\d.]+)px/)![1]);
+    const perUnit = maxWidth / 100;
+    for (const cls of ['fp-room-name', 'fp-room-note']) {
+      const label = container.querySelector(`text.${cls}`)!;
+      const fontSize = Number(label.getAttribute('font-size'));
+      expect(fontSize * perUnit, `${cls} renders too small to read`).toBeGreaterThanOrEqual(9);
+    }
+  });
+
+  it('truncates a room note too wide for its room instead of overflowing it', () => {
+    const rooms: FloorRoom[] = [
+      { name: 'Bath', x: 5, y: 5, w: 14, h: 30, note: '9×17 ft · south-facing window' },
+    ];
+    const { container } = render(<FloorPlan title="Floor Plan" rooms={rooms} />);
+
+    const note = container.querySelector('text.fp-room-note')!;
+    const fontSize = Number(note.getAttribute('font-size'));
+    const rendered = visibleText(note);
+    expect(rendered.endsWith('…')).toBe(true);
+    expect(rendered.length).toBeLessThanOrEqual(Math.floor((14 - 2) / (fontSize * 0.62)));
+    // The full note survives as a native <title> tooltip — nothing silently lost.
+    expect(Array.from(container.querySelectorAll('title')).map((t) => t.textContent)).toContain(
+      '9×17 ft · south-facing window',
+    );
   });
 });
 

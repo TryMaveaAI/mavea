@@ -190,6 +190,28 @@ describe('DelegatePanel — take the seat', () => {
     expect(screen.queryByText('Budgets are locked.')).toBeNull(); // fresh take
   });
 
+  it('a failed coach keeps the take on screen and offers a retry', async () => {
+    generate
+      .mockResolvedValueOnce({ raw: '{"reply":"Budgets are locked."}' })
+      .mockResolvedValueOnce({ raw: 'not json' }) // the coach call fails
+      .mockResolvedValueOnce({ raw: '{"note":"Held the number.","tip":"Open with it."}' });
+    render(<DelegatePanel cfg={cfg} onClose={vi.fn()} />);
+    briefTakeSeat('the raise', 'her');
+    fireEvent.change(screen.getByLabelText('Your line'), { target: { value: 'About my raise.' } });
+    fireEvent.click(screen.getByText('Say it'));
+    await waitFor(() => expect(screen.getByText('Budgets are locked.')).toBeTruthy());
+    fireEvent.click(screen.getByText('End take · get coached'));
+    // Nothing is thrown away: the lines and the take number survive, and the retry is offered.
+    await waitFor(() => expect(screen.getByText('Try again')).toBeTruthy());
+    expect(screen.getByText('Budgets are locked.')).toBeTruthy();
+    expect(screen.getByText('About my raise.')).toBeTruthy();
+    expect(screen.getByText('Take 1')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Try again'));
+    await waitFor(() => expect(screen.getByText('COACH — BETWEEN TAKES')).toBeTruthy());
+    expect(screen.getByText('Take 2')).toBeTruthy();
+  });
+
   it('Debrief hands the scenario-quoting ask back to Live', () => {
     const onDebrief = vi.fn();
     render(<DelegatePanel cfg={cfg} onDebrief={onDebrief} onClose={vi.fn()} />);

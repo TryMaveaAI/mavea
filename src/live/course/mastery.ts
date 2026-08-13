@@ -22,7 +22,7 @@
 // verbatim from that lesson's own `concepts`; a missed-question card's back is the syllabus's own
 // authored answer — nothing here is ever invented.
 import { QUIZ_RESULT_EVENT, type QuizResultDetail } from '../../canvas/blocks/learn/Quiz';
-import { getCourses, getCachedCheckpoint, recordCheckpoint } from './store';
+import { getCourses, peekCachedCheckpoint, recordCheckpoint } from './store';
 import type { CheckpointQuestion, TopicCourse, TopicLesson } from './model';
 import type { DraftCard } from '../srs/suggestCards';
 
@@ -257,7 +257,8 @@ function findLessonForQuestion(question: string): LessonMatch | undefined {
   if (!norm) return undefined;
   for (const course of getCourses()) {
     for (const lesson of course.lessons) {
-      const checkpoint = lesson.checkpoint ?? getCachedCheckpoint(course.id, lesson.id);
+      // Peek, never touch: this is a probe across every lesson, not an opened checkpoint.
+      const checkpoint = lesson.checkpoint ?? peekCachedCheckpoint(course.id, lesson.id);
       if (!checkpoint?.length) continue;
       if (checkpoint.some((c) => normalizeKey(c.question) === norm)) {
         return { course, lesson, checkpoint };

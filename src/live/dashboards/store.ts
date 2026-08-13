@@ -364,7 +364,12 @@ async function hydrateAsync(): Promise<void> {
     /* corrupt, or this device's content key was rotated/cleared — not restored */
   }
 }
-void hydrateAsync();
+let hydration = hydrateAsync();
+
+/** Resolve after the latest encrypted dashboard read finishes. */
+export function whenDashboardsHydrated(): Promise<void> {
+  return hydration;
+}
 
 function get(): Dashboard[] {
   cache ??= fromStorage();
@@ -378,7 +383,7 @@ function get(): Dashboard[] {
 export function invalidate(): void {
   cache = null;
   settled = false;
-  void hydrateAsync();
+  hydration = hydrateAsync();
 }
 
 /** Keep the MAX_DASHBOARDS the user last actually touched; evict the rest. Sorts by

@@ -18,6 +18,7 @@ const read = (rel: string): string => readFileSync(join(root, rel), 'utf8');
 
 describe('composer — narrow-viewport control sizing', () => {
   const css = read('src/styles/composer.css');
+  const dockCss = read('src/live/livedock.css');
 
   it('the text input can shrink below its intrinsic content width', () => {
     const block = css.slice(
@@ -30,6 +31,21 @@ describe('composer — narrow-viewport control sizing', () => {
   it('the attach/tool button never shrinks below its fixed size', () => {
     const block = css.slice(css.indexOf('.composer-tool {'), css.indexOf('.composer-tool:hover'));
     expect(block).toMatch(/flex-shrink:\s*0/);
+  });
+
+  it('gives typing a full row instead of squeezing it between five phone controls', () => {
+    const phone = dockCss.slice(dockCss.indexOf('@media (max-width: 420px)'));
+    expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 44px/);
+    expect(phone).toMatch(/grid-column:\s*1 \/ -1/);
+    expect(phone).toMatch(/\.mark-toggle-label\s*\{[^}]*display:\s*none/s);
+  });
+
+  it('makes the model label width-constrained before hiding it on the narrowest phones', () => {
+    const compact = dockCss.slice(dockCss.indexOf('@media (max-width: 560px)'));
+    expect(compact).toMatch(/\.chip-model\s*\{[^}]*display:\s*block[^}]*max-width:\s*64px/s);
+    expect(compact).toMatch(
+      /@media \(max-width:\s*360px\)[\s\S]*\.chip-model\s*\{[^}]*display:\s*none/,
+    );
   });
 });
 

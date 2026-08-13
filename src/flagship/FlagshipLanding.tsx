@@ -2,8 +2,8 @@
 // sections; all behavior is passed in from FlagshipHost.tsx so this owns no app state. The
 // living Presence face is rendered by the host shell and floats above the hero (the hero
 // reserves space for it), then docks into the topbar as you scroll. Section order is the
-// designed narrative: hook, prove, then play. Demo cards hand off to Live's demo replay mode
-// via onPlay — a recorded real session on the real surface.
+// designed narrative: hook, prove, then play. Demo cards hand off to Live's curated replay mode
+// via onPlay — prerecorded model output with scripted feature choreography on the real surface.
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { DemoCastMember } from '../demo/cast';
 import { legalDocumentHref } from '../legal/links';

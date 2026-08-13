@@ -24,12 +24,14 @@ const SLIDE_W_IN = 13.333;
 const SLIDE_H_IN = 7.5;
 const PPTX_LAYOUT_NAME = 'MAVEA_16_9';
 
-async function loadPptxGen(): Promise<(new () => PptxGenJS) | null> {
+/** `undefined` = the chunk is unusable; `null` stays `withTimeout`'s "never settled" — see the
+ *  matching loaders in raster.ts. */
+async function loadPptxGen(): Promise<(new () => PptxGenJS) | undefined> {
   try {
     const mod = await import('pptxgenjs');
-    return mod.default ?? null;
+    return mod.default ?? undefined;
   } catch {
-    return null;
+    return undefined;
   }
 }
 

@@ -1117,37 +1117,6 @@
             "section": "Churn Analysis",
             "order": 2,
             "depth": 1
-          },
-          {
-            "type": "fivewhychain",
-            "col": 12,
-            "delay": 350,
-            "props": {
-              "title": "Root Cause: Why Churn is Drifting",
-              "problem": "Monthly churn ticked up from 2.1% to 2.8%",
-              "whys": [
-                {
-                  "question": "Why did churn increase this quarter?",
-                  "answer": "Mid-market accounts experienced a higher rate of non-renewals."
-                },
-                {
-                  "question": "Why did mid-market accounts fail to renew?",
-                  "answer": "Onboarding completion rates dropped by 15% in that segment."
-                },
-                {
-                  "question": "Why did onboarding completion rates drop?",
-                  "answer": "The new self-serve setup wizard lacked clear integration steps for common CRMs."
-                }
-              ],
-              "rootCause": "Onboarding friction due to unguided CRM integrations.",
-              "footer": "Fixing the integration wizard is our highest leverage churn lever."
-            },
-            "id": "live-6",
-            "note": "Tracing the churn back reveals that onboarding friction with CRM integrations is the real root cause we need to address.",
-            "section": "Churn Analysis",
-            "order": 2,
-            "depth": 2,
-            "facet": "derivation"
           }
         ],
         "proof": null,

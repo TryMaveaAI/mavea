@@ -36,8 +36,35 @@ const COL_L2 = 390; // x-centre of second-level leaf nodes
 // places, or a caller-supplied `outcome` string) grows leftward into the card instead of
 // running past the viewBox's right edge.
 const COL_OUTCOME_RIGHT = VB_W - 10;
-const NODE_R = 18; // node circle radius
-const MIN_ROW_GAP = 52; // minimum vertical gap between leaf nodes
+const NODE_R = 26; // node circle radius
+const MIN_ROW_GAP = 60; // minimum vertical gap between leaf nodes
+
+// --- Label budgets (viewBox units) ---
+// These font sizes must track .dg-pt-node-lbl / .dg-pt-outcome-lbl in styles.css: the stage pins
+// the SVG to VB_W so one user unit is one CSS pixel, which is what keeps the small type legible.
+const NODE_LBL_F = 10;
+const OUTCOME_F = 10;
+const AVG_CHAR_W = 0.62; // bold sans average glyph width as a fraction of the font size
+
+/** How many characters fit across `width` viewBox units at `fontSize`. Deriving the caps this way
+ *  keeps them honest when the geometry or the type changes — the node label used to be capped at
+ *  a flat 8 characters, which was already wider than the circle it had to sit inside. */
+function charBudget(width: number, fontSize: number): number {
+  return Math.max(3, Math.floor(width / (fontSize * AVG_CHAR_W)));
+}
+
+// A circle is widest at its centre line but the glyphs have height, so budget against the chord a
+// little above and below it rather than the full diameter.
+const NODE_LBL_MAX = charBudget(NODE_R * 2 * 0.86, NODE_LBL_F);
+// Outcome labels are right-anchored at the viewBox edge and grow leftward — toward the leaf node
+// they belong to (or, for a childless branch, rightward from the branch node). Both budgets are
+// the clear run between the two.
+const LEAF_OUTCOME_MAX = charBudget(COL_OUTCOME_RIGHT - (COL_L2 + NODE_R + 6), OUTCOME_F);
+const BRANCH_OUTCOME_MAX = charBudget(COL_OUTCOME_RIGHT - (COL_L1 + NODE_R + 8), OUTCOME_F);
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
+}
 
 // Given the branch array, determine total leaf count and vertical positions.
 interface LeafPos {
@@ -116,13 +143,7 @@ export function ProbabilityTree({
 
       {/* Horizontally scrollable wrapper caps height and allows narrow cards to pan. */}
       <div className="dg-pt-scroll">
-        <svg
-          className="dg-pt-svg"
-          viewBox={`0 0 ${VB_W} ${vbH}`}
-          width="100%"
-          aria-label={title}
-          role="img"
-        >
+        <svg className="dg-pt-svg" viewBox={`0 0 ${VB_W} ${vbH}`} aria-label={title} role="img">
           {/* Root node */}
           <circle cx={COL_ROOT} cy={rootY} r={NODE_R} className="dg-pt-node dg-pt-node--root" />
           <text
@@ -149,7 +170,7 @@ export function ProbabilityTree({
               {/* Probability label mid-line */}
               <text
                 x={(COL_ROOT + NODE_R + COL_L1 - NODE_R) / 2}
-                y={(rootY + bY) / 2 - 7}
+                y={(rootY + bY) / 2 - 8}
                 textAnchor="middle"
                 className="dg-pt-edge-lbl"
               >
@@ -165,7 +186,8 @@ export function ProbabilityTree({
                 dominantBaseline="middle"
                 className="dg-pt-node-lbl"
               >
-                {branch.label.length > 8 ? branch.label.slice(0, 7) + '…' : branch.label}
+                {branch.label.length > NODE_LBL_MAX && <title>{branch.label}</title>}
+                {truncate(branch.label, NODE_LBL_MAX)}
               </text>
 
               {/* If no children, render outcome label beside the branch node */}
@@ -177,64 +199,71 @@ export function ProbabilityTree({
                   className="dg-pt-outcome-lbl"
                   fill={color}
                 >
-                  {outcomeLabel(1, branch.prob)}
+                  {truncate(outcomeLabel(1, branch.prob), BRANCH_OUTCOME_MAX)}
                 </text>
               )}
 
               {/* Leaf nodes */}
-              {leaves.map(({ y: lY, leaf, leafIdx }) => (
-                <g key={leafIdx}>
-                  {/* Branch-node → leaf line */}
-                  <line
-                    x1={COL_L1 + NODE_R}
-                    y1={bY}
-                    x2={COL_L2 - NODE_R}
-                    y2={lY}
-                    className="dg-pt-edge"
-                    stroke={color}
-                  />
-                  {/* Sub-branch probability label */}
-                  <text
-                    x={(COL_L1 + NODE_R + COL_L2 - NODE_R) / 2}
-                    y={(bY + lY) / 2 - 7}
-                    textAnchor="middle"
-                    className="dg-pt-edge-lbl"
-                  >
-                    {fmtProb(leaf.prob)}
-                  </text>
+              {leaves.map(({ y: lY, leaf, leafIdx }) => {
+                const outcome = leaf.outcome ?? outcomeLabel(branch.prob, leaf.prob);
+                const outcomeShort = truncate(outcome, LEAF_OUTCOME_MAX);
+                return (
+                  <g key={leafIdx}>
+                    {/* Branch-node → leaf line */}
+                    <line
+                      x1={COL_L1 + NODE_R}
+                      y1={bY}
+                      x2={COL_L2 - NODE_R}
+                      y2={lY}
+                      className="dg-pt-edge"
+                      stroke={color}
+                    />
+                    {/* Sub-branch probability label */}
+                    <text
+                      x={(COL_L1 + NODE_R + COL_L2 - NODE_R) / 2}
+                      y={(bY + lY) / 2 - 8}
+                      textAnchor="middle"
+                      className="dg-pt-edge-lbl"
+                    >
+                      {fmtProb(leaf.prob)}
+                    </text>
 
-                  {/* Leaf node */}
-                  <circle
-                    cx={COL_L2}
-                    cy={lY}
-                    r={NODE_R}
-                    className="dg-pt-node dg-pt-node--leaf"
-                    stroke={color}
-                  />
-                  <text
-                    x={COL_L2}
-                    y={lY + 0.5}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="dg-pt-node-lbl"
-                  >
-                    {leaf.label.length > 8 ? leaf.label.slice(0, 7) + '…' : leaf.label}
-                  </text>
+                    {/* Leaf node */}
+                    <circle
+                      cx={COL_L2}
+                      cy={lY}
+                      r={NODE_R}
+                      className="dg-pt-node dg-pt-node--leaf"
+                      stroke={color}
+                    />
+                    <text
+                      x={COL_L2}
+                      y={lY + 0.5}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="dg-pt-node-lbl"
+                    >
+                      {leaf.label.length > NODE_LBL_MAX && <title>{leaf.label}</title>}
+                      {truncate(leaf.label, NODE_LBL_MAX)}
+                    </text>
 
-                  {/* Outcome label to the right of the leaf — right-anchored at the viewBox's
-                      right margin so long values grow leftward instead of overflowing. */}
-                  <text
-                    x={COL_OUTCOME_RIGHT}
-                    y={lY + 0.5}
-                    textAnchor="end"
-                    dominantBaseline="middle"
-                    className="dg-pt-outcome-lbl"
-                    fill={color}
-                  >
-                    {leaf.outcome ?? outcomeLabel(branch.prob, leaf.prob)}
-                  </text>
-                </g>
-              ))}
+                    {/* Outcome label to the right of the leaf — right-anchored at the viewBox's
+                        right margin so long values grow leftward instead of overflowing, and
+                        capped at the clear run so it stops short of the leaf node. */}
+                    <text
+                      x={COL_OUTCOME_RIGHT}
+                      y={lY + 0.5}
+                      textAnchor="end"
+                      dominantBaseline="middle"
+                      className="dg-pt-outcome-lbl"
+                      fill={color}
+                    >
+                      {outcomeShort !== outcome && <title>{outcome}</title>}
+                      {outcomeShort}
+                    </text>
+                  </g>
+                );
+              })}
             </g>
           ))}
 

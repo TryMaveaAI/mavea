@@ -5,7 +5,7 @@
 // as a colored arc along their bp span (an optional strand arrow shows transcription direction);
 // restriction sites are radial tick + enzyme-name marks; the origin of replication gets its own
 // marker. Every label shares OrbitDiagram's label-spacing problem — here on one ring instead of
-// separate radii — so two angularly-close labels alternate a near/far tier instead of colliding.
+// separate radii — so angularly-close labels spread across two radial tiers instead of colliding.
 import { useId, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
@@ -19,11 +19,10 @@ const CY = 100;
 const R_BACKBONE = 72;
 const R_TICK_IN = R_BACKBONE - 7;
 const R_TICK_OUT = R_BACKBONE + 7;
-const R_LABEL_NEAR = R_BACKBONE + 16;
-const R_LABEL_FAR = R_BACKBONE + 30;
-// A label whose angular neighbor sits within this many degrees moves to the far tier — a plasmid
-// with dense features/sites still reads (near-empty gaps get the near tier; crowded runs
-// alternate) rather than every name colliding at one radius.
+const R_LABEL_TIERS = [R_BACKBONE + 16, R_BACKBONE + 30];
+// A label whose angular neighbor on the same tier sits within this many degrees has to move out
+// to the next one — a plasmid with dense features/sites still reads (near-empty gaps stay on the
+// inner tier; crowded runs spread outward) rather than every name colliding at one radius.
 const COLLISION_DEG = 11;
 
 const KIND_COLOR: Record<PlasmidFeatureKind, string> = {
@@ -33,7 +32,9 @@ const KIND_COLOR: Record<PlasmidFeatureKind, string> = {
   marker: 'var(--danger)',
 };
 
-const NAME_MAX = 11;
+// Set against the horizontal gutter the viewBox reserves for labels (see the <svg> below): a name
+// this long, drawn from the outer tier at 3 o'clock, still lands inside the box.
+const NAME_MAX = 13;
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
@@ -64,19 +65,22 @@ interface LabelSpec {
   bold?: boolean;
 }
 
-/** Places every label at the near tier by default; a label within `COLLISION_DEG` of the
- *  previous one (in angular order) moves to the far tier so the two don't overlap. Bounded,
- *  single pass — O(n log n) for the sort plus one linear walk. */
+/** Walks the labels in angular order and gives each one the innermost tier whose own last label
+ *  is at least `COLLISION_DEG` behind it. Tracking the tiers separately matters: a run of three
+ *  or four sites inside a few degrees (a multiple cloning site is exactly that) pushed everything
+ *  past the first to the same outer radius under a single alternating flag, stacking them on top
+ *  of one another. When every tier is crowded the label takes the one idle longest, which still
+ *  buys a full tier of separation from its nearest neighbour. Bounded, single pass — O(n log n)
+ *  for the sort plus one linear walk. */
 function placeLabels(labels: LabelSpec[]): (LabelSpec & { r: number })[] {
   const sorted = [...labels].sort((a, b) => a.deg - b.deg);
-  const placed: (LabelSpec & { r: number })[] = [];
-  let lastNearDeg: number | null = null;
-  for (const l of sorted) {
-    const near = lastNearDeg === null || Math.abs(l.deg - lastNearDeg) >= COLLISION_DEG;
-    placed.push({ ...l, r: near ? R_LABEL_NEAR : R_LABEL_FAR });
-    if (near) lastNearDeg = l.deg;
-  }
-  return placed;
+  const lastDeg = R_LABEL_TIERS.map(() => -Infinity);
+  return sorted.map((l) => {
+    let tier = lastDeg.findIndex((deg) => l.deg - deg >= COLLISION_DEG);
+    if (tier === -1) tier = lastDeg.indexOf(Math.min(...lastDeg));
+    lastDeg[tier] = l.deg;
+    return { ...l, r: R_LABEL_TIERS[tier] };
+  });
 }
 
 function safeNum(v: unknown, fallback = 0): number {
@@ -182,10 +186,13 @@ export function PlasmidMap({
       </div>
 
       <div className="pm-wrap">
-        {/* Horizontal padding in the viewBox: labels at the 3-o'clock / 9-o'clock extremes anchor
-            start/end and run outward past the ring, so a square 0..200 box clips the longest ones at
-            the card edge. The extra ±20 gives them room; preserveAspectRatio keeps the ring circular. */}
-        <svg viewBox="-20 0 240 200" className="pm-svg" role="img" aria-label={title}>
+        {/* Padding in the viewBox: labels at the 3-o'clock / 9-o'clock extremes anchor start/end
+            and run outward past the ring, and the ones at 12 / 6 o'clock sit half a line above and
+            below it, so a square 0..200 box drops the longest ones off the edge. The gutter holds
+            a NAME_MAX-character name drawn from the outer tier; preserveAspectRatio keeps the ring
+            circular. The box is 290 wide against .pm-wrap's 580px cap, so one user unit renders as
+            two CSS pixels — which is what puts the 5px label type above the legibility floor. */}
+        <svg viewBox="-45 -8 290 216" className="pm-svg" role="img" aria-label={title}>
           <defs>
             <marker
               id={arrowId}
@@ -243,18 +250,21 @@ export function PlasmidMap({
             const anchor = ux > 0.2 ? 'start' : ux < -0.2 ? 'end' : 'middle';
             const short = truncate(l.text, NAME_MAX);
             return (
-              <text
-                key={l.key}
-                x={p.x}
-                y={p.y}
-                textAnchor={anchor}
-                dominantBaseline="middle"
-                className={l.bold ? 'pm-label pm-label-bold' : 'pm-label'}
-                fill={l.color}
-              >
+              // The tooltip for a truncated name hangs off the wrapping group, not the <text>:
+              // nested inside it, it would inherit the label's own few-user-unit font-size.
+              <g key={l.key}>
                 {short !== l.text && <title>{l.text}</title>}
-                {short}
-              </text>
+                <text
+                  x={p.x}
+                  y={p.y}
+                  textAnchor={anchor}
+                  dominantBaseline="middle"
+                  className={l.bold ? 'pm-label pm-label-bold' : 'pm-label'}
+                  fill={l.color}
+                >
+                  {short}
+                </text>
+              </g>
             );
           })}
 

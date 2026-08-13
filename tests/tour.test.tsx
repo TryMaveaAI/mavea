@@ -224,6 +224,20 @@ describe('core walkthrough feature scenes', () => {
     expect(live).toMatch(/kind: 'underline', at: '7\.6x'/);
   });
 
+  it('leaves Space and the arrows to the real controls the run opens', () => {
+    // Both transport handlers listen on `window` under a pointer-transparent overlay, so a blanket
+    // preventDefault stole typing in the API-key input the Connect chapter opens, and Space on a
+    // focused end-card button drove the tour instead of pressing the button. (Escape stays global —
+    // it always means "leave the run".)
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+    const guard = /function transportKeyBelongsToControl[\s\S]{0,500}?\n}/.exec(live);
+    expect(guard, 'the transport-key guard is gone').not.toBeNull();
+    expect(guard![0]).toMatch(/inTextField\(e\.target\)/);
+    expect(guard![0]).toMatch(/closest\('button'\)/);
+    // Both the tour handler and the demo-replay handler consult it.
+    expect(live.match(/transportKeyBelongsToControl\(e\)/g)).toHaveLength(2);
+  });
+
   it('uses the presentation and document studio instead of the share reel', () => {
     const publish = TOUR.find((chapter) => chapter.id === 'share');
     expect(publish?.action.kind).toBe('export');
@@ -278,11 +292,11 @@ describe('the tour driver waits for the lazy corpus chunk before playing chapter
   const src = readFileSync(join(__dirname, '../src/tour/useTourDriver.ts'), 'utf8');
 
   it('kicks off the corpus fetch as soon as the tour is active, cleanup-guarded', () => {
-    // The .then must flip corpusReady only while the effect is still live (the alive flag), so a
-    // dismissed tour never sets state on an unmounted driver.
-    expect(src).toMatch(
-      /void loadTourCorpus\(\)\.then\(\(\) => \{\s*if \(alive\) setCorpusReady\(true\);/,
-    );
+    // Both outcomes must be gated on the alive flag, so a dismissed tour never sets state on an
+    // unmounted driver. (The retry-then-error behavior itself is exercised for real, by mounting
+    // the hook against a failing fetch, in guided-chrome.test.tsx.)
+    expect(src).toMatch(/await loadTourCorpus\(\);\s*if \(alive\) setCorpusReady\(true\);/);
+    expect(src).toMatch(/if \(alive\) setCorpusError\(true\);/);
   });
 
   it('holds the chapter-apply effect until the corpus has loaded', () => {
@@ -385,6 +399,8 @@ describe('tour prism fixture', () => {
   it('leads with the PDF (the chapter is "drop in a PDF")', async () => {
     const docs = await loadTourPrism();
     expect(docs[0].type).toBe('pdf');
+    expect(docs[0].id).toBe('nasa-cfd');
+    expect(docs.some((doc) => doc.id === 'bitcoin')).toBe(false);
   });
 });
 

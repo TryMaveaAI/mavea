@@ -1,0 +1,28 @@
+/* The Video Studio launcher. Its own eager stylesheet, imported by ClipButton: share-modal.css
+   ships with the lazy modal chunk, so styling the launcher there would leave it unstyled until the
+   thing it opens had already loaded. States mirror .shm-btn-primary inside the modal. */
+.clip-launch {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  color: #fff;
+  font: 650 14px/1 var(--font);
+  cursor: pointer;
+  box-shadow: 0 8px 24px -10px var(--presence);
+  transition:
+    filter 0.16s,
+    box-shadow 0.16s,
+    transform 0.08s;
+}
+.clip-launch:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 12px 30px -10px var(--presence);
+}
+.clip-launch:active {
+  transform: scale(0.97);
+}

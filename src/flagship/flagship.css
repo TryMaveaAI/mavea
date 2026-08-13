@@ -709,7 +709,8 @@
 }
 .fl-rail-title {
   font-family: var(--font-data);
-  font-size: 8.5px;
+  /* 9px is the legibility floor for rendered reading text — nothing on the landing goes under it */
+  font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--tone, var(--text-secondary));
@@ -917,7 +918,8 @@
   right: 6px;
   bottom: 5px;
   font-family: var(--font-data);
-  font-size: 8px;
+  /* the 9px legibility floor — an attribution line still has to be readable */
+  font-size: 9px;
   color: var(--text-faint);
 }
 .fl-fig-note {
@@ -2337,7 +2339,8 @@
   flex: none;
   align-self: flex-start;
   font-family: var(--font-data);
-  font-size: 8.5px;
+  /* the 9px legibility floor */
+  font-size: 9px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 3px 7px;

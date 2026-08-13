@@ -45,8 +45,10 @@ function parseGhosts(raw: string | object): GhostCard[] {
 }
 
 /**
- * One speculative glimpse off a partial transcript. Resolves [] on any failure or when the
- * signal aborts — a ghost that can't form simply doesn't appear; nothing ever throws.
+ * One speculative glimpse off a partial transcript. The signal is threaded into the adapter's
+ * fetch, so a superseded glimpse STOPS generating instead of billing the user's key for a reply
+ * nobody will read. Resolves [] on any failure or when the signal aborts — a ghost that can't
+ * form simply doesn't appear; nothing ever throws.
  */
 export async function speculate(
   partial: string,
@@ -56,7 +58,7 @@ export async function speculate(
   try {
     const adapter = getAdapter(cfg.provider);
     const out = await adapter.generate(
-      { system: SYSTEM, history: [], user: partial, maxTokens: MAX_TOKENS },
+      { system: SYSTEM, history: [], user: partial, maxTokens: MAX_TOKENS, signal },
       cfg,
     );
     if (signal.aborted) return [];

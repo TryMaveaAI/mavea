@@ -50,6 +50,10 @@ let current: ClipInProgress | null = null;
 let marks: BlockMark[] = [];
 let totalSamples = 0;
 let recording = false;
+// Speech that is NOT this turn's: replaying an older answer narrates through the very same
+// streaming TTS tap, so without a suspension the replayed lines would append themselves to the
+// live turn's track and the retained snapshot would be overwritten with audio from the past.
+let suspended = false;
 // The voice speed in force when the turn began — the rate Kokoro rendered its PCM at.
 let turnSpeed = 1;
 let version = 0;
@@ -87,10 +91,26 @@ export function beginTurn(): void {
   emit();
 }
 
+/** Close the recording: the turn has settled and the voice has gone quiet. Anything spoken after
+ *  this — a voice-preset audition, the Watch-Me-Think settle line — belongs to no turn and must
+ *  never append itself to the answer the user is about to scrub. */
+export function endTurn(): void {
+  recording = false;
+  current = null;
+  emit();
+}
+
+/** Make the tap deaf while audio that isn't this turn's is playing (replaying an older answer).
+ *  Left open rather than closed, so the turn's own tour can keep speaking after the canvas
+ *  settles and still land in the track. */
+export function setTapSuspended(on: boolean): void {
+  suspended = on;
+}
+
 /** The surface saw `blocks` blocks on screen right now — stamp it against the audio clock.
  *  Consecutive identical counts collapse; marks are monotonic by construction. */
 export function markBlocks(blocks: number): void {
-  if (!recording) return;
+  if (!recording || suspended) return;
   const last = marks[marks.length - 1];
   if (last && last.blocks === blocks) return;
   marks.push({ t: recordedSeconds(), blocks });
@@ -99,11 +119,11 @@ export function markBlocks(blocks: number): void {
 /** The tap streamTts feeds: one clip per spoken line. */
 export const recorderTap: StreamTap = {
   begin(text: string): void {
-    if (!recording) return;
+    if (!recording || suspended) return;
     current = { text, chunks: [], samples: 0 };
   },
   push(samples: Float32Array): void {
-    if (!recording || !current) return;
+    if (!recording || suspended || !current) return;
     if (totalSamples + samples.length > MAX_SAMPLES) return; // cap, don't grow
     current.chunks.push(samples);
     current.samples += samples.length;
@@ -111,6 +131,13 @@ export const recorderTap: StreamTap = {
   },
   end(heard: boolean): void {
     if (!recording || !current) return;
+    // Suspended part-way through a line (a replay opened mid-sentence): drop it outright — no
+    // clip, no version bump — and hand its samples back to the clock so later spans stay aligned.
+    if (suspended) {
+      totalSamples -= current.samples;
+      current = null;
+      return;
+    }
     // A line that never made a sound contributes nothing to the timeline.
     if (heard && current.samples > 0) clips.push(current);
     else totalSamples -= current.samples;

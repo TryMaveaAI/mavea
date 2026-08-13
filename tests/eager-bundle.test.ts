@@ -163,7 +163,7 @@ describe('eager bundle — heavy npm packages stay behind a lazy import()', () =
   // fails if any eagerly-reached module statically imports one of these package names.
   const FORBIDDEN_PACKAGES = [
     'katex',
-    'leaflet',
+    'maplibre-gl',
     'openchemlib',
     'jspdf',
     'modern-screenshot',

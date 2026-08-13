@@ -573,7 +573,10 @@
 }
 
 .bm-svg-wrap {
-  flex: 0 0 60%;
+  /* The figure plus its two label gutters is the wider half of this block: the legend wraps to
+     whatever it is given, the drawing cannot. Two thirds is what keeps .bm-label above the 9px
+     legibility floor at the width a canvas card has. */
+  flex: 0 0 68%;
   min-width: 0;
 }
 
@@ -581,8 +584,10 @@
   width: 100%;
   height: auto;
   display: block;
-  /* Cap height so the figure doesn't dwarf the card on large screens. */
-  max-height: clamp(180px, 52cqi, 300px);
+  /* A ceiling for the very wide card only. The 276x286 box is all but square, so a cap tighter
+     than the column width takes over as what sets the drawn scale — and with it the rendered size
+     of the region labels, which is how these fell under the legibility floor before. */
+  max-height: clamp(230px, 84cqi, 330px);
 }
 
 /* Region fills — transitions animate hover-derived opacity changes smoothly. */
@@ -615,22 +620,24 @@
   }
 }
 
-/* Region label text — small, matches the highlight color (set inline). */
+/* Region label text — sized in viewBox units against the 276-unit box (see GUTTER in BodyMap.tsx),
+   matches the highlight color (set inline). */
 .bm-label {
-  font-size: 7.5px;
+  font-size: 12px;
   font-weight: 700;
   pointer-events: none;
   /* Legibility: a halo in the card's own surface colour via paint-order — themes automatically. */
   paint-order: stroke fill;
   stroke: var(--surface-default);
-  stroke-width: 2.5px;
+  stroke-width: 3px;
 }
 
-/* Always-on guide labels (shown when nothing is highlighted) — quieter than a highlight label. */
+/* Always-on guide labels (shown when nothing is highlighted) — quieter than a highlight label.
+   They recede by weight and colour rather than by size: shrinking them dropped the figure's
+   default labelling below the legibility floor. */
 .bm-label--muted {
-  font-size: 6.5px;
   font-weight: 600;
-  stroke-width: 2px;
+  stroke-width: 2.5px;
 }
 
 /* Legend — right 40%, scrollable if many entries. */
@@ -777,9 +784,13 @@
   margin: 4px 0;
 }
 .fbd-svg {
+  /* The 400x296 viewBox draws at 1:1 on a full-width card and shrinks with a narrower one, taking
+     the force labels — already the smallest type here — down with it. The height tracks the box's
+     own ratio (74cqi ≈ 296/400) with a couple of points of slack, so the fit is decided by width
+     alone and the drawn label size is predictable at any card size. */
   width: 100%;
-  height: clamp(160px, 50cqi, 240px);
-  max-width: 280px;
+  height: clamp(190px, 76cqi, 296px);
+  max-width: 400px;
   display: block;
 }
 .fbd-box {
@@ -788,9 +799,12 @@
   stroke-width: 1.5;
   rx: 4;
 }
+/* Sized in viewBox units against the 400-unit box, not with the fluid type ramp: a card-relative
+   token inside a viewBox is scaled twice — by the ramp and again by the SVG's fit — which is what
+   dropped these labels under the 9px legibility floor. */
 .fbd-obj-lbl {
   fill: var(--text-primary);
-  font-size: var(--fs-sm, 13px);
+  font-size: 13.5px;
   font-weight: 600;
 }
 .fbd-arrow {
@@ -799,13 +813,13 @@
 }
 .fbd-lbl {
   fill: var(--text-primary);
-  font-size: 9.5px;
+  font-size: 12.5px;
   font-weight: 600;
 }
 .fbd-mag {
   fill: var(--text-muted);
   font-weight: 400;
-  font-size: 8.5px;
+  font-size: 12px;
 }
 /* Force arrows grow in on mount, staggered by --i. Gated behind prefers-reduced-motion. */
 @media (prefers-reduced-motion: no-preference) {
@@ -902,7 +916,7 @@
 }
 .vs-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .vs-lbl {
@@ -1578,7 +1592,8 @@
 }
 .wv-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  /* The 360-unit viewBox renders near 1:1 in a card, so 8.5 here landed under the 9px floor. */
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .wv-curve {
@@ -1866,9 +1881,10 @@
   opacity: 0.7;
 }
 
-/* Organelle labels — small, with a surface-coloured halo so they read over the cytoplasm fill. */
+/* Organelle labels — small, with a surface-coloured halo so they read over the cytoplasm fill.
+   Sized to stay above the 9px legibility floor even when the diagram draws at 1:1. */
 .cel-label {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   pointer-events: none;
   paint-order: stroke fill;
@@ -2181,7 +2197,10 @@
 .boh-svg {
   width: 100%;
   height: auto;
-  max-height: clamp(220px, 66cqi, 300px);
+  /* The 360×300 box is 1.2 as wide as it is tall, so a cap below 5/6 of the drawn width is what
+     decides the scale — and with it whether the nucleus/shell type lands above the 9px legibility
+     floor. 86cqi clears that ratio at every card width, so the diagram is width-driven. */
+  max-height: clamp(230px, 86cqi, 320px);
   display: block;
 }
 /* Electron shells (the concentric rings). */
@@ -2201,15 +2220,19 @@
   stroke: var(--danger);
   stroke-width: 1.4;
 }
+/* Everything drawn inside the diagram is sized in viewBox units, not with the fluid type ramp: a
+   card-relative token inside a viewBox is scaled twice (once by the ramp, once by the SVG's own
+   fit), which is what put this whole diagram under the 9px legibility floor. These sizes are set
+   against the 360-unit box so the drawn result clears it. */
 .boh-nuc-p {
   fill: var(--danger);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .boh-nuc-n {
   fill: var(--text-secondary);
-  font-size: var(--fs-2xs, 9px);
+  font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -2221,17 +2244,19 @@
 }
 .boh-symbol {
   fill: var(--text-primary);
-  font-size: var(--fs-lg, 18px);
+  /* The top of --fs-lg's ramp, frozen: the element symbol was the one label here still sized off
+     a card-relative token, so on a narrow card it shrank with the ramp AND again with the SVG. */
+  font-size: 17px;
   font-weight: 800;
 }
 .boh-ion {
-  font-size: var(--fs-2xs, 10px);
+  font-size: 11px;
   font-weight: 700;
   fill: var(--insight);
 }
 .boh-name {
   fill: var(--text-muted);
-  font-size: var(--fs-xs, 11px);
+  font-size: 11px;
   font-weight: 600;
 }
 /* Leader lines from each ring out to its occupancy label in the gutter. */
@@ -2241,7 +2266,7 @@
   stroke-dasharray: 2 2;
 }
 .boh-shell-lbl {
-  font-size: var(--fs-2xs, 10px);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 .boh-shell-n {
@@ -2252,9 +2277,10 @@
   fill: var(--text-secondary);
   font-weight: 700;
 }
+/* Keep in step with CONFIG_FONT in BohrModel.tsx — the wrap budget is measured against it. */
 .boh-config {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 9.5px);
+  font-size: 10.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -2708,7 +2734,10 @@
   overflow: visible;
 }
 .lr-xs-svg--ring {
-  max-width: clamp(200px, 64cqi, 260px);
+  /* Wider than the square it used to be: the viewBox now carries a label gutter beside the rings
+     (CrossSection.tsx), so the box has to grow with it or the art — and the type inside it —
+     shrinks. Sized to keep the 10-unit label floor rendering above the 9px legibility bar. */
+  max-width: clamp(300px, 94cqi, 380px);
 }
 .lr-xs-band {
   stroke-width: 1.2;
@@ -2726,12 +2755,13 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 700;
 }
-.lr-xs-band-note,
-.lr-xs-ring-lbl {
+.lr-xs-band-note {
   fill: var(--text-muted);
   font-size: var(--fs-2xs, 10px);
   font-weight: 600;
 }
+/* No font-size here: a ring label is measured and sized per-label against its gutter width
+   (fitText, CrossSection.tsx), so the size arrives on the element itself. */
 .lr-xs-ring-lbl {
   fill: var(--text-secondary);
   font-weight: 700;
@@ -2941,8 +2971,12 @@
   margin: 8px 0 2px;
 }
 .cof-svg {
+  /* The wheel's rim type (signatures, relative minors) is the smallest in the block, and inside a
+     viewBox font-size is in user units — what lands on the retina is the authored size times this
+     drawn width over the 244-unit box. Drawing the wheel close to the card's full width is what
+     keeps that rim type above the 9px legibility floor. */
   width: 100%;
-  max-width: clamp(200px, 70cqi, 300px);
+  max-width: clamp(220px, 92cqi, 320px);
   height: auto;
   display: block;
 }
@@ -2987,14 +3021,17 @@
 .cof-key-lbl--hi {
   fill: var(--presence-soft);
 }
+/* Rim + inner-ring type is sized in viewBox units against the 244-unit box (see .cof-svg): the
+   rim ring has 59 units of arc between neighbours and the minor ring 31, so both clear the
+   legibility floor without the labels touching. */
 .cof-sig {
   fill: var(--text-faint);
-  font-size: 8px;
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
 .cof-minor {
   fill: var(--text-muted);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 600;
   font-style: italic;
 }
@@ -3003,7 +3040,7 @@
 }
 .cof-hub-lbl {
   fill: var(--text-faint);
-  font-size: 7.5px;
+  font-size: 9px;
   font-weight: 600;
 }
 .cof-caption {
@@ -3057,7 +3094,9 @@
 }
 .odo-num {
   fill: var(--text-muted);
-  font-size: 7px;
+  /* The chart is height-capped, so it draws at roughly 1.17x its viewBox — this is the smallest
+     authored size that still lands above the 9px legibility floor once that scale is applied. */
+  font-size: 8.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -3834,7 +3873,9 @@
 }
 .lr-cc-num {
   fill: var(--text-faint);
-  font-size: 7.5px;
+  /* The chart is capped at its natural 1:1 pixel width, so authored units ARE rendered pixels —
+     the ruler numbers have to clear the 9px legibility floor on their own. */
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 /* Beads round off the same cell footprint. */
@@ -4015,7 +4056,8 @@
   overflow: hidden;
 }
 .ls-label {
-  font-size: 9px;
+  /* User units in a 340-wide viewBox that renders ~320px in a narrow card, so 9 painted 8.5px. */
+  font-size: 10px;
   fill: var(--text-secondary);
 }
 .ls-axis {
@@ -4023,7 +4065,7 @@
   stroke-width: 1;
 }
 .ls-tick-lbl {
-  font-size: 9px;
+  font-size: 10px;
   fill: var(--text-muted);
 }
 .ls-axis-label {
@@ -4113,10 +4155,7 @@
     transform var(--m-fast) var(--ease-out),
     box-shadow var(--m-fast) var(--ease-out);
 }
-.lr-swl-chip:disabled {
-  cursor: default;
-}
-.lr-swl-chip:not(:disabled):hover {
+.lr-swl-chip:hover {
   transform: translateY(-1px);
 }
 .lr-swl-chip[data-playing] {
@@ -4371,7 +4410,7 @@
 }
 .lr-tc-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .lr-tc-axlbl {
@@ -4477,7 +4516,7 @@
 }
 .lr-ip-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .lr-ip-axlbl {

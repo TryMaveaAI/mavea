@@ -1,8 +1,8 @@
 // The brain behind a Focus-mode filmstrip tap. Every tap responds INSTANTLY (hush + take the wheel +
 // move the spotlight), but the spoken line is DEBOUNCED — so brushing past five cards speaks ONE
 // line, about the card you land on, instead of a stammer of cut-off half-lines. (The old path fired
-// cancelSpeech()+speak() on every tap; a rapid scrub became a burst of tight cancel→speak that the
-// browser's speech engine garbles — see voice/WebSpeechVoice.ts.) Tapping the card Mavéa is already on
+// cancelSpeech()+speak() on every tap; a rapid scrub became a burst of tight cancel→speak.) Tapping
+// the card Mavéa is already on
 // hushes it (tap again to replay). A new answer (`resetKey`) invalidates a pending line so it can
 // never speak about a card from the previous answer.
 //

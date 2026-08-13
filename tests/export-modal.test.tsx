@@ -20,6 +20,11 @@ vi.mock('../src/export/pipeline/exportPdf', () => ({
   exportDocToPdf: (...args: unknown[]) => exportDocToPdf(...args),
 }));
 
+const printDoc = vi.fn();
+vi.mock('../src/export/pipeline/printFallback', () => ({
+  printDoc: (...args: unknown[]) => printDoc(...args),
+}));
+
 import { ExportModal, type ExportAnswer } from '../src/export/ExportModal';
 import { ExportCancelledError } from '../src/export/pipeline/raster';
 
@@ -56,6 +61,8 @@ function answer(index: number, title: string): ExportAnswer {
 beforeEach(() => {
   exportDeckToPdf.mockReset();
   exportDocToPdf.mockReset();
+  printDoc.mockReset();
+  printDoc.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -329,6 +336,124 @@ describe('ExportModal — the document pipeline gets the same progress/cancel/me
     );
     expect(getByText('Presentation').getAttribute('aria-pressed')).toBe('true');
     expect(queryByText('Page size')).toBeNull();
+  });
+
+  // Regression: the preview scales the page stack with a transform, which leaves the LAYOUT box at
+  // full size — so the scroll area ran on into ~44% of empty void below the last page.
+  it('sizes the scaled preview to the real height of the page stack, with no void below it', async () => {
+    const { container } = await openDocumentModal([answer(0, 'Quarterly review')]);
+
+    const scaled = container.querySelector('.ex-doc')!.parentElement!;
+    const box = scaled.parentElement!;
+    const pages = container.querySelectorAll('.ex-page').length;
+    expect(pages).toBeGreaterThan(0);
+
+    // Letter (the jsdom locale default) at the wide layout's 460px preview column.
+    const scale = 460 / 816;
+    expect(parseFloat(box.style.width)).toBeCloseTo(816 * scale, 1);
+    expect(parseFloat(box.style.height)).toBeCloseTo((1056 * pages + 40 * (pages - 1)) * scale, 1);
+    // The transform overhangs that box by design — clipping is what keeps the scroll honest.
+    expect(box.style.overflow).toBe('hidden');
+  });
+
+  // Dragging the custom-colour input fires continuously, and the accent only ever paints colour —
+  // re-measuring and re-paginating the whole document on every pixel of that drag was pure waste.
+  it('repaints on an accent change without re-running the offscreen layout pass', async () => {
+    const { container, getByLabelText, getByText, queryByText } = await openDocumentModal([
+      answer(0, 'Quarterly review'),
+    ]);
+
+    fireEvent.click(getByLabelText('Accent #7A2E33'));
+
+    expect(queryByText('Composing…')).toBeNull();
+    expect(getByText('Download PDF')).not.toBeDisabled();
+    // …and the preview still shows the new accent, straight from the render props.
+    expect(container.querySelector('.ex-page')?.getAttribute('style')).toContain('#7A2E33');
+  });
+
+  it('offers no dead Cancel while printing, and says so when the dialog never opens', async () => {
+    let rejectPrint!: (err: Error) => void;
+    printDoc.mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectPrint = reject;
+        }),
+    );
+
+    const { getByText, getAllByText, queryByText } = await openDocumentModal([
+      answer(0, 'Quarterly review'),
+    ]);
+    fireEvent.click(getByText('Print'));
+
+    await waitFor(() => expect(printDoc).toHaveBeenCalled());
+    // A print is the browser's own dialog — there is nothing for Cancel to abort.
+    expect(queryByText('Cancel')).toBeNull();
+    expect(getByText('Print')).toBeDisabled();
+
+    rejectPrint(new Error('popup blocked'));
+    // Shown in the error line AND announced in the aria-live region.
+    await waitFor(() =>
+      expect(getAllByText('Could not open the print dialog — try again.').length).toBe(2),
+    );
+    await waitFor(() => expect(getByText('Print')).not.toBeDisabled());
+  });
+});
+
+describe('ExportModal — the panel stacks before its preview can be clipped', () => {
+  /** Answer the modal's own `(max-width: Npx)` query against a viewport of `width`. */
+  function mockViewport(width: number) {
+    window.matchMedia = ((query: string) => {
+      const max = /max-width:\s*(\d+)px/.exec(query);
+      return {
+        matches: max ? width <= Number(max[1]) : false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      };
+    }) as unknown as typeof window.matchMedia;
+  }
+
+  const realMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+  });
+
+  // Regression: between 641 and 790px the two-column panel gave the preview a column narrower than
+  // the 460px page it renders — centred inside an overflow:hidden area, so both edges were cut off
+  // with no way to scroll to them.
+  it('uses the stacked layout at 700px, where the wide preview column cannot hold the page', () => {
+    mockViewport(700);
+    const { getByRole } = render(
+      <ExportModal answers={[answer(0, 'Quarterly review')]} defaultIndex={0} onClose={() => {}} />,
+    );
+    expect(getByRole('dialog').style.gridTemplateColumns).toBe('1fr');
+  });
+
+  it('keeps the two-column layout on a roomy viewport', () => {
+    mockViewport(1200);
+    const { getByRole } = render(
+      <ExportModal answers={[answer(0, 'Quarterly review')]} defaultIndex={0} onClose={() => {}} />,
+    );
+    expect(getByRole('dialog').style.gridTemplateColumns).toBe('300px 1fr');
+  });
+
+  // The ✕ used to live only in the preview area — the SECOND row of the stacked panel, i.e. below
+  // the fold on a phone, leaving no visible way out.
+  it('renders exactly one ✕, reachable from the top of the panel when stacked', () => {
+    mockViewport(700);
+    const { getByLabelText, getAllByLabelText, getByRole } = render(
+      <ExportModal answers={[answer(0, 'Quarterly review')]} defaultIndex={0} onClose={() => {}} />,
+    );
+    expect(getAllByLabelText('Close')).toHaveLength(1);
+
+    const close = getByLabelText('Close');
+    // Pinned inside the FIRST row of the stacked panel (the controls), not the preview below it.
+    expect(close.style.position).toBe('sticky');
+    expect(getByRole('dialog').firstElementChild?.contains(close)).toBe(true);
   });
 });
 

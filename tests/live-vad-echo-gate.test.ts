@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { VadVoice } from '../src/voice/VadVoice';
 
-// The always-on regression that killed the mic from turn two: LiveApp polls
-// `setMaveaSpeaking(false)` a few times a second while TTS is silent, and the echo tail
-// must NOT be re-stamped by those idle calls — only by the true falling edge of speech.
+// The always-on regression that killed the mic from turn two: LiveApp disarms the gate with
+// `setMaveaSpeaking(false)` whenever TTS is silent (and the mute switch does the same), and the
+// echo tail must NOT be re-stamped by those idle calls — only by the true falling edge of speech.
 // These tests reach the gate's private state deliberately: the bug is invisible through
 // the public surface without a real mic, and this is exactly the regression to pin.
 type Gate = {

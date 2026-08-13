@@ -8,6 +8,19 @@ export function isThoughtsTrigger(text: string): boolean {
   return /^(ok(ay)?[,.\s]+)?(any |your |so[,.\s]+)?thoughts\s*[?.!]*$/i.test(text.trim());
 }
 
+/**
+ * The listen-mode chip's label (its tooltip AND its accessible name). Turning "just listening" OFF
+ * DISCARDS the bank — the "Thoughts?" button beside it is the sort path, so auto-sorting on
+ * toggle-off would take away the ability to cancel. So the chip names the consequence, with the
+ * count, BEFORE the click rather than letting N utterances vanish silently.
+ */
+export function listenChipTitle(justListen: boolean, banked: number): string {
+  if (!justListen)
+    return 'Bank everything you say without answering — say "thoughts?" when you want the sort';
+  if (banked > 0) return `Discard ${banked} banked — or tap Thoughts? to sort them`;
+  return 'Stop banking and go back to answering';
+}
+
 /** One utterance for the ramble bank — drop empty/trigger noise. */
 export function bankable(text: string): boolean {
   const t = text.trim();

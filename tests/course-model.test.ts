@@ -480,6 +480,34 @@ describe('course/mastery — quiz-graded checkpoints', () => {
       expect(getProgress(c.id).lessons[c.lessons[0].id]).toBeUndefined();
     });
 
+    it('probing the lazy checkpoint cache for a match never writes to it — order and LRU stamps survive a stray quiz answer', () => {
+      const c = course({
+        lessons: [
+          { id: 'l1', title: 'Vectors', goal: 'g', objectives: ['o'], concepts: ['vector'] },
+          { id: 'l2', title: 'Norms', goal: 'g', objectives: ['o'], concepts: ['norm'] },
+        ],
+      });
+      saveCourse(c);
+      cacheCheckpoint(c.id, 'l1', [{ question: 'Cached Q1', answer: 'A1' }]);
+      cacheCheckpoint(c.id, 'l2', [{ question: 'Cached Q2', answer: 'A2' }]);
+      const before = localStorage.getItem('mavea-course-checkpoints-v1');
+
+      // Every quiz block in the app fires this event, so the miss path is the common one — it must
+      // cost nothing: no localStorage rewrite per cached lesson, and no reshuffled LRU recency.
+      recordQuizResult({ question: 'Unrelated trivia question?', correct: false, at: 1 });
+
+      expect(localStorage.getItem('mavea-course-checkpoints-v1')).toBe(before);
+      // …and a question that DOES live in the lazy cache still grades, so the cheaper read didn't
+      // cost the join anything.
+      recordQuizResult({ question: 'Cached Q1', correct: true, at: 2 });
+      expect(getProgress(c.id).lessons.l1?.checkpoint).toEqual({
+        total: 1,
+        correct: 1,
+        missedFronts: [],
+        at: 2,
+      });
+    });
+
     it('question matching is whitespace/case-insensitive', () => {
       const c = course();
       saveCourse(c);

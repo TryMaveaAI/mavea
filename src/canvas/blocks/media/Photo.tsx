@@ -11,11 +11,9 @@ type Props = PhotoProps & {
   onUnrenderable?: (id: string) => void;
 };
 
-// Renders a real image (the only media block that loads a remote URL rather than a
-// gradient placeholder). Mavéa never generates images: the model proposes `src` plus a few
-// `candidates` — real, free-commercial photo URLs it found — and we load-test them and render the
-// FIRST that actually decodes, so a hallucinated or dead link is silently skipped instead of
-// flashing a broken image. Lazy + async-decoded so it never blocks the canvas reveal.
+// Renders a reviewed image. URL clearance happens before this component; the load probe only
+// checks availability and decoding, never licensing. Lazy + async-decoded so it does not block the
+// canvas reveal.
 //
 // When EVERY candidate fails to decode (a 404, hotlink block, or hallucinated URL), we NEVER show a
 // broken-image placeholder — that reads as an error the user can't act on. Instead the block

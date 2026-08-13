@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { agoLine, dataStatusLine, metricDisplay } from '../src/live/dashboards/format';
+import {
+  agoLine,
+  dataStatusLine,
+  metricDisplay,
+  valueWithUnit,
+} from '../src/live/dashboards/format';
 import type { Dashboard, MetricSpec } from '../src/live/dashboards/types';
 
 // dataStatusLine is the honesty layer for the detail header's clock: it must never say "updated"
@@ -111,11 +116,25 @@ describe('metricDisplay — a raw token that is only a number is a number', () =
     expect(metricDisplay(metric({ lastRaw: '4.18%' }))).toBe('4.18%');
   });
 
-  it('separates thousands and keeps the unit', () => {
-    expect(metricDisplay(metric({ lastValue: 1624.9512, unit: '$' }))).toBe('1,625$');
+  it('separates thousands and writes the unit where that unit belongs', () => {
+    expect(metricDisplay(metric({ lastValue: 1624.9512, unit: '$' }))).toBe('$1,625');
+    expect(metricDisplay(metric({ lastValue: 4.18, unit: '%' }))).toBe('4.18%');
   });
 
   it('still says "—" honestly when there is no value', () => {
     expect(metricDisplay(metric({ lastValue: null }))).toBe('—');
+  });
+});
+
+// A currency symbol leads its number everywhere else in the app — the delta chip already read
+// "+$12.40" while the headline it sat beside read "1,624.95$".
+describe('valueWithUnit', () => {
+  it('puts a currency symbol in front and everything else behind', () => {
+    expect(valueWithUnit('1,625', '$')).toBe('$1,625');
+    expect(valueWithUnit('4.18', '%')).toBe('4.18%');
+    expect(valueWithUnit('12', 'kg')).toBe('12kg');
+  });
+  it('leaves a unitless number bare', () => {
+    expect(valueWithUnit('812')).toBe('812');
   });
 });

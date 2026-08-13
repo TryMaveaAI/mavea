@@ -116,6 +116,16 @@
   font-size: 11.5px;
   color: var(--text-secondary);
 }
+/* A check that came back with nothing usable has a whole sentence to say, and the half explaining
+   what to do about it is the half a single ellipsed line would eat. */
+.tile-context--note {
+  white-space: normal;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--warning);
+}
 
 /* ── viz slot ────────────────────────────────────────────────────────────────────────────── */
 .tile-viz {

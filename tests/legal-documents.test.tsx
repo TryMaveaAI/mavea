@@ -1,12 +1,19 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TermsApp } from '../src/legal/TermsApp';
 import { PrivacyApp } from '../src/legal/PrivacyApp';
 
+// Opening a document anchors it to the top; jsdom does not implement window.scrollTo.
+// tests/legal-scroll.test.tsx covers that behaviour.
+beforeEach(() => {
+  vi.stubGlobal('scrollTo', vi.fn());
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   window.location.hash = '';
 });
 
@@ -16,6 +23,7 @@ describe('canonical legal documents', () => {
     render(<TermsApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Terms of Use' })).toBeInTheDocument();
+    expect(screen.getByText('Effective August 11, 2026')).toBeInTheDocument();
     expect(screen.getByText(/govern your use of the Mavéa application/i)).toBeInTheDocument();
     expect(screen.getByText(/at least 18 years old/i)).toBeInTheDocument();
     expect(screen.getByText(/does not provide medical, legal, financial/i)).toBeInTheDocument();
@@ -35,6 +43,15 @@ describe('canonical legal documents', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/merger, acquisition, asset sale/i)).toBeInTheDocument();
     expect(screen.getByText(/No governing-law, arbitration, venue/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Docker Desktop is not free for every commercial organization/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/No Responsible Party gives a patent-clearance opinion/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not necessarily clear every depicted person/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '← Back to Mavéa' })).toHaveAttribute('href', '#/live');
   });
 
@@ -43,13 +60,15 @@ describe('canonical legal documents', () => {
     render(<PrivacyApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Privacy Notice' })).toBeInTheDocument();
+    expect(screen.getByText('Effective August 11, 2026')).toBeInTheDocument();
     expect(screen.getByText(/no Mavéa user-account system/i)).toBeInTheDocument();
     expect(screen.getByText(/course data, mastery and progress/i)).toBeInTheDocument();
     expect(screen.getByText(/non-extractable, device-bound browser key/i)).toBeInTheDocument();
     expect(screen.getByText(/proxy and its host can technically access/i)).toBeInTheDocument();
     expect(screen.getByText(/no separate Mavéa user accounts/i)).toBeInTheDocument();
-    expect(screen.getByText(/speech-to-text endpoint/i)).toBeInTheDocument();
-    expect(screen.getByText(/notification relay URL/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/speech-to-text endpoint/i)).not.toHaveLength(0);
+    expect(document.body).toHaveTextContent(/sends store: false/i);
+    expect(screen.getByText(/can receive, log, or retain the audio/i)).toBeInTheDocument();
     expect(screen.getByText(/no automatic expiration/i)).toBeInTheDocument();
     expect(screen.getByText(/does not sell personal information/i)).toBeInTheDocument();
     expect(screen.getByText(/not directed to children/i)).toBeInTheDocument();

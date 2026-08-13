@@ -384,7 +384,7 @@ export function SupplyDemand({
                 className="sud-eq"
                 data-mark="point"
               />
-              <text x={PAD_L - 5} y={sy(activeEq.p) - 4} className="sud-eq-lbl" textAnchor="end">
+              <text x={PAD_L + 6} y={sy(activeEq.p) - 4} className="sud-eq-lbl" textAnchor="start">
                 P* {pricePrefix}
                 {fmt(activeEq.p)}
               </text>

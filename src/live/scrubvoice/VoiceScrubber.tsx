@@ -4,7 +4,7 @@
 // sync. A play/pause button drives the same replay without a drag, and a rate chip speeds it
 // up or slows it down (0.75×–2×) with the pitch held natural. The waveform is drawn from the
 // actual PCM the user heard — nothing synthesized.
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { sharedAudioContext, voiceEnergyTap } from '../../voice/voiceEnergy';
 import { useLiveConfig } from '../useLiveConfig';
 import { clampSpeed, formatRate, nextRate } from './voiceSpeed';
@@ -101,7 +101,10 @@ function PlayableVoiceScrubber({
 }): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
-  const peaks = useRef<number[] | null>(null);
+  // Derived, not cached in a ref: a ref reset in its own effect is cleared AFTER the draw effect
+  // has already run for the new track, so the strip painted the PREVIOUS answer's waveform under
+  // the new one's duration. useMemo re-derives in the same render the prop changes in.
+  const peaks = useMemo(() => peaksOf(audio), [audio]);
   const dragging = useRef(false);
   // The track's WAV object URL, built lazily on first play and revoked when the track changes.
   // Playing through an <audio> element (not a buffer source) is what gives us preservesPitch.
@@ -239,7 +242,6 @@ function PlayableVoiceScrubber({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (!peaks.current) peaks.current = peaksOf(audio);
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -256,16 +258,15 @@ function PlayableVoiceScrubber({
     const frac = pos === null ? 1 : Math.max(0, Math.min(1, pos / audio.duration));
     const bw = w / BAR_COUNT;
     for (let i = 0; i < BAR_COUNT; i++) {
-      const amp = Math.max(0.06, peaks.current[i]);
+      const amp = Math.max(0.06, peaks[i]);
       const bh = amp * (h - 4);
       g.fillStyle = i / BAR_COUNT <= frac ? played : rest;
       g.fillRect(i * bw + bw * 0.2, (h - bh) / 2, bw * 0.6, bh);
     }
-  }, [audio, pos]);
+  }, [audio, peaks, pos]);
 
-  // Reset cached peaks — and any local playhead — when the track changes.
+  // A new track starts at rest — the previous one's playhead means nothing here.
   useEffect(() => {
-    peaks.current = null;
     setLocalT(null);
   }, [audio]);
 

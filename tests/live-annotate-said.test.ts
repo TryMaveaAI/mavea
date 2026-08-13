@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { saidTokens, findSaidMatch } from '../src/live/annotate/saidTarget';
+import { saidTokens, findSaidMatch, findEchoedLabel } from '../src/live/annotate/saidTarget';
 
 describe('saidTokens — what a spoken line points at', () => {
   it('extracts the figures the line leans on', () => {
@@ -80,5 +80,47 @@ describe('findSaidMatch — locating the said words in the card DOM', () => {
     const m = findSaidMatch(host, ['18%'])!;
     expect(m).toBeTruthy();
     expect(m.node.textContent!.slice(m.start, m.end)).toBe('18');
+  });
+});
+
+// The gap that left a teach turn's gestures in the track but never on the canvas: a conceptual
+// walk over a diagram speaks ordinary prose, so saidTokens finds no figure and no name (its only
+// capitals are sentence openers) and the generous path had nothing left to search for. The card's
+// own rendered labels are the missing direction.
+describe('findEchoedLabel — the card label the line names in plain prose', () => {
+  const card = (html: string): HTMLElement => {
+    const el = document.createElement('div');
+    el.innerHTML = html;
+    document.body.append(el);
+    return el;
+  };
+  const diagram = (): HTMLElement =>
+    card(
+      `<div class="card-eyebrow">The liquidity flow loop</div>
+       <svg><text>Order Flow</text><text>Order Book</text><text>Liquidity Drain</text>
+       <text>Trade</text><text>of</text></svg>`,
+    );
+
+  it('finds a lowercase mention of a rendered label', () => {
+    const m = findEchoedLabel(diagram(), 'Think of the order book as a reservoir.')!;
+    expect(m).toBeTruthy();
+    expect(m.node.textContent).toBe('Order Book');
+  });
+
+  it('prefers the longest label the line mentions, not a fragment of it', () => {
+    const m = findEchoedLabel(diagram(), 'Liquidity drain is what empties the order book.')!;
+    expect(m.node.textContent).toBe('Liquidity Drain');
+  });
+
+  it('ignores the card eyebrow, short noise, and function words', () => {
+    expect(
+      findEchoedLabel(diagram(), 'The liquidity flow loop explains it.')?.node.textContent,
+    ).not.toBe('The liquidity flow loop');
+    // "of" is rendered but too short to be a target; nothing else in this line is on the card.
+    expect(findEchoedLabel(diagram(), 'It is made of nothing in particular.')).toBeNull();
+  });
+
+  it('draws nothing when the line names nothing on the card', () => {
+    expect(findEchoedLabel(diagram(), 'This loop shows how markets settle overnight.')).toBeNull();
   });
 });

@@ -111,7 +111,7 @@ export function Leaderboard({
           <div className="seg">
             {metrics.map((mm, i) => (
               <button
-                key={mm.key}
+                key={`${mm.key}-${i}`}
                 className={`seg-btn ${i === mi ? 'on' : ''}`}
                 onClick={() => setMi(i)}
               >
@@ -123,12 +123,12 @@ export function Leaderboard({
       </div>
 
       <div className="lb">
-        {ranked.map(({ r }, rank) => {
+        {ranked.map(({ r, i }, rank) => {
           const v = r.values[mKey] ?? 0;
           const w = (v / max) * 100;
           return (
             <LbRow
-              key={r.name}
+              key={`${r.name}-${i}`}
               r={r}
               rank={rank}
               value={v}

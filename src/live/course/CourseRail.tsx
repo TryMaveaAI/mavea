@@ -108,6 +108,10 @@ function CheckpointPanel({
  *  deck name — see LiveApp's acceptCheckpointCards) — a due count once cards exist, deep-linking to
  *  the real deck view. Silent until there's actually something to show. */
 function CourseDeckLink({ courseTitle }: { courseTitle: string }): ReactElement | null {
+  // The React Compiler can't see that the argument-free getCounts() below reads the SRS store's
+  // mutable cache, so compiled it memoizes the first result against courseTitle alone and this line
+  // freezes — same escape hatch, for the same reason, as CoursesApp.tsx.
+  'use no memo';
   // Subscribe: adding or studying cards has to move this line, not wait for an unrelated re-render.
   useSrsRevision();
   const deck = getCounts().decks.find((d) => d.name === courseTitle);

@@ -69,21 +69,30 @@ function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
 const keyPromises = new Map<string, Promise<CryptoKey>>();
 
 function getKey(keyId: string): Promise<CryptoKey> {
-  let existing = keyPromises.get(keyId);
+  const existing = keyPromises.get(keyId);
   if (existing) return existing;
-  existing = (async () => {
+  const pending = (async () => {
     const db = await openDb();
-    const stored = await idbGet(db, keyId);
-    if (stored instanceof CryptoKey) return stored;
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
-      'encrypt',
-      'decrypt',
-    ]);
-    await idbPut(db, keyId, key); // CryptoKey is structured-cloneable; stays non-extractable
-    return key;
-  })();
-  keyPromises.set(keyId, existing);
-  return existing;
+    try {
+      const stored = await idbGet(db, keyId);
+      if (stored instanceof CryptoKey) return stored;
+      const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
+        'encrypt',
+        'decrypt',
+      ]);
+      await idbPut(db, keyId, key); // CryptoKey is structured-cloneable; stays non-extractable
+      return key;
+    } finally {
+      db.close();
+    }
+  })().catch((error: unknown) => {
+    // A transient IndexedDB failure must be retryable. Keeping a rejected promise in this cache
+    // would make secret/content encryption fail for the rest of the page lifetime.
+    if (keyPromises.get(keyId) === pending) keyPromises.delete(keyId);
+    throw error;
+  });
+  keyPromises.set(keyId, pending);
+  return pending;
 }
 
 function toBase64(bytes: Uint8Array): string {

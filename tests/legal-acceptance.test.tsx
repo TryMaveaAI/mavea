@@ -56,6 +56,17 @@ describe('versioned legal acknowledgement', () => {
     );
     expect(hasLegalAcceptance()).toBe(false);
   });
+
+  it('requires renewed acceptance after the August 2026 commercial-clearance update', () => {
+    localStorage.setItem(
+      LEGAL_ACCEPTANCE_STORAGE_KEY,
+      JSON.stringify({
+        version: '2026-07-16-commercial-clearance-v4',
+        acceptedAt: '2026-07-16T12:00:00.000Z',
+      }),
+    );
+    expect(hasLegalAcceptance()).toBe(false);
+  });
 });
 
 describe('LegalGate', () => {
@@ -72,6 +83,13 @@ describe('LegalGate', () => {
     expect(screen.queryByText('Connected product mounted')).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(screen.getByText(/Mavéa uses AI and third-party services/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Microphone audio is sent to the speech-transcription endpoint/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/I have read and agree to the Terms of Use/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/responsible for avoiding sensitive conversations/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Terms of use' })).toHaveAttribute(
       'href',
       '#/terms?from=live',
@@ -89,9 +107,17 @@ describe('LegalGate', () => {
       '/legal/LICENSE.txt',
     );
 
+    // Speech consent is its own affirmative act: the general acknowledgement alone must not open
+    // the door, and neither must the speech one alone.
     const continueButton = screen.getByRole('button', { name: /continue to mavéa/i });
+    const [generalConsent, speechConsent] = screen.getAllByRole('checkbox');
     expect(continueButton).toBeDisabled();
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(generalConsent);
+    expect(continueButton).toBeDisabled();
+    fireEvent.click(generalConsent);
+    fireEvent.click(speechConsent);
+    expect(continueButton).toBeDisabled();
+    fireEvent.click(generalConsent);
     fireEvent.click(continueButton);
 
     expect(screen.getByText('Connected product mounted')).toBeInTheDocument();
@@ -120,7 +146,7 @@ describe('LegalGate', () => {
         <div>Connected product mounted</div>
       </LegalGate>,
     );
-    fireEvent.click(screen.getByRole('checkbox'));
+    for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box);
     fireEvent.click(screen.getByRole('button', { name: /continue to mavéa/i }));
     // Assert via findBy/waitFor rather than a synchronous queryBy: the click's state update is
     // scheduled through the same microtask queue as any environment-level timer flushing, so an

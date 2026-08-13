@@ -73,7 +73,10 @@
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent);
+  /* The persona accents are pastels — as small uppercase TEXT the raw accent reads at ~1.8:1 on a
+   * light surface. Mixing toward --text-primary keeps the persona's hue while the theme itself
+   * decides the direction (darker in light, lighter in dark), so both themes clear 4.5:1. */
+  color: color-mix(in oklab, var(--accent) 55%, var(--text-primary));
   background: color-mix(in oklab, var(--accent) 14%, transparent);
 }
 
@@ -204,7 +207,10 @@
   padding: 8px 14px;
   border-radius: 999px;
   border: none;
-  background: var(--accent);
+  /* White on the raw pastel accent is ~2:1. Sinking the fill toward a fixed ink (not a surface
+   * token — the label stays white in BOTH themes, so the backdrop must too) holds the persona's
+   * hue and lands every accent at ~5:1. Same mix on .demox-primary. */
+  background: color-mix(in oklab, var(--accent) 58%, #0b0f14);
   color: #fff;
   font-size: 13px;
   font-weight: 650;
@@ -257,6 +263,11 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(440px, 92vw);
+  /* A centred fixed card silently clips whatever doesn't fit — on a short/landscape viewport the
+   * end card's cast chips fall off both edges with no way to reach them. Scroll inside instead. */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -296,7 +307,8 @@
 
 .demox-card-kicker {
   margin-top: 2px;
-  color: var(--accent);
+  /* Small uppercase accent text on a light surface — same contrast fix as .demox-badge. */
+  color: color-mix(in oklab, var(--accent) 55%, var(--text-primary));
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -331,7 +343,8 @@
   padding: 10px 20px;
   border-radius: 999px;
   border: none;
-  background: var(--accent);
+  /* Darkened accent fill for white label text — see .demox-skip. */
+  background: color-mix(in oklab, var(--accent) 58%, #0b0f14);
   color: #fff;
   font-size: 14px;
   font-weight: 650;

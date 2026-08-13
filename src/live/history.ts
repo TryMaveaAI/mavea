@@ -45,6 +45,9 @@ export interface FrameTourStep {
  * including blocks a later turn cleared or replaced.
  */
 export interface TurnFrame {
+  /** Stable identity for selection, retained audio, and exports. Frames saved before this field
+   *  existed use `turnFrameId`, whose deterministic legacy key survives array reindexing. */
+  id?: string;
   /** The user's question that produced this canvas. */
   question: string;
   /** The spoken line for this turn (the replay narrates it). */
@@ -72,6 +75,27 @@ export interface TurnFrame {
    *  that fed the prompt, kept so the user can re-open a read-only view of their thinking next to
    *  the answer it became. Rides into the saved session with the frame. */
   mind?: MindShapeSpec;
+}
+
+let turnFrameSerial = 0;
+
+/** Create an immutable identity when a turn first settles. */
+export function createTurnFrameId(at: number = Date.now()): string {
+  turnFrameSerial += 1;
+  return `${at.toString(36)}-${turnFrameSerial.toString(36)}`;
+}
+
+/** Stable identity for current and legacy frames. The hash deliberately excludes array position so
+ *  a bounded session can drop an old turn without renaming every survivor. */
+export function turnFrameId(frame: TurnFrame): string {
+  if (frame.id) return frame.id;
+  const source = `${frame.at}\u0000${frame.question}\u0000${frame.narration}\u0000${frame.spec.title ?? ''}`;
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i++) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `legacy-${frame.at.toString(36)}-${(hash >>> 0).toString(36)}`;
 }
 
 /** Fold older turns into one compact recap line so the model keeps the gist without the

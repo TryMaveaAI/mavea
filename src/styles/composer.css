@@ -107,6 +107,55 @@
   border-color: var(--line);
   background: transparent;
 }
+
+/* Watch Me Think is a first-class input intent, not a hidden speech heuristic. Its text stays
+   visible whenever the dock has room; on a narrow phone the spark remains a full touch target. */
+.composer-watch {
+  height: 38px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 600 11px/1 var(--font);
+  white-space: nowrap;
+  transition:
+    color var(--m-fast),
+    border-color var(--m-fast),
+    background var(--m-fast);
+}
+.composer-watch:hover {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+.composer-watch.on {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 55%, var(--line));
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.composer-watch svg {
+  width: 15px;
+  height: 15px;
+}
+.composer-watch:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+@media (max-width: 620px) {
+  .composer-watch {
+    width: 38px;
+    padding: 0;
+  }
+  .composer-watch span {
+    display: none;
+  }
+}
 /* Attention pulse — drawn to the attach button when a feature (Prism) needs a document but none is
    attached yet. Two soft rings in the presence color, then it settles back. */
 .composer-tool.is-pulsing {
@@ -252,6 +301,25 @@
 }
 .mic-btn.listening {
   animation: micpulse 1.6s var(--ease-in-out) infinite;
+}
+.mic-btn.armed:not(.listening) {
+  box-shadow:
+    0 8px 22px -8px var(--glow-presence),
+    0 0 0 3px color-mix(in oklab, var(--presence) 22%, transparent);
+}
+.mic-btn.paused {
+  filter: saturate(0.35);
+  background: var(--surface-elevated-2);
+  color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+/* Transcription is still finalizing. The button is busy, not idle: it desaturates and takes a
+   progress cursor rather than the `disabled` attribute — always-on deliberately still accepts the
+   tap (it pauses the mic), and disabling would drop the button out of focus order mid-interaction.
+   Declared after :hover so the brightening lift stays off while it's working. */
+.mic-btn.processing {
+  filter: saturate(0.5);
+  cursor: progress;
 }
 .mic-btn.mic-off {
   background: var(--surface-elevated-2);

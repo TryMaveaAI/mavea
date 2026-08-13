@@ -29,7 +29,7 @@ export interface TourOps {
    *  chapter never cuts off its own thought. */
   isSpeaking: () => boolean;
   hasCanvas: () => boolean;
-  showFrame: (frame: TurnFrame, question: string) => void;
+  showFrame: (frame: TurnFrame, question: string, opts?: { silent?: boolean }) => void;
   typeInto: (value: string) => void;
   /** Speak a coach line. May hand back the line's lifecycle handle (LiveApp's wrapped seam
    *  returns one so its own walk can sync to audio); the drivers here ignore it. */
@@ -115,6 +115,11 @@ export interface TourDriver {
   /** The visitor's explicit sound preference for the guided experience. */
   muted: boolean;
   done: boolean;
+  /** The baked corpus failed to load, even after a retry — the overlay owes the visitor an error
+   *  card rather than a walkthrough that can never start. */
+  corpusError: boolean;
+  /** Re-attempt the corpus fetch after that failure. */
+  retryCorpus: () => void;
   /** True when a single chapter is playing on its own (a deep-linked extra, a forced-solo core
    *  chapter, or an end-card "More to explore" mini-demo) — the transport hides the dots/prev/next
    *  and the chapter returns to the end card when it finishes rather than advancing. */
@@ -247,16 +252,39 @@ export function useTourDriver(opts: {
   // until it has: a deep link that auto-plays would otherwise apply chapters against an empty
   // corpus and silently skip every baked frame.
   const [corpusReady, setCorpusReady] = useState(false);
+  // A dropped chunk (offline, a flaky network) must be an honest, retryable state: both effects
+  // below are gated on corpusReady, so an unhandled rejection would leave the tour sitting on an
+  // empty stage forever with nothing to click.
+  const [corpusError, setCorpusError] = useState(false);
+  const [corpusAttempt, setCorpusAttempt] = useState(0);
   useEffect(() => {
     if (!active) return;
     let alive = true;
-    void loadTourCorpus().then(() => {
-      if (alive) setCorpusReady(true);
-    });
+    void (async () => {
+      // One silent retry absorbs a single dropped chunk; only a second failure is worth telling the
+      // visitor about. loadTourCorpus caches on success only, so every attempt really refetches —
+      // which is also why the retry stops the moment the tour is dismissed mid-flight.
+      for (let attempt = 0; alive && attempt < 2; attempt++) {
+        try {
+          await loadTourCorpus();
+          if (alive) setCorpusReady(true);
+          return;
+        } catch {
+          /* fall through: retry once, then surface the error card */
+        }
+      }
+      if (alive) setCorpusError(true);
+    })();
     return () => {
       alive = false;
     };
-  }, [active]);
+  }, [active, corpusAttempt]);
+
+  /** Re-fetch the corpus after a failed load (the overlay's Retry). */
+  const retryCorpus = useCallback(() => {
+    setCorpusError(false);
+    setCorpusAttempt((n) => n + 1);
+  }, []);
 
   /** Revert anything a chapter might have opened, so navigating away is always clean. Idempotent. */
   const resetTriggers = useCallback(() => {
@@ -292,8 +320,9 @@ export function useTourDriver(opts: {
     // baked tour would have the reveal walk speak its per-stop lines right over the chapter's coach
     // line. A view-change chapter (canvas/focus), a montage flip, or a just-need-a-canvas seed is
     // visual; only the 'answer' chapter keeps the full narration + spoken walk (there it IS the voice).
+    // `silent` keeps the RECORDED frame authentic, so a later replay or video cut has its narration.
     const showSilent = (f: { frame: TurnFrame; question: string }): void =>
-      o.showFrame({ ...f.frame, narration: '', tour: [] }, f.question);
+      o.showFrame(f.frame, f.question, { silent: true });
 
     // 1) Clean slate: close any feature a previous chapter opened.
     resetTriggers();
@@ -635,6 +664,8 @@ export function useTourDriver(opts: {
     playing,
     muted: userMuted,
     done,
+    corpusError,
+    retryCorpus,
     solo: !!soloId,
     start,
     next,

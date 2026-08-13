@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react';
+import { useRef, type ReactElement } from 'react';
 import { Presence } from '../presence/Presence';
+import { useFocusTrap } from '../live/useFocusTrap';
 import { TOUR_EXTRAS } from './tourPlan';
 
 export function TourEndCard({
@@ -13,8 +14,19 @@ export function TourEndCard({
   onPlayExtra: (id: string) => void;
   hasStoredSession?: boolean;
 }): ReactElement {
+  // It covers the whole surface with a scrim, so it has to hold keyboard focus too — mounting it
+  // is what makes it modal, and it never renders in a non-modal state.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(cardRef);
+
   return (
-    <div className="tour-end" role="dialog" aria-modal="true" aria-labelledby="tour-end-title">
+    <div
+      ref={cardRef}
+      className="tour-end"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tour-end-title"
+    >
       <section className="tour-end-card">
         <header className="tour-end-intro">
           <div className="tour-end-mascot" aria-hidden="true">

@@ -38,6 +38,15 @@ try {
   const pathSet = new Set(paths);
   const errors = [];
 
+  const extracted = spawnSync('tar', ['-xOf', archive, 'package/package.json'], {
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024,
+  });
+  if (extracted.status !== 0) {
+    throw new Error(extracted.stderr || 'could not inspect the packed package.json');
+  }
+  const packedPackage = JSON.parse(extracted.stdout);
+
   for (const required of [
     'bin/mavea.mjs',
     'dist/index.html',
@@ -49,6 +58,10 @@ try {
     'dist/legal/SUPPORT.md',
     'dist/legal/SECURITY.md',
     'dist/legal/THIRD-PARTY.txt',
+    'dist/demo-assets/CREDITS.md',
+    'dist/demo-assets/video/azores-film.webm',
+    'dist/fonts/OFL-1.1.txt',
+    'dist/fonts/PROVENANCE.md',
     'dist/ort-wasm-simd-threaded.mjs',
     'dist/vad.worklet.bundle.min.js',
     'LICENSE',
@@ -66,6 +79,8 @@ try {
   for (const forbidden of [
     'dist/ort-wasm-simd-threaded.wasm',
     'dist/silero_vad_v5.onnx',
+    'dist/semantic/index.json',
+    'dist/semantic/matrix.i8',
     'dist/stats.html',
   ]) {
     if (pathSet.has(forbidden))
@@ -78,6 +93,12 @@ try {
       /\.map$/i.test(path),
   );
   if (leaked.length) errors.push(`source/test/secret files would publish: ${leaked.join(', ')}`);
+  const forbiddenMedia = paths.filter((path) => /\.(?:aac|m4a|m4v|mov|mp3|mp4)$/i.test(path));
+  if (forbiddenMedia.length) {
+    errors.push(
+      `royalty-bearing or policy-forbidden media would publish: ${forbiddenMedia.join(', ')}`,
+    );
+  }
 
   const productionDependencies = Object.keys(PACKAGE.dependencies ?? {});
   if (productionDependencies.length) {
@@ -86,8 +107,32 @@ try {
   if (PACKAGE.publishConfig?.engines?.node !== '>=20.19') {
     errors.push('published CLI Node engine must stay explicitly pinned to >=20.19');
   }
+  if (PACKAGE.publishConfig?.access !== 'public' || PACKAGE.publishConfig?.provenance !== true) {
+    errors.push('source publishConfig must require public access and npm provenance');
+  }
   if (PACKAGE.license !== 'PolyForm-Noncommercial-1.0.0') {
     errors.push('published package must declare PolyForm-Noncommercial-1.0.0');
+  }
+  if (packedPackage.name !== '@mavea/mavea') {
+    errors.push(`packed package name changed to ${String(packedPackage.name)}`);
+  }
+  if (packedPackage.license !== 'PolyForm-Noncommercial-1.0.0') {
+    errors.push(`packed package license changed to ${String(packedPackage.license)}`);
+  }
+  if (packedPackage.engines?.node !== '>=20.19') {
+    errors.push(`packed package Node engine changed to ${String(packedPackage.engines?.node)}`);
+  }
+  if (packedPackage.bin?.mavea !== './bin/mavea.mjs') {
+    errors.push(`packed package CLI entry changed to ${String(packedPackage.bin?.mavea)}`);
+  }
+  if (packedPackage.publishConfig?.access !== 'public') {
+    errors.push('packed package must remain public on npm');
+  }
+  if (packedPackage.publishConfig?.provenance !== true) {
+    errors.push('packed package must request npm provenance');
+  }
+  if (Object.keys(packedPackage.dependencies ?? {}).length) {
+    errors.push('packed package unexpectedly declares production dependencies');
   }
 
   const size = statSync(archive).size;

@@ -25,8 +25,18 @@ const ROW_GAP = 46; // between wrapped rows inside one layer
 const PAD = 24;
 const PER_ROW = Math.floor((VIEW_W - PAD * 2 + H_GAP) / (BOX_W + H_GAP));
 const NAME_F = 15;
-const STEREO_F = 11;
+// The stage caps the 1000-unit viewBox at 760px, so a user unit renders at ~0.76 CSS pixels —
+// «interface» at 11 units came out under the ~9px legibility floor. STEREO_H is the band the
+// stereotype line owns at the top of the header, sized to hold it.
+const STEREO_F = 13;
+const STEREO_H = 17;
 const MEMBER_F = 12;
+// Shrink-to-fit floor, in viewBox USER UNITS. .ucd-stage caps the 1000-unit viewBox at 760px, so
+// one unit is 0.76 screen px and anything under ~11.9 lands below the 9px legibility floor. The
+// three fit sites below used 9/10/11, which would have painted 6.8/7.6/8.4px the moment a long
+// name triggered the shrink path — the fixture never does, so nothing caught it. Past this, text
+// wraps and the box grows (heights are derived from lines.length) rather than shrinking further.
+const MIN_LEGIBLE_F = 12;
 const TEXT_W = BOX_W - 20;
 
 const STEREOTYPES = new Set(['interface', 'abstract', 'enum']);
@@ -120,7 +130,7 @@ function fitMember(text: string): MemberFit {
   const fit = fitText(text, {
     maxWidth: TEXT_W,
     fontSize: MEMBER_F,
-    minFontSize: 9,
+    minFontSize: MIN_LEGIBLE_F,
     maxLines: 2,
     lineHeight: 1.25,
   });
@@ -227,13 +237,13 @@ export function ClassDiagram({
       const nameFit = fitText(cls.name, {
         maxWidth: TEXT_W,
         fontSize: NAME_F,
-        minFontSize: 11,
+        minFontSize: MIN_LEGIBLE_F,
         maxLines: 2,
         lineHeight: 1.2,
         bold: true,
       });
       const headerH =
-        10 + (cls.stereotype ? 15 : 0) + nameFit.lines.length * nameFit.lineHeightPx + 8;
+        10 + (cls.stereotype ? STEREO_H : 0) + nameFit.lines.length * nameFit.lineHeightPx + 8;
       const fieldFits = cls.fields.map(fitMember);
       const methodFits = cls.methods.map(fitMember);
       // UML draws all three compartments even when empty — a thin band keeps the silhouette.
@@ -346,7 +356,7 @@ export function ClassDiagram({
 
             {placed.map((b, bi) => {
               const stereoTint = HEADER_TINT[b.cls.stereotype ?? 'none'];
-              const nameY0 = b.y + 10 + (b.cls.stereotype ? 15 : 0);
+              const nameY0 = b.y + 10 + (b.cls.stereotype ? STEREO_H : 0);
               const fieldsTop = b.y + b.headerH;
               const methodsTop = fieldsTop + b.fieldsH;
               let fy = fieldsTop + 7;
@@ -370,7 +380,7 @@ export function ClassDiagram({
                   {b.cls.stereotype && (
                     <text
                       x={b.cx}
-                      y={b.y + 10 + 5}
+                      y={b.y + 10 + STEREO_H / 2}
                       className="ucd-stereo"
                       textAnchor="middle"
                       dominantBaseline="middle"
@@ -447,13 +457,13 @@ export function ClassDiagram({
               const fit = fitText(rel.label, {
                 maxWidth: 170,
                 fontSize: 14,
-                minFontSize: 10,
+                minFontSize: MIN_LEGIBLE_F,
                 maxLines: 2,
                 lineHeight: 1.15,
                 bold: true,
               });
               const mx = (s.x + t.x) / 2;
-              const my = (s.y + t.y) / 2 - 7 - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
+              const my = (s.y + t.y) / 2 - 14 - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
               return (
                 <text
                   key={`l${i}`}

@@ -16,39 +16,26 @@ import { LiveApp } from '../src/live/LiveApp';
 import { setLiveConfigV2, resetLiveConfig } from '../src/live/useLiveConfig';
 import { ALWAYS_ON_STORAGE_KEY } from '../src/hooks/useTweaks';
 
-// Force VadVoice's real Silero path to fail so it drops to its deterministic WebSpeech fallback —
-// the same recipe tests/voice-echo-gate.test.ts uses to drive always-on mode in jsdom.
+// Force VadVoice's local Silero path to fail after the capability gate. These tests exercise the
+// persisted mode handoff, not audio processing.
 vi.mock('@ricky0123/vad-web', () => ({
   get MicVAD(): never {
     throw new Error('no VAD in test');
   },
 }));
 
-class FakeRecognition {
-  lang = '';
-  interimResults = false;
-  continuous = false;
-  maxAlternatives = 1;
-  onresult: ((e: unknown) => void) | null = null;
-  onerror: ((e: unknown) => void) | null = null;
-  onend: ((e: unknown) => void) | null = null;
-  start = vi.fn();
-  stop = vi.fn();
-  abort = vi.fn();
-}
-
 beforeEach(() => {
-  (globalThis as unknown as { webkitSpeechRecognition: unknown }).webkitSpeechRecognition =
-    function () {
-      return new FakeRecognition();
-    };
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: { getUserMedia: vi.fn() },
+  });
   setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  delete (globalThis as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
+  Reflect.deleteProperty(navigator, 'mediaDevices');
   localStorage.clear();
   resetLiveConfig();
 });
@@ -98,6 +85,24 @@ describe('LiveApp — borrowed always-on is restored on exit', () => {
     clickStopBanking();
     expect(localStorage.getItem(ALWAYS_ON_STORAGE_KEY)).toBe('false');
   });
+
+  it('returns a borrowed mic to a paused Always-on session without rearming it', async () => {
+    localStorage.setItem(ALWAYS_ON_STORAGE_KEY, 'true');
+    render(<LiveApp />);
+
+    const pause = await waitFor(() => findButton((_text, el) => el.title === 'Pause always-on'));
+    fireEvent.click(pause);
+    await waitFor(() =>
+      expect(findButton((_text, el) => el.title === 'Resume always-on')).toBeTruthy(),
+    );
+
+    await openPaletteAndClick('Just listen');
+    clickStopBanking();
+
+    await waitFor(() =>
+      expect(findButton((_text, el) => el.title === 'Resume always-on')).toBeTruthy(),
+    );
+  });
 });
 
 describe('LiveApp — palette entries land where they promised', () => {
@@ -108,11 +113,10 @@ describe('LiveApp — palette entries land where they promised', () => {
     await waitFor(() => expect(document.querySelector('button.cmdk-row')).toBeTruthy());
     fireEvent.click(findButton((t) => t.startsWith('Whisper mode')));
 
-    // Not just "a settings modal" — the You tab's own content, with the disclosure that holds
-    // Quiet hours already expanded (previously: opened on whichever tab was last active, most
-    // often Model, with nothing whisper-related anywhere in the DOM).
+    // Not just "a settings modal" — the You tab's own content and its truthful quiet-hours
+    // disclosure are already visible, regardless of whichever tab was last active.
     await waitFor(() => expect(document.body.textContent).toContain('Quiet hours'));
-    expect(document.body.textContent).toContain("won't wake anyone");
+    expect(document.body.textContent).toContain('Audibility still depends on your device volume');
   });
 
   it('"Ghost answers" is marked unavailable with a reason when quality is Fast', async () => {

@@ -61,3 +61,6 @@ public/semantic/
 
 # Offline eval artifacts: pairwise labels + fitted-weight reports (regenerate with pnpm pairs:selection)
 eval-out/
+
+# Internal security review — kept out of the repo (agent/working artifact, not a public doc).
+security_best_practices_report.md

@@ -2364,11 +2364,13 @@
   stroke: var(--presence);
   stroke-width: 2;
 }
+/* The band's viewBox is ~1:1 with px, so this size IS the rendered size — it has to clear the
+   9px legibility floor. Anchoring is per-marker (the component picks it), so it stays out of CSS:
+   a stylesheet declaration would beat the element's own text-anchor attribute. */
 .ct-today-label {
   fill: var(--presence);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
-  text-anchor: middle;
 }
 .ct-axis {
   fill: var(--text-muted);

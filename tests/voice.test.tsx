@@ -20,7 +20,8 @@ import {
   subscribeKokoroSpeaking,
 } from '../src/voice/kokoro';
 import { VoiceOffHint } from '../src/live/VoiceOffHint';
-import { VOICE_OFF_HINT } from '../src/live/voiceAvailability';
+import { VOICE_OFF_HINT, VOICE_MUTED_HINT } from '../src/live/voiceAvailability';
+import { setOutputMuted } from '../src/voice/streamTts';
 import { RememberStep } from '../src/live/setup/steps/RememberStep';
 import {
   findPreset,
@@ -31,8 +32,7 @@ import {
 import { sayable } from '../src/voice/tts';
 import { VadVoice } from '../src/voice/VadVoice';
 
-// Force the dynamic Silero import to throw so VadVoice drops to its WebSpeech fallback — the
-// path we can drive deterministically in jsdom (no WASM, no real mic).
+// Force the dynamic Silero import to throw where a test needs a deterministic no-mic path.
 vi.mock('@ricky0123/vad-web', () => ({
   get MicVAD(): never {
     throw new Error('no VAD in test');
@@ -65,100 +65,6 @@ describe('always-on mic gate', () => {
     // itself now guarantees the two can never be re-conflated: there is nothing to pass.
     expect('muted' in base).toBe(false);
     expect(micShouldBeOpen(base)).toBe(true);
-  });
-});
-
-// The always-on mic must not submit Mavéa's own spoken answer as a user turn. VadVoice's echo
-// gate (setMaveaSpeaking) is what prevents that self-talk loop: while Mavéa is speaking — and for a
-// short tail after — any final transcript is treated as TTS bleed and dropped, while a genuine
-// utterance outside that window passes through. These tests exercise the gate through the
-// WebSpeech fallback path (VAD forced to fail), which is the same gate the VAD path applies.
-describe('VadVoice echo gate', () => {
-  // A controllable SpeechRecognition stand-in: tests call emitFinal() to simulate the browser
-  // delivering a finalized transcript, exactly as Chrome would while the mic is open.
-  class FakeRecognition {
-    lang = '';
-    interimResults = false;
-    continuous = false;
-    maxAlternatives = 1;
-    onresult: ((e: unknown) => void) | null = null;
-    onerror: ((e: unknown) => void) | null = null;
-    onend: ((e: unknown) => void) | null = null;
-    start = vi.fn();
-    stop = vi.fn();
-    abort = vi.fn();
-
-    emitFinal(transcript: string): void {
-      // Shape mirrors SpeechRecognitionEvent: results[i] is an array-like result whose [0] holds
-      // the alternative, plus an isFinal flag.
-      const result = Object.assign([{ transcript }], { isFinal: true });
-      this.onresult?.({ results: Object.assign([result], { length: 1 }) });
-    }
-  }
-
-  let recognizers: FakeRecognition[] = [];
-
-  beforeEach(() => {
-    recognizers = [];
-    // window.SpeechRecognition / webkitSpeechRecognition — VadVoice picks whichever exists.
-    (globalThis as unknown as { webkitSpeechRecognition: unknown }).webkitSpeechRecognition =
-      function () {
-        const r = new FakeRecognition();
-        recognizers.push(r);
-        return r;
-      };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    delete (globalThis as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
-    vi.useRealTimers();
-  });
-
-  // Build a VadVoice already dropped into its WebSpeech-fallback mode, with the single recognizer
-  // it wired up returned for the test to drive.
-  async function makeFallbackVoice(): Promise<{
-    voice: import('../src/voice/VadVoice').VadVoice;
-    rec: FakeRecognition;
-    results: string[];
-  }> {
-    const { VadVoice } = await import('../src/voice/VadVoice');
-    const voice = new VadVoice();
-    const results: string[] = [];
-    voice.onResult((r) => results.push(r.transcript));
-    // start() kicks loadVad(), which awaits the (throwing) dynamic import, flips to the fallback,
-    // and rewires onresult to the result-emitting handler. Wait until that rewire + the second
-    // start() (the fallback re-entry) have happened.
-    voice.start();
-    await vi.waitFor(() => expect(recognizers[0]?.start.mock.calls.length ?? 0).toBeGreaterThan(0));
-    return { voice, rec: recognizers[0], results };
-  }
-
-  it('submits a genuine utterance when Mavéa is not speaking', async () => {
-    const { rec, results } = await makeFallbackVoice();
-    rec.emitFinal('what is a black hole');
-    expect(results).toEqual(['what is a black hole']);
-  });
-
-  it('drops a transcript that lands while Mavéa is speaking (TTS echo)', async () => {
-    const { voice, rec, results } = await makeFallbackVoice();
-    voice.setMaveaSpeaking(true);
-    rec.emitFinal('a black hole is a region of spacetime'); // Mavéa's own answer bleeding back
-    expect(results).toEqual([]);
-  });
-
-  it('keeps dropping through the echo tail after Mavéa stops, then accepts again', async () => {
-    const { voice, rec, results } = await makeFallbackVoice();
-    vi.useFakeTimers();
-
-    voice.setMaveaSpeaking(true);
-    voice.setMaveaSpeaking(false); // playback ended — tail window opens
-    rec.emitFinal('where gravity is so strong'); // trailing echo within the tail
-    expect(results).toEqual([]);
-
-    vi.advanceTimersByTime(700); // past ECHO_TAIL_MS (600)
-    rec.emitFinal('tell me more'); // the user's real next turn
-    expect(results).toEqual(['tell me more']);
   });
 });
 
@@ -382,10 +288,7 @@ describe('voice energy envelope', () => {
     };
   }
 
-  // The browser's synthesizer hands over no audio to analyse, so the face's mouth on that tier is
-  // driven by a caller-supplied envelope instead of a waveform. If this seam stops fanning a plain
-  // sampler through, the browser voice talks with a still mouth — which reads as broken, and is
-  // exactly the failure that made this tier feel like a downgrade rather than a plainer voice.
+  // A caller-supplied envelope also supports deterministic previews without an audio graph.
   it('publishes a caller-supplied envelope, no audio involved', () => {
     const host = fakeHost();
     const { acquire } = makeEnergyPublisher(host);
@@ -399,7 +302,7 @@ describe('voice energy envelope', () => {
   });
 
   it('tracks a word-paced pulse the way a boundary event drives it', () => {
-    // Mirrors webSpeech.ts's envelope: pulse on each word, decay between, never fully closed.
+    // Mirrors a natural speech envelope: pulse on each word, decay between, never fully closed.
     let lastWordAt = 0;
     let now = 1000;
     const FLOOR = 0.15;
@@ -425,8 +328,7 @@ describe('voice energy envelope', () => {
   });
 
   it('lets the loudest source win when a real clip and an envelope overlap', () => {
-    // The two tiers share one publisher, and a line can hand off from Kokoro to the browser voice
-    // mid-flight — so both may be live for an instant. The face must not flicker to the quieter one.
+    // Concurrent audio sources share one publisher, so the face must not flicker to the quieter one.
     const host = fakeHost();
     const { acquire } = makeEnergyPublisher(host);
     acquire(() => 0.2);
@@ -462,6 +364,7 @@ describe('voice-capability honesty', () => {
     cleanup();
     vi.unstubAllGlobals();
     resetKokoroProbe();
+    setOutputMuted(false);
   });
 
   beforeEach(() => {
@@ -578,6 +481,28 @@ describe('voice-capability honesty', () => {
       expect(screen.queryByText(/captions only/i)).toBeNull();
     });
 
+    // Muting silences the audition too (voice/preview.ts skips it), so the picker has to say so
+    // — a play button that does nothing at all reads as broken.
+    it('explains a muted audition instead of leaving the preview button dead', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.resolve({ ok: true } as Response)),
+      );
+      setOutputMuted(true);
+      render(<VoiceOffHint />);
+      expect(await screen.findByRole('status')).toHaveTextContent(VOICE_MUTED_HINT);
+    });
+
+    it('states the missing service ahead of the mute — unmuting alone would not help', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.reject(new Error('no kokoro in test'))),
+      );
+      setOutputMuted(true);
+      render(<VoiceOffHint />);
+      expect(await screen.findByRole('status')).toHaveTextContent(VOICE_OFF_HINT);
+    });
+
     it('appears under the wizard Remember step voice pickers when Kokoro is down', async () => {
       vi.stubGlobal(
         'fetch',
@@ -682,16 +607,19 @@ describe('speakKokoroLine', () => {
     vi.stubGlobal('Audio', FakeAudio);
     const urlStub = { createObjectURL: vi.fn(() => 'blob:clip'), revokeObjectURL: vi.fn() };
     vi.stubGlobal('URL', urlStub);
+    const speechBodies: Array<{ response_format?: string }> = [];
     vi.stubGlobal(
       'fetch',
-      vi.fn((url: RequestInfo | URL) => {
+      vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
         if (String(url).endsWith('/health')) return Promise.resolve(new Response('ok'));
+        speechBodies.push(JSON.parse(String(init?.body)) as { response_format?: string });
         return Promise.resolve(new Response(new Uint8Array([1, 2, 3, 4])));
       }),
     );
 
     const line = ordered(speakKokoroLine('A real line.', 'mavea'));
     expect(await line.started).toBe(true);
+    expect(speechBodies).toEqual([expect.objectContaining({ response_format: 'wav' })]);
     // Audio is "playing" now; the clip ending resolves finished.
     expect(line.order).toEqual(['started']);
     audios[0].onended?.();
@@ -814,6 +742,29 @@ describe('previewVoice — race safety', () => {
     expect(constructed).toEqual(['blob:bella']);
   });
 
+  // Mute is the switch for Mavéa's voice, and an audition is Mavéa's voice — so a muted preview
+  // stays silent (the picker says why, see VoiceOffHint) rather than being the one sound a
+  // silenced session makes. It must also not synthesize a clip nobody can hear.
+  it('makes no sound and no request while the voice is muted', async () => {
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { previewVoice } = await import('../src/voice/preview');
+    const { setOutputMuted: mute } = await import('../src/voice/streamTts');
+    const { findPreset } = await import('../src/voice/presets');
+
+    mute(true);
+    previewVoice(findPreset('heart')!);
+    await flush();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(constructed).toEqual([]);
+
+    mute(false);
+    previewVoice(findPreset('heart')!);
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('stopPreview aborts an in-flight request', async () => {
     let signal: AbortSignal | undefined;
     vi.stubGlobal(
@@ -869,8 +820,8 @@ describe('sayable — the product name is never spoken', () => {
 
 // transcribeWhisper probes the /stt service on speech-end. The first probe runs on a short
 // timeout so a sleeping service can't stall the turn. The bug being pinned here: a single
-// cold-start TIMEOUT used to set whisperOk=false permanently, downgrading the WHOLE session to
-// WebSpeech with no recovery. A timeout must leave whisperOk null so the next utterance retries;
+// cold-start TIMEOUT used to set whisperOk=false permanently. A timeout must leave whisperOk null
+// so the next utterance retries;
 // only a DEFINITIVE failure (HTTP error, connection refused) may disable Whisper.
 //
 // The probe is private and only reachable through speech-end without a real mic, so these tests

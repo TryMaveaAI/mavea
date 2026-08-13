@@ -4,13 +4,18 @@ import './feature-use-notice.css';
 
 const DISMISSAL_STORAGE_PREFIX = 'mavea-feature-notice-dismissed-v1:';
 
-/** Kinds the user may dismiss. Dismissing is an acknowledgment, so the notice goes away for
- *  good — the full text stays one click away on the legal page, which every surface links to.
- *  Action-specific warnings (upload, export…) are not dismissible and always render in full. */
+/** Kinds the user may dismiss: notices describing a standing capability, which would otherwise
+ *  reappear every session for the life of the feature. Dismissing is an acknowledgment, so the
+ *  notice goes away for good — the full text stays one click away on the legal page, which every
+ *  surface links to. Warnings attached to an act the user is about to take (upload, export, share,
+ *  storing a key) stay non-dismissible: each describes THAT act, so retiring one would silence the
+ *  next one too. */
 const DISMISSIBLE_KINDS: ReadonlySet<FeatureNoticeKind> = new Set([
   'learning',
   'monitoring',
   'simulation',
+  // Shown on every Live session that has speech available — a capability, not a pending action.
+  'voice-data',
 ]);
 
 function storageKey(kind: Exclude<FeatureNoticeKind, 'global'>): string {

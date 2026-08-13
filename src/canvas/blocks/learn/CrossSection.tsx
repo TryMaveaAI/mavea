@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { IconKey } from '../../../icons/icons';
 import { formatValue } from '../../lib/format';
+import { fitText } from '../../lib/fitText';
+import { spreadLabels } from '../../lib/spreadLabels';
 import type { CrossSectionProps, CrossLayer } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -23,12 +25,12 @@ const ACCENTS = [
 
 const tint = (layer: CrossLayer, i: number): string => layer.color ?? ACCENTS[i % ACCENTS.length];
 
-// Band/ring labels are plain SVG text with no wrap — a model-authored name longer than the demo
+// Band labels are plain SVG text with no wrap — a model-authored name longer than the demo
 // fixture's ("Crust", "Epidermis") runs past the viewBox edge. Cap it to a conservative character
 // budget sized for the label font and the room between the leader tip and the edge, same idiom
-// as FreeBodyDiagram/EtymTree; the full name is preserved via a native <title> tooltip.
+// as FreeBodyDiagram/EtymTree; the full name is preserved via a native <title> tooltip. (Ring
+// labels don't need the cap — they wrap to a measured gutter instead, see the concentric branch.)
 const BAND_LABEL_MAX_CHARS = 20;
-const RING_LABEL_MAX_CHARS = 16;
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
@@ -42,11 +44,22 @@ const BAND_W = 116; // width of the stratum column
 const LABEL_X = BAND_W + BAND_X + 30; // where leader labels begin
 const MIN_BAND = 26; // floor so a thin layer's label still fits
 
-// Concentric layout: nested rings drawn into a square.
+// Concentric layout: nested rings drawn into a square, with a dedicated label column beside it.
+// Labels used to be stacked from the top of the viewBox at a fixed step, which piled them into the
+// corner ON TOP of the rings they name — unreadable, and it hid the artwork. The art keeps the
+// square; the names live entirely to its right.
 const CVB = 240;
 const CCX = CVB / 2;
 const CCY = CVB / 2;
 const CR = 104; // outer radius
+const RING_GUTTER = 112; // label column to the right of the art
+const RING_LABEL_X = CVB + 10;
+const RING_LABEL_W = RING_GUTTER - 16;
+const RING_LABEL_PAD = 10; // keeps the label ladder inside the viewBox
+/** Ring-label type, in viewBox user units — NOT pixels. `.lr-xs-svg--ring`'s max-width keeps the
+ *  rendered size of this floor above the 9px legibility bar at every card width. */
+const RING_FS = 13;
+const RING_MIN_FS = 10;
 
 export function CrossSection({
   title,
@@ -77,18 +90,31 @@ export function CrossSection({
       const midR = (outer + inner) / 2;
       return { layer: l, i, outer, inner, midR };
     });
-    const VB = CVB;
-    // Ring labels stack down the right edge at a fixed vertical offset per ring — fine for a
-    // handful of layers, but with 8+ the fixed 18-unit step ran labels off the bottom of the
-    // viewBox and crowded them illegibly. Spread them across the actual usable band instead
-    // (top margin to bottom margin), capped so a small ring count doesn't space labels out
-    // absurdly far from their leader's origin.
-    const RING_LABEL_TOP = 10;
-    const RING_LABEL_BOTTOM = VB - 10;
-    const ringLabelStep =
-      rings.length > 1
-        ? Math.min(18, (RING_LABEL_BOTTOM - RING_LABEL_TOP) / (rings.length - 1))
-        : 18;
+    // Wrap each name to the gutter it actually has, then space the ladder by the tallest label —
+    // a fixed step guesses, and guesses wrong the moment a name is longer than the fixture's.
+    const fits = rings.map((ring) =>
+      fitText(ring.layer.name, {
+        maxWidth: RING_LABEL_W,
+        fontSize: RING_FS,
+        minFontSize: RING_MIN_FS,
+        maxLines: 2,
+        bold: true,
+      }),
+    );
+    const blockH = Math.max(
+      ...fits.map((f) => Math.min(f.lines.length, 2) * f.lineHeightPx),
+      RING_FS,
+    );
+    // Anchor each label at its own ring's height on the vertical axis (outer ring highest, inner
+    // lowest — the same order as the legend), then push apart only as far as collisions demand.
+    const ladder = spreadLabels(
+      rings.map((ring) => ({ id: ring.i, y: CCY - ring.midR })),
+      {
+        gap: blockH + 4,
+        top: RING_LABEL_PAD + blockH / 2,
+        bottom: CVB - RING_LABEL_PAD - blockH / 2,
+      },
+    );
     return (
       <Shell
         title={title}
@@ -100,7 +126,7 @@ export function CrossSection({
       >
         <div className="lr-xs-wrap">
           <svg
-            viewBox={`0 0 ${VB} ${VB}`}
+            viewBox={`0 0 ${CVB + RING_GUTTER} ${CVB}`}
             className="lr-xs-svg lr-xs-svg--ring"
             role="img"
             aria-label={title}
@@ -117,23 +143,39 @@ export function CrossSection({
                 className="lr-xs-ring"
               />
             ))}
-            {/* Leader from each ring band out to a right-side label. */}
+            {/* A radial leader from each ring's band out to its name in the gutter. Radial, not
+                horizontal: an inner ring's line has to cross the rings outside it either way, and
+                a spoke reads as part of the diagram where a horizontal chord read as a stray rule. */}
             {rings.map((ring) => {
-              const ly = RING_LABEL_TOP + ring.i * ringLabelStep;
+              const fit = fits[ring.i];
+              const lines = fit.lines.slice(0, 2);
+              const clipped = lines.length < fit.lines.length;
+              if (clipped) lines[1] = truncate(lines[1], Math.max(2, lines[1].length - 1));
+              const ly = ladder.get(ring.i) ?? CCY;
+              const angle = Math.atan2(ly - CCY, RING_LABEL_X - 6 - CCX);
+              const firstBaseline =
+                ly - ((lines.length - 1) * fit.lineHeightPx) / 2 + fit.fontSize * 0.34;
               return (
                 <g key={`lbl${ring.i}`}>
                   <line
-                    x1={CCX}
-                    y1={CCY - ring.midR}
-                    x2={CVB - 8}
+                    x1={CCX + ring.midR * Math.cos(angle)}
+                    y1={CCY + ring.midR * Math.sin(angle)}
+                    x2={RING_LABEL_X - 6}
                     y2={ly}
                     className="lr-xs-leader"
                   />
-                  <text x={CVB - 6} y={ly + 3} className="lr-xs-ring-lbl" textAnchor="end">
-                    {ring.layer.name.length > RING_LABEL_MAX_CHARS && (
-                      <title>{ring.layer.name}</title>
-                    )}
-                    {truncate(ring.layer.name, RING_LABEL_MAX_CHARS)}
+                  <text
+                    x={RING_LABEL_X}
+                    y={firstBaseline}
+                    fontSize={fit.fontSize}
+                    className="lr-xs-ring-lbl"
+                  >
+                    {clipped && <title>{ring.layer.name}</title>}
+                    {lines.map((line, li) => (
+                      <tspan key={li} x={RING_LABEL_X} dy={li === 0 ? 0 : fit.lineHeightPx}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                 </g>
               );

@@ -12,24 +12,37 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = FiveWhyChainProps & { delay?: number };
 
+// --- viewBox geometry (user units) ---
+// Inside a viewBox a font-size is a SHARE OF THE FIGURE, not a pixel count: this chain renders
+// ~320px wide in a half-width card, so a unit lands at ~0.62px there. Everything below — type,
+// line heights, padding — is sized against that ratio, which is why the numbers read large next
+// to CSS pixels. Type authored from the HTML fluid ramp (--fs-2xs floors at 9px) rendered at
+// 5.6px here, well under the ~9px legibility floor the UI audit enforces.
 const VB_W = 520;
 const PAD_X = 24;
-const PAD_TOP = 16;
-const PAD_BOT = 16;
+const PAD_TOP = 18;
+const PAD_BOT = 18;
 const CARD_W = VB_W - PAD_X * 2;
-const GAP = 22; // vertical gap between cards, room for the connector + arrowhead
-const LINE_H = 16;
-const CARD_PAD_Y = 14;
-const Q_LINE_H = 13;
-const MIN_CARD_H = 56;
-const CHARS_PER_LINE = 46;
+const GAP = 26; // vertical gap between cards, room for the connector + arrowhead
+const LINE_H = 23;
+const CARD_PAD_Y = 18;
+const Q_LINE_H = 22;
+const MIN_CARD_H = 78;
+/** Left inset of the text column from the card edge — clear of the 4-unit accent rail. */
+const TEXT_INSET = 18;
+/** Wrap budget. Sized off the widest a line can get — an all-caps run at .fwy-answer's size is
+ *  ~0.6em per character — so a shouty real answer stays inside the card, not just the fixture's
+ *  mixed-case prose. */
+const CHARS_PER_LINE = 40;
 /** Baseline of the badge ("Problem" / "Why n" / "Root cause") below the card top. */
-const BADGE_BASELINE = 15;
+const BADGE_BASELINE = 23;
+/** Ascent of the first content line — how far its baseline sits below the top of its own band. */
+const FIRST_LINE_ASCENT = 13;
 /** Extra vertical room between the badge baseline and the first content baseline. Without it the
  *  first line's ascent reached up through the badge's glyphs (the two baselines sat 8px apart —
  *  less than a 12px line's ascent), which read as overlapping text; export skins with taller
  *  faces made it worse. Sized so the fonts can grow ~20% and the bands still clear. */
-const BADGE_CLEARANCE = 8;
+const BADGE_CLEARANCE = 16;
 
 /** Greedy word-wrap to `maxLines`, ellipsizing the last line if it still overflows. Pure and
  *  bounded — a pathological single long word is hard-truncated, never looped. Local copy of
@@ -199,9 +212,9 @@ export function FiveWhyChain({
           })}
 
           {rows.map((r, i) => {
-            const textX = PAD_X + 16;
+            const textX = PAD_X + TEXT_INSET;
             const badgeY = r.y + BADGE_BASELINE;
-            const qStartY = r.y + CARD_PAD_Y + 9 + BADGE_CLEARANCE;
+            const qStartY = r.y + CARD_PAD_Y + FIRST_LINE_ASCENT + BADGE_CLEARANCE;
             const answerStartY =
               r.questionLines.length > 0
                 ? qStartY + r.questionLines.length * Q_LINE_H + 4

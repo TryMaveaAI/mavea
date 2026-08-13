@@ -1,16 +1,16 @@
-// The VoiceController contract. WebSpeechVoice and VadVoice satisfy this single interface.
+// The VoiceController contract for local microphone capture and transcription.
 // A controller never touches presence — it only emits results (user said X) and state
 // changes (listening / heard / speaking); the surface maps those to the face, so one place,
 // and only one, owns the presence.
 
-export type VoiceMode = 'webspeech' | 'vad';
+export type VoiceMode = 'vad';
 
 export interface VoiceCapabilities {
-  /** SpeechRecognition present. */
+  /** Local microphone capture is available. */
   stt: boolean;
-  /** speechSynthesis present. */
+  /** Reserved for controllers that own narration output. */
   tts: boolean;
-  /** stt && tts — gates the Real Voice toggle. */
+  /** Whether this controller can expose a live microphone voice. */
   canUseRealVoice: boolean;
 }
 
@@ -18,19 +18,32 @@ export interface VoiceCapabilities {
 export type VoicePhase =
   | 'idle'
   | 'listening' // mic open / sim "Listening…"
+  | 'transcribing' // speech ended; local STT is resolving the captured audio
   | 'heard' // transcript captured, about to route
   | 'speaking'; // TTS / sim narration in flight
 
 export interface VoiceResult {
   /** What the user said (shown as `heard`; the surface runs it as a turn). */
   transcript: string;
+  /** Mean word confidence when the local recognizer provides it. */
+  confidence?: number;
+  /** The recognizer's estimate that the segment contained no speech. */
+  noSpeechProbability?: number;
+  /** Low-confidence speech is preserved as an editable draft instead of auto-submitted. */
+  lowConfidence?: boolean;
 }
 
-export type VoiceError = 'no-speech' | 'not-allowed' | 'audio' | 'unsupported' | 'aborted';
+export type VoiceError =
+  | 'no-speech'
+  | 'not-allowed'
+  | 'audio'
+  | 'unsupported'
+  | 'transcription'
+  | 'aborted';
 
 export interface VoiceStateEvent {
   phase: VoicePhase;
-  /** For "heard" (and interim "listening" in webspeech). */
+  /** For "heard" or an optional local interim transcript. */
   transcript?: string;
   error?: VoiceError;
 }
@@ -46,6 +59,8 @@ export interface SpeakOptions {
 export interface VoiceStartContext {
   /** True once a canvas is up (a mid-conversation listen, not a first ask). */
   inCanvas: boolean;
+  /** Re-arm after an explicit finish; used only by an unpaused Always-on session. */
+  continuous?: boolean;
 }
 
 export interface VoiceController {
@@ -68,7 +83,7 @@ export interface VoiceController {
    * always-on controller uses this to suppress its own TTS echo: while true, the mic stays
    * live (so the user can still barge in), but speech that begins inside the TTS playback
    * is treated as echo and dropped rather than submitted as a new user turn. Optional —
-   * controllers that don't run a continuous mic (simulated, tap-to-talk webspeech) ignore it.
+   * controllers that don't run a continuous mic ignore it.
    */
   setMaveaSpeaking?(speaking: boolean): void;
   /**

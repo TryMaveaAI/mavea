@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   render,
   renderHook,
@@ -16,7 +18,7 @@ import { LiveApp } from '../src/live/LiveApp';
 import { resetLiveConfig } from '../src/live/useLiveConfig';
 import { saveSession, clearSession } from '../src/live/session/store';
 import { useStudyableCount } from '../src/live/srs/useStudy';
-import { SCHEDULING_WORDS } from '../src/live/srs/copy';
+import { SCHEDULING_WORDS, studyCopy } from '../src/live/srs/copy';
 import { flashHref, parseRoute } from '../src/live/srs/route';
 import { TEMPLATE_KEY } from '../src/live/templates';
 import { THEME_KEY } from '../src/lib/theme';
@@ -45,6 +47,7 @@ import {
   setStudyStyle,
   setSuspended,
   updateCard,
+  SRS_EVENT,
   __resetSrsCacheForTests,
 } from '../src/live/srs/store';
 import { countStudyable, getStudyQueue } from '../src/live/srs/queue';
@@ -112,6 +115,86 @@ describe('FlashcardsApp', () => {
       fireEvent.click(container.querySelector('.fc-tag-chip')!);
       fireEvent.click(screen.getByText('Due').closest('button')!);
       expect(screen.getByRole('button', { name: /Study Due · #geo/i })).toBeInTheDocument();
+    });
+  });
+
+  // The bulk bar reads as "these rows" — so what it acts on has to BE these rows. A selection that
+  // outlives the deck/filter/search it was made in silently deletes or moves cards the user can't
+  // see, which is the one mistake this surface must never make.
+  describe('FlashcardsApp — bulk actions only ever reach what is on screen', () => {
+    it('drops the selection when the scope changes, instead of reporting rows with no checkbox ticked', () => {
+      addCards([
+        { front: 'photosynthesis', back: 'a' },
+        { front: 'mitosis', back: 'b' },
+      ]);
+      render(<FlashcardsApp />);
+      fireEvent.click(screen.getByLabelText('Select card: photosynthesis'));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText('Search cards'), { target: { value: 'mitosis' } });
+      expect(screen.queryByText(/\d+ selected/)).toBeNull();
+    });
+
+    it('counts only the cards still listed, so a row that left the store stops being acted on', () => {
+      const [a, b] = addCards([
+        { front: 'photosynthesis', back: 'a' },
+        { front: 'mitosis', back: 'b' },
+      ]);
+      render(<FlashcardsApp />);
+      fireEvent.click(screen.getByLabelText(`Select card: ${a.front}`));
+      fireEvent.click(screen.getByLabelText(`Select card: ${b.front}`));
+      expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+      act(() => removeCard(b.id));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('parks a whole selection in one store write, not one per card', () => {
+      addCards([
+        { front: 'one', back: '1' },
+        { front: 'two', back: '2' },
+        { front: 'three', back: '3' },
+      ]);
+      render(<FlashcardsApp />);
+      fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+
+      let writes = 0;
+      const count = (): void => {
+        writes += 1;
+      };
+      window.addEventListener(SRS_EVENT, count);
+      fireEvent.click(screen.getByRole('button', { name: studyCopy('collection').parkVerb.park }));
+      window.removeEventListener(SRS_EVENT, count);
+
+      expect(writes).toBe(1);
+      expect(getAllCards().every((c) => c.suspended)).toBe(true);
+    });
+
+    it('opens the card editor as a plain modal, with a presentational backdrop', () => {
+      render(<FlashcardsApp />);
+      fireEvent.click(
+        within(screen.getByRole('banner')).getByRole('button', { name: /New card/i }),
+      );
+
+      const dialog = screen.getByRole('dialog', { name: 'New card' });
+      expect(dialog).toHaveAttribute('aria-modal', 'true');
+      const scrim = dialog.parentElement!;
+      expect(scrim).toHaveClass('fc-scrim');
+      expect(scrim.getAttribute('role')).toBeNull();
+      expect(scrim.getAttribute('tabindex')).toBeNull();
+    });
+
+    it('a row armed for deletion disarms when it loses focus, instead of staying armed for good', () => {
+      addCards([{ front: 'Q', back: 'A' }]);
+      render(<FlashcardsApp />);
+      fireEvent.click(screen.getByRole('button', { name: 'Delete card' }));
+
+      const confirm = screen.getByRole('button', { name: 'Confirm delete' });
+      expect(confirm).toHaveFocus();
+      fireEvent.blur(confirm);
+
+      expect(screen.getByRole('button', { name: 'Delete card' })).toBeInTheDocument();
+      expect(getAllCards()).toHaveLength(1);
     });
   });
 
@@ -316,6 +399,44 @@ describe('SrsReview', () => {
     });
   });
 
+  // A session is capped so it ends (queue.ts's SESSION_CAP) — but a done screen that only says
+  // "Done" implies the pile is finished, which for a capped session is a lie.
+  describe('the done screen is honest about what it could not serve', () => {
+    function finish(container: HTMLElement, n: number): void {
+      for (let i = 0; i < n; i += 1) {
+        fireEvent.click(container.querySelector('.srs-flip-scene')!);
+        fireEvent.click(screen.getByText('Got it'));
+      }
+    }
+
+    it('says the rest will keep when the session cap left cards behind', () => {
+      addCards(
+        Array.from({ length: 41 }, (_, i) => ({ front: `q${i}`, back: `a${i}` })),
+        { now: 0 },
+      );
+      setStudyStyle('collection');
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+      finish(container, 40);
+
+      expect(screen.getByText(studyCopy('collection').moreLeft)).toBeInTheDocument();
+    });
+
+    it('stays quiet when the whole pile fit in the one session', () => {
+      addCards(
+        [
+          { front: 'one', back: '1' },
+          { front: 'two', back: '2' },
+        ],
+        { now: 0 },
+      );
+      setStudyStyle('collection');
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+      finish(container, 2);
+
+      expect(screen.queryByText(studyCopy('collection').moreLeft)).toBeNull();
+    });
+  });
+
   describe('spaced study is unchanged', () => {
     it('still grades on four buttons and schedules the card forward', () => {
       const [c] = addCards([{ front: 'one', back: '1' }], { now: 0 });
@@ -340,6 +461,34 @@ describe('SrsReview', () => {
       expect(container.querySelectorAll('.srs-grade-btn').length).toBe(4);
       fireEvent.keyDown(window, { key: '1' });
       expect(getAllCards().find((x) => x.id === c.id)!.lapses).toBe(1);
+    });
+  });
+
+  describe('the overlay is a plain modal, and the card sizes to its longest face', () => {
+    it('announces itself as modal and keeps the backdrop out of the interactive tree', () => {
+      addCards([{ front: 'one', back: '1' }], { now: 0 });
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
+      // A focusable role="button" wrapper around a dialog is a nested interactive; Escape and the
+      // ✕ button are the keyboard paths out.
+      const scrim = container.querySelector('.srs-scrim')!;
+      expect(scrim.getAttribute('role')).toBeNull();
+      expect(scrim.getAttribute('tabindex')).toBeNull();
+    });
+
+    // jsdom does no layout, so the flip card's stacking is pinned at the source: absolutely
+    // positioned faces don't size their container, and a long answer then runs over the grade
+    // buttons below it.
+    it('stacks both faces in one grid cell rather than taking them out of flow', () => {
+      const css = readFileSync(
+        join(__dirname, '..', 'src', 'live', 'srs', 'srs-review.css'),
+        'utf8',
+      );
+      expect(css).toMatch(/\.srs-flip-card\s*\{[^}]*display:\s*grid/);
+      const face = /\.srs-face\s*\{([^}]*)\}/.exec(css)![1];
+      expect(face).toMatch(/grid-area:\s*1\s*\/\s*1/);
+      expect(face).not.toMatch(/position:\s*absolute/);
     });
   });
 });

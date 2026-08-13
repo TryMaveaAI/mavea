@@ -20,7 +20,7 @@ import {
 } from './fit';
 
 const isSerif = (skin: SlideSkin): boolean =>
-  skin.fonts.allSerif || /Serif|Garamond|Newsreader|Spectral|DM Serif/.test(skin.fonts.display);
+  skin.fonts.allSerif || /Serif|Garamond|Newsreader|Spectral|Bodoni/.test(skin.fonts.display);
 
 /** A tiny 2-step ladder for the cover/closing standfirst: a torture-length subtitle shrinks and
  *  gains a clamp line instead of just ellipsizing hard at a single flat size. `base` is the skin's

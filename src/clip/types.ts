@@ -16,13 +16,17 @@ export type ClipQuality = 'balanced' | 'high' | 'ultra';
  */
 export type ClipTheme = 'aurora' | 'ember' | 'ocean' | 'chalk';
 
-/** The finished artifact: an in-memory video Blob (MP4 where supported, else WebM). */
+/** The finished artifact: an approved open-codec video Blob (MP4 with AV1 + Opus when the
+ *  browser can encode it, WebM otherwise). Large local exports may keep that Blob
+ *  browser-file-backed until the download/share path releases it. */
 export interface ClipResult {
   blob: Blob;
-  /** The resolved MIME (e.g. 'video/mp4' or 'video/webm') — drives the download extension. */
+  /** The resolved container MIME — drives the download extension. */
   type: string;
   /** A representative still (or the clip itself) for share previews. */
   poster: Blob;
   hasAudio: boolean;
   durationMs: number;
+  /** Release temporary browser-backed storage, when the producer needed it. */
+  dispose?: () => void | Promise<void>;
 }

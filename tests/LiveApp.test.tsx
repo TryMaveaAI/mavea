@@ -235,10 +235,9 @@ describe('LiveApp — mobile session-rail toggle', () => {
   });
 });
 
-// jsdom has no SpeechRecognition, the same situation as Firefox/Safari — clicking any voice
-// affordance used to do NOTHING (no listening state, no error). These prove the failure is
+// jsdom has no microphone capture, so clicking any voice affordance must not do nothing. These prove the failure is
 // now visible: a friendly inline notice near the composer instead of a dead click.
-describe('LiveApp — voice failures are visible (no SpeechRecognition)', () => {
+describe('LiveApp — local voice failures are visible', () => {
   it('wizard "Start talking" surfaces the unsupported-browser notice instead of a silent no-op', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });

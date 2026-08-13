@@ -1,6 +1,6 @@
 // Five curated voice presets — calm, conversational, listenable for long sessions.
 // Each preset maps a friendly label to a Kokoro TTS voice ID — the only voice engine Mavéa
-// uses (the robotic browser speechSynthesis voice is intentionally unsupported).
+// uses (vendor-controlled browser voices are intentionally unsupported).
 //
 // Storage keys are defined here so Demo (TweaksPanel) and Live (LiveSettings) share a single
 // source of truth for the localStorage keys.

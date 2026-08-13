@@ -24,7 +24,7 @@ import { classifySource, classifyCorrectionSource } from './memory/provenance';
 import { correctionUpdate } from './memory/procedural';
 import { saveCanvas } from './library/store';
 import type { SavedSession } from './session/store';
-import type { TurnFrame } from './history';
+import { createTurnFrameId, type TurnFrame } from './history';
 import type { ChatMessage } from './providers/types';
 import type { Attachment } from './attachments';
 import { isSpeaking, type SpokenLine } from '../voice/tts';
@@ -44,6 +44,19 @@ export type LiveStatus = 'idle' | 'thinking' | 'speaking' | 'showing';
  *  `status` (which is presence/loading): `awaiting_input` typically coincides with `showing` —
  *  a partial answer is up, its holes glowing, while we wait for the user to fill them. */
 export type TurnPhase = 'normal' | 'awaiting_input';
+
+/** Everything Retry needs to re-run a failed turn EXACTLY as it was asked: the friendly
+ *  `question` to SHOW on the card, `retry` — the prompt to RE-RUN (the raw instruction for a
+ *  synthetic turn, which must run, not be shown) — and the inputs the ask carried. Those inputs
+ *  are cleared from the composer on submit, so without carrying them here an attachment-only ask
+ *  retried as a question about a file that was no longer attached. */
+export type FailedTurn = LiveError & {
+  question: string;
+  retry: string;
+  attachments?: Attachment[];
+  selectedBlocks?: Block[];
+  inkIntents?: InkIntent[];
+};
 
 export interface LiveTurnState {
   history: ChatMessage[];
@@ -85,11 +98,9 @@ export interface LiveTurnState {
    *  thread's turns folded onto one board). null = off. Non-destructive: it overrides only what the
    *  canvas renders, never frames/history, and any navigation or new turn clears it. */
   viewOverride: ConversationSpec | null;
-  /** The last turn's FAILURE, when the provider call produced no answer. Carries the friendly
-   *  `question` to SHOW on the retry card, and `retry` — the exact prompt to RE-RUN (the raw
-   *  instruction for a synthetic turn, which must run, not be shown). A failed turn never enters
-   *  history, frames, or the library — it is an error state, not content. Cleared next turn. */
-  error: (LiveError & { question: string; retry: string }) | null;
+  /** The last turn's FAILURE, when the provider call produced no answer. A failed turn never
+   *  enters history, frames, or the library — it is an error state, not content. Cleared next turn. */
+  error: FailedTurn | null;
   /** The primary DATA SHAPE of the block currently streaming in (resolved from its "type" key by
    *  the engine, which holds the catalog) — labels the in-progress skeleton with the real kind
    *  without this state ever reaching the catalog. Null between blocks and outside a streamed turn. */
@@ -223,7 +234,7 @@ type Action =
     }
   | { type: 'idle' }
   // The turn FAILED (provider error): show the error state, keep the prior canvas untouched.
-  | { type: 'error'; error: LiveError & { question: string; retry: string } }
+  | { type: 'error'; error: FailedTurn }
   | { type: 'spot'; spot: string | null }
   // The streaming block's type (skeleton label) and the mid-turn search sources.
   | { type: 'pending'; pending: string | null }
@@ -367,6 +378,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
       // answer hero captions it correctly — without this it floated over the previous session's last
       // frame and the hero kept showing that stale ask. No spoken narration to store (none replays).
       const restoredFrame: TurnFrame = {
+        id: createTurnFrameId(a.at),
         question: a.question,
         narration: '',
         mode: 'replace',
@@ -524,10 +536,13 @@ export interface UseLiveTurn extends LiveTurnState {
    *  the face narrates, the canvas reveals, the spotlight walk plays — with NO model call. It
    *  drives the same `start → speak → show` reducer path a real turn does, so the surface can't
    *  tell the difference. `question` is the ask shown in the transcript/AnswerHero. */
+  /** `silent` seeds the canvas without performing it — no voice, no spotlight walk, instant
+   *  reveal — while the timeline still records the AUTHENTIC frame (narration + tour intact),
+   *  so a video cut or replay of a jumped-to boot is never missing its narration. */
   showFrame: (
     frame: TurnFrame,
     question: string,
-    opts?: { interrupt?: boolean; revealNow?: boolean },
+    opts?: { interrupt?: boolean; revealNow?: boolean; silent?: boolean },
   ) => void;
   /** The spec actually on screen — a jumped-to past frame, or the live head. */
   viewSpec: ConversationSpec | null;
@@ -609,6 +624,16 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // saved session, retry). For an ordinary turn this IS the user's words; for a synthetic
       // turn it's a short friendly label so the raw instruction prompt never shows.
       const displayText = displayAs?.trim() || userText;
+      // The inputs this ask carried, stamped onto every failure below so Retry re-runs the SAME
+      // turn. The composer clears them on submit, so an error that stored only the text retried
+      // an attachment-only ask with nothing attached.
+      const asked = {
+        question: displayText,
+        retry: userText,
+        attachments,
+        selectedBlocks,
+        inkIntents,
+      };
       cancelSpeak?.();
       // Snapshot the canvas BEFORE this turn streams/replaces it — that's the one to keep
       // in history if this turn wipes the page. A fresh standalone start has no prior canvas.
@@ -711,8 +736,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             error: {
               kind: 'network',
               message: "Mavéa couldn't finish loading. Check your connection and try again.",
-              question: displayText,
-              retry: userText,
+              ...asked,
             },
           });
           return;
@@ -843,7 +867,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // (for an ordinary turn they're identical; for a synthetic turn the prompt must run, not show).
         dispatch({
           type: 'error',
-          error: { ...result.error, question: displayText, retry: userText },
+          error: { ...result.error, ...asked },
         });
         return;
       }
@@ -932,8 +956,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           error: {
             kind: 'http',
             message: "Something went wrong putting that answer together — let's try again.",
-            question: displayText,
-            retry: userText,
+            ...asked,
           },
         });
         return;
@@ -1105,7 +1128,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // runner in LiveApp then walks the spotlight identically, skipping stop 0 so the opener never
   // double-speaks. No model, no key, no network.
   const showFrame = useCallback(
-    (frame: TurnFrame, question: string, opts?: { interrupt?: boolean; revealNow?: boolean }) => {
+    (
+      frame: TurnFrame,
+      question: string,
+      opts?: { interrupt?: boolean; revealNow?: boolean; silent?: boolean },
+    ) => {
+      const silent = opts?.silent === true;
       // Start the frame's block-family chunks NOW, so by the time the narrate-then-reveal beat
       // mounts the canvas the families are in — a tour chapter (or a library re-open) must never
       // hold an empty grid mid-narration on a slow machine.
@@ -1118,8 +1146,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // of waiting for audio that may be most of a sentence away.
       const speakingAtCall = isSpeaking();
       dispatch({ type: 'start', fresh: false });
-      dispatch({ type: 'speak', narration: frame.narration });
-      const spokenHandle = speak?.(frame.spoken ?? frame.narration);
+      if (!silent) dispatch({ type: 'speak', narration: frame.narration });
+      const spokenHandle = silent ? undefined : speak?.(frame.spoken ?? frame.narration);
       const nextHistory: ChatMessage[] = [
         ...historyRef.current,
         { role: 'user', content: question },
@@ -1151,7 +1179,9 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           history: nextHistory,
           mode: frame.mode,
           prior: nextSnap,
-          tour: frame.tour,
+          // A silent seed lands the canvas without performing the walk; the recorded `frame`
+          // below keeps the authentic tour so replays and video cuts stay complete.
+          tour: silent ? [] : frame.tour,
           spot,
           frame,
           priorSpec,
@@ -1159,8 +1189,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           freshTimeline: false,
         });
       };
-      if (opts?.revealNow) {
-        // Muted lands the whole answer at once — a paced beat has no voice to sync to.
+      if (opts?.revealNow || silent) {
+        // Muted or silent lands the whole answer at once — a paced beat has no voice to sync to.
         reveal();
       } else if (speakingAtCall) {
         // Mid-coach-line (walkthrough): the proven short beat, so the face is already talking

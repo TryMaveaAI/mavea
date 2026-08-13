@@ -187,30 +187,33 @@ export function SrsReview({
     ? `${running.length - index} to look at again`
     : `${index + 1} / ${total}`;
 
-  // The scrim itself carries the click/keyboard "dismiss" affordance (it wraps the whole review
-  // shell, so it can't be a real <button>); only a click or Enter/Space landing directly on the
-  // backdrop closes it — anything that lands on the shell's own content is left alone.
+  // Cards this scope still holds that the session cap kept out of THIS round. Read once, when the
+  // session ends, so "the rest will keep" is honest instead of implying the deck is finished.
+  const moreLeft = useMemo(
+    () =>
+      done
+        ? getStudyQueue(scope ?? {}, Date.now(), new Set(queue.map((c) => c.id))).length > 0
+        : false,
+    // Evaluated at completion only; `queue` and `scope` are fixed for the life of the session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [done],
+  );
+
+  // The scrim stays presentational — a role="button" wrapper around the dialog is a nested
+  // interactive, and Escape plus the ✕ button already give the keyboard the same exit. Only a
+  // click landing directly on the backdrop closes it; anything on the shell's content is left alone.
   const closeOnBackdrop = (e: { target: EventTarget; currentTarget: EventTarget }): void => {
     if (e.target === e.currentTarget) onClose();
   };
 
   return (
-    <div
-      className="srs-scrim"
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
-      onClick={closeOnBackdrop}
-      onKeyDown={(e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        if (e.key === ' ') e.preventDefault();
-        closeOnBackdrop(e);
-      }}
-    >
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+    <div className="srs-scrim" onClick={closeOnBackdrop}>
       <div
         className="srs-shell"
         ref={shellRef}
         role="dialog"
+        aria-modal="true"
         aria-label={copy.dialogLabel}
         tabIndex={-1}
       >
@@ -262,6 +265,7 @@ export function SrsReview({
                 </span>
               ))}
             </div>
+            {moreLeft && <div className="srs-done-sub">{copy.moreLeft}</div>}
             <button type="button" className="srs-close-action" onClick={onClose}>
               Close
             </button>

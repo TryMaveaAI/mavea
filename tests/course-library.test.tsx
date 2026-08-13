@@ -224,6 +224,36 @@ describe('CoursesApp — the courses library', () => {
       expect(screen.queryByRole('dialog', { name: /New course/i })).toBeNull();
     });
 
+    it('can be left mid-build — Escape aborts the generation instead of trapping the user for a minute and a half', async () => {
+      let signal: AbortSignal | undefined;
+      mockGenerateCourse.mockImplementation(
+        (_topic: string, _cfg: ModelConfig, opts?: { signal?: AbortSignal }) => {
+          signal = opts?.signal;
+          // A build that never settles on its own: the only way out is the cancel path.
+          return new Promise<TopicCourse>(() => {});
+        },
+      );
+      render(<CoursesApp />);
+      fireEvent.click(
+        within(screen.getByRole('banner')).getByRole('button', { name: /New course/i }),
+      );
+      fireEvent.change(screen.getByPlaceholderText(/linear algebra/i), {
+        target: { value: 'Rust ownership' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Build course/i }));
+      await waitFor(() => expect(mockGenerateCourse).toHaveBeenCalledTimes(1));
+      expect(screen.getByText(/Building your syllabus/i)).toBeInTheDocument();
+
+      // The close control stays live while building, and says what it now does.
+      expect(
+        within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel building course' }),
+      ).toBeEnabled();
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      expect(screen.queryByRole('dialog', { name: /New course/i })).toBeNull();
+      expect(signal?.aborted).toBe(true);
+    });
+
     it('prefills a suggested topic but still waits for an explicit Build press', () => {
       render(<CoursesApp />);
       fireEvent.click(screen.getByRole('button', { name: 'Personal finance basics' }));

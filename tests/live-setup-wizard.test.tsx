@@ -52,6 +52,16 @@ describe('SetupWizard — first-run', () => {
     expect(screen.getByText('Claude')).toBeInTheDocument();
   });
 
+  it('explains the first model choice and provider cost and privacy boundary', () => {
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+
+    expect(screen.getByText(/start there for faster, lower-cost use/i)).toBeVisible();
+    expect(
+      screen.getByText(/Requests pass through this deployment to the provider/i),
+    ).toBeVisible();
+    expect(screen.getByText(/usage charges, privacy, and retention terms apply/i)).toBeVisible();
+  });
+
   it('does not call speak on mount — audio is reserved for first Go arrival', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);

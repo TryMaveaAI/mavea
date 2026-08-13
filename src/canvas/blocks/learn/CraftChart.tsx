@@ -52,13 +52,15 @@ export function CraftChart({
 
   // ── Geometry (square cells; the viewBox grows with the grid, the SVG width is 100%) ──────────
   const CELL = 16; // nominal cell size in viewBox units — width:100% + viewBox scales it to fit.
-  const RULER = 14; // gutter for the stitch/row numbers on the top + right edges.
-  const gridW = nCols * CELL;
-  const gridH = nRows * CELL;
+  const RULER = 14; // top gutter for the stitch numbers, and the left offset the grid starts at.
   // Separate left and right gutters: cells begin after the top/left ruler, while the row numbers
   // sit after the final cell. Sharing one gutter made those right-edge numbers paint outside the
-  // SVG at the narrowest breakpoint.
-  const vbW = gridW + RULER * 2;
+  // SVG at the narrowest breakpoint. The right gutter is wider because it holds a whole (up to
+  // two-digit) number at .lr-cc-num's size, not just the descender room the top ruler needs.
+  const RULER_R = 20;
+  const gridW = nCols * CELL;
+  const gridH = nRows * CELL;
+  const vbW = gridW + RULER + RULER_R;
   const vbH = gridH + RULER;
 
   const colStride = rulerStride(nCols);

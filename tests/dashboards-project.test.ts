@@ -160,6 +160,24 @@ describe('projectWidgetBlock', () => {
     expect(
       (projectWidgetBlock(filled, w) as unknown as { props: { stat: string } }).props.stat,
     ).toBe('4.18%');
+    // No raw token to lean on: the unit still has to land where that unit is written, or the card
+    // reads "1624.95$" beside a delta chip reading "+$12.40".
+    const bare = dash({
+      metrics: [
+        {
+          id: 'm10y',
+          label: 'Price',
+          query: 'q',
+          sourceQuote: { text: 'x', saidAt: 0 },
+          lastValue: 1624.95,
+          unit: '$',
+          origin: 'search',
+        },
+      ],
+    });
+    expect((projectWidgetBlock(bare, w) as unknown as { props: { stat: string } }).props.stat).toBe(
+      '$1624.95',
+    );
   });
 
   it('re-derives the metric-linked card’s conf every render instead of freezing it at build time', () => {

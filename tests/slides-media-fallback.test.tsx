@@ -8,9 +8,10 @@ import { SLIDE_SKINS } from '../src/slides/skins/registry';
 afterEach(cleanup);
 
 const CTX = { index: 0, total: 1 };
-// It must clear the render-time host allowlist so this test exercises the separate network/load
+// It must clear the render-time exact-file list so this test exercises the separate network/load
 // failure path. jsdom never requests it; fireEvent.error below is the deterministic 404.
-const DEAD_URL = 'https://images.unsplash.com/dead-test-fixture-does-not-exist.jpg';
+const DEAD_URL =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
 
 describe('teamGrid falls back to the initials monogram when a photo fails to load', () => {
   it('a dead photo swaps to the monogram without disturbing a member who never had one', () => {

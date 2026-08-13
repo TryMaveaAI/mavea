@@ -855,25 +855,29 @@
   fill: #fff;
   font-weight: 700;
 }
+/* Type inside the viewBox is in USER UNITS: the card renders the 360-wide box at roughly 320px,
+   so an authored size lands on screen about 11% smaller. These sizes are set so the axis
+   furniture still clears the ~9px legibility floor after that scale-down (10px did not).
+   .cfm-class is mirrored by CLASS_FONT_SIZE in ConfusionMatrix.tsx — change both together. */
 .cfm-class {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 .cfm-axis-title {
   fill: var(--text-secondary);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-style: italic;
   font-weight: 600;
 }
 .cfm-total {
   fill: var(--text-faint);
-  font-size: 10px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 .cfm-total-hd {
   fill: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 .cfm-readout {

@@ -93,7 +93,7 @@ export interface VideoEmbedProps {
   footer?: HtmlString;
 }
 
-/** A pin on a REAL map (Leaflet + OpenStreetMap tiles). The model supplies actual coordinates —
+/** A pin on a REAL map (MapLibre + OpenFreeMap tiles). The model supplies actual coordinates —
  *  it reliably knows lat/lng for real places — so this renders an interactive, draggable map
  *  rather than the stylized grid. */
 export interface GeoMarker {
@@ -175,17 +175,15 @@ export interface PaletteProps {
 }
 
 // ───────────────────────── photo ─────────────────────────
-// A REAL photograph (vs the gradient placeholders above): a free-commercial image the model found
-// and we verified loads. Mavéa does not generate images, so nothing here is AI-made — and nothing
-// is ever labelled as though it were.
+// A reviewed photograph (vs the gradient placeholders above). Models cannot clear image rights;
+// runtime URLs survive only when the exact file appears in the media clearance set.
 export interface PhotoProps {
   title?: string;
   icon?: IconKey;
   iconColor?: AccentVar;
-  /** The image URL — https, on the allowlisted-host set (see lib/safeImageUrl). */
+  /** A reviewed bundled path or exact cleared remote URL (see lib/safeImageUrl). */
   src: string;
-  /** Extra real-photo URLs the model proposed (preference order). We load-test `src` + these and
-   *  render the first that actually loads, so a dead/hallucinated link never shows a broken image. */
+  /** Extra individually cleared URLs in preference order. */
   candidates?: string[];
   /** Alt text; falls back to the caption/title. */
   alt?: string;
@@ -649,7 +647,7 @@ export interface WireframeProps {
 }
 
 // ───────────────────────── maproute ─────────────────────────
-/* An ordered route drawn over a REAL Leaflet map (same tiles + teardown as geomap): the
+/* An ordered route drawn over a REAL MapLibre map (same tiles + teardown as geomap): the
    waypoints connect into a polyline with numbered markers, beside an itinerary list and a
    distance/elevation summary. The model supplies actual coordinates (it reliably knows lat/lng);
    the leg order, polyline, and summary are computed from the waypoints — real-data-only. */
@@ -1208,7 +1206,7 @@ export interface SitePlanProps {
 }
 
 // ───────────────────────── zoningmap ─────────────────────────
-/* GeoMap's zoning overlay: the SAME real Leaflet map (markers, tiles, teardown) rendered by
+/* GeoMap's zoning overlay: the SAME real MapLibre map (markers, tiles, teardown) rendered by
    GeoMap, with an optional `zones` polygon layer color-filled by land-use category and a small
    legend chip row. Additive — GeoMap's own behavior is unchanged when `zones` is omitted, and
    `zoningmap` is a distinct, model-selectable catalog entry over the identical component/props

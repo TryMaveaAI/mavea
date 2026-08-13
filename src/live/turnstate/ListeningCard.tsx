@@ -10,14 +10,14 @@ export function ListeningCard({
   note,
 }: {
   transcript: string | null;
-  mode: 'tap' | 'always';
+  mode: 'tap' | 'hold' | 'always';
   /** Override the mode caption — e.g. think-out-loud's "Just listening · 4m — say
    *  'thoughts?' when you want me". Absent → the standard per-mode line. */
   note?: string;
 }): ReactElement {
   return (
     <div className="listen-stage">
-      <div className="listen-card" role="status" aria-live="polite">
+      <div className="listen-card">
         <span className="listen-eq" aria-hidden="true">
           <i></i>
           <i></i>
@@ -31,11 +31,16 @@ export function ListeningCard({
             <span className="listen-caret" aria-hidden="true"></span>
             {transcript ? '”' : ''}
           </div>
-          <div className="listen-note">
+          {/* Only the mode caption is a live region. The transcript line above mutates on every
+              recognized word, so announcing it would read the speaker's own words back at them
+              while they're still talking; the settled utterance is announced by the turn flow. */}
+          <div className="listen-note" role="status" aria-live="polite">
             {note ??
               (mode === 'always'
                 ? 'Always on — Mavéa answers when you finish a thought.'
-                : 'It sends when you pause — or tap the mic to stop.')}
+                : mode === 'hold'
+                  ? 'Release the mic or shortcut to send.'
+                  : 'It sends when you pause — or tap the mic to send now.')}
           </div>
         </div>
       </div>

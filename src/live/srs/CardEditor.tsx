@@ -155,27 +155,24 @@ export function CardEditor(p: Props): ReactElement {
     p.mode === 'edit' ? 'Edit card' : (p.heading ?? (rows.length > 1 ? 'Add cards' : 'Add card'));
   const decks = p.decks ?? [];
 
-  // The scrim itself carries the click/keyboard "dismiss" affordance (it wraps the whole sheet, so
-  // it can't be a real <button>); only a click or Enter/Space landing directly on the backdrop
-  // closes it — anything that lands on the sheet's own content is left alone.
+  // The scrim stays presentational — a role="button" wrapper around the dialog is a nested
+  // interactive, and Escape plus the ✕ button already give the keyboard the same exit. Only a
+  // click landing directly on the backdrop closes it; anything on the sheet's content is left alone.
   const closeOnBackdrop = (e: { target: EventTarget; currentTarget: EventTarget }): void => {
     if (e.target === e.currentTarget) p.onClose();
   };
 
   return (
-    <div
-      className="fc-scrim"
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
-      onClick={closeOnBackdrop}
-      onKeyDown={(e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        if (e.key === ' ') e.preventDefault();
-        closeOnBackdrop(e);
-      }}
-    >
-      <div className="fc-ed-shell" ref={shellRef} role="dialog" aria-label={heading} tabIndex={-1}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+    <div className="fc-scrim" onClick={closeOnBackdrop}>
+      <div
+        className="fc-ed-shell"
+        ref={shellRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={heading}
+        tabIndex={-1}
+      >
         <div className="fc-ed-head">
           <div className="fc-ed-title">{heading}</div>
           {drafting && <span className="fc-ed-drafting">Drafting a suggestion…</span>}

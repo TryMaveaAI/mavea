@@ -1,0 +1,97 @@
+import { replayFrame } from '../../live/replay';
+import type { TurnFrame } from '../../live/history';
+import type { ConversationScene, ConversationTurnAudio, ConversationVideoOptions } from './types';
+
+export const CONVERSATION_VIDEO_MAX_MS = 180_000;
+const QUESTION_LEAD_MS = 650;
+const TURN_TAIL_MS = 350;
+
+export function estimateTurnDurationMs(frame: TurnFrame): number {
+  const lines = [
+    frame.spoken ?? frame.narration,
+    ...frame.tour.map((t) => t.saySpoken ?? t.say ?? ''),
+  ];
+  const characters = lines.reduce((sum, line) => sum + line.trim().length, 0);
+  return QUESTION_LEAD_MS + TURN_TAIL_MS + Math.max(1_800, (characters / 14) * 1_000);
+}
+
+export function estimateConversationDurationMs(frames: readonly TurnFrame[]): number {
+  return frames.reduce((sum, frame) => sum + estimateTurnDurationMs(frame), 0);
+}
+
+export function currentTopicStart(frames: readonly TurnFrame[]): number {
+  for (let i = frames.length - 1; i >= 0; i--) {
+    const frame = frames[i];
+    if (
+      frame?.topicShift === true ||
+      (frame?.topicShift === undefined && frame?.mode === 'replace')
+    ) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+function cueStart(cueIndex: number, cueCount: number, audio: ConversationTurnAudio): number {
+  // Retained/synthesized spans put the opener first and tour lines after it. When a stop has no
+  // spoken line, distribute it through the voiced body so it still gets a visible moment.
+  const spoken = audio.spans[cueIndex + 1];
+  if (spoken) return spoken.startMs;
+  const body = Math.max(0, audio.durationMs - QUESTION_LEAD_MS - TURN_TAIL_MS);
+  return QUESTION_LEAD_MS + (body * (cueIndex + 1)) / (cueCount + 1);
+}
+
+export function buildConversationTimeline(
+  frames: readonly TurnFrame[],
+  audio: readonly ConversationTurnAudio[],
+  options: ConversationVideoOptions,
+): ConversationScene[] {
+  const scenes: ConversationScene[] = [];
+  let globalAt = 0;
+  frames.forEach((frame, turnIndex) => {
+    const turnAudio = audio[turnIndex];
+    if (!turnAudio) return;
+    const replay = replayFrame(frame);
+    const cueTimes = replay.cues.map((_, i) => cueStart(i, replay.cues.length, turnAudio));
+    const boundaries = [0, QUESTION_LEAD_MS, ...cueTimes, turnAudio.durationMs]
+      .map((value) => Math.max(0, Math.min(turnAudio.durationMs, value)))
+      .filter((value, index, all) => index === 0 || value > all[index - 1]);
+    let ink: ConversationScene['ink'] = [];
+
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const localAt = boundaries[i];
+      const next = boundaries[i + 1];
+      const cueIndex = cueTimes.findIndex((value) => value === localAt);
+      const cue = cueIndex >= 0 ? replay.cues[cueIndex] : undefined;
+      if (cue && options.penMarks) {
+        ink = [
+          ...ink,
+          ...cue.marks.map((mark, markIndex) => ({
+            spot: cue.spot,
+            line: cue.say,
+            mark,
+            delayMs: markIndex * 240,
+            ...(mark.kind === 'connect' && typeof mark.onIndex === 'number'
+              ? { toSpot: frame.spec.blocks[mark.onIndex]?.id }
+              : {}),
+          })),
+        ];
+      }
+      const currentSpan = [...turnAudio.spans]
+        .reverse()
+        .find((span) => span.startMs <= localAt && span.endMs > localAt);
+      scenes.push({
+        frame,
+        turnIndex,
+        startMs: globalAt + localAt,
+        durationMs: Math.max(1, next - localAt),
+        spot: options.spotlights ? (cue?.spot ?? null) : null,
+        caption: options.captions ? (currentSpan?.text ?? null) : null,
+        ink,
+        questionOnly: i === 0,
+      });
+    }
+    globalAt += turnAudio.durationMs;
+  });
+  return scenes;
+}

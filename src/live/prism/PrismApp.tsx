@@ -1,10 +1,9 @@
 // PrismApp — standalone surface for Prism at #/prism. Upload-first with a staging step:
 // files are collected and shown (add more, remove any) before you confirm and open the map.
 // The hero and drop zone stay visible throughout — staged files appear inline below the zone.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { homeTarget } from '../../lib/homeTarget';
 import { applyTheme, readTheme } from '../../lib/theme';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
 import {
   fileToPrismAttachment,
   attachmentFileError,
@@ -20,9 +19,9 @@ import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import './prism-app.css';
 
 const prismWorkbench = createPreloadableLazy(() =>
-  import('./PrismOverlay').then((m) => ({ default: m.PrismOverlay })),
+  import('./PrismWorkbench').then((m) => ({ default: m.PrismWorkbench })),
 );
-const PrismOverlay = prismWorkbench.Component;
+const PrismWorkbench = prismWorkbench.Component;
 
 const ERROR_LABEL: Record<AttachmentError, string> = {
   'too-large': 'File is too large. Documents up to 40 MB, images up to 10 MB.',
@@ -40,12 +39,6 @@ export function PrismApp(): ReactElement {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // The Live config as-is (default Gemini). We do NOT gate on a browser-side key: the same-origin
-  // /llm proxy injects the dev key, so Prism works keyless in dev exactly like the Live surface; a
-  // user key, when present, is used. (The old key-gate returned null and showed "connect a model"
-  // even though the proxy could answer.)
-  const cfg = useMemo(() => toModelConfig(getLiveConfigV2()), []);
 
   const stageFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -104,7 +97,7 @@ export function PrismApp(): ReactElement {
   if (docs) {
     return (
       <AsyncSurface label="Prism workbench" overlay>
-        <PrismOverlay pdf={docs} cfg={cfg} onClose={() => setDocs(null)} />
+        <PrismWorkbench pdf={docs} onClose={() => setDocs(null)} />
       </AsyncSurface>
     );
   }

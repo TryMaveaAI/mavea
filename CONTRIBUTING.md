@@ -27,12 +27,14 @@ the tour stays reachable afterward from the "Take the tour" nav link, ⌘K, or a
 To work on Live mode, click **Open Mavéa** and paste a hosted provider key (Live is BYOK:
 Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok).
 
-Voice runs through [Kokoro](https://github.com/remsky/Kokoro-FastAPI) in Docker; `pnpm dev` and
-`pnpm preview` both start it for you automatically. To run or stop it on its own:
+Local speech uses [Kokoro](https://github.com/remsky/Kokoro-FastAPI) for narration and whisper.cpp
+for microphone transcription; `pnpm dev` starts both automatically. Podman is the recommended
+free/open-source runtime, while Docker also works under its separate terms. To run or stop the
+services on their own:
 
 ```sh
-docker compose up -d     # Kokoro TTS on :8880 — dev and preview both proxy /tts to it
-docker compose down      # stop it (it otherwise stays up between dev sessions)
+podman compose up -d --build # Kokoro TTS on :8880 and whisper.cpp STT on :8100
+podman compose down           # stop them (they otherwise stay up between dev sessions)
 ```
 
 ## Before a maintainer opens a PR
@@ -61,7 +63,7 @@ A **pre-commit hook** (Husky + lint-staged) auto-formats and lints your staged f
 **pre-push hook** runs `pnpm typecheck` and `pnpm lint` as a fast local sanity check; the full gate
 runs in CI. CI re-runs the
 same checks on each push and pull request, plus a few gates that only run there: dead-code/dependency
-checks (`pnpm knip`, `pnpm check:licenses` + `pnpm check:vulnerabilities`, all bundled in `pnpm verify:full`), a secret scan and
+checks (`pnpm knip` + `pnpm check:vulnerabilities`, bundled in `pnpm verify:full`), a secret scan and
 Semgrep SAST pass, and — on pull requests — a Conventional Commits lint over the PR's commits.
 
 Changes are reviewed against our [**engineering standards**](./docs/ENGINEERING.md) — the
@@ -75,31 +77,31 @@ the complete list).
 
 **Everyday dev loop**
 
-| Script    | Does                                                                                                                                     |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `dev`     | Full local stack: brings up the Kokoro voice container, then Vite. Serves the app without voice (captions only) if Docker isn't running. |
-| `dev:web` | Vite alone, no voice container.                                                                                                          |
-| `build`   | Typecheck, then production build to `dist/`.                                                                                             |
-| `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx @mavea/mavea` runs.                                                           |
-| `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                               |
-| `actions` | Starts the actions gateway (`:8910`) that proxies Live's confirm-to-execute actions (Calendar, Gmail, Slack, …) to third-party APIs.     |
+| Script    | Does                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dev`     | Full local stack: starts Kokoro + whisper.cpp with Podman or Docker, then Vite. Serves the app without local speech if neither runtime is ready. |
+| `dev:web` | Vite alone, no voice container.                                                                                                                  |
+| `build`   | Typecheck, then production build to `dist/`.                                                                                                     |
+| `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx @mavea/mavea` runs.                                                                   |
+| `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                                       |
+| `actions` | Starts the actions gateway (`:8910`) that proxies Live's confirm-to-execute actions (Calendar, Gmail, Slack, …) to third-party APIs.             |
 
 **Quality gates** (what CI runs; the pre-push hook runs only `typecheck` and `lint`)
 
-| Script           | Does                                                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `typecheck`      | `tsc --noEmit` — type errors only, no build output.                                                                                                                 |
-| `lint`           | ESLint over the repo.                                                                                                                                               |
-| `lint:fix`       | ESLint with auto-fix.                                                                                                                                               |
-| `format`         | Prettier, writes changes in place.                                                                                                                                  |
-| `format:check`   | Prettier, fails if anything is unformatted (no writes) — what CI runs.                                                                                              |
-| `test`           | Vitest suite, once.                                                                                                                                                 |
-| `test:watch`     | Vitest in watch mode.                                                                                                                                               |
-| `size`           | Checks the landing page's eager (gzipped) bundle against the size budget.                                                                                           |
-| `knip`           | Finds unused files, exports, and dependencies.                                                                                                                      |
-| `check:licenses` | Verifies every dependency's license is on the allowed list.                                                                                                         |
-| `verify`         | The full pre-PR gate: `check:reference-examples → check:gallery-fixtures → typecheck → lint → format:check → test → build → size → check:artifact → check:package`. |
-| `verify:full`    | `verify` plus `knip`, `check:licenses`, and `check:vulnerabilities` (OSV.dev) — what a release should pass, not every PR.                                           |
+| Script           | Does                                                                                                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `typecheck`      | `tsc --noEmit` — type errors only, no build output.                                                                                      |
+| `lint`           | ESLint over the repo.                                                                                                                    |
+| `lint:fix`       | ESLint with auto-fix.                                                                                                                    |
+| `format`         | Prettier, writes changes in place.                                                                                                       |
+| `format:check`   | Prettier, fails if anything is unformatted (no writes) — what CI runs.                                                                   |
+| `test`           | Vitest suite, once.                                                                                                                      |
+| `test:watch`     | Vitest in watch mode.                                                                                                                    |
+| `size`           | Checks the landing page's eager (gzipped) bundle against the size budget.                                                                |
+| `knip`           | Finds unused files, exports, and dependencies.                                                                                           |
+| `check:licenses` | Verifies dependency licenses plus the generated-media, voice, bundled-media, font, and map-service commercial-use policy.                |
+| `verify`         | The full pre-PR gate: fixture checks → license policy → typecheck → lint → format:check → test → build → size → artifact/package checks. |
+| `verify:full`    | `verify` plus `knip` and `check:vulnerabilities` (OSV.dev) — what a release should pass, not every PR.                                   |
 
 **Scaffolding**
 
@@ -197,12 +199,14 @@ prop-shape examples from it, and the render/leak gauntlets iterate it. To add on
 
 No renderer change is required.
 
-### Add a demo persona (a recorded landing session)
+### Add a curated demo persona
 
 1. Add an identity to `demo/cast.ts` and a script (asks + feature beats) to `demo/scripts.ts` —
    keep every ask publicly answerable or self-contained (the persona states their own numbers).
-2. Bake the real session: `ONLY=<id> GEMINI_API_KEY=… npx vite-node scripts/build-demo-corpus.mts`,
-   review the logged ✓/✗ expectations, and re-run to re-roll weak turns.
+2. Bake the model output: `ONLY=<id> GEMINI_API_KEY=… npx vite-node scripts/build-demo-corpus.mts`,
+   review the logged ✓/✗ expectations, remove unsupported claims, and re-run to re-roll weak turns.
+   The shipped UI must label the result as a fictional, curated prerecorded example with scripted
+   feature choreography, never as a live result or customer session.
 3. `tests/demo-corpus.test.ts` verifies the cast, script, and baked shard stay in lockstep.
 
 **Minimal shape:**

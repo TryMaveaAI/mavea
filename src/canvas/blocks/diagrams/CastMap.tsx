@@ -285,7 +285,7 @@ function Edge({
         opacity={0.82}
       />
       {link.label && (
-        <g transform={`translate(${bx.toFixed(1)}, ${by.toFixed(1)})`}>
+        <g transform={`translate(${bx.toFixed(1)}, ${(by - 16).toFixed(1)})`}>
           <rect
             className="cast-edge-lbl-bg"
             x={-labelW(link.label) / 2}

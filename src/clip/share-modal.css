@@ -24,6 +24,38 @@
   align-items: center;
   max-width: 1100px;
   width: 100%;
+  padding-top: 58px;
+  box-sizing: border-box;
+}
+.shm-tabs {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  /* left:50% puts the pill's LEFT EDGE on the midpoint; the shift back by half its own width is
+     what actually centers it in the space .shm-modal's padding-top reserves. */
+  translate: -50% 0;
+  display: inline-flex;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-full);
+  background: rgba(12, 14, 24, 0.78);
+}
+.shm-tabs button {
+  border: 0;
+  border-radius: var(--r-full);
+  padding: 9px 18px;
+  background: transparent;
+  color: rgba(236, 242, 248, 0.62);
+  font: 650 13px/1 var(--font);
+  cursor: pointer;
+}
+.shm-tabs button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+.shm-tabs button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 .shm-panel {
   flex: 1 1 0;
@@ -260,6 +292,18 @@
   font: 500 12px/1 var(--font);
   color: rgba(236, 242, 248, 0.6);
 }
+/* A failed export keeps the row open with the reason instead of an indeterminate bar — and lets it
+   wrap, since the reason is a sentence rather than a phase label. */
+.shm-progress[data-error='true'] {
+  height: auto;
+}
+.shm-progress[data-error='true'] .shm-progress-bar {
+  display: none;
+}
+.shm-progress[data-error='true'] .shm-progress-text {
+  color: color-mix(in oklab, var(--warning) 78%, white 20%);
+  line-height: 1.35;
+}
 
 .shm-stage {
   /* Must be allowed to SHRINK: a fixed stage next to the 480px control panel is how the
@@ -278,24 +322,17 @@
     0 0 0 1px var(--line);
   background: var(--surface-deep);
 }
-.shm-frame[data-directed='true'] {
-  animation: shm-directed-in 0.28s ease-out;
-}
-@keyframes shm-directed-in {
-  from {
-    opacity: 0.78;
-  }
-  to {
-    opacity: 1;
-  }
-}
+/* The tall frames budget the modal's fixed chrome out of the viewport before claiming height:
+   58px of modal padding-top for the tab pill + the scrim's 24px top and bottom gutters. Without
+   that subtraction a 90vh phone frame opened taller than every common laptop viewport, so the
+   preview's own controls sat below the fold behind a scrollbar. */
 .shm-frame[data-aspect='9:16'] {
-  height: min(90vh, 880px);
+  height: min(100dvh - 106px, 880px);
   aspect-ratio: 9 / 16;
   border-radius: 30px;
 }
 .shm-frame[data-aspect='1:1'] {
-  height: min(82vh, 760px);
+  height: min(100dvh - 106px, 82vh, 760px);
   aspect-ratio: 1 / 1;
   border-radius: 28px;
 }
@@ -389,22 +426,33 @@
     border-color 0.16s,
     transform 0.08s;
 }
-.shm-close:hover {
+.shm-close:hover:not(:disabled) {
   background: rgba(40, 40, 55, 0.8);
   border-color: rgba(255, 255, 255, 0.4);
 }
-.shm-close:active {
+.shm-close:active:not(:disabled) {
   transform: scale(0.92);
+}
+.shm-close:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 @media (max-width: 820px) {
   .shm-modal {
-    flex-direction: column-reverse;
+    /* Controls first, preview under them — DOM order, so the visual order and the focus order the
+       trap tabs through are the same one. The stylesheet alone owns this; the modal carries no
+       inline flex-direction to override it. */
+    flex-direction: column;
     gap: 20px;
   }
   .shm-panel {
     max-width: 100%;
     width: 100%;
+  }
+  .shm-tabs {
+    left: 14px;
+    translate: none;
   }
   .shm-frame[data-aspect='9:16'] {
     height: min(54vh, 520px);

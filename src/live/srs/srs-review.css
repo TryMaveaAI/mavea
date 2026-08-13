@@ -95,8 +95,11 @@
   cursor: pointer;
 }
 
+/* The two faces share one grid cell rather than being taken out of flow, so the TALLER of them
+   sizes the card — an absolutely-positioned back would spill a long answer straight over the
+   grade buttons below it. */
 .srs-flip-card {
-  position: relative;
+  display: grid;
   width: 100%;
   min-height: 200px;
   transform-style: preserve-3d;
@@ -107,8 +110,8 @@
 }
 
 .srs-face {
-  position: absolute;
-  inset: 0;
+  grid-area: 1 / 1;
+  position: relative;
   backface-visibility: hidden;
   border-radius: 14px;
   padding: 28px 28px 20px;

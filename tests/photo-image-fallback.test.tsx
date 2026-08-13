@@ -20,7 +20,8 @@ vi.mock('../src/hooks/useValidatedImage', () => ({
 
 import { Photo } from '../src/canvas/blocks/media/Photo';
 
-const SAFE = 'https://upload.wikimedia.org/a/b/Mars.jpg';
+const SAFE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
 
 beforeEach(() => {
   validated.current = { src: null, state: 'none' };
@@ -30,11 +31,7 @@ describe('Photo — a dead image never shows a broken placeholder', () => {
   it('degrades to a caption card (no img, no glyph) when the image fails but text exists', () => {
     validated.current = { src: null, state: 'none' };
     const { container } = render(
-      <Photo
-        title="Milwaukee + Chicago"
-        caption="Two lakefront skylines at dusk."
-        src="https://upload.wikimedia.org/dead.jpg"
-      />,
+      <Photo title="Milwaukee + Chicago" caption="Two lakefront skylines at dusk." src={SAFE} />,
     );
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('.me-photo')).toBeNull(); // no empty 16:10 image box
@@ -44,9 +41,7 @@ describe('Photo — a dead image never shows a broken placeholder', () => {
   });
 
   it('falls back to the title when there is no caption/footer', () => {
-    const { container } = render(
-      <Photo title="A Blue Whale" src="https://upload.wikimedia.org/dead.jpg" />,
-    );
+    const { container } = render(<Photo title="A Blue Whale" src={SAFE} />);
     expect(container.querySelector('.me-photo-card')).not.toBeNull();
     expect(container.textContent).toContain('A Blue Whale');
     expect(container.textContent).not.toMatch(/load image/i);
@@ -55,11 +50,7 @@ describe('Photo — a dead image never shows a broken placeholder', () => {
   it('drops itself (renders nothing + reports unrenderable) when it has NO text at all', () => {
     const onUnrenderable = vi.fn();
     const { container } = render(
-      <Photo
-        src="https://upload.wikimedia.org/dead.jpg"
-        blockId="live-3"
-        onUnrenderable={onUnrenderable}
-      />,
+      <Photo src={SAFE} blockId="live-3" onUnrenderable={onUnrenderable} />,
     );
     expect(container.firstChild).toBeNull();
     expect(onUnrenderable).toHaveBeenCalledWith('live-3');

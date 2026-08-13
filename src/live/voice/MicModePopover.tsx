@@ -6,12 +6,10 @@
 //
 // Reuses the app's own dropdown-row language (.more-menu-row/-name/-blurb, the Create/Practice/
 // Share/Explore menus) rather than inventing a new one — title + description per row, a check on
-// the active choice. Hold is still just the composer's existing press-and-hold gesture (always
-// available whenever the mic isn't in Always-on mode) rather than a mode with its own listening
-// lifecycle — but it IS a real, remembered preference: picking it keeps the mic in Tap's
-// underlying behavior while flipping the checkmark (and the default hint) to Hold, so the choice
-// the user actually made is what's reflected here, not silently collapsed into Tap.
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+// the active choice. Each row is a real, remembered interaction mode: Tap is one-shot, Always on
+// keeps the mic armed between utterances, and Hold captures only while the button or shortcut is
+// held.
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../../icons/icons';
 import { pttKeyLabel } from './useHoldToTalk';
 import type { PttSide } from '../useLiveConfig';
@@ -31,6 +29,12 @@ export function MicModePopover({
 }): ReactElement {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const chevronRef = useRef<HTMLButtonElement>(null);
+
+  const closeToTrigger = useCallback(() => {
+    setOpen(false);
+    chevronRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +42,9 @@ export function MicModePopover({
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setOpen(false);
+      // Escape unmounts the rows, so hand focus back to the badge that opened them — otherwise
+      // it lands on <body> and the keyboard user has to tab in from the top of the page again.
+      if (e.key === 'Escape') closeToTrigger();
     };
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('keydown', onKey);
@@ -46,12 +52,12 @@ export function MicModePopover({
       window.removeEventListener('pointerdown', onDown);
       window.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, closeToTrigger]);
 
   const heldKey = pttKeyLabel(pttKey || 'Alt', pttSide);
   const pick = (next: MicMode): void => {
     onChange(next);
-    setOpen(false);
+    closeToTrigger();
   };
   const rows: {
     key: MicMode;
@@ -63,21 +69,21 @@ export function MicModePopover({
     {
       key: 'tap',
       title: 'Tap',
-      blurb: 'Tap once, speak, tap to stop',
+      blurb: 'Tap once, then tap again to send',
       checked: mode === 'tap',
       onClick: () => pick('tap'),
     },
     {
       key: 'always',
       title: 'Always on',
-      blurb: 'Hands-free — responds to "Mavéa"',
+      blurb: 'Hands-free — listens for any speech',
       checked: mode === 'always',
       onClick: () => pick('always'),
     },
     {
       key: 'hold',
       title: `Hold ${heldKey}`,
-      blurb: `Push-to-talk with the ${heldKey} key`,
+      blurb: `Hold the mic or ${heldKey} to talk`,
       checked: mode === 'hold',
       onClick: () => pick('hold'),
     },
@@ -88,6 +94,7 @@ export function MicModePopover({
       <button
         type="button"
         className="mic-mode-chevron"
+        ref={chevronRef}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"

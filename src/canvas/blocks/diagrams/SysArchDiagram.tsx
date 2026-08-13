@@ -456,7 +456,7 @@ export function SysArchDiagram({
               .join(' · ');
             if (!caption) return null;
             return (
-              <text key={i} x={mx} y={my - 8} className="dg-edge-label" textAnchor="middle">
+              <text key={i} x={mx} y={my - 34} className="dg-edge-label" textAnchor="middle">
                 {truncate(caption, 26)}
               </text>
             );

@@ -38,9 +38,8 @@ function probe(url: string, timeoutMs: number, signal: AbortSignal): Promise<str
   });
 }
 
-/** Validate candidate image URLs and return the FIRST (in preference order) that actually loads —
- *  so a model that proposes a few real free-commercial photos per subject never shows a broken or
- *  hallucinated one. Probes run concurrently (fast) but the earliest-listed success wins (order =
+/** Validate candidate image URLs and return the FIRST (in preference order) that actually loads.
+ *  Probes run concurrently (fast) but the earliest-listed success wins (order =
  *  the model's preference). The probe also warms the browser cache, so the real <img> that renders
  *  the winner hits the cache instead of re-fetching. All probes abort on unmount/url-change (no
  *  leaked timers, listeners, or fetches). */

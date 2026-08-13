@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { Boxplot } from '../src/canvas/blocks/charts1/Boxplot';
@@ -591,6 +593,31 @@ describe('LifeWheel', () => {
     const { container } = render(<LifeWheel title="Balance" domains={domains(20)} />);
     expect(container.querySelectorAll('.c1-lw-leg')).toHaveLength(20);
     expect(container.querySelectorAll('.c1-lw-score')).toHaveLength(20);
+  });
+
+  // The wheel's in-figure type is authored in SVG user units, so what reaches the reader is
+  // `authored size × the figure's rendered width ÷ its viewBox width`. Sharing the radar's
+  // narrower 42cqi slot put a 444-unit-wide viewBox on screen at ~320px, shrinking every rim
+  // label to ~7px — well under the library's 9px legibility floor. The fix widens the figure
+  // rather than the type, so these two halves have to stay in step.
+  it('keeps in-figure type at or above the size the widened figure is sized around', () => {
+    const { container } = render(<LifeWheel title="Balance" domains={domains(8)} />);
+    const sizes = Array.from(container.querySelectorAll('text')).map((t) =>
+      Number(t.getAttribute('font-size')),
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(9);
+  });
+
+  it('gives the wheel its own figure width, and still honours the narrow-card cap', () => {
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/charts1/styles.css'), 'utf8');
+    // A `.c1-radar.c1-lw` override outranks the shared `.c1-radar` rules on the same element —
+    // including the narrow-card one — so the narrow cap has to be restated for the wheel or it
+    // silently stops applying and the figure overruns a phone-width card.
+    const overrides = Array.from(css.matchAll(/\.c1-radar\.c1-lw\s*\{([^}]*)\}/g));
+    expect(overrides).toHaveLength(2);
+    expect(overrides.every(([, body]) => /max-width:/.test(body))).toBe(true);
+    expect(/@media[^{]*max-width:\s*560px[^{]*\{[^@]*\.c1-radar\.c1-lw/.test(css)).toBe(true);
   });
 });
 

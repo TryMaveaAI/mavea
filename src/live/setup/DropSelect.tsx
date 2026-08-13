@@ -6,6 +6,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { useAnchoredMenu } from './useAnchoredMenu';
+// The picker owns its menu styling — it renders on standalone routes (#/courses, #/ripple) that
+// never load Live's runtime stylesheet.
+import './drop-select.css';
 
 export interface DropOption {
   value: string;

@@ -287,7 +287,7 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
                 <div className="dash-grid">{tiles}</div>
               </div>
             )}
-            <CheckLogRail dashboardId={dashboard.id} />
+            <CheckLogRail dashboardId={dashboard.id} now={now} />
           </div>
           <div className="dash-detail-side">
             <CadenceCard dashboard={dashboard} now={now} />

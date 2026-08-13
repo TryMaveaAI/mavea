@@ -14,6 +14,7 @@ import { Icon } from '../../../icons/icons';
 import { StarterChips } from '../../welcome/StarterChips';
 import type { StepId } from '../steps';
 import { useKokoroAvailable } from '../../voiceAvailability';
+import { FeatureUseNotice } from '../../../legal/FeatureUseNotice';
 
 function storedVoice(key: string, fallback: string): string {
   try {
@@ -106,9 +107,12 @@ export function GoStep({
         </ul>
 
         {configured ? (
-          <button type="button" className="go-start" onClick={onStartTalking}>
-            <Icon.mic /> Start talking
-          </button>
+          <>
+            <FeatureUseNotice kind="voice-data" from="live" className="go-voice-notice" />
+            <button type="button" className="go-start" onClick={onStartTalking}>
+              <Icon.mic /> Start talking
+            </button>
+          </>
         ) : (
           <button
             type="button"

@@ -1,10 +1,17 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LegalMarkdownDocument } from '../src/legal/LegalMarkdownDocument';
 import { parseLegalMarkdown } from '../src/legal/legalMarkdown';
 
+// Opening a document anchors it to the top; jsdom does not implement window.scrollTo.
+// tests/legal-scroll.test.tsx covers that behaviour.
+beforeEach(() => {
+  vi.stubGlobal('scrollTo', vi.fn());
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   window.location.hash = '';
 });
 

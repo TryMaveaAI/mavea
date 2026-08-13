@@ -265,11 +265,13 @@ button {
   outline-offset: 2px;
   border-radius: var(--r-sm);
 }
-/* Text fields are exempt: unlike buttons, editable elements match :focus-visible even on a
- * mouse click, so the ring drew a stray box around the composer on every tap. Their focus
+/* TEXT-ENTRY controls only are exempt: unlike buttons, editable elements match :focus-visible even
+ * on a mouse click, so the ring drew a stray box around the composer on every tap. Their focus
  * affordance is the field's own chrome (the capsule border/caret), in every template and
- * both themes — keyboard users still get the ring on buttons, links, and cards. */
-input:focus-visible,
+ * both themes — keyboard users still get the ring on buttons, links, and cards. Checkboxes and
+ * radios are NOT exempt: they only match :focus-visible from the keyboard, and a bare `input`
+ * selector left every toggle in the app with no visible focus at all. */
+input:not([type='checkbox']):not([type='radio']):focus-visible,
 textarea:focus-visible,
 [contenteditable='true']:focus-visible {
   outline: none;

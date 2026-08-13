@@ -38,6 +38,7 @@ vi.mock('../src/voice/voiceEnergy', () => ({
 }));
 
 import {
+  bindOutputGain,
   setOutputMuted,
   setVoiceGain,
   streamSpeak,
@@ -65,6 +66,26 @@ describe('setOutputMuted — the speaker goes silent, the pipeline does not', ()
 
     setOutputMuted(false);
     expect(gains[0].gain.value).toBe(1);
+  });
+
+  // The HTMLAudio sinks (kokoro's whole-clip fallback, the voice preview) can't sit on the
+  // WebAudio graph, so they bind to the same policy through this seam instead of quietly
+  // playing at full volume.
+  it('binds an HTMLAudio sink to the same policy until it is released', () => {
+    setVoiceGain(0.45);
+    const clip = { volume: 1 } as HTMLMediaElement;
+    const release = bindOutputGain(clip);
+    expect(clip.volume).toBe(0.45);
+
+    setOutputMuted(true);
+    expect(clip.volume).toBe(0);
+    setOutputMuted(false);
+    setVoiceGain(1);
+    expect(clip.volume).toBe(1);
+
+    release();
+    setOutputMuted(true);
+    expect(clip.volume).toBe(1); // a finished clip is no longer held or driven
   });
 
   it('composes with the whisper-hours voiceGain instead of clobbering it', async () => {

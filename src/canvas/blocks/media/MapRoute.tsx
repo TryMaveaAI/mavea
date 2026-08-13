@@ -1,36 +1,45 @@
-// An ordered route on a REAL, interactive map — the same Leaflet + free CARTO/OpenStreetMap tile
-// setup as GeoMap (lazy import, themed popups, identical teardown to avoid leaks), plus a polyline
-// drawn through the waypoints IN ORDER with numbered markers. Location/itinerary answers (a
-// walking tour, a road trip leg) render a draggable line a person can actually follow, beside the
-// stop-by-stop list and a distance/elevation summary computed from the props.
-//
-// Leaflet is loaded via a lazy import() so it's code-split into its own chunk; its CSS rides along
-// in that same chunk. The boundary to the untyped module is `any`, kept tight to this file.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef } from 'react';
+// An ordered route on a real OpenFreeMap vector map. MapLibre is loaded only for cards that need it,
+// and the route data stays in a separate source so a light/dark style swap cannot lose it.
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { Icon } from '../../../icons/icons';
-import { formatValue } from '../../lib/format';
-import type { MapRouteProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { formatValue } from '../../lib/format';
+import { loadMapLibre } from './maplibreRuntime';
+import { MapAttribution } from './MapAttribution';
+import type { MapRouteProps } from './types';
 
-const CARTO_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-const tileUrl = (light: boolean): string =>
-  `https://{s}.basemaps.cartocdn.com/${light ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
-
-const isLight = (): boolean =>
-  typeof document !== 'undefined' &&
-  document.documentElement.getAttribute('data-theme') === 'light';
-
-const esc = (s: string): string =>
-  s.replace(
-    /[&<>"]/g,
-    (c) =>
-      (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }) as Record<string, string>)[c],
+const styleUrl = (light: boolean): string =>
+  `https://tiles.openfreemap.org/styles/${light ? 'positron' : 'dark'}`;
+const isLight = (el?: HTMLElement | null): boolean => {
+  const fig = el?.closest('.figure-embed') as HTMLElement | null;
+  if (fig) return fig.getAttribute('data-theme-mode') !== 'dark';
+  return (
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'light'
   );
+};
+
+function popupContent(index: number, label: string, leg?: string): HTMLDivElement {
+  const root = document.createElement('div');
+  root.className = 'geo-pop';
+  const strong = document.createElement('b');
+  strong.textContent = `${index + 1}. ${label}`;
+  root.append(strong);
+  if (leg) {
+    const copy = document.createElement('div');
+    copy.className = 'geo-pop-d';
+    copy.textContent = leg;
+    root.append(copy);
+  }
+  return root;
+}
+
+function tokenColor(el: HTMLElement, token: string): string {
+  return getComputedStyle(el).getPropertyValue(token).trim() || 'transparent';
+}
 
 type Props = MapRouteProps & { delay?: number };
 
@@ -49,80 +58,145 @@ export function MapRoute({
 }: Props) {
   const Ic = Icon[icon] || Icon.walk;
   const ref = useRef<HTMLDivElement>(null);
-
-  // Only real, in-range coordinates (model data is untrusted).
-  const stops = (waypoints || []).filter(
-    (w) =>
-      Number.isFinite(w.lat) &&
-      Number.isFinite(w.lng) &&
-      Math.abs(w.lat) <= 90 &&
-      Math.abs(w.lng) <= 180,
+  const [tilesReady, setTilesReady] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
+  const stops = useMemo(
+    () =>
+      (waypoints || []).filter(
+        (w) =>
+          Number.isFinite(w.lat) &&
+          Number.isFinite(w.lng) &&
+          Math.abs(w.lat) <= 90 &&
+          Math.abs(w.lng) <= 180,
+      ),
+    [waypoints],
   );
-  const stopsKey = JSON.stringify(stops);
 
   useEffect(() => {
     const el = ref.current;
     if (!el || !stops.length) return;
     let cancelled = false;
-    let map: any = null;
-    let tiles: any = null;
+    let map: MapLibreMap | null = null;
+    let mapMarkers: MapLibreMarker[] = [];
     let themeObs: MutationObserver | null = null;
+    setTilesReady(false);
+    let unveilCap = 0;
+    const unveil = () => {
+      window.clearTimeout(unveilCap);
+      unveilCap = 0;
+      if (!cancelled) setTilesReady(true);
+    };
+    unveilCap = window.setTimeout(unveil, 8000);
 
     void (async () => {
-      // leaflet ships no type declarations, so the import boundary stays `any`.
-      // @ts-expect-error — no declaration file for 'leaflet'
-      const mod: any = await import('leaflet').catch(() => null);
-      const L = mod?.default ?? mod;
-      if (cancelled || !ref.current || !L?.map) return;
-
-      // Instant zoom (no CSS transition): the animated zoom waits on a transitionend that never
-      // arrives if the tab hides mid-animation, leaving the +/− controls permanently dead.
-      map = L.map(ref.current, {
-        scrollWheelZoom: false,
-        attributionControl: true,
-        zoomAnimation: false,
-      });
-      tiles = L.tileLayer(tileUrl(isLight()), {
-        subdomains: 'abcd',
-        maxZoom: 19,
-        attribution: CARTO_ATTR,
-      }).addTo(map);
-
-      const latlngs = stops.map((w) => [w.lat, w.lng] as [number, number]);
-
-      // The route line, drawn through the stops in order. A soft accent so it reads under the pins.
-      if (latlngs.length > 1) {
-        L.polyline(latlngs, {
-          color: 'var(--presence)',
-          weight: 4,
-          opacity: 0.85,
-          lineJoin: 'round',
-          lineCap: 'round',
-        }).addTo(map);
+      const ml = await loadMapLibre();
+      if (cancelled || !ref.current) return;
+      if (!ml) {
+        // Nothing will ever paint, so waiting out the cap would only shimmer for 8s and then
+        // fade to an empty slab — say so now instead.
+        window.clearTimeout(unveilCap);
+        setMapFailed(true);
+        return;
       }
+      const initial =
+        center &&
+        Number.isFinite(center[0]) &&
+        Number.isFinite(center[1]) &&
+        Math.abs(center[0]) <= 90 &&
+        Math.abs(center[1]) <= 180
+          ? center
+          : ([stops[0].lat, stops[0].lng] as const);
+      map = new ml.Map({
+        container: ref.current,
+        style: styleUrl(isLight(ref.current)),
+        center: [initial[1], initial[0]],
+        zoom: zoom ?? 14,
+        // Style-supplied credit only — a customAttribution duplicate would render the line twice.
+        attributionControl: { compact: false },
+        scrollZoom: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        fadeDuration: 0,
+        maxTileCacheSize: 48,
+        canvasContextAttributes: { preserveDrawingBuffer: true, powerPreference: 'low-power' },
+      });
 
-      stops.forEach((w, i) => {
-        const ic = L.divIcon({
-          className: 'geo-divicon',
-          html: `<span class="geo-pin mr-pin">${i + 1}</span>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
+      const routeData = {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: stops.map((stop) => [stop.lng, stop.lat]),
+        },
+      };
+      const addRoute = () => {
+        if (
+          !map ||
+          !ref.current ||
+          stops.length < 2 ||
+          !map.isStyleLoaded() ||
+          map.getSource('mavea-route')
+        ) {
+          return;
+        }
+        map.addSource('mavea-route', { type: 'geojson', data: routeData });
+        map.addLayer({
+          id: 'mavea-route-line',
+          type: 'line',
+          source: 'mavea-route',
+          paint: {
+            'line-color': tokenColor(ref.current, '--presence'),
+            'line-width': 4,
+            'line-opacity': 0.85,
+          },
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
         });
-        const gmaps = `https://www.google.com/maps/search/?api=1&query=${w.lat},${w.lng}`;
-        const popup = `<div class="geo-pop"><b>${i + 1}. ${esc(w.label)}</b>${
-          w.leg ? `<div class="geo-pop-d">${esc(w.leg)}</div>` : ''
-        }<a class="geo-pop-a" href="${gmaps}" target="_blank" rel="noopener noreferrer">Open in Google Maps ↗</a></div>`;
-        L.marker([w.lat, w.lng], { icon: ic }).addTo(map).bindPopup(popup);
+      };
+      map.on('styledata', addRoute);
+      map.on('idle', unveil);
+
+      mapMarkers = stops.map((stop, index) => {
+        const pin = document.createElement('span');
+        pin.className = 'geo-pin mr-pin';
+        pin.textContent = String(index + 1);
+        // setPopup makes the pin focusable and Space/Enter-operable; a name and a role are all
+        // it still needs so a screen reader announces the stop, not a bare number.
+        pin.setAttribute('role', 'button');
+        pin.setAttribute('aria-label', `Stop ${index + 1}: ${stop.label}`);
+        const popup = popupContent(index, stop.label, stop.leg);
+        const link = document.createElement('a');
+        link.className = 'geo-pop-a';
+        link.href = `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open in Google Maps ↗';
+        popup.append(link);
+        // The pin is a tail-less circle, so its centre — MapLibre's default anchor — is what
+        // sits on the coordinate; bottom-anchoring would float it half a badge north.
+        return new ml.Marker({ element: pin })
+          .setLngLat([stop.lng, stop.lat])
+          .setPopup(new ml.Popup({ offset: 18 }).setDOMContent(popup))
+          .addTo(map!);
       });
 
-      if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [36, 36] });
-      else {
-        const c = center && Number.isFinite(center[0]) ? center : latlngs[0];
-        map.setView(c, zoom ?? 14);
+      if (stops.length > 1) {
+        const bounds = new ml.LngLatBounds();
+        for (const stop of stops) bounds.extend([stop.lng, stop.lat]);
+        map.fitBounds(bounds, { padding: 36, duration: 0 });
       }
 
-      // keep the basemap in sync with light/dark theme
-      themeObs = new MutationObserver(() => tiles?.setUrl(tileUrl(isLight())));
+      let currentStyle = styleUrl(isLight(ref.current));
+      themeObs = new MutationObserver(() => {
+        const nextStyle = styleUrl(isLight(ref.current));
+        if (!map || nextStyle === currentStyle) return;
+        currentStyle = nextStyle;
+        setTilesReady(false);
+        // Re-veiling needs the cap re-armed (the first one already fired), or a style that never
+        // loads shimmers forever; clear first, since the theme can flip twice inside the window.
+        window.clearTimeout(unveilCap);
+        unveilCap = window.setTimeout(unveil, 8000);
+        map.setStyle(nextStyle);
+      });
       themeObs.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['data-theme'],
@@ -131,13 +205,16 @@ export function MapRoute({
 
     return () => {
       cancelled = true;
+      window.clearTimeout(unveilCap);
       themeObs?.disconnect();
-      if (map) map.remove();
+      for (const marker of mapMarkers) marker.remove();
+      mapMarkers = [];
+      map?.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopsKey, zoom]);
+  }, [stops, zoom, center]);
 
   const hasSummary = distanceKm !== undefined || elevationGainM !== undefined;
+  const mapShown = stops.length > 0 && !mapFailed;
 
   return (
     <div
@@ -150,11 +227,19 @@ export function MapRoute({
         </div>
       )}
 
-      {stops.length ? (
-        <div ref={ref} className="geo-map mr-map" />
+      {mapFailed ? (
+        <div className="geo-map geo-map-empty faint">Map couldn’t load.</div>
+      ) : stops.length ? (
+        <div
+          ref={ref}
+          className="geo-map mr-map"
+          data-tiles={tilesReady ? 'ready' : 'loading'}
+          aria-busy={!tilesReady}
+        />
       ) : (
         <div className="geo-map geo-map-empty faint">No route to map.</div>
       )}
+      {mapShown && <MapAttribution />}
 
       {hasSummary && (
         <div className="mr-summary">

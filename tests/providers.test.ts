@@ -244,8 +244,13 @@ describe('openai adapter — Responses API streaming', () => {
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('/llm/openai/v1/responses');
-    const body = JSON.parse(init.body as string) as { input: unknown[]; text: unknown };
+    const body = JSON.parse(init.body as string) as {
+      input: unknown[];
+      text: unknown;
+      store?: boolean;
+    };
     expect(body.text).toEqual({ format: { type: 'json_object' } });
+    expect(body.store).toBe(false);
     // json_object mode requires the literal word "json" in the INPUT messages (instructions
     // don't count — a real 400 without it), so every json_object turn carries a one-line
     // system nudge ahead of the user turn.
@@ -558,7 +563,12 @@ describe('grok adapter — xAI, Responses API', () => {
     expect(url).toBe('/llm/grok/v1/responses');
     const headers = init.headers as Record<string, string>;
     expect(headers.Authorization).toBe('Bearer k');
-    const body = JSON.parse(init.body as string) as { model: string; text: unknown };
+    const body = JSON.parse(init.body as string) as {
+      model: string;
+      text: unknown;
+      store?: boolean;
+    };
+    expect(body.store).toBeUndefined();
     expect(body.model).toBe('grok-4.5');
     expect(body.text).toEqual({ format: { type: 'json_object' } });
   });

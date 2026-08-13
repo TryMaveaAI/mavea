@@ -72,3 +72,17 @@ describe('Mark highlighter carve-out', () => {
     },
   );
 });
+
+// The other half of "the highlighter gets the drag": on touch, a stroke is only possible if the
+// stage opted out of native panning BEFORE the finger moves. Waiting for .ink-capturing (added
+// after the 4px threshold) is too late — the browser has already committed the gesture to a
+// scroll and fires pointercancel. jsdom parses no stylesheet, so this is a source scan.
+describe('Mark highlighter touch drawing', () => {
+  const css = readFileSync(join(__dirname, '../src/live/annotate/annotate.css'), 'utf8');
+
+  it('suppresses touch-scroll from the moment the highlighter is armed', () => {
+    const armed = /\.ink-armed\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(armed).toMatch(/cursor:\s*crosshair/);
+    expect(armed).toMatch(/touch-action:\s*none/);
+  });
+});

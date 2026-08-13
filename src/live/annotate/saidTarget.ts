@@ -95,6 +95,61 @@ export function findSaidMatch(host: Element, tokens: string[]): SaidMatch | null
   return null;
 }
 
+/** Shortest/longest card label worth echoing. Under 4 chars matches noise ("of", "km"); over 40 is
+ *  a sentence, not a label, and underlining it would smear across the card. */
+const ECHO_MIN_CHARS = 4;
+const ECHO_MAX_CHARS = 40;
+/** Function words that can legitimately appear as a standalone label but carry no meaning to point
+ *  at — underlining "into" because the line said "flows into the book" is worse than drawing nothing. */
+const ECHO_STOPWORDS = new Set([
+  'the',
+  'and',
+  'with',
+  'from',
+  'into',
+  'this',
+  'that',
+  'then',
+  'than',
+  'over',
+  'under',
+  'each',
+  'both',
+  'more',
+  'less',
+  'total',
+  'other',
+]);
+
+/** The card's own label, echoed back by the spoken line.
+ *
+ *  `saidTokens` can only locate what the line spells out as a figure or a Capitalized name. A line
+ *  of ordinary prose about a diagram — "think of the order book as a reservoir" — yields neither
+ *  (its only capital is a sentence opener), so the generous path found nothing and a teach turn
+ *  logged gestures that could never draw. Search the other direction: take the labels the CARD
+ *  actually renders and find the longest one the line mentions. That is still the model's own
+ *  words, just lowercase, so it never invents a target the line wasn't talking about. */
+export function findEchoedLabel(host: Element, line: string): SaidMatch | null {
+  const spoken = normWithMap(line).norm;
+  if (spoken.length < ECHO_MIN_CHARS) return null;
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const raw = (node.textContent ?? '').trim();
+    if (raw.length < ECHO_MIN_CHARS || raw.length > ECHO_MAX_CHARS) continue;
+    if ((node as Text).parentElement?.closest('.ink-layer, .block-ask, .card-eyebrow')) continue;
+    const norm = normWithMap(raw).norm;
+    if (norm.length < ECHO_MIN_CHARS || ECHO_STOPWORDS.has(norm) || seen.has(norm)) continue;
+    if (!spoken.includes(norm)) continue;
+    seen.add(norm);
+    candidates.push(raw);
+  }
+  // Longest first: "order book" is the thing being talked about, "order" is a fragment of it.
+  candidates.sort((a, b) => b.length - a.length);
+  return candidates.length ? findSaidMatch(host, candidates) : null;
+}
+
 /** The row-like container around a matched label — so "circle Seattle" loops the Seattle
  *  row (its bar and value), not just the word. Bounded to a few hops and to row-shaped
  *  elements; null when the text isn't part of a recognizable row. */

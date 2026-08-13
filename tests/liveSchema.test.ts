@@ -1025,9 +1025,9 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
     expect(b.props.code).not.toContain('‹');
     expect(b.props.code).not.toContain('›');
   });
-  it('coerces a photo with candidate URLs — allowlists each, drops unsafe, promotes the first', () => {
-    // The model proposes a few real free-commercial photo URLs; only allowlisted https hosts
-    // survive (untrusted input). The first valid becomes `src`, the rest ride as `candidates`, and
+  it('coerces a photo with candidate URLs — clears each exact file and promotes the first', () => {
+    // A hostname alone proves no rights. Only individually reviewed URLs survive (untrusted
+    // input). The first valid becomes `src`, the rest ride as `candidates`, and
     // the renderer load-tests them so a dead/hallucinated link never shows a broken image.
     const allowed = new Set<string>([...FRONTIER_BLOCK_TYPES, 'photo']);
     const r = validateLiveResponse(
@@ -1039,10 +1039,10 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
             props: {
               title: 'Cloud Gate, Chicago',
               candidates: [
-                'https://images.unsplash.com/photo-bean.jpg', // valid
+                'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg',
                 'http://images.pexels.com/insecure.jpg', // http → dropped
                 'https://evil.example.com/x.jpg', // not allowlisted → dropped
-                'https://cdn.pixabay.com/photo-bean2.jpg', // valid
+                'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Lantern_of_Kaminarimon_Gate.JPG/960px-Lantern_of_Kaminarimon_Gate.JPG',
               ],
             },
           },
@@ -1052,8 +1052,10 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
     );
     const b = r!.blocks[0];
     if (b.type !== 'photo') throw new Error('expected photo');
-    expect(b.props.src).toBe('https://images.unsplash.com/photo-bean.jpg');
-    expect(b.props.candidates).toEqual(['https://cdn.pixabay.com/photo-bean2.jpg']);
+    expect(b.props.src).toContain('Shibuya_crossing_at_night.jpg');
+    expect(b.props.candidates).toEqual([
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Lantern_of_Kaminarimon_Gate.JPG/960px-Lantern_of_Kaminarimon_Gate.JPG',
+    ]);
   });
   it('DROPS an imagecallouts whose only image URL is invented/unsafe (no real image, no image UI)', () => {
     // imagecallouts is an image-first block: its callouts pin to a photo. An invented/unsafe URL
@@ -1096,7 +1098,7 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
               image: {
                 from: 'var(--presence)',
                 to: 'var(--insight)',
-                src: 'https://images.unsplash.com/photo-ui.jpg',
+                src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg',
               },
               callouts: [{ x: 20, y: 30, label: 'Header' }],
             },
@@ -1107,7 +1109,7 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
     );
     const b = r!.blocks[0];
     if (b.type !== 'imagecallouts') throw new Error('expected imagecallouts');
-    expect(b.props.image.src).toBe('https://images.unsplash.com/photo-ui.jpg');
+    expect(b.props.image.src).toContain('Shibuya_crossing_at_night.jpg');
   });
   it('keeps kpi per-item color and grid cols/footer', () => {
     const r = validateLiveResponse({
@@ -1143,8 +1145,8 @@ describe('validateLiveResponse — builder enrichment passthrough (renders the t
 // bare gradient placeholder. hasRenderableImage is the predicate; tested directly so the check is
 // isolated from the catalog-dependent coercion that runs afterward.
 describe('hasRenderableImage — the "real image or drop the block" guardrail', () => {
-  const good = 'https://images.pexels.com/photos/1279/food.jpg';
-  const unsplash = 'https://images.unsplash.com/photo-1?ixid=abc';
+  const good =
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
 
   it('covers exactly the image-first block types (photo is gated separately)', () => {
     expect([...IMAGE_REQUIRED_TYPES].sort()).toEqual([
@@ -1187,10 +1189,10 @@ describe('hasRenderableImage — the "real image or drop the block" guardrail', 
   });
 
   it('reads the correct image slot per block type', () => {
-    expect(hasRenderableImage('beforeafter', { before: { src: unsplash }, after: {} })).toBe(true);
+    expect(hasRenderableImage('beforeafter', { before: { src: good }, after: {} })).toBe(true);
     expect(hasRenderableImage('beforeafter', { before: {}, after: {} })).toBe(false);
-    expect(hasRenderableImage('imagecallouts', { image: { src: unsplash } })).toBe(true);
-    expect(hasRenderableImage('mediacard', { cover: { src: unsplash } })).toBe(true);
-    expect(hasRenderableImage('moodboard', { tiles: [{}, { src: unsplash }] })).toBe(true);
+    expect(hasRenderableImage('imagecallouts', { image: { src: good } })).toBe(true);
+    expect(hasRenderableImage('mediacard', { cover: { src: good } })).toBe(true);
+    expect(hasRenderableImage('moodboard', { tiles: [{}, { src: good }] })).toBe(true);
   });
 });

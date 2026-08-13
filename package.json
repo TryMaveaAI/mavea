@@ -28,9 +28,11 @@
     "!dist/**/*.map",
     "!dist/ort-wasm-simd-threaded.wasm",
     "!dist/silero_vad_v5.onnx",
+    "!dist/semantic",
     "bin",
     "docs/media",
     "docker-compose.yml",
+    "voice",
     "gateway",
     "!gateway/.gateway-data/**",
     "README.md",
@@ -46,6 +48,7 @@
   ],
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "engines": {
       "node": ">=20.19"
     }
@@ -89,10 +92,10 @@
     "format:check": "prettier --check .",
     "knip": "knip",
     "new:block": "node scripts/new-block.mjs",
-    "verify": "pnpm check:reference-examples && pnpm check:gallery-fixtures && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && vite build && pnpm size && pnpm check:artifact && pnpm check:package",
-    "verify:full": "pnpm verify && pnpm knip && pnpm check:licenses && pnpm check:vulnerabilities",
+    "verify": "pnpm check:reference-examples && pnpm check:gallery-fixtures && pnpm check:licenses && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && vite build && pnpm size && pnpm check:artifact && pnpm check:package",
+    "verify:full": "pnpm verify && pnpm knip && pnpm check:vulnerabilities",
     "prepare": "husky",
-    "prepublishOnly": "pnpm check:release-policy && pnpm build && pnpm check:package",
+    "prepublishOnly": "pnpm check:release-policy && pnpm check:licenses && pnpm build && pnpm check:package",
     "dev:web": "vite",
     "pairs:selection": "node --env-file=.env --import tsx scripts/selection-pairs.mts",
     "weights:selection": "node --import tsx scripts/fit-selection-weights.mts",
@@ -109,7 +112,8 @@
     "audit:interactions": "node --import tsx scripts/interaction-matrix.mts",
     "perf": "node --import tsx scripts/perf-probe.mts",
     "perf:memory": "node --import tsx scripts/memory-probe.mts",
-    "audit:tap": "node --import tsx scripts/tap-audit.mts"
+    "audit:tap": "node --import tsx scripts/tap-audit.mts",
+    "gen:media": "node --import tsx scripts/capture-media.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -145,8 +149,8 @@
     "jspdf": "4.2.1",
     "katex": "0.17.0",
     "knip": "6.17.1",
-    "leaflet": "1.9.4",
     "lint-staged": "17.0.8",
+    "maplibre-gl": "6.1.0",
     "mediabunny": "1.50.6",
     "modern-screenshot": "4.7.0",
     "openchemlib": "9.24.0",

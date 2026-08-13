@@ -5,9 +5,6 @@ name: Release
 # tagging, creating the GitHub Release, verifying, and publishing to npm — happens automatically
 # in one run. No standing bot PR, no manual package.json edits.
 #
-# The `release: published` trigger stays as a manual fallback: if you ever tag + publish a GitHub
-# Release yourself outside this workflow (version already bumped by hand), it still verifies the
-# tag matches package.json and publishes.
 on:
   workflow_dispatch:
     inputs:
@@ -17,8 +14,6 @@ on:
         default: patch
         type: choice
         options: [patch, minor, major]
-  release:
-    types: [published]
 
 permissions:
   contents: read
@@ -30,9 +25,9 @@ concurrency:
 jobs:
   cut-release:
     name: Bump version · tag · create GitHub Release
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     outputs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
@@ -46,13 +41,23 @@ jobs:
         env:
           MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}
 
+      - name: Require green CI on the exact source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status completed --limit 1 --json conclusion --jq '.[0].conclusion // "missing"')
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI for $GITHUB_SHA is $conclusion; release only an exact green source commit"
+            exit 1
+          fi
+
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
 
       - name: Set up Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -85,18 +90,15 @@ jobs:
   publish:
     name: Verify · Publish to npm
     needs: cut-release
-    # Runs whether we just cut the release above, or someone published a GitHub Release directly.
-    if: |
-      always() &&
-      (github.event_name == 'release' || needs.cut-release.result == 'success')
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ needs.cut-release.outputs.tag_name || github.event.release.tag_name }}
+          ref: ${{ needs.cut-release.outputs.tag_name }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
@@ -105,17 +107,15 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-          cache: pnpm
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Tag must match package.json version
-        # Only meaningful on the release:published fallback path — cut-release always keeps them
-        # in sync by construction.
+        # Re-check the boundary in the second job rather than trusting the hand-off tag blindly.
         run: |
-          TAG="${{ needs.cut-release.outputs.tag_name || github.event.release.tag_name }}"
+          TAG="${{ needs.cut-release.outputs.tag_name }}"
           TAG_VERSION="${TAG#v}"
           PKG_VERSION=$(node -p "require('./package.json').version")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
@@ -128,15 +128,10 @@ jobs:
         env:
           MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}
 
-      # The full test suite, lint/typecheck, knip, license gate, vulnerability audit, and the
-      # cross-browser Playwright matrix all already ran against this exact code on `main`'s own CI
-      # (ci.yml) before this commit could exist — cut-release only adds a version-bump commit on
-      # top. Re-running the whole app behind a fresh checkout re-proves things already proven for a
-      # diff that's just a version string. This job now only re-checks what's actually NEW about a
-      # release: the tag/version pairing, legal policy sign-off, and the shape of the tarball that
-      # is about to be published. There is currently no automated gate ensuring `main`'s CI was
-      # green before a release is cut — workflow_dispatch can fire against a red or in-flight
-      # commit — so that's on the releaser to check by eye for now.
+      # The full test suite, lint/typecheck, dependency policy, and security scans ran against the
+      # exact source commit required by cut-release. Its only new commit is the generated version
+      # bump, so this job rebuilds and verifies the actual package rather than repeating every app
+      # test on an unchanged implementation.
       - name: Build
         run: pnpm exec vite build
 
@@ -147,11 +142,9 @@ jobs:
         run: pnpm check:package
 
       - name: Publish to npm
-        # No --provenance: npm only accepts a provenance attestation from a PUBLIC source repo
-        # (it rejects the Sigstore bundle outright otherwise), and this repo is intentionally
-        # private. Package visibility on npm is unaffected either way — this only drops the
-        # verified-build badge on the npm package page.
-        run: pnpm publish --no-git-checks
+        # Public scoped packages are available on npm's free plan. npm 11.5.1+ exchanges this
+        # GitHub-hosted job's short-lived OIDC identity through the configured trusted publisher;
+        # no standing publish token exists. Trusted publishing adds provenance automatically.
+        run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}

@@ -25,9 +25,6 @@
   justify-content: center;
   pointer-events: none;
 }
-.mavea-app.live-voice.has-scrubber .listen-stage {
-  bottom: calc(var(--dock-h) + 56px);
-}
 .live-voice .listen-card {
   display: flex;
   align-items: flex-start;

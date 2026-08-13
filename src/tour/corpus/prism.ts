@@ -31,7 +31,7 @@ export interface TourPrismDoc {
 }
 
 /** Show one strong example of each type first (PDF → CSV → JSON → Markdown), then the rest. */
-const ORDER = ['bitcoin', 'fomc', 'weather', 'cars', 'react-readme'];
+const ORDER = ['nasa-cfd', 'fomc', 'weather', 'cars', 'react-readme'];
 
 let cache: TourPrismDoc[] | null = null;
 

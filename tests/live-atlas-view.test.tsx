@@ -87,4 +87,17 @@ describe('AtlasView', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('Escape while searching clears the search instead of closing the atlas', () => {
+    const onClose = vi.fn();
+    render(<AtlasView records={RECORDS} chapters={[]} onLand={vi.fn()} onClose={onClose} />);
+    const search = screen.getByLabelText('Find a conversation') as HTMLInputElement;
+    fireEvent.change(search, { target: { value: 'moon' } });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(search.value).toBe('');
+    expect(onClose).not.toHaveBeenCalled();
+    // With the search empty, Escape means what it always meant.
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
 });

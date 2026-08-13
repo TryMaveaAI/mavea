@@ -22,7 +22,7 @@
 const INTENTIONAL = new Set([
   'geomap',
   'maproute',
-  'zoningmap', // shares GeoMap's Leaflet tile layer — same edge-bleed as geomap/maproute
+  'zoningmap', // shares GeoMap's MapLibre tile layer — same edge-bleed as geomap/maproute
   'carousel',
   'mindshape',
   'atlas',
@@ -261,8 +261,11 @@ function isRotated(el: Element, card: Element): boolean {
   return false;
 }
 
-/** Every visible text run's box inside `card`: one box per SVG <text> and per HTML leaf-text
- *  element (rotated runs skipped). Bounded by `max` so a pathological card can't stall the sweep. */
+/** Every visible text fragment inside `card`: one box per SVG <text> and per rendered HTML line
+ *  fragment (rotated runs skipped). An HTML element's bounding box spans all of its wrapped lines;
+ *  treating that union as ink creates false collisions with perfectly stacked siblings. A Range
+ *  reports the line fragments the browser actually painted. Bounded by `max` so a pathological
+ *  card can't stall the sweep. */
 function textRunBoxes(card: Element, max = 400): { el: Element; rect: DOMRect; text: string }[] {
   const out: { el: Element; rect: DOMRect; text: string }[] = [];
   const push = (el: Element): void => {
@@ -281,9 +284,38 @@ function textRunBoxes(card: Element, max = 400): { el: Element; rect: DOMRect; t
       /rgba?\([^)]*\/\s*([\d.]+)\s*\)/.exec(paint);
     if (alpha && parseFloat(alpha[1]) < 0.4) return;
     if (isRotated(el, card)) return;
-    const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return;
-    out.push({ el, rect: r, text: (el.textContent || '').trim() });
+    const text = (el.textContent || '').trim();
+    const rects: DOMRect[] = [];
+    if (el.tagName.toLowerCase() !== 'text') {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      if (typeof range.getClientRects === 'function') {
+        const own = el.getBoundingClientRect();
+        const clipsInline = es.overflowX !== 'visible' || es.textOverflow === 'ellipsis';
+        const fontHeight = parseFloat(es.fontSize) || own.height;
+        for (const fragment of range.getClientRects()) {
+          const left = clipsInline ? Math.max(fragment.left, own.left) : fragment.left;
+          const right = clipsInline ? Math.min(fragment.right, own.right) : fragment.right;
+          const height = Math.min(fragment.height, fontHeight);
+          const top = fragment.top + (fragment.height - height) / 2;
+          rects.push({
+            ...fragment,
+            left,
+            right,
+            top,
+            bottom: top + height,
+            width: Math.max(0, right - left),
+            height,
+          } as DOMRect);
+        }
+      }
+    }
+    if (!rects.length) rects.push(el.getBoundingClientRect());
+    for (const rect of rects) {
+      if (out.length >= max) return;
+      if (rect.width < 2 || rect.height < 2) continue;
+      out.push({ el, rect, text });
+    }
   };
   for (const t of card.querySelectorAll('text')) push(t);
   for (const el of card.querySelectorAll('*')) {
@@ -316,7 +348,7 @@ export function auditCardOverlap(card: Element, tol = 3): OverlapHit | undefined
       // the fitted zoom, and nudging them apart would lie about where they are. Their overlap is
       // data, not layout jumble, so marker-pane pairs are exempt; anything ELSE overlapping the
       // map (a caption, a neighboring card) is still a real failure and still reported.
-      if (a.el.closest('.leaflet-marker-pane') && b.el.closest('.leaflet-marker-pane')) continue;
+      if (a.el.closest('.maplibregl-marker') && b.el.closest('.maplibregl-marker')) continue;
       // Two runs carrying the SAME text drawn on top of each other are a layered effect, not a
       // collision: the canonical case is a star rating's gold "★★★★★" fill clipped over its grey
       // "★★★★★" track, but the same holds for any duplicate drawn as a shadow/echo. The reader

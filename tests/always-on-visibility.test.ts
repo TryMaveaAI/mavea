@@ -1,8 +1,7 @@
 // Always-on's mic must not silently keep claiming "listening" after a backgrounded tab or a
 // sleeping device suspends VAD's own capture AudioContext — nothing else in the app ever
-// reacted to that before this hook existed. Locks: hiding releases the mic; returning restarts
-// it only if the session isn't already reporting itself as listening; and the whole thing is a
-// no-op when always-on isn't even the active mode.
+// reacted to that before this hook existed. Locks: hiding releases every active capture;
+// returning restarts only always-on; and an inactive mic installs no listener.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAlwaysOnVisibility } from '../src/voice/useAlwaysOnVisibility';
@@ -40,7 +39,7 @@ describe('useAlwaysOnVisibility', () => {
     // This time the session went stale in the background (not listening on return) — restart.
     rerender({ listening: false });
     setHidden(true);
-    expect(stop).toHaveBeenCalledTimes(2);
+    expect(stop).toHaveBeenCalledTimes(1); // already released; no redundant controller work
     setHidden(false);
     expect(start).toHaveBeenCalledTimes(1);
   });
@@ -59,6 +58,25 @@ describe('useAlwaysOnVisibility', () => {
     setHidden(false);
     expect(start).not.toHaveBeenCalled();
     expect(stop).not.toHaveBeenCalled();
+  });
+
+  it('releases tap/hold capture on hide and never restarts it without a new gesture', () => {
+    const start = vi.fn();
+    const stop = vi.fn();
+    const { rerender } = renderHook(
+      ({ listening }: { listening: boolean }) =>
+        useAlwaysOnVisibility(
+          { alwaysOn: false, sttOk: true, composerHasText: false, listening },
+          { start, stop },
+        ),
+      { initialProps: { listening: true } },
+    );
+
+    setHidden(true);
+    expect(stop).toHaveBeenCalledTimes(1);
+    rerender({ listening: false });
+    setHidden(false);
+    expect(start).not.toHaveBeenCalled();
   });
 
   it('removes its listener on unmount', () => {

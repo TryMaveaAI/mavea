@@ -69,6 +69,22 @@ describe('useLiveTurn.showFrame — the reveal tracks the narration audio', () =
     expect(result.current.spec?.title).toBe('Muted');
   });
 
+  it('silent seeds the canvas instantly without voice or walk, recording the authentic turn', () => {
+    const speak = vi.fn();
+    const { result } = renderHook(() => useLiveTurn({ getConfig: () => cfg, speak }));
+    const seeded = { ...makeFrame('Seeded'), tour: [{ index: 0, say: 'walk line' }] };
+    act(() => {
+      result.current.showFrame(seeded, 'q', { interrupt: false, silent: true });
+    });
+    expect(result.current.spec?.title).toBe('Seeded');
+    expect(speak).not.toHaveBeenCalled();
+    // The walk does not perform…
+    expect(result.current.tour).toEqual([]);
+    // …but the timeline keeps the real narration and tour for replays and video cuts.
+    expect(result.current.frames.at(-1)?.narration).toBe('Seeded narration.');
+    expect(result.current.frames.at(-1)?.tour).toHaveLength(1);
+  });
+
   it('mid-coach-line keeps the fixed short beat instead of waiting for this frame’s audio', async () => {
     speakingNow.value = true; // a tour coach line is mid-play; the frame line queues behind it
     const line = makeLine(); // its own audio never starts inside the beat window

@@ -1,16 +1,10 @@
 // Two-voice text-to-speech for Mavéa: a distinct voice for Mavéa and for the person, so the
 // back-and-forth reads like two people talking.
 //
-// Kokoro is the voice — natural speech from the local Kokoro server — and once someone has it,
-// slowness never takes it away. A slow machine used to be silently demoted to the browser's
-// robotic synthesizer after a couple of playback stutters; hearing the good voice replaced
-// mid-conversation read as the app breaking, and the honest tools now exist instead — the voice
-// strip says "preparing" while a line renders, and the one-ahead cache (voice/kokoro.ts) hides
-// most of the wait behind the previous line's playback. So the tiers are about AVAILABILITY
-// only: Kokoro when it is reachable, the browser's own synthesizer when it isn't (or a line
-// produces no audio at all), captions when there is no voice (Chrome on Linux ships the API
-// with no voices). The choice is a default, never a gate — see voiceMode(); anyone can force
-// either voice on any machine.
+// Kokoro is the only voice — natural speech from the local Apache-2.0 Kokoro server. When the
+// service is unavailable, captions carry the line. Native browser voices are intentionally not a
+// fallback: their engines and any network processing are governed by vendor-specific terms that
+// do not meet Mavéa's fail-closed commercial-use policy.
 //
 // Kept separate from the VoiceController seam (which owns the live mic / STT); this module
 // owns the queued two-voice narration playback the orchestrator and conversation player drive.
@@ -21,46 +15,13 @@ import {
   cancelKokoro,
   kokoroSpeaking,
   kokoroSynthesizing,
-  kokoroKnownAvailable,
   subscribeKokoroSpeaking,
   type KokoroLine,
 } from './kokoro';
-import {
-  speakWebSpeechLine,
-  cancelWebSpeech,
-  webSpeechAvailable,
-  webSpeechSpeaking,
-  subscribeWebSpeechSpeaking,
-} from './webSpeech';
 import { forSpeech } from '../lib/spokenText';
 
 /** Whose line this is — selects the voice profile. */
 export type Speaker = 'mavea' | 'user';
-
-/** What the person chose. `auto` lets the machine decide; the other two are overrides that hold
- *  even where the choice is a bad one — refusing to let someone run the good voice on their own
- *  machine is not ours to do. */
-export type VoiceMode = 'auto' | 'kokoro' | 'browser';
-
-const MODE_KEY = 'mavea-voice-mode';
-
-export function voiceMode(): VoiceMode {
-  try {
-    const raw = localStorage.getItem(MODE_KEY);
-    return raw === 'kokoro' || raw === 'browser' ? raw : 'auto';
-  } catch {
-    return 'auto';
-  }
-}
-
-export function setVoiceMode(mode: VoiceMode): void {
-  try {
-    if (mode === 'auto') localStorage.removeItem(MODE_KEY);
-    else localStorage.setItem(MODE_KEY, mode);
-  } catch {
-    /* a device that refuses storage still honours the choice for this session's module state */
-  }
-}
 
 // Emoji and pictographs across the common blocks (Misc Symbols & Pictographs, Supplemental
 // Symbols, Transport, Dingbats, Misc Technical, plus the variation-selector/ZWJ that stitch a
@@ -133,72 +94,31 @@ export type SpokenLine = KokoroLine;
  * fire-and-forget speak() can't distinguish "queued" from "playing", which on a slow machine is
  * a gap of seconds. Same queue and voices as speak(); the handle never rejects.
  *
- * Slowness NEVER reroutes a line to the browser voice: a stuttery-but-natural voice being
- * silently swapped for a robotic one mid-conversation reads as the app breaking. The preparing
- * indicator and the one-ahead cache absorb a slow machine's waits; only genuine unavailability
- * (the probe said no, or a line produced no audio at all) hands off.
+ * Slowness never changes engines. The preparing indicator and the one-ahead cache absorb a slow
+ * machine's waits; genuine unavailability resolves the handle as unheard so captions remain the
+ * honest fallback.
  */
 export function speakLine(text: string, who: Speaker): SpokenLine {
-  const mode = voiceMode();
-  if (mode === 'browser') return speakWebSpeechLine(text, who);
-  if (mode === 'kokoro') return speakKokoroLine(text, who);
-  // Under `auto`, the health probe answers definitively after the first line — before that it is
-  // null, and guessing wrong would cost the opening line. So try Kokoro and let the line itself
-  // report: a line that never became audible hands off to the browser voice mid-flight.
-  if (kokoroKnownAvailable() === false) return speakWebSpeechLine(text, who);
-  return withBrowserFallback(text, who);
+  return speakKokoroLine(text, who);
 }
 
 /**
  * Announce the line that will be spoken NEXT (not yet queued), so the Kokoro path can
  * synthesize it into its cache while the current line's audio still plays — the reveal walk
- * calls this per stop to hide the next stop's synthesis latency. A no-op for the browser voice
- * (it starts instantly) and whenever Kokoro isn't the voice that would actually speak.
+ * calls this per stop to hide the next stop's synthesis latency.
  */
 export function primeLine(text: string, who: Speaker): void {
-  if (voiceMode() === 'browser') return;
-  if (kokoroKnownAvailable() !== true) return;
   primeKokoroLine(text, who);
 }
 
-/** Speak through Kokoro, and if the line never becomes audible, say it in the browser voice
- *  instead. The composed handle reports whichever voice actually spoke, so a caller awaiting
- *  `started` is told the truth about audio rather than about Kokoro. */
-function withBrowserFallback(text: string, who: Speaker): SpokenLine {
-  const primary = speakKokoroLine(text, who);
-  let resolveStart!: (heard: boolean) => void;
-  const started = new Promise<boolean>((resolve) => {
-    resolveStart = resolve;
-  });
-  const finished = (async (): Promise<boolean> => {
-    if (await primary.started) {
-      resolveStart(true);
-      return primary.finished;
-    }
-    // Let the failed line settle before re-speaking it, so the two voices can never overlap.
-    await primary.finished;
-    if (!webSpeechAvailable()) {
-      resolveStart(false);
-      return false;
-    }
-    const fallback = speakWebSpeechLine(text, who);
-    void fallback.started.then(resolveStart);
-    return fallback.finished;
-  })();
-  return { started, finished };
-}
-
-/** Hard-stop: drain and cancel both queues (used on interrupt / sound-off / go-home). Always
- *  cancels both — a line may be mid-handoff between them, and a half-stopped voice keeps talking
- *  over the next turn. */
+/** Hard-stop the local queue (used on interrupt / sound-off / go-home). */
 export function cancelSpeech(): void {
   cancelKokoro();
-  cancelWebSpeech();
 }
 
-/** True while a line is actively playing or queued in either voice (drives waitForSpeech). */
+/** True while a line is actively playing or queued (drives waitForSpeech). */
 export function isSpeaking(): boolean {
-  return kokoroSpeaking() || webSpeechSpeaking();
+  return kokoroSpeaking();
 }
 
 /** True while the next line is still being SYNTHESIZED — queued and coming, but not yet audible.
@@ -210,10 +130,5 @@ export function isVoicePreparing(): boolean {
 
 /** Subscribe to speaking transitions without keeping a polling timer alive. */
 export function subscribeSpeaking(listener: () => void): () => void {
-  const offKokoro = subscribeKokoroSpeaking(listener);
-  const offWeb = subscribeWebSpeechSpeaking(listener);
-  return () => {
-    offKokoro();
-    offWeb();
-  };
+  return subscribeKokoroSpeaking(listener);
 }

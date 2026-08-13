@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, ticks, niceStep } from '../../lib/scale';
+import { spreadLabels } from '../../lib/spreadLabels';
 import type { BigOProps, BigOClass } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -27,7 +28,15 @@ const CLASSES: Record<BigOClass, { label: string; color: string; f: (n: number) 
     f: (n) => n * Math.log2(Math.max(2, n)),
   },
   'o-n2': { label: 'O(n²)', color: 'var(--danger)', f: (n) => n * n },
-  'o-2n': { label: 'O(2ⁿ)', color: 'var(--danger)', f: (n) => Math.pow(2, n) },
+  // The two worst classes both read as "danger", but sharing one colour left their curves, their
+  // labels and their legend swatches indistinguishable. Deepen the exponential toward the page's
+  // own ink so it stays the same hue — worse still looks worse — while separating cleanly, and
+  // flips correctly between light and dark because it mixes against the text colour.
+  'o-2n': {
+    label: 'O(2ⁿ)',
+    color: 'color-mix(in oklab, var(--danger) 62%, var(--text-primary))',
+    f: (n) => Math.pow(2, n),
+  },
 };
 
 // Drawn slowest → fastest so the steep curves render on top of the flat ones.
@@ -95,11 +104,24 @@ export function BigO({
       return { id: c, label, color, points: pts, anchor };
     });
 
+    // Every label wants its own curve's height, but the curves CONVERGE at the right edge — the
+    // flat classes pile onto the floor and every class past the ceiling shares the clip line — so
+    // the labels land on top of each other and none of them can be read. Spread them into a
+    // ladder, which holds for whatever set of classes a caller asks for.
+    const labelY = spreadLabels(
+      curves.map((c) => ({ id: c.id, y: c.anchor.y + 3 })),
+      // Gap clears a full 10px .bgo-curve-lbl line box, not just its glyphs: the card renders the
+      // 340-unit viewBox around half again as wide, so a gap merely equal to the font size still
+      // lets two labels' boxes touch once scaled up.
+      { gap: 13, top: PAD_T + 8, bottom: H - PAD_B },
+    );
+
     const yStep = niceStep(yTop, 4);
     const xStep = niceStep(nMax, 5);
     return {
       shown,
       curves,
+      labelY,
       sx,
       sy,
       nMax,
@@ -110,7 +132,7 @@ export function BigO({
     };
   }, [classes, maxN]);
 
-  const { curves, sx, sy, nMax, yTop, xTicks, yTicks } = geom;
+  const { curves, labelY, sx, sy, nMax, yTop, xTicks, yTicks } = geom;
 
   // The class flagged as "this algorithm" rides on its own curve; default to the highlight.
   const algoClass: BigOClass | undefined =
@@ -153,7 +175,7 @@ export function BigO({
           <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="bgo-axis" />
 
           {/* axis titles */}
-          <text x={(PAD_L + W - PAD_R) / 2} y={H - 3} className="bgo-axlbl" textAnchor="middle">
+          <text x={(PAD_L + W - PAD_R) / 2} y={H - 1} className="bgo-axlbl" textAnchor="middle">
             {xLabel}
           </text>
           <text
@@ -197,14 +219,16 @@ export function BigO({
               shortest ones ("O(1)") runs past the viewBox on the classes with anchors already
               near the plot's right edge (e.g. "O(n log n)", "O(2ⁿ)"). End-anchor instead and
               park the text at a safe right-edge margin so it grows leftward, into the gutter
-              PAD_R reserved for it, never past W. */}
+              PAD_R reserved for it, never past W. Vertically they sit on the de-collided
+              ladder from `geom`, not on the raw curve height, so converging curves still get
+              one readable label each. */}
           {curves.map((c) => {
             const isHi = highlight === c.id || algoClass === c.id;
             return (
               <text
                 key={`lbl${c.id}`}
                 x={W - 3}
-                y={c.anchor.y + 3}
+                y={labelY.get(c.id) ?? c.anchor.y + 3}
                 fill={c.color}
                 className={isHi ? 'bgo-curve-lbl bgo-curve-lbl--hi' : 'bgo-curve-lbl'}
                 textAnchor="end"

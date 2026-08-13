@@ -21,18 +21,22 @@ const TARGET_PEAK = 0.89; // normalize loudness to ≈ −1 dBFS so narration is
 const MAX_GAIN = 6; // never amplify near-silence into noise
 
 export interface ReelAudio {
-  /** One mono track (the shared context's rate) for the whole reel, or null when no line could be
-   *  voiced (silent export). */
+  /** One mono track (the shared context's rate) for the whole reel. A null buffer prevents export. */
   buffer: AudioBuffer | null;
   /** On-screen ms per slide, stretched so each slide outlasts its narration. */
   timings: number[];
-  /** How many voiceover lines failed to synthesize (after retry) — lets the caller degrade honestly. */
+  /** How many voiceover lines failed after retry; any positive value prevents export. */
   missing: number;
+  /** First unavailable line, so Video Studio can identify what must be retried. */
+  firstMissingLine?: string;
 }
 
 /** Synthesize one line to 24 kHz PCM, with a single retry — a transient TTS hiccup shouldn't drop a
  *  line's narration. Returns an empty array only when the line is empty or genuinely unavailable. */
-async function synthLine(text: string, voice: string, signal?: AbortSignal): Promise<Float32Array> {
+export async function synthesizeVoiceLine(
+  text: string,
+  signal?: AbortSignal,
+): Promise<Float32Array> {
   // Reels post directly to the speech endpoint instead of using the live queue, so apply the same
   // spoken-twin/native-pronunciation floor here. This changes audio only; slide text stays untouched.
   const line = pronounceForSpeech(text).trim().slice(0, MAX_LINE_CHARS);
@@ -45,7 +49,7 @@ async function synthLine(text: string, voice: string, signal?: AbortSignal): Pro
         body: JSON.stringify({
           model: 'kokoro',
           input: line,
-          voice,
+          voice: kokoroVoice('mavea'),
           response_format: 'pcm',
           speed: 1.0,
         }),
@@ -74,15 +78,30 @@ export async function renderReelAudio(
   const slides = script.slides;
   const floors = slides.map((s) => Math.max(800, Math.round(s.durationMs)));
   const ctx = sharedAudioContext();
-  if (!ctx || typeof OfflineAudioContext === 'undefined')
-    return { buffer: null, timings: floors, missing: 0 };
+  const voiceovers = slides.map((slide) => slide.voiceover.trim());
+  const firstAuthoredLine = voiceovers.find(Boolean);
+  if (!ctx || typeof OfflineAudioContext === 'undefined') {
+    return {
+      buffer: null,
+      timings: floors,
+      missing: voiceovers.filter(Boolean).length,
+      ...(firstAuthoredLine ? { firstMissingLine: firstAuthoredLine } : {}),
+    };
+  }
 
-  const voice = kokoroVoice('mavea');
-  const segs = await Promise.all(slides.map((s) => synthLine(s.voiceover, voice, signal)));
-  const voiced = slides.filter((s) => s.voiceover.trim()).length;
+  const segs = await Promise.all(slides.map((s) => synthesizeVoiceLine(s.voiceover, signal)));
+  const voiced = voiceovers.filter(Boolean).length;
   const got = segs.filter((s) => s.length > 0).length;
   const missing = Math.max(0, voiced - got);
-  if (got === 0) return { buffer: null, timings: floors, missing };
+  const firstMissingLine = voiceovers.find((line, index) => line && segs[index].length === 0);
+  if (got === 0) {
+    return {
+      buffer: null,
+      timings: floors,
+      missing,
+      ...(firstMissingLine ? { firstMissingLine } : {}),
+    };
+  }
 
   const timings = slides.map((_, i) => {
     const spokenMs = (segs[i].length / KOKORO_RATE) * 1000;
@@ -126,7 +145,7 @@ export async function renderReelAudio(
   });
 
   const buffer = await offline.startRendering();
-  return { buffer, timings, missing };
+  return { buffer, timings, missing, ...(firstMissingLine ? { firstMissingLine } : {}) };
 }
 
 export interface ReelAudioStream {
@@ -137,7 +156,7 @@ export interface ReelAudioStream {
   stop: () => void;
 }
 
-/** Wrap a rendered buffer as a MediaStream the encoder can mux as a deterministic AAC track. */
+/** Wrap a rendered buffer as a MediaStream the encoder can mux as a deterministic Opus track. */
 export function bufferToStream(buffer: AudioBuffer): ReelAudioStream | null {
   const ctx = sharedAudioContext();
   if (!ctx || typeof ctx.createMediaStreamDestination !== 'function') return null;

@@ -5,6 +5,8 @@
 // never touch the network.
 import { render, cleanup, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { LegalGate } from '../src/legal/LegalGate';
 import { LiveApp } from '../src/live/LiveApp';
 
@@ -48,6 +50,27 @@ describe('LiveApp — demo replay boot', () => {
     sessionStorage.setItem('mavea-demo-persona', 'cfo');
     render(<LiveApp />);
     expect(sessionStorage.getItem('mavea-demo-persona')).toBeNull();
+  });
+
+  it('lets the deck present itself on the demo replay, not only the tour', () => {
+    // The "presents itself" beat opens PresentationDeck; auto-advance used to be gated on tour
+    // mode alone, so the demo sat on the cover slide for the whole chapter and showed nothing.
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+    expect(live).toMatch(/autoAdvanceMs=\{tourMode\.current \|\| demoPersona\.current \? \d+ :/);
+  });
+
+  it('hands the user’s annotation settings back when a pen beat borrowed them', () => {
+    // A pen chapter persists annotationsEnabled + teachMode so Mavéa can draw. Without a restore
+    // path, watching the tour or a demo permanently flips a real user's setting.
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+    expect(live).toMatch(/penConfigRestoreRef\.current \?\?= \{ annotationsEnabled, teachMode \}/);
+    // Restored when the run ends, and again on unmount (leaving Live mid-run).
+    expect(live).toMatch(/if \(tourDrive\.done \|\| demoDrive\.done\) restorePenConfig\(\)/);
+    expect(live).toMatch(/useEffect\(\(\) => \(\) => restorePenConfig\(\), \[restorePenConfig\]\)/);
+    // …but a toggle the user makes themselves mid-run drops the snapshot and stands.
+    expect(live).toMatch(
+      /penConfigRestoreRef\.current = null;\n\s*setLiveConfigV2\(\{ annotationsEnabled: next/,
+    );
   });
 
   it('does not mount provider, voice, or settings controls before legal acceptance', () => {

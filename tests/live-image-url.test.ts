@@ -2,17 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { safeImageUrl } from '../src/live/image/safeUrl';
 import { validateLiveResponse } from '../src/engine/liveSchema';
 
+const CLEARED_IMAGE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
+
 // A model-supplied photo `src` is untrusted LLM output rendered straight into an <img>,
-// so it must clear a strict gate (https + an allowlisted image host) before we fetch it.
-// These tests lock that boundary: a real allowlisted asset passes; everything else — other
-// hosts, http/data/blob schemes, and subdomain-spoof tricks — is rejected.
+// so it must clear a strict, per-file clearance gate before we fetch it. A reputable host does
+// not establish a file's copyright status. These tests lock that boundary: one reviewed URL
+// passes; every other file, host, and active/non-HTTPS scheme is rejected.
 describe('safeImageUrl — model-supplied image URL gate', () => {
-  it('accepts https URLs on allowlisted image hosts', () => {
-    expect(safeImageUrl('https://upload.wikimedia.org/a/b/Mars.jpg')).toBe(
-      'https://upload.wikimedia.org/a/b/Mars.jpg',
-    );
-    expect(safeImageUrl('https://images.unsplash.com/photo-123')).toBeTruthy();
-    expect(safeImageUrl('https://images.pexels.com/photos/1/x.jpg')).toBeTruthy();
+  it('accepts an individually reviewed URL', () => {
+    expect(safeImageUrl(CLEARED_IMAGE)).toBe(CLEARED_IMAGE);
+  });
+
+  it('rejects an unreviewed file even on the same host', () => {
+    expect(safeImageUrl('https://upload.wikimedia.org/a/b/Mars.jpg')).toBeUndefined();
+    expect(safeImageUrl('https://images.unsplash.com/photo-123')).toBeUndefined();
+    expect(safeImageUrl('https://images.pexels.com/photos/1/x.jpg')).toBeUndefined();
   });
 
   it('rejects non-https schemes', () => {
@@ -37,26 +42,33 @@ describe('safeImageUrl — model-supplied image URL gate', () => {
   });
 });
 
-describe('photo block gating — found URLs only (no generation path)', () => {
+describe('photo block gating — menu and clearance are both required', () => {
   // A set without `photo` — e.g. a small-model tier, where the block is off the menu.
   const genOff = new Set(['insight']);
 
-  it('renders a safe-URL photo even when image generation is off (found image, not generation)', () => {
+  it('drops a cleared photo when photo is not offered for this turn', () => {
     const r = validateLiveResponse(
       {
         title: 'T',
-        blocks: [
-          { type: 'photo', props: { title: 'Mars', src: 'https://upload.wikimedia.org/mars.jpg' } },
-        ],
+        blocks: [{ type: 'photo', props: { title: 'Shibuya', src: CLEARED_IMAGE } }],
       },
       genOff,
       12,
     );
-    const photo = r?.blocks.find((b) => b.type === 'photo') as
-      | { props: { src: string } }
-      | undefined;
-    expect(photo).toBeTruthy();
-    expect(photo!.props.src).toBe('https://upload.wikimedia.org/mars.jpg');
+    expect((r?.blocks ?? []).some((b) => b.type === 'photo')).toBe(false);
+  });
+
+  it('keeps an individually cleared photo only when photo is on the menu', () => {
+    const r = validateLiveResponse(
+      {
+        title: 'T',
+        blocks: [{ type: 'photo', props: { title: 'Shibuya', src: CLEARED_IMAGE } }],
+      },
+      new Set(['insight', 'photo']),
+      12,
+    );
+    const photo = r?.blocks.find((b) => b.type === 'photo');
+    expect(photo?.type === 'photo' ? photo.props.src : undefined).toBe(CLEARED_IMAGE);
   });
 
   it('drops an unsafe-URL photo', () => {

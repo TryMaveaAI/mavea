@@ -119,7 +119,7 @@ describe('unverified — the bounded grounding retry + honest outcome', () => {
       'd1',
       expect.objectContaining({
         outcome: 'updated',
-        values: [{ metricId: 'm1', value: 190, raw: '190$', origin: 'search' }],
+        values: [{ metricId: 'm1', value: 190, raw: '$190', origin: 'search' }],
       }),
       expect.any(Number),
     );

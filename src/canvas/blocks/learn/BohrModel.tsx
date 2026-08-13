@@ -27,9 +27,12 @@ const SHELL_CAP = [2, 8, 18, 32, 50] as const;
 // and, for a heavy atom with many shells or high per-shell counts, can run wider than the gutter
 // and clip past the card's left edge. Rather than truncate the count (which would misreport the
 // real configuration), wrap it across stacked tspan lines sized to fit the gutter.
-const CONFIG_FONT = 9.5; // px, matches .boh-config font-size
-const CONFIG_CHAR_W = CONFIG_FONT * 0.62; // average glyph width for a bold tabular-nums face
-const CONFIG_ROW_H = 11; // px between wrapped summary lines
+const CONFIG_FONT = 10.5; // viewBox units, matches .boh-config font-size
+// Average glyph width for this string in a bold tabular-nums face. The summary is digits joined by
+// interpuncts and spaces — both far narrower than a digit — so a per-digit 0.62 estimate wasted a
+// third of the gutter; 0.55 still bounds an all-digit worst case.
+const CONFIG_CHAR_W = CONFIG_FONT * 0.55;
+const CONFIG_ROW_H = 13; // viewBox units between wrapped summary lines
 
 /** Greedily packs space-delimited words into lines no wider than `maxWidth` (in px, estimated
  *  from average glyph width) — same budget-based idiom as the sibling char-count helpers, just
@@ -165,7 +168,7 @@ export function BohrModel({
           <circle cx={CX} cy={CY} r={NUCLEUS_R} className="boh-nucleus" />
           <text
             x={CX}
-            y={CY - (neutrons !== undefined ? 5 : 0)}
+            y={CY - (neutrons !== undefined ? 6 : 0)}
             className="boh-nuc-p"
             textAnchor="middle"
             dominantBaseline="middle"
@@ -175,7 +178,7 @@ export function BohrModel({
           {neutrons !== undefined && (
             <text
               x={CX}
-              y={CY + 8}
+              y={CY + 9}
               className="boh-nuc-n"
               textAnchor="middle"
               dominantBaseline="middle"

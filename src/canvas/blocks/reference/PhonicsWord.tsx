@@ -2,21 +2,15 @@ import { type CSSProperties, useCallback, useEffect, useState } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { PhonicsWordProps, PhonicsChunk } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { cancelKokoro, kokoroKnownAvailable, speakKokoroResult } from '../../../voice/kokoro';
 
 type Props = PhonicsWordProps & { delay?: number };
 
 // Phonics word-decoding card: the target word split into the sound chunks it is read in,
-// each drawn as a box you can tap to hear it (Web Speech), then blended into the whole word.
+// each drawn as a box you can tap to hear it through local Kokoro, then blended into the word.
 // Digraphs/blends are one highlighted unit (sh, str), silent letters are greyed, and an
 // optional rhyming-words row reinforces the rime. The segmented boxes are the point — the
 // chunk text reconstructs the word, so nothing on the card is invented: it all comes from props.
-
-// Speech is probed once at module load; non-browser hosts and older engines fall through to a
-// quiet read-only card (the boxes still teach the split) rather than throwing.
-const SPEECH_OK =
-  typeof window !== 'undefined' &&
-  'speechSynthesis' in window &&
-  typeof window.SpeechSynthesisUtterance === 'function';
 
 // A digraph/blend is a single sound spelled with several letters, so it reads as one box;
 // a silent letter is shown but greyed and never sounded. Everything else is one box per chunk.
@@ -39,25 +33,22 @@ export function PhonicsWord({
 
   // Which box (or the whole word, keyed -1) is currently sounding — for the pressed state.
   const [playing, setPlaying] = useState<number | null>(null);
+  // Kokoro is the only voice: when it isn't running the boxes animate and nothing is heard,
+  // so the card says so once. Taps keep working — the service may come up later.
+  const [voiceDown, setVoiceDown] = useState(false);
 
-  // Cancel any queued speech on unmount so nothing keeps talking after the card leaves.
-  useEffect(
-    () => () => {
-      if (SPEECH_OK) window.speechSynthesis.cancel();
-    },
-    [],
-  );
+  // Cancel queued local speech on unmount so nothing keeps talking after the card leaves.
+  useEffect(() => () => cancelKokoro(), []);
 
-  const speak = useCallback((text: string, idx: number, rate: number) => {
-    if (!SPEECH_OK) return;
-    window.speechSynthesis.cancel();
-    const u = new window.SpeechSynthesisUtterance(text);
-    u.rate = rate; // slower for a single sound, near-normal for the blended word
-    const clear = () => setPlaying((cur) => (cur === idx ? null : cur));
-    u.onend = clear;
-    u.onerror = clear;
-    window.speechSynthesis.speak(u);
+  const speak = useCallback((text: string, idx: number) => {
+    cancelKokoro();
     setPlaying(idx);
+    void speakKokoroResult(text, 'mavea').then((played) => {
+      setPlaying((cur) => (cur === idx ? null : cur));
+      // A cancelled line resolves false too (the tap above drains the previous one), so only
+      // the settled health probe is proof the service is actually down.
+      if (!played && kokoroKnownAvailable() === false) setVoiceDown(true);
+    });
   }, []);
 
   return (
@@ -85,15 +76,10 @@ export function PhonicsWord({
               data-kind={kind}
               data-playing={isPlaying || undefined}
               // a silent letter makes no sound, so its box is inert (but still shown to teach the spelling)
-              disabled={isSilent || !SPEECH_OK}
-              onClick={() => speak(chunk.text, i, 0.62)}
-              title={
-                isSilent
-                  ? `"${chunk.text}" is silent`
-                  : SPEECH_OK
-                    ? `Hear "${chunk.text}"`
-                    : `"${chunk.text}"`
-              }
+              disabled={isSilent}
+              // `sound` is IPA notation for the eye, not for TTS — the letters are what's spoken.
+              onClick={() => speak(chunk.text, i)}
+              title={isSilent ? `"${chunk.text}" is silent` : `Hear "${chunk.text}"`}
               aria-label={
                 isSilent
                   ? `${chunk.text}, silent`
@@ -112,24 +98,27 @@ export function PhonicsWord({
         type="button"
         className="pw-blend"
         data-playing={playing === -1 || undefined}
-        disabled={!SPEECH_OK}
-        onClick={() => speak(word, -1, 0.92)}
-        title={SPEECH_OK ? `Hear "${word}"` : word}
-        aria-label={SPEECH_OK ? `Hear the whole word, ${word}` : word}
+        onClick={() => speak(word, -1)}
+        title={`Hear "${word}"`}
+        aria-label={`Hear the whole word, ${word}`}
       >
-        {SPEECH_OK ? (
-          playing === -1 ? (
-            <span className="pw-wave" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-          ) : (
-            <Icon.play className="ic pw-blend-ic" style={{ width: 12, height: 12 }} />
-          )
-        ) : null}
+        {playing === -1 ? (
+          <span className="pw-wave" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+        ) : (
+          <Icon.play className="ic pw-blend-ic" style={{ width: 12, height: 12 }} />
+        )}
         <span className="pw-blend-word">{word}</span>
       </button>
+
+      {voiceDown && (
+        <p className="insight-summary" role="status" style={{ marginTop: 10 }}>
+          Voice is off — start the local voice service to hear this.
+        </p>
+      )}
 
       {caption && <div className="ipa-caption">{caption}</div>}
 

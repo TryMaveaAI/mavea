@@ -181,11 +181,12 @@ export function CircleOfFifths({
             );
           })}
 
-          {/* Hub caption: ♯ rises clockwise, ♭ falls anticlockwise */}
-          <text x={C} y={C - 2} className="cof-hub-lbl" textAnchor="middle">
+          {/* Hub caption: ♯ rises clockwise, ♭ falls anticlockwise. The two baselines are set a
+              full line apart at .cof-hub-lbl's size so the glyph bands stay clear of each other. */}
+          <text x={C} y={C - 3} className="cof-hub-lbl" textAnchor="middle">
             ♯ →
           </text>
-          <text x={C} y={C + 9} className="cof-hub-lbl" textAnchor="middle">
+          <text x={C} y={C + 11} className="cof-hub-lbl" textAnchor="middle">
             ← ♭
           </text>
         </svg>

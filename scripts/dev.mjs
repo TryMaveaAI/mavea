@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // dev.mjs — `pnpm dev` brings up EVERYTHING Mavéa needs, not just the web server.
 //
-// The voice lives in a container (Kokoro TTS) while the app runs on the host, and for a long time
+// Speech lives in local containers (Kokoro TTS + whisper.cpp STT) while the app runs on the host,
+// and for a long time
 // starting them was two separate commands. That split is invisible from the browser: the app looks
 // completely healthy, `speak()` no-ops, and you are left wondering why Mavéa never talks. So this
 // script owns the whole local stack — start the voice, start Vite, and say plainly which pieces are
-// live. Nothing here is required for the app to run: if Docker is missing or the image can't start,
-// we say so in one line and Vite comes up anyway with captions instead of speech.
+// live. Nothing here is required for the app to run: if no container runtime is ready, Vite still
+// comes up and says plainly which local speech capabilities are unavailable.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const VOICE_HEALTH = 'http://localhost:8880/health';
 const VOICE_SPEECH = 'http://localhost:8880/v1/audio/speech';
+const STT_HEALTH = 'http://localhost:8100/';
 /** Kokoro loads its voice model on first run; a cold pull can take a while, so poll generously. */
 const VOICE_READY_TIMEOUT_MS = 180_000;
 const VOICE_POLL_MS = 1_000;
@@ -49,18 +51,48 @@ function credSafeConfigDir() {
   return dir;
 }
 
-function dockerReady() {
-  return spawnSync('docker', ['info'], { stdio: 'ignore' }).status === 0;
+function commandReady(command, args) {
+  return spawnSync(command, args, { stdio: 'ignore' }).status === 0;
 }
 
-/** Start the voice container, retrying once with a clean Docker config if the credential helper is
- *  what failed. The throwaway config dir is built only for that retry, so the common path leaves
- *  nothing behind. Returns true when compose reports the service up. */
-function startVoice(threads) {
+function containerRuntime() {
+  if (commandReady('podman', ['info'])) {
+    if (commandReady('podman', ['compose', 'version'])) {
+      return { command: 'podman', prefix: ['compose'], label: 'Podman' };
+    }
+    if (commandReady('podman-compose', ['--version'])) {
+      return { command: 'podman-compose', prefix: [], label: 'Podman' };
+    }
+  }
+  if (commandReady('docker', ['info'])) {
+    return { command: 'docker', prefix: ['compose'], label: 'Docker' };
+  }
+  return null;
+}
+
+function installedRuntimeHint() {
+  if (commandReady('podman', ['--version'])) {
+    return 'Podman is installed but not ready — start `podman machine` and re-run `pnpm dev`';
+  }
+  if (commandReady('docker', ['--version'])) {
+    return 'Docker is installed but not ready — start its engine and re-run `pnpm dev`';
+  }
+  return 'install Podman (Apache-2.0) and re-run `pnpm dev` to enable local speech';
+}
+
+/** Start both local speech services. Docker gets one credential-helper-safe retry because every
+ *  image is public; Podman has no equivalent credential helper failure on this path. */
+function startVoice(runtime, threads) {
   const env = threads ? { ...process.env, MAVEA_VOICE_THREADS: String(threads) } : process.env;
-  const up = (args) => spawnSync('docker', args, { stdio: 'ignore', env }).status === 0;
-  if (up(['compose', 'up', '-d'])) return true;
-  return up(['--config', credSafeConfigDir(), 'compose', 'up', '-d']);
+  const args = [...runtime.prefix, 'up', '-d', '--build'];
+  if (spawnSync(runtime.command, args, { stdio: 'inherit', env }).status === 0) return true;
+  if (runtime.command !== 'docker') return false;
+  return (
+    spawnSync('docker', ['--config', credSafeConfigDir(), 'compose', 'up', '-d', '--build'], {
+      stdio: 'inherit',
+      env,
+    }).status === 0
+  );
 }
 
 /** The thread count this machine settled on last time, or null on a first run. */
@@ -145,6 +177,15 @@ async function voiceHealthy() {
   }
 }
 
+async function sttHealthy() {
+  try {
+    const res = await fetch(STT_HEALTH, { signal: AbortSignal.timeout(2_000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Announce the voice when it actually answers, not when the container was merely created — the
  *  model load is what the user is waiting on, and a premature "ready" is worse than silence. */
 async function announceVoiceWhenReady(startedAt, alreadyTuned) {
@@ -160,6 +201,18 @@ async function announceVoiceWhenReady(startedAt, alreadyTuned) {
   console.log(
     yellow('  ! voice   ') + dim('Kokoro did not become healthy — answers stay captioned'),
   );
+}
+
+async function announceSttWhenReady() {
+  const deadline = Date.now() + VOICE_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (await sttHealthy()) {
+      console.log(green('  ✓ mic     ') + dim('whisper.cpp ready on :8100 — speech stays local'));
+      return;
+    }
+    await new Promise((resolvePoll) => setTimeout(resolvePoll, VOICE_POLL_MS));
+  }
+  console.log(yellow('  ! mic     ') + dim('whisper.cpp did not become healthy — use typing'));
 }
 
 /** First run on this machine: measure it and record the answer for next time.
@@ -180,33 +233,45 @@ async function settleVoiceThreads(startedAt) {
 async function bringUpVoice() {
   const tuned = cachedThreads();
   const startedAt = tuned ?? VOICE_MAX_THREADS;
-  if (await voiceHealthy()) {
+  const [voiceWasHealthy, sttWasHealthy] = await Promise.all([voiceHealthy(), sttHealthy()]);
+  if (voiceWasHealthy) {
     console.log(green('  ✓ voice   ') + dim('Kokoro TTS already running on :8880'));
+  }
+  if (sttWasHealthy) {
+    console.log(green('  ✓ mic     ') + dim('whisper.cpp already running on :8100'));
+  }
+  if (voiceWasHealthy && sttWasHealthy) return;
+
+  const runtime = containerRuntime();
+  if (!runtime) {
+    console.log(yellow('  ! speech  ') + dim(installedRuntimeHint()));
     return;
   }
-  if (!dockerReady()) {
+  if (!startVoice(runtime, startedAt)) {
     console.log(
-      yellow('  ! voice   ') + dim('Docker is not running — answers will be captioned, not spoken'),
+      yellow('  ! speech  ') +
+        dim(`could not start the local services with ${runtime.label} — app still works`),
     );
-    console.log(dim('             start Docker and re-run `pnpm dev` to enable speech'));
     return;
   }
-  if (!startVoice(startedAt)) {
+  if (!voiceWasHealthy) {
+    console.log(dim('  … voice   Kokoro starting (first run downloads the model)'));
+    void announceVoiceWhenReady(startedAt, tuned !== null);
+  }
+  if (!sttWasHealthy) {
     console.log(
-      yellow('  ! voice   ') + dim('could not start the Kokoro container — answers stay captioned'),
+      dim('  … mic     whisper.cpp starting (first run builds it and downloads the model)'),
     );
-    return;
+    void announceSttWhenReady();
   }
-  console.log(dim('  … voice   Kokoro starting (first run downloads the model)'));
-  void announceVoiceWhenReady(startedAt, tuned !== null);
 }
 
 console.log(dim('\n  Mavéa — starting the local stack\n'));
 await bringUpVoice();
 
-// Vite owns the foreground: its banner prints the URL, and Ctrl-C stops it. The voice container is
-// `restart: unless-stopped`, so it survives between dev sessions on purpose — `docker compose down`
-// is the deliberate way to stop it.
+// Vite owns the foreground: its banner prints the URL, and Ctrl-C stops it. Speech containers use
+// `restart: unless-stopped`, so they survive between dev sessions; `podman compose down` (or the
+// Docker equivalent) is the deliberate way to stop them.
 // Resolve Vite through the repository's pinned pnpm graph. `npx vite` is allowed to consult the
 // registry and can select a different package when node_modules is incomplete — both surprising
 // and avoidable in a deterministic local stack.

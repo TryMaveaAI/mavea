@@ -5,12 +5,19 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = FreebodyDiagramProps & { delay?: number };
 
-const W = 420;
-const H = 340;
-const CX = 210; // center of the object
-const CY = 165;
-const BOX = 34; // half-size of the object box
-const FORCE_LEN = 70; // base arrow length in SVG pixels
+// Inside a viewBox a font-size is in USER UNITS, so a force label lands on screen at its authored
+// size times the drawn width over W. The diagram is drawn as wide as the card allows (see
+// .fbd-svg), which on a canvas card is well under W — so the box is kept tight and the arrows
+// short, buying both the type size that clears the 9px legibility floor and the room between an
+// arrowhead and the canvas edge that the label budget below is sized against.
+const W = 400;
+const H = 296;
+const CX = W / 2; // center of the object
+const CY = H / 2;
+const BOX = 30; // half-size of the object box
+const FORCE_LEN = 48; // base arrow length in viewBox units
+const LABEL_GAP = 11; // distance from the arrowhead to the label block
+const LINE_H = 13.5; // baseline-to-baseline advance inside a label block
 
 // Convert a magnitude to a capped arrow length
 const arrowLen = (mag: number | undefined) =>
@@ -19,8 +26,9 @@ const arrowLen = (mag: number | undefined) =>
 // Force labels sit at a fixed offset beyond the arrowhead with no wrap and no width check —
 // a model-authored label longer than the demo fixture's ("Weight", "Normal") runs past the
 // viewBox edge or collides with a neighbouring force's label/arrow. Cap it to a conservative
-// character budget sized for the label font (9.5px, see .fbd-lbl) and the room between the
-// tip and the diagram edge, same idiom as PianoKeys/StoryArc/EtymTree.
+// character budget sized for the label font (see .fbd-lbl) and the room between the longest
+// arrow's tip and the diagram edge — 92 units at the widest arrow, ~6 per character at
+// .fbd-lbl's size — same idiom as PianoKeys/StoryArc/EtymTree.
 const FORCE_LABEL_MAX_CHARS = 14;
 
 function truncate(text: string, max: number): string {
@@ -66,9 +74,15 @@ function ForceArrow({ force, cx, cy }: { force: FBDForce; cx: number; cy: number
   const lx2 = tipX - cosA * 8;
   const ly2 = tipY - sinA * 8;
 
-  // Label placed beyond the tip
-  const lblX = tipX + cosA * 11;
-  const lblY = tipY + sinA * 11;
+  // Label placed beyond the tip. The magnitude gets its own line rather than trailing the name:
+  // side by side, a long name plus its value consumed more room than the gap between the arrowhead
+  // and the canvas edge, and the diagram has vertical slack to spend where it has no horizontal.
+  const lblX = tipX + cosA * LABEL_GAP;
+  const lblY = tipY + sinA * LABEL_GAP;
+  const hasMag = force.magnitude !== undefined;
+  // Stack the block away from the arrow: an upward force's label grows above its anchor, a
+  // downward one's below it, and a sideways one straddles it.
+  const nameY = !hasMag || sinA > 0.2 ? lblY : sinA < -0.2 ? lblY - LINE_H : lblY - LINE_H / 2;
 
   return (
     <g>
@@ -76,7 +90,7 @@ function ForceArrow({ force, cx, cy }: { force: FBDForce; cx: number; cy: number
       <Head x={tipX} y={tipY} angle={angle} color={col} />
       <text
         x={lblX}
-        y={lblY}
+        y={nameY}
         fill={col}
         className="fbd-lbl"
         textAnchor={cosA > 0.2 ? 'start' : cosA < -0.2 ? 'end' : 'middle'}
@@ -84,7 +98,11 @@ function ForceArrow({ force, cx, cy }: { force: FBDForce; cx: number; cy: number
       >
         {force.label.length > FORCE_LABEL_MAX_CHARS && <title>{force.label}</title>}
         {truncate(force.label, FORCE_LABEL_MAX_CHARS)}
-        {force.magnitude !== undefined && <tspan className="fbd-mag"> ({force.magnitude} N)</tspan>}
+        {hasMag && (
+          <tspan className="fbd-mag" x={lblX} y={nameY + LINE_H}>
+            {force.magnitude} N
+          </tspan>
+        )}
       </text>
     </g>
   );

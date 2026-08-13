@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isThoughtsTrigger, bankable, sortAsk } from '../src/live/thinkaloud/thinkaloud';
+import {
+  isThoughtsTrigger,
+  bankable,
+  sortAsk,
+  listenChipTitle,
+} from '../src/live/thinkaloud/thinkaloud';
 
 // Think-out-loud: the wake phrase is generous but bounded; banked lines ride verbatim into
 // ONE sorting ask that forbids invented content.
@@ -30,5 +35,19 @@ describe('bankable + sortAsk', () => {
     expect(ask).toContain('11 minutes');
     expect(ask).toMatch(/do NOT add ideas/);
     expect(ask).toMatch(/CONTRADICTIONS/);
+  });
+});
+
+describe('listenChipTitle', () => {
+  it('warns that toggling off DISCARDS the bank, with the count', () => {
+    const title = listenChipTitle(true, 3);
+    expect(title).toContain('Discard 3');
+    // …and points at the non-destructive alternative sitting right next to it.
+    expect(title).toContain('Thoughts?');
+  });
+
+  it('says nothing about discarding when there is nothing banked', () => {
+    expect(listenChipTitle(true, 0)).toBe('Stop banking and go back to answering');
+    expect(listenChipTitle(false, 0)).toMatch(/Bank everything you say/);
   });
 });

@@ -274,6 +274,45 @@ describe('buildTileModel delta', () => {
     const d = dash({ metrics: [metric({ lastValue: 10, history: [{ at: 1, value: 10 }] })] });
     expect(buildTileModel(d, 1000).delta).toBeNull();
   });
+
+  it('no badge for a move smaller than the two decimals shown — "+0%" announces nothing', () => {
+    // Two metrics so this reads as a plain tracked number, not the single-% probability face.
+    const d = dash({
+      metrics: [
+        metric({
+          label: '10Y yield',
+          unit: '%',
+          lastValue: 4.182,
+          history: [
+            { at: 1, value: 4.181 },
+            { at: 2, value: 4.182 },
+          ],
+        }),
+        metric({ id: 'm2', label: 'CPI', unit: '%', lastValue: 3.1 }),
+      ],
+    });
+    const model = buildTileModel(d, 1000);
+    expect(model.vizKind).toBe('sparkline');
+    expect(model.delta).toBeNull();
+  });
+
+  it('a sub-cent price move leaves the area chart untinted (delta null ⇒ flat tone)', () => {
+    const d = dash({
+      metrics: [
+        metric({
+          unit: '$',
+          lastValue: 3412.602,
+          history: [
+            { at: 1, value: 3412.601 },
+            { at: 2, value: 3412.602 },
+          ],
+        }),
+      ],
+    });
+    const model = buildTileModel(d, 1000);
+    expect(model.vizKind).toBe('area');
+    expect(model.delta).toBeNull();
+  });
 });
 
 describe('buildTileModel cadence + live window', () => {
@@ -349,5 +388,47 @@ describe('form chips — an unplayed game has no score to show', () => {
     });
     const model = buildTileModel(dash({ widgets: [partial] }), 10_000);
     expect(model.formChips.map((c) => c.label)).toEqual(['10-4']);
+  });
+
+  // Today's schedule leads with the unplayed fixtures and carries the finished games below them.
+  // Capping to five BEFORE dropping the scoreless ones threw away every real score on the board.
+  it('finds the real scores below a run of unplayed fixtures', () => {
+    const dayCard = widget('scoreboard', {
+      games: [
+        ...Array.from({ length: 6 }, (_, i) => ({
+          away: `A${i}`,
+          home: `H${i}`,
+          status: '7:30 PM',
+        })),
+        { away: 'BOS', home: 'NYY', as: '4', hs: '2', status: 'Final' },
+        { away: 'LAD', home: 'SF', as: '3', hs: '1', status: 'Final' },
+      ],
+    });
+    const model = buildTileModel(dash({ widgets: [dayCard] }), 10_000);
+    expect(model.formChips.map((c) => c.label)).toEqual(['4-2', '3-1']);
+  });
+
+  it('finds the real records below a run of record-less standings rows', () => {
+    const table = widget('standings', {
+      rows: [
+        ...Array.from({ length: 6 }, (_, i) => ({ team: `Team ${i}`, gb: '-' })),
+        { team: 'Yankees', rec: '10-4', gb: '-' },
+      ],
+    });
+    const model = buildTileModel(dash({ widgets: [table] }), 10_000);
+    expect(model.formChips.map((c) => c.label)).toEqual(['10-4']);
+  });
+
+  it('still caps at five once the scoreless entries are gone', () => {
+    const many = widget('scoreboard', {
+      games: Array.from({ length: 8 }, (_, i) => ({
+        away: `A${i}`,
+        home: `H${i}`,
+        as: String(i),
+        hs: '0',
+        status: 'Final',
+      })),
+    });
+    expect(buildTileModel(dash({ widgets: [many] }), 10_000).formChips).toHaveLength(5);
   });
 });

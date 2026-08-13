@@ -1,11 +1,12 @@
 // usePanZoom — a small pan-and-zoom camera for a fixed-size "world" inside a viewport. Drag to pan,
 // wheel or buttons to zoom toward the cursor, and a fit() that frames the whole world in the current
 // viewport (recomputed on resize, so the map re-fits when the source panel opens and steals width).
-// Pure DOM/React; the world is rendered at its natural size and moved by a CSS transform.
+// Pure DOM/React; the world is rendered at its natural size and moved by a CSS transform written
+// straight to the element (see worldRef) rather than re-rendered.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
-export interface Camera {
+interface Camera {
   x: number;
   y: number;
   scale: number;
@@ -15,9 +16,10 @@ const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
 
 export interface PanZoom {
-  camera: Camera;
-  /** `translate(x,y) scale(s)` for the world element. */
-  transform: string;
+  /** Attach to the world element. The camera transform is written to it directly rather than
+   *  rendered, so a drag or a wheel tick never re-renders the host (the map can hold hundreds of
+   *  cards, and a pointermove-driven re-render of all of them is visible jank). */
+  worldRef: (node: HTMLElement | null) => void;
   panning: boolean;
   /** Frame the content (or the whole world if no content box was given) in the viewport, centred. */
   fit: () => void;
@@ -28,7 +30,6 @@ export interface PanZoom {
     opts?: { maxScale?: number },
   ) => void;
   zoomBy: (factor: number) => void;
-  onWheel: (e: React.WheelEvent) => void;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
@@ -50,8 +51,11 @@ export function usePanZoom(
    *  whole world, so a sparse map fills the viewport instead of sitting tiny in an empty field.
    *  Memoize it — its identity gates the re-fit. Falls back to the full world when undefined. */
   contentBox?: { x: number; y: number; w: number; h: number },
+  opts?: {
+    /** Whether the wheel zooms the map — false while the world isn't on screen yet. */
+    wheelZoom?: boolean;
+  },
 ): PanZoom {
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
   const [panning, setPanning] = useState(false);
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const movedRef = useRef(false);
@@ -60,6 +64,34 @@ export function usePanZoom(
     bbox: { x: number; y: number; w: number; h: number };
     opts?: { maxScale?: number };
   } | null>(null);
+
+  // The camera lives in a ref and is written straight to the world element's transform: it changes
+  // on every pointermove, and routing that through React state would re-render the whole map (and
+  // every claim card in it) per mouse event.
+  const camera = useRef<Camera>({ x: 0, y: 0, scale: 1 });
+  const world = useRef<HTMLElement | null>(null);
+  const applyCamera = useCallback(() => {
+    const node = world.current;
+    if (!node) return;
+    const c = camera.current;
+    node.style.transform = `translate(${c.x}px, ${c.y}px) scale(${c.scale})`;
+  }, []);
+  const setCamera = useCallback(
+    (next: Camera | ((current: Camera) => Camera)) => {
+      camera.current = typeof next === 'function' ? next(camera.current) : next;
+      applyCamera();
+    },
+    [applyCamera],
+  );
+  // The world mounts only once the map settles — long after the first fit() — so apply the camera
+  // the moment the element arrives (and whenever it is replaced).
+  const worldRef = useCallback(
+    (node: HTMLElement | null) => {
+      world.current = node;
+      applyCamera();
+    },
+    [applyCamera],
+  );
 
   const fit = useCallback(() => {
     const el = viewportRef.current;
@@ -82,7 +114,7 @@ export function usePanZoom(
       y: el.clientHeight / 2 - cy * scale,
       scale,
     });
-  }, [viewportRef, worldW, worldH, contentBox]);
+  }, [viewportRef, worldW, worldH, contentBox, setCamera]);
 
   const frame = useCallback(
     (bbox: { x: number; y: number; w: number; h: number }, opts?: { maxScale?: number }) => {
@@ -104,7 +136,7 @@ export function usePanZoom(
         scale,
       });
     },
-    [viewportRef],
+    [viewportRef, setCamera],
   );
 
   // Fit on mount, then keep whatever the camera was already doing in sync with the viewport size:
@@ -128,17 +160,20 @@ export function usePanZoom(
     return () => ro.disconnect();
   }, [viewportRef, fit, frame]);
 
-  const zoomAt = useCallback((factor: number, fx: number, fy: number) => {
-    intent.current = 'user';
-    setCamera((c) => {
-      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, c.scale * factor));
-      if (next === c.scale) return c;
-      // keep the world point under (fx,fy) fixed on screen
-      const wx = (fx - c.x) / c.scale;
-      const wy = (fy - c.y) / c.scale;
-      return { x: fx - wx * next, y: fy - wy * next, scale: next };
-    });
-  }, []);
+  const zoomAt = useCallback(
+    (factor: number, fx: number, fy: number) => {
+      intent.current = 'user';
+      setCamera((c) => {
+        const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, c.scale * factor));
+        if (next === c.scale) return c;
+        // keep the world point under (fx,fy) fixed on screen
+        const wx = (fx - c.x) / c.scale;
+        const wy = (fy - c.y) / c.scale;
+        return { x: fx - wx * next, y: fy - wy * next, scale: next };
+      });
+    },
+    [setCamera],
+  );
 
   const zoomBy = useCallback(
     (factor: number) => {
@@ -150,16 +185,22 @@ export function usePanZoom(
     [viewportRef, zoomAt],
   );
 
-  const onWheel = useCallback(
-    (e: React.WheelEvent) => {
-      const el = viewportRef.current;
-      if (!el) return;
+  // Wheel zoom has to be a native, explicitly non-passive listener: React registers wheel handlers
+  // passively at the root, so preventDefault() from an onWheel prop is a no-op — the console fills
+  // with "Unable to preventDefault inside passive event listener" and a trackpad pinch zooms the
+  // whole browser page while the map zooms underneath it.
+  const wheelZoom = opts?.wheelZoom ?? true;
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el || !wheelZoom) return;
+    const onWheel = (e: WheelEvent): void => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left, e.clientY - rect.top);
-    },
-    [viewportRef, zoomAt],
-  );
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [viewportRef, wheelZoom, zoomAt]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -169,28 +210,31 @@ export function usePanZoom(
     movedRef.current = false;
   }, []);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d || e.pointerId !== d.id) return;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    if (!d.moved && Math.hypot(dx, dy) < 4) return;
-    if (!d.moved) {
-      d.moved = true;
-      setPanning(true);
-      // Now it's a drag: capture so a fast pan that leaves the element keeps streaming moves.
-      try {
-        (e.currentTarget as HTMLElement).setPointerCapture(d.id);
-      } catch {
-        /* capture optional */
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const d = drag.current;
+      if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.moved && Math.hypot(dx, dy) < 4) return;
+      if (!d.moved) {
+        d.moved = true;
+        setPanning(true);
+        // Now it's a drag: capture so a fast pan that leaves the element keeps streaming moves.
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture(d.id);
+        } catch {
+          /* capture optional */
+        }
       }
-    }
-    d.x = e.clientX;
-    d.y = e.clientY;
-    movedRef.current = true;
-    intent.current = 'user';
-    setCamera((c) => ({ ...c, x: c.x + dx, y: c.y + dy }));
-  }, []);
+      d.x = e.clientX;
+      d.y = e.clientY;
+      movedRef.current = true;
+      intent.current = 'user';
+      setCamera((c) => ({ ...c, x: c.x + dx, y: c.y + dy }));
+    },
+    [setCamera],
+  );
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     const d = drag.current;
@@ -210,13 +254,11 @@ export function usePanZoom(
   }, []);
 
   return {
-    camera,
-    transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
+    worldRef,
     panning,
     fit,
     frame,
     zoomBy,
-    onWheel,
     onPointerDown,
     onPointerMove,
     onPointerUp,

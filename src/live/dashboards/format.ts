@@ -68,6 +68,13 @@ function readableNumber(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
+/** A number joined to its unit the way that unit is actually written: a currency symbol leads
+ *  ("$1,625"), everything else trails ("4.18%"). Without this a dollar metric read "1,625$" on the
+ *  tile while its own delta chip alongside read "+$5". */
+export function valueWithUnit(n: string, unit?: string): string {
+  return unit === '$' ? `$${n}` : `${n}${unit ?? ''}`;
+}
+
 /** Anything past four decimal places is float noise, not precision — round it where it sits, leaving
  *  the rest of the token (a currency symbol, a trailing unit, the thousands separators a source
  *  printed) exactly as it came. "$1,624.95" and "4.18%" pass through untouched; only
@@ -86,7 +93,7 @@ function trimFloatNoise(token: string): string {
 export function metricDisplay(m: MetricSpec): string {
   if (m.lastRaw) return trimFloatNoise(m.lastRaw);
   if (m.lastValue === null) return '—';
-  return `${readableNumber(m.lastValue)}${m.unit ?? ''}`;
+  return valueWithUnit(readableNumber(m.lastValue), m.unit);
 }
 
 /** The card headline: the first metric that actually HAS a value (falling back to the first metric

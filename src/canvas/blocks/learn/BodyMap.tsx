@@ -5,17 +5,32 @@ import { richInnerHtml } from '../../../lib/richText';
 
 type Props = BodymapProps & { delay?: number };
 
-// viewBox="0 0 120 280" — all coordinates live in this space.
 // The silhouette is schematic (not anatomical) but proportionally recognisable, drawn from ~21
-// segments centred on x=60. ONE outline serves both views: the `side` prop only changes which
-// region NAMES carve it (front: chest/abdomen/thigh/shin; back: upper-back/lower-back/hamstring/calf),
-// so the figure is always correct without a second coordinate set to drift.
+// segments centred on x=60 across a 120-unit-wide, 286-unit-tall figure. ONE outline serves both
+// views: the `side` prop only changes which region NAMES carve it (front: chest/abdomen/thigh/shin;
+// back: upper-back/lower-back/hamstring/calf), so the figure is always correct without a second
+// coordinate set to drift.
+const FIG_W = 120;
+const FIG_H = 286;
 
-// Region labels sit at a fixed lx/ly with no box to wrap into (viewBox is only 120 wide, and
-// labels read outward from each limb toward the edge). A caller-supplied `label` or `note` can be
-// arbitrarily long, so it must be capped to a character budget that fits the gutter each anchor
-// actually has — otherwise it overruns the viewBox or collides with a neighbouring label/segment.
-const LABEL_MAX_CHARS = 14;
+// Region labels sit at a fixed lx/ly with no box to wrap into — they read outward from each limb
+// toward the edge, so the outermost anchors (lx 6 on the left, lx 114 on the right) need room
+// beyond the figure itself. The viewBox therefore carries a gutter on each side wide enough for a
+// full LABEL_MAX_CHARS label at .bm-label's size; without it the arm and hand labels are simply
+// clipped by the SVG viewport.
+//
+// The gutters are not free, though: inside a viewBox a label lands on screen at its authored size
+// times the drawn width over VB_W, so every unit of gutter costs label legibility. This pair —
+// ~7 units per character at .bm-label's size, 11 characters — is what fits alongside the figure in
+// the column .bm-svg-wrap gets while keeping the drawn label above the 9px legibility floor.
+const GUTTER = 78;
+const VB_X = -GUTTER;
+const VB_W = FIG_W + GUTTER * 2;
+
+// A caller-supplied `label` can be arbitrarily long, so it must be capped to the character budget
+// the gutter above actually holds — otherwise it overruns the viewBox or collides with a
+// neighbouring label/segment. The untruncated text stays available as a <title> tooltip.
+const LABEL_MAX_CHARS = 11;
 
 function truncateLabel(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
@@ -443,7 +458,7 @@ export function BodyMap({
 
       <div className="bm-layout">
         <div className="bm-svg-wrap" role="img" aria-label={`Human body diagram — ${view} view`}>
-          <svg viewBox="0 0 120 286" className="bm-svg" aria-hidden="true">
+          <svg viewBox={`${VB_X} 0 ${VB_W} ${FIG_H}`} className="bm-svg" aria-hidden="true">
             {DRAW_ORDER.map((id) => {
               const shape = SEGMENTS[id];
               if (!shape) return null;

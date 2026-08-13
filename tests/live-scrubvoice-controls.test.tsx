@@ -1,5 +1,7 @@
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { VoiceScrubber } from '../src/live/scrubvoice/VoiceScrubber';
 import type { TurnAudio } from '../src/live/scrubvoice/recorder';
 
@@ -65,5 +67,75 @@ describe('VoiceScrubber controls', () => {
     fireEvent.pointerDown(screen.getByRole('slider', { name: /scrub/i }), { clientX: 5 });
     expect(seeks.length).toBeGreaterThan(0);
     expect(seeks.at(-1)?.building).toBe(true);
+  });
+});
+
+// The waveform is the one thing that has to follow the `audio` prop synchronously: peaks used to
+// live in a ref cleared by its own effect, which React runs AFTER the draw effect — so a new turn
+// painted the PREVIOUS answer's waveform under the new track's duration and aria values.
+// jsdom lays nothing out and has no 2D context, so both are stubbed; the drawn bar heights are
+// the only place the bug is visible.
+describe('VoiceScrubber waveform', () => {
+  const barHeights: number[] = [];
+  const ctx = {
+    scale: () => {},
+    clearRect: () => {},
+    fillStyle: '',
+    fillRect: (_x: number, _y: number, _w: number, h: number) => {
+      barHeights.push(h);
+    },
+  };
+  const size = (px: number) => ({ configurable: true, get: () => px });
+  const originalGetContext = HTMLCanvasElement.prototype.getContext;
+
+  beforeEach(() => {
+    barHeights.length = 0;
+    Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', size(320));
+    Object.defineProperty(HTMLCanvasElement.prototype, 'clientHeight', size(28));
+    HTMLCanvasElement.prototype.getContext = (() =>
+      ctx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  });
+  afterEach(() => {
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, 'clientWidth');
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, 'clientHeight');
+  });
+
+  const track = (amp: number, duration: number): TurnAudio => ({
+    pcm: new Float32Array(800).fill(amp),
+    sampleRate: 16000,
+    duration,
+    spans: [],
+    marks: [],
+  });
+
+  it('redraws from the NEW track the moment the audio prop changes', () => {
+    const quiet = track(0.2, 4);
+    const loud = track(0.9, 9);
+    const { rerender } = render(<VoiceScrubber audio={quiet} t={null} onSeek={() => {}} />);
+    expect(barHeights.length).toBeGreaterThan(0);
+    const quietBar = barHeights[0];
+
+    barHeights.length = 0;
+    rerender(<VoiceScrubber audio={loud} t={null} onSeek={() => {}} />);
+    expect(barHeights.length).toBeGreaterThan(0);
+    // Every bar of the redraw comes from the loud track — not one is the old track's height.
+    expect(barHeights.every((h) => h > quietBar * 2)).toBe(true);
+    // …and the strip's own numbers moved with it.
+    expect(screen.getByRole('slider', { name: /scrub/i }).getAttribute('aria-valuemax')).toBe('9');
+  });
+});
+
+// The strip is dense, and dense invites shrinking the type past the point of reading. The hint
+// under the waveform sat at 8.5px until this guard existed. jsdom parses no stylesheet, so the
+// floor is pinned by scanning the source.
+describe('VoiceScrubber legibility', () => {
+  it('declares no rendered text below the 9px floor', () => {
+    const css = readFileSync(join(__dirname, '../src/live/scrubvoice/scrubvoice.css'), 'utf8');
+    const sizes = Array.from(css.matchAll(/font(?:-size)?:[^;{}]*?(\d+(?:\.\d+)?)px/g)).map((m) =>
+      Number(m[1]),
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(sizes.filter((px) => px < 9)).toEqual([]);
   });
 });

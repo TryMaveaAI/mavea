@@ -6,6 +6,8 @@ import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { ExportDocView } from '../render/ExportDoc';
 import { ensureFacesLoaded } from '../render/fonts';
+import { pageSize } from '../paginate/geometry';
+import { ensureFigureReady } from '../../canvas/embed';
 import { nextFrame } from '../../lib/nextFrame';
 import type { ExportDoc } from '../model/ExportDoc';
 import type { TemplateSkin } from '../skins/types';
@@ -19,6 +21,18 @@ export async function printDoc(doc: ExportDoc, skin: TemplateSkin, accent?: stri
 
   const host = document.createElement('div');
   host.className = 'mavea-export-doc';
+  // export-print.css keeps this portal `display: none` until the print rules reveal it — and a node
+  // with no layout can never settle its async figures (Shiki, KaTeX, images, maps), so the dialog
+  // would open on half-rendered pages. Lay it out offscreen at the document's real page width
+  // instead; the inline styles come straight back off once everything has settled, handing layout
+  // back to the print rules.
+  Object.assign(host.style, {
+    display: 'block',
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: `${pageSize(doc.format).width}px`,
+  });
   document.body.appendChild(host);
   const root = createRoot(host);
 
@@ -42,6 +56,8 @@ export async function printDoc(doc: ExportDoc, skin: TemplateSkin, accent?: stri
     });
     await nextFrame();
     await nextFrame();
+    await ensureFigureReady(host);
+    host.removeAttribute('style');
     timer = window.setTimeout(cleanup, 120_000);
     window.addEventListener('afterprint', cleanup);
     document.body.classList.add('mavea-printing');

@@ -295,3 +295,66 @@ describe('sanitizeSvg — preserves legitimate drawing markup', () => {
     expect(out).toContain('<circle');
   });
 });
+
+// A model authors font sizes against the viewBox it imagined, not the box the block renders in,
+// so its labels routinely arrive under the ~9px floor where reading turns into squinting (the
+// solar-system figure drew "belt" at 6.5 units — 7.4px on screen). The floor is enforced here for
+// the same reason off-token colors are rewritten: the model is taught it, and doesn't follow it.
+describe('sanitizeSvg — keeps model-authored labels legible', () => {
+  /** The floor the sanitizer applies: 9.5px at the block's biggest on-screen box (640 × 440). */
+  function floorFor(vbW: number, vbH: number): number {
+    return 9.5 * Math.max(vbW / 640, vbH / 440);
+  }
+  function sizeOf(svg: SVGElement, selector = 'text'): number {
+    return Number(svg.querySelector(selector)!.getAttribute('font-size'));
+  }
+
+  it('raises a label that would render under the floor', () => {
+    const out = sanitizeSvg('<svg viewBox="0 0 560 120"><text font-size="6.5">belt</text></svg>');
+    expect(out).not.toBeNull();
+    expect(sizeOf(parse(out!))).toBeCloseTo(floorFor(560, 120), 1);
+  });
+
+  it('scales the floor with the viewBox, since that is what sets the on-screen size', () => {
+    const wide = sanitizeSvg('<svg viewBox="0 0 1600 200"><text font-size="8">x</text></svg>');
+    const tall = sanitizeSvg('<svg viewBox="0 0 200 1600"><text font-size="8">x</text></svg>');
+    expect(sizeOf(parse(wide!))).toBeCloseTo(floorFor(1600, 200), 1);
+    // A tall figure letterboxes against the height cap, so it needs the larger floor of the two.
+    expect(sizeOf(parse(tall!))).toBeCloseTo(floorFor(200, 1600), 1);
+  });
+
+  it('never shrinks a label that is already comfortable', () => {
+    const out = sanitizeSvg('<svg viewBox="0 0 100 100"><text font-size="14">big</text></svg>');
+    expect(sizeOf(parse(out!))).toBe(14);
+  });
+
+  it('raises a size inherited from a group, and one hidden in a style attribute', () => {
+    const out = sanitizeSvg(
+      '<svg viewBox="0 0 640 440">' +
+        '<g font-size="5"><text>inherited</text></g>' +
+        '<text style="font-weight:600;font-size:4px">styled</text>' +
+        '</svg>',
+    );
+    expect(out).not.toBeNull();
+    const svg = parse(out!);
+    const [inherited, styled] = Array.from(svg.querySelectorAll('text'));
+    expect(Number(inherited.getAttribute('font-size'))).toBeCloseTo(9.5, 1);
+    // The style declaration outranks the presentation attribute, so it has to be cleared too —
+    // otherwise the raised attribute is written but never applied.
+    expect(Number(styled.getAttribute('font-size'))).toBeCloseTo(9.5, 1);
+    expect(styled.getAttribute('style')).not.toMatch(/font-size/i);
+    expect(styled.getAttribute('style')).toMatch(/font-weight/i);
+  });
+
+  it('leaves a relatively-sized label alone rather than guessing at the cascade', () => {
+    const out = sanitizeSvg('<svg viewBox="0 0 2000 200"><text font-size="0.5em">rel</text></svg>');
+    expect(out).not.toBeNull();
+    expect(parse(out!).querySelector('text')!.getAttribute('font-size')).toBe('0.5em');
+  });
+
+  it('raises an undeclared label when the viewBox dwarfs SVG’s default size', () => {
+    const out = sanitizeSvg('<svg viewBox="0 0 4000 500"><text>unstyled</text></svg>');
+    expect(out).not.toBeNull();
+    expect(sizeOf(parse(out!))).toBeCloseTo(floorFor(4000, 500), 1);
+  });
+});

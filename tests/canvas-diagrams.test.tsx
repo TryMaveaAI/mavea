@@ -1,17 +1,24 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render } from '@testing-library/react';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 import { BinaryTree } from '../src/canvas/blocks/diagrams/BinaryTree';
 import { CastMap } from '../src/canvas/blocks/diagrams/CastMap';
 import { CausationChain } from '../src/canvas/blocks/diagrams/CausationChain';
 import { CircuitDiagram } from '../src/canvas/blocks/diagrams/CircuitDiagram';
 import { DataStructure } from '../src/canvas/blocks/diagrams/DataStructure';
+import { FiveForces } from '../src/canvas/blocks/diagrams/FiveForces';
 import { FiveWhyChain } from '../src/canvas/blocks/diagrams/FiveWhyChain';
 import { DpTable } from '../src/canvas/blocks/diagrams/DpTable';
 import { GraphTrace } from '../src/canvas/blocks/diagrams/GraphTrace';
 import { HashTable } from '../src/canvas/blocks/diagrams/HashTable';
 import { LogicGates } from '../src/canvas/blocks/diagrams/LogicGates';
+import { NnArchitecture } from '../src/canvas/blocks/diagrams/NnArchitecture';
+import { PlasmidMap } from '../src/canvas/blocks/diagrams/PlasmidMap';
 import { ProbabilityTree } from '../src/canvas/blocks/diagrams/ProbabilityTree';
 import { ProtocolStack } from '../src/canvas/blocks/diagrams/ProtocolStack';
+import { SynthesisRoute } from '../src/canvas/blocks/diagrams/SynthesisRoute';
 import { SequenceDiagram } from '../src/canvas/blocks/diagrams/SequenceDiagram';
 import { SortingViz } from '../src/canvas/blocks/diagrams/SortingViz';
 import { Toulmin } from '../src/canvas/blocks/diagrams/Toulmin';
@@ -24,10 +31,12 @@ import type {
   CircuitComponent,
   CircuitKind,
   CircuitWire,
+  FiveForceEntry,
   GraphTraceEdge,
   GraphTraceNode,
   LogicGate,
   LogicInput,
+  PlasmidSite,
   ProbabilityBranch,
   ProtocolLayer,
   ProtocolPacketField,
@@ -777,6 +786,109 @@ describe('LogicGates', () => {
 // outcome text wider than the small sliver of remaining room — a caller-supplied `outcome`
 // string, or a computed probability with several decimal places — grew rightward and ran past
 // the SVG viewBox instead of staying inside the card.
+// Regression coverage for a real bug: label placement alternated between a near and a far radius
+// off ONE "was the last label near?" flag, so a run of three or more angularly-close names — a
+// multiple cloning site is exactly that — all landed on the far tier stacked on top of each other.
+describe('PlasmidMap', () => {
+  // Roughly the line box of the 5-unit label type: any two anchors closer than this overlap.
+  const MIN_LABEL_SEP = 6;
+
+  it('spreads a dense run of restriction sites across the label tiers', () => {
+    // pUC19's multiple cloning site: four enzymes inside seven degrees of arc.
+    const sites: PlasmidSite[] = [396, 411, 435, 447].map((posBp, i) => ({
+      name: `Site ${i}`,
+      posBp,
+    }));
+    const { container } = render(
+      <PlasmidMap title="Vector" sizeBp={2686} features={[]} sites={sites} />,
+    );
+    const anchors = Array.from(container.querySelectorAll('text.pm-label')).map((t) => ({
+      x: Number(t.getAttribute('x')),
+      y: Number(t.getAttribute('y')),
+    }));
+    expect(anchors).toHaveLength(sites.length);
+
+    for (let i = 0; i < anchors.length; i++) {
+      for (let j = i + 1; j < anchors.length; j++) {
+        const gap = Math.hypot(anchors[i].x - anchors[j].x, anchors[i].y - anchors[j].y);
+        expect(gap).toBeGreaterThanOrEqual(MIN_LABEL_SEP);
+      }
+    }
+  });
+
+  it('fits a real feature name in full and tooltips a longer one off the group', () => {
+    const long = 'Extremely long feature name';
+    const { container } = render(
+      <PlasmidMap
+        title="Vector"
+        sizeBp={2686}
+        features={[
+          { name: 'lac promoter', startBp: 626, endBp: 656, kind: 'promoter' },
+          { name: long, startBp: 1600, endBp: 1900, kind: 'gene' },
+        ]}
+        sites={[]}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll('text.pm-label'));
+    expect(labels.map(visibleText)).toContain('lac promoter');
+
+    const truncated = labels.find((l) => visibleText(l).endsWith('…'))!;
+    expect(truncated).toBeTruthy();
+    // The tooltip belongs to the wrapping group — nested in the <text> it would inherit the
+    // label's own few-user-unit font-size.
+    expect(truncated.querySelector('title')).toBeNull();
+    expect(truncated.parentElement?.querySelector('title')?.textContent).toBe(long);
+  });
+});
+
+// Regression coverage: the capped-layer indicator was a fixed-radius circle with the hidden-unit
+// count inside it, so anything past a couple of digits — and a capped layer is routinely in the
+// hundreds or thousands — rendered wider than the mark it was supposed to sit in.
+describe('NnArchitecture', () => {
+  const MORE_F = 14; // must track NnArchitecture.tsx's MORE_F / .nn-more-label
+
+  it.each([12, 300, 100_000])('sizes the "+N more" slot to its own label at %i units', (units) => {
+    const { container } = render(
+      <NnArchitecture title="Net" layers={[{ name: 'Input', units }]} />,
+    );
+    const label = container.querySelector('text.nn-more-label')!;
+    const pill = container.querySelector('rect.nn-more-pill')!;
+    expect(label.textContent).toBe(`+${units - 8}`);
+    expect(Number(pill.getAttribute('width'))).toBeGreaterThan(
+      label.textContent!.length * MORE_F * 0.62,
+    );
+  });
+});
+
+// Regression coverage: the SMILES budget was a flat 24 characters measured as if the node were a
+// rectangle, but it is drawn below the ellipse's centre line where the shape has already narrowed
+// — a long string ran its tail out through the side of the node.
+describe('SynthesisRoute', () => {
+  const aspirin = 'CC(=O)Oc1ccccc1C(=O)O';
+
+  function route(smiles: string) {
+    return (
+      <SynthesisRoute
+        title="Route"
+        nodes={[{ id: 'a', label: 'Aspirin', smiles, role: 'target' }]}
+        edges={[]}
+      />
+    );
+  }
+
+  it('keeps a real 21-character SMILES intact', () => {
+    const { container } = render(route(aspirin));
+    expect(container.querySelector('text.sr-smiles')?.textContent).toBe(aspirin);
+  });
+
+  it('truncates a SMILES too wide for the chord at its own baseline', () => {
+    const { container } = render(route(`${aspirin}CCCCCCCCCC`));
+    const text = container.querySelector('text.sr-smiles')!.textContent!;
+    expect(text.endsWith('…')).toBe(true);
+    expect(text.length).toBeLessThan(aspirin.length + 10);
+  });
+});
+
 describe('ProbabilityTree', () => {
   const VB_W = 560; // must track ProbabilityTree.tsx's VB_W — the SVG is a fixed viewBox.
 
@@ -816,6 +928,31 @@ describe('ProbabilityTree', () => {
     expect(label.getAttribute('text-anchor')).toBe('end');
     expect(Number(label.getAttribute('x'))).toBeLessThanOrEqual(vbWidth);
     expect(label.textContent).toMatch(/^P = /);
+  });
+
+  it('truncates node labels to what fits inside the circle, keeping the full text as a tooltip', () => {
+    // NODE_LBL_MAX is derived from NODE_R (26) and the 10px label type: floor(26·2·0.86 / 6.2).
+    const maxChars = 7;
+    const { container } = render(
+      <ProbabilityTree
+        title="Odds"
+        branches={[
+          {
+            label: 'Precipitation',
+            prob: 0.5,
+            children: [{ label: 'Heavy snowfall', prob: 0.5 }],
+          },
+        ]}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll('text.dg-pt-node-lbl'));
+    const truncated = labels.filter((l) => visibleText(l).endsWith('…'));
+    expect(truncated).toHaveLength(2); // the branch node and its leaf; the root reads "Start"
+
+    for (const label of truncated) {
+      expect(visibleText(label).length).toBeLessThanOrEqual(maxChars);
+      expect(label.querySelector('title')?.textContent).toMatch(/Precipitation|Heavy snowfall/);
+    }
   });
 
   it('matches the outcome column header to the same right-anchored edge', () => {
@@ -866,16 +1003,29 @@ describe('ProtocolStack', () => {
         const maxChars = Math.max(2, Math.floor((size * 0.92) / (fontSize * 0.62)));
         const text = visibleText(label);
         expect(text.length).toBeLessThanOrEqual(maxChars);
-        // The full header always survives the truncation, either verbatim or via a tooltip.
+        // The full header always survives the truncation, either verbatim or via a tooltip. The
+        // tooltip belongs to the box group, not the <text> — nested there it would inherit the
+        // label's few-user-unit font-size.
         const original = longPacket(n)[i].header;
         if (text !== original) {
           expect(text.endsWith('…')).toBe(true);
-          const title = label.querySelector('title');
-          expect(title?.textContent).toBe(original);
+          expect(label.querySelector('title')).toBeNull();
+          expect(box.querySelector('title')?.textContent).toBe(original);
         }
       });
     },
   );
+
+  it.each([2, 3, 5, 8])('keeps the payload square its full size at %i nested headers', (n) => {
+    const { container } = render(
+      <ProtocolStack title="Stack" layers={LAYERS} packet={longPacket(n)} />,
+    );
+    const payload = container.querySelector('.pst-box--inner rect')!;
+    // The payload names the message itself, so the header bands give way to it instead of taking
+    // an equal share of the half-width — that even split collapsed it to nothing past six headers
+    // and left it a two-character stub well before that.
+    expect(Number(payload.getAttribute('width'))).toBeGreaterThanOrEqual(34);
+  });
 
   it('leaves short headers untouched and adds no tooltip', () => {
     const { container } = render(
@@ -913,7 +1063,7 @@ describe('ProtocolStack', () => {
     const text = visibleText(label);
     expect(text.length).toBeLessThanOrEqual(maxChars);
     expect(text.length).toBeLessThan('Your request'.length);
-    expect(label.querySelector('title')?.textContent).toBe('Your request');
+    expect(container.querySelector('.pst-box--inner title')?.textContent).toBe('Your request');
   });
 });
 
@@ -1333,6 +1483,257 @@ describe('FiveWhyChain', () => {
       );
       // Last baseline plus a descent's worth of room stays above the card's bottom edge.
       expect(lastY + 5).toBeLessThanOrEqual(rectY + rectH);
+    }
+  });
+});
+
+// Inside a viewBox a font-size is in USER UNITS, so what reaches the eye is
+// `authored × (rendered stage width ÷ viewBox width)`. Both figures below once drew their labels
+// from the HTML fluid ramp (`--fs-2xs`, which floors at 9px) and rendered them at 5.6px in a
+// half-width card — under the 9px floor the headless UI gate enforces. These assertions re-run
+// that arithmetic against the sizes actually authored in the family sheet, so tidying an SVG
+// label back onto a token fails here rather than in a weekly browser sweep.
+const DIAGRAMS_CSS = readFileSync(
+  join(process.cwd(), 'src/canvas/blocks/diagrams/styles.css'),
+  'utf8',
+);
+/** Width a diagrams stage renders at in a half-width card on a 1536px viewport — the narrowest
+ *  the gallery gate measures these blocks at, and so the worst case for legibility. */
+const NARROW_STAGE_PX = 320;
+const LEGIBLE_PX = 9;
+
+interface TypeRule {
+  fontSize: number;
+  bold: boolean;
+}
+
+/** The typography a class carries in the diagrams sheet, or null if it sets no font-size. */
+function typeRuleOf(className: string): TypeRule | null {
+  const rule = new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`).exec(DIAGRAMS_CSS);
+  if (!rule) return null;
+  const size = /font-size:\s*([\d.]+)px/.exec(rule[1]);
+  if (!size) return null;
+  const weight = /font-weight:\s*(\d+)/.exec(rule[1]);
+  return { fontSize: Number(size[1]), bold: Number(weight?.[1] ?? 400) >= 600 };
+}
+
+/** The typography an SVG text node resolves to — the largest size any of its classes sets. */
+function typeOf(el: Element): TypeRule {
+  const rules = (el.getAttribute('class') ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(typeRuleOf)
+    .filter((r): r is TypeRule => r !== null);
+  expect(
+    rules.length,
+    `"${el.getAttribute('class')}" needs a literal user-unit font-size in the diagrams sheet ` +
+      '(the fluid px ramp is not a viewBox unit)',
+  ).toBeGreaterThan(0);
+  return rules.reduce((a, b) => (b.fontSize > a.fontSize ? b : a));
+}
+
+function expectEveryLabelLegible(container: HTMLElement) {
+  // `.dg-svg` explicitly: the card eyebrow carries its own 24-unit icon <svg>.
+  const svg = container.querySelector('svg.dg-svg')!;
+  const vbWidth = Number(svg.getAttribute('viewBox')!.trim().split(/\s+/)[2]);
+  const scale = NARROW_STAGE_PX / vbWidth;
+  const texts = Array.from(svg.querySelectorAll('text'));
+  expect(texts.length).toBeGreaterThan(0);
+  for (const t of texts) {
+    const { fontSize } = typeOf(t);
+    expect(
+      fontSize * scale,
+      `"${t.textContent}" renders at ${(fontSize * scale).toFixed(1)}px`,
+    ).toBeGreaterThanOrEqual(LEGIBLE_PX);
+  }
+}
+
+// FiveForces packs four satellite boxes and a hub into one square-ish figure, so type sized for
+// the legibility floor leaves very little slack: the boxes claim most of the width, which is why
+// the N/S pair runs wider than the E/W pair (only E/W shares its row with the hub) and why the
+// vertical arm is longer than the horizontal one. Every one of those clearances is load-bearing —
+// these assertions hold the layout to them for whatever a model actually writes, not just the
+// short fixture strings.
+describe('FiveForces', () => {
+  const FORCES: FiveForceEntry[] = [
+    {
+      id: 'rivalry',
+      label: 'Well-funded incumbents',
+      strength: 'high',
+      note: 'Two capitalized players already own distribution.',
+    },
+    {
+      id: 'newEntrants',
+      label: 'New entrants',
+      strength: 'high',
+      note: 'Foundation-model APIs lower the barrier every quarter.',
+    },
+    {
+      id: 'suppliers',
+      label: 'Model API providers',
+      strength: 'medium',
+      note: 'A handful of frontier labs set the price and the pace.',
+    },
+    {
+      id: 'buyers',
+      label: 'Enterprise buyers',
+      strength: 'medium',
+      note: 'Switching cost is low until data + workflow lock-in builds.',
+    },
+    {
+      id: 'substitutes',
+      label: 'General chat LLMs',
+      strength: 'high',
+      note: 'A generic assistant already covers the easy 80% of asks, free.',
+    },
+  ];
+  // A model can hand back far longer strings than the fixture's; the layout has to survive them.
+  const LONG: FiveForceEntry[] = FORCES.map((f) => ({
+    ...f,
+    label: `${f.label} across every regulated market segment`,
+    note: `${f.note} And the pressure compounds every single quarter without any sign of easing.`,
+  }));
+
+  const boxesOf = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('svg.dg-svg g')).map((g) => {
+      const rect = g.querySelector('rect[class*="ff-box"]')!;
+      const x = Number(rect.getAttribute('x'));
+      const y = Number(rect.getAttribute('y'));
+      return {
+        g,
+        x,
+        y,
+        w: Number(rect.getAttribute('width')),
+        h: Number(rect.getAttribute('height')),
+      };
+    });
+
+  it.each([
+    ['fixture-length', FORCES],
+    ['overlong', LONG],
+  ])('keeps every force box inside the figure and clear of the others (%s)', (_name, forces) => {
+    const { container } = render(
+      <FiveForces title="Five forces" industry="AI coding assistants" forces={forces} />,
+    );
+    const svg = container.querySelector('svg.dg-svg')!;
+    const [, , vbW, vbH] = svg.getAttribute('viewBox')!.trim().split(/\s+/).map(Number);
+    const boxes = boxesOf(container);
+    expect(boxes).toHaveLength(4);
+    for (const b of boxes) {
+      expect(b.x).toBeGreaterThanOrEqual(0);
+      expect(b.y).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.w).toBeLessThanOrEqual(vbW);
+      expect(b.y + b.h).toBeLessThanOrEqual(vbH);
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+        expect(apart, `boxes ${i} and ${j} overlap`).toBe(true);
+      }
+    }
+  });
+
+  it.each([
+    ['fixture-length', FORCES],
+    ['overlong', LONG],
+  ])('keeps every wrapped line inside its own box (%s)', (_name, forces) => {
+    const { container } = render(
+      <FiveForces title="Five forces" industry="AI coding assistants" forces={forces} />,
+    );
+    // 4 units of side padding: the estimate is the pathological all-caps width, and real
+    // mixed-case text runs ~20% narrower than that.
+    const PAD = 4;
+    for (const box of boxesOf(container)) {
+      for (const el of Array.from(box.g.querySelectorAll('text'))) {
+        const { fontSize, bold } = typeOf(el);
+        const runs = el.querySelector('tspan')
+          ? Array.from(el.querySelectorAll('tspan')).map((t) => t.textContent ?? '')
+          : [el.textContent ?? ''];
+        const widest = Math.max(...runs.map((t) => estimateTextWidth(t, fontSize, bold)));
+        const anchored = el.getAttribute('text-anchor');
+        const x = Number(el.getAttribute('x') ?? el.querySelector('tspan')!.getAttribute('x'));
+        const left = anchored === 'end' ? x - widest : x - widest / 2;
+        expect(left, `"${runs.join(' ')}" spills left`).toBeGreaterThanOrEqual(box.x + PAD);
+        expect(left + widest, `"${runs.join(' ')}" spills right`).toBeLessThanOrEqual(
+          box.x + box.w - PAD,
+        );
+      }
+    }
+  });
+
+  it('keeps every hub line inside the hub circle', () => {
+    const { container } = render(
+      <FiveForces title="Five forces" industry="Industrial robotics" forces={FORCES} />,
+    );
+    const circle = container.querySelector('circle.ff-hub')!;
+    // Only cy is needed: the lines are centre-anchored on the hub, so containment reduces to
+    // whether half the run fits the chord at its own height.
+    const cy = Number(circle.getAttribute('cy'));
+    const r = Number(circle.getAttribute('r'));
+    const hubLines = Array.from(container.querySelectorAll('svg.dg-svg > text'));
+    expect(hubLines.length).toBeGreaterThanOrEqual(3);
+    for (const el of hubLines) {
+      const { fontSize, bold } = typeOf(el);
+      const dy = Number(el.getAttribute('y')) - cy;
+      // The glyph band around the baseline, measured at whichever edge sits farther from centre.
+      const far = Math.max(Math.abs(dy - fontSize * 0.78), Math.abs(dy + fontSize * 0.22));
+      const chord = Math.sqrt(Math.max(0, r * r - far * far));
+      expect(
+        estimateTextWidth(el.textContent ?? '', fontSize, bold) / 2,
+        `"${el.textContent}" reaches past the hub rim`,
+      ).toBeLessThanOrEqual(chord);
+    }
+  });
+
+  it('renders every label at or above the legibility floor', () => {
+    const { container } = render(
+      <FiveForces title="Five forces" industry="AI coding assistants" forces={FORCES} />,
+    );
+    expectEveryLabelLegible(container);
+  });
+});
+
+describe('FiveWhyChain legibility', () => {
+  it('renders every label at or above the legibility floor', () => {
+    const { container } = render(
+      <FiveWhyChain
+        title="Root cause"
+        problem="Database memory is filling up with lock structures."
+        whys={[{ question: 'Why?', answer: 'Because the lock table never shrinks.' }]}
+        rootCause="The DBMS trades concurrency for stability."
+      />,
+    );
+    expectEveryLabelLegible(container);
+  });
+
+  it('keeps every wrapped line inside its card', () => {
+    const shouty = 'ESCALATION PATH UNDEFINED ACROSS EVERY OWNING TEAM AND REGION WORLDWIDE';
+    const { container } = render(
+      <FiveWhyChain
+        title="Root cause"
+        problem={shouty}
+        whys={[{ question: shouty, answer: shouty }]}
+        rootCause={shouty}
+      />,
+    );
+    for (const g of Array.from(container.querySelectorAll('svg.dg-svg g'))) {
+      const card = g.querySelector('rect[class*="fwy-card"]')!;
+      const cardX = Number(card.getAttribute('x'));
+      const cardW = Number(card.getAttribute('width'));
+      for (const el of Array.from(g.querySelectorAll('text'))) {
+        const { fontSize, bold } = typeOf(el);
+        for (const run of el.querySelector('tspan')
+          ? Array.from(el.querySelectorAll('tspan'))
+          : [el]) {
+          const x = Number(run.getAttribute('x'));
+          const width = estimateTextWidth(run.textContent ?? '', fontSize, bold);
+          expect(x + width, `"${run.textContent}" spills past the card`).toBeLessThanOrEqual(
+            cardX + cardW,
+          );
+        }
+      }
     }
   });
 });

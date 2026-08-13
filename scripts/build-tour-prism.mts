@@ -1,13 +1,12 @@
 // build-tour-prism.mts — bake REAL public documents of VARIOUS types into Prism analyses the
-// first-run tour replays key-free. Everything is fetched from trusted online sources (never local
-// files). PDFs are extracted with poppler's pdftotext; text-native docs (CSV/JSON/Markdown/TXT)
-// ARE their own text, so we page them directly. Each doc is mapped+grounded once here with the
+// first-run tour replays key-free. Sources are either reviewed remote documents or reviewed assets
+// already bundled in public/. PDFs are extracted with poppler's pdftotext; text-native docs
+// (CSV/JSON/Markdown/TXT) ARE their own text, so we page them directly. Each doc is mapped once with the
 // Gemini key via mapClaims(pagesOverride) — bypassing browser pdf.js — and written, WITH its
 // bytes, to an ARRAY fixture the tour flips through (proving "drop in anything").
 //
 // The bytes ship so the tour's drill-in shows the REAL page render + quote highlight — which is
-// why every source here must be freely redistributable: US-government works (public domain,
-// 17 USC §105) and BSD/MIT-licensed data/readme files. Never add a copyrighted document.
+// why every source here must have verified redistribution rights and a matching THIRD-PARTY notice.
 //
 //   GEMINI_API_KEY=… npx vite-node scripts/build-tour-prism.mts
 //   ONLY=fomc,react-readme … to bake a subset
@@ -27,21 +26,22 @@ interface DocSpec {
   name: string;
   type: 'pdf' | 'csv' | 'json' | 'md' | 'txt';
   url: string;
+  localPath?: URL;
 }
 
-// Freely-redistributable sources ONLY (their bytes ship in the fixture): the Federal Reserve's
-// FOMC statement (US-government work, public domain — and dense with real figures), vega-datasets
-// (BSD-3) for data files, and READMEs from top OSS orgs (MIT/Apache-2.0).
+// Freely redistributable sources only (their bytes ship in the fixture): NASA and Federal Reserve
+// works whose individual records confirm public use, plus reviewed BSD/MIT data and documentation.
 const BATTERY: DocSpec[] = [
   // Scanned/OCR documents (e.g. the 1906 Wright patent, patentimages …/US821393.pdf) ground via
   // the quote-snapping recovery (ground/verbatim.ts) — 8/12 on that two-column scan. Not shipped:
   // its bytes would triple the fixture; tests/ground-snap.test.ts pins the recovery with real OCR.
-  // ── PDF (a classic, diagram-rich, MIT-licensed — the tour circles its figures) ──
+  // ── PDF (public-domain NASA technical report; the tour circles its figures) ──
   {
-    id: 'bitcoin',
-    name: 'Bitcoin: A Peer-to-Peer Electronic Cash System (2008).pdf',
+    id: 'nasa-cfd',
+    name: 'Computational Fluid Dynamics Uses in Fluid Dynamics-Aerodynamics Education.pdf',
     type: 'pdf',
-    url: 'https://bitcoin.org/bitcoin.pdf',
+    url: 'https://ntrs.nasa.gov/citations/19950004435',
+    localPath: new URL('../public/demo-assets/pdf/cfd-primer.pdf', import.meta.url),
   },
   // ── PDF (single-column, claim-rich, public domain) ──
   {
@@ -155,12 +155,14 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 async function bakeOne(spec: DocSpec, cfg: ModelConfig): Promise<unknown | null> {
   try {
-    const bytes = Buffer.from(
-      await fetch(spec.url, {
-        // Some .gov CDNs reject non-browser agents; a plain browser UA passes.
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-      }).then((r) => r.arrayBuffer()),
-    );
+    const bytes = spec.localPath
+      ? Buffer.from(readFileSync(spec.localPath))
+      : Buffer.from(
+          await fetch(spec.url, {
+            // Some .gov CDNs reject non-browser agents; a plain browser UA passes.
+            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+          }).then((r) => r.arrayBuffer()),
+        );
     let pages: string[];
     if (spec.type === 'pdf') {
       if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('not a PDF');

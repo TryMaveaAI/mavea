@@ -32,6 +32,18 @@ describe('FeatureUseNotice', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('lets the standing speech notice be acknowledged once', () => {
+    const first = render(<FeatureUseNotice kind="voice-data" from="live" />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dismiss Speech can become provider data notice' }),
+    );
+    first.unmount();
+
+    const { container } = render(<FeatureUseNotice kind="voice-data" from="live" />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('keeps action-specific warnings fully visible', () => {
     render(<FeatureUseNotice kind="upload" from="live" />);
 

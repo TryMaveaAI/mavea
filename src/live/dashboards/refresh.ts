@@ -31,6 +31,7 @@ import { parseLooseJson } from '../ground/json';
 import { currentDateTimeLine } from '../ground/now';
 import { normLabel } from '../ground/tokens';
 import { coerceExpects, coerceGrade } from './predictions';
+import { valueWithUnit } from './format';
 // validateLiveResponse is dynamic-imported inside refreshDashboard (below), not statically — a
 // static import pulls liveSchema → the ~580-entry catalog into the eager Dashboards-mount chunk.
 // The refresh path is already async (post-fetch), so the import adds no perceptible latency.
@@ -623,7 +624,9 @@ export async function refreshDashboards(
         const byNorm = new Map(Object.entries(rawValues).map(([k, v]) => [normLabel(k), v]));
         for (const metric of m.metrics) {
           const n = toNumber(rawValues[metric.label] ?? byNorm.get(normLabel(metric.label)));
-          if (n !== null) result.values[metric.id] = { value: n, raw: `${n}${metric.unit ?? ''}` };
+          if (n !== null) {
+            result.values[metric.id] = { value: n, raw: valueWithUnit(String(n), metric.unit) };
+          }
         }
       }
       if (m.targets.length > 0 && validateLiveResponse) {

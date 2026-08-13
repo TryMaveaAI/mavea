@@ -2,10 +2,9 @@
 // controller, exposes its capabilities, and wires onResult/onStateChange through stable
 // subscriptions: the caller's callbacks live in refs, so swapping the controller never
 // asks the consumer to re-pass handlers and re-renders don't churn the subscriptions. The
-// old controller is disposed on a mode change and on unmount. Default mode: 'webspeech'.
+// old controller is disposed on unmount. Voice capture is always the local Silero + Whisper path.
 import { useEffect, useMemo, useRef } from 'react';
 import { VadVoice } from './VadVoice';
-import { WebSpeechVoice } from './WebSpeechVoice';
 import type {
   VoiceCapabilities,
   VoiceController,
@@ -16,7 +15,7 @@ import type {
 } from './types';
 
 export interface UseVoiceControllerArgs {
-  /** Defaults to 'webspeech' (the browser's native SpeechRecognition). */
+  /** Kept explicit so the call site documents that capture is local. */
   mode?: VoiceMode;
   onResult?: (r: VoiceResult) => void;
   onStateChange?: (e: VoiceStateEvent) => void;
@@ -42,14 +41,11 @@ export interface UseVoiceControllerReturn {
   forceStop: () => void;
 }
 
-function createController(mode: VoiceMode): VoiceController {
-  if (mode === 'vad') return new VadVoice();
-  return new WebSpeechVoice();
+function createController(): VoiceController {
+  return new VadVoice();
 }
 
 export function useVoiceController(args: UseVoiceControllerArgs = {}): UseVoiceControllerReturn {
-  const mode: VoiceMode = args.mode ?? 'webspeech';
-
   // Hold the consumer callbacks in refs: the controller subscribes once per instance and
   // reads the latest handler at call time, so re-renders don't churn subscriptions and the
   // caller doesn't have to memoize its handlers.
@@ -60,9 +56,9 @@ export function useVoiceController(args: UseVoiceControllerArgs = {}): UseVoiceC
   onStateRef.current = args.onStateChange;
   onBargeInRef.current = args.onBargeIn;
 
-  // One controller instance per mode. useMemo keeps it across re-renders; the
-  // effect below disposes the previous instance when `mode` changes / on unmount.
-  const controller = useMemo(() => createController(mode), [mode]);
+  // One controller instance for the surface. useMemo keeps it across re-renders; the effect below
+  // disposes it on unmount.
+  const controller = useMemo(() => createController(), []);
 
   useEffect(() => {
     const unsubResult = controller.onResult((r) => onResultRef.current?.(r));

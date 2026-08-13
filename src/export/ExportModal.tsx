@@ -14,7 +14,7 @@ import { SLIDE_SKIN_ORDER, SLIDE_SKINS, suggestSlideSkin } from '../slides/skins
 import type { SlideSkinId } from '../slides/skins/types';
 import { PAGE_W, pageSize, type PageFormat } from './paginate/geometry';
 import { buildExportDoc } from './render/buildDoc';
-import { ExportDocView } from './render/ExportDoc';
+import { DOC_PAGE_GAP, ExportDocView } from './render/ExportDoc';
 import type { ExportDoc } from './model/ExportDoc';
 import { pdfProperties } from './model/normalize';
 import { SKINS, SKIN_ORDER, suggestSkin } from './skins/registry';
@@ -101,15 +101,16 @@ export function ExportModal({
   const [doc, setDoc] = useState<ExportDoc | null>(null);
   const [building, setBuilding] = useState(true);
   const [busy, setBusy] = useState(false);
-  // Which download is in flight, so the two format buttons (PDF/PPTX) can each show their own
-  // "Working…" state instead of both flipping at once.
-  const [activeFormat, setActiveFormat] = useState<'pdf' | 'pptx' | null>(null);
+  // What is in flight, so the two download buttons (PDF/PPTX) can each show their own "Working…"
+  // state instead of both flipping at once — and so the panel can tell an abortable render apart
+  // from a print, which the browser owns end to end and we cannot cancel.
+  const [activeFormat, setActiveFormat] = useState<'pdf' | 'pptx' | 'print' | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Per-page export progress, shown as a bar while busy; null when idle.
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   // The byte size of the most recent successful export, shown so the user knows what they got.
   const [lastSize, setLastSize] = useState<number | null>(null);
-  // At/below ~640px the fixed two-column layout crushes the preview, so the panel stacks into a
+  // At/below 800px the fixed two-column layout crushes the preview, so the panel stacks into a
   // single scrollable column. Tracked via a media query so it follows the live viewport.
   const [narrow, setNarrow] = useState(false);
   // Lets the Cancel button abort an in-flight export, and lets the unmount cleanup abort leaked work.
@@ -186,7 +187,10 @@ export function ExportModal({
   useEffect(() => setSkippedSlides(new Set()), [specs]);
 
   // Rebuild the document whenever the inputs change — but only in document mode, since the
-  // layout pass mounts an offscreen DOM to measure heights.
+  // layout pass mounts an offscreen DOM to measure heights. The accent is deliberately NOT one of
+  // those inputs: it only paints colour, never geometry, and dragging the custom-colour picker
+  // fires continuously — keying the layout on it re-measured and re-paginated the whole document
+  // on every pixel of the drag. The live accent still reaches the preview and the export below.
   useEffect(() => {
     if (isPres) {
       setBuilding(false);
@@ -200,7 +204,7 @@ export function ExportModal({
     let cancelled = false;
     setBuilding(true);
     setError(null);
-    buildExportDoc(specs, skin, generatedAt, accent, primaryOrdinal, pageFormat)
+    buildExportDoc(specs, skin, generatedAt, undefined, primaryOrdinal, pageFormat)
       .then((d) => {
         if (!cancelled) {
           setDoc(d);
@@ -216,7 +220,7 @@ export function ExportModal({
     return () => {
       cancelled = true;
     };
-  }, [isPres, specs, skin, accent, generatedAt, primaryOrdinal, pageFormat]);
+  }, [isPres, specs, skin, generatedAt, primaryOrdinal, pageFormat]);
 
   // Keep the slide navigator index in range as the deck changes (it walks ALL slides, skipped
   // included, so cross-outs stay reachable and restorable).
@@ -231,8 +235,9 @@ export function ExportModal({
   }, [format, specs, skin, slideSkin, accent, slideScale, docScale, pageFormat]);
 
   // Escape closes the modal — but while an export is in flight it cancels that instead, so a
-  // panicked Escape stops the work rather than abandoning it half-run. ← / → walk the deck in
-  // presentation mode (suppressed mid-export).
+  // panicked Escape stops the work rather than abandoning it half-run. During a print there is
+  // nothing to abort (the browser owns its dialog) and nothing safe to close under it, so Escape
+  // stays inert. ← / → walk the deck in presentation mode (suppressed mid-export).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -253,9 +258,12 @@ export function ExportModal({
   useEffect(() => () => abortRef.current?.abort(), []);
 
   // Collapse to a single column on small viewports; the listener keeps it in sync across resizes.
+  // 800px is where the wide layout stops fitting its own preview: the panel is min(900px, 96vw)
+  // and the controls column takes a fixed 300px, so at 800px the preview column is 96vw − 300 ≈
+  // 468px — the last width that can still hold the 460px wide-mode page without clipping it.
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(max-width: 640px)');
+    const mq = window.matchMedia('(max-width: 800px)');
     const apply = () => setNarrow(mq.matches);
     apply();
     mq.addEventListener('change', apply);
@@ -355,12 +363,19 @@ export function ExportModal({
   const onPrint = async (withNotes = false) => {
     if (busy || !ready) return;
     setBusy(true);
+    setActiveFormat('print');
+    setError(null);
     try {
       if (!isPres) await printDoc(doc!, skin, accent);
       else if (withNotes) await printDeckWithNotes(slides, slideSkin, accent);
       else await printDeck(slides, slideSkin, accent);
+    } catch {
+      // A print portal that never opened leaves nothing on screen to explain itself — say so
+      // rather than silently returning to idle as if the user had dismissed the dialog.
+      setError('Could not open the print dialog — try again.');
     } finally {
       setBusy(false);
+      setActiveFormat(null);
     }
   };
 
@@ -390,6 +405,21 @@ export function ExportModal({
   const previewPageW = doc ? pageSize(doc.format).width : PAGE_W;
   const previewScale = PREVIEW_COL / previewPageW;
 
+  // One ✕, placed by layout: it belongs over the preview in the two-column panel, but stacked that
+  // row sits below the fold on a phone, so it leads the controls instead — sticky, so it stays
+  // reachable while the panel scrolls. Built once so both placements can never drift apart.
+  const closeButton = (
+    <button
+      type="button"
+      style={narrow ? { ...ST.close, ...ST.closeNarrow } : ST.close}
+      onClick={busy ? undefined : onClose}
+      aria-label="Close"
+      disabled={busy}
+    >
+      ✕
+    </button>
+  );
+
   return (
     <div
       style={ST.scrim}
@@ -406,6 +436,7 @@ export function ExportModal({
       >
         {/* ── Controls ─────────────────────────────────────────── */}
         <div style={narrow ? { ...ST.controls, ...ST.controlsNarrow } : ST.controls}>
+          {narrow && closeButton}
           <div style={ST.head}>
             <div style={ST.title}>Export as PDF</div>
             <div style={ST.subtitle}>
@@ -661,7 +692,9 @@ export function ExportModal({
                 </button>
               )}
             </div>
-            {busy ? (
+            {/* Cancel belongs only to work we can actually abort. A print is the browser's own
+                dialog — offering Cancel there would be a button that does nothing. */}
+            {busy && activeFormat !== 'print' ? (
               <div style={ST.actions}>
                 <button
                   type="button"
@@ -677,7 +710,7 @@ export function ExportModal({
                   type="button"
                   style={ST.secondary}
                   onClick={() => onPrint(false)}
-                  disabled={building || !ready}
+                  disabled={busy || building || !ready}
                 >
                   Print
                 </button>
@@ -686,7 +719,7 @@ export function ExportModal({
                     type="button"
                     style={ST.secondary}
                     onClick={() => onPrint(true)}
-                    disabled={building || !ready}
+                    disabled={busy || building || !ready}
                     title="Print the deck with each slide's speaker notes underneath it"
                   >
                     Print with notes
@@ -699,15 +732,7 @@ export function ExportModal({
 
         {/* ── Live preview ─────────────────────────────────────── */}
         <div style={narrow ? { ...ST.previewArea, ...ST.previewAreaNarrow } : ST.previewArea}>
-          <button
-            type="button"
-            style={ST.close}
-            onClick={busy ? undefined : onClose}
-            aria-label="Close"
-            disabled={busy}
-          >
-            ✕
-          </button>
+          {!narrow && closeButton}
           {isPres ? (
             allSlides.length ? (
               (() => {
@@ -791,7 +816,16 @@ export function ExportModal({
               )}
               {doc && (
                 <div style={ST.previewScroll}>
-                  <div style={{ width: previewPageW * previewScale }}>
+                  {/* A transform-scaled child keeps its UNSCALED layout box, so without an explicit
+                      scaled height the scroll area ran on into empty space far below the last page.
+                      Give the wrapper the flow's real scaled height and clip the overhang. */}
+                  <div
+                    style={{
+                      width: previewPageW * previewScale,
+                      height: previewFlowHeight(doc) * previewScale,
+                      overflow: 'hidden',
+                    }}
+                  >
                     <div
                       style={{
                         transform: `scale(${previewScale})`,
@@ -1081,7 +1115,18 @@ const ST = {
     cursor: 'pointer',
     fontSize: 13,
   },
+  // Stacked: only the positioning changes. `right: auto` is required — a sticky box treats `right`
+  // as a horizontal stick offset against the scrollport, not as the corner pin `absolute` makes it.
+  closeNarrow: { position: 'sticky', top: 8, right: 'auto', alignSelf: 'flex-end', zIndex: 3 },
 } satisfies Record<string, CSSProperties>;
+
+/** The unscaled height of the whole stacked page flow `ExportDocView` renders — every sheet plus
+ *  the gaps between them. The preview scales that flow with a transform, which leaves the layout
+ *  box at natural size, so the wrapper has to be told the scaled height explicitly. */
+function previewFlowHeight(doc: ExportDoc): number {
+  const n = doc.pages.length;
+  return pageSize(doc.format).height * n + DOC_PAGE_GAP * Math.max(0, n - 1);
+}
 
 /** Human-friendly byte size, e.g. 2_516_582 → "2.4 MB". */
 function formatBytes(bytes: number): string {

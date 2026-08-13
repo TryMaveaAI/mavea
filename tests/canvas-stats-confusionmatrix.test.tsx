@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { ConfusionMatrix } from '../src/canvas/blocks/stats/ConfusionMatrix';
+import { loadGalleryFixture } from '../src/gallery/fixtures.generated';
+import type { ConfusionMatrixProps } from '../src/canvas/blocks/stats/types';
 
 // A <title> tooltip nested inside a <text> node is part of its DOM textContent too, so reading
 // the actually-rendered glyphs means the node's own direct text children, not the <title>'s.
@@ -61,6 +63,20 @@ describe('ConfusionMatrix', () => {
       expect(shown.length).toBeLessThan(classes[0].length);
       if (shown.length > 2) expect(shown.endsWith('…')).toBe(true);
     }
+  });
+
+  it('renders the gallery fixture whole — the label budget still fits the type it is drawn at', async () => {
+    // Class labels are sized in viewBox user units, so the type had to grow to clear the UI
+    // audit's ~9px rendered floor — which spends character budget. The gallery fixture is what
+    // that gate measures: its longest name ("Versicolor", the widest case at 3 classes plus the
+    // totals strip) must still render whole, or the same sweep flags a truncated label instead.
+    const props = (await loadGalleryFixture('stats', 'confusionmatrix')) as ConfusionMatrixProps;
+    expect(props?.classes?.length).toBeGreaterThan(0);
+    const { container } = render(<ConfusionMatrix {...props} />);
+
+    const shown = Array.from(container.querySelectorAll('text.cfm-class')).map(visibleText);
+    expect(shown).toEqual([...props.classes, ...props.classes]); // rows, then columns
+    expect(container.querySelector('title')).toBeNull();
   });
 
   it('leaves a short label untouched and adds no tooltip', () => {

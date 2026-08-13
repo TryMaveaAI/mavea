@@ -88,7 +88,7 @@ export const TOUR: readonly TourChapter[] = [
     title: 'Bring your own model',
     mode: 'explain',
     coach:
-      'Choose Gemini, Claude, GPT, Grok, or OpenRouter, then paste your own API key. It stays in memory unless you choose Remember, and passes through this deployment to your provider when used.',
+      "Choose Gemini, Claude, GPT, Grok, or OpenRouter, then paste your own API key. Start with a fast, lower cost model and move up only when a task needs it. The key stays in memory unless you choose Remember. Requests pass through this deployment, and your provider's usage charges, privacy, and retention terms apply.",
     spotlight: '.settings-model-connect',
     action: { kind: 'connect' },
     durationMs: 12000,
@@ -97,7 +97,9 @@ export const TOUR: readonly TourChapter[] = [
     id: 'draws',
     title: 'See the answer',
     mode: 'explain',
-    coach: 'Ask anything. I build a visual answer while I explain the important parts.',
+    coach:
+      "Ask anything. I build a visual answer while I explain the important parts. Use the voice toggle labeled Mavéa's voice to turn speech off and reveal everything immediately. Your microphone stays unchanged.",
+    spotlight: '.voice-switch',
     action: { kind: 'answer', convoId: 'money', ask: 'How does $10,000 grow at 7% over 30 years?' },
     durationMs: 9000,
   },

@@ -31,6 +31,15 @@ describe('speculate', () => {
     ]);
   });
 
+  // The abort used to only discard the reply: a superseded glimpse kept generating to completion
+  // on the user's own key. The signal has to reach the adapter's fetch to actually stop it.
+  it('hands the abort signal to the adapter so a superseded glimpse stops generating', async () => {
+    generate.mockResolvedValue({ raw: { ghosts: [] } });
+    const ctrl = new AbortController();
+    await speculate('half a question', cfg, ctrl.signal);
+    expect((generate.mock.calls[0][0] as { signal?: AbortSignal }).signal).toBe(ctrl.signal);
+  });
+
   it('resolves [] on unparseable output or an aborted glimpse', async () => {
     generate.mockResolvedValue({ raw: 'I would build you three lovely cards!' });
     const out = await speculate('half a question', cfg, new AbortController().signal);

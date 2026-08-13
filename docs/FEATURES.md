@@ -28,7 +28,9 @@ index, or open the **Explore** menu in the top bar.
 - 🎙️ **It talks — and points while it talks.** The face speaks the headline the instant it streams,
   its mouth and body tracking the real audio. As it walks the answer, it **draws**: hand-style circles,
   underlines, and arrows land on the exact figure each spoken line is about (the model names its
-  target; no reason, no ink). A **teach mode** ("walk me through it") draws more generously.
+  target; no reason, no ink). A **teach mode** ("walk me through it") draws more generously. Turn
+  off the **Mavéa's voice** toggle to reveal the complete answer immediately without disabling the
+  microphone.
 - 👻 **It answers while you talk** — mid-sentence, dashed _forming / maybe_ ghost cards sketch the
   answer taking shape behind your words, reshaping as the sentence changes direction (off on the Fast
   quality dial — speculation is a spend you opt into).
@@ -90,7 +92,9 @@ index, or open the **Explore** menu in the top bar.
 - 🔌 **Bring your own model** — Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok behind one
   adapter. Keys stay in memory by default; optional remembering encrypts them locally. Requests
   carry the key and prompt through your deployment's same-origin proxy to the chosen provider. The
-  proxy operator can access them in transit; provider terms and charges apply.
+  proxy operator can access them in transit; provider privacy, retention, and usage-charge terms
+  apply. The Connect step offers fast, lower-cost defaults where available; step up only when a task
+  needs it.
 - 🔎 **Search the web when it helps — your choice, your cost** — off, free (keyless Wikipedia), or
   real-time provider grounding (Gemini's cited Google search), fired only on asks that need it.
 - 🧾 **Share-to-Mavéa, the receipts machine** — paste or drop any link or screenshot and the claim-check
@@ -101,9 +105,20 @@ index, or open the **Explore** menu in the top bar.
   what to open with. Or take the seat yourself: you say your own lines, the counterpart answers in
   character (and out loud), and a coach card between takes says the one thing to change. The
   brief's context is sent to your selected model provider; no outside action is executed.
-- 🎬 **Share as a Mavéa Story** — any session becomes a cinematic vertical clip of the _real_ components
-  (face, cards, spotlight, drawn strokes), screen-captured to MP4. 📌 **Ask about this** pins any block
-  so the next question is grounded in its exact on-screen data.
+- 🎬 **Video** — Video Studio opens on **Conversation**, where you choose the exact turns to
+  keep in chronological order; the current-turn, current-topic, and all-turn presets make the common
+  cuts immediate. The preview plays your cut live — pause it whenever you like, and it holds a
+  still frame instead of looping if your system asks for reduced motion. Narration is required and
+  always on, while captions, spotlights, Mavéa Pen marks, and the face are optional. A conversation cut is plain
+  16:9 screen video — pick the size (1080p 1920×1080 or 720p 1280×720) and a Balanced/High/Ultra
+  quality tier — with a three-minute limit; social aspects live on the Reel tab. Supported
+  browsers produce an easy-to-share MP4 carrying AV1 video with Opus audio,
+  falling back to WebM (VP9/VP8 + Opus); H.264, H.265, AAC, and unspecified codec fallbacks are
+  excluded. Published open-codec patent commitments reduce risk but are not a patent-clearance
+  opinion. The separate **Reel** tab keeps the cinematic editorial recut, but its direction,
+  rendering, and encoding are local and never call a configured model provider. Document Export is
+  unchanged. 📌 **Ask about this** pins any
+  block so the next question is grounded in its exact on-screen data.
 - 🔍 **Transparency controls** — confidence labels, source citations, real-data-oriented rules, and
   a measured eval harness ([`pnpm eval`](BENCHMARK.md)). These controls do not guarantee accuracy.
 

@@ -43,6 +43,18 @@ function truncateCutLabel(text: string, boxW: number, fontSize: number): string 
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
+// The figure's viewBox is the sheet itself, so ONE user unit is one millimetre on an 8×4 ply
+// sheet and one centimetre on a metre of fabric — an absolute size here means nothing. Every
+// length in the drawing is therefore a fraction of the sheet's own width, which keeps the same
+// stock legible whatever unit it was authored in (the stock label was authored at a flat 4 units
+// and rendered at 0.9px on a 2440 mm sheet — invisible, and clipped above the viewBox besides).
+// The share has a floor too: the figure occupies the wider half of the card and measures ~396px
+// across in the block library at 1536px, so anything under ~2.3% of the viewBox lands below the
+// 9px legibility floor on screen (the earlier 2.2%/1.8% pair measured 8.6px and 7.0px there).
+const PIECE_LABEL_SCALE = 0.028;
+const SHEET_LABEL_SCALE = 0.026;
+const SHEET_MARGIN_SCALE = 0.008;
+
 // A material cut list + nesting layout. Each authored part (label · w×h · qty) becomes one or
 // more rectangles packed onto the stock sheet: an authored x/y is honoured, otherwise a simple
 // left-to-right shelf-pack places it. The leftover area is highlighted and the yield (used area ÷
@@ -71,9 +83,14 @@ export function CutList({
   const yieldPct = Math.round((usedArea / sheetArea) * 100);
 
   // The figure is drawn in sheet units directly (a viewBox), so the nesting is exactly to scale.
-  const PAD = 4;
-  const vbW = sheetW + PAD * 2;
-  const vbH = sheetH + PAD * 2;
+  const pad = sheetW * SHEET_MARGIN_SCALE;
+  const sheetLabelSize = sheetW * SHEET_LABEL_SCALE;
+  // The stock label hangs above the sheet, so the top margin has to be deep enough to hold a full
+  // line of it (cap height plus descenders) or it clips against the top of the viewBox.
+  const padTop = stock.label ? sheetLabelSize * 1.4 : pad;
+  const vbW = sheetW + pad * 2;
+  const vbH = sheetH + padTop + pad;
+  const pieceLabelSize = sheetW * PIECE_LABEL_SCALE;
 
   return (
     <div
@@ -134,7 +151,7 @@ export function CutList({
         <div className="cut-figwrap">
           <svg viewBox={`0 0 ${vbW} ${vbH}`} className="cut-svg" role="img" aria-label={title}>
             {/* the stock sheet */}
-            <rect x={PAD} y={PAD} width={sheetW} height={sheetH} className="cut-sheet" />
+            <rect x={pad} y={padTop} width={sheetW} height={sheetH} className="cut-sheet" />
             {placed.map((p, i) => {
               const stroke = PART_STROKES[p.ci % PART_STROKES.length];
               const fill = PART_FILLS[p.ci % PART_FILLS.length];
@@ -142,11 +159,11 @@ export function CutList({
               return (
                 <g key={i}>
                   <rect
-                    x={PAD + p.x}
-                    y={PAD + p.y}
+                    x={pad + p.x}
+                    y={padTop + p.y}
                     width={p.w}
                     height={p.h}
-                    rx={Math.min(2, sheetW * 0.006)}
+                    rx={sheetW * 0.006}
                     fill={fill}
                     stroke={stroke}
                     strokeWidth={sheetW * 0.0028}
@@ -154,17 +171,20 @@ export function CutList({
                   />
                   {!small &&
                     (() => {
-                      const fontSize = Math.max(sheetW * 0.022, 10);
-                      const shortLabel = truncateCutLabel(p.label, p.w - fontSize * 0.5, fontSize);
+                      const shortLabel = truncateCutLabel(
+                        p.label,
+                        p.w - pieceLabelSize * 0.5,
+                        pieceLabelSize,
+                      );
                       const isTruncated = shortLabel !== p.label;
                       return (
                         <text
-                          x={PAD + p.x + p.w / 2}
-                          y={PAD + p.y + p.h / 2}
+                          x={pad + p.x + p.w / 2}
+                          y={padTop + p.y + p.h / 2}
                           textAnchor="middle"
                           dominantBaseline="middle"
                           className="cut-piece-lbl"
-                          style={{ fontSize }}
+                          style={{ fontSize: pieceLabelSize }}
                         >
                           {isTruncated && <title>{p.label}</title>}
                           {shortLabel}
@@ -174,11 +194,24 @@ export function CutList({
                 </g>
               );
             })}
-            {stock.label && (
-              <text x={PAD + 2} y={PAD - 1.2} className="cut-sheet-lbl">
-                {stock.label}
-              </text>
-            )}
+            {stock.label &&
+              (() => {
+                // Left-aligned with the sheet's own edge, on a baseline that leaves room for the
+                // descenders above the sheet; a long stock name is budgeted to the sheet width so
+                // it can't run off the figure, keeping the full text as a tooltip.
+                const shortLabel = truncateCutLabel(stock.label, sheetW, sheetLabelSize);
+                return (
+                  <text
+                    x={pad}
+                    y={padTop - sheetLabelSize * 0.3}
+                    className="cut-sheet-lbl"
+                    style={{ fontSize: sheetLabelSize }}
+                  >
+                    {shortLabel !== stock.label && <title>{stock.label}</title>}
+                    {shortLabel}
+                  </text>
+                );
+              })()}
           </svg>
         </div>
       </div>

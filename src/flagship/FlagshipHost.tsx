@@ -2,7 +2,7 @@
 // landing used to live inside the old scripted-demo surface (App.tsx); every interactive path
 // now leads into the REAL product instead — the hero composer seeds a real Live session
 // (seedQuery), "Take the tour" boots Live's walkthrough mode, and a demo card boots Live's
-// demo replay mode (a baked real session on the real surface). This host keeps only what the
+// demo replay mode (a curated prerecorded example on the real surface). This host keeps only what the
 // landing itself needs: the idle face + scroll-dock, the marketing topbar, the ⌘K palette.
 // Eager and light by design — nothing here may pull the block library, the providers, or any
 // corpus (tests/eager-bundle.test.ts walks this graph).
@@ -41,21 +41,37 @@ export function FlagshipHost(): ReactElement {
   const presenceBase = usePresenceColor('indigo');
   useEffect(() => {
     document.documentElement.style.setProperty('--topic-tint', presenceBase);
+    // Dropped on the way out for the same reason usePresenceColor drops its slots: an inline
+    // value on <html> beats the palettes Live applies after this host unmounts.
+    return () => {
+      document.documentElement.style.removeProperty('--topic-tint');
+    };
   }, [presenceBase]);
 
   // Scroll-dock: the big hero orb glides into the topbar brand slot as you scroll down and
   // grows back as you scroll up. Always "on home" here — this host IS the home.
   const { appRef, brandDotRef, layerRef, homeStageRef } = useScrollDock(false, true);
 
+  // First-run walkthrough invite: shown once, never a forced auto-launch (the tour stays
+  // reachable from "Take the tour", Explore, ⌘K, and ?tour=1 links). EVERY route into the
+  // walkthrough retires it, not just the invite's own buttons — coming back from the tour to
+  // be invited on it again reads as a surface that wasn't paying attention.
+  const [tourInviteSeen, setTourInviteSeen] = useState(isTourSeen);
+  const retireTourInvite = useCallback(() => {
+    markTourSeen();
+    setTourInviteSeen(true);
+  }, []);
+
   // Launch the walkthrough: stash the tour flag, then hand off to the real Live surface,
   // which boots in tour mode and replays the baked conversations exactly as live turns.
   const startTour = useCallback(() => {
+    retireTourInvite();
     stashTourMode();
     window.location.hash = '#/live';
-  }, []);
+  }, [retireTourInvite]);
 
   // A demo card: stash the persona, hand off to Live's demo replay mode. Navigation is
-  // instant — the recorded session (its own lazy chunk) loads inside the demo boot.
+  // instant — the curated replay (its own lazy chunk) loads inside the demo boot.
   const playDemo = useCallback((p: DemoCastMember) => {
     stashDemoPersona(p.id);
     window.location.hash = '#/live';
@@ -80,31 +96,19 @@ export function FlagshipHost(): ReactElement {
     void import('../live/prewarm').then((m) => m.prewarmLive()).catch(() => {});
   }, []);
 
-  // First-run walkthrough invite: shown once, never a forced auto-launch (either choice
-  // retires it; the tour stays reachable from "Take the tour", ⌘K, and ?tour=1 links).
-  const [tourInviteSeen, setTourInviteSeen] = useState(isTourSeen);
-  const playTourInvite = useCallback(() => {
-    markTourSeen();
-    setTourInviteSeen(true);
-    startTour();
-  }, [startTour]);
-  const dismissTourInvite = useCallback(() => {
-    markTourSeen();
-    setTourInviteSeen(true);
-  }, []);
-
   // The ⌘K command palette — on the landing it doubles as a teaser that funnels into Live.
   // Self-contained surfaces open directly; a feature that names a walkthrough chapter plays it
   // as a solo mini-demo on Live; everything that needs your own data opens Live itself.
   const { open: paletteOpen, openPalette, closePalette } = useCommandPalette();
   const watchInLive = useCallback(
     (chapterId: string) => () => {
+      retireTourInvite();
       stashTourMode();
       stashTourChapter(chapterId);
       stashTourSolo();
       window.location.hash = '#/live';
     },
-    [],
+    [retireTourInvite],
   );
 
   return (
@@ -166,8 +170,8 @@ export function FlagshipHost(): ReactElement {
           onWarm={warmLive}
           onDemoIntent={warmLive}
           showTourInvite={!tourInviteSeen}
-          onPlayTour={playTourInvite}
-          onDismissTourInvite={dismissTourInvite}
+          onPlayTour={startTour}
+          onDismissTourInvite={retireTourInvite}
         />
       </div>
 

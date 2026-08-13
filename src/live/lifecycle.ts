@@ -259,6 +259,15 @@ export function blockSignature(block: Block): string {
       }
     }
   }
+  // Plenty of blocks carry no headline of any kind (a bare stat, a quote, a divider). Falling back
+  // to the empty label collapsed every untitled block of a type onto ONE signature, so an augment
+  // read a genuinely new untitled block as already-present and silently dropped it. A coarse slice
+  // of the serialized props is enough to tell two of them apart, and only runs when there's no real
+  // label — a labelled block's signature is untouched, so tour/demo-corpus signatures stay stable.
+  if (!label)
+    label = JSON.stringify(props ?? null)
+      .slice(0, 120)
+      .toLowerCase();
   return `${type}:${label}`;
 }
 

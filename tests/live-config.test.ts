@@ -6,6 +6,8 @@ import {
   resetLiveConfig,
   exportConfig,
   importConfig,
+  importConfigWithSummary,
+  whenSecretPersistenceSettled,
   hasModelConfigured,
 } from '../src/live/useLiveConfig';
 
@@ -140,6 +142,29 @@ describe('useLiveConfig — import never inherits key persistence', () => {
     );
     expect(imported.rememberKey).toBe(false);
   });
+
+  it('never imports provider/search/GitHub credentials or overwrites current session keys', () => {
+    setLiveConfigV2({
+      rememberKey: true,
+      keys: { openai: 'sk-current' },
+      searchKeys: { brave: 'brave-current' },
+    });
+    const result = importConfigWithSummary(
+      JSON.stringify({
+        keys: { openai: 'sk-crafted' },
+        searchKeys: { brave: 'brave-crafted' },
+        githubToken: 'ghp-crafted',
+      }),
+    );
+    expect(result.config.keys.openai).toBe('sk-current');
+    expect(result.config.searchKeys.brave).toBe('brave-current');
+    expect(result.credentialsIgnored).toEqual([
+      'provider-api-keys',
+      'search-api-keys',
+      'github-token',
+    ]);
+    expect(localStorage.getItem('mavea-ripple-gh-token')).toBeNull();
+  });
 });
 
 describe('useLiveConfig — settings exports never become credential bundles', () => {
@@ -160,6 +185,11 @@ describe('useLiveConfig — settings exports never become credential bundles', (
     expect(exported.rememberKey).toBe(false);
     expect(json).not.toContain('sk-export-must-not-contain');
     expect(json).not.toContain('brave-export-must-not-contain');
+  });
+
+  it('does not warn about the intentionally empty credential placeholders in a normal export', () => {
+    const imported = importConfigWithSummary(exportConfig());
+    expect(imported.credentialsIgnored).toEqual([]);
   });
 });
 
@@ -202,5 +232,11 @@ describe('useLiveConfig — secrets never sit in the main blob as plaintext', ()
     expect(mainBlob).not.toContain('sk-PLAINTEXT-should-not-persist');
     // …but it's still available in-session for the current turn.
     expect(getLiveConfigV2().keys.openai).toBe('sk-PLAINTEXT-should-not-persist');
+  });
+
+  it('reports session-only when encrypted persistence is unavailable', async () => {
+    setLiveConfigV2({ rememberKey: true, keys: { openai: 'sk-session-only' } });
+    expect(await whenSecretPersistenceSettled()).toBe('session-only');
+    expect(getLiveConfigV2().keys.openai).toBe('sk-session-only');
   });
 });

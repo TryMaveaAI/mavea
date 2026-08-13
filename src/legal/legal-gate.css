@@ -82,6 +82,12 @@
   cursor: pointer;
 }
 
+/* Speech consent is a second, separate act — it sits in its own box under the general one, so the
+   two never read as a single block of small print with one tick. */
+.legal-gate-consent + .legal-gate-consent {
+  margin-top: 10px;
+}
+
 .legal-gate-consent input {
   width: 17px;
   height: 17px;

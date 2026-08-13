@@ -1,12 +1,14 @@
 # Mavéa Privacy Notice
 
-Effective: July 19, 2026
+Effective: August 11, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
 ## 1. Who handles your information
 
 The Mavéa Maintainers publish software. They do not receive your prompts or browser-local data merely because you install or run it. The person or organization hosting the copy you use is the **deployment operator**. When you self-host, you control that deployment and its logs, storage, configuration, and provider accounts.
+
+Where data-protection law such as the GDPR or UK GDPR applies to a deployment, the deployment operator normally acts as the controller of personal data processed through it — that is you, when you self-host for yourself. The Maintainers are neither a controller nor a processor of that data, because it never reaches them.
 
 The unmodified project has no Mavéa user-account system, first-party cloud database, advertising network, product-analytics service, telemetry, or conversation-retention service. Normal network requests can still be visible to the deployment host, infrastructure providers, and the third-party services described below. A modified or separately hosted deployment may behave differently, and its operator is responsible for disclosing any additional collection, logging, accounts, analytics, retention, or sharing it adds.
 
@@ -21,7 +23,8 @@ Depending on the features you use, browser storage may contain:
 - preferences such as theme, performance, visual richness, voice, and setup state;
 - drafts, tracked items, presentation settings, and recent feature state;
 - provider and model configuration;
-- remembered provider, search, or optional GitHub credentials; and
+- remembered provider, search, or optional GitHub credentials;
+- temporary in-progress and finished video-export files in origin-private browser storage until the export is consumed or discarded; and
 - short-lived demo, tour, route, and in-progress session data.
 
 Saved content is encrypted in browser storage only where the relevant feature and browser support it. Course data, mastery and progress, some Ripple data and analysis caches, preferences, metadata, and fallback content can be stored in ordinary local storage or IndexedDB. Anyone who can use your unlocked device or browser profile, and malicious extensions or same-origin code, may be able to access browser data.
@@ -48,9 +51,11 @@ Prism and Synthesis stage and extract supported files locally where possible, bu
 
 ## 5. Voice, microphone, speech, and reels
 
-If you enable listening, the browser captures microphone input and its speech-recognition implementation converts speech to text. Depending on the mode, browser, and operating system, audio may be processed by a remote browser-vendor service or sent through the deployment's configured speech-to-text endpoint. Recognized transcripts may then be sent to your selected model provider.
+If you enable listening, the browser captures microphone input. Audio is processed by the deployment's configured speech-to-text endpoint — by default a local one on the same machine, though an operator can configure a different endpoint — which converts speech to text. Recognized transcripts may then be sent to your selected model provider, including while listening continues.
 
-Spoken answers send narration text to the configured text-to-speech service. Reel rendering and encoding are performed in the browser, but optional model direction and narration use the selected providers. A finished export leaves Mavéa only when you save, publish, or send it to a destination you choose.
+The browser sends captured audio to the speech-to-text endpoint configured by the deployment. The unmodified Mavéa client does not intentionally persist microphone audio itself and does not include it in later conversation-model requests; it sends the resulting transcript instead. A remote or modified speech endpoint, deployment proxy, infrastructure provider, browser extension, or operator can receive, log, or retain the audio under its own configuration and terms. Captured audio is discarded by the client as it is transcribed, and the microphone is released when you stop listening or the tab becomes hidden. The client does not intentionally create a voiceprint or identify speakers. In a listening mode, whatever is said near you can be transcribed too — see the Terms for your responsibilities toward other people.
+
+Spoken answers send narration text to the configured text-to-speech service. Reel and conversation-video cuts are directed, rendered, and encoded in your browser; no model provider is called. Reel narration text is sent to the configured text-to-speech service. During a video export, encoded chunks and the finished clip may be held in origin-private browser storage so a large video does not have to remain in JavaScript memory. Normal cancellation, replacement, sharing, and download cleanup remove those temporary files; a download can retain its temporary file for up to 60 seconds while the browser takes ownership. A crash, forced close, or storage failure can interrupt cleanup and leave a temporary file behind. A later video export makes a bounded, best-effort pass that removes only Mavéa temporary video files more than 24 hours old; clearing the site's browser data also removes them. A finished export leaves Mavéa only when you save, publish, or send it to a destination you choose.
 
 ## 6. Services that can receive data
 
@@ -58,14 +63,15 @@ According to the feature and configuration you choose, recipients can include:
 
 - Google Gemini, Anthropic Claude, OpenAI, xAI Grok, OpenRouter, or another model endpoint you configure;
 - configured web-search providers and Wikipedia;
-- your browser vendor's speech-recognition service and the configured speech-to-text or text-to-speech service;
+- the configured speech-to-text or text-to-speech service;
 - GitHub, Google Calendar, or another configured action destination;
-- map-tile, font, image, and other content hosts such as OpenStreetMap, CARTO, Google Fonts, Wikimedia, or configured image sources used by a view you open;
-- a notification relay URL you configure, which can receive dashboard titles, alert labels, values, units, and timestamps;
+- OpenFreeMap's tile host when you open a map, and Wikimedia's upload host for the small set of individually reviewed tour images; these requests expose ordinary network metadata such as your IP address and user agent to those hosts;
 - the jsDelivr content-delivery network, from which the local command-line server downloads version-pinned voice-recognition assets once on first voice use and then serves them from its own cache; and
 - the deployment host, reverse proxy, network, and infrastructure providers.
 
 Those parties process data under their own terms and privacy notices. They may retain requests, use data for abuse prevention or service improvement, or process it in other countries according to your account settings and their policies. The Maintainers do not control those practices. Review each recipient's terms, retention, training, security, location, and deletion settings before use. Mavéa cannot delete data retained by those providers.
+
+For OpenAI Responses requests, the unmodified client sends `store: false` to avoid optional response-object storage. That setting does not disable all OpenAI processing or retention; provider abuse-monitoring, safety, legal, account, and feature-specific retention can still apply. Other providers and custom endpoints have their own controls. Review the current provider documentation and your account settings rather than assuming that Mavéa can guarantee zero retention.
 
 ## 7. Why information is processed
 
@@ -84,7 +90,7 @@ The unmodified project does not sell personal information or use it for cross-co
 
 Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. Clearing all browser site data is the broadest local deletion control. Removing browser data does not delete copies already sent elsewhere.
 
-Gateway tokens remain until disconnected or removed by the gateway operator. Server, proxy, infrastructure, browser-vendor, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
+Gateway tokens remain until disconnected or removed by the gateway operator. Server, proxy, infrastructure, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
 
 Exports, downloaded files, backups, browser sync, system backups, provider records, and recipients of anything you share must be deleted separately.
 

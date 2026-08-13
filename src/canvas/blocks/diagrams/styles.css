@@ -372,7 +372,9 @@
 }
 .sa-sub {
   fill: var(--text-muted);
-  font-size: 14px;
+  /* 14 user units rendered at 8.5px in a laptop-width card — under the 9px floor. 15 clears
+     it without crowding the box, which is the tightest constraint in these two diagrams. */
+  font-size: 15px;
   font-weight: 500;
 }
 .sa-icon {
@@ -408,7 +410,9 @@
 }
 .dp-sub {
   fill: var(--text-muted);
-  font-size: 14px;
+  /* 14 user units rendered at 8.5px in a laptop-width card — under the 9px floor. 15 clears
+     it without crowding the box, which is the tightest constraint in these two diagrams. */
+  font-size: 15px;
   font-weight: 500;
 }
 .dp-icon {
@@ -432,15 +436,19 @@
   stroke: var(--line-strong);
   stroke-width: 2;
 }
+/* Type here is in viewBox USER UNITS, not pixels: the figure renders ~320px wide in a half-width
+   card, so a unit lands at ~0.63px. The HTML fluid ramp (--fs-2xs floors at 9px) therefore drew
+   these labels at 5.6px — under the ~9px legibility floor. Sizes are literal for that reason;
+   keep them in step with the wrap budgets and line heights in FiveForces.tsx. */
 .ff-hub-title {
   fill: var(--text-primary);
-  font-size: var(--fs-sm, 14px);
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .ff-hub-sub {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 15.5px;
   font-weight: 500;
 }
 .ff-box {
@@ -449,24 +457,24 @@
 }
 .ff-slot-lbl {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 .ff-box-lbl {
   fill: var(--text-primary);
-  font-size: var(--fs-xs, 12px);
+  font-size: 16.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .ff-box-note {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 15.5px;
   font-weight: 500;
 }
 .ff-strength {
-  font-size: var(--fs-2xs, 10px);
+  font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -499,9 +507,13 @@
 .fwy-rail--root {
   fill: var(--insight);
 }
+/* Type here is in viewBox USER UNITS, not pixels: the chain renders ~320px wide in a half-width
+   card, so a unit lands at ~0.62px. The HTML fluid ramp (--fs-2xs floors at 9px) therefore drew
+   these labels at 5.6px — under the ~9px legibility floor. Sizes are literal for that reason;
+   keep them in step with the geometry constants in FiveWhyChain.tsx. */
 .fwy-badge {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -514,13 +526,13 @@
 }
 .fwy-question {
   fill: var(--text-muted);
-  font-size: var(--fs-2xs, 10px);
+  font-size: 16px;
   font-weight: 500;
   font-style: italic;
 }
 .fwy-answer {
   fill: var(--text-primary);
-  font-size: var(--fs-xs, 12px);
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -810,7 +822,7 @@
   stroke: var(--presence);
   stroke-width: 2.2;
 }
-.nn-more-dot {
+.nn-more-pill {
   fill: var(--surface-glass);
   stroke: var(--grid-line);
   stroke-width: 1.2;
@@ -818,7 +830,9 @@
 }
 .nn-more-label {
   fill: var(--text-muted);
-  font-size: 10px;
+  /* Must track MORE_F in NnArchitecture.tsx — the stage caps the 1000-unit viewBox at 700px, so
+     10 user units landed at 7 rendered pixels. */
+  font-size: 14px;
   font-weight: 700;
 }
 .nn-name {
@@ -839,7 +853,10 @@
 
 /* ───────────────────────── synthesisroute ───────────────────────── */
 .sr-stage {
-  max-width: 720px;
+  /* Against the 1000-unit viewBox this sets the figure's scale. The SMILES annotation is the
+     smallest type here by design (12 units), and at 720px it landed under 9 rendered pixels —
+     scaling the stage keeps the type hierarchy intact where shrinking the gap would not. */
+  max-width: 820px;
 }
 .sr-label {
   fill: var(--text-primary);
@@ -883,7 +900,10 @@
 .pm-wrap {
   margin-top: 12px;
   width: 100%;
-  max-width: 380px;
+  /* Twice the SVG's 290-unit viewBox: the ring has to carry a full circle of radial labels, and
+     at the old 380px the 5-unit label type landed near 8 rendered pixels — under the legibility
+     floor. Sizing the stage rather than the type keeps every label clear of its neighbours. */
+  max-width: 580px;
   margin-inline: auto;
 }
 .pm-svg {
@@ -1033,11 +1053,11 @@
 }
 .dg-pt-svg {
   display: block;
-  min-width: 380px;
-  /* The SVG is width:100% over a fixed viewBox (natural width VB_W = 560), so on a wide card it
-     would scale UP and the proportional height would balloon (the full-bleed-SVG trap). Cap it at
-     its natural width and centre it; narrow cards still pan via .dg-pt-scroll's min-width. */
-  max-width: 560px;
+  /* Pinned to the viewBox's natural width (VB_W = 560) so one user unit is always one CSS pixel.
+     Scaling UP balloons the proportional height (the full-bleed-SVG trap); scaling DOWN — what
+     width:100% did between 380 and 560 — shrank the node and column-header type below the
+     legibility floor. A card narrower than this pans instead, via .dg-pt-scroll. */
+  width: 560px;
   margin-inline: auto;
   overflow: visible;
 }
@@ -1057,9 +1077,12 @@
   fill: color-mix(in oklab, currentColor 10%, var(--surface-elevated));
 }
 
+/* .dg-pt-svg renders 1:1 against its viewBox, so every font-size in this block is a literal
+   rendered pixel count — keep them all clear of the ~9px legibility floor. NODE_LBL_F / OUTCOME_F
+   in ProbabilityTree.tsx mirror two of them; the character budgets are derived from both. */
 .dg-pt-node-lbl {
   fill: var(--text-primary);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   pointer-events: none;
 }
@@ -1076,7 +1099,7 @@
    the line never bleeds through the text. */
 .dg-pt-edge-lbl {
   fill: var(--text-secondary);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   paint-order: stroke;
   stroke: var(--surface-default);
@@ -1087,7 +1110,7 @@
 
 /* Outcome labels at the right edge */
 .dg-pt-outcome-lbl {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   /* fill is set per-element to match the branch accent color */
   paint-order: stroke;
@@ -1100,7 +1123,7 @@
 /* Column header micro-labels */
 .dg-pt-col-hdr {
   fill: var(--text-faint);
-  font-size: 7px;
+  font-size: 9.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -3215,7 +3238,9 @@
 }
 .cast-edge-lbl {
   fill: var(--text-secondary);
-  font-size: 15px;
+  /* The cast map draws in a large square user-space box scaled well down (~0.57 in a narrow
+     card), so this must be authored far above the floor to clear it — 15 painted at 8.5px. */
+  font-size: 17px;
   font-weight: 600;
 }
 .cast-legend {

@@ -19,9 +19,12 @@ export interface DocPageViewProps extends PdfSurfaceProps {
    *  ImageSurface instead of any text-shaped surface; this is the same
    *  `slideImages && slideImages.length > 0` check that used to live at the PrismOverlay call site. */
   slideImages?: { data: string; mime: string }[];
+  /** The document's already-extracted page text, when the caller has it (see TextSurface's `pages`).
+   *  Only the reflowable-text surface reads it; every other surface renders from the file itself. */
+  pages?: readonly string[];
 }
 
-export function DocPageView({ slideImages, ...pdfProps }: DocPageViewProps): ReactElement {
+export function DocPageView({ slideImages, pages, ...pdfProps }: DocPageViewProps): ReactElement {
   const doc = pdfProps.pdf;
 
   if (slideImages && slideImages.length > 0) {
@@ -78,6 +81,7 @@ export function DocPageView({ slideImages, ...pdfProps }: DocPageViewProps): Rea
     return (
       <TextSurface
         doc={doc}
+        pages={pages}
         source={pdfProps.source}
         page={pdfProps.page}
         quote={pdfProps.quote}

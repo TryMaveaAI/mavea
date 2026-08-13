@@ -7,6 +7,7 @@ import { useEffect, useRef, type ReactElement } from 'react';
 import { OverlayPortal } from '../../canvas/blocks/overlays/portal';
 import { Icon } from '../../icons/icons';
 import { Library } from '../Library';
+import { useFocusTrap } from '../useFocusTrap';
 import type { LibraryEntry } from './store';
 import './library-overlay.css';
 
@@ -22,25 +23,17 @@ export function LibraryOverlay({
   onClose: () => void;
 }): ReactElement | null {
   const panelRef = useRef<HTMLDivElement>(null);
-  const restoreFocus = useRef<HTMLElement | null>(null);
 
-  // Esc closes; on open, remember where focus was and move it into the dialog; restore on close.
+  // Esc closes, Tab stays inside the dialog, and focus returns to the rail button on close — the
+  // same trap every other Live dialog uses.
+  useFocusTrap(panelRef, { onEscape: onClose });
+
+  // Removing the last saved conversation empties the library. Rendering nothing at that point
+  // would strand the user: the dialog would vanish while the parent still believed it was open,
+  // leaving focus on <body>. Ask the parent to close so its own teardown runs.
   useEffect(() => {
-    restoreFocus.current = (document.activeElement as HTMLElement) ?? null;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    const first = panelRef.current?.querySelector<HTMLElement>('input, button, [tabindex]');
-    first?.focus();
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      restoreFocus.current?.focus?.();
-    };
-  }, [onClose]);
+    if (entries.length === 0) onClose();
+  }, [entries.length, onClose]);
 
   // No saved canvases — nothing to browse (the rail only offers this when entries exist anyway).
   if (entries.length === 0) return null;

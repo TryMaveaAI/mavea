@@ -229,13 +229,58 @@
 @media (max-width: 560px) {
   .live-voice .voice-strip {
     padding: 8px 12px;
-    gap: 8px;
+    gap: 6px;
   }
   .live-voice .voice-switch-label {
     display: none;
   }
-  .live-voice .chip-model {
-    max-width: 92px;
+  .live-voice .voice-strip > .live-model-chip {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+  .live-voice .voice-strip .chip-model {
+    display: block;
+    max-width: 64px;
+  }
+}
+
+/* Give the text field its own row on a phone. Five standing touch targets cannot share a
+   320–390px row with a useful input; squeezing the field to a few pixels made typing look broken
+   even though every button technically fit. The dock measures its rendered height, so the canvas
+   and the mobile session sheet automatically clear this taller two-row capsule. */
+@media (max-width: 420px) {
+  .live-voice .voice-capsule .composer {
+    display: grid;
+    grid-template-columns: 44px 38px 38px 38px 44px;
+    justify-content: space-between;
+    column-gap: 0;
+    row-gap: 6px;
+    padding: 8px 14px 10px;
+  }
+  .live-voice .voice-capsule .composer-input,
+  .live-voice .voice-capsule .live-listen {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    min-height: 30px;
+  }
+  .live-voice .voice-capsule .send-btn {
+    grid-column: 5;
+  }
+  .live-voice .voice-capsule .mark-toggle {
+    width: 38px;
+    height: 38px;
+    justify-content: center;
+    padding: 0;
+  }
+  .live-voice .voice-capsule .mark-toggle-label {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .live-voice .voice-strip .chip-model {
+    display: none;
   }
 }
 
@@ -333,10 +378,19 @@
   color: #c3c6dc; /* dark-theme chevron (source) — currentColor for the svg */
   cursor: pointer;
   pointer-events: auto;
+  transition: background var(--m-fast) var(--ease-out);
+}
+/* The badge is the only dock control without a hover lift; nudge the sampled fill toward the
+   chevron color so it brightens on hover the way its neighbours do, in both themes. */
+.mic-mode-chevron:hover {
+  background: color-mix(in oklab, #2a2e45 78%, #c3c6dc);
 }
 :root[data-theme='light'] .mic-mode-chevron {
   background: #14162b; /* light-theme fill (source) */
   color: #fff; /* light-theme chevron (source) */
+}
+:root[data-theme='light'] .mic-mode-chevron:hover {
+  background: color-mix(in oklab, #14162b 82%, #fff);
 }
 .mic-mode-chevron svg {
   display: block;

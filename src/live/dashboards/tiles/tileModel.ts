@@ -149,6 +149,9 @@ function computeDelta(m: MetricSpec | undefined): TileDelta | null {
   if (curr === prev) return null;
   const direction: 'up' | 'down' = curr > prev ? 'up' : 'down';
   const rounded = Math.round(Math.abs(curr - prev) * 100) / 100;
+  // A move smaller than the two decimals shown reads as "+0%" — a badge announcing a change of
+  // nothing. Below display precision is, to a reader, no move at all: treat it exactly like one.
+  if (rounded === 0) return null;
   const magnitude = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
   const unit = m.unit;
   const prefix = unit === '$' ? '$' : '';
@@ -168,14 +171,15 @@ function deriveFormChips(d: Dashboard): FormChipItem[] {
   if (scoreboard) {
     return (
       scoreboard.props.games
-        .slice(0, 5)
         // A game that hasn't been played has no score — the chip was interpolating the two missing
         // values straight into the label and printing "undefined-undefined" on the tile. There is no
         // score to show, so show none: an upcoming fixture is not a scoreless draw, and putting a
         // placeholder where a real number belongs is the one thing this app is not allowed to do.
         // Scores arrive as either a number or the string a source printed, so ask only whether one
-        // is actually there.
+        // is actually there. Filter BEFORE capping — a list that opens with today's unplayed
+        // fixtures and carries the finished games further down still has five real scores to show.
         .filter((g) => hasScore(g.as) && hasScore(g.hs))
+        .slice(0, 5)
         .map((g) => ({
           label: `${g.as}-${g.hs}`,
           tone: g.hot ? 'accent' : ('flat' as const),
@@ -186,8 +190,8 @@ function deriveFormChips(d: Dashboard): FormChipItem[] {
   const standings = findWidgetBlock(d, 'standings');
   if (standings) {
     return standings.props.rows
-      .slice(0, 5)
       .filter((r) => !!r.rec?.trim())
+      .slice(0, 5)
       .map((r, i) => ({
         label: r.rec,
         tone: i === 0 ? 'accent' : ('flat' as const),

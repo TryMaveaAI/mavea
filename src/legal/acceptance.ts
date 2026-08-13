@@ -1,4 +1,4 @@
-export const LEGAL_ACCEPTANCE_VERSION = '2026-07-19-polyform-nc-v4';
+export const LEGAL_ACCEPTANCE_VERSION = '2026-08-11-speech-consent-v6';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

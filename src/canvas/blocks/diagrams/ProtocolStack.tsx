@@ -11,9 +11,12 @@ type Props = ProtocolStackProps & { delay?: number };
 // "headers wrap the data" picture. These are viewBox units (the SVG is square, 100×100).
 const ENC_VB = 100;
 const ENC_PAD = 4; // outer margin so the outermost border isn't flush to the edge
-const BAND_MIN = 7; // smallest header band; the inset shrinks if there are many headers
 const BAND_MAX = 13;
 const LABEL_H = 11; // vertical room reserved at the top of each band for its label
+// Floor for the innermost square. It carries the payload's name — the one thing the figure is
+// pointing at — and letting it take an equal share of the half-width alongside the headers left
+// the demo's "Your request" reading "Your…" at five nested fields.
+const PAYLOAD_MIN = 34;
 
 // Each header's box shrinks with depth (see `encaps` below), but the label font-size is fixed
 // per role (.pst-box-lbl / .pst-box-lbl--inner in styles.css) — so a deeply-nested box gives its
@@ -55,9 +58,11 @@ export function ProtocolStack({
     const fields = packet ?? [];
     const n = fields.length;
     if (n === 0) return null;
-    const avail = (ENC_VB - ENC_PAD * 2) / 2; // half-width budget shared across the headers
-    const band = Math.max(BAND_MIN, Math.min(BAND_MAX, avail / Math.max(1, n)));
-    const labelH = Math.min(LABEL_H, band - 2);
+    // Half-width budget for the headers alone — what is left once the payload has its floor. The
+    // last field is the payload, so n - 1 bands share it.
+    const avail = (ENC_VB - ENC_PAD * 2 - PAYLOAD_MIN) / 2;
+    const band = Math.min(BAND_MAX, avail / Math.max(1, n - 1));
+    const labelH = Math.max(2, Math.min(LABEL_H, band - 2));
     return fields.map((f, i) => {
       const inset = ENC_PAD + i * band;
       const size = Math.max(0, ENC_VB - inset * 2);
@@ -144,31 +149,21 @@ export function ProtocolStack({
                     onMouseEnter={() => e.layer && setHot(e.layer)}
                     onMouseLeave={() => setHot(null)}
                   >
+                    {/* The tooltip for a truncated header hangs off the box, not its <text>: it
+                        would otherwise inherit the label's few-user-unit font-size, and the whole
+                        box is a far easier hover target than a handful of tiny glyphs. */}
+                    {e.header.length > e.maxChars && <title>{e.header}</title>}
                     <rect x={e.x} y={e.y} width={e.size} height={e.size} rx={2.4} />
                     {/* Header label sits in the top band of each box; the payload label centres. */}
-                    {e.inner ? (
-                      <text
-                        x={e.x + e.size / 2}
-                        y={e.y + e.size / 2}
-                        className="pst-box-lbl pst-box-lbl--inner"
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        {e.header.length > e.maxChars && <title>{e.header}</title>}
-                        {truncate(e.header, e.maxChars)}
-                      </text>
-                    ) : (
-                      <text
-                        x={e.x + e.size / 2}
-                        y={e.y + e.labelH / 2 + 1}
-                        className="pst-box-lbl"
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        {e.header.length > e.maxChars && <title>{e.header}</title>}
-                        {truncate(e.header, e.maxChars)}
-                      </text>
-                    )}
+                    <text
+                      x={e.x + e.size / 2}
+                      y={e.inner ? e.y + e.size / 2 : e.y + e.labelH / 2 + 1}
+                      className={e.inner ? 'pst-box-lbl pst-box-lbl--inner' : 'pst-box-lbl'}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      {truncate(e.header, e.maxChars)}
+                    </text>
                   </g>
                 );
               })}

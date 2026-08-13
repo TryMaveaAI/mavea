@@ -92,6 +92,7 @@ import {
   forSpeech,
   proseForDisplay,
   proseForSpeech,
+  resolveAnnotations,
 } from '../lib/spokenText';
 
 /** Recover a top-level string field from a truncated/unclosed JSON buffer, or '' if it
@@ -1158,14 +1159,30 @@ function neutralizeTags(s: string): string {
  *  `[[shown|said]]` (for the voice), and it freely does so in ANY field — a stat value, a label, a
  *  caption — not just the narration. Only narration/note/tour get split upstream, so without this a
  *  stray annotation reaches the screen as literal `[[V|volts]]`. Blocks are never spoken, so the
- *  shown side is always what they want. RAW-TEXT props (a codeblock's `code`) skip this in
- *  coerceGeneric, where verbatim source must survive untouched. */
+ *  shown side is always what they want. RAW-TEXT props skip this in coerceGeneric so their markup
+ *  survives to the render-time sanitizer; they get annotationsDeep instead, except where the
+ *  brackets are real syntax (VERBATIM_PROPS). */
 function sanitizeDeep(v: Json): Json {
   if (typeof v === 'string') return neutralizeTags(forDisplay(v));
   if (Array.isArray(v)) return v.map(sanitizeDeep);
   if (v && typeof v === 'object') {
     const out: Record<string, Json> = {};
     for (const [k, val] of Object.entries(v as Record<string, Json>)) out[k] = sanitizeDeep(val);
+    return out;
+  }
+  return v; // number, boolean, null
+}
+
+/** Resolve `[[shown|said]]` annotations everywhere in a value, touching nothing else. RAW-TEXT
+ *  props skip sanitizeDeep so their markup survives to richInnerHtml, but the model marks
+ *  speech-risky spans in ANY field it writes, and blocks are never spoken — so without this an
+ *  error message reaches the card as literal `[[CPU|C-P-U]] temperature exceeded 95 [[Celsius…`. */
+function annotationsDeep(v: Json): Json {
+  if (typeof v === 'string') return resolveAnnotations(v);
+  if (Array.isArray(v)) return v.map(annotationsDeep);
+  if (v && typeof v === 'object') {
+    const out: Record<string, Json> = {};
+    for (const [k, val] of Object.entries(v as Record<string, Json>)) out[k] = annotationsDeep(val);
     return out;
   }
   return v; // number, boolean, null
@@ -1194,13 +1211,15 @@ function nestedRawField(raw: ReadonlySet<string>, prop: string): string {
 /** Sanitize each object in an item array but leave ONE named field on every item untouched —
  *  the field a renderer passes to richInnerHtml, where the strict allow-list sanitizer runs at the
  *  DOM boundary. Non-object entries (or a non-array value) fall back to the normal deep clean. */
-function sanitizeItemsExcept(value: Json, rawField: string): Json {
+function sanitizeItemsExcept(value: Json, rawField: string, verbatim: boolean): Json {
   if (!Array.isArray(value)) return sanitizeDeep(value);
   return value.map((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return sanitizeDeep(item);
     const src = item as Record<string, Json>;
     const out: Record<string, Json> = {};
-    for (const [k, v] of Object.entries(src)) out[k] = k === rawField ? v : sanitizeDeep(v);
+    for (const [k, v] of Object.entries(src)) {
+      out[k] = k === rawField ? (verbatim ? v : annotationsDeep(v)) : sanitizeDeep(v);
+    }
     return out;
   });
 }
@@ -1620,15 +1639,18 @@ function coerceGeneric(
     // It's safe to skip the guard because the consumer escapes it: Shiki emits escaped markup, the
     // plain-text fallback renders it through a React text node (auto-escaped), and HtmlString fields
     // are sanitized by richInnerHtml at render. No raw model HTML ever reaches the DOM unescaped.
+    const verbatim = VERBATIM_PROPS[meta.type];
     if (raw?.has(key)) {
-      out[key] = repaired[key];
+      // Exempt from tag-neutralization, but still not a place for voice markup — unless the
+      // brackets are the field's own syntax.
+      out[key] = verbatim?.has(key) ? repaired[key] : annotationsDeep(repaired[key]);
       continue;
     }
     // A "<array>.<field>" exemption keeps one HTML field on each item raw (sanitized later by
     // richInnerHtml) while every sibling field is still neutralized here.
     const rawField = raw && nestedRawField(raw, key);
     out[key] = rawField
-      ? sanitizeItemsExcept(repaired[key], rawField)
+      ? sanitizeItemsExcept(repaired[key], rawField, verbatim?.has(`${key}.${rawField}`) === true)
       : sanitizeDeep(repaired[key]);
   }
   return out;
@@ -1666,14 +1688,24 @@ const RAW_TEXT_PROPS: Record<string, ReadonlySet<string>> = {
   retrieval: new Set(['footer', 'chunks.body']),
 };
 
+/** The subset of RAW_TEXT_PROPS where `[[…]]` is SYNTAX rather than a voice annotation — a shell
+ *  `[[ -f x ]]`, a C++ `[[nodiscard]]`, an R `x[[1]]`, a LaTeX bracket. These pass through
+ *  byte-for-byte: a stray annotation left in real source is far cheaper than corrupting code the
+ *  user is meant to copy. Every other raw-text prop is model-authored prose, so it keeps its markup
+ *  but still gets its annotations resolved (see coerceGeneric). */
+const VERBATIM_PROPS: Record<string, ReadonlySet<string>> = {
+  codeblock: new Set(['code']),
+  equationblock: new Set(['tex', 'math']),
+  svgblock: new Set(['svg']),
+  molecularstructure: new Set(['smiles']),
+  // A diff line's HTML is a line of source; its siblings are already neutralized as normal.
+  whatchanged: new Set(['diff.c']),
+};
+
 /** Build ONE typed Block from a loose {type,props}, or null if unsupported/empty.
  *  `allowed` gates which block types are accepted (capability-tiered). */
-/** Coerce a loose photo block. Mavéa does not generate images — a photo is a REAL one the model
- *  found: a single `src` and/or a few `candidates` (preference order). Model-supplied URLs are
- *  untrusted, so each is kept only when it clears `safeImageUrl` (https + an allowlisted image
- *  host); unsafe or invented ones are dropped. The renderer load-tests the survivors and shows the
- *  first that actually decodes, so a dead/hallucinated link never reaches the DOM. A photo block
- *  with no usable image isn't a photo, so it's dropped rather than rendered as a broken frame. */
+/** Coerce a photo only when every selected URL has already been individually cleared. Live does
+ *  not offer this block to models; the check remains fail-closed for imported/baked responses. */
 function buildPhoto(p: Record<string, Json>): PhotoProps | null {
   const src = safeImageUrl(alias(p, 'src', 'url', 'image')) ?? '';
   const candidates = [...asArr(p.candidates), ...asArr(p.urls)]
@@ -2047,13 +2079,10 @@ function buildBlock(
   // dropped, which is what collapsed a full canvas to its single nested-props block.
   const hasNestedProps = ro.props !== undefined && typeof ro.props === 'object';
   const props = hasNestedProps ? asObj(ro.props) : inlineProps(ro);
-  // Type gate (capability-tiered). One exception: a `photo` carrying a real, allowlisted
-  // image URL is a FOUND image, not generation, so it renders even when image-generation
-  // is off (and `photo` is therefore absent from `allowed`). A prompt-only photo stays
-  // gated — generating an image is the opt-in behavior.
+  // Type gate (capability-tiered). A cleared image still does not bypass capability policy: only
+  // explicitly enabled, reviewed fixture paths may construct photo blocks.
   if (!allowed.has(type)) {
-    const isSafeUrlPhoto = type === 'photo' && !!safeImageUrl(alias(props, 'src', 'url', 'image'));
-    if (!isSafeUrlPhoto) return null;
+    return null;
   }
   // Image-first blocks are honest ONLY when a slot actually holds a real, renderable image URL.
   // Without one they paint a colored gradient placeholder that reads as broken and breaks the
@@ -2153,9 +2182,7 @@ function buildBlock(
       return { type: 'action', col, delay, props: out } as unknown as Block;
     }
     case 'imagecallouts': {
-      // Otherwise generic, except the nested `image.src` is a model-supplied URL like `photo`'s —
-      // it needs the same safeImageUrl gate (https + allowlisted host) so an invented or unsafe
-      // link never reaches an <img src>, and a doomed fetch never delays the card's reveal.
+      // Otherwise generic, except the nested image still needs the exact per-file clearance gate.
       const meta = catalogMeta(type);
       if (!meta || meta.coercer !== 'generic') return null;
       const generic = coerceGeneric(meta, props);

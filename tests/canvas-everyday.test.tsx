@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { ContractionTimer } from '../src/canvas/blocks/everyday/ContractionTimer';
+import { CycleTrack } from '../src/canvas/blocks/everyday/CycleTrack';
 import { Forecast } from '../src/canvas/blocks/everyday/Forecast';
 import { PrayerTimes } from '../src/canvas/blocks/everyday/PrayerTimes';
 import { SettleUp } from '../src/canvas/blocks/everyday/SettleUp';
@@ -339,5 +342,54 @@ describe('UnitConvert', () => {
     );
     const units = Array.from(container.querySelectorAll('.uc-unit'));
     expect(units.map((u) => u.textContent)).toEqual(['ml', 'tbsp']);
+  });
+});
+
+// Regression coverage for a real bug: the "Today" marker label was authored at 8px inside a
+// viewBox that renders ~1:1 with pixels, so it landed under the library's 9px legibility floor
+// and read as a smudge. Raising it makes the word wider, which is only safe because the label
+// now hangs inward off a marker sitting in the opening or closing days — centred, half of it
+// would fall outside the band and the card (overflow:hidden) would slice it off.
+describe('CycleTrack', () => {
+  const label = (container: HTMLElement) => container.querySelector('.ct-today-label');
+
+  it('anchors the today label inward when the marker sits at either end of the cycle', () => {
+    const first = render(<CycleTrack cycleLength={28} periodDays={5} currentDay={1} />);
+    expect(label(first.container)?.getAttribute('text-anchor')).toBe('start');
+
+    const last = render(<CycleTrack cycleLength={28} periodDays={5} currentDay={28} />);
+    expect(label(last.container)?.getAttribute('text-anchor')).toBe('end');
+  });
+
+  it('centres the today label over its marker everywhere else, at any cycle length', () => {
+    for (const [cycleLength, currentDay] of [
+      [28, 14],
+      [21, 8],
+      [60, 30],
+    ]) {
+      const { container } = render(
+        <CycleTrack cycleLength={cycleLength} periodDays={5} currentDay={currentDay} />,
+      );
+      expect(label(container)?.getAttribute('text-anchor')).toBe('middle');
+    }
+  });
+
+  it('draws no today marker when the cycle has no current day', () => {
+    const { container } = render(<CycleTrack cycleLength={28} periodDays={5} />);
+    expect(container.querySelector('.ct-today')).toBeNull();
+  });
+
+  it('keeps every band label at or above the 9px legibility floor', () => {
+    // The band's viewBox (320 wide) renders at ~1:1, so an authored user unit IS a rendered
+    // pixel — a size under 9 here is a size the reader has to squint at on the card.
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/everyday/styles.css'), 'utf8');
+    const fontSize = (selector: string): number => {
+      const rule = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(css);
+      const px = rule ? /font-size:\s*([\d.]+)px/.exec(rule[1])?.[1] : undefined;
+      return px === undefined ? Number.NaN : Number(px);
+    };
+    for (const selector of ['.ct-today-label', '.ct-axis']) {
+      expect(fontSize(selector), `${selector} font-size`).toBeGreaterThanOrEqual(9);
+    }
   });
 });

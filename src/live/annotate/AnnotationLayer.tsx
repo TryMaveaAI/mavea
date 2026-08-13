@@ -9,7 +9,7 @@
 // rendered box stops moving (the spotlight's centering scroll, a card's reveal animation, a
 // spatial-canvas takeover), rather than guessing a fixed delay — a card where nothing resolves
 // gets no ink — the hand only points at things that are really there.
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import type { TourMark } from '../../engine/liveSchema';
 import {
@@ -22,7 +22,14 @@ import {
   type Rect,
 } from './gesture';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
-import { saidTokens, findSaidMatch, saidRect, saidRects, rowOf } from './saidTarget';
+import {
+  saidTokens,
+  findSaidMatch,
+  findEchoedLabel,
+  saidRect,
+  saidRects,
+  rowOf,
+} from './saidTarget';
 import { pollUntilSettled, lastVisible } from './settle';
 import { MarginNoteRail } from './MarginNoteRail';
 import './annotate.css';
@@ -153,6 +160,14 @@ function findTarget(
     const m = findSaidMatch(host, tokens.labels);
     const r = m && saidRect(m);
     if (r) return { rect: r, kind: 'underline', el: m?.node.parentElement ?? undefined };
+  }
+  // Last resort before drawing nothing: a label the card renders that the line names in plain
+  // prose. Everything above needs the line to carry a figure or a capitalized name, which a
+  // conceptual walk over a diagram ("liquidity flows into the book") simply doesn't.
+  if (line) {
+    const echo = findEchoedLabel(host, line);
+    const r = echo && saidRect(echo);
+    if (r) return { rect: r, kind: 'underline', el: echo?.node.parentElement ?? undefined };
   }
   return null;
 }
@@ -362,11 +377,15 @@ function SpotInk({
   badgeMs,
   revision,
   stepNumber,
+  onPlaced,
 }: {
   spot: string;
   line?: string;
   mark?: TourMark;
   generous?: boolean;
+  /** Fired once, the first time this mark actually lands on a card. The gesture track lists what
+   *  Mavéa DREW, so a request whose target never resolves must never be advertised as a mark. */
+  onPlaced?: () => void;
   /** Scopes host lookup to one surface — see AnnotationLayer's own doc. */
   within?: HTMLElement | null;
   /** CSS animation delay in ms — for sequential multi-mark reveals. */
@@ -397,6 +416,14 @@ function SpotInk({
       setPlaced,
     );
   }, [spot, line, mark, generous, within, revision, stepNumber]);
+
+  // Report the first landing, once. The track lists drawn marks, not intended ones.
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (!placed || reportedRef.current) return;
+    reportedRef.current = true;
+    onPlaced?.();
+  }, [placed, onPlaced]);
 
   // "MAVÉA IS DRAWING" badge: show while the stroke(s) animate, then fade.
   // Set duration and color BEFORE setting data-inking — CSS animations read both at start.
@@ -575,6 +602,7 @@ function ConnectInk({
   within,
   delayMs,
   revision,
+  onPlaced,
 }: {
   spot: string;
   toSpot: string;
@@ -582,6 +610,8 @@ function ConnectInk({
   within?: HTMLElement | null;
   delayMs?: number;
   revision?: number;
+  /** See SpotInk's `onPlaced`. */
+  onPlaced?: () => void;
 }): ReactElement | null {
   const [placed, setPlaced] = useState<{ grid: HTMLElement; stroke: InkStroke } | null>(null);
   useEffect(() => {
@@ -594,6 +624,14 @@ function ConnectInk({
       setPlaced,
     );
   }, [spot, toSpot, mark, within, revision]);
+
+  // Report the first landing, once — see SpotInk's twin.
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (!placed || reportedRef.current) return;
+    reportedRef.current = true;
+    onPlaced?.();
+  }, [placed, onPlaced]);
 
   // Same detached-host guard as SpotInk: a connect stroke portals into the shared grid, so if that
   // grid was unmounted by a canvas swap, drop out rather than leave React a stale portal to remove.
@@ -668,10 +706,14 @@ export function AnnotationLayer({
   spots,
   within,
   revision,
+  onPlaced,
 }: {
   spots: InkRequest[];
   within?: HTMLElement | null;
   revision?: number;
+  /** Called with a request the first time its mark actually lands, so the caller can show a
+   *  gesture track of what was DRAWN rather than what was attempted. */
+  onPlaced?: (request: InkRequest) => void;
 }): ReactElement | null {
   if (spots.length === 0) return null;
   // Margin notes are one coordinated rail, not per-card portals — their vertical de-overlap
@@ -704,6 +746,7 @@ export function AnnotationLayer({
               within={within}
               delayMs={s.delayMs}
               revision={revision}
+              onPlaced={onPlaced && (() => onPlaced(s))}
             />
           );
         }
@@ -719,6 +762,7 @@ export function AnnotationLayer({
             badgeMs={s.badgeMs}
             revision={revision}
             stepNumber={s.stepNumber}
+            onPlaced={onPlaced && (() => onPlaced(s))}
           />
         );
       })}

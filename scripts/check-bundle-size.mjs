@@ -68,7 +68,9 @@ const LAZY_BUDGETS = [
   },
   // Mediabunny's ESM entry is named src.js upstream. This budget locks the explicit-export
   // tree-shaking improvement in clip/capture.ts (the former whole namespace was ~627 kB raw).
-  { label: 'reel encoder', match: /^src-.*\.js$/, raw: 210, gzip: 55, brotli: 50 },
+  // The MP4 muxer (Mp4OutputFormat, for approved AV1+Opus exports) is a deliberate
+  // +7 kB raw on top of the WebM-only 210 kB floor; the chunk stays export-time lazy.
+  { label: 'reel encoder', match: /^src-.*\.js$/, raw: 225, gzip: 58, brotli: 52 },
 ];
 
 if (!existsSync(INDEX)) {
@@ -178,7 +180,12 @@ const ROUTE_BUDGETS = [
   // 24 (was 23): the answer-shaping prompts this route's engine closure carries grew on purpose —
   // the continuity hint, the search date anchor, and the In-depth explanation level are product
   // behavior, not padding, and prompt text is the one payload that can't move to a lazy chunk.
-  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 24 },
+  // 25 (was 24): the build sheet became escapable — Escape and the scrim now abort the in-flight
+  // syllabus call rather than trapping the user for the ~90s it can take — and the checkpoint cache
+  // gained a peek that does NOT touch the LRU, so a graded quiz answer stops rewriting the whole
+  // cache to localStorage per cached lesson. Both are correctness, and the second is a net win at
+  // runtime; neither can move to a lazy chunk because the route's own shell needs them.
+  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 25 },
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],
@@ -195,7 +202,10 @@ const ROUTE_BUDGETS = [
     ],
     gzip: 55,
   },
-  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 45 },
+  // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus
+  // the approved-codec capability gate and mandatory-audio failure path. The 1080p stage,
+  // timeline, audio preparation, and encoder remain in their deferred chunks.
+  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 47 },
   { label: 'Gallery', roots: ['src/gallery/GalleryApp.tsx'], gzip: 130 },
 ];
 

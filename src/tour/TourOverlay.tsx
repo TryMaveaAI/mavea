@@ -2,14 +2,21 @@
 // coach caption, and a full transport (back / play-pause / next / chapter dots / skip). It renders
 // OVER the real Live surface (which keeps running underneath), reads everything from the driver,
 // and is pointer-transparent except for its own controls so it never blocks the app it's teaching.
-import { useEffect, type ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
+import { useFocusTrap } from '../live/useFocusTrap';
 import { useElementRect } from './useElementRect';
 import type { TourDriver } from './useTourDriver';
 import './tour.css';
 
 export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | null {
   const rect = useElementRect(driver.spotlight, driver.active && driver.started && !driver.done);
+  // The welcome card is the walkthrough's one modal moment (a full-screen scrim over the real
+  // surface) — hold keyboard focus inside it, or Tab wanders into an app the pointer can't reach.
+  const welcomeRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(welcomeRef, {
+    active: driver.active && !driver.done && !driver.started && !driver.corpusError,
+  });
 
   // Stamp the current chapter on <body> so tour.css can reveal hover-only chrome the chapter is
   // pointing at (the per-card Ask pills hide at rest — a ring around an invisible control reads
@@ -26,10 +33,39 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
 
   if (!driver.active || driver.done) return null;
 
+  // The baked scenes never arrived. Say so and offer a real way out, rather than leaving the
+  // visitor on a stage that can never play (every chapter is gated on the corpus).
+  if (driver.corpusError) {
+    return (
+      <div className="tourx tourx-intro" aria-live="polite">
+        <div className="tourx-welcome" role="alert">
+          <span className="tourx-welcome-kicker">Walkthrough</span>
+          <h2>This walkthrough couldn&rsquo;t load</h2>
+          <p>The recorded scenes did not come through. Check your connection and try again.</p>
+          <div className="tourx-welcome-actions">
+            <button type="button" className="tourx-welcome-start" onClick={driver.retryCorpus}>
+              Retry
+            </button>
+            <button
+              type="button"
+              className="tourx-welcome-skip"
+              onClick={() => {
+                window.location.hash = '#/';
+              }}
+            >
+              Back to home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!driver.started) {
     return (
       <div className="tourx tourx-intro" aria-live="polite">
         <div
+          ref={welcomeRef}
           className="tourx-welcome"
           role="dialog"
           aria-modal="true"

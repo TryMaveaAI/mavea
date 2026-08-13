@@ -40,100 +40,114 @@ export function BandFit({ slideId, skinId, outerStyle, style, children }: BandFi
   const [k, setK] = useState(1);
 
   useLayoutEffect(() => {
-    const w = wrap.current;
-    const i = inner.current;
-    if (!w || !i) return;
-    const availH = w.clientHeight;
-    // jsdom, a detached node, or a hidden gallery tab reports 0 — leave content at its deterministic
-    // size rather than measuring a meaningless box (the same guard `useAutoFit` applies).
-    if (availH <= 0) {
-      setK(1);
-      return;
-    }
-
-    // A stale scale/width/transform from the PREVIOUS slide is still in the DOM at this point (React
-    // commits props before layout effects run) — neutralize the width compensation AND the scale
-    // before measuring, so neither skews this slide's line-wrap nor the child rects read below.
-    const prevWidth = i.style.width;
-    const prevTransform = i.style.transform;
-    i.style.width = '100%';
-    i.style.transform = 'none';
-
-    // Reveal any nested clipping box so scrollHeight reports its TRUE content extent — except an
-    // intentional line-clamp/ellipsis/nowrap (its clipped box IS its designed final size),
-    // aria-hidden/figure-embed nodes (which manage their own fit), and a hard-clip box (a
-    // deterministic, tier-sized bound where a browser measurement quirk makes scrollHeight
-    // unreliable) — the same exemptions the overflow-audit gate uses.
-    //
-    // Mark the exempt subtrees up front rather than asking each element to walk its own ancestor
-    // chain: a slide's blocks nest deep, so every element under an exempt root re-walks the same
-    // spine to rediscover it. A band that itself sits inside an exempt region (Present parks the
-    // outgoing slide under aria-hidden while it crossfades) exempts everything in it, and skips
-    // the scan outright.
-    //
-    // Styles are then read for the whole tree before any are written: a write landing between two
-    // getComputedStyle calls forces the browser to recompute layout for each element in between,
-    // which this can't afford when it re-runs on every step of a live presentation. Same
-    // conditions, same values, same restore as one interleaved pass — only the ordering differs
-    // (`canvas/layout/FitBox` measures in these phases for the same reason).
-    const reveal: HTMLElement[] = [];
-    if (!i.closest(EXEMPT)) {
-      const exempt = new Set<Element>();
-      for (const root of i.querySelectorAll(EXEMPT)) {
-        exempt.add(root);
-        for (const inside of root.querySelectorAll('*')) exempt.add(inside);
+    let cancelled = false;
+    const measure = (): void => {
+      const w = wrap.current;
+      const i = inner.current;
+      if (cancelled || !w || !i) return;
+      const availH = w.clientHeight;
+      // jsdom, a detached node, or a hidden gallery tab reports 0 — leave content at its
+      // deterministic size rather than measuring a meaningless box (same guard as `useAutoFit`).
+      if (availH <= 0) {
+        setK(1);
+        return;
       }
-      for (const el of i.querySelectorAll<HTMLElement>('*')) {
-        if (exempt.has(el)) continue;
-        const cs = getComputedStyle(el);
-        const clamp = cs.getPropertyValue('-webkit-line-clamp');
-        if (clamp !== '' && clamp !== 'none') continue;
-        if (cs.textOverflow === 'ellipsis' || cs.whiteSpace === 'nowrap') continue;
-        if (!CLIP.has(cs.overflowY)) continue;
-        reveal.push(el);
+
+      // A stale scale/width/transform from the PREVIOUS slide is still in the DOM at this point (React
+      // commits props before layout effects run) — neutralize the width compensation AND the scale
+      // before measuring, so neither skews this slide's line-wrap nor the child rects read below.
+      const prevWidth = i.style.width;
+      const prevTransform = i.style.transform;
+      i.style.width = '100%';
+      i.style.transform = 'none';
+
+      // Reveal any nested clipping box so scrollHeight reports its TRUE content extent — except an
+      // intentional line-clamp/ellipsis/nowrap (its clipped box IS its designed final size),
+      // aria-hidden/figure-embed nodes (which manage their own fit), and a hard-clip box (a
+      // deterministic, tier-sized bound where a browser measurement quirk makes scrollHeight
+      // unreliable) — the same exemptions the overflow-audit gate uses.
+      //
+      // Mark the exempt subtrees up front rather than asking each element to walk its own ancestor
+      // chain: a slide's blocks nest deep, so every element under an exempt root re-walks the same
+      // spine to rediscover it. A band that itself sits inside an exempt region (Present parks the
+      // outgoing slide under aria-hidden while it crossfades) exempts everything in it, and skips
+      // the scan outright.
+      //
+      // Styles are then read for the whole tree before any are written: a write landing between two
+      // getComputedStyle calls forces the browser to recompute layout for each element in between,
+      // which this can't afford when it re-runs on every step of a live presentation. Same
+      // conditions, same values, same restore as one interleaved pass — only the ordering differs
+      // (`canvas/layout/FitBox` measures in these phases for the same reason).
+      const reveal: HTMLElement[] = [];
+      if (!i.closest(EXEMPT)) {
+        const exempt = new Set<Element>();
+        for (const root of i.querySelectorAll(EXEMPT)) {
+          exempt.add(root);
+          for (const inside of root.querySelectorAll('*')) exempt.add(inside);
+        }
+        for (const el of i.querySelectorAll<HTMLElement>('*')) {
+          if (exempt.has(el)) continue;
+          const cs = getComputedStyle(el);
+          const clamp = cs.getPropertyValue('-webkit-line-clamp');
+          if (clamp !== '' && clamp !== 'none') continue;
+          if (cs.textOverflow === 'ellipsis' || cs.whiteSpace === 'nowrap') continue;
+          if (!CLIP.has(cs.overflowY)) continue;
+          reveal.push(el);
+        }
       }
-    }
 
-    const restore: { el: HTMLElement; overflow: string; maxHeight: string }[] = [];
-    for (const el of reveal) {
-      restore.push({ el, overflow: el.style.overflow, maxHeight: el.style.maxHeight });
-      el.style.overflow = 'visible';
-      el.style.maxHeight = 'none';
-    }
+      const restore: { el: HTMLElement; overflow: string; maxHeight: string }[] = [];
+      for (const el of reveal) {
+        restore.push({ el, overflow: el.style.overflow, maxHeight: el.style.maxHeight });
+        el.style.overflow = 'visible';
+        el.style.maxHeight = 'none';
+      }
 
-    // scrollHeight measures content from the band's TOP edge downward, so it is blind to content
-    // pushed ABOVE the top by justify-content: center / flex-end (Cover and Closing anchor their
-    // title block to the bottom; framed layouts center a growth region). A too-tall stack then
-    // overflows UPWARD — invisible to scrollHeight — and lands on the header chrome above the band.
-    // Take the true two-edge extent from the union of the child rects (measured at scale 1 above)
-    // and never trust less than scrollHeight, so both directions of overflow are caught.
-    const bandTop = i.getBoundingClientRect().top;
-    let unionTop = Infinity;
-    let unionBottom = -Infinity;
-    for (const child of i.children) {
-      const r = child.getBoundingClientRect();
-      if (r.height === 0 && r.width === 0) continue; // skip collapsed/empty nodes
-      unionTop = Math.min(unionTop, r.top);
-      unionBottom = Math.max(unionBottom, r.bottom);
-    }
-    // Extent below the band's top edge (downward, like scrollHeight) plus any spill above it
-    // (the amount the topmost child rides past the top edge).
-    const rectExtent =
-      unionBottom > unionTop ? unionBottom - Math.min(unionTop, bandTop) : i.scrollHeight;
-    const needed = Math.max(i.scrollHeight, rectExtent);
+      // scrollHeight measures content from the band's TOP edge downward, so it is blind to content
+      // pushed ABOVE the top by justify-content: center / flex-end (Cover and Closing anchor their
+      // title block to the bottom; framed layouts center a growth region). A too-tall stack then
+      // overflows UPWARD — invisible to scrollHeight — and lands on the header chrome above the band.
+      // Take the true two-edge extent from the union of the child rects (measured at scale 1 above)
+      // and never trust less than scrollHeight, so both directions of overflow are caught.
+      const bandTop = i.getBoundingClientRect().top;
+      let unionTop = Infinity;
+      let unionBottom = -Infinity;
+      for (const child of i.children) {
+        const r = child.getBoundingClientRect();
+        if (r.height === 0 && r.width === 0) continue; // skip collapsed/empty nodes
+        unionTop = Math.min(unionTop, r.top);
+        unionBottom = Math.max(unionBottom, r.bottom);
+      }
+      // Extent below the band's top edge (downward, like scrollHeight) plus any spill above it
+      // (the amount the topmost child rides past the top edge).
+      const rectExtent =
+        unionBottom > unionTop ? unionBottom - Math.min(unionTop, bandTop) : i.scrollHeight;
+      const needed = Math.max(i.scrollHeight, rectExtent);
 
-    for (const r of restore) {
-      r.el.style.overflow = r.overflow;
-      r.el.style.maxHeight = r.maxHeight;
-    }
-    i.style.width = prevWidth;
-    i.style.transform = prevTransform;
+      for (const r of restore) {
+        r.el.style.overflow = r.overflow;
+        r.el.style.maxHeight = r.maxHeight;
+      }
+      i.style.width = prevWidth;
+      i.style.transform = prevTransform;
 
-    const raw = needed > 0 ? availH / needed : 1;
-    const next = Number.isFinite(raw)
-      ? Math.round(Math.min(1, Math.max(MIN_SCALE, raw)) * 1000) / 1000
-      : 1;
-    setK((prev) => (prev === next ? prev : next));
+      const raw = needed > 0 ? availH / needed : 1;
+      const next = Number.isFinite(raw)
+        ? Math.round(Math.min(1, Math.max(MIN_SCALE, raw)) * 1000) / 1000
+        : 1;
+      setK((prev) => (prev === next ? prev : next));
+    };
+
+    measure();
+    // A display font that loads AFTER mount reflows the band with different metrics — the one
+    // resize a static 1920×1080 slide ever experiences. Re-measure once the faces settle, or a
+    // cover measured against the fallback serif ships clipped in the real one.
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      void document.fonts.ready.then(() => measure());
+    }
+    return () => {
+      cancelled = true;
+    };
   }, [slideId, skinId]);
 
   return (

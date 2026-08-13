@@ -12,6 +12,7 @@ import type {
   SourcesLineageProps,
   AlignmentGaugeProps,
 } from '../../canvas/blocks/dashboard/types';
+import { valueWithUnit } from './format';
 import type { Dashboard, SourceKind, TripwireState, Widget } from './types';
 
 const STATE_TO_ALERT: Record<TripwireState, AlertState> = {
@@ -66,7 +67,8 @@ export function projectWidgetBlock(d: Dashboard, w: Widget): Block {
     if (w.metricId && type === 'insight') {
       const m = d.metrics.find((x) => x.id === w.metricId);
       if (m) {
-        const stat = m.lastValue === null ? '—' : (m.lastRaw ?? `${m.lastValue}${m.unit ?? ''}`);
+        const stat =
+          m.lastValue === null ? '—' : (m.lastRaw ?? valueWithUnit(String(m.lastValue), m.unit));
         // Built as 'inferred' before the metric ever had a real value (extract.ts's placeholder
         // card) — re-derive every render instead of freezing that badge, so a metric that's since
         // fetched a real number earns 'strong' without needing a rebuild.

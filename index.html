@@ -21,8 +21,8 @@
                      renders on screen and then comes out BLANK in the exported PDF/PPTX — which is
                      how map tiles and photos silently vanished from exports. No new trust: these
                      origins are already trusted to paint pixels.
-        img-src      data:/blob: (object-URL images) + the photo / map-tile allow-list
-        media-src    blob: — Kokoro TTS mp3 plays from an object URL
+        img-src      data:/blob: (object-URL images) + reviewed Wikimedia files / map tiles
+        media-src    blob: — Kokoro TTS WAV plays from an object URL
         worker-src   blob: — the VAD / onnx worker
         frame-src    self — the PDF reader may frame a same-origin PDF/proxy URL; its render
                      boundary rejects every external or active-scheme frame source
@@ -32,7 +32,7 @@
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://commons.wikimedia.org https://images.unsplash.com https://images.pexels.com https://cdn.pixabay.com https://images-assets.nasa.gov https://www.nasa.gov https://*.basemaps.cartocdn.com; connect-src 'self' https://en.wikipedia.org https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai https://api.github.com https://api.search.brave.com https://api.tavily.com https://upload.wikimedia.org https://commons.wikimedia.org https://images.unsplash.com https://images.pexels.com https://cdn.pixabay.com https://images-assets.nasa.gov https://www.nasa.gov https://*.basemaps.cartocdn.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://upload.wikimedia.org https://tiles.openfreemap.org; connect-src 'self' https://en.wikipedia.org https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.x.ai https://api.github.com https://api.search.brave.com https://api.tavily.com https://upload.wikimedia.org https://tiles.openfreemap.org; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
     <title>Mavéa · Talk to AI. See what it means.</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

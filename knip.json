@@ -14,5 +14,5 @@
     "src/live/srs/store.ts": ["exports"]
   },
   "ignoreExportsUsedInFile": true,
-  "ignoreBinaries": ["python3", "open", "xdg-open", "brew", "winget"]
+  "ignoreBinaries": ["python3", "open", "xdg-open"]
 }

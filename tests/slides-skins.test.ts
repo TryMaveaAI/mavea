@@ -18,8 +18,8 @@ describe('slide skins', () => {
       expect(s.id).toBe(id);
       expect(s.label.length).toBeGreaterThan(0);
       expect(s.blurb.length).toBeGreaterThan(0);
-      // A Google-Fonts css2 link with at least one family.
-      expect(s.fonts.href).toMatch(/^https:\/\/fonts\.googleapis\.com\/css2\?.*family=/);
+      // Every presentation uses the bundled OFL stylesheet; exports never depend on a font CDN.
+      expect(s.fonts.href).toBe('/fonts/fonts.css');
       expect(s.fonts.display).toContain("'");
       expect(s.fonts.body).toContain("'");
       // Required colour tokens are present and non-empty.

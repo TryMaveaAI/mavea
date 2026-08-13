@@ -98,15 +98,17 @@ function parseObjections(raw: string | object): RawObjection[] {
 
 /**
  * Cross-examine the load-bearing claims. Returns the grounded objections (open first, then addressed)
- * — never throws: a model/network failure yields []. Every returned objection's anchor is verbatim in
- * the document, and an "addressed" status survives only with a real verbatim rebuttal.
+ * — never throws. [] means the pass RAN and nothing stuck; `null` means it never ran (the model call
+ * failed), which the caller must report as a failure rather than a clean bill of health. Every
+ * returned objection's anchor is verbatim in the document, and an "addressed" status survives only
+ * with a real verbatim rebuttal.
  */
 export async function runCrossExam(
   claims: readonly CrossExamClaim[],
   corpus: readonly (readonly string[])[],
   cfg: ModelConfig,
   signal?: AbortSignal,
-): Promise<Objection[]> {
+): Promise<Objection[] | null> {
   const targets = claims.slice(0, MAX_CLAIMS);
   if (targets.length === 0) return [];
 
@@ -130,7 +132,9 @@ export async function runCrossExam(
     );
     raw = res.raw;
   } catch {
-    return []; // a failed pass just means no objections — never a fabricated one
+    // The pass never ran (a refusal, a 429, a dropped connection). An [] here would read on screen as
+    // "no objection stuck" — an all-clear the document never earned.
+    return null;
   }
 
   const byId = new Map(targets.map((c) => [c.id, c]));

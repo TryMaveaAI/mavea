@@ -930,7 +930,7 @@ describe('ensureFacesLoaded — the document export/print/measure paths share th
 /* ── the CSP that lets an export inline a remote image ─────────────────────────────────────────────── */
 
 // Regression: exports rasterize through modern-screenshot, which inlines a cross-origin image by
-// FETCHING it. The CSP allowed the map-tile and photo hosts under `img-src` (so Leaflet and photo
+// FETCHING it. The CSP allowed the map-tile and photo hosts under `img-src` (so maps and photo
 // blocks painted fine on screen) but not under `connect-src` — so every one of those fetches was
 // blocked at export time and the image came out BLANK in the PDF/PPTX. A geomap figure exported as
 // an empty grey box with markers floating on nothing, and nobody noticed because the preview was
@@ -967,6 +967,6 @@ describe('Content-Security-Policy — every image host the raster export must in
   });
 
   it('still covers the map tiles specifically — the figure that first exposed this', () => {
-    expect(origins(csp!, 'connect-src')).toContain('https://*.basemaps.cartocdn.com');
+    expect(origins(csp!, 'connect-src')).toContain('https://tiles.openfreemap.org');
   });
 });

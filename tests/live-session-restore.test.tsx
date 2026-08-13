@@ -317,6 +317,7 @@ describe('session store — the restore decision (null = wizard, never a crash)'
     expect(s).not.toBeNull();
     expect(s!.frames).toHaveLength(1);
     expect(s!.frames[0].question).toBe('the real one');
+    expect(s!.frames[0].id).toMatch(/^legacy-/);
     expect(s!.history).toEqual([{ role: 'user', content: 'hi' }]);
   });
 

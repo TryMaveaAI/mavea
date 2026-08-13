@@ -309,7 +309,7 @@ export default defineConfig({
       '@ricky0123/vad-web', // the mic (always-on / barge-in)
       'jspdf', // PDF export
       'katex', // equations
-      'leaflet', // the map block
+      'maplibre-gl', // the map blocks
       'mediabunny', // reel encode
       'modern-screenshot', // export rasterisation
       'openchemlib', // molecule blocks (SMILES)
@@ -498,7 +498,7 @@ export default defineConfig({
     // Only this repo's tests — agent worktrees under .claude/worktrees/ carry full copies
     // of the suite, and the default glob would run them all (slow, and their failures
     // masquerade as ours).
-    include: ['tests/**/*.test.{ts,tsx}'],
+    include: ['tests/**/*.test.{ts,tsx,mjs}'],
     exclude: ['**/node_modules/**', '.claude/**'],
     // The gauntlet suites mount the entire 200+ block vocabulary in one test; on a loaded
     // machine (parallel workers, other builds) they legitimately exceed the 5s default and

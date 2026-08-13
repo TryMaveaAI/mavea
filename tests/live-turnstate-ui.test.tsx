@@ -20,6 +20,16 @@ describe('ListeningCard', () => {
     expect(getByText(/Listening/)).toBeTruthy();
     expect(getByText(/Always on/)).toBeTruthy();
   });
+
+  // The interim transcript mutates on every recognized word; announcing it would read the
+  // speaker's own words back at them while they are still talking. Only the caption is live.
+  it('keeps the streaming transcript out of the live region', () => {
+    const { container } = render(<ListeningCard transcript="should I flex" mode="tap" />);
+    const live = container.querySelector('[aria-live]');
+    expect(live).toBeTruthy();
+    expect(live).toHaveClass('listen-note');
+    expect(container.querySelector('.listen-line')?.closest('[aria-live]')).toBeNull();
+  });
 });
 
 describe('WorkingSkeletons', () => {

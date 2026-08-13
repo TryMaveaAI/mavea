@@ -22,6 +22,7 @@ function computeDelta(m: MetricSpec): HeroDelta | null {
   if (curr === prev) return null;
   const direction: 'up' | 'down' = curr > prev ? 'up' : 'down';
   const rounded = Math.round(Math.abs(curr - prev) * 100) / 100;
+  if (rounded === 0) return null; // below display precision reads as "+0%" — no move, to a reader
   const magnitude = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
   const prefix = m.unit === '$' ? '$' : '';
   const suffix = m.unit && m.unit !== '$' ? m.unit : '';

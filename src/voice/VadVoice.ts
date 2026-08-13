@@ -4,22 +4,19 @@
 // detection — it understands the difference between a mid-sentence breath and a
 // genuine end-of-thought, something no timer-based approach can do reliably.
 //
-// Transcription stack:
-//   1. WebSpeech (continuous, interim) — runs in parallel during the utterance,
-//      gives a live transcript the UI can show while the user speaks.
-//   2. Whisper via /stt (an optional local faster-whisper server) — on speech-end,
-//      the raw Float32 audio is encoded to WAV and sent here; Whisper transcribes
-//      with context-aware accuracy. Falls back to the WebSpeech final if /stt is down.
+// Transcription stack: Whisper via /stt (the optional local whisper.cpp server). On speech-end,
+// the raw Float32 audio is encoded to WAV and sent to the local service. Browser-vendor speech
+// recognition is deliberately not used because its processing and terms are not portable.
 //
 // The first start() call lazy-loads the WASM model (~2 s on first boot, instant
 // after). The always-on lifecycle is controlled by LiveApp (start on toggle/turn-
 // end, stop when Mavéa is responding).
 import { floatToWav } from './encodeWav';
-import { mapSpeechRecognitionError } from './mapSpeechError';
 import type {
   SpeakOptions,
   VoiceCapabilities,
   VoiceController,
+  VoiceError,
   VoiceMode,
   VoicePhase,
   VoiceResult,
@@ -30,6 +27,34 @@ import type {
 // Lazy type — only resolved after the dynamic import succeeds.
 type MicVAD = import('@ricky0123/vad-web').MicVAD;
 
+const PRE_ROLL_FRAMES = 12;
+const MAX_UTTERANCE_FRAMES = Math.ceil((90 * 16_000) / 512);
+const MAX_PENDING_TRANSCRIPTIONS = 3;
+
+function joinFrames(frames: Float32Array[]): Float32Array {
+  const length = frames.reduce((sum, frame) => sum + frame.length, 0);
+  const audio = new Float32Array(length);
+  let offset = 0;
+  for (const frame of frames) {
+    audio.set(frame, offset);
+    offset += frame.length;
+  }
+  return audio;
+}
+
+interface WhisperTranscript {
+  text: string;
+  confidence?: number;
+  noSpeechProbability?: number;
+  error?: Extract<VoiceError, 'no-speech' | 'transcription'>;
+}
+
+function microphoneError(error: unknown): VoiceError {
+  const name =
+    error && typeof error === 'object' && 'name' in error ? String(error.name) : undefined;
+  return name === 'NotAllowedError' || name === 'SecurityError' ? 'not-allowed' : 'audio';
+}
+
 export class VadVoice implements VoiceController {
   readonly mode: VoiceMode = 'vad';
   readonly capabilities: VoiceCapabilities;
@@ -37,15 +62,20 @@ export class VadVoice implements VoiceController {
   private vad: MicVAD | null = null;
   private vadLoading = false;
   private vadFailed = false;
-  private rec: SpeechRecognition | null = null;
-  private liveTranscript = '';
   private phase: VoicePhase = 'idle';
   private muted = false;
   private wantRunning = false;
+  private continuous = false;
   // Set once dispose() runs. If disposal races an in-flight MicVAD.new()/start() (the mic is being
   // acquired), the instance would otherwise be assigned AFTER we let go of it — an orphaned mic +
   // AudioContext with the OS "mic in use" indicator stuck on. loadVad checks this and tears down.
   private disposed = false;
+  private sessionId = 0;
+  private transcriptionAbort: AbortController | null = null;
+  private transcriptionChain: Promise<void> = Promise.resolve();
+  private queuedTranscriptions = 0;
+  private preRollFrames: Float32Array[] = [];
+  private utteranceFrames: Float32Array[] = [];
 
   // Echo suppression for always-on: the browser's getUserMedia echoCancellation removes
   // most TTS bleed during active playback. The remaining risk is the reverb tail after Mavéa
@@ -64,79 +94,44 @@ export class VadVoice implements VoiceController {
   private bargeInTimer: ReturnType<typeof setTimeout> | null = null;
 
   // How long after Mavéa stops speaking to keep treating new speech as echo (ms). Covers the
-  // reverb/last-word tail and the gap before speechSynthesis/Kokoro fully releases the speakers.
+  // reverb/last-word tail and the gap before Kokoro fully releases the speakers.
   private static readonly ECHO_TAIL_MS = 600;
 
-  // null = not probed yet; false = unavailable (stop probing); true = working.
+  // How long a failed transcription keeps /stt quiet before the next utterance may try again.
+  // Short enough that a service which was merely starting up recovers within a retry or two,
+  // long enough that a service that isn't installed costs one request per window, not per word.
+  private static readonly WHISPER_RETRY_MS = 10_000;
+
+  // null = not probed yet; false = the last attempt failed; true = working.
   private whisperOk: boolean | null = null;
+  // A failure suppresses further /stt round-trips only until this moment. The copy the user sees
+  // promises "try again in a moment", and whisper.cpp is commonly still booting on the first
+  // utterance of a session — condemning the mic for the WHOLE session made that promise a lie.
+  private whisperRetryAt = 0;
 
   private resultSubs = new Set<(r: VoiceResult) => void>();
   private stateSubs = new Set<(e: VoiceStateEvent) => void>();
 
   constructor() {
-    const SR: SpeechRecognitionStatic | undefined =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    const stt = !!SR;
-    const tts = typeof window !== 'undefined' && 'speechSynthesis' in window;
-    this.capabilities = { stt, tts, canUseRealVoice: stt };
-
-    if (SR) {
-      const rec = new SR();
-      rec.lang = 'en-US';
-      rec.interimResults = true;
-      // Continuous so WebSpeech accumulates text while the VAD keeps us open.
-      rec.continuous = true;
-      rec.maxAlternatives = 1;
-
-      rec.onresult = (e: SpeechRecognitionEvent) => {
-        let t = '';
-        for (let i = 0; i < e.results.length; i++) {
-          t += e.results[i][0].transcript;
-        }
-        this.liveTranscript = t.trim();
-        if (this.phase === 'listening') {
-          this.emitState({ phase: 'listening', transcript: this.liveTranscript });
-        }
-      };
-
-      // WebSpeech is a fallback transcript source here, but a real failure still needs to reach
-      // the user — otherwise always-on can go permanently, silently deaf (denied mic permission,
-      // no mic hardware) with nothing in the UI ever explaining why. 'aborted' is our own
-      // start()/stop() churn (VAD drives this rec's lifecycle every utterance) and 'no-speech'
-      // is meaningless here (VAD — not this recognizer — decides speech boundaries); both are
-      // routine noise, not failures, so only genuine errors are surfaced.
-      rec.onerror = (e: SpeechRecognitionErrorEvent) => {
-        const err = mapSpeechRecognitionError(e.error);
-        if (err === 'aborted' || err === 'no-speech') return;
-        this.emitState({ phase: 'idle', error: err });
-      };
-
-      // VAD controls the lifecycle; don't auto-restart on end.
-      rec.onend = () => {};
-
-      this.rec = rec;
-    }
+    const stt =
+      typeof navigator !== 'undefined' &&
+      typeof navigator.mediaDevices?.getUserMedia === 'function';
+    this.capabilities = { stt, tts: false, canUseRealVoice: stt };
   }
 
-  start(_ctx?: VoiceStartContext): void {
+  start(ctx?: VoiceStartContext): void {
     if (this.muted) return;
+    if (ctx?.continuous !== undefined) this.continuous = ctx.continuous;
+    if (!this.wantRunning) this.sessionId += 1;
     this.wantRunning = true;
 
     if (this.vadFailed) {
-      // VAD failed to load — run as a plain continuous WebSpeech voice.
-      if (this.rec && this.phase === 'idle') {
-        try {
-          this.rec.start();
-          this.emitState({ phase: 'listening' });
-        } catch {
-          /* already running */
-        }
-      }
+      this.emitState({ phase: 'idle', error: 'unsupported' });
       return;
     }
 
     if (this.vad) {
-      void this.vad.start();
+      this.startVad();
     } else {
       void this.loadVad();
     }
@@ -144,38 +139,48 @@ export class VadVoice implements VoiceController {
 
   stop(): void {
     this.wantRunning = false;
+    this.continuous = false;
+    this.sessionId += 1;
+    this.transcriptionAbort?.abort();
+    this.transcriptionAbort = null;
     // vad-web's pause() fully releases the hardware, not just its own processing: its default
     // pauseStream() stops every MediaStream track, which is what actually turns off the OS
     // "microphone in use" indicator. start()/resumeStream() re-acquires a fresh stream on
     // return, so muting genuinely frees the mic rather than merely idling in the background.
-    if (this.vad) void this.vad.pause();
-    try {
-      this.rec?.stop();
-    } catch {
-      /* not running */
-    }
+    this.pauseVad();
     this.clearBargeInTimer();
-    this.liveTranscript = '';
+    this.preRollFrames = [];
+    this.utteranceFrames = [];
     if (this.phase !== 'idle') this.emitState({ phase: 'idle' });
   }
 
   forceStop(): void {
-    this.wantRunning = false;
-    if (this.vad) void this.vad.pause();
-    try {
-      this.rec?.stop();
-    } catch {
-      /* not running */
+    // An explicit finish can land after VAD closed the utterance but while whisper.cpp is still
+    // resolving it. Release the mic without aborting that in-flight transcript; its result remains
+    // the user's final words and will settle normally.
+    if (this.phase === 'transcribing') {
+      this.continuous = false;
+      this.wantRunning = false;
+      this.pauseVad();
+      return;
     }
+    const resumeAfter = this.continuous;
+    this.wantRunning = resumeAfter;
+    this.pauseVad();
     this.clearBargeInTimer();
-    const text = this.liveTranscript.trim();
-    this.liveTranscript = '';
+    // Include the rolling pre-roll so releasing Hold after a very short word still sends it even
+    // when that word ended before VAD's sustained-speech callback fired.
+    const audio = joinFrames([...this.utteranceFrames, ...this.preRollFrames]);
+    this.preRollFrames = [];
+    this.utteranceFrames = [];
     this.utteranceIsEcho = false;
-    if (text) {
-      this.emitState({ phase: 'heard', transcript: text });
-      this.emitResult({ transcript: text });
+    if (audio.length > 0) {
+      this.emitState({ phase: 'transcribing' });
+      this.enqueueTranscription(audio, this.sessionId, resumeAfter);
+    } else {
+      this.emitState({ phase: 'idle' });
+      if (resumeAfter) this.startVad();
     }
-    this.emitState({ phase: 'idle' });
   }
 
   speak(_opts: SpeakOptions): Promise<void> {
@@ -220,6 +225,9 @@ export class VadVoice implements VoiceController {
   dispose(): void {
     this.disposed = true;
     this.wantRunning = false;
+    this.sessionId += 1;
+    this.transcriptionAbort?.abort();
+    this.transcriptionAbort = null;
     this.clearBargeInTimer();
     if (this.vad) {
       // Swallow the throw: vad-web's destroy() reads its audio instances first and rejects if the
@@ -227,16 +235,6 @@ export class VadVoice implements VoiceController {
       // still-loading instance; here we just release the one we already hold.
       void this.vad.destroy().catch(() => {});
       this.vad = null;
-    }
-    if (this.rec) {
-      this.rec.onresult = null;
-      this.rec.onerror = null;
-      this.rec.onend = null;
-      try {
-        this.rec.abort();
-      } catch {
-        /* not running */
-      }
     }
     this.resultSubs.clear();
     this.stateSubs.clear();
@@ -262,11 +260,15 @@ export class VadVoice implements VoiceController {
         // noiseSuppression + autoGainControl on (see getDefaultRealTimeVADOptions), so browser
         // AEC removes most of Mavéa's TTS bleed at the source. The per-utterance echo gate
         // (maveaSpeaking) is the backstop for the residual it doesn't catch.
-        // 2 200 ms gives a natural thinking-pause window: long enough that mid-thought
-        // silences don't cut the user off, short enough that a complete thought still
-        // feels responsive. Below ~1 600 ms users get interrupted; above ~2 500 ms the
-        // system starts to feel slow at the end of every utterance.
-        redemptionMs: 2200,
+        // A conservative onset rejects steady room noise; the separate lower negative threshold
+        // adds hysteresis so a real voice does not flicker off mid-word. Short acknowledgements
+        // still clear the real-speech gate, and pre-roll preserves their opening consonant.
+        positiveSpeechThreshold: 0.5,
+        negativeSpeechThreshold: 0.35,
+        minSpeechMs: 280,
+        preSpeechPadMs: 500,
+        redemptionMs: 1600,
+        onFrameProcessed: (_probabilities, frame) => this.captureFrame(frame),
         onSpeechStart: () => this.handleSpeechStart(),
         // Barge-in fires HERE, not on onSpeechStart. onSpeechStart trips on the very first frame
         // above threshold — a single ~32 ms plosive of TTS bleed does it — and the old wall-clock
@@ -288,38 +290,12 @@ export class VadVoice implements VoiceController {
         return;
       }
       this.vadLoading = false;
-      if (this.wantRunning) void this.vad.start();
+      if (this.wantRunning) this.startVad();
     } catch (err) {
-      console.warn('[VadVoice] Silero VAD failed to load — falling back to WebSpeech', err);
+      console.warn('[VadVoice] Local Silero VAD failed to load', err);
       this.vadLoading = false;
       this.vadFailed = true;
-      // Repoint the WebSpeech handler to emit results directly (no VAD boundary).
-      if (this.rec) {
-        this.rec.onresult = (e: SpeechRecognitionEvent) => {
-          const last = e.results[e.results.length - 1];
-          if (!last) return;
-          const text = last[0].transcript.trim();
-          // Same echo gate as the VAD path: a final transcript that lands while Mavéa is speaking
-          // (or within the playback tail) is its own voice — drop it instead of submitting.
-          if (last.isFinal && (this.maveaSpeaking || Date.now() < this.echoTailUntil)) {
-            return;
-          }
-          if (last.isFinal && text) {
-            this.emitState({ phase: 'heard', transcript: text });
-            this.emitResult({ transcript: text });
-            this.emitState({ phase: 'idle' });
-          } else if (!last.isFinal) {
-            this.liveTranscript = text;
-            this.emitState({ phase: 'listening', transcript: text });
-          }
-        };
-        if (this.wantRunning) this.start();
-      } else if (this.wantRunning) {
-        // No SpeechRecognition in this browser either — there is no possible fallback, and
-        // without this the mic would just stay silently dead forever with nothing ever telling
-        // the user why (the always-on toggle would look "on" but never react to anything).
-        this.emitState({ phase: 'idle', error: 'unsupported' });
-      }
+      if (this.wantRunning) this.emitState({ phase: 'idle', error: 'unsupported' });
     }
   }
 
@@ -330,27 +306,57 @@ export class VadVoice implements VoiceController {
     }
   }
 
+  private startVad(): void {
+    if (!this.vad) return;
+    void Promise.resolve(this.vad.start()).catch((error: unknown) => {
+      if (!this.disposed && this.wantRunning) {
+        this.wantRunning = false;
+        this.emitState({ phase: 'idle', error: microphoneError(error) });
+      }
+    });
+  }
+
+  private pauseVad(): void {
+    if (!this.vad) return;
+    void Promise.resolve(this.vad.pause()).catch(() => {});
+  }
+
+  private captureFrame(frame: Float32Array): void {
+    const copy = frame.slice();
+    if (this.phase === 'listening' && !this.utteranceIsEcho) {
+      if (this.utteranceFrames.length < MAX_UTTERANCE_FRAMES) this.utteranceFrames.push(copy);
+      return;
+    }
+    this.preRollFrames.push(copy);
+    if (this.preRollFrames.length > PRE_ROLL_FRAMES) this.preRollFrames.shift();
+  }
+
   private handleSpeechStart(): void {
     if (this.muted) return;
     // Speech in the post-playback echo tail is residual speaker bleed — drop it.
     this.utteranceIsEcho = Date.now() < this.echoTailUntil;
-    this.liveTranscript = '';
+    this.utteranceFrames = this.preRollFrames;
+    this.preRollFrames = [];
     if (this.utteranceIsEcho) return;
     // Start capturing right away so a genuine utterance's opening words aren't lost — but DON'T
     // decide barge-in here (see onSpeechRealStart). A bleed blip that never becomes real speech is
     // cleaned up by onVADMisfire.
-    try {
-      this.rec?.start();
-    } catch {
-      /* already running */
-    }
     this.emitState({ phase: 'listening' });
   }
 
   /** Fires only after minSpeechFrames of sustained speech — so this is a real onset, not a plosive
    *  of TTS bleed. If Mavéa is mid-answer, THIS is the confirmed barge-in. */
   private handleSpeechRealStart(): void {
-    if (this.muted || this.utteranceIsEcho) return;
+    if (this.muted) return;
+    // Once VAD confirms sustained speech after playback, treat it as a fast user reply rather
+    // than letting the conservative echo tail swallow their opening words.
+    if (this.utteranceIsEcho && !this.maveaSpeaking) {
+      this.utteranceIsEcho = false;
+      this.utteranceFrames = [...this.utteranceFrames, ...this.preRollFrames];
+      this.preRollFrames = [];
+      this.emitState({ phase: 'listening' });
+    }
+    if (this.utteranceIsEcho) return;
     if (this.maveaSpeaking) this.onBargeIn?.();
   }
 
@@ -358,86 +364,190 @@ export class VadVoice implements VoiceController {
    *  the recognizer and settle back to idle so a quick blip doesn't strand the mic in 'listening'. */
   private handleMisfire(): void {
     this.clearBargeInTimer();
-    try {
-      this.rec?.stop();
-    } catch {
-      /* not running */
-    }
     this.utteranceIsEcho = false;
-    this.liveTranscript = '';
+    this.utteranceFrames = [];
+    // Tap/Hold own one attempt. A too-short noise must release their stream too; otherwise the UI
+    // returns to idle while the hardware keeps listening and a later utterance submits by surprise.
+    if (!this.continuous) {
+      this.wantRunning = false;
+      this.pauseVad();
+    }
     if (this.phase !== 'idle') this.emitState({ phase: 'idle' });
   }
 
-  private async handleSpeechEnd(audio: Float32Array): Promise<void> {
+  private handleSpeechEnd(audio: Float32Array): void {
     this.clearBargeInTimer();
-    try {
-      this.rec?.stop();
-    } catch {
-      /* not running */
-    }
-
     // Drop the whole utterance if it started during Mavéa's playback — it's TTS echo, not the
     // user. We skip transcription entirely (no wasted /stt round-trip) and settle quietly back
     // to listening so the always-on mic keeps running for the user's actual next turn.
     if (this.utteranceIsEcho) {
       this.utteranceIsEcho = false;
-      this.liveTranscript = '';
+      this.utteranceFrames = [];
       this.emitState({ phase: 'idle' });
       return;
     }
 
-    const transcript = (await this.transcribeWhisper(audio)) || this.liveTranscript;
-    const text = transcript.trim();
-
-    if (text) {
-      this.emitState({ phase: 'heard', transcript: text });
-      this.emitResult({ transcript: text });
+    this.utteranceFrames = [];
+    // VadVoice is also the cross-browser Tap/Hold fallback. Those modes own exactly one utterance;
+    // only an explicit continuous session may leave the capture hardware armed after speech ends.
+    if (!this.continuous) {
+      this.wantRunning = false;
+      this.pauseVad();
     }
-    this.liveTranscript = '';
-    this.emitState({ phase: 'idle' });
+    this.emitState({ phase: 'transcribing' });
+    this.enqueueTranscription(audio, this.sessionId);
   }
 
-  private async transcribeWhisper(audio: Float32Array): Promise<string> {
-    if (this.whisperOk === false) return '';
+  private enqueueTranscription(audio: Float32Array, sessionId: number, resumeAfter = false): void {
+    // Keep background noise or a slow local model from building an unbounded promise/audio queue.
+    // Saturation is surfaced instead of retaining unbounded audio or handing it to another engine.
+    if (this.queuedTranscriptions >= MAX_PENDING_TRANSCRIPTIONS) {
+      this.emitState({ phase: 'idle', error: 'audio' });
+      if (resumeAfter && this.wantRunning) this.startVad();
+      return;
+    }
+
+    this.queuedTranscriptions += 1;
+    this.transcriptionChain = this.transcriptionChain
+      .catch(() => {})
+      .then(async () => {
+        try {
+          if (this.disposed || sessionId !== this.sessionId) return;
+          const ctrl = new AbortController();
+          this.transcriptionAbort = ctrl;
+          const transcript = await this.transcribeWhisper(audio, ctrl.signal);
+          if (this.transcriptionAbort === ctrl) this.transcriptionAbort = null;
+          if (this.disposed || ctrl.signal.aborted || sessionId !== this.sessionId) return;
+          const text = transcript.text.trim();
+          if (text) {
+            const lowConfidence =
+              (transcript.confidence !== undefined && transcript.confidence < 0.7) ||
+              (transcript.noSpeechProbability ?? 0) >= 0.6;
+            this.emitState({ phase: 'heard', transcript: text });
+            this.emitResult({
+              transcript: text,
+              confidence: transcript.confidence,
+              noSpeechProbability: transcript.noSpeechProbability,
+              lowConfidence,
+            });
+          } else {
+            this.emitState({ phase: 'idle', error: transcript.error ?? 'no-speech' });
+            if (resumeAfter && this.wantRunning) this.startVad();
+            return;
+          }
+          this.emitState({ phase: 'idle' });
+          if (resumeAfter && this.wantRunning) this.startVad();
+        } finally {
+          this.queuedTranscriptions -= 1;
+        }
+      });
+  }
+
+  private async transcribeWhisper(audio: Float32Array): Promise<string>;
+  private async transcribeWhisper(
+    audio: Float32Array,
+    outerSignal: AbortSignal,
+  ): Promise<WhisperTranscript>;
+  private async transcribeWhisper(
+    audio: Float32Array,
+    outerSignal?: AbortSignal,
+  ): Promise<string | WhisperTranscript> {
+    const transcript = await this.transcribeWhisperDetailed(audio, outerSignal);
+    return outerSignal ? transcript : transcript.text;
+  }
+
+  private async transcribeWhisperDetailed(
+    audio: Float32Array,
+    outerSignal?: AbortSignal,
+  ): Promise<WhisperTranscript> {
+    // Back off after a failure, don't latch: the next utterance past the window probes again, so
+    // starting the service mid-session brings the mic back without a reload.
+    if (this.whisperOk === false && Date.now() < this.whisperRetryAt) {
+      return { text: '', error: 'transcription' };
+    }
     try {
       const wav = floatToWav(audio, 16000);
       const fd = new FormData();
       fd.append('file', new Blob([wav], { type: 'audio/wav' }), 'speech.wav');
-      fd.append('model', 'whisper-1');
       fd.append('language', 'en');
+      fd.append('response_format', 'verbose_json');
       // Until we know Whisper is up, give it only a SHORT window so a missing /stt service
-      // can't stall the turn (this was the ~10s "it just turns off" hang) — we fall straight
-      // back to the browser transcript. Once Whisper has answered once, allow a longer window
-      // for genuinely long utterances.
+      // can't stall the turn (this was the ~10s "it just turns off" hang). Once Whisper has
+      // answered once, allow a longer window for genuinely long utterances.
       const timeoutMs = this.whisperOk === true ? 12_000 : 3_500;
-      const res = await fetch('/stt/v1/audio/transcriptions', {
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const signal = outerSignal ? AbortSignal.any([outerSignal, timeoutSignal]) : timeoutSignal;
+      const res = await fetch('/stt/inference', {
         method: 'POST',
         body: fd,
-        signal: AbortSignal.timeout(timeoutMs),
+        signal,
       });
       if (res.ok) {
-        const json = (await res.json()) as { text?: string };
+        const json = (await res.json()) as {
+          text?: string;
+          words?: { probability?: number }[];
+          segments?: {
+            avg_logprob?: number;
+            no_speech_prob?: number;
+            words?: { probability?: number }[];
+          }[];
+        };
         const text = json.text?.trim() ?? '';
+        this.whisperOk = true;
+        this.whisperRetryAt = 0;
         if (text) {
-          if (this.whisperOk === null) this.whisperOk = true;
-          return text;
+          const wordProbabilities = [
+            ...(json.words ?? []),
+            ...(json.segments ?? []).flatMap((segment) => segment.words ?? []),
+          ]
+            .map((word) => word.probability)
+            .filter((probability): probability is number => Number.isFinite(probability));
+          const logProbabilities = (json.segments ?? [])
+            .map((segment) => segment.avg_logprob)
+            .filter((probability): probability is number => Number.isFinite(probability));
+          const confidence =
+            wordProbabilities.length > 0
+              ? wordProbabilities.reduce((sum, probability) => sum + probability, 0) /
+                wordProbabilities.length
+              : logProbabilities.length > 0
+                ? Math.exp(
+                    logProbabilities.reduce((sum, probability) => sum + probability, 0) /
+                      logProbabilities.length,
+                  )
+                : undefined;
+          const noSpeechProbabilities = (json.segments ?? [])
+            .map((segment) => segment.no_speech_prob)
+            .filter((probability): probability is number => Number.isFinite(probability));
+          return {
+            text,
+            confidence,
+            noSpeechProbability:
+              noSpeechProbabilities.length > 0 ? Math.max(...noSpeechProbabilities) : undefined,
+          };
         }
+        return { text: '', error: 'no-speech' };
       }
     } catch (err) {
-      // A timeout means the service is just slow to wake — likely a cold start. Don't condemn
-      // the whole session over it: leave whisperOk untouched so the next utterance probes again
-      // instead of silently downgrading to WebSpeech for good. AbortSignal.timeout() rejects with
+      // A timeout means the service is just slow to wake — likely a cold start. Don't hold even
+      // the short backoff over it: leave whisperOk untouched so the very next utterance retries.
+      // AbortSignal.timeout() rejects with
       // a TimeoutError; a bare abort would be AbortError — treat either as "slow, retry". A
-      // definitive failure (HTTP error, connection refused) falls through to the disable below.
+      // definitive failure (HTTP error, connection refused) falls through to the backoff below.
       if (
         err instanceof DOMException &&
         (err.name === 'TimeoutError' || err.name === 'AbortError')
       ) {
-        return '';
+        return { text: '', error: 'transcription' };
       }
     }
-    if (this.whisperOk === null) this.whisperOk = false;
-    return '';
+    // A service that has already answered once isn't condemned by a single bad response — it
+    // keeps its trust (and its longer timeout) and the next utterance simply tries again. Only
+    // one that has never answered backs off, and only until the retry window passes.
+    if (this.whisperOk !== true) {
+      this.whisperOk = false;
+      this.whisperRetryAt = Date.now() + VadVoice.WHISPER_RETRY_MS;
+    }
+    return { text: '', error: 'transcription' };
   }
 
   private emitResult(r: VoiceResult): void {

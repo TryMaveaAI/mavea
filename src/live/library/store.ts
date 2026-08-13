@@ -170,7 +170,13 @@ async function hydrateAsync(): Promise<void> {
     /* corrupt, or this device's content key was rotated/cleared — not restored */
   }
 }
-void hydrateAsync();
+const initialHydration = hydrateAsync();
+
+/** Resolve after the eager encrypted read finishes. Backup/export callers must await this before
+ *  treating the synchronous getter as a complete snapshot. */
+export function whenLibraryHydrated(): Promise<void> {
+  return initialHydration;
+}
 
 function get(): LibraryEntry[] {
   if (cache) return cache;

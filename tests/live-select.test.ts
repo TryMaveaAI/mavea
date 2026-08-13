@@ -105,7 +105,7 @@ describe('selectComponents', () => {
   });
 
   it('routes a real-world location ask to the REAL map (geomap), never a fake one', () => {
-    // A location request must surface geomap — the real Leaflet map with model-supplied lat/lng —
+    // A location request must surface geomap — the real MapLibre map with model-supplied lat/lng —
     // every rotation, and must NEVER surface the stylized fakes (map/markermap), which place pins on
     // an invented grid. Presenting made-up geography as real is the exact honesty failure we forbid.
     for (let rotation = 0; rotation < 4; rotation++) {

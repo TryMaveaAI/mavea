@@ -32,7 +32,7 @@ import { attachIncident } from './ingest/incident';
 import type { GitHubDiffResult } from './ingest/githubBrowser';
 import { setGithubToken, clearGithubToken, hasGithubToken } from './ingest/githubToken';
 import { parseGitHubInput } from './ingest/parseGitHubUrl';
-import { listTracked, trackModel, untrack, type TrackedItem } from './tracked';
+import { listTracked, untrack, type TrackedItem } from './tracked';
 import type { RepoAskContext } from './ask/repoAsk';
 import { ShipVerdict } from './sections/ShipVerdict';
 import './ripple.css';
@@ -375,7 +375,8 @@ export function RippleOverlay({
   // Floor-first + progressive reveal: the deterministic floor (verdict, impact map, changes, gate)
   // paints instantly, then the model's read STREAMS in and onboarding/courses load lazily. We track a
   // per-group status instead of one full-screen spinner, so the screen is always useful and only the
-  // part still sharpening shows a subtle cue. A newer analysis supersedes an in-flight one via enrichRun.
+  // part still sharpening shows a subtle cue. A newer analysis supersedes an in-flight VERDICT read via
+  // enrichRun; the lazy loaders below supersede through their own AbortControllers instead.
   const [groupStatus, setGroupStatus] = useState<Record<EnrichGroup, SectionStatus>>({
     verdict: 'floor',
     orientation: 'floor',
@@ -620,7 +621,6 @@ export function RippleOverlay({
       const repo = repoRef.current;
       if (!repo || (orientationKicked.current && !force)) return;
       orientationKicked.current = true;
-      const runId = enrichRun.current;
       orientationAbort.current?.abort();
       const ac = new AbortController();
       orientationAbort.current = ac;
@@ -632,12 +632,15 @@ export function RippleOverlay({
           maxTokens: plan.enrichMaxTokens,
           thinkingLevel: plan.thinkingLevel,
         }).catch(() => null);
-        if (ac.signal.aborted || enrichRun.current !== runId) return;
+        // This run's OWN AbortController is the staleness guard — a fresh analysis aborts it, and a
+        // re-run aborts the one before. (The shared enrich counter is the verdict read's; a "try
+        // again" there bumps it and would otherwise strand this section on "enriching" forever.)
+        if (ac.signal.aborted) return;
         // Real, read-only owners onto the oriented areas/nodes (best-effort; degrades to no owners).
         const out = oriented
           ? await resolveOwners(oriented, repo, refRef.current, ac.signal).catch(() => oriented)
           : { ...floorRef.current, modules: onboardingModules(repo) };
-        if (ac.signal.aborted || enrichRun.current !== runId) return;
+        if (ac.signal.aborted) return;
         setShown((cur) => ({
           ...cur,
           modules: out.modules,
@@ -657,7 +660,6 @@ export function RippleOverlay({
       const repo = repoRef.current;
       if (!repo || (coursesKicked.current && !force)) return;
       coursesKicked.current = true;
-      const runId = enrichRun.current;
       coursesAbort.current?.abort();
       const ac = new AbortController();
       coursesAbort.current = ac;
@@ -667,45 +669,51 @@ export function RippleOverlay({
       const timer = setTimeout(() => ac.abort(), 90_000);
       setGroupStatus((s) => ({ ...s, courses: 'enriching' }));
       void (async () => {
-        // Cache the OUTLINE (content-addressed by repo+ref+model) so reopening never re-spends tokens
-        // on the same syllabus; Regenerate (`force`) bypasses the read to rebuild fresh. The stored
-        // value carries the commit it was built at, so a later visit can tell the code moved without
-        // another model call — just to detect that, never to auto-rebuild (that costs tokens the
-        // reader should choose to spend).
-        const okey = rippleCacheKey(
-          `courses|${repo}|${refRef.current ?? ''}|${focus ?? ''}`,
-          analysisCfg.model,
-        );
-        const cached = force ? null : await cacheGet<CachedOutline>(okey);
-        if (ac.signal.aborted || enrichRun.current !== runId) return;
-        const base = { ...floorRef.current, modules: onboardingModules(repo) };
-        const courses =
-          cached?.courses ??
-          (await enrichCourses(base, repo, refRef.current, analysisCfg, {
-            signal: ac.signal,
-            count: plan.courseCount,
-            maxTokens: plan.coursesMaxTokens,
-            thinkingLevel: plan.thinkingLevel,
-            focus,
-          }).catch(() => undefined));
-        clearTimeout(timer);
-        if (ac.signal.aborted || enrichRun.current !== runId) return;
-        if (courses?.length) {
-          setShown((cur) => ({ ...cur, courses }));
-          setGroupStatus((s) => ({ ...s, courses: 'done' }));
-          const commitSha = cached ? cached.commitSha : commitShaRef.current;
-          if (!cached) void cachePut(okey, { courses, commitSha: commitShaRef.current });
-          // Record what this curriculum is built from — a fresh build AND a cache hit both count as
-          // "currently on screen", so either way the meta reflects it.
-          setCourseMeta(repo, {
-            commitSha: commitSha ?? '',
-            ref: refRef.current ?? '',
-            model: analysisCfg.model,
-            builtAt: Date.now(),
-            courseTitles: courses.map((c) => c.title),
-          });
-        } else {
-          setGroupStatus((s) => ({ ...s, courses: 'error' }));
+        try {
+          // Cache the OUTLINE (content-addressed by repo+ref+model) so reopening never re-spends tokens
+          // on the same syllabus; Regenerate (`force`) bypasses the read to rebuild fresh. The stored
+          // value carries the commit it was built at, so a later visit can tell the code moved without
+          // another model call — just to detect that, never to auto-rebuild (that costs tokens the
+          // reader should choose to spend).
+          const okey = rippleCacheKey(
+            `courses|${repo}|${refRef.current ?? ''}|${focus ?? ''}`,
+            analysisCfg.model,
+          );
+          const cached = force ? null : await cacheGet<CachedOutline>(okey);
+          // This run's OWN AbortController is the staleness guard — see ensureOrientation.
+          if (ac.signal.aborted) return;
+          const base = { ...floorRef.current, modules: onboardingModules(repo) };
+          const courses =
+            cached?.courses ??
+            (await enrichCourses(base, repo, refRef.current, analysisCfg, {
+              signal: ac.signal,
+              count: plan.courseCount,
+              maxTokens: plan.coursesMaxTokens,
+              thinkingLevel: plan.thinkingLevel,
+              focus,
+            }).catch(() => undefined));
+          if (ac.signal.aborted) return;
+          if (courses?.length) {
+            setShown((cur) => ({ ...cur, courses }));
+            setGroupStatus((s) => ({ ...s, courses: 'done' }));
+            const commitSha = cached ? cached.commitSha : commitShaRef.current;
+            if (!cached) void cachePut(okey, { courses, commitSha: commitShaRef.current });
+            // Record what this curriculum is built from — a fresh build AND a cache hit both count as
+            // "currently on screen", so either way the meta reflects it.
+            setCourseMeta(repo, {
+              commitSha: commitSha ?? '',
+              ref: refRef.current ?? '',
+              model: analysisCfg.model,
+              builtAt: Date.now(),
+              courseTitles: courses.map((c) => c.title),
+            });
+          } else {
+            setGroupStatus((s) => ({ ...s, courses: 'error' }));
+          }
+        } finally {
+          // Cleared on EVERY exit — an early bail (or a throw) used to leave the 90s watchdog pending,
+          // holding this run's whole closure alive long after it was done.
+          clearTimeout(timer);
         }
       })();
     },
@@ -859,16 +867,9 @@ export function RippleOverlay({
   // Seed from storage so the Tracked tab (shown only when non-empty) appears on open if there are
   // already tracked items — not just after the tab is first clicked.
   const [tracked, setTracked] = useState<TrackedItem[]>(() => listTracked());
-  const [trackFlash, setTrackFlash] = useState(false);
-  const trackFlashTimer = useRef<number | undefined>(undefined);
-  // Keep an eye on this change — snapshot it to device-local storage so it can be reopened later.
-  const trackThis = useCallback(() => {
-    trackModel(shown);
-    setTrackFlash(true);
-    window.clearTimeout(trackFlashTimer.current);
-    trackFlashTimer.current = window.setTimeout(() => setTrackFlash(false), 1600);
-  }, [shown]);
-  useEffect(() => () => window.clearTimeout(trackFlashTimer.current), []);
+  // There is no "☆ Track" affordance while the tracked list has no way back onto the screen — saving
+  // into a list nothing can reopen is a dead end. The list itself (tracked.ts, the rows below) stays
+  // for when a reopen affordance lands.
   const openIntake = useCallback((mode: IntakeMode) => {
     setTracked(listTracked());
     setIntakeMode(mode);
@@ -1180,14 +1181,24 @@ export function RippleOverlay({
     [shown],
   );
 
-  // Escape closes the overlay.
+  // Escape dismisses the TOPMOST layer: the intake dialog, then the ask rail, then the overlay —
+  // so it never yanks the whole surface out from under someone who just wanted to back out of a form.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (pasteOpen) {
+        setPasteOpen(false);
+        return;
+      }
+      if (askOpen) {
+        setAskOpen(false);
+        return;
+      }
+      onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, pasteOpen, askOpen]);
 
   // Traps Tab inside the dialog and restores focus to whatever opened it on close, so a
   // keyboard user doesn't get dropped into the page behind it. Escape is handled separately
@@ -1289,6 +1300,9 @@ export function RippleOverlay({
       tabIndex={0}
       aria-label="Close Ripple"
       onKeyDown={(e) => {
+        // Only the scrim's OWN keys close it — a bubbled Enter/Space from an input or button inside
+        // the panel is that control's, not a request to dismiss the overlay.
+        if (e.target !== e.currentTarget) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         onClose();
@@ -1336,16 +1350,6 @@ export function RippleOverlay({
                 {pr.p0Ways} {pr.p0Ways === 1 ? 'way' : 'ways'} to cause a P0
               </span>
             ) : null}
-            {!isExample && (
-              <button
-                type="button"
-                className="ripple-track-btn"
-                onClick={trackThis}
-                title="Keep an eye on this change — saved on this device"
-              >
-                {trackFlash ? 'Tracked ✓' : '☆ Track'}
-              </button>
-            )}
             <button
               type="button"
               className={'ripple-ask-toggle' + (askOpen ? ' is-active' : '')}

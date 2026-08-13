@@ -31,6 +31,11 @@ const BASE_FONT_PX = 14;
 
 export interface TextSurfaceProps {
   doc: Attachment;
+  /** The document's page text, when the caller already has it (Prism's grounding corpus is exactly
+   *  what this surface would re-derive). Given it, the surface renders those pages instead of
+   *  re-extracting — which is also the only way a stand-in attachment carrying no bytes (the
+   *  Synthesis preview's demo sources) can show its real text instead of the read-failure state. */
+  pages?: readonly string[];
   /** Which attached document this page belongs to — part of the stable pen seed. */
   source: number;
   page: number;
@@ -76,6 +81,7 @@ function anchorColor(
 
 export function TextSurface({
   doc,
+  pages: givenPages,
   source,
   page,
   quote,
@@ -95,12 +101,16 @@ export function TextSurface({
   pageCount,
   onPageChange,
 }: TextSurfaceProps): ReactElement {
-  const [pages, setPages] = useState<string[] | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [extracted, setExtracted] = useState<string[] | null>(null);
+  const [extractState, setExtractState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  // An EMPTY given array reads as "nothing given" — the file is still worth reading ourselves, and a
+  // blank sheet would be a quieter lie than the honest read-failure line.
+  const given = givenPages && givenPages.length > 0 ? givenPages : undefined;
 
   useEffect(() => {
+    if (given) return; // the caller handed us the text — there's nothing to read off the bytes
     let cancelled = false;
-    setState('loading');
+    setExtractState('loading');
     // A ZIP-based Word doc is unzipped; a plain-text/data file is just decoded + smart-paged. Both
     // produce the same pages[] shape, so the located-quote rendering below is identical either way.
     const load = isOffice(doc)
@@ -109,16 +119,19 @@ export function TextSurface({
     void load.then((p) => {
       if (cancelled) return;
       if (!p || p.length === 0) {
-        setState('failed');
+        setExtractState('failed');
         return;
       }
-      setPages(p);
-      setState('ready');
+      setExtracted(p);
+      setExtractState('ready');
     });
     return () => {
       cancelled = true;
     };
-  }, [doc]);
+  }, [doc, given]);
+
+  const pages = given ?? extracted;
+  const state = given ? 'ready' : extractState;
 
   const pageText = pages?.[page - 1] ?? '';
   const segments = useMemo(() => locateAllInText(pageText, quote, also), [pageText, quote, also]);

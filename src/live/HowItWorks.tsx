@@ -94,7 +94,7 @@ export function HowItWorks({
         position: 'fixed',
         inset: 0,
         zIndex: 60,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'rgba(var(--scrim-rgb), 0.55)',
         display: 'flex',
         flexDirection: 'column',
         padding: 24,

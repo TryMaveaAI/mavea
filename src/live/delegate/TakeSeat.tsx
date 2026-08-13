@@ -41,6 +41,7 @@ export function TakeSeatStage({
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState<'reply' | 'coach' | null>(null);
   const [failed, setFailed] = useState(false);
+  const [coachFailed, setCoachFailed] = useState(false);
   const [coach, setCoach] = useState<CoachCard | null>(null);
   const prevNote = useRef<string | null>(null);
   const logRef = useRef<HTMLOListElement>(null);
@@ -114,6 +115,7 @@ export function TakeSeatStage({
     if (!text || busy) return;
     setDraft('');
     setCoach(null);
+    setCoachFailed(false);
     const next: TakeLine[] = [...lines, { who: 'you', text }];
     setLines(next);
     void requestReply(next);
@@ -125,11 +127,19 @@ export function TakeSeatStage({
     const ac = new AbortController();
     abortRef.current = ac;
     setBusy('coach');
+    setCoachFailed(false);
     const card = await coachTake(setup, lines, take, prevNote.current, cfg, ac.signal);
     if (ac.signal.aborted) return;
     setBusy(null);
+    // No card means the coach call failed. Ending the take here anyway would wipe the take the
+    // user just performed and show nothing in its place — the work is gone with no way back. Keep
+    // the lines and the take number exactly as they are and offer the retry instead.
+    if (!card) {
+      setCoachFailed(true);
+      return;
+    }
     setCoach(card);
-    if (card) prevNote.current = card.note;
+    prevNote.current = card.note;
     setTake((t) => t + 1);
     setLines([]);
   }, [busy, setup, lines, take, cfg]);
@@ -200,6 +210,14 @@ export function TakeSeatStage({
         </aside>
       )}
       {busy === 'coach' && <p className="dlg-coach-wait">Coach is watching the take back…</p>}
+      {coachFailed && (
+        <p className="dlg-failed" role="status">
+          The coach didn&rsquo;t respond — your take is still here.{' '}
+          <button type="button" onClick={() => void endTake()}>
+            Try again
+          </button>
+        </p>
+      )}
 
       <div className="dlg-compose">
         <input

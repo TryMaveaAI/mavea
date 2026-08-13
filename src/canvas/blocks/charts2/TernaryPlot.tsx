@@ -9,7 +9,10 @@ import { richInnerHtml } from '../../../lib/richText';
 type Props = TernaryPlotProps & { delay?: number };
 
 const W = 380;
-const H = 348;
+// Deep enough for the bottom edge (BY) plus the base corner labels: their first baseline sits at
+// BASE_LABEL_GAP under it, and `fitText`'s maxLines lets a long axis name wrap onto a second line
+// at CORNER_FS. An axis name only the fixture's length fits is the bug this height guards against.
+const H = 356;
 // Equilateral triangle: apex (component a) top-center, b bottom-left, c bottom-right.
 // The side gutters hold the rotated edge ticks; the bottom holds ticks + corner labels.
 const BX = 46;
@@ -18,6 +21,23 @@ const BY = 300;
 const SIDE = CX - BX;
 const AX = (BX + CX) / 2;
 const AY = BY - (SIDE * Math.sqrt(3)) / 2;
+
+// Font sizes here are viewBox USER UNITS, and a 380-unit viewBox renders around 320px wide in a
+// canvas card — roughly 0.85 screen px per unit. Type therefore has to be authored ABOVE the 9px
+// legibility floor to clear it once scaled down (9 ÷ 0.85 ≈ 10.6). Labels wrap rather than shrink
+// past this floor; .ter-tick carries the same number for the edge ticks.
+const MIN_FS = 11.5;
+const CORNER_FS = 13;
+const LABEL_FS = 12;
+const TICK_LABEL_GAP = 16; // bottom-edge tick baseline, below the triangle
+const EDGE_LABEL_OUT = 15; // rotated edge tick offset, along the outward normal of its edge
+// The rotated edge ticks step out along their edge's outward normal, which sits 30° off
+// horizontal on an equilateral triangle — split once here so both edges stay symmetric.
+const EDGE_NX = EDGE_LABEL_OUT * Math.cos(Math.PI / 6);
+const EDGE_NY = EDGE_LABEL_OUT * Math.sin(Math.PI / 6);
+const POINT_R = 5.5; // the hover-state marker radius, the larger of the two
+const APEX_LABEL_GAP = 12; // apex corner-label baseline, above the top vertex
+const BASE_LABEL_GAP = 34; // first base corner-label baseline, below the bottom edge
 
 const ZONE_PALETTE = [
   'var(--insight)',
@@ -123,6 +143,35 @@ export function TernaryPlot({
     [zones],
   );
 
+  // A zone label names a REGION, so it may sit anywhere inside that region — but parked on the
+  // centroid it lands exactly where a data point tends to fall, and the marker then sits on the
+  // word (the soil fixture buried "Loam", "Sand" and "Silt" that way). Nudge the label clear of
+  // any marker covering it, staying inside its own polygon; a label that names the area is free to
+  // move within it, whereas the point is a coordinate and must not.
+  const zoneLabelY = useMemo(() => {
+    const halfH = LABEL_FS * 0.7; // half a line of zone type
+    const clear = POINT_R + 4; // hover radius plus breathing room
+    return validZones.map((z) => {
+      const halfW = Math.max(20, Math.min(z.width * 0.45, 55));
+      const covered = (y: number): number =>
+        validPoints.filter(
+          (pt) => Math.abs(pt.x - z.cx) < halfW + clear && Math.abs(pt.y - y) < halfH + clear,
+        ).length;
+      if (covered(z.cy) === 0) return z.cy;
+      const ys = z.verts.map((v) => v.y);
+      const step = halfH + clear + 2;
+      const up = Math.max(Math.min(...ys) + halfH + 2, z.cy - step);
+      const down = Math.min(Math.max(...ys) - halfH - 2, z.cy + step);
+      const upHits = covered(up);
+      const downHits = covered(down);
+      if (upHits === 0 && downHits === 0)
+        return Math.abs(up - z.cy) <= Math.abs(down - z.cy) ? up : down;
+      if (upHits === 0) return up;
+      if (downHits === 0) return down;
+      return upHits <= downHits ? up : down;
+    });
+  }, [validZones, validPoints]);
+
   // 20% gridlines parallel to each edge, plus the matching edge tick positions. Each
   // gridline of constant component k joins the two edge points where k equals that fraction.
   const grid = useMemo(() => {
@@ -150,22 +199,22 @@ export function TernaryPlot({
   // downward, and the base widths keep even a centered two-liner inside the viewBox.
   const fitA = fitText(labA, {
     maxWidth: 150,
-    fontSize: 11,
-    minFontSize: 9,
+    fontSize: CORNER_FS,
+    minFontSize: MIN_FS,
     maxLines: 2,
     bold: true,
   });
   const fitB = fitText(labB, {
     maxWidth: 88,
-    fontSize: 11,
-    minFontSize: 9,
+    fontSize: CORNER_FS,
+    minFontSize: MIN_FS,
     maxLines: 2,
     bold: true,
   });
   const fitC = fitText(labC, {
     maxWidth: 88,
-    fontSize: 11,
-    minFontSize: 9,
+    fontSize: CORNER_FS,
+    minFontSize: MIN_FS,
     maxLines: 2,
     bold: true,
   });
@@ -202,13 +251,17 @@ export function TernaryPlot({
                 />
                 {z.label &&
                   (() => {
+                    // Sized from the component's own floor, not a literal: MIN_FS is what clears
+                    // 9px once the 380-unit viewBox is scaled into a card, and a shrink-to-fit
+                    // that ignores it just relocates the illegibility into the wrap path.
                     const fit = fitText(z.label, {
                       maxWidth: Math.max(40, Math.min(z.width * 0.9, 110)),
-                      fontSize: 9.5,
-                      minFontSize: 8,
+                      fontSize: LABEL_FS,
+                      minFontSize: MIN_FS,
                       maxLines: 2,
                     });
-                    const y0 = z.cy - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
+                    const y0 =
+                      (zoneLabelY[i] ?? z.cy) - ((fit.lines.length - 1) * fit.lineHeightPx) / 2;
                     return (
                       <text
                         textAnchor="middle"
@@ -238,7 +291,7 @@ export function TernaryPlot({
             {grid.ticksBottom.map((t, i) => (
               <g key={i}>
                 <line x1={t.x} y1={t.y} x2={t.x} y2={t.y + 4} className="ter-tick-mark" />
-                <text x={t.x} y={t.y + 14} textAnchor="middle" className="ter-tick">
+                <text x={t.x} y={t.y + TICK_LABEL_GAP} textAnchor="middle" className="ter-tick">
                   {Math.round(t.v * 100)}
                 </text>
               </g>
@@ -248,7 +301,7 @@ export function TernaryPlot({
               <g key={i}>
                 <line x1={t.x} y1={t.y} x2={t.x + 3.5} y2={t.y - 2} className="ter-tick-mark" />
                 <text
-                  transform={`translate(${t.x + 11}, ${t.y - 6.5}) rotate(60)`}
+                  transform={`translate(${t.x + EDGE_NX}, ${t.y - EDGE_NY}) rotate(60)`}
                   textAnchor="middle"
                   className="ter-tick"
                 >
@@ -261,7 +314,7 @@ export function TernaryPlot({
               <g key={i}>
                 <line x1={t.x} y1={t.y} x2={t.x - 3.5} y2={t.y - 2} className="ter-tick-mark" />
                 <text
-                  transform={`translate(${t.x - 11}, ${t.y - 6.5}) rotate(-60)`}
+                  transform={`translate(${t.x - EDGE_NX}, ${t.y - EDGE_NY}) rotate(-60)`}
                   textAnchor="middle"
                   className="ter-tick"
                 >
@@ -276,7 +329,7 @@ export function TernaryPlot({
                 <tspan
                   key={li}
                   x={AX}
-                  y={AY - 12 - (fitA.lines.length - 1 - li) * fitA.lineHeightPx}
+                  y={AY - APEX_LABEL_GAP - (fitA.lines.length - 1 - li) * fitA.lineHeightPx}
                 >
                   {ln}
                 </tspan>
@@ -284,14 +337,14 @@ export function TernaryPlot({
             </text>
             <text textAnchor="middle" fontSize={fitB.fontSize} className="ter-corner">
               {fitB.lines.map((ln, li) => (
-                <tspan key={li} x={BX} y={BY + 30 + li * fitB.lineHeightPx}>
+                <tspan key={li} x={BX} y={BY + BASE_LABEL_GAP + li * fitB.lineHeightPx}>
                   {ln}
                 </tspan>
               ))}
             </text>
             <text textAnchor="middle" fontSize={fitC.fontSize} className="ter-corner">
               {fitC.lines.map((ln, li) => (
-                <tspan key={li} x={CX} y={BY + 30 + li * fitC.lineHeightPx}>
+                <tspan key={li} x={CX} y={BY + BASE_LABEL_GAP + li * fitC.lineHeightPx}>
                   {ln}
                 </tspan>
               ))}
@@ -300,10 +353,15 @@ export function TernaryPlot({
             {/* points + labels */}
             {validPoints.map((p, i) => {
               const left = p.x > CX - 70;
+              const nearbyZone = validZones
+                .map((z, zi) => ({ z, y: zoneLabelY[zi] ?? z.cy }))
+                .find(({ z, y }) => z.label && Math.abs(p.x - z.cx) < 60 && Math.abs(p.y - y) < 28);
+              const labelY = nearbyZone ? p.y + (p.y >= nearbyZone.y ? 13 : -14) : p.y - 5;
+              const labelOnLeft = left || !!nearbyZone;
               const fit = fitText(p.label, {
                 maxWidth: 86,
-                fontSize: 9.5,
-                minFontSize: 8,
+                fontSize: LABEL_FS,
+                minFontSize: MIN_FS,
                 maxLines: 2,
               });
               return (
@@ -311,19 +369,23 @@ export function TernaryPlot({
                   <circle
                     cx={p.x}
                     cy={p.y}
-                    r={hover === i ? 5.5 : 4}
+                    r={hover === i ? POINT_R : 4}
                     className="ter-pt"
                     onMouseEnter={() => setHover(i)}
                   >
                     <title>{`${p.label} — ${labA.split(' (')[0]} ${pct(p.bary.a)}, ${labB.split(' (')[0]} ${pct(p.bary.b)}, ${labC.split(' (')[0]} ${pct(p.bary.c)}`}</title>
                   </circle>
                   <text
-                    textAnchor={left ? 'end' : 'start'}
+                    textAnchor={labelOnLeft ? 'end' : 'start'}
                     fontSize={fit.fontSize}
                     className="ter-pt-lbl"
                   >
                     {fit.lines.map((ln, li) => (
-                      <tspan key={li} x={p.x + (left ? -7 : 7)} y={p.y - 5 + li * fit.lineHeightPx}>
+                      <tspan
+                        key={li}
+                        x={p.x + (labelOnLeft ? -7 : 7)}
+                        y={labelY + li * fit.lineHeightPx}
+                      >
                         {ln}
                       </tspan>
                     ))}

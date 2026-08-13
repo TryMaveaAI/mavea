@@ -10,7 +10,7 @@ import { VideoEmbed } from '../src/canvas/blocks/media/VideoEmbed';
 // A block's `src` prop is untrusted model output rendered straight into an <img>, and the
 // CSP img-src allowlist must not be the ONLY thing standing between a hostile URL and a
 // browser fetch. Every image-bearing canvas block runs the prop through safeBlockImageSrc
-// first: allowlisted https hosts and bundled same-origin assets render, everything else
+// first: individually cleared remote files and bundled same-origin assets render, everything else
 // falls back to the block's no-image state (gradient plate, initials) — never a broken
 // or attacker-chosen <img>. These tests lock that boundary for representative blocks.
 
@@ -22,11 +22,12 @@ const HOSTILE_SRCS = [
   'https://evil.example/x.png', // https but off the allowlist
 ];
 
-const SAFE_REMOTE = 'https://upload.wikimedia.org/a/b/Mars.jpg';
+const SAFE_REMOTE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
 const SAFE_LOCAL = '/demo-assets/images/sete-cidades.jpg';
 
 describe('safeBlockImageSrc — what a canvas block may put in an <img src>', () => {
-  it('passes allowlisted https URLs and bundled same-origin asset paths', () => {
+  it('passes individually cleared remote URLs and bundled same-origin asset paths', () => {
     expect(safeBlockImageSrc(SAFE_REMOTE)).toBe(SAFE_REMOTE);
     expect(safeBlockImageSrc(SAFE_LOCAL)).toBe(SAFE_LOCAL);
   });
@@ -35,6 +36,11 @@ describe('safeBlockImageSrc — what a canvas block may put in an <img src>', ()
     for (const src of HOSTILE_SRCS) {
       expect(safeBlockImageSrc(src), src).toBeUndefined();
     }
+  });
+
+  it('rejects arbitrary same-host files and arbitrary root-relative endpoints', () => {
+    expect(safeBlockImageSrc('https://upload.wikimedia.org/a/b/Mars.jpg')).toBeUndefined();
+    expect(safeBlockImageSrc('/llm/openai/private')).toBeUndefined();
   });
 
   it('handles empty and malformed input without throwing', () => {
@@ -46,8 +52,8 @@ describe('safeBlockImageSrc — what a canvas block may put in an <img src>', ()
 
 describe('safeSameOriginMediaSrc — video fetch boundary', () => {
   it('allows bundled and exact same-origin media, but rejects remote and active schemes', () => {
-    expect(safeSameOriginMediaSrc('/demo-assets/video/azores-film.mp4')).toBe(
-      '/demo-assets/video/azores-film.mp4',
+    expect(safeSameOriginMediaSrc('/demo-assets/video/azores-film.webm')).toBe(
+      '/demo-assets/video/azores-film.webm',
     );
     expect(safeSameOriginMediaSrc(`${location.origin}/media/clip.mp4`)).toBe('/media/clip.mp4');
     for (const src of HOSTILE_SRCS) expect(safeSameOriginMediaSrc(src), src).toBeUndefined();
@@ -72,12 +78,12 @@ describe('safeSameOriginMediaSrc — video fetch boundary', () => {
         title="Tutorial"
         thumb={{ from: 'var(--presence)', to: 'var(--insight)' }}
         chapters={[]}
-        video="/demo-assets/video/azores-film.mp4"
+        video="/demo-assets/video/azores-film.webm"
       />,
     );
     expect(container.querySelector('video')).toHaveAttribute(
       'src',
-      '/demo-assets/video/azores-film.mp4',
+      '/demo-assets/video/azores-film.webm',
     );
   });
 });

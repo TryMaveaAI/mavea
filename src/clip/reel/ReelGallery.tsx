@@ -15,7 +15,7 @@ import type { ConversationSpec } from '../../data/conversation';
 import { FINISH, coerceSlots } from './templates/registry';
 import { auditBoard } from './auditBoard';
 
-// QA sample: a three-turn conversation so the ShareModal (and the real MP4 export + narration) can be
+// QA sample: a three-turn conversation so the ShareModal (and WebM export + narration) can be
 // exercised from the gallery without a live session — including a genuine mid-conversation topic
 // change (the espresso turn), so the reel's topic sectioning shows up here too. The reel only reads
 // question/narration/mode and the blocks' `note`, so a lean spec stands in for a full canvas.

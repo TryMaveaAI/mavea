@@ -1,11 +1,11 @@
-// The ten presentation skins. Each is data — a palette, a Google-Fonts set, a decor mode, and the
+// The ten presentation skins. Each is data — a palette, a self-hosted OFL font set, a decor mode, and the
 // handful of layouts it draws structurally differently. Palettes and font stacks are transcribed
 // from the reference deck (Templates.dc.html); the shared layouts render every other slide kind in
 // the same voice. Skins are a self-contained fixed-palette layer (see types.ts).
 import { NoirCover, NoirQuote, NorthStatement, PressProse } from './layouts/overrides';
 import type { SlideSkin, SlideSkinId } from './types';
 
-const G = 'https://fonts.googleapis.com/css2?';
+const SELF_HOSTED_FONTS = '/fonts/fonts.css';
 // Skin labels belong in the style picker, never on the finished slide. A person may choose Press,
 // Lumen, or another skin purely for its visual language; printing that internal style name makes it
 // look like the deck belongs to a fictitious publisher/clinic/company. Present, PDF, and PPTX all
@@ -20,7 +20,7 @@ export const folio: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'none',
   fonts: {
-    href: `${G}family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Newsreader', serif",
     body: "'Hanken Grotesk', sans-serif",
     displayWeight: 500,
@@ -56,7 +56,7 @@ export const meridian: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'none',
   fonts: {
-    href: `${G}family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,600;0,700;1,600&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Source Serif 4', serif",
     body: "'IBM Plex Sans', sans-serif",
     displayWeight: 700,
@@ -87,13 +87,13 @@ export const noir: SlideSkin = {
   id: 'noir',
   label: 'Noir',
   archetype: 'Luxury',
-  blurb: 'Black-and-gold luxury — Cormorant Garamond, centred, whisper-quiet.',
+  blurb: 'Black-and-gold luxury — Bodoni Moda, centred, whisper-quiet.',
   brand: OUTPUT_BRAND,
   decor: 'none',
   fonts: {
-    href: `${G}family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@400;500;600&display=swap`,
-    display: "'Cormorant Garamond', serif",
-    body: "'Jost', sans-serif",
+    href: SELF_HOSTED_FONTS,
+    display: "'Bodoni Moda', serif",
+    body: "'Hanken Grotesk', sans-serif",
     displayWeight: 600,
   },
   tokens: {
@@ -126,7 +126,7 @@ export const north: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'geo',
   fonts: {
-    href: `${G}family=Hanken+Grotesk:wght@500;700;800&family=Space+Grotesk:wght@500;700&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Space Grotesk', sans-serif",
     body: "'Hanken Grotesk', sans-serif",
     displayWeight: 700,
@@ -162,7 +162,7 @@ export const lumen: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'none',
   fonts: {
-    href: `${G}family=Libre+Franklin:wght@500;600;700;800&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Libre Franklin', sans-serif",
     body: "'Libre Franklin', sans-serif",
     displayWeight: 800,
@@ -196,7 +196,7 @@ export const grid: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'grid',
   fonts: {
-    href: `${G}family=Archivo:wght@600;700;800;900&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Archivo', sans-serif",
     body: "'Archivo', sans-serif",
     displayWeight: 900,
@@ -228,12 +228,12 @@ export const terra: SlideSkin = {
   id: 'terra',
   label: 'Terra',
   archetype: 'Organic',
-  blurb: 'Warm and crafted — DM Serif Display, clay + olive, organic shapes.',
+  blurb: 'Warm and crafted — Instrument Serif, clay + olive, organic shapes.',
   brand: OUTPUT_BRAND,
   decor: 'organic',
   fonts: {
-    href: `${G}family=DM+Serif+Display:ital@0;1&family=Hanken+Grotesk:wght@400;600;700;800&display=swap`,
-    display: "'DM Serif Display', serif",
+    href: SELF_HOSTED_FONTS,
+    display: "'Instrument Serif', serif",
     body: "'Hanken Grotesk', sans-serif",
     displayWeight: 400,
   },
@@ -265,14 +265,14 @@ export const cobalt: SlideSkin = {
   id: 'cobalt',
   label: 'Cobalt',
   archetype: 'Deep-tech',
-  blurb: 'Data-native — Sora + Space Mono, midnight navy, teal + a dot grid.',
+  blurb: 'Data-native — Space Grotesk + IBM Plex Mono, midnight navy, teal + a dot grid.',
   brand: OUTPUT_BRAND,
   decor: 'dots',
   fonts: {
-    href: `${G}family=Sora:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap`,
-    display: "'Sora', sans-serif",
-    body: "'Sora', sans-serif",
-    mono: "'Space Mono', monospace",
+    href: SELF_HOSTED_FONTS,
+    display: "'Space Grotesk', sans-serif",
+    body: "'Space Grotesk', sans-serif",
+    mono: "'IBM Plex Mono', monospace",
     displayWeight: 700,
   },
   tokens: {
@@ -308,7 +308,7 @@ export const press: SlideSkin = {
   brand: OUTPUT_BRAND,
   decor: 'none',
   fonts: {
-    href: `${G}family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&display=swap`,
+    href: SELF_HOSTED_FONTS,
     display: "'Spectral', serif",
     body: "'Spectral', serif",
     displayWeight: 600,
@@ -339,13 +339,13 @@ export const sol: SlideSkin = {
   id: 'sol',
   label: 'Sol',
   archetype: 'Classroom',
-  blurb: 'Bright and friendly — Poppins, teal/yellow/coral, rounded and playful.',
+  blurb: 'Bright and friendly — Hanken Grotesk, teal/yellow/coral, rounded and playful.',
   brand: OUTPUT_BRAND,
   decor: 'playful',
   fonts: {
-    href: `${G}family=Poppins:wght@500;600;700;800&display=swap`,
-    display: "'Poppins', sans-serif",
-    body: "'Poppins', sans-serif",
+    href: SELF_HOSTED_FONTS,
+    display: "'Hanken Grotesk', sans-serif",
+    body: "'Hanken Grotesk', sans-serif",
     displayWeight: 800,
   },
   tokens: {

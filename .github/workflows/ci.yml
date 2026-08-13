@@ -7,13 +7,9 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: &docs-only
-      - 'docs/**'
-      - 'CHANGELOG.md'
   pull_request:
-    paths-ignore: *docs-only
 
-# Cancel superseded PR runs to save minutes, but NEVER cancel a push to main — a quick second
+# Cancel superseded PR runs to save resources, but NEVER cancel a push to main — a quick second
 # push must not kill the first run (and its uploaded artifact) mid-flight.
 concurrency:
   group: ci-${{ github.ref }}
@@ -32,10 +28,9 @@ jobs:
     # and a second job paid for its own checkout + pnpm setup + install just to run
     # knip/licenses/audit after this one already did the same. One job, one install, same coverage.
     #
-    # knip, the license gate, and the vulnerability audit moved to weekly.yml: none of the three
-    # depend on THIS push's code — they drift with dependencies over time, not with each commit
-    # (a previously-clean package can grow a new CVE with zero code change here), so gating every
-    # push on them was the wrong cadence. Same reasoning already applied to the browser gauntlet.
+    # The dependency vulnerability audit also runs weekly because advisories can change with no
+    # repository diff. Change-sensitive legal, licence, and package gates stay here so a docs-only
+    # or dependency PR cannot bypass them.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -104,18 +99,10 @@ jobs:
       - name: Public artifact boundary
         run: pnpm check:artifact
 
-      - name: Upload production build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: dist
-          path: dist
-          retention-days: 7
-          if-no-files-found: error
-
-  # Split out of `verify` into its own sharded job: ubuntu-latest runners are 2 vCPU / 7GB, which
-  # caps the in-process worker pool hard regardless of per-file speedups. Four shards across four
-  # separate runners cuts wall-clock roughly 4x for the same total compute — each shard pays its
-  # own checkout + install, but that's seconds against a step that otherwise ran 10+ minutes serial.
+  # Tests are sharded for wall-clock latency. Public-repository ubuntu-latest is a standard hosted
+  # runner (currently 4 vCPU / 16GB), which GitHub documents as free and unlimited; no larger or
+  # paid runner label is used. The build is not uploaded because no later job consumes it, avoiding
+  # unnecessary artifact storage.
   test:
     name: Test (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -153,10 +140,8 @@ jobs:
       - name: Test (shard ${{ matrix.shard }}/4)
         run: pnpm test -- --shard=${{ matrix.shard }}/4
 
-  # Also carries the Node 20 CLI smoke. GitHub bills every job rounded up to a whole minute, and
-  # that check was a single `--help` invocation against a dependency-free entry point — its own
-  # checkout and billed minute bought nothing. This job installs no node dependencies either, so
-  # the two share a runner cleanly.
+  # Also carries the Node 20 CLI smoke. Keeping the dependency-free check here avoids another
+  # checkout and runner while preserving the published engine contract.
   security:
     name: Secret scan · SAST · Published CLI smoke (Node 20)
     runs-on: ubuntu-latest
@@ -164,19 +149,19 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      # gitleaks BINARY (pinned), not the action: the action needs a paid license for
-      # organizations, and the binary is free forever on any repo — which matters on a private
-      # free-plan repo. Scan the working tree (`dir`): it catches a newly-committed secret, skips
-      # binary .git objects, and this job installs no deps so there's no node_modules to wade
-      # through. Non-zero exit on a finding fails the job.
+      # Use the open-source scanner binary directly and verify its publisher checksum before
+      # execution. Scan the working tree (`dir`): it catches a newly committed secret, skips binary
+      # .git objects, and this job installs no project dependencies.
       - name: Secret scan (gitleaks)
         run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz gitleaks
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o gitleaks.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
           ./gitleaks dir . --no-banner --redact
       # Semgrep CLI + the free public `p/ci` ruleset — no login, no token, no GHAS. (The paid
       # Semgrep AppSec platform is NOT used.) pipx is preinstalled on ubuntu-latest.
       - name: Install Semgrep
-        run: pipx install semgrep
+        run: pipx install semgrep==1.172.0
       - name: SAST (Semgrep — curated CI ruleset)
         run: semgrep --config p/ci --error --quiet src gateway bin scripts vite.config.ts
 
@@ -189,7 +174,5 @@ jobs:
       - name: Exercise the dependency-free CLI entry point
         run: node bin/mavea.mjs --help
 
-  # NOTE: Gates that are GitHub-native but need a PUBLIC repo or GitHub Advanced Security are
-  # deliberately omitted on this private free-plan repo (they'd just error): CodeQL code scanning,
-  # dependency-review-action (needs the Dependency Graph), and OpenSSF Scorecard. Add them the day
-  # the repo goes public — they're free then.
+  # Public-repository native security checks live in dedicated workflows: CodeQL and Scorecard run
+  # on pushes/schedules, while Dependency Review runs only where it has a PR diff to inspect.

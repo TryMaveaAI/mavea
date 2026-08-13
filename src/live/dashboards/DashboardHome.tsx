@@ -203,7 +203,9 @@ export function DashboardHome(): ReactElement {
             </section>
           )}
         </div>
-        <aside className="dash-home-rail">{secondaryStage >= 2 && <CheckLogRail />}</aside>
+        <aside className="dash-home-rail">
+          {secondaryStage >= 2 && <CheckLogRail now={now} />}
+        </aside>
       </div>
       <TrackComposer />
     </div>

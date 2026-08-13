@@ -164,13 +164,14 @@ export function ImpactMap({
           </label>
         )}
         <div className="ripple-zoombtns">
+          {/* ⊡ — content inside a frame; ⤢/⤡ mean full-screen expand/collapse elsewhere. */}
           <button
             type="button"
             onClick={() => fitTo(view.bbox)}
             title="Fit the whole map"
             aria-label="Fit"
           >
-            ⤢
+            ⊡
           </button>
         </div>
       </div>

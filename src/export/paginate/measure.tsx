@@ -39,6 +39,12 @@ export async function measureDoc(
   const host = document.createElement('div');
   host.className = 'ex-measure-host';
   host.setAttribute('aria-hidden', 'true');
+  // Mirrors Page.tsx's own accent/tint derivation so a measured section is painted exactly like the
+  // page that will render it. Colour only — it has no bearing on the heights read back below.
+  const tint =
+    accent && accent !== skin.tokens.accent
+      ? `color-mix(in oklab, ${accent} 10%, ${skin.tokens.pageBg})`
+      : skin.tokens.tint;
   const hostStyle: Style = {
     position: 'fixed',
     left: '-10000px',
@@ -49,7 +55,7 @@ export async function measureDoc(
     color: skin.tokens.ink,
     fontFamily: skin.fonts.body,
     '--accent': accent ?? skin.tokens.accent,
-    '--tint': skin.tokens.tint,
+    '--tint': tint,
   };
   Object.assign(host.style, hostStyle as Record<string, string>);
   document.body.appendChild(host);
@@ -80,7 +86,7 @@ export async function measureDoc(
     });
     await nextFrame();
     await nextFrame();
-    // A figure can load async content (Shiki, KaTeX, a Leaflet map) that changes its height after
+    // A figure can load async content (Shiki, KaTeX, a MapLibre map) that changes its height after
     // first paint — wait for it to settle before reading heights, or a figure could measure
     // artificially short here and then render taller than measured at real export time.
     if (sections.some((s) => s.kind === 'figure')) {

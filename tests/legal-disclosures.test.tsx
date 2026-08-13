@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LegalApp } from '../src/legal/LegalApp';
 import { FEATURES } from '../src/live/features/registry';
 import {
@@ -10,7 +10,14 @@ import {
   PUBLIC_ROUTE_RISK_AUDIT,
 } from '../src/legal/featureRiskAudit';
 
+// Opening a document anchors it to the top; jsdom does not implement window.scrollTo.
+// tests/legal-scroll.test.tsx covers that behaviour.
+beforeEach(() => {
+  vi.stubGlobal('scrollTo', vi.fn());
+});
+
 afterEach(() => {
+  vi.unstubAllGlobals();
   window.location.hash = '';
 });
 
@@ -84,10 +91,16 @@ describe('app-wide important information', () => {
       ['../src/live/course/CoursesApp.tsx', /Learning aid, not an authority/],
       ['../src/live/course/CourseLessonReader.tsx', /FeatureUseNotice kind="learning"/],
       ['../src/live/deepzoom/DeepZoomApp.tsx', /FeatureUseNotice kind="learning"/],
+      ['../src/live/srs/FlashcardsApp.tsx', /FeatureUseNotice kind="learning"/],
       ['../src/live/dashboards/DashboardsApp.tsx', /FeatureUseNotice kind="monitoring"/],
       ['../src/clip/ShareModal.tsx', /FeatureUseNotice kind="publishing"/],
       ['../src/export/ExportModal.tsx', /FeatureUseNotice kind="publishing"/],
+      [
+        '../src/clip/conversation/ConversationVideoStudio.tsx',
+        /FeatureUseNotice kind="publishing"/,
+      ],
       ['../src/live/delegate/DelegatePanel.tsx', /FeatureUseNotice kind="simulation"/],
+      ['../src/live/delegate/TakeSeat.tsx', /FeatureUseNotice kind="simulation"/],
       ['../src/live/LiveApp.tsx', /FeatureUseNotice kind="voice-data"/],
       ['../src/live/LiveApp.tsx', /FeatureUseNotice kind="upload"/],
       ['../src/live/LiveSettings.tsx', /FeatureUseNotice kind="stored-data"/],
@@ -111,5 +124,23 @@ describe('app-wide important information', () => {
     expect(ripple).not.toMatch(/Nothing is uploaded|Never uploaded/i);
     expect(connect).not.toMatch(/sent directly to .* when used/i);
     expect(tour).not.toMatch(/sent directly to the provider/i);
+  });
+
+  it('discloses temporary video-export storage and interrupted cleanup precisely', () => {
+    const privacy = readFileSync(join(__dirname, '../PRIVACY.md'), 'utf8');
+
+    expect(privacy).toMatch(/origin-private browser storage/i);
+    expect(privacy).toMatch(/crash, forced close, or storage failure can interrupt cleanup/i);
+    expect(privacy).toMatch(/only Mavéa temporary video files more than 24 hours old/i);
+    expect(privacy).toMatch(/up to 60 seconds while the browser takes ownership/i);
+  });
+
+  it('keeps the canonical disclaimer current about costs, patents, and asset rights', () => {
+    const disclaimer = readFileSync(join(__dirname, '../DISCLAIMER.md'), 'utf8');
+
+    expect(disclaimer).toContain('Effective: August 11, 2026');
+    expect(disclaimer).toMatch(/container engines.*possible commercial subscription charges/is);
+    expect(disclaimer).toMatch(/not a guarantee that no third party will assert patent rights/i);
+    expect(disclaimer).toMatch(/do not necessarily clear privacy, publicity, trademark/i);
   });
 });

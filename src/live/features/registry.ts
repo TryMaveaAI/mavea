@@ -287,12 +287,13 @@ export const FEATURES: Feature[] = [
   },
   {
     id: 'share',
-    label: 'Share',
-    blurb: 'Turn this conversation into a polished presentation or document',
+    // The menu this sits in is already "Share", so the item names the artifact, not the verb again.
+    label: 'Video',
+    blurb: 'Share a moment, a topic, or the whole conversation',
     group: 'This session',
     surface: 'live',
     tourChapter: 'share',
-    keywords: ['share', 'presentation', 'slides', 'document', 'export', 'publish'],
+    keywords: ['share', 'video', 'reel', 'conversation', 'export', 'publish'],
   },
   {
     id: 'export',

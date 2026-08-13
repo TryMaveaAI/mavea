@@ -1,0 +1,27 @@
+name: Dependency review
+
+# Dependency Review needs the base/head comparison supplied by a pull request. The full installed
+# graph is still checked by the repository's exact-version licence and OSV gates.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Vulnerability and licence delta
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Review changed dependencies
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: development, runtime, unknown
+          allow-licenses: >-
+            MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, CC0-1.0,
+            CC-BY-4.0, CC-BY-3.0, Unlicense, WTFPL, MPL-2.0, BlueOak-1.0.0,
+            Python-2.0, Zlib, Artistic-2.0

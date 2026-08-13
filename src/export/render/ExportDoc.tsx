@@ -117,6 +117,10 @@ export function PageView({
   );
 }
 
+/** Vertical gap between the stacked page sheets below. Exported because a consumer that scales the
+ *  whole stack (the modal's preview) has to reproduce the flow's real height from page count. */
+export const DOC_PAGE_GAP = 40;
+
 /** The whole paginated document, one stacked sheet per page. The raster + print pipelines
  *  locate the individual `.ex-page` sheets via `querySelectorAll('.ex-page')` on the container. */
 export function ExportDocView({
@@ -131,7 +135,12 @@ export function ExportDocView({
   return (
     <div
       className="ex-doc"
-      style={{ display: 'flex', flexDirection: 'column', gap: 40, alignItems: 'center' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: DOC_PAGE_GAP,
+        alignItems: 'center',
+      }}
     >
       {doc.pages.map((page) => (
         <PageView

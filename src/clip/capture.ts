@@ -1,9 +1,10 @@
-// Renders the on-screen "Mavéa Story" stage to a real MP4 — WITHOUT screen capture. The stage is
-// genuine DOM (real components), so we rasterize that element to a canvas each frame (modern-
-// screenshot, via an SVG <foreignObject> snapshot of the live node), draw it onto a fixed-aspect
-// output canvas, and feed that canvas + the narration audio to mediabunny, which encodes H.264 +
-// AAC and muxes an MP4 in memory. Where WebCodecs/H.264 isn't available we fall back to
-// MediaRecorder (WebM). The narration is tapped from the shared WebAudio graph (no tab audio), so
+// Renders the on-screen "Mavéa Story" stage to a real video file — WITHOUT screen capture. The
+// stage is genuine DOM (real components), so we rasterize that element to a canvas each frame
+// (modern-screenshot, via an SVG <foreignObject> snapshot of the live node), draw it onto a
+// fixed-aspect output canvas, and feed that canvas + the narration audio to mediabunny, which
+// encodes the first approved open-media pair the browser offers (MP4 with AV1 + Opus, else WebM —
+// see codecs.ts). Where WebCodecs isn't available we use explicit WebM codecs through
+// MediaRecorder. The narration is tapped from the shared WebAudio graph (no tab audio), so
 // nothing leaves the page and the browser never prompts to "share your screen". Every resource is
 // released on stop/cancel.
 //
@@ -12,24 +13,33 @@
 // a clip, never weighing down the eager bundle.
 import type * as Mediabunny from 'mediabunny';
 import type * as ModernScreenshot from 'modern-screenshot';
+import { currentAppliedTier, type PerfTier } from '../lib/perfTier';
 import { bufferToStream } from './reel/audioTrack';
+import { selectOpenEncoding, supportedWebMRecorderMime } from './codecs';
+import { fileBackedTarget, recorderChunkStore } from './storage';
 import type { ClipAspect, ClipQuality, ClipResult } from './types';
 
-/** Quality tiers → frame rate CEILING + video bitrate (bps). 30 fps keeps the offscreen rasterizer
- *  from saturating the main thread (which would stretch the real-time timeline out of sync with the
- *  narration); Ultra opts into 60 fps + max bitrate for a fast machine. The rate is a ceiling, not a
- *  promise: every frame is a full DOM rasterization, so a slow machine simply lands fewer of them —
- *  each stamped with its real elapsed time, so the clip stays in sync either way. */
+/** Reel finish choices vary bitrate without exceeding the app-wide performance ceiling. Spatial
+ *  output remains exact 1080p in every case. */
 export const QUALITY: Record<ClipQuality, { fps: number; bitrate: number }> = {
-  balanced: { fps: 30, bitrate: 6_000_000 },
-  high: { fps: 30, bitrate: 10_000_000 },
-  ultra: { fps: 60, bitrate: 16_000_000 },
+  balanced: { fps: 24, bitrate: 6_000_000 },
+  high: { fps: 24, bitrate: 7_000_000 },
+  ultra: { fps: 24, bitrate: 8_000_000 },
 };
 
-/** The tier's one-line hint, DERIVED from the table above so the picker can never advertise a frame
- *  rate or bitrate the encoder isn't actually configured with (it claimed 60 fps for a 30 fps tier). */
+export function captureProfile(q: ClipQuality, perf: PerfTier = currentAppliedTier()) {
+  const requested = QUALITY[q];
+  const cap = perf === 'lite' ? { fps: 12, bitrate: 6_000_000 } : { fps: 24, bitrate: 8_000_000 };
+  return {
+    fps: Math.min(requested.fps, cap.fps),
+    bitrate: Math.min(requested.bitrate, cap.bitrate),
+  };
+}
+
+/** The hint is derived from the effective machine tier, so the picker never advertises work the
+ *  recorder will not perform. */
 export function qualityHint(q: ClipQuality): string {
-  const { fps, bitrate } = QUALITY[q];
+  const { fps, bitrate } = captureProfile(q);
   return `up to ${fps} fps · ${Math.round(bitrate / 1e6)} Mbps`;
 }
 
@@ -37,32 +47,41 @@ type MediabunnyRuntime = Pick<
   typeof Mediabunny,
   | 'Output'
   | 'Mp4OutputFormat'
+  | 'WebMOutputFormat'
   | 'BufferTarget'
+  | 'StreamTarget'
   | 'CanvasSource'
   | 'AudioBufferSource'
   | 'canEncodeVideo'
+  | 'canEncodeAudio'
 >;
 
 async function loadMediabunny(): Promise<MediabunnyRuntime | null> {
   try {
-    // Select only the MP4/WebCodecs surface used below. Returning the full dynamic-import namespace
-    // makes every export observable and prevents the bundler from tree-shaking Mediabunny's many
-    // demuxers, HLS helpers, and unrelated container writers into the reel chunk.
+    // Select only the muxing/WebCodecs surface used below. Returning the full dynamic-import
+    // namespace makes every export observable and prevents the bundler from tree-shaking
+    // Mediabunny's many demuxers, HLS helpers, and unrelated container writers into the reel chunk.
     const {
       Output,
       Mp4OutputFormat,
+      WebMOutputFormat,
       BufferTarget,
+      StreamTarget,
       CanvasSource,
       AudioBufferSource,
       canEncodeVideo,
+      canEncodeAudio,
     } = await import('mediabunny');
     return {
       Output,
       Mp4OutputFormat,
+      WebMOutputFormat,
       BufferTarget,
+      StreamTarget,
       CanvasSource,
       AudioBufferSource,
       canEncodeVideo,
+      canEncodeAudio,
     };
   } catch {
     return null;
@@ -89,7 +108,7 @@ const DIMS: Record<ClipAspect, { w: number; h: number }> = {
  */
 export function captureSupported(): boolean {
   if (typeof document === 'undefined') return false;
-  const canRecord = typeof MediaRecorder !== 'undefined';
+  const canRecord = supportedWebMRecorderMime() !== null;
   const canEncode =
     typeof VideoEncoder !== 'undefined' && typeof globalThis.AudioEncoder !== 'undefined';
   return canRecord || canEncode;
@@ -106,14 +125,22 @@ export interface StartOpts {
   /** The stage frame to rasterize, read fresh each frame as it animates. */
   el: HTMLElement;
   /** The narration, fully rendered offline into one clean buffer (null = silent clip). Muxed
-   *  DETERMINISTICALLY on the MP4 path — never replayed through a realtime stream, which used to
+   *  DETERMINISTICALLY on the WebCodecs path — never replayed through a realtime stream, which used to
    *  drop samples whenever the rasterizer saturated the main thread (the choppy exported audio
    *  on slower machines). */
   audioBuffer: AudioBuffer | null;
   aspect: ClipAspect;
+  /** Exact output pixel size, overriding the aspect's default 1080p-class dimensions. */
+  dims?: { w: number; h: number };
   /** Quality tier (fps + bitrate). Defaults to 'high'. `fps` overrides the tier's frame rate. */
   quality?: ClipQuality;
   fps?: number;
+  /** Encoder bitrate override — callers rendering smaller rasters scale the tier's figure down. */
+  bitrate?: number;
+  /** Fill behind every frame and the rasterizer's backdrop. Defaults to the Reel's cinematic
+   *  dark; a theme-following stage passes its own computed background so letterboxing and
+   *  unpainted regions match the surface instead of flashing black in light mode. */
+  background?: string;
   /** Hard cap on the recording's wall-clock length (ms) — the known narration duration. The capture
    *  stops here even if the timeline runs slow, so the muxed video can't outlast its audio. */
   maxDurationMs?: number;
@@ -124,9 +151,11 @@ export interface StartOpts {
  * Throws if the DOM rasterizer can't be loaded (offline / CSP) — the caller surfaces that to the user.
  */
 export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorder> {
-  const tier = QUALITY[opts.quality ?? 'high'];
+  const tier = captureProfile(opts.quality ?? 'high');
   const fps = opts.fps ?? tier.fps;
-  const { w, h } = DIMS[opts.aspect];
+  const bitrate = opts.bitrate ?? tier.bitrate;
+  const background = opts.background ?? '#05070c';
+  const { w, h } = opts.dims ?? DIMS[opts.aspect];
 
   const screenshot = await loadScreenshot();
   if (!screenshot) throw new Error('rasterizer-unavailable');
@@ -144,7 +173,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d', { alpha: false })!;
-  ctx.fillStyle = '#05070c';
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, w, h);
 
   // The share preview's representative still. Banking the frame is a cheap blit; ENCODING it is not —
@@ -179,7 +208,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     try {
       snap = await screenshot.domToCanvas(opts.el, {
         scale: snapScale,
-        backgroundColor: '#05070c',
+        backgroundColor: background,
       });
     } catch {
       failStreak++;
@@ -194,7 +223,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     const s = Math.max(w / snap.width, h / snap.height);
     const dw = snap.width * s;
     const dh = snap.height * s;
-    ctx.fillStyle = '#05070c';
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(snap, (w - dw) / 2, (h - dh) / 2, dw, dh);
   };
@@ -203,15 +232,27 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     typeof VideoEncoder !== 'undefined' && typeof globalThis.AudioEncoder !== 'undefined'
       ? await loadMediabunny()
       : null;
-  const useMp4 = !!MB && (await MB.canEncodeVideo('avc').catch(() => false));
+  const encoding = MB
+    ? await selectOpenEncoding(MB, {
+        width: w,
+        height: h,
+        videoBitrate: bitrate,
+        audio: opts.audioBuffer,
+      })
+    : null;
 
-  // ---- MP4 path (mediabunny / WebCodecs) ----
-  if (useMp4 && MB) {
+  // ---- Muxed path (mediabunny / WebCodecs): MP4 with AV1 + Opus, or WebM ----
+  if (encoding && MB) {
+    const fileTarget = await fileBackedTarget(MB.StreamTarget, encoding.container);
+    const bufferTarget = fileTarget ? null : new MB.BufferTarget();
     const output = new MB.Output({
-      format: new MB.Mp4OutputFormat(),
-      target: new MB.BufferTarget(),
+      format: encoding.container === 'mp4' ? new MB.Mp4OutputFormat() : new MB.WebMOutputFormat(),
+      target: fileTarget?.target ?? bufferTarget!,
     });
-    const videoSource = new MB.CanvasSource(canvas, { codec: 'avc', bitrate: tier.bitrate });
+    const videoSource = new MB.CanvasSource(canvas, {
+      codec: encoding.video,
+      bitrate,
+    });
     output.addVideoTrack(videoSource);
     // The narration buffer is muxed deterministically, decoupled from wall-clock and from the
     // rasterization loop — the same guarantee the video path gets from timestamped add() calls.
@@ -219,7 +260,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
     // domToCanvas saturated it, and every dropped pull baked a gap into the exported track.)
     let feedAudio: (() => Promise<void>) | null = null;
     if (opts.audioBuffer) {
-      const audioSource = new MB.AudioBufferSource({ codec: 'aac', bitrate: 192e3 });
+      const audioSource = new MB.AudioBufferSource({ codec: encoding.audio, bitrate: 192e3 });
       output.addAudioTrack(audioSource);
       const buffer = opts.audioBuffer;
       feedAudio = async () => {
@@ -280,21 +321,28 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
       async stop() {
         running = false;
         const poster = await encodePoster();
+        // Signal stream end before finalizing: MP4 finalization waits for closed sources to
+        // write its sample tables (WebM merely tolerated the omission).
+        videoSource.close();
         await output.finalize();
-        const buf = output.target.buffer;
+        const stored = fileTarget ? await fileTarget.finish() : null;
         teardown();
-        const blob = new Blob([buf ?? new ArrayBuffer(0)], { type: 'video/mp4' });
+        const blob =
+          stored?.blob ??
+          new Blob([bufferTarget?.buffer ?? new ArrayBuffer(0)], { type: encoding.mimeType });
         return {
           blob,
-          type: 'video/mp4',
+          type: encoding.mimeType,
           poster,
           hasAudio: !!opts.audioBuffer,
           durationMs: Math.round(performance.now() - t0),
+          dispose: stored?.dispose,
         };
       },
       cancel() {
         running = false;
         output.cancel?.();
+        void fileTarget?.discard();
         teardown();
       },
     };
@@ -310,12 +358,15 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
   const rtAudio = opts.audioBuffer ? bufferToStream(opts.audioBuffer) : null;
   const audioTrack = rtAudio?.stream.getAudioTracks()[0] ?? null;
   if (audioTrack) combined.addTrack(audioTrack);
-  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-    ? 'video/webm;codecs=vp9,opus'
-    : 'video/webm';
-  const rec = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: tier.bitrate });
-  const chunks: Blob[] = [];
-  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const mime = supportedWebMRecorderMime();
+  if (!mime) {
+    canvas.width = canvas.height = 0;
+    posterCanvas.width = posterCanvas.height = 0;
+    throw new Error('open-codec-unavailable');
+  }
+  const rec = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: bitrate });
+  const chunkStore = await recorderChunkStore();
+  rec.ondataavailable = (e) => chunkStore.write(e.data);
   // Latch the stop event ONCE, up front. The duration cap below can stop the recorder from inside the
   // paint loop, and 'stop' fires exactly once — an `onstop` handler installed later (in stop(), the
   // way this used to work) would then never run, leaving its promise pending forever: the export hung
@@ -330,7 +381,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
       /* already stopped */
     }
   };
-  rec.start();
+  rec.start(1000);
   // Start the realtime replay only once the recorder is consuming the track, so the muxed
   // narration opens at the top of the clip rather than mid-word.
   rtAudio?.start();
@@ -350,7 +401,7 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
       }
       if (!posterTaken && elapsed > 1200 && painted > 2 && failStreak === 0) bankPoster();
       const spent = performance.now() - frameStart;
-      // Always yield a macrotask so the reel's timeline isn't starved by the rasterizer (see MP4 path).
+      // Always yield a macrotask so the reel's timeline isn't starved by the rasterizer (see WebCodecs path).
       await new Promise((res) => setTimeout(res, Math.max(0, minFrameMs - spent)));
     }
   };
@@ -372,14 +423,28 @@ export async function startStoryRecording(opts: StartOpts): Promise<StoryRecorde
       const poster = await encodePoster();
       requestStop();
       await stopped;
-      const blob = new Blob(chunks, { type: mime });
-      const durationMs = Math.round(performance.now() - t0);
-      teardown();
-      return { blob, type: mime, poster, hasAudio: !!audioTrack, durationMs };
+      try {
+        const stored = await chunkStore.finish();
+        const durationMs = Math.round(performance.now() - t0);
+        teardown();
+        return {
+          blob: stored.blob,
+          type: mime,
+          poster,
+          hasAudio: !!audioTrack,
+          durationMs,
+          dispose: stored.dispose,
+        };
+      } catch (error) {
+        await chunkStore.discard();
+        teardown();
+        throw error;
+      }
     },
     cancel() {
       running = false;
       requestStop();
+      void chunkStore.discard();
       teardown();
     },
   };

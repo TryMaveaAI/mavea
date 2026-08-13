@@ -275,16 +275,20 @@ export function PrismOverlay({
   // without depending on the pan hook (which is created further down).
   const fitRef = useRef<() => void>(() => {});
   // Reconcile: the document's own figures that don't add up (null = not run yet; [] = ran, all consistent),
-  // an in-flight flag, and whether the reconcile lens is showing.
+  // an in-flight flag, whether the reconcile lens is showing, and whether the pass failed outright —
+  // a check that never ran must never be reported as an all-clear.
   const [recon, setRecon] = useState<Reconciliation[] | null>(null);
   const [reconBusy, setReconBusy] = useState(false);
   const [reconOn, setReconOn] = useState(false);
+  const [reconFailed, setReconFailed] = useState(false);
   const reconAbort = useRef<AbortController | null>(null);
   // Cross-Examine: the objections raised against the load-bearing claims (null = not run yet), an
-  // in-flight flag, whether the dock is showing, and the objection currently spotlighted.
+  // in-flight flag, whether the dock is showing, whether the pass failed outright (same honesty rule
+  // as Reconcile), and the objection currently spotlighted.
   const [xe, setXe] = useState<Objection[] | null>(null);
   const [xeBusy, setXeBusy] = useState(false);
   const [xeOpen, setXeOpen] = useState(false);
+  const [xeFailed, setXeFailed] = useState(false);
   const [xeActiveId, setXeActiveId] = useState<string | null>(null);
   const xeAbort = useRef<AbortController | null>(null);
   // Forecast Autopsy: the document's dated predictions graded against reality (web-grounded, opt-in).
@@ -406,6 +410,9 @@ export function PrismOverlay({
     return largeLayout?.spec === spec ? largeLayout.result : null;
   }, [largeLayout, spec]);
 
+  // The map is on screen and interactive — everything below the burst animation keys off this.
+  const settled = phase === 'settled' && !!placed;
+
   // Pan + zoom the map. The world is rendered at its natural size and moved by a camera transform, so
   // the whole map is framed to fit on open AND re-frames when the source panel steals half the width.
   const stageRef = useRef<HTMLDivElement>(null);
@@ -432,7 +439,9 @@ export function PrismOverlay({
     const pad = 56;
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
   }, [placed]);
-  const pan = usePanZoom(stageRef, placed?.width ?? 1, placed?.height ?? 1, contentBox);
+  const pan = usePanZoom(stageRef, placed?.width ?? 1, placed?.height ?? 1, contentBox, {
+    wheelZoom: settled,
+  });
 
   const claimById = useMemo(() => {
     const m = new Map<string, Placed>();
@@ -472,8 +481,6 @@ export function PrismOverlay({
     [openId, neighborsOf],
   );
   const crossDocCount = spec?.threads.filter((t) => t.crossDoc).length ?? 0;
-
-  const settled = phase === 'settled' && !!placed;
 
   // ── Corpus mode extras (all no-ops in single-doc Prism, where corpusChrome is undefined) ──
   // Which corpus OBJECT (contradiction / gap / consensus) is open in the side panel.
@@ -946,10 +953,12 @@ export function PrismOverlay({
     if (keep !== 'recon') {
       reconAbort.current?.abort();
       setReconBusy(false);
+      setReconFailed(false); // moving on clears the stale failure line (it shares the standing strip)
     }
     if (keep !== 'xe') {
       xeAbort.current?.abort();
       setXeBusy(false);
+      setXeFailed(false);
     }
     if (keep !== 'fa') {
       faAbort.current?.abort();
@@ -1030,16 +1039,23 @@ export function PrismOverlay({
     const ac = new AbortController();
     reconAbort.current = ac;
     setReconBusy(true);
+    setReconFailed(false);
     const sources = spec.claims.map((c) => ({ id: c.id, page: c.page, quote: c.quote }));
     loadReconcile()
       .then(({ runReconcile }) => runReconcile(sources, corpus, cfg, ac.signal))
       .then((rs) => {
         if (ac.signal.aborted) return;
+        // A null result means the pass never ran — leave the lens off and `recon` null, so the strip
+        // says so and the next click really re-runs it instead of re-showing a cached "all clear".
+        if (!rs) {
+          setReconFailed(true);
+          return;
+        }
         setRecon(rs);
         setReconOn(true);
       })
       .catch(() => {
-        if (!ac.signal.aborted) setRecon([]);
+        if (!ac.signal.aborted) setReconFailed(true);
       })
       .finally(() => {
         if (!ac.signal.aborted) setReconBusy(false);
@@ -1070,7 +1086,9 @@ export function PrismOverlay({
   );
 
   const runCrossExamNow = useCallback((): void => {
-    if (xeOpen) {
+    // Open with a failed pass showing, the button IS the "try again" the dock offers — falling through
+    // re-runs it. (The dock's own ▾ still closes it.)
+    if (xeOpen && !xeFailed) {
       setXeOpen(false); // toggle off (keeps the computed result)
       return;
     }
@@ -1089,6 +1107,7 @@ export function PrismOverlay({
     xeAbort.current = ac;
     setXeBusy(true);
     setXeOpen(true);
+    setXeFailed(false);
     const claims = spec.claims
       .filter((c) => c.role === 'load-bearing')
       .map((c) => ({ id: c.id, source: c.source, page: c.page, quote: c.quote, title: c.title }));
@@ -1096,15 +1115,21 @@ export function PrismOverlay({
       .then(({ runCrossExam }) => runCrossExam(claims, corpus, cfg, ac.signal))
       .then((os) => {
         if (ac.signal.aborted) return;
+        // Null = the pass never ran; the panel says so instead of "no objection stuck", and `xe` stays
+        // null so the next open re-runs it rather than re-showing a clean bill of health.
+        if (!os) {
+          setXeFailed(true);
+          return;
+        }
         setXe(os);
       })
       .catch(() => {
-        if (!ac.signal.aborted) setXe([]);
+        if (!ac.signal.aborted) setXeFailed(true);
       })
       .finally(() => {
         if (!ac.signal.aborted) setXeBusy(false);
       });
-  }, [xeOpen, xe, spec, corpus, cfg, cancelOtherRuns]);
+  }, [xeOpen, xeFailed, xe, spec, corpus, cfg, cancelOtherRuns]);
 
   // ── Forecast Autopsy — grade the document's dated predictions against what actually happened ──
   useEffect(() => () => faAbort.current?.abort(), []);
@@ -1392,7 +1417,6 @@ export function PrismOverlay({
           <div
             className={'prism-stage' + (pan.panning ? ' is-panning' : '')}
             ref={stageRef}
-            onWheel={settled ? pan.onWheel : undefined}
             onPointerDown={settled ? pan.onPointerDown : undefined}
             onPointerMove={settled ? pan.onPointerMove : undefined}
             onPointerUp={settled ? pan.onPointerUp : undefined}
@@ -1469,11 +1493,8 @@ export function PrismOverlay({
               <div
                 className="prism-world"
                 data-briefing={briefingOn ? 'true' : undefined}
-                style={{
-                  width: placed.width,
-                  height: placed.height,
-                  transform: pan.transform,
-                }}
+                ref={pan.worldRef}
+                style={{ width: placed.width, height: placed.height }}
               >
                 {/* region nebulae + headers */}
                 {placed.regions.map((r) => (
@@ -1834,13 +1855,15 @@ export function PrismOverlay({
                 <button type="button" onClick={() => pan.zoomBy(1 / 1.25)} aria-label="Zoom out">
                   −
                 </button>
+                {/* ⊡ — content inside a frame. ⤢/⤡ are reserved for full-screen expand/collapse
+                    (the header button one row up), so Fit must not reuse them. */}
                 <button
                   type="button"
                   onClick={() => pan.fit()}
                   aria-label="Fit the whole map"
                   title="Fit"
                 >
-                  ⤢
+                  ⊡
                 </button>
               </div>
             )}
@@ -1877,6 +1900,7 @@ export function PrismOverlay({
                 <CrossExamPanel
                   objections={xe ?? []}
                   busy={xeBusy}
+                  failed={xeFailed}
                   onFocusObjection={onFocusObjection}
                   activeId={xeActiveId}
                   multiDoc={multiDoc}
@@ -1925,6 +1949,11 @@ export function PrismOverlay({
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize the map and the source page"
+              // The value trio the window-splitter pattern requires — without it the arrows move
+              // the split silently as far as assistive tech is concerned.
+              aria-valuenow={Math.round(pdfPct)}
+              aria-valuemin={24}
+              aria-valuemax={100}
               // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- see comment above
               tabIndex={0}
               onPointerDown={onDividerDown}
@@ -1985,6 +2014,11 @@ export function PrismOverlay({
                   <DocPageView
                     pdf={sourceDoc}
                     slideImages={slideImages}
+                    // The page text this document's claims were grounded against — the reflowable-text
+                    // surface renders it directly rather than extracting the bytes a second time. In
+                    // corpus preview mode the "attachment" is a bytes-free stand-in, so this is the
+                    // only text there is.
+                    pages={corpus?.[panelView.source]}
                     source={panelView.source}
                     page={panelView.page}
                     quote={panelView.quote}
@@ -2190,7 +2224,7 @@ export function PrismOverlay({
 
         {/* the Standing strip — what the load-bearing claims came to when checked against the world.
             Shows the honest "checking…" state while in flight, then the one screenshottable line. */}
-        {settled && !reconBusy && !reconOn && (verifying || standing) && (
+        {settled && !reconBusy && !reconOn && !reconFailed && (verifying || standing) && (
           <div
             className="prism-standing"
             data-verifying={verifying ? 'true' : undefined}
@@ -2204,7 +2238,7 @@ export function PrismOverlay({
         )}
 
         {/* Reconcile standing — the document's own figures checked against each other in pure code */}
-        {settled && (reconBusy || reconOn) && (
+        {settled && (reconBusy || reconOn || reconFailed) && (
           <div
             className="prism-standing"
             data-verifying={reconBusy ? 'true' : undefined}
@@ -2215,9 +2249,11 @@ export function PrismOverlay({
             <span className="prism-standing-text">
               {reconBusy
                 ? 'Checking the document’s own numbers against each other…'
-                : recon && recon.length > 0
-                  ? `${recon.length === 1 ? 'A number doesn’t' : `${recon.length} numbers don’t`} add up — the document’s own figures disagree`
-                  : 'Every number checks out — the document’s figures are consistent.'}
+                : reconFailed
+                  ? 'Couldn’t check the numbers — try again.'
+                  : recon && recon.length > 0
+                    ? `${recon.length === 1 ? 'A number doesn’t' : `${recon.length} numbers don’t`} add up — the document’s own figures disagree`
+                    : 'Every number checks out — the document’s figures are consistent.'}
             </span>
           </div>
         )}
@@ -2397,7 +2433,6 @@ export function PrismOverlay({
                     steps={reelSteps}
                     spec={spec}
                     pdfs={pdfs}
-                    cfg={cfg}
                     placed={placed?.claims}
                     verdicts={verdictById}
                   />

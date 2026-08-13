@@ -1,8 +1,25 @@
-import type { ReactElement, ReactNode } from 'react';
+import { useLayoutEffect, type ReactElement, type ReactNode } from 'react';
 import { legalDocumentHref } from './links';
 import './legal.css';
 
 export type LegalPageKind = 'important' | 'terms' | 'privacy';
+
+// Which document a history entry has already been anchored to the top for.
+const ANCHOR_KEY = 'maveaLegalAnchor';
+
+/** Moving between legal documents only changes the hash, so the browser keeps the outgoing
+ * document's scroll offset — leaving Terms mid-page and opening Privacy landed the reader
+ * mid-Privacy. Anchor an entry once, when it first shows a document: back and forward return to an
+ * already-anchored entry, where the browser restores the offset the reader left, and an in-page
+ * jump neither changes the entry nor the document, so it is never overridden. */
+function anchorNewEntryToTop(page: LegalPageKind): void {
+  const state: unknown = window.history.state;
+  const entry = state !== null && typeof state === 'object' ? state : {};
+  if (ANCHOR_KEY in entry && entry[ANCHOR_KEY] === page) return;
+  // Same entry, no new URL — the back button still returns to whatever preceded this document.
+  window.history.replaceState({ ...entry, [ANCHOR_KEY]: page }, '');
+  window.scrollTo({ top: 0 });
+}
 
 function sourceQuery(): string {
   if (typeof window === 'undefined') return '';
@@ -33,6 +50,12 @@ export function LegalPageShell({
   effectiveDate?: string;
   children: ReactNode;
 }): ReactElement {
+  // Before paint, so the incoming document is never shown for a frame at the offset the previous
+  // one was left at.
+  useLayoutEffect(() => {
+    anchorNewEntryToTop(page);
+  }, [page]);
+
   return (
     <main className="legal-app">
       <header className="legal-topbar">

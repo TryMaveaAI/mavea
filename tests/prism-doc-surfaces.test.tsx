@@ -12,6 +12,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
 import { DocumentMarkupSlide } from '../src/clip/reel/templates/finishes/documentMarkup';
+import { DocPageView } from '../src/live/prism/DocPageView';
 import { SheetSurface } from '../src/live/prism/SheetSurface';
 import { SlideSurface } from '../src/live/prism/SlideSurface';
 import { TextSurface } from '../src/live/prism/TextSurface';
@@ -212,6 +213,31 @@ describe('TextSurface — Word / TXT / Markdown / code', () => {
       expect(screen.getByText(/verbatim quote, on its real page/i)).toBeTruthy();
     });
 
+    it('renders the caller’s pages for a document whose bytes it never gets', () => {
+      // The corpus preview's sources are bytes-free stand-ins: extraction can only fail there, so
+      // every claim panel showed the read-failure state. Given the already-extracted pages, the real
+      // passage renders — and the page index still lines up with the claim's own page number.
+      const doc: Attachment = { name: 'trial-report.txt', mime: 'text/plain', data: '', size: 0 };
+      const { container } = render(
+        <TextSurface
+          doc={doc}
+          pages={['Background and method.', 'The trial reported a 38% response rate.']}
+          source={0}
+          page={2}
+          quote="38% response rate"
+          color="var(--insight)"
+          kindLabel="STAT"
+          title="Response rate"
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(container.querySelector('mark[data-prism-anchor="primary"]')?.textContent).toContain(
+        '38% response rate',
+      );
+      expect(screen.queryByText(/Couldn.t read this page/i)).toBeNull();
+    });
+
     it('shows an honest fallback message when the file can’t be read', async () => {
       const doc: Attachment = { name: 'broken.docx', mime: '', data: btoa('not a zip'), size: 9 };
       render(
@@ -270,6 +296,32 @@ describe('TextSurface — Word / TXT / Markdown / code', () => {
       expect(geo.rects).toEqual([{ x: 30, y: 60, w: 200, h: 18 }]);
       expect(geo.imgW).toBeGreaterThan(0);
       expect(geo.imgH).toBeGreaterThan(0);
+    });
+  });
+
+  // DocPageView is the one dispatch point every claim panel goes through, so the pages it's handed
+  // have to reach the reflowable-text surface — that pass-through is what makes the corpus preview's
+  // bytes-free sources readable at all.
+  describe('DocPageView — forwards the caller’s pages to the text surface', () => {
+    it('renders the given page text for a bytes-free text document', () => {
+      const doc: Attachment = { name: 'memo.txt', mime: 'text/plain', data: '', size: 0 };
+      const { container } = render(
+        <DocPageView
+          pdf={doc}
+          pages={['Adoption reached 61% of the cohort.']}
+          source={0}
+          page={1}
+          quote="61% of the cohort"
+          color="var(--presence)"
+          kindLabel="STAT"
+          title="Adoption"
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(container.querySelector('mark[data-prism-anchor="primary"]')?.textContent).toContain(
+        '61% of the cohort',
+      );
     });
   });
 

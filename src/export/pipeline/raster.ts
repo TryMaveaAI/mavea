@@ -57,22 +57,25 @@ type JsPdfModule = {
   }) => JsPdfDoc;
 };
 
-async function loadScreenshot(): Promise<typeof ModernScreenshot | null> {
+// A loader reports "this chunk is not usable" as `undefined`, never `null` — `null` is reserved for
+// `withTimeout`'s own "the import never settled" answer. Sharing one sentinel made a failed chunk
+// fetch (an offline reload against a redeployed build) surface as a bogus timeout message.
+async function loadScreenshot(): Promise<typeof ModernScreenshot | undefined> {
   try {
     return await import('modern-screenshot');
   } catch {
-    return null;
+    return undefined;
   }
 }
 
-async function loadJsPdf(): Promise<JsPdfModule['jsPDF'] | null> {
+async function loadJsPdf(): Promise<JsPdfModule['jsPDF'] | undefined> {
   try {
     const mod = (await import('jspdf')) as Partial<JsPdfModule> & {
       default?: JsPdfModule['jsPDF'];
     };
-    return mod.jsPDF ?? mod.default ?? null;
+    return mod.jsPDF ?? mod.default ?? undefined;
   } catch {
-    return null;
+    return undefined;
   }
 }
 

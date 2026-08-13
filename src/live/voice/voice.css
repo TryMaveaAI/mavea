@@ -32,7 +32,15 @@
 }
 .live-voice .hero-line {
   margin: 0;
-  max-width: 90%;
+  /* A reading measure, not a slice of the container. 90% tracked nothing on screen — it stopped
+     just short of the grid the hint bar and cards align to, which read as a mistake rather than a
+     margin, and it let the line run past 90 characters on a wide column. Tying the cap to the type
+     holds the line near 70 characters at every font size and --fs-scale setting; on anything
+     narrower than the measure it simply fills the column.
+     `em`, not `ch`: ch is the width of the font's own "0", so Chrome resolves it against whichever
+     face is loaded at the time — the Georgia fallback's zero is 0.6em against Newsreader's 0.56em,
+     and the cap does not re-resolve once the webfont arrives. em depends only on font-size. */
+  max-width: 35em;
   color: var(--text-primary);
   /* One continuous reading scale across phones, laptop windows, desktop displays, and ultrawides.
      Each template's --voice-size remains the art-directed ceiling, never a desktop-sized floor —
@@ -1199,13 +1207,9 @@
   .mavea-app.live-voice.with-rail {
     --rail-w: 0px;
   }
-  /* the rail's bottom sheet stacks above the dock — and above the scrubber strip when one
-     is present (specificity matches livedock.css's has-scrubber rule so this wins by order) */
+  /* the rail's bottom sheet stacks above the dock */
   .mavea-app.live-voice.with-rail .side-rail {
     bottom: var(--dock-h);
-  }
-  .mavea-app.live-voice.with-rail.has-scrubber .side-rail {
-    bottom: calc(var(--dock-h) + var(--scrub-h, 48px));
   }
   .live-voice .dock-hint {
     display: none;

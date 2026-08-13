@@ -869,7 +869,7 @@
 }
 .xt-tag {
   font-family: var(--font-data, var(--font));
-  font-size: 7.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--hl, var(--presence));
@@ -918,6 +918,10 @@
   background: var(--surface-glass);
   color: var(--text-secondary);
 }
+.xt-comp-toggle:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}
 .xt-comp-body {
   padding: 10px 12px;
   font-size: 12.5px;
@@ -933,6 +937,16 @@
   font-size: 11px;
   letter-spacing: 0.02em;
   color: var(--text-muted);
+}
+/* The build/fold rollback line. Its own rule rather than .dash-plan-estimate's muted face: after a
+   long confirm wait, the one sentence saying the board was NOT added can't be the faintest text on
+   the panel. (Mirrors dash-pin.css's .dash-ptrack-err, which this file can't rely on being loaded —
+   ExtractionPreview imports only this stylesheet.) */
+.xt-confirm-err {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--warning);
 }
 .xt-build-row {
   display: flex;
@@ -1836,7 +1850,7 @@
 }
 .tpl-chip-kind {
   font-family: var(--font-data, var(--font));
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--hl, var(--presence));

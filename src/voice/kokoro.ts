@@ -1,14 +1,13 @@
 // kokoro.ts — natural-voice TTS via the same-origin Kokoro proxy (OpenAI-compatible).
 //
-// This is the "Live" mode voice. Where tts.ts drives the browser's speechSynthesis
-// (robotic but zero-latency, used by the scripted demo), this path POSTs text to the
-// local Kokoro server and plays back real mp3 audio — a warm female voice for Mavéa,
+// This is Mavéa's only narration voice. It POSTs text to the local Kokoro server and plays back
+// uncompressed WAV or PCM audio — a warm female voice for Mavéa,
 // a distinct voice for the person. It is integrated BEHIND the existing speak() seam
 // in tts.ts (see setTtsMode), so callers never import this directly.
 //
 // Endpoints (proxied, no CORS):
-//   POST /tts/v1/audio/speech  {model:'kokoro', input, voice, response_format:'mp3', speed}
-//                              → audio bytes (mp3)
+//   POST /tts/v1/audio/speech  {model:'kokoro', input, voice, response_format:'wav', speed}
+//                              → PCM audio in a WAV container
 //   GET  /tts/health           → 200 when the server is up
 //
 // Lines are QUEUED and played strictly in order (like the browser path), never
@@ -20,7 +19,13 @@
 import { sayable, type Speaker } from './tts';
 import { pronounceForSpeech } from './pronounce';
 import { voiceEnergyTap, resetVoiceEnergy } from './voiceEnergy';
-import { streamSpeak, playPcmBytes, cancelActiveStream, getVoiceSpeed } from './streamTts';
+import {
+  streamSpeak,
+  playPcmBytes,
+  cancelActiveStream,
+  getVoiceSpeed,
+  bindOutputGain,
+} from './streamTts';
 import { pcmCacheKey, pcmCacheGet, pcmCacheHas, pcmCachePut } from './pcmCache';
 import { findPreset, DEFAULT_MAVEA_VOICE_ID, DEFAULT_USER_VOICE_ID } from './presets';
 
@@ -79,6 +84,7 @@ let cancelEpoch = 0; // bumped by cancelKokoro — a job in flight across a canc
 let primed: { text: string; voice: string } | null = null;
 let current: HTMLAudioElement | null = null;
 let currentUrl: string | null = null; // object URL to revoke after the clip ends
+let currentGainRelease: (() => void) | null = null; // stops the clip following the output policy
 let currentFetch: AbortController | null = null; // aborts the in-flight blob fetch on cancel
 const speakingListeners = new Set<() => void>();
 let lastSpeaking = false;
@@ -103,6 +109,15 @@ function revokeCurrentUrl(): void {
     }
     currentUrl = null;
   }
+}
+
+/** Unregister the blob clip from the output policy. Idempotent; safe when nothing is bound.
+ *  Only ever one clip is bound at a time — pump awaits a line's playback before the next
+ *  starts — so this always releases the clip it was called for. */
+function releaseCurrentGain(): void {
+  if (!currentGainRelease) return;
+  currentGainRelease();
+  currentGainRelease = null;
 }
 
 // ---- one-ahead prefetch -----------------------------------------------------
@@ -241,7 +256,7 @@ async function playJob(job: Job): Promise<boolean> {
 }
 
 /**
- * Fetch the mp3 for one line and play it to completion. Resolves to true when a clip
+ * Fetch one uncompressed WAV line and play it to completion. Resolves to true when a clip
  * actually played, false on any failure/skip. The streaming fallback. Never throws.
  */
 async function playJobBlob(job: Job): Promise<boolean> {
@@ -256,7 +271,7 @@ async function playJobBlob(job: Job): Promise<boolean> {
         model: 'kokoro',
         input: job.text,
         voice: job.voice,
-        response_format: 'mp3',
+        response_format: 'wav',
         speed: getVoiceSpeed(),
       }),
       signal: ac.signal,
@@ -271,6 +286,10 @@ async function playJobBlob(job: Job): Promise<boolean> {
     await new Promise<void>((resolve) => {
       const audio = new Audio(url);
       current = audio;
+      // Mute and the quiet-hours gain are OUTPUT policy, not a property of one playback path:
+      // without this the fallback plays a muted (or whisper-hours) line at full volume — the
+      // one clip a silenced session would blurt out.
+      currentGainRelease = bindOutputGain(audio);
       // Drive the face's mouth-light from this clip's real waveform; released on finish so
       // the analyser tap can't outlive the audio element (never silences playback).
       const releaseEnergy = voiceEnergyTap(audio);
@@ -278,6 +297,7 @@ async function playJobBlob(job: Job): Promise<boolean> {
       const finish = (ok: boolean): void => {
         if (settled) return;
         settled = true;
+        releaseCurrentGain();
         releaseEnergy();
         played = ok;
         resolve();
@@ -300,6 +320,7 @@ async function playJobBlob(job: Job): Promise<boolean> {
     /* network/abort — treat as failure (caller falls back) */
   } finally {
     if (currentFetch === ac) currentFetch = null;
+    releaseCurrentGain();
     revokeCurrentUrl();
     current = null;
   }
@@ -333,11 +354,14 @@ async function pump(): Promise<void> {
       // awaits (probe resolved, fetch not yet in flight) has nothing to abort — the job must
       // notice it was cancelled and settle false rather than playing after the interrupt.
       const epoch = cancelEpoch;
-      const ok =
-        (await kokoroAvailable()) &&
-        epoch === cancelEpoch &&
-        (await playJob(job)) &&
-        epoch === cancelEpoch;
+      let ok = false;
+      if ((await kokoroAvailable()) && epoch === cancelEpoch) {
+        const played = await playJob(job);
+        ok = played && epoch === cancelEpoch;
+        // Silent for a reason other than an interrupt: Kokoro was up at the gate and still
+        // produced nothing. Re-check before the next line so a mid-session loss isn't invisible.
+        if (!played && epoch === cancelEpoch) markProbeStale();
+      }
       // Settle guarantee: whatever path the job took, `started` resolves (latched no-op when
       // playback already fired it) strictly before `finished` — a caller awaiting started can
       // never outlive the line.
@@ -415,7 +439,7 @@ export function cancelKokoro(): void {
     prefetchKey = null;
     prefetchPromise = null;
   }
-  // Abort an in-flight whole-clip fetch so its mp3 download stops and it can't create/play a
+  // Abort an in-flight whole-clip fetch so its WAV download stops and it can't create/play a
   // late object URL after we've already torn everything down below.
   if (currentFetch) {
     currentFetch.abort();
@@ -441,6 +465,7 @@ export function cancelKokoro(): void {
       /* no-op */
     }
   }
+  releaseCurrentGain();
   revokeCurrentUrl();
   current = null;
   synthPending = false; // nothing is being prepared for anyone anymore — say so immediately
@@ -466,26 +491,41 @@ export function subscribeKokoroSpeaking(listener: () => void): () => void {
   return () => speakingListeners.delete(listener);
 }
 
-// ---- availability probe (cached) --------------------------------------------
-// One GET /tts/health per session, shared by every caller (LiveApp, setup wizard, settings
-// hints). Caching keeps the console free of repeated 502/network-error noise when Kokoro
-// isn't running, and gives the UI a synchronous "last known" answer for honest hints.
-// Kokoro is the ONLY voice — when this probe fails, lines are silent (captions still show).
+// ---- availability probe (cached, self-healing) ------------------------------
+// One GET /tts/health shared by every caller (LiveApp, setup wizard, settings hints), cached so
+// a session without Kokoro doesn't 502-spam the console and the UI has a synchronous "last
+// known" answer for honest hints. Kokoro is the ONLY voice — when this probe fails, lines are
+// silent (captions still show).
+//
+// The cache goes STALE rather than permanent: the hint tells the user to start the local TTS
+// service, and a once-per-session probe made that a lie — voice stayed off until a reload. A
+// settled failure is re-checked on the next speak attempt past PROBE_RETRY_MS, and a line that gets
+// past the gate but produces no audio (Kokoro died mid-session) marks the cache stale so the
+// next line re-checks. One cheap GET, never per line.
+
+/** Don't re-check a known-down server more often than this — recovery without request-spam. */
+const PROBE_RETRY_MS = 20_000;
 
 let probe: Promise<boolean> | null = null;
 let lastKnown: boolean | null = null;
+/** When the settled probe may be discarded (epoch ms); 0 while in flight or still trusted. */
+let probeStaleAt = 0;
+/** Text-once: the "voice off" note is logged on the transition into failure, not per re-probe. */
+let announcedDown = false;
 
 /**
- * Probe whether the Kokoro server is reachable (GET /tts/health). Never throws.
- * The result is cached for the session — every subsequent call shares the same
- * (in-flight or settled) probe instead of re-hitting the endpoint.
+ * Probe whether the Kokoro server is reachable (GET /tts/health). Never throws. Callers share
+ * the in-flight or settled probe; a failure is re-checked only once its retry window has passed,
+ * so a doomed session costs one request per window rather than one per line.
  */
 export function kokoroAvailable(): Promise<boolean> {
+  if (probe && probeStaleAt !== 0 && Date.now() >= probeStaleAt) probe = null;
   if (!probe) {
-    probe = (async (): Promise<boolean> => {
+    probeStaleAt = 0; // in flight — nothing to expire until it settles
+    const attempt = (async (): Promise<boolean> => {
       try {
         const res = await fetch('/tts/health', { method: 'GET' });
-        if (!res.ok) {
+        if (!res.ok && !announcedDown) {
           console.debug(
             '[kokoro] TTS health check returned',
             res.status,
@@ -495,15 +535,30 @@ export function kokoroAvailable(): Promise<boolean> {
         return res.ok;
       } catch (err) {
         // Kokoro not running (expected in dev without Docker) — voice stays off, captions only.
-        console.debug('[kokoro] TTS health check unreachable — voice off, captions only', err);
+        if (!announcedDown) {
+          console.debug('[kokoro] TTS health check unreachable — voice off, captions only', err);
+        }
         return false;
       }
     })();
-    void probe.then((ok) => {
+    probe = attempt;
+    void attempt.then((ok) => {
+      if (probe !== attempt) return; // superseded by a reset — don't publish a stale answer
       lastKnown = ok;
+      announcedDown = !ok;
+      probeStaleAt = ok ? 0 : Date.now() + PROBE_RETRY_MS;
     });
   }
   return probe;
+}
+
+/**
+ * A line that passed the health gate but produced no audio is the only in-band sign that Kokoro
+ * went away mid-session. Expire the cached "available" so the NEXT line re-checks — that is what
+ * turns the settings hint honest again — instead of the session staying silently voiceless.
+ */
+function markProbeStale(): void {
+  if (lastKnown === true) probeStaleAt = Date.now();
 }
 
 /** Last settled probe result, synchronously: true/false once known, null before the probe lands. */
@@ -515,4 +570,6 @@ export function kokoroKnownAvailable(): boolean | null {
 export function resetKokoroProbe(): void {
   probe = null;
   lastKnown = null;
+  probeStaleAt = 0;
+  announcedDown = false;
 }

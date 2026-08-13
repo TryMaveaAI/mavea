@@ -2,22 +2,16 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from 're
 import { Icon } from '../../../icons/icons';
 import type { HearItProps, HearItItem } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { cancelKokoro, kokoroKnownAvailable, speakKokoroResult } from '../../../voice/kokoro';
 
 type Props = HearItProps & { delay?: number };
 
-// "Hear it": each row plays a short sound on tap — a spoken word (Web Speech),
+// "Hear it": each row plays a short sound on tap — a spoken word (local Kokoro),
 // or a single musical note / raw tone (a one-shot WebAudio oscillator). Voice-first
 // surface for pronunciation drills, interval ear-training, and tuning references.
 // Audio is created on demand and torn down the moment it finishes (the AudioContext
 // is closed after every tone, the utterance cleared after every word) so nothing
 // is left running between taps or after unmount.
-
-// Capability probes, evaluated once at module load. SSR / non-browser hosts and
-// older engines fall through to a disabled, explained state rather than throwing.
-const SPEECH_OK =
-  typeof window !== 'undefined' &&
-  'speechSynthesis' in window &&
-  typeof window.SpeechSynthesisUtterance === 'function';
 
 type AudioCtor = typeof AudioContext;
 const AUDIO_CTOR: AudioCtor | undefined =
@@ -96,6 +90,9 @@ export function HearIt({
 
   // Index of the row currently sounding (for the pressed/animating state), or null.
   const [playing, setPlaying] = useState<number | null>(null);
+  // Kokoro is the only voice: when it isn't running a word row animates and nothing is heard,
+  // so the card says so once. Rows stay tappable — the service may come up later.
+  const [voiceDown, setVoiceDown] = useState(false);
 
   // Live handles to whatever audio is in flight, so unmount can stop it cleanly.
   const ctxRef = useRef<AudioContext | null>(null);
@@ -114,26 +111,22 @@ export function HearIt({
       // close() rejects if already closed/closing — swallow that, it is benign.
       ctx.close().catch(() => {});
     }
-    if (SPEECH_OK) window.speechSynthesis.cancel();
+    cancelKokoro();
   }, []);
 
   // Stop everything when the card leaves the screen — no dangling audio graph,
   // timer, or queued speech survives unmount.
   useEffect(() => stopAll, [stopAll]);
 
-  const speak = useCallback(
-    (text: string, idx: number) => {
-      if (!SPEECH_OK) return;
-      const u = new window.SpeechSynthesisUtterance(text);
-      u.rate = 0.92; // a touch slower than default for clarity on hard words
-      const clear = () => setPlaying((cur) => (cur === idx ? null : cur));
-      u.onend = clear;
-      u.onerror = clear;
-      window.speechSynthesis.speak(u);
-      setPlaying(idx);
-    },
-    [], // setPlaying is stable
-  );
+  const speak = useCallback((text: string, idx: number) => {
+    setPlaying(idx);
+    void speakKokoroResult(text, 'mavea').then((played) => {
+      setPlaying((cur) => (cur === idx ? null : cur));
+      // A cancelled line resolves false too (stopAll drains the previous one on every tap), so
+      // only the settled health probe is proof the service is actually down.
+      if (!played && kokoroKnownAvailable() === false) setVoiceDown(true);
+    });
+  }, []);
 
   const tone = useCallback((hz: number, idx: number) => {
     if (!AUDIO_CTOR) return;
@@ -194,9 +187,15 @@ export function HearIt({
     [stopAll, speak, tone],
   );
 
-  // Per-row capability: a word needs speech, a note/tone needs WebAudio.
+  // Spoken rows use the local service; a note/tone needs WebAudio.
   const canPlay = (item: HearItItem): boolean =>
-    item.kind === 'word' ? SPEECH_OK : !!AUDIO_CTOR && resolveHz(item.value) !== null;
+    item.kind === 'word' || (!!AUDIO_CTOR && resolveHz(item.value) !== null);
+
+  // Only a note/tone row ever disables, so with WebAudio present the sole cause is a value that
+  // resolves to no pitch — the data, not the browser.
+  const reason = AUDIO_CTOR
+    ? 'This note can’t be played'
+    : 'Audio playback is unavailable in this browser';
 
   return (
     <div
@@ -212,10 +211,6 @@ export function HearIt({
           const enabled = canPlay(item);
           const isPlaying = playing === i;
           const RowIcon = Icon[KIND_ICON[item.kind]] ?? Icon.speaker;
-          const reason =
-            item.kind === 'word'
-              ? 'Speech synthesis is unavailable in this browser'
-              : 'Audio playback is unavailable in this browser';
           return (
             <li key={i} className="hri-row" data-playing={isPlaying || undefined}>
               <button
@@ -250,6 +245,12 @@ export function HearIt({
           );
         })}
       </ul>
+
+      {voiceDown && (
+        <p className="insight-summary" role="status" style={{ marginTop: 12 }}>
+          Voice is off — start the local voice service to hear this.
+        </p>
+      )}
 
       {footer && (
         <div

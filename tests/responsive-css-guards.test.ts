@@ -69,3 +69,18 @@ describe('flagship mobile nav — the compact Explore items must actually win th
     expect(css).toMatch(/\.fl-explore-item\.fl-explore-item--compact\s*\{\s*display:\s*flex/);
   });
 });
+
+describe('landing captions — reading text stays on the 9px legibility floor', () => {
+  const css = read('src/flagship/flagship.css');
+
+  // Below ~9px rendered, the UI audit reports text as illegible (an 8.5px caption tripped it
+  // once already). These three are real reading text on the landing: the rail eyebrow, the demo
+  // card's badge, and the map attribution. The decorative glyphs inside the aria-hidden feature
+  // vignettes (.fs-* i) are not reading text and are deliberately left alone.
+  it.each(['.fl-rail-title', '.fl-demo-badge', '.fl-map-attr'])('%s is 9px or larger', (sel) => {
+    const body = new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+    const size = /font-size:\s*([\d.]+)px/.exec(body)?.[1];
+    expect(size, `${sel} declares no font-size`).toBeDefined();
+    expect(Number(size)).toBeGreaterThanOrEqual(9);
+  });
+});

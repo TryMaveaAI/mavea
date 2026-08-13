@@ -512,7 +512,7 @@ export const creative: ConversationSpec = {
           to: 'var(--insight)',
           label: 'São Miguel · a quiet film',
         },
-        video: '/demo-assets/video/azores-film.mp4',
+        video: '/demo-assets/video/azores-film.webm',
         poster: '/demo-assets/images/basalt-cliffs.jpg',
         durationLabel: '1:32',
         active: 1,

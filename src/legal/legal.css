@@ -1,3 +1,14 @@
+/* A legal document is an ordinary long-form page, but every surface it opens FROM is a fixed app
+   shell: Live's stylesheet locks the viewport (`html, body { height: 100%; overflow: hidden }`,
+   live-transcript.css) and hash routing never unloads it, so arriving here from Live clipped the
+   document at the fold with nothing — wheel, keys, scrollTo — able to move it. Re-assert document
+   scrolling for exactly the pages that are documents, whatever else is resident. */
+html:has(.legal-app),
+html:has(.legal-app) body {
+  height: auto;
+  overflow: visible;
+}
+
 .legal-app {
   min-height: 100dvh;
   color: var(--text-primary);

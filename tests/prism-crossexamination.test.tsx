@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CrossExamPanel } from '../src/live/prism/crossexam/CrossExamPanel';
 import { asObjectionKind, resolveObjection } from '../src/live/prism/crossexam/resolve';
 import type { ModelConfig } from '../src/types/mavea';
 
@@ -105,10 +107,14 @@ describe('cross-examination — the pure objection gate', () => {
 });
 
 let adapterReply: string | object = '{"objections":[]}';
+let adapterFails = false;
 
 vi.mock('../src/live/providers', () => ({
   getAdapter: () => ({
-    generate: async () => ({ raw: adapterReply }),
+    generate: async () => {
+      if (adapterFails) throw new Error('rate limited');
+      return { raw: adapterReply };
+    },
   }),
 }));
 
@@ -122,6 +128,10 @@ describe('cross-examination — the run', () => {
   const claims = [
     { id: 'k', source: 0, page: 1, quote: 'growth is linear', title: 'Linear growth' },
   ];
+
+  afterEach(() => {
+    adapterFails = false;
+  });
 
   describe('runCrossExam', () => {
     it('keeps only one objection per claim even if the model returns several', async () => {
@@ -145,7 +155,7 @@ describe('cross-examination — the run', () => {
       });
       const out = await runCrossExam(claims, corpus, cfg);
       expect(out).toHaveLength(1);
-      expect(out[0].claimId).toBe('k');
+      expect(out?.[0]?.claimId).toBe('k');
     });
 
     it('salvages the complete objections from a truncated stream instead of losing them all', async () => {
@@ -156,7 +166,57 @@ describe('cross-examination — the run', () => {
         '{"objections":[{"claimId":"k","kind":"unstated-assumption","question":"why assume linearity?","anchorQuote":"the model assumes linear growth","addressed":false},{"claimId":"k","kind":"overgen';
       const out = await runCrossExam(claims, corpus, cfg);
       expect(out).toHaveLength(1);
-      expect(out[0].claimId).toBe('k');
+      expect(out?.[0]?.claimId).toBe('k');
     });
+
+    it('returns null — not an empty all-clear — when the model call fails outright', async () => {
+      // [] is "the pass ran and nothing stuck"; a 429 / dropped connection is not that, and reporting
+      // it as one hands the document a clean bill of health it never earned.
+      adapterFails = true;
+      expect(await runCrossExam(claims, corpus, cfg)).toBeNull();
+    });
+
+    it('still returns [] when the pass really did run and nothing stuck', async () => {
+      adapterReply = '{"objections":[]}';
+      expect(await runCrossExam(claims, corpus, cfg)).toEqual([]);
+    });
+  });
+});
+
+// What the reader actually sees when that null comes back: the dock must say the pass didn't run,
+// never reuse the "nothing stuck" line — the same failure the null return exists to preserve.
+describe('cross-examination — the panel', () => {
+  afterEach(cleanup);
+
+  it('says the cross-examination could not run instead of clearing the document', () => {
+    render(
+      <CrossExamPanel
+        objections={[]}
+        busy={false}
+        failed
+        onFocusObjection={vi.fn()}
+        activeId={null}
+        multiDoc={false}
+        docLabel={() => 'doc'}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Couldn’t run the cross-examination — try again/)).toBeTruthy();
+    expect(screen.queryByText(/No objection stuck/)).toBeNull();
+  });
+
+  it('keeps the honest all-clear when the pass really ran and found nothing', () => {
+    render(
+      <CrossExamPanel
+        objections={[]}
+        busy={false}
+        onFocusObjection={vi.fn()}
+        activeId={null}
+        multiDoc={false}
+        docLabel={() => 'doc'}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/No objection stuck/)).toBeTruthy();
   });
 });

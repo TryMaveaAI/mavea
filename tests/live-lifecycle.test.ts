@@ -22,6 +22,9 @@ const snap = (question: string, narration = '', title = ''): TurnSnapshot => ({
 });
 const blk = (type: string, title: string): Block =>
   ({ type, col: 6, delay: 0, props: { title } }) as unknown as Block;
+/** A block with no headline of any kind — the shape blockSignature can't read a label from. */
+const bare = (type: string, props: Record<string, unknown>): Block =>
+  ({ type, col: 6, delay: 0, props }) as unknown as Block;
 
 describe('resolveMode', () => {
   it('replaces on the first turn (no prior)', () => {
@@ -127,6 +130,14 @@ describe('content diffing', () => {
     expect(blockSignature(blk('insight', 'Net Worth'))).toBe('insight:net worth');
   });
 
+  it('tells two label-less blocks of the same type apart by their content', () => {
+    // Plenty of blocks carry no headline at all. Collapsing them onto one signature made augment
+    // read a genuinely new untitled block as a duplicate and drop it.
+    expect(blockSignature(bare('quote', { text: 'first' }))).not.toBe(
+      blockSignature(bare('quote', { text: 'second' })),
+    );
+  });
+
   it('diffs added / kept / removed by signature', () => {
     const prior = [blk('insight', 'A')];
     const next = [blk('insight', 'A'), blk('chart', 'B')];
@@ -164,6 +175,18 @@ describe('mergeForMode', () => {
   it('treats the first turn (empty prior) as a replace regardless of mode', () => {
     const r = mergeForMode([], next, 'augment');
     expect(r.blocks.map((b) => b.type)).toEqual(['insight', 'kpi']);
+  });
+
+  it('keeps a genuinely new label-less block on augment, and refines it into its own slot', () => {
+    const priorBare = [bare('quote', { text: 'first' })];
+    const nextBare = [bare('quote', { text: 'second' })];
+    const aug = mergeForMode(priorBare, nextBare, 'augment');
+    expect(aug.blocks).toHaveLength(2);
+    expect(aug.firstNewId).toBe('live-2');
+    // …and refine must not overwrite the prior one either — different content, different slot.
+    const ref = mergeForMode(priorBare, nextBare, 'refine');
+    expect(ref.blocks).toHaveLength(2);
+    expect(ref.firstNewId).toBe('live-2');
   });
 
   it('flags overflow when an augment grows past the cap', () => {

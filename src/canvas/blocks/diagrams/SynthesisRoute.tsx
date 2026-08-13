@@ -16,7 +16,7 @@ import { richInnerHtml } from '../../../lib/richText';
 type Props = SynthesisRouteProps & { delay?: number };
 
 const VIEW_W = 1000;
-const NODE_RX = 88;
+const NODE_RX = 96;
 const NODE_RY = 44;
 const PAD = NODE_RX + 16;
 const MIN_VBH = 300;
@@ -163,7 +163,20 @@ function truncate(text: string, max: number): string {
 }
 
 const LABEL_LH = 21;
-const SUB_MAX_CHARS = 24;
+const SMILES_F = 12; // px, viewBox units — must track .sr-smiles
+const MONO_CHAR_W = 0.6; // ui-monospace advance width as a fraction of the font size
+// A node carrying a SMILES string wraps its own label to a single line, so the SMILES baseline
+// sits this far below the node centre on every one of them.
+const SMILES_DY = 20;
+// The ellipse narrows fast off its centre line, so the SMILES budget comes from the chord at its
+// own baseline rather than the full node width — measured across the middle, a long string ran
+// its tail out through the side of the node.
+const SUB_MAX_CHARS = Math.max(
+  4,
+  Math.floor(
+    (NODE_RX * Math.sqrt(1 - (SMILES_DY / NODE_RY) ** 2) * 2 * 0.94) / (SMILES_F * MONO_CHAR_W),
+  ),
+);
 
 function Node({ node }: { node: Placed }) {
   const role = safeRole(node.role);
@@ -192,12 +205,7 @@ function Node({ node }: { node: Placed }) {
         ))}
       </text>
       {hasSmiles && (
-        <text
-          className="sr-smiles"
-          x={node.cx}
-          y={top + lines.length * LABEL_LH + 4}
-          textAnchor="middle"
-        >
+        <text className="sr-smiles" x={node.cx} y={node.cy + SMILES_DY} textAnchor="middle">
           {truncate(node.smiles!, SUB_MAX_CHARS)}
         </text>
       )}

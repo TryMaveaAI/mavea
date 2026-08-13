@@ -15,6 +15,15 @@ export function usePresenceColor(presence: PresenceColorId): string {
     r.setProperty('--presence-soft', c.soft);
     r.setProperty('--presence-deep', c.deep);
     r.setProperty('--glow-presence', c.glow);
+    // Inline custom properties on <html> outrank every stylesheet rule, so leaving them behind
+    // would pin the next surface to this one's accent — Live's theme templates rebind
+    // --presence through :root[data-template] and would silently lose to a stale inline value.
+    return () => {
+      r.removeProperty('--presence');
+      r.removeProperty('--presence-soft');
+      r.removeProperty('--presence-deep');
+      r.removeProperty('--glow-presence');
+    };
   }, [presence]);
   return presenceBase;
 }

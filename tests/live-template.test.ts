@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import {
   TEMPLATES,
@@ -187,30 +188,61 @@ describe('template persona and local-font manifest', () => {
   });
 
   it('serves every declared face locally and keeps its OFL attribution', () => {
-    const fontsCss = readFileSync(join(__dirname, '../public/fonts/fonts.css'), 'utf8');
-    const license = readFileSync(join(__dirname, '../public/fonts/LICENSE.txt'), 'utf8');
+    const fontsDir = join(__dirname, '../public/fonts');
+    const fontsCss = readFileSync(join(fontsDir, 'fonts.css'), 'utf8');
+    const license = readFileSync(join(fontsDir, 'LICENSE.txt'), 'utf8');
+    const ofl = readFileSync(join(fontsDir, 'OFL-1.1.txt'), 'utf8');
+    const provenance = readFileSync(join(fontsDir, 'PROVENANCE.md'), 'utf8');
     const files = [...fontsCss.matchAll(/url\('\/fonts\/([^']+\.woff2)'\)/g)].map(
       (match) => match[1],
     );
     expect(files.length).toBeGreaterThanOrEqual(15);
-    for (const file of files)
-      expect(existsSync(join(__dirname, '../public/fonts', file))).toBe(true);
-    for (const family of [
-      'Hanken Grotesk',
-      'Newsreader',
-      'IBM Plex Mono',
-      'Lora',
-      'Space Grotesk',
-      'Bodoni Moda',
-      'Source Serif 4',
-      'Libre Franklin',
-      'IBM Plex Sans',
-      'Instrument Serif',
-      'Archivo',
-    ]) {
-      expect(fontsCss).toContain(`font-family: '${family}'`);
-      expect(license).toContain(family);
+    for (const file of files) expect(existsSync(join(fontsDir, file))).toBe(true);
+
+    // Derive the attribution set from what actually ships (the served CSS declarations plus the
+    // woff2 files themselves) so a newly added face cannot dodge LICENSE.txt.
+    const familiesDir = join(fontsDir, 'export/families');
+    const exportCss = existsSync(familiesDir)
+      ? readdirSync(familiesDir)
+          .filter((name) => name.endsWith('.css'))
+          .map((name) => readFileSync(join(familiesDir, name), 'utf8'))
+          .join('\n')
+      : '';
+    const declared = new Set(
+      [...(fontsCss + exportCss).matchAll(/font-family:\s*'([^']+)'/g)].map((match) => match[1]),
+    );
+    expect(declared.size).toBeGreaterThanOrEqual(11);
+    for (const family of declared) expect(license, family).toContain(family);
+
+    // Filenames drop casing ("jetbrains-mono" for JetBrains Mono), so compare case-insensitively
+    // after stripping the subset/style/weight tokens.
+    const fromFilenames = new Set(
+      readdirSync(fontsDir)
+        .filter((name) => name.endsWith('.woff2'))
+        .map((name) =>
+          name
+            .replace(/\.woff2$/, '')
+            .split('-')
+            .filter((part) => !/^(?:var|latin|italic|\d{3})$/.test(part))
+            .join(' '),
+        ),
+    );
+    const licenseLower = license.toLowerCase();
+    for (const family of fromFilenames) expect(licenseLower, family).toContain(family);
+
+    expect(license).toContain('Reserved Font Name "Lora"');
+    expect(license).toMatch(/Reserved\s+Font Name “Source”/);
+    expect(ofl).toContain('SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007');
+    expect(ofl).toContain('PERMISSION & CONDITIONS');
+    expect(ofl).toContain('OTHER DEALINGS IN THE FONT SOFTWARE.');
+    for (const file of readdirSync(fontsDir).filter((name) => name.endsWith('.woff2'))) {
+      const digest = createHash('sha256')
+        .update(readFileSync(join(fontsDir, file)))
+        .digest('hex');
+      expect(provenance, file).toContain(`| \`${file}\``);
+      expect(provenance, file).toContain(`\`${digest}\``);
     }
+
     expect(fontsCss).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
     expect(readFileSync(join(__dirname, '../src/live/templates.ts'), 'utf8')).not.toMatch(
       /fonts\.(googleapis|gstatic)\.com/,

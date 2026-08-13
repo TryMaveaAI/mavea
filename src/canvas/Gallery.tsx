@@ -1,4 +1,4 @@
-// Grid of image tiles Mavéa surfaced from the web; tap a tile to save it to notes.
+// Grid of reviewed image tiles; tap a tile to save it to notes.
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
 import { toast } from '../lib/toast';
@@ -8,9 +8,7 @@ import type { GalleryItem, GalleryProps } from '../data/conversation';
 
 type Props = GalleryProps & { delay?: number };
 
-/** One tile's image: load-test the model's real-photo URLs (`src` + `candidates`) and show the
- *  first that actually decodes. If real candidates were offered but none load, fall back to the
- *  generated image; with no real URL at all, keep the gradient placeholder — never a broken tile. */
+/** Show the first cleared URL that decodes; otherwise retain the designed placeholder. */
 function GalleryTileImage({ item }: { item: GalleryItem }) {
   const reals = [item.src ?? '', ...(item.candidates ?? [])]
     .map((url) => safeBlockImageSrc(url))

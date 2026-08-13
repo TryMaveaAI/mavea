@@ -22,9 +22,17 @@ describe('guided experience quality', () => {
       expect(connect?.coach).toContain(provider);
     }
     expect(connect?.coach).toContain('your own API key');
-    expect(connect?.coach).toContain('stays in memory unless you choose Remember');
-    expect(connect?.coach).toContain('passes through this deployment');
+    expect(connect?.coach).toContain('fast, lower cost model');
+    expect(connect?.coach).toContain('key stays in memory unless you choose Remember');
+    expect(connect?.coach).toContain('Requests pass through this deployment');
+    expect(connect?.coach).toContain('usage charges, privacy, and retention terms apply');
     expect(TOUR[1]?.id).toBe('connect');
+
+    const draws = TOUR.find((chapter) => chapter.id === 'draws');
+    expect(draws?.spotlight).toBe('.voice-switch');
+    expect(draws?.coach).toContain("voice toggle labeled Mavéa's voice");
+    expect(draws?.coach).toContain('reveal everything immediately');
+    expect(draws?.coach).toContain('microphone stays unchanged');
 
     const canvas = TOUR.find((chapter) => chapter.id === 'canvas');
     const prism = TOUR.find((chapter) => chapter.id === 'prism');

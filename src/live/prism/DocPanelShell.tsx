@@ -94,13 +94,14 @@ export function DocPanelShell({
                 >
                   ↔
                 </button>
+                {/* ⊡ — content inside a frame; ⤢/⤡ mean full-screen expand/collapse elsewhere. */}
                 <button
                   type="button"
                   onClick={zoom.fitScreen}
                   aria-label="Fit whole page"
                   title="Fit page"
                 >
-                  ⤢
+                  ⊡
                 </button>
               </>
             )}

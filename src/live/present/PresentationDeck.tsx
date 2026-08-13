@@ -305,8 +305,9 @@ export function PresentationDeck({
     return () => window.clearInterval(id);
   }, []);
 
-  // Hands-free auto-advance (the first-run tour): step one slide every autoAdvanceMs and hold on
-  // the last, so the walkthrough plays the whole deck without a presenter. Paused while hidden —
+  // Hands-free auto-advance (the first-run tour and the recorded demo replays): step one slide
+  // every autoAdvanceMs and hold on the last, so the run plays the whole deck without a presenter
+  // — a "presents itself" beat that never left the cover slide isn't showing anything. Paused while hidden —
   // otherwise a backgrounded tab's throttled timer can fire several times in a burst on return,
   // skipping past slides the tour narration never actually reached.
   useEffect(() => {

@@ -25,7 +25,7 @@ include a hosted account, analytics, or data-retention service.
 A deliberately small stack — React 19, TypeScript 6, Vite 8 — with no chart library and no UI
 framework beyond React: every chart, dial, diagram, and the face is hand-rolled SVG/CSS. Beyond
 `react`/`react-dom`, the runtime stays lean: `@ricky0123/vad-web` (Silero VAD for end-of-speech)
-plus a handful of feature-scoped libraries — KaTeX, Leaflet, jsPDF, pdfjs-dist, openchemlib,
+plus a handful of feature-scoped libraries — KaTeX, MapLibre, jsPDF, pdfjs-dist, openchemlib,
 mediabunny, modern-screenshot, pptxgenjs, and Shiki — each lazy-loaded only when that feature is
 used and bundled rather than fetched from a CDN. JavaScript/TypeScript snippets run only after an
 explicit click in a bounded Worker; Python execution is disabled until it has an equally isolated
@@ -208,7 +208,7 @@ visual (a Sankey, a state machine, a candlestick, a code listing, a map) routes 
 which keeps the real `Block` and renders its actual canvas component via the shared
 **`canvas/embed/`** layer — themed to the skin (a token bridge re-points `--presence`, `--text-*`,
 `--grid-line`… at the skin palette), scaled to fit the page, and raster-gated (`ensureFigureReady`
-awaits fonts, Shiki/KaTeX, and Leaflet tiles before capture). `embedClass` decides eligibility from
+awaits fonts, Shiki/KaTeX, and MapLibre tiles before capture). `embedClass` decides eligibility from
 one catalog capability (`fluid` viewBox SVG vs `flow` count-growing vs `none`); the same `figure`
 kind + `FigureEmbed` is reused by the slide layer below, so exports and decks render the real
 conversation instead of a flattened summary. A **skin** (`skins/`) is mostly
@@ -240,7 +240,7 @@ compositions: headings pin under the kicker rule, lists/tables/charts distribute
 the remaining band (thicker bars and larger type at low counts), short prose gets a standfirst-lede
 statement treatment, and small figures enlarge (bounded) via `FigureEmbed`'s stage-only upscale —
 so a three-item slide reads as designed scale, not leftover space. A
-**`SlideSkin`** (`skins/`) is mostly data (palette + Google fonts + decor mode); 15 token-driven
+**`SlideSkin`** (`skins/`) is mostly data (palette + self-hosted SIL OFL fonts + decor mode); 15 token-driven
 shared layouts serve all 10, with a few structural overrides (`skins/layouts/overrides.tsx` — Noir's
 centred cover, North's full-colour statement, Press's drop-cap). Real-data-only holds: media slides
 (team/full-bleed) appear only with real images; nothing is fabricated.
@@ -252,21 +252,59 @@ chosen style, so presenting full-screen is identical to the export; its style pi
 skins (`present/personas.ts`). `#/slidelab` is a QA gallery (every layout × every skin), the slide
 counterpart to `#/reel`.
 
+### Video Studio
+
+The Share menu's **Video** action opens one studio with independent Conversation and Reel
+tabs. Conversation selection is keyed by immutable turn IDs and always stays chronological. Both
+live Replay and export consume the same semantic event timeline for questions, narration,
+spotlights, Pen marks, captions, and presence state, so the downloadable artifact does not carry a
+second choreography implementation.
+
+Every video stays inside an explicit open-media allowlist: the selector permits MP4 only with AV1
+video and Opus audio, and falls back to WebM VP9/VP8 + Opus. It fails closed: it
+never widens to H.264, H.265, AAC, or an unspecified recorder default. Published patent
+commitments inform this engineering policy but are not a universal patent-clearance opinion. Conversation and Reel cuts are both deterministic and
+local; Video Studio has no model-provider interface and cannot spend a configured provider key.
+Audio is mandatory for Conversation exports; retained PCM is preferred and missing narration is
+synthesized through the local Apache-2.0 Kokoro service before rendering. Full and Lite performance
+tiers change motion cadence and bitrate, never spatial resolution. Meaningful DOM states are
+rasterized once at final size, workers are used where
+available, encoder backpressure is awaited, hidden tabs pause, and the long-file path streams to
+temporary browser storage with explicit cancellation and cleanup.
+
+`scripts/check-licenses.mjs` enforces the broader commercial-use boundary used by video, voice,
+document/deck export, fonts, and maps. It rejects noncommercial or unreviewed package licenses,
+generated-media codecs outside the reviewed allowlist, restricted public tile hosts, and shipped media in blocked
+containers. It also rejects any model-provider interface under `src/clip`, preserving Reel's local,
+zero-provider-cost boundary. Required permissive-license notices and attribution remain obligations
+and are kept in `THIRD-PARTY.txt`; the gate is part of both `pnpm verify` and package publication.
+
 ## Voice
 
-`voice/types.ts` defines one `VoiceController` interface. Two implementations satisfy it:
-
-- **`WebSpeechVoice`** — the browser's native `SpeechRecognition` with continuous capture and
-  a silence grace window. Its speak() is a no-op: Mavéa's only voice is Kokoro.
-- **`VadVoice`** — the always-on path: on-device voice-activity detection gating a Whisper
-  transcription, with echo suppression while Mavéa is speaking.
+`voice/types.ts` defines the `VoiceController` interface. `VadVoice` implements it with on-device
+Silero voice-activity detection plus local MIT-licensed whisper.cpp transcription for Tap, Hold,
+and Always on. Raw frames retain a short pre-roll, canceled sessions invalidate queued
+transcription, and low-confidence results become editable drafts rather than automatic turns.
+Mavéa does not invoke native browser speech recognition because a browser may process it through a
+vendor service governed by separate terms.
 
 A controller never touches presence; it only emits results (`user said X`, run by the surface
-exactly as typed text would be) and state changes (`listening` / `heard` / `speaking`). The
+exactly as typed text would be) and state changes (`listening` / `transcribing` / `heard` /
+`speaking`). The
 surface maps those to the face, so one place — and only one — owns the presence.
 
-Separately, `voice/tts.ts` is the spoken-answer playback: it speaks through a local **Kokoro**
-server (`voice/kokoro.ts`) when one is reachable — captions carry the line when it isn't.
+Separately, `voice/tts.ts` is the spoken-answer playback: it speaks through the Apache-2.0 local
+**Kokoro** server (`voice/kokoro.ts`) when one is reachable, using raw PCM or uncompressed WAV —
+captions carry the line when it isn't.
+
+`docker-compose.yml` is runtime-neutral. Podman is the recommended Apache-2.0 runtime; Docker is
+supported when its separate license permits the user's use. The Kokoro v0.2.4 image is pinned by
+immutable digest. Its model and wrapper are Apache-2.0; the image's GPL-3.0-or-later eSpeak NG
+phonemizer remains inside that separately pulled HTTP service and permits commercial use.
+whisper.cpp v1.9.1 is built from a checksum-verified source archive on the user's machine, and its
+MIT small.en-q5_1 model is downloaded from an immutable revision into a local volume and
+checksum-verified before execution. The npm package contains the build recipe and notices, not
+either model or a container image.
 
 ## Live mode
 
@@ -481,22 +519,22 @@ four existing seams — additive response fields, the `selectedBlocks` grounding
 (the memory-store idiom: cache + `localStorage` + `CustomEvent`), or a side-channel adapter call
 that never touches turn state. None of them widen the core pipeline:
 
-| Layer                                                                                                            | Modules                                                                    | Seam it rides                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Voice-first shell** — answer hero, dock composer, session rail, 6×2 theme templates                            | `voice/`, `templates.ts`                                                   | presentation only; templates are full token-contract rebinds under `data-template`                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Turn states** — listening card, labeled skeletons, said-vs-shown speak ribbon                                  | `turnstate/`                                                               | the streamed `"type"` key + a phrase-level audio clock                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **Drawn gestures (Mavéa's)** — circles/underlines/arrows on the exact figure being spoken about                  | `annotate/`                                                                | model-authored `mark` on tour stops, located in the card's real DOM (no reason → no ink); teach mode widens targeting                                                                                                                                                                                                                                                                                                                                              |
-| **Ink (the user's)** — draw on the answer to ask; circle/strike/arrow/underline/?/bracket/compare                | `annotate/` (`recognize`/`resolve`/`useInkIntent` + Mark tool)             | a pure gesture classifier + a DOM resolver targeting the smallest **part** the stroke crosses (a bar/row/value, not the whole card); rides the `selectedBlocks` seam via `buildInkIntentContext` (Live grounds a turn; Demo spotlights). "Mark" is the user's ink — distinct from the "Pen" toggle (Mavéa's output annotations)                                                                                                                                    |
-| **Edit its mind / self-healing history**                                                                         | `understand/`, `heal/`                                                     | additive `understood[]` / `corrects` response fields; a fix is one correction turn; a corrected moment is marked, never silently rewritten                                                                                                                                                                                                                                                                                                                         |
-| **Blocks fuse / ask-about-this**                                                                                 | canvas chrome + `selectedBlocks`                                           | pin two or more cards, then "Fuse N into one" grounds the next turn in every pinned block's real props                                                                                                                                                                                                                                                                                                                                                             |
-| **The Blank Space** — answers with fillable holes for values only the user can give                              | `blanks` block + `canvas/lib/BlankSlot`, `canvas/dnd/`, `blankVoice.ts`    | the model leaves holes (frontier-gated, never fabricated) instead of guessing; filled by type/voice/drag; `Complete` refines the SAME answer via `filledBlanks` (like `selectedBlocks`); face leans warm while awaiting                                                                                                                                                                                                                                            |
-| **Time** — frames, replay, recap, semantic zoom, scrub-the-voice                                                 | `history.ts`, `replay.ts`, `recap/`, `zoom/`, `scrubvoice/`                | every turn is a frame; the spoken track is recorded per turn and the canvas un-builds to what had been _said_ (tour stops ↔ spoken spans)                                                                                                                                                                                                                                                                                                                          |
-| **Ghost blocks** — the answer forming while you talk                                                             | `ghost/`                                                                   | a tiny abortable side-channel call off the partial transcript; never touches turn state; off on the Fast dial                                                                                                                                                                                                                                                                                                                                                      |
-| **The companion** — quiet-hours whisper, think-out-loud                                                          | `whisper/`, `thinkaloud/`                                                  | whisper dims chrome and softens the voice on a local-clock quiet-hours window; think-out-loud banks a just-listening ramble until the user asks "thoughts?"                                                                                                                                                                                                                                                                                                        |
-| **Watch Me Think** — live radial mindshape map from a 60–90s spoken session                                      | `mindshape/`                                                               | utterances banked in `mindShapeRambleRef`, fed to `useMindShape` (5-beat phase machine: idle → listening → pausing → settled); local `localExtract` seeds atoms immediately, `modelRefine` deepens every 8 s (debounced); settles only on explicit user action, never on each VAD pause; persists via `mindShapeToSpec` + `turn.restore` (no extra model call); `mindshape` block type is `META_OPTIONAL` — only reachable through this mode, never model-selected |
-| **The Rehearsal** — two seats: take-the-seat persona practice, or Mavéa-to-Mavéa negotiation + debrief           | `delegate/`                                                                | side-channel adapter calls grounded ONLY in user-supplied context; boundaries enforced in code; a post-run debrief cites transcript line numbers, never re-typed quotes                                                                                                                                                                                                                                                                                            |
-| **Living answers** — parallel futures, bendable                                                                  | `story/arcs.ts`, `../lib/bend.ts`                                          | `bend` formulas are model-authored, whitelist-evaluated (never `eval`)                                                                                                                                                                                                                                                                                                                                                                                             |
-| **Reach** — Share-to-Mavéa claim checks, Present mode, the Atlas, Mavéa Story export, designed PDF + deck export | `shareIn.ts`, `present/`, `atlas/`, `../clip/`, `../export/`, `../slides/` | paste/drop intake → the attachments/search paths; Present renders the shared 16:9 slide deck (`../slides/`) full-screen in 1 of 10 styles — identical to the deck export; the Story stage rasterizes the real DOM to MP4; **Export** (`../export/`) offers a presentation deck (landscape PDF) or a print document (US-Letter), both lazy-loaded, bundled `modern-screenshot`+`jspdf` — see "Designed PDF export" + "Presentation deck" above                      |
+| Layer                                                                                                                 | Modules                                                                    | Seam it rides                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Voice-first shell** — answer hero, dock composer, session rail, 6×2 theme templates                                 | `voice/`, `templates.ts`                                                   | presentation only; templates are full token-contract rebinds under `data-template`                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Turn states** — listening card, labeled skeletons, said-vs-shown speak ribbon                                       | `turnstate/`                                                               | the streamed `"type"` key + a phrase-level audio clock                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Drawn gestures (Mavéa's)** — circles/underlines/arrows on the exact figure being spoken about                       | `annotate/`                                                                | model-authored `mark` on tour stops, located in the card's real DOM (no reason → no ink); teach mode widens targeting                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Ink (the user's)** — draw on the answer to ask; circle/strike/arrow/underline/?/bracket/compare                     | `annotate/` (`recognize`/`resolve`/`useInkIntent` + Mark tool)             | a pure gesture classifier + a DOM resolver targeting the smallest **part** the stroke crosses (a bar/row/value, not the whole card); rides the `selectedBlocks` seam via `buildInkIntentContext` (Live grounds a turn; Demo spotlights). "Mark" is the user's ink — distinct from the "Pen" toggle (Mavéa's output annotations)                                                                                                                                                                       |
+| **Edit its mind / self-healing history**                                                                              | `understand/`, `heal/`                                                     | additive `understood[]` / `corrects` response fields; a fix is one correction turn; a corrected moment is marked, never silently rewritten                                                                                                                                                                                                                                                                                                                                                            |
+| **Blocks fuse / ask-about-this**                                                                                      | canvas chrome + `selectedBlocks`                                           | pin two or more cards, then "Fuse N into one" grounds the next turn in every pinned block's real props                                                                                                                                                                                                                                                                                                                                                                                                |
+| **The Blank Space** — answers with fillable holes for values only the user can give                                   | `blanks` block + `canvas/lib/BlankSlot`, `canvas/dnd/`, `blankVoice.ts`    | the model leaves holes (frontier-gated, never fabricated) instead of guessing; filled by type/voice/drag; `Complete` refines the SAME answer via `filledBlanks` (like `selectedBlocks`); face leans warm while awaiting                                                                                                                                                                                                                                                                               |
+| **Time** — frames, replay, recap, semantic zoom, scrub-the-voice                                                      | `history.ts`, `replay.ts`, `recap/`, `zoom/`, `scrubvoice/`                | every turn is a frame; the spoken track is recorded per turn and the canvas un-builds to what had been _said_ (tour stops ↔ spoken spans)                                                                                                                                                                                                                                                                                                                                                             |
+| **Ghost blocks** — the answer forming while you talk                                                                  | `ghost/`                                                                   | a tiny abortable side-channel call off the partial transcript; never touches turn state; off on the Fast dial                                                                                                                                                                                                                                                                                                                                                                                         |
+| **The companion** — quiet-hours whisper, think-out-loud                                                               | `whisper/`, `thinkaloud/`                                                  | whisper dims chrome and softens the voice on a local-clock quiet-hours window; think-out-loud banks a just-listening ramble until the user asks "thoughts?"                                                                                                                                                                                                                                                                                                                                           |
+| **Watch Me Think** — live radial mindshape map from a 60–90s spoken session                                           | `mindshape/`                                                               | utterances banked in `mindShapeRambleRef`, fed to `useMindShape` (5-beat phase machine: idle → listening → pausing → settled); local `localExtract` seeds atoms immediately, `modelRefine` deepens every 8 s (debounced); settles only on explicit user action, never on each VAD pause; persists via `mindShapeToSpec` + `turn.restore` (no extra model call); `mindshape` block type is `META_OPTIONAL` — only reachable through this mode, never model-selected                                    |
+| **The Rehearsal** — two seats: take-the-seat persona practice, or Mavéa-to-Mavéa negotiation + debrief                | `delegate/`                                                                | side-channel adapter calls grounded ONLY in user-supplied context; boundaries enforced in code; a post-run debrief cites transcript line numbers, never re-typed quotes                                                                                                                                                                                                                                                                                                                               |
+| **Living answers** — parallel futures, bendable                                                                       | `story/arcs.ts`, `../lib/bend.ts`                                          | `bend` formulas are model-authored, whitelist-evaluated (never `eval`)                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Reach** — Share-to-Mavéa claim checks, Present mode, the Atlas, Conversation/Reel video, designed PDF + deck export | `shareIn.ts`, `present/`, `atlas/`, `../clip/`, `../export/`, `../slides/` | paste/drop intake → the attachments/search paths; Present renders the shared 16:9 slide deck (`../slides/`) full-screen in 1 of 10 styles — identical to the deck export; **Video** selects current-session turns and replays their real canvas, spotlight, Pen, and required narration through a semantic 16:9 encoder (1080p/720p, quality-tiered), while Reel keeps the editorial recut; **Export** (`../export/`) remains PDF/deck output — see "Designed PDF export" + "Presentation deck" above |
 
 ## Ripple: the code/ship companion
 
@@ -698,13 +736,14 @@ Mavéa is local-first, but some data does cross the network when the user intera
   derived query) is sent to the selected search provider (Wikipedia, Brave, or Tavily).
 - **Attachments** — file bytes/text selected for a Live turn are included in that provider request;
   opening remote images, maps, or links also contacts their allow-listed origin.
-- **Voice** — browser speech recognition may use the browser vendor's service; configured Whisper
-  and Kokoro endpoints receive audio/transcript or TTS text through their same-origin proxy.
+- **Voice** — the configured Whisper and Kokoro endpoints receive mic audio or TTS text through the
+  same-origin proxy. The shipped defaults are loopback-only; an operator override is a separate
+  remote trust boundary and receives the corresponding audio or text.
 - **Actions** — after explicit confirmation, action arguments go to the local/deployed actions
   gateway, and then to the connected service.
 
 The application code includes no telemetry, analytics, or hosted account backend. A deployment's
-reverse proxy, model/search providers, browser speech service, media hosts, and optional action
+reverse proxy, model/search providers, local speech services, media hosts, and optional action
 connectors remain separate trust boundaries with their own logging and retention policies.
 
 Because browser data is encrypted to one specific origin (a non-extractable IndexedDB key), it does

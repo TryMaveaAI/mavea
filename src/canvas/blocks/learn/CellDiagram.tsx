@@ -18,15 +18,16 @@ const H = 230;
 // Left/right gutters revealed in the viewBox so the right-aligned gutter labels (e.g. the
 // left-side "Golgi apparatus") and the longest right-side labels render in full instead of
 // clipping at the card edge. They only widen the visible canvas — every glyph/label keeps its
-// existing coordinates, so the cell is not rescaled or moved.
-const GUT_L = 42;
-const GUT_R = 10;
+// existing coordinates, so the cell is not rescaled or moved. Each is sized for a full
+// LABEL_MAX_CHARS label at .cel-label's size reading outward from the outermost anchor.
+const GUT_L = 60;
+const GUT_R = 24;
 
 // Labels are drawn at fixed anchor coordinates (see GLYPHS below) with no width check — a
 // model-authored override longer than the preset names ("Nucleus", "Golgi apparatus") or an
 // organelle list crowded with many labels runs past the gutter/card edge or collides with a
-// neighbouring leader line. Cap to a conservative character budget sized for .cel-label (8px)
-// and the gutter width, keeping the full text as a native <title> tooltip — same idiom as
+// neighbouring leader line. Cap to a conservative character budget sized for .cel-label and the
+// gutter width, keeping the full text as a native <title> tooltip — same idiom as
 // EtymTree/ParseTree/WaveDiagram/TeachDiagram.
 const LABEL_MAX_CHARS = 20;
 

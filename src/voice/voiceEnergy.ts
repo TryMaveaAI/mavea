@@ -155,23 +155,6 @@ function ensureGraph(): boolean {
 }
 
 /**
- * Drive the face from a caller-supplied 0..1 envelope rather than from real audio.
- *
- * Every other route here reads a waveform, which only exists when we own the samples. The
- * browser's own speech synthesizer never hands them over — it plays through the OS, and there is
- * no node to tap — so a machine that speaks through it would otherwise talk with a still mouth,
- * which reads as broken rather than as a plainer voice. A caller that knows the shape of what is
- * being said (word boundaries, say) can publish that shape here instead.
- *
- * Returns a release function; composes with the audio taps through the same ref-counted publisher,
- * so whichever source is loudest wins and the last release rests the face. Never throws.
- */
-export function voiceEnergyEnvelope(sample: () => number): () => void {
-  if (reducedMotion()) return () => {};
-  return publisher.acquire(sample);
-}
-
-/**
  * Tap a playing audio element so the face tracks its loudness. Returns a release function to
  * call when the clip ends. A no-op (returns an empty release) when WebAudio is unavailable, the
  * user prefers reduced motion, or the tap fails — in every such case the element plays normally

@@ -821,10 +821,10 @@ export async function generateLive(
     // draw boost — see SelectionInput.teaching. The selector itself withholds this on 'small'.
     teaching: isTeaching,
   });
-  // Photos are real, found images only — direct links to stable free-commercial hosts, verified
-  // to load. Small models never get the block (they invent URLs); there is no generated-image
-  // path (the unused Pollinations pipeline was removed).
-  const photoEnabled = tier !== 'small';
+  // A model cannot establish the license, attribution, personality, or trademark status of a
+  // remote image. Live therefore never offers found-photo blocks; only individually reviewed
+  // assets baked into the tour/demo corpus can cross the render-time media clearance gate.
+  const photoEnabled = false;
   // Actions are gated OFF until the user connects an MCP; only then do we expose the
   // 'action' block (to the validator + schema) and tell the model what it can offer.
   // Nothing ever runs without an explicit confirm on the card.
@@ -1146,7 +1146,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     sectionLine,
     topicLockLine,
     dateLine,
-    photoLine(tier),
+    documentLine(),
     actionMenu,
     countLine,
     explicitCountLine,
@@ -1656,18 +1656,9 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   };
 }
 
-/** The IMAGES prompt line: a capable model may supply REAL direct image URLs (found images,
- *  never generated) restricted to a few stable free-commercial hosts the validator's allowlist
- *  accepts — an invented or risky URL is simply dropped. A small model is never asked for a URL
- *  (it hallucinates them), so this returns '' there and the photo block stays off the menu. */
-function photoLine(tier: 'frontier' | 'mid' | 'small'): string {
-  if (tier === 'small') return '';
-  const url =
-    'a few real photo URLs in "candidates" (an ARRAY, best first) — DIRECT https image links ending in .jpg/.jpeg/.png/.webp to FREE-COMMERCIAL photos on Wikimedia (upload.wikimedia.org), Unsplash (images.unsplash.com), Pexels (images.pexels.com), Pixabay (cdn.pixabay.com), or NASA. Give 2-3 per image; we verify each one actually loads and drop any that fail, so offer only well-known, stable assets and never invent or guess a URL';
-  return [
-    `IMAGES — when a picture genuinely helps, use a "photo" block for ONE image or a "gallery" block for SEVERAL. For a photo provide ${url}. ALWAYS give a photo a short "caption" saying what it shows — if every URL fails to load, the caption becomes the card, so a photo is never wasted. For a gallery, each item is {"label": what it shows, "candidates"?: [<real direct-image URLs>]}: put 2-3 real, stable direct-image URLs (.jpg/.png/.webp) in "candidates" when you know them — we keep whichever loads and drop the rest; a label with no usable URL shows no image. Skip images unless they truly add something.`,
-    'DOCUMENTS — when the user asks to SEE a paper / document / PDF, use a "pdfreader" block with the real PDF URL in "file" (a known, stable https .pdf — e.g. the canonical source; never invent a URL). A same-origin PDF opens in the reader; a verified external URL is shown as an explicit open-in-new-tab link.',
-  ].join('\n');
+/** Remote pictures are deliberately absent: a model cannot clear rights in a particular file. */
+function documentLine(): string {
+  return 'DOCUMENTS — when the user asks to SEE a paper / document / PDF, use a "pdfreader" block with the real PDF URL in "file" (a known, stable https .pdf — e.g. the canonical source; never invent a URL). A same-origin PDF opens in the reader; a verified external URL is shown as an explicit open-in-new-tab link.';
 }
 
 /** For a pdfreader pointing at an EXTERNAL PDF whose host blocks framing, set `embedSrc` to the

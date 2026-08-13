@@ -80,14 +80,14 @@ export interface SlideTokens {
   flourish?: string;
 }
 
-/** A skin's typography. `href` is the verbatim Google-Fonts css2 link. */
+/** A skin's typography. `href` points to the self-hosted OFL stylesheet. */
 export interface SlideFonts {
   href: string;
   /** Display family for headlines and big numerals. */
   display: string;
   /** Body family. */
   body: string;
-  /** Mono / label family for kickers (Space Mono…); falls back to `body` uppercased. */
+  /** Mono / label family for kickers; falls back to `body` uppercased. */
   mono?: string;
   /** Display weight (Grid 900, Noir 500…). */
   displayWeight?: number;

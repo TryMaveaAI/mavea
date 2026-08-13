@@ -2,17 +2,13 @@ import { type CSSProperties, useCallback, useEffect, useState } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SightWordEntry, SightWordListProps, SightWordMastery } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { cancelKokoro, kokoroKnownAvailable, speakKokoroResult } from '../../../voice/kokoro';
 
 type Props = SightWordListProps & { delay?: number };
 
-// K-2 sight-word practice list: each word is a tap-to-hear chip (Web Speech, same pattern as
+// K-2 sight-word practice list: each word is a tap-to-hear chip (local Kokoro, same pattern as
 // PhonicsWord) whose color/border encode how well it's known. The mastered/practicing/new
 // tallies are computed from the words themselves — real data only, nothing invented.
-
-const SPEECH_OK =
-  typeof window !== 'undefined' &&
-  'speechSynthesis' in window &&
-  typeof window.SpeechSynthesisUtterance === 'function';
 
 const MASTERY_LABEL: Record<SightWordMastery, string> = {
   new: 'New',
@@ -37,24 +33,21 @@ export function SightWordList({
   const safeWords = (words ?? []).filter((w): w is SightWordEntry => !!w?.word);
 
   const [playing, setPlaying] = useState<number | null>(null);
+  // Kokoro is the only voice: when it isn't running a chip animates and nothing is heard, so the
+  // card says so once. Taps keep working — the service may come up later.
+  const [voiceDown, setVoiceDown] = useState(false);
 
-  useEffect(
-    () => () => {
-      if (SPEECH_OK) window.speechSynthesis.cancel();
-    },
-    [],
-  );
+  useEffect(() => () => cancelKokoro(), []);
 
   const speak = useCallback((text: string, idx: number) => {
-    if (!SPEECH_OK) return;
-    window.speechSynthesis.cancel();
-    const u = new window.SpeechSynthesisUtterance(text);
-    u.rate = 0.85;
-    const clear = () => setPlaying((cur) => (cur === idx ? null : cur));
-    u.onend = clear;
-    u.onerror = clear;
-    window.speechSynthesis.speak(u);
+    cancelKokoro();
     setPlaying(idx);
+    void speakKokoroResult(text, 'mavea').then((played) => {
+      setPlaying((cur) => (cur === idx ? null : cur));
+      // A cancelled line resolves false too (the tap above drains the previous one), so only
+      // the settled health probe is proof the service is actually down.
+      if (!played && kokoroKnownAvailable() === false) setVoiceDown(true);
+    });
   }, []);
 
   const tally: Record<SightWordMastery, number> = { new: 0, practicing: 0, mastered: 0 };
@@ -91,11 +84,10 @@ export function SightWordList({
                   className="lr-swl-chip m-stagger-item m-fade-rise"
                   data-mastery={mastery}
                   data-playing={playing === i || undefined}
-                  disabled={!SPEECH_OK}
                   style={{ ['--i' as string]: i } as CSSProperties}
                   onClick={() => speak(w.word, i)}
-                  title={SPEECH_OK ? `Hear "${w.word}"` : w.word}
-                  aria-label={`${w.word}, ${MASTERY_LABEL[mastery]}${SPEECH_OK ? ', tap to hear' : ''}`}
+                  title={`Hear "${w.word}"`}
+                  aria-label={`${w.word}, ${MASTERY_LABEL[mastery]}, tap to hear`}
                 >
                   {isMastered && <Icon.check className="ic lr-swl-check" />}
                   <span className="lr-swl-word">{w.word}</span>
@@ -112,6 +104,12 @@ export function SightWordList({
               </span>
             ))}
           </div>
+
+          {voiceDown && (
+            <p className="insight-summary" role="status" style={{ marginTop: 10 }}>
+              Voice is off — start the local voice service to hear this.
+            </p>
+          )}
         </>
       )}
 

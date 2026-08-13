@@ -2,9 +2,10 @@
 // Mission-Control of one card per chapter, every moment listed, your current spot highlighted. Tap
 // a moment to dive back in; Esc (or the backdrop) to surface. Short chats are two cards; a long
 // session is a city map of everything you covered.
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useRef, type ReactElement } from 'react';
 import { OverlayPortal } from '../../canvas/blocks/overlays/portal';
 import { Icon } from '../../icons/icons';
+import { useFocusTrap } from '../useFocusTrap';
 import { countMoments, type Chapter } from './chapters';
 import './scrubber.css';
 
@@ -23,25 +24,12 @@ export function Overview({
   onClose,
 }: OverviewProps): ReactElement | null {
   const panelRef = useRef<HTMLDivElement>(null);
-  const restoreFocus = useRef<HTMLElement | null>(null);
 
-  // Esc closes; on open, remember where focus was and move it into the dialog; restore on close.
-  useEffect(() => {
-    restoreFocus.current = (document.activeElement as HTMLElement) ?? null;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    const first = panelRef.current?.querySelector<HTMLElement>('.ovw-moment, [tabindex], button');
-    first?.focus();
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      restoreFocus.current?.focus?.();
-    };
-  }, [onClose]);
+  // Esc closes, Tab stays inside the dialog, and focus returns to the layers button on close — the
+  // same trap every other Live dialog uses. Its effect deps are stable and it reads `onClose`
+  // through a ref, so LiveApp re-rendering (it passes an inline arrow) can't re-run the open
+  // sequence and yank keyboard focus back to the first moment mid-browse.
+  useFocusTrap(panelRef, { onEscape: onClose });
 
   if (chapters.length === 0) return null;
   const total = countMoments(chapters);

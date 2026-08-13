@@ -1,10 +1,11 @@
-// DemoOverlay — the demo replay's chrome, deliberately lighter than the walkthrough's: a slim
-// persona banner (who this session belongs to), a bottom transport (step dots, play/pause,
+// DemoOverlay — the curated replay's chrome, deliberately lighter than the walkthrough's: a slim
+// scenario banner, a bottom transport (step dots, play/pause,
 // exit), and the occasional one-line beat caption. No coach voice, no spotlight scrim — the
 // answers' own narration and reveal walks ARE the show; this overlay only frames them. It
 // renders OVER the real Live surface and is pointer-transparent except for its own controls.
-import type { ReactElement } from 'react';
+import { useRef, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
+import { useFocusTrap } from '../live/useFocusTrap';
 import type { DemoDriver } from './useDemoDriver';
 import { DEMO_CAST, type DemoCastMember } from './cast';
 import { launchDemo } from './demoEntry';
@@ -12,6 +13,11 @@ import './demo.css';
 
 function isEmojiAvatar(avatar: string): boolean {
   return /\p{Extended_Pictographic}/u.test(avatar);
+}
+
+/** Leave the replay for the marketing landing — the same destination the error card offers. */
+function backToHome(): void {
+  window.location.hash = '#/';
 }
 
 export function DemoOverlay({
@@ -24,6 +30,13 @@ export function DemoOverlay({
   /** Leave the demo into the real surface (clean reload — see endTourToApp). */
   onExit: () => void;
 }): ReactElement | null {
+  // The start and end cards are the replay's only modal moments — each sits on the .demox-intro
+  // scrim, so keyboard focus has to move into the card and stay there while it's up (otherwise Tab
+  // walks straight into the session behind the scrim, which the pointer can't even reach).
+  const cardRef = useRef<HTMLDivElement>(null);
+  const modal = driver.active && driver.loadState === 'ready' && (!driver.started || driver.done);
+  useFocusTrap(cardRef, { active: modal });
+
   if (!driver.active) return null;
   const accentStyle = { ['--accent' as string]: member.accent };
 
@@ -32,7 +45,7 @@ export function DemoOverlay({
       <div className="demox" aria-live="polite">
         <div className="demox-load" style={accentStyle}>
           <Icon.spinner className="demox-spinner" />
-          Loading {member.name}&rsquo;s session…
+          Loading curated replay…
         </div>
       </div>
     );
@@ -44,19 +57,14 @@ export function DemoOverlay({
         <div className="demox-card" style={accentStyle} role="alert">
           <p className="demox-card-title">This demo couldn&rsquo;t load</p>
           <p className="demox-card-body">
-            The recorded session did not come through. Check your connection and try again.
+            The curated prerecorded example did not come through. Check your connection and try
+            again.
           </p>
           <div className="demox-card-actions">
             <button type="button" className="demox-primary" onClick={driver.reload}>
               Retry
             </button>
-            <button
-              type="button"
-              className="demox-ghost"
-              onClick={() => {
-                window.location.hash = '#/';
-              }}
-            >
+            <button type="button" className="demox-ghost" onClick={backToHome}>
               Back to home
             </button>
           </div>
@@ -69,6 +77,7 @@ export function DemoOverlay({
     return (
       <div className="demox demox-intro" aria-live="polite">
         <div
+          ref={cardRef}
           className="demox-card demox-start"
           style={accentStyle}
           role="dialog"
@@ -78,18 +87,19 @@ export function DemoOverlay({
           <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>
             {member.avatar}
           </span>
-          <span className="demox-card-kicker">Recorded session</span>
+          <span className="demox-card-kicker">Curated prerecorded example</span>
           <p id="demox-start-title" className="demox-card-title">
-            Watch {member.name} use Mavéa
+            Watch: {member.useCase}
           </p>
           <p className="demox-card-body">
-            The session plays automatically. Pause or move between steps at any time.
+            This fictional scenario replays prerecorded, model-generated answers with curated
+            feature choreography. Pause or move between steps at any time.
           </p>
           <div className="demox-card-actions">
             <button type="button" className="demox-primary" onClick={driver.start}>
               Start demo
             </button>
-            <button type="button" className="demox-ghost" onClick={onExit}>
+            <button type="button" className="demox-ghost" onClick={backToHome}>
               Back to home
             </button>
           </div>
@@ -99,18 +109,28 @@ export function DemoOverlay({
   }
 
   if (driver.done) {
-    // Every other recorded session — the end card is how the non-hero cast stays reachable.
+    // Every other curated replay — the end card is how the non-hero scenarios stay reachable.
     const others = DEMO_CAST.filter((p) => p.id !== member.id);
     return (
-      <div className="demox" aria-live="polite">
-        <div className="demox-card demox-end" style={accentStyle}>
+      <div className="demox demox-intro" aria-live="polite">
+        <div
+          ref={cardRef}
+          className="demox-card demox-end"
+          style={accentStyle}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demox-end-title"
+        >
           <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>
             {member.avatar}
           </span>
-          <p className="demox-card-title">That was {member.name}&rsquo;s session</p>
+          <p id="demox-end-title" className="demox-card-title">
+            End of curated replay
+          </p>
           <p className="demox-card-body">
-            Every answer you watched was generated by a real model and replayed exactly. Nothing was
-            staged. Your turn.
+            These model-generated answers were prerecorded, then replayed with curated feature
+            choreography. The scenario is illustrative, not a live result or customer testimonial.
+            Try your own question with your selected provider.
           </p>
           <div className="demox-card-actions">
             <button type="button" className="demox-primary" onClick={onExit}>
@@ -120,7 +140,7 @@ export function DemoOverlay({
               Replay
             </button>
           </div>
-          <div className="demox-others" role="group" aria-label="More sessions">
+          <div className="demox-others" role="group" aria-label="More curated replays">
             {others.map((p) => (
               <button
                 key={p.id}
@@ -144,7 +164,7 @@ export function DemoOverlay({
 
   return (
     <div className="demox" aria-live="polite">
-      {/* What this session shows (the persona is the supporting detail) — top-left. */}
+      {/* What this replay shows (the fictional persona is supporting detail) — top-left. */}
       <div className="demox-banner" style={accentStyle}>
         <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>
           {member.avatar}
@@ -155,7 +175,7 @@ export function DemoOverlay({
             {member.name} · {member.role}
           </span>
         </span>
-        <span className="demox-badge">Demo</span>
+        <span className="demox-badge">Curated replay</span>
       </div>
 
       {/* One-line beat caption ("Renata pins the bridge…"), only while a beat performs. */}

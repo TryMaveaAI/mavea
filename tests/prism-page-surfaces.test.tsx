@@ -716,7 +716,29 @@ describe('usePanZoom — camera-intent arbitration', () => {
     const el = document.createElement('div');
     Object.defineProperty(el, 'clientWidth', { value: w, writable: true, configurable: true });
     Object.defineProperty(el, 'clientHeight', { value: h, writable: true, configurable: true });
+    el.getBoundingClientRect = () => ({ left: 0, top: 0 }) as DOMRect;
     return el;
+  }
+
+  /** The camera is written straight to the world element's transform (a pointermove must never
+   *  re-render the map), so the DOM node — not a returned object — is where it's readable. */
+  function cameraOf(world: HTMLElement): { x: number; y: number; scale: number } {
+    const m = /^translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\((-?[\d.]+)\)$/.exec(
+      world.style.transform,
+    );
+    if (!m) throw new Error(`no camera transform on the world: "${world.style.transform}"`);
+    return { x: Number(m[1]), y: Number(m[2]), scale: Number(m[3]) };
+  }
+
+  /** Mount the hook with a world element already attached, the way PrismOverlay does. */
+  function mountPanZoom(
+    viewportRef: ReturnType<typeof createRef<HTMLDivElement | null>>,
+    opts?: { wheelZoom?: boolean },
+  ) {
+    const hook = renderHook(() => usePanZoom(viewportRef, 2000, 1600, undefined, opts));
+    const world = document.createElement('div');
+    act(() => hook.result.current.worldRef(world));
+    return { result: hook.result, world };
   }
 
   afterEach(() => {
@@ -729,17 +751,17 @@ describe('usePanZoom — camera-intent arbitration', () => {
       const viewportRef = createRef<HTMLDivElement | null>();
       (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
 
-      const { result } = renderHook(() => usePanZoom(viewportRef, 2000, 1600));
-      const fittedScale = result.current.camera.scale;
+      const { world } = mountPanZoom(viewportRef);
+      const fittedScale = cameraOf(world).scale;
 
       // Shrink the viewport (as the source panel opening would) and fire the resize tick.
       (viewportRef.current as unknown as { clientWidth: number }).clientWidth = 500;
       act(() => fireResize());
 
       // Still tracking the whole world — the scale changed to match the new, narrower viewport.
-      expect(result.current.camera.scale).not.toBeCloseTo(fittedScale, 4);
+      expect(cameraOf(world).scale).not.toBeCloseTo(fittedScale, 4);
       const expectedScale = Math.min(1.35, (500 - 64) / 2000, (800 - 64) / 1600);
-      expect(result.current.camera.scale).toBeCloseTo(expectedScale, 4);
+      expect(cameraOf(world).scale).toBeCloseTo(expectedScale, 4);
     });
 
     it('re-frames the same bbox on resize instead of snapping back to full-content fit', () => {
@@ -747,10 +769,10 @@ describe('usePanZoom — camera-intent arbitration', () => {
       const viewportRef = createRef<HTMLDivElement | null>();
       (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
 
-      const { result } = renderHook(() => usePanZoom(viewportRef, 2000, 1600));
+      const { result, world } = mountPanZoom(viewportRef);
       const bbox = { x: 100, y: 100, w: 200, h: 150 };
       act(() => result.current.frame(bbox, { maxScale: 2 }));
-      const framedScale = result.current.camera.scale;
+      const framedScale = cameraOf(world).scale;
       // Sanity: framing a small box zoomed in tighter than a whole-content fit would.
       expect(framedScale).toBeGreaterThan(1);
 
@@ -760,10 +782,10 @@ describe('usePanZoom — camera-intent arbitration', () => {
       act(() => fireResize());
 
       const expectedScale = Math.min(2, (700 - 96) / bbox.w, (800 - 96) / bbox.h);
-      expect(result.current.camera.scale).toBeCloseTo(expectedScale, 4);
+      expect(cameraOf(world).scale).toBeCloseTo(expectedScale, 4);
       // Confirm it re-framed the bbox, not the whole world (which would yield a much smaller scale).
       const wholeWorldScale = Math.min(1.35, (700 - 64) / 2000, (800 - 64) / 1600);
-      expect(result.current.camera.scale).not.toBeCloseTo(wholeWorldScale, 4);
+      expect(cameraOf(world).scale).not.toBeCloseTo(wholeWorldScale, 4);
     });
 
     it('leaves the camera alone on resize once the person is panning or zooming by hand', () => {
@@ -771,22 +793,18 @@ describe('usePanZoom — camera-intent arbitration', () => {
       const viewportRef = createRef<HTMLDivElement | null>();
       (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
 
-      const { result } = renderHook(() => usePanZoom(viewportRef, 2000, 1600));
+      const { result, world } = mountPanZoom(viewportRef);
 
       // A real wheel-zoom gesture — this is the user taking the wheel, not code calling fit()/frame().
       act(() => result.current.zoomBy(1.2));
-      const userScale = result.current.camera.scale;
-      const userX = result.current.camera.x;
-      const userY = result.current.camera.y;
+      const user = cameraOf(world);
 
       // Resize while the person's gesture is the last thing that touched the camera.
       (viewportRef.current as unknown as { clientWidth: number }).clientWidth = 400;
       act(() => fireResize());
 
       // Untouched — no re-fit, no re-frame; the resize respects the hand on the wheel.
-      expect(result.current.camera.scale).toBe(userScale);
-      expect(result.current.camera.x).toBe(userX);
-      expect(result.current.camera.y).toBe(userY);
+      expect(cameraOf(world)).toEqual(user);
     });
 
     it('a pan drag also hands the camera to the user, and resize leaves it alone', () => {
@@ -794,7 +812,7 @@ describe('usePanZoom — camera-intent arbitration', () => {
       const viewportRef = createRef<HTMLDivElement | null>();
       (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
 
-      const { result } = renderHook(() => usePanZoom(viewportRef, 2000, 1600));
+      const { result, world } = mountPanZoom(viewportRef);
 
       const target = { setPointerCapture: () => {}, releasePointerCapture: () => {} };
       act(() => {
@@ -814,15 +832,46 @@ describe('usePanZoom — camera-intent arbitration', () => {
           currentTarget: target,
         } as unknown as React.PointerEvent);
       });
-      const pannedX = result.current.camera.x;
-      const pannedY = result.current.camera.y;
-      const pannedScale = result.current.camera.scale;
+      const panned = cameraOf(world);
 
       act(() => fireResize());
 
-      expect(result.current.camera.x).toBe(pannedX);
-      expect(result.current.camera.y).toBe(pannedY);
-      expect(result.current.camera.scale).toBe(pannedScale);
+      expect(cameraOf(world)).toEqual(panned);
+    });
+
+    // React registers wheel listeners passively at the root, so an onWheel prop can't
+    // preventDefault — the browser page-zooms on a trackpad pinch while the map zooms underneath.
+    // The hook attaches its own non-passive listener instead, and only once the map is on screen.
+    it('zooms on a cancelled native wheel event, and stays off until the map settles', () => {
+      stubResizeObserver();
+      const viewportRef = createRef<HTMLDivElement | null>();
+      (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
+
+      const { world } = mountPanZoom(viewportRef);
+      const before = cameraOf(world);
+
+      const wheel = new WheelEvent('wheel', { deltaY: -100, cancelable: true, bubbles: true });
+      act(() => {
+        viewportRef.current?.dispatchEvent(wheel);
+      });
+      expect(wheel.defaultPrevented).toBe(true);
+      expect(cameraOf(world).scale).toBeCloseTo(before.scale * 1.12, 4);
+    });
+
+    it('ignores the wheel while the map has not settled', () => {
+      stubResizeObserver();
+      const viewportRef = createRef<HTMLDivElement | null>();
+      (viewportRef as { current: HTMLDivElement | null }).current = makeViewport(1000, 800);
+
+      const { world } = mountPanZoom(viewportRef, { wheelZoom: false });
+      const before = cameraOf(world);
+
+      const wheel = new WheelEvent('wheel', { deltaY: -100, cancelable: true, bubbles: true });
+      act(() => {
+        viewportRef.current?.dispatchEvent(wheel);
+      });
+      expect(wheel.defaultPrevented).toBe(false);
+      expect(cameraOf(world)).toEqual(before);
     });
   });
 });

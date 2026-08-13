@@ -260,8 +260,8 @@
    User ink — the user's own freehand marks on the canvas.
    The overlay is pointer-events:none ALWAYS (it only draws); the HOST stage
    receives the pointer, so card clicks/scroll are never blocked when idle.
-   The host carries the cue classes: .ink-armed (crosshair) and .ink-capturing
-   (suppress touch-scroll while a stroke is live).
+   The host carries the cue classes: .ink-armed (crosshair, and the touch-scroll
+   suppression — see below) and .ink-capturing (a stroke is live).
    ============================================================ */
 
 .ink-user-overlay {
@@ -275,6 +275,11 @@
 }
 .ink-armed {
   cursor: crosshair;
+  /* Opt out of native panning the moment the highlighter is ARMED, not once a stroke has been
+     recognised: a touch commits to scrolling on its first move, so waiting for the 4px capture
+     threshold means the browser has already claimed the gesture and fires pointercancel — a
+     finger could never draw a highlight. */
+  touch-action: none;
 }
 .ink-capturing {
   touch-action: none;
@@ -664,6 +669,7 @@
    never shows, even if a stale class survives a resize race. */
 @media (max-width: 1279px) {
   .live-voice .card-grid.note-gutter {
+    padding-left: 0;
     padding-right: 0;
   }
   .note-rail,

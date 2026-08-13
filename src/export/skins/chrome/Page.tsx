@@ -28,6 +28,12 @@ export function Page({
 }) {
   const t = skin.tokens;
   const size = pageSize(format);
+  // `--tint` is the wash of `--accent`, so an override has to carry its own wash with it — left at
+  // the skin's value, overridden accent text lands on chips mixed from the ORIGINAL accent. Only a
+  // genuinely different accent derives one: the modal always passes an accent (its own default
+  // being the skin's), and each skin's authored tint is hand-tuned, so it must survive untouched.
+  const tint =
+    accent && accent !== t.accent ? `color-mix(in oklab, ${accent} 10%, ${t.pageBg})` : t.tint;
   const style: Style = {
     width: size.width,
     // A HARD box (not minHeight): pagination + the re-measure loop guarantee content fits, so the
@@ -51,7 +57,7 @@ export function Page({
     position: 'relative',
     overflow: 'hidden',
     '--accent': accent ?? t.accent,
-    '--tint': t.tint,
+    '--tint': tint,
   };
   return (
     <section

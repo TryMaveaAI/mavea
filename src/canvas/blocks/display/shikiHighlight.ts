@@ -1,7 +1,7 @@
 // Shiki, bundled and code-split — the highlighter behind the codeblock. This used to load from
 // esm.sh at runtime, but a dynamic CDN import can't carry an integrity hash, which left every
 // code render trusting that host's bytes forever. Bundling closes that hole (the same call the
-// audit made for katex/pdfjs/leaflet) and works offline; code-splitting keeps it out of every
+// audit made for katex/pdfjs/maplibre) and works offline; code-splitting keeps it out of every
 // bundle until a code block actually renders.
 //
 // Composition is deliberately fine-grained rather than the kitchen-sink `shiki` bundle:

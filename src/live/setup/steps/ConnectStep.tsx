@@ -142,6 +142,12 @@ export function ConnectStep(): ReactElement {
         })}
       </div>
 
+      <p className="field-helper">
+        When a default model is offered, start there for faster, lower-cost use and move up only
+        when a task needs it. Requests pass through this deployment to the provider, whose usage
+        charges, privacy, and retention terms apply.
+      </p>
+
       <div className="field-grid">
         <div className="field-col">
           <span className="field-head">

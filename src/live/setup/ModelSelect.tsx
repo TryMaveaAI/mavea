@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import type { ProviderId } from '../../types/mavea';
 import { MODEL_CATALOG_AUDIT, providerInfo } from '../providers/info';
 import { useAnchoredMenu } from './useAnchoredMenu';
+import './drop-select.css';
 
 /** The company half of a "Name · Company" provider label ("Gemini · Google" → "Google");
  *  single-word labels (OpenRouter) are already the right name. */

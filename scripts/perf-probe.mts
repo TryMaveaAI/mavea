@@ -68,7 +68,7 @@ const SCENARIOS: Scenario[] = [
 // merely knows how to load the voice model; the thing nobody should be paying for up front is the
 // model itself — the ONNX weights, the WASM runtime, the embedder matrix, the block library chunk.
 const EAGER_FORBIDDEN =
-  /\.onnx|ort-wasm.*\.wasm|silero.*\.onnx|\/semantic\/(index\.json|matrix\.i8|vocab\.txt)|ricky0123|topics-[a-z0-9]+\.js|katex.*\.(js|css)|leaflet.*\.js|jspdf.*\.js/i;
+  /\.onnx|ort-wasm.*\.wasm|silero.*\.onnx|\/semantic\/(index\.json|matrix\.i8|vocab\.txt)|ricky0123|topics-[a-z0-9]+\.js|katex.*\.(js|css)|maplibre-gl.*\.js|jspdf.*\.js/i;
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);

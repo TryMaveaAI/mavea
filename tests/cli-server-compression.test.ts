@@ -37,7 +37,13 @@ function fetchRaw(
   port: number,
   path: string,
   acceptEncoding?: string,
-): Promise<{ status: number; encoding?: string; vary?: string; body: Buffer }> {
+): Promise<{
+  status: number;
+  encoding?: string;
+  vary?: string;
+  length?: string;
+  body: Buffer;
+}> {
   return new Promise((ok, fail) => {
     const req = httpRequest(
       {
@@ -54,6 +60,7 @@ function fetchRaw(
             status: res.statusCode ?? 0,
             encoding: res.headers['content-encoding'] as string | undefined,
             vary: res.headers['vary'] as string | undefined,
+            length: res.headers['content-length'] as string | undefined,
             body: Buffer.concat(chunks),
           }),
         );
@@ -88,6 +95,16 @@ describe('mavea CLI — static compression', () => {
     const { port } = await serveFixture();
     const res = await fetchRaw(port, '/assets/app-abc123.js', 'br');
     expect(res.vary).toBe('Accept-Encoding');
+  });
+
+  it('reuses a completed compression instead of recompressing an immutable asset', async () => {
+    const { port } = await serveFixture();
+    const first = await fetchRaw(port, '/assets/app-abc123.js', 'br');
+    expect(first.length).toBeUndefined();
+
+    const second = await fetchRaw(port, '/assets/app-abc123.js', 'br');
+    expect(second.body).toEqual(first.body);
+    expect(second.length).toBe(String(second.body.length));
   });
 
   it('leaves already-compressed assets alone', async () => {

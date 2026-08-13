@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DEMO_CAST } from '../src/demo/cast';
 import { MODEL_CATALOG_AUDIT, providerInfo } from '../src/live/providers/info';
 
 const root = resolve(import.meta.dirname, '..');
@@ -15,6 +16,8 @@ const publicCopyFiles = [
   'docs/LIVE-SETUP.md',
   'ARCHITECTURE.md',
   'SECURITY.md',
+  'src/demo/DemoOverlay.tsx',
+  'src/demo/cast.ts',
   'src/flagship/sections/DemoGallery.tsx',
   'src/flagship/sections/FlagshipShowcase.tsx',
   'src/flagship/sections/HonestByDesign.tsx',
@@ -41,15 +44,30 @@ describe('public claims stay bounded by shipped behavior', () => {
     'Everything you discuss becomes a place',
     'See it live',
     'on this device only — to personalize future chats',
+    'Nothing was staged',
+    'replayed exactly',
+    'See it for real',
+    'Watch a frozen session',
+    'Play the session',
+    'CFO · 48',
+    'Student · 20',
+    'Engineer · 33',
+    'Traveler · 34',
   ])('does not publish the unbounded claim %j', (claim) => {
     const offenders = publicCopyFiles.filter((file) => read(file).includes(claim));
     expect(offenders, `${claim} appears in ${offenders.join(', ')}`).toEqual([]);
   });
 
-  it('labels frozen demos and the static landing illustration honestly', () => {
-    expect(read('src/flagship/sections/DemoGallery.tsx')).toContain(
-      'frozen, model-generated session',
-    );
+  it('labels curated prerecorded demos and the static landing illustration honestly', () => {
+    const gallery = read('src/flagship/sections/DemoGallery.tsx');
+    const overlay = read('src/demo/DemoOverlay.tsx');
+    expect(gallery).toContain('fictional scenario');
+    expect(gallery).toContain('prerecorded, model-generated answer sequence');
+    expect(gallery).toContain('curated feature choreography');
+    expect(gallery).toContain('No live provider call runs during playback');
+    expect(overlay).toContain('fictional scenario');
+    expect(overlay).toContain('not a live result or customer testimonial');
+    expect(DEMO_CAST.every((member) => member.role.startsWith('Fictional '))).toBe(true);
     expect(read('src/flagship/sections/SignatureLoop.tsx')).toContain('Illustrated example');
   });
 

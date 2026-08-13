@@ -30,7 +30,10 @@ const TOP_W = 40;
 // weight, and each tier band leaves this many px of breathing room inside its own (narrowest)
 // edge before the label may touch the trapezoid's slanted sides.
 const LABEL_FONT_SIZE = 10;
-const LABEL_FONT_SIZE_SMALL = 8.5;
+// The step-down size still has to be READABLE — these are viewBox user units in a 340-wide box
+// that renders ~320px in a narrow card, so 8.5 painted at 8.0px. A label that drops a size to fit
+// must not drop out of legibility to do it; past this it squeezes glyphs instead.
+const LABEL_FONT_SIZE_SMALL = 9.6;
 const AVG_GLYPH_WIDTH = 0.62;
 const LABEL_INSET = 10;
 // Below this, a hard textLength squeeze reads as illegible smudged glyphs rather than tight

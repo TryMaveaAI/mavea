@@ -13,7 +13,7 @@ import {
   type TurnSnapshot,
 } from './lifecycle';
 import { remapTour } from './tourRemap';
-import type { TurnFrame } from './history';
+import { createTurnFrameId, type TurnFrame } from './history';
 import type { LiveResult } from './generateLive';
 
 /** Everything a settled turn hands back to its surface. `frame.spec` is the merged canvas
@@ -79,7 +79,9 @@ export function settleTurn(
   const tour = remapTour(result.tour ?? [], result.spec.blocks, merge.blocks);
   // Capture this turn as a timeline frame: exactly the canvas the user saw, its spoken
   // line, and its tour — so it can be scrolled back to and replayed later.
+  const at = Date.now();
   const frame: TurnFrame = {
+    id: createTurnFrameId(at),
     question: displayText,
     narration: result.narration,
     ...(result.spoken ? { spoken: result.spoken } : {}),
@@ -87,7 +89,7 @@ export function settleTurn(
     topicShift,
     tour,
     spec: renderedSpec,
-    at: Date.now(),
+    at,
     // A declared correction rides with the frame so the rail/recap can mark the
     // earlier moment it corrects (self-healing history, never a silent rewrite).
     ...(result.corrects ? { corrects: result.corrects } : {}),

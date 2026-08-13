@@ -1,7 +1,11 @@
 import { useState, type ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { DropSelect, type DropOption } from '../src/live/setup/DropSelect';
+
+const src = (rel: string): string => readFileSync(join(__dirname, '..', 'src', rel), 'utf8');
 
 afterEach(cleanup);
 
@@ -66,5 +70,39 @@ describe('DropSelect', () => {
     );
     fireEvent.click(trigger());
     expect(screen.queryByRole('listbox')).toBeNull();
+  });
+});
+
+// The pickers render on standalone routes (#/courses, #/ripple) that never mount LiveApp, so
+// they can't rely on Live's runtime stylesheet for their menu — the classes came out unstyled
+// there. Each component pulls its own CSS instead, which no route can skip. jsdom parses no
+// stylesheets (vitest runs with `css: false`), so this is a source scan.
+describe('drop-select styling travels with the components', () => {
+  const menuCss = src('live/setup/drop-select.css');
+
+  it('defines the menu rules in the components’ own stylesheet, not the wizard sheet', () => {
+    for (const cls of [
+      '.drop-select',
+      '.drop-select-input',
+      '.drop-select-trigger',
+      '.drop-select-chevron',
+      '.drop-select-menu',
+      '.drop-select-option',
+      '.drop-select-id',
+      '.drop-select-badge',
+      '.drop-select-note',
+      '.drop-select-foot',
+    ]) {
+      expect(menuCss, `${cls} is missing from drop-select.css`).toContain(`${cls} `);
+    }
+    // Only the wizard's own layout for the voice row may still mention the picker there.
+    const wizard = src('styles/setup-wizard.css');
+    expect(wizard.match(/\.drop-select/g)).toEqual(['.drop-select']);
+    expect(wizard).toContain('.voice-row .drop-select {');
+  });
+
+  it('is imported by both pickers', () => {
+    expect(src('live/setup/DropSelect.tsx')).toContain("import './drop-select.css'");
+    expect(src('live/setup/ModelSelect.tsx')).toContain("import './drop-select.css'");
   });
 });

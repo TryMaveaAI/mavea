@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { niceDomain, scaleLinear } from '../../lib/scale';
+import { fitText } from '../../lib/fitText';
 import { formatValue } from '../../lib/format';
 import { hasData } from '../../lib/empty';
 import { BlockEmpty } from '../../lib/BlockEmpty';
@@ -13,10 +14,10 @@ type Props = LineBalanceProps & { delay?: number };
 const W = 360;
 const H = 230;
 const PAD = { top: 16, right: 54, bottom: 34, left: 40 };
-const PAD_BOTTOM_ROTATED = 52;
-// Past this many stations the fixed band width can't fit horizontal labels — rotate them, the
-// same threshold/technique as DualAxis and ControlChart's own x-axis.
-const ROTATE_AT = 7;
+// .cx-tick's clamp ceiling, in user units — the size the labels would like to be.
+const LABEL_FS = 9.5;
+// Gap between the axis line and the first line of station type.
+const LABEL_GAP = 12;
 
 interface Station {
   name: string;
@@ -50,20 +51,29 @@ export function LineBalance({
       };
     });
 
-    const rotateLabels = list.length > ROTATE_AT;
-    const padB = rotateLabels ? PAD_BOTTOM_ROTATED : PAD.bottom;
     const innerW = W - PAD.left - PAD.right;
+    const n = Math.max(1, list.length);
+    const bandW = innerW / n;
+
+    // Station names are model-authored and often long ("Panel cut + edge-band"). Sizing the axis
+    // off the station COUNT alone let five long names collide into an unreadable pile while nine
+    // short ones sat fine, so fit each name to the band it actually occupies: wrap and shrink to
+    // the legibility floor, never truncate. The tallest label then sets the axis gutter, which
+    // keeps the plot honest for any mix of name lengths rather than the fixture's own.
+    const labels = list.map((s) =>
+      fitText(s.name, { maxWidth: Math.max(16, bandW - 4), fontSize: LABEL_FS, maxLines: 3 }),
+    );
+    const labelBlockH = labels.reduce((m, f) => Math.max(m, f.lines.length * f.lineHeightPx), 0);
+    const padB = Math.max(PAD.bottom, Math.round(LABEL_GAP + labelBlockH + 6));
     const innerH = H - PAD.top - padB;
 
     const maxCycle = list.reduce((m, s) => Math.max(m, s.cycleTime), 0);
     const domainTop = Math.max(maxCycle, taktValid ? (takt as number) : 0, 1);
     const [, top] = niceDomain(0, domainTop);
     const sy = scaleLinear([0, top], [innerH, 0]);
-    const n = Math.max(1, list.length);
-    const bandW = innerW / n;
     const sx = (i: number) => i * bandW + bandW / 2;
 
-    return { list, rotateLabels, padB, innerW, innerH, sy, sx, bandW, yTicks: sy.ticks(4) };
+    return { list, labels, padB, innerW, innerH, sy, sx, bandW, yTicks: sy.ticks(4) };
   }, [stations, takt, taktValid]);
 
   if (!hasData(geom.list.map((s) => s.cycleTime))) {
@@ -173,19 +183,22 @@ export function LineBalance({
             )}
 
             <line x1={0} y1={geom.innerH} x2={geom.innerW} y2={geom.innerH} className="cx-axis-l" />
-            {geom.list.map((s, i) => {
+            {geom.labels.map((fit, i) => {
               const lx = geom.sx(i);
-              const ly = geom.innerH + (geom.rotateLabels ? 8 : 14);
               return (
                 <text
                   key={i}
                   x={lx}
-                  y={ly}
+                  y={geom.innerH + LABEL_GAP}
                   className="cx-tick"
-                  textAnchor={geom.rotateLabels ? 'end' : 'middle'}
-                  transform={geom.rotateLabels ? `rotate(-40, ${lx}, ${ly})` : undefined}
+                  textAnchor="middle"
+                  style={{ fontSize: fit.fontSize }}
                 >
-                  {s.name}
+                  {fit.lines.map((line, k) => (
+                    <tspan key={k} x={lx} dy={k === 0 ? 0 : fit.lineHeightPx}>
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               );
             })}

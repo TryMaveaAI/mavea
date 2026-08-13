@@ -95,6 +95,7 @@ export async function counterpartReply(
         user: last.content,
         maxTokens: REPLY_MAX_TOKENS,
         thinkingLevel: 'minimal',
+        signal,
       },
       cfg,
     );
@@ -138,6 +139,7 @@ export async function coachTake(
         user,
         maxTokens: COACH_MAX_TOKENS,
         thinkingLevel: 'minimal',
+        signal,
       },
       cfg,
     );

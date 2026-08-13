@@ -1,14 +1,13 @@
-// The launcher for the share experience. Drop it where a TurnFrame[] (Live) or a ConversationSpec
-// (demo) is in hand; it shows a single button that opens the cinematic ShareModal. Thin on purpose
-// — the picking, previewing, and recording all live in ShareModal.
+// The launcher for Video Studio. Drop it where a TurnFrame[] (Live) or a ConversationSpec (demo) is
+// in hand; selection, preview, and encoding all stay inside the lazy ShareModal.
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { CSSProperties } from 'react';
 import type { TurnFrame } from '../live/history';
 import type { ConversationSpec } from '../data/conversation';
 import { framesFromSpec } from './frames';
 import { AsyncSurface } from '../components/AsyncSurface';
 import { createPreloadableLazy, preloadIntentProps } from '../lib/preloadableLazy';
+import './clip-button.css';
 
 const shareModal = createPreloadableLazy(() =>
   import('./ShareModal').then((m) => ({ default: m.ShareModal })),
@@ -31,15 +30,15 @@ export function ClipButton({
     <>
       <button
         type="button"
-        style={LAUNCH}
+        className="clip-launch"
         onClick={() => setOpen(true)}
         {...preloadIntentProps(shareModal.preload)}
       >
-        ✨ Share as a story
+        ✨ Make a video
       </button>
       {open &&
         createPortal(
-          <AsyncSurface label="Share story" overlay>
+          <AsyncSurface label="Make a video" overlay>
             <ShareModal frames={resolved} onClose={() => setOpen(false)} />
           </AsyncSurface>,
           document.body,
@@ -47,17 +46,3 @@ export function ClipButton({
     </>
   );
 }
-
-const LAUNCH: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 18px',
-  borderRadius: 'var(--r-full)',
-  border: 'none',
-  background: 'var(--presence)',
-  color: '#fff',
-  font: '650 14px/1 var(--font)',
-  cursor: 'pointer',
-  alignSelf: 'flex-start',
-};

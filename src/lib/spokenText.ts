@@ -71,13 +71,19 @@ function resolveToFixedPoint(text: string, re: RegExp, group: string): string {
   return out;
 }
 
+/** Resolve the annotation markers to their shown side and nothing else — markup is left exactly as
+ *  written. `forDisplay` builds on this for plain text; RAW-TEXT block props use it directly, since
+ *  their HTML has to survive the schema to reach the render-time sanitizer (see liveSchema) while
+ *  the reader must still never see a literal `[[CPU|C-P-U]]`. */
+export function resolveAnnotations(text: string): string {
+  const out = resolveToFixedPoint(text, ANNOTATED, '$1');
+  return resolveToFixedPoint(out, PLAIN, '$1').replace(DANGLING, '').trimEnd();
+}
+
 /** What the screen shows: keep the shown (left) side of every annotation, drop the markers.
  *  Also strips any HTML tags the model accidentally emits — display text is always plain. */
 export function forDisplay(text: string): string {
-  let out = resolveToFixedPoint(text, ANNOTATED, '$1');
-  out = resolveToFixedPoint(out, PLAIN, '$1');
-  return out
-    .replace(DANGLING, '')
+  return resolveAnnotations(text)
     .replace(/<[^>]*>/g, '')
     .trimEnd();
 }

@@ -148,9 +148,44 @@ describe('RippleOverlay', () => {
   });
 
   it('calls onClose when Escape is pressed', () => {
+    // A plain open, with no layer on top: the overlay itself is the topmost thing Escape can dismiss.
+    // (Clearing the "seen the worked example" flag keeps the intake from auto-opening over it, which
+    // is what an earlier render in this file leaves behind.)
+    localStorage.clear();
     let closed = false;
     render(<RippleOverlay model={SEED_SHIP} onClose={() => (closed = true)} />);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(closed).toBe(true);
+  });
+
+  it('Escape backs out of the intake first, leaving the overlay open', () => {
+    localStorage.clear();
+    let closed = false;
+    const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+      <RippleOverlay model={SEED_SHIP} onClose={() => (closed = true)} />,
+    );
+    fireEvent.click(getByText(/Run on your own code/i));
+    expect(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(queryByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeNull();
+    expect(closed).toBe(false);
+
+    // The overlay is topmost again, so a second Escape does close it.
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(closed).toBe(true);
+  });
+
+  it('never closes on a Space typed into an intake input', () => {
+    // The scrim is a click-to-close target with a keyboard twin; a bubbled Enter/Space from a field
+    // inside the panel belongs to that field, not to the scrim.
+    localStorage.clear();
+    let closed = false;
+    const { getByText, getByPlaceholderText } = render(
+      <RippleOverlay model={SEED_SHIP} onClose={() => (closed = true)} />,
+    );
+    fireEvent.click(getByText(/Run on your own code/i));
+    fireEvent.keyDown(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), { key: ' ' });
+    expect(closed).toBe(false);
   });
 });

@@ -1094,7 +1094,7 @@
   font-weight: 600;
 }
 
-/* ---- GeoMap: a real Leaflet map (tiles loaded from CARTO/OSM) ---- */
+/* ---- GeoMap: a real MapLibre map (vector tiles from OpenFreeMap) ---- */
 .geo-map {
   /* Scale the map with the card so it stays generous on wide layouts and never dominates a
      narrow phone card; clamped so it can't collapse or balloon. Upper bound kept moderate so a
@@ -1107,9 +1107,9 @@
   border: 1px solid var(--line);
   background: var(--surface-deep);
   position: relative;
-  z-index: 0; /* keep Leaflet panes under app overlays */
+  z-index: 0; /* keep MapLibre's canvas and controls under app overlays */
 }
-/* Tile fetch veil — Leaflet owns every element inside .geo-map (it injects its pane tree on
+/* Tile fetch veil — MapLibre owns every element inside .geo-map (it injects its canvas tree on
    mount), so the loading cover is a pseudo-element the library can never remove or reflow.
    z-index 640 floats it over the tile (200) / overlay (400) / marker (600) panes but under
    popups (700) and the controls (1000), all inside the z-index:0 stacking context above. Same
@@ -1152,10 +1152,6 @@
   display: grid;
   place-items: center;
 }
-.geo-divicon {
-  background: none;
-  border: none;
-}
 .geo-pin {
   display: grid;
   place-items: center;
@@ -1168,21 +1164,33 @@
   border: 2px solid #fff;
   box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
 }
-/* themed popups (Leaflet defaults are white) */
-.geo-map .leaflet-popup-content-wrapper {
+/* themed popups (MapLibre defaults are white) */
+.geo-map .maplibregl-popup-content {
   background: var(--surface-elevated);
   color: var(--text-primary);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-floating);
-}
-.geo-map .leaflet-popup-tip {
-  background: var(--surface-elevated);
-  border: 1px solid var(--line);
-}
-.geo-map .leaflet-popup-content {
-  margin: 10px 12px;
+  padding: 10px 12px;
   font: 400 13px/1.4 var(--font);
+}
+/* The tip is a 0×0 border triangle, so only the border-color facing the popup paints — one
+   override per anchor, since MapLibre picks the side from the anchor class it lands on. */
+.geo-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.geo-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.geo-map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--surface-elevated);
+}
+.geo-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.geo-map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.geo-map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--surface-elevated);
+}
+.geo-map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--surface-elevated);
+}
+.geo-map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--surface-elevated);
 }
 .geo-pop b {
   font-weight: 650;
@@ -1197,12 +1205,27 @@
   font-weight: 600;
   text-decoration: none;
 }
-.geo-map .leaflet-control-attribution {
+.geo-pop-a:hover {
+  text-decoration: underline;
+}
+.geo-map .maplibregl-ctrl-attrib {
   background: color-mix(in oklab, var(--surface-deep) 72%, transparent);
   color: var(--text-muted);
 }
-.geo-map .leaflet-control-attribution a {
+.geo-map .maplibregl-ctrl-attrib a {
   color: var(--text-secondary);
+}
+.geo-map-credit {
+  margin: 6px 2px 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.geo-map-credit a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ─────────────────────── svgblock ─────────────────────── */
@@ -1635,15 +1658,24 @@
 
 /* ─────────────────────── weldsymbol ─────────────────────── */
 /* The joint cross-section + the AWS weld symbol, with a legend. */
-.wld-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-  gap: 12px;
+/* Both figures are viewBox drawings, so their labels are user units: halving a figure's width on
+   screen halves its size / length-pitch / process callouts with it. Side by side inside a ~320px
+   library tile that put them at 6.5–8.7px, well under the 9px legibility floor. The pair therefore
+   splits only once the CARD is wide enough for each drawing to hold its own — and a card's width
+   has nothing to do with the viewport's, so the split is a container query, not a media query.
+   The 1.3 share on the symbol column is what keeps the two drawings the same height. */
+.wld-wrap {
+  container-type: inline-size;
   margin-top: 10px;
 }
-@media (max-width: 480px) {
+.wld-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@container (min-width: 460px) {
   .wld-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
   }
 }
 .wld-cell {
@@ -1701,9 +1733,10 @@
   font-family: var(--font-mono, ui-monospace, monospace);
   text-anchor: middle;
 }
+/* Sized in the component, not here: the tail's open V is laid out around this text, so its
+   font-size has to be a number the geometry can read. */
 .wld-process {
   fill: var(--text-secondary);
-  font-size: 6px;
   font-weight: 600;
   text-anchor: middle;
   dominant-baseline: central;
@@ -1849,15 +1882,20 @@
 .cut-sheet {
   fill: var(--surface-glass);
   stroke: var(--text-secondary);
-  stroke-width: 0.6;
+  /* The viewBox is the stock sheet, so a plain stroke-width is a real-world measurement: 0.6 meant
+     0.6mm of plywood and painted the outline at 0.14px — invisible. Pin the outline to device
+     pixels instead, so the sheet reads the same whatever unit it was authored in. */
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
+/* Both figure labels are sized in the component, from the sheet's own dimensions: the viewBox is
+   the stock sheet, so a font-size declared here is really "one millimetre of plywood" wide. */
 .cut-piece-lbl {
   fill: var(--text-primary);
   font-weight: 600;
 }
 .cut-sheet-lbl {
   fill: var(--text-faint);
-  font-size: 4px;
   font-weight: 600;
 }
 .cut-caption {
@@ -2182,7 +2220,9 @@
 }
 .ex-ev-k {
   fill: var(--text-faint);
-  font-size: 3px;
+  /* A 100-unit viewBox scaled up ~3x, so this is the rare case where a tiny authored number is
+     correct — but 3 landed a hair under the 9px floor. */
+  font-size: 3.2px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-anchor: middle;
@@ -2201,7 +2241,7 @@
 }
 .ex-node-k {
   fill: var(--text-faint);
-  font-size: 3px;
+  font-size: 3.2px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-anchor: middle;
@@ -2976,11 +3016,8 @@
 }
 
 /* ─────────────────────── maproute ───────────────────────
-   An ordered route on the same real Leaflet map as geomap (it reuses .geo-map / .geo-pin /
+   An ordered route on the same real MapLibre map as geomap (it reuses .geo-map / .geo-pin /
    themed-popup rules above), plus a numbered itinerary list and a distance/elevation summary. */
-.mr-map {
-  height: 320px;
-}
 .mr-pin {
   background: var(--presence);
 }
@@ -3872,7 +3909,7 @@
 
 /* ───────────────────────── zoningmap (geomap zoning overlay) ─────────────────────────
    Additive to .geo-map above: a category-colored polygon layer (styled from JS via inline
-   Leaflet path options, not CSS) plus this small legend chip row under the map. */
+   MapLibre paint properties, not CSS) plus this small legend chip row under the map. */
 .geo-zone-legend {
   display: flex;
   flex-wrap: wrap;

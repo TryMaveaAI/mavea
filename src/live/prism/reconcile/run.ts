@@ -118,15 +118,17 @@ function parseChecks(raw: string | object): RawCheck[] {
 
 /**
  * Reconcile the document's own figures. Returns the contradictions (each a calculator-verifiable
- * receipt) — never throws: a model/network failure or an empty document yields []. The verdict for
- * every returned item was computed in pure code; the model only proposed (gated) relationships.
+ * receipt) — never throws. [] means the pass RAN and found nothing to flag; `null` means it never
+ * ran (the model call failed), which the caller must report as a failure rather than an all-clear.
+ * The verdict for every returned item was computed in pure code; the model only proposed (gated)
+ * relationships.
  */
 export async function runReconcile(
   sources: readonly NumberSource[],
   corpus: readonly (readonly string[])[],
   cfg: ModelConfig,
   signal?: AbortSignal,
-): Promise<Reconciliation[]> {
+): Promise<Reconciliation[] | null> {
   const atoms = extractNumbers(sources).slice(0, MAX_ATOMS);
   if (atoms.length < 2) return [];
 
@@ -149,7 +151,9 @@ export async function runReconcile(
     );
     raw = res.raw;
   } catch {
-    return []; // a failed pairing pass just means no reconciliations — never a fabricated one
+    // The pairing pass never ran (a refusal, a 429, a dropped connection). Say "unknown", not "none":
+    // an [] here would read on screen as "every number checks out" for a check that never happened.
+    return null;
   }
 
   const byId = new Map(atoms.map((a) => [a.id, a]));

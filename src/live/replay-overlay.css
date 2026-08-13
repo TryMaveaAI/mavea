@@ -1,0 +1,130 @@
+/* Replay overlay — the timeline of past turns beside the canvas of the selected one.
+   Tokens only, so the scrim and the panels flip with the theme. Imported by ReplayOverlay.tsx. */
+
+.replay-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  padding: 20px;
+  /* The shared overlay scrim — a light frost in light theme, not a hardcoded black. */
+  background: rgba(var(--scrim-rgb), 0.6);
+}
+/* The dialog fills the scrim, leaving its padding as a backdrop-click gutter. */
+.replay-dialog {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 16px;
+}
+
+/* ---- left: the timeline of turns ---- */
+.replay-timeline {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+}
+.replay-timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.replay-timeline-head > span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.replay-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+/* Same lift as the .entry-action buttons this overlay already uses, so a row reads as live. */
+.replay-turn:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-elevated-2);
+}
+.replay-turn.is-active {
+  border-color: var(--presence);
+  background: var(--surface-elevated);
+}
+.replay-turn-title {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.replay-turn.is-active .replay-turn-title {
+  font-weight: 600;
+}
+.replay-turn-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---- right: the selected (or playing) canvas ---- */
+.replay-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.replay-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.replay-bar .replay-bar-title {
+  margin-right: auto;
+  font-size: 12.5px;
+}
+.replay-bar .entry-action {
+  font-size: 13px;
+}
+/* Two classes deep on purpose: the pane is also a .canvas-scroll (for the hidden scrollbar and
+   the rail-aware centering), whose own padding would otherwise tie with this one. */
+.replay-main .replay-canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+}
+
+/* Phone: stack the two panes — a 240px rail beside the canvas leaves neither one usable. The
+   timeline keeps its rows but caps its height so the canvas still owns most of the screen. */
+@media (max-width: 640px) {
+  .replay-scrim {
+    padding: 12px;
+  }
+  .replay-dialog {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .replay-timeline {
+    flex: 0 1 auto;
+    max-height: 30vh;
+  }
+  .replay-main .replay-canvas {
+    padding: 12px;
+  }
+}

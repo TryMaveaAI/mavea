@@ -919,20 +919,16 @@
     border-color var(--m-fast, 0.16s) var(--ease-out, ease),
     transform var(--m-fast, 0.16s) var(--ease-out, ease);
 }
-.pw-blend:hover:not(:disabled) {
+.pw-blend:hover {
   background: color-mix(in oklab, var(--presence) 12%, transparent);
   border-color: var(--presence);
 }
-.pw-blend:active:not(:disabled) {
+.pw-blend:active {
   transform: scale(0.97);
 }
 .pw-blend:focus-visible {
   outline: 2px solid var(--presence);
   outline-offset: 2px;
-}
-.pw-blend:disabled {
-  cursor: default;
-  color: var(--text-primary);
 }
 .pw-blend[data-playing] {
   background: color-mix(in oklab, var(--presence) 16%, transparent);

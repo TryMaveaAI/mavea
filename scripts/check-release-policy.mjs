@@ -74,7 +74,6 @@ for (const marker of [
   'non-extractable, device-bound browser key',
   'no separate Mavéa user accounts',
   'speech-to-text endpoint',
-  'notification relay URL',
   'no automatic expiration',
   'does not sell personal information',
   'does not set analytics or advertising cookies',

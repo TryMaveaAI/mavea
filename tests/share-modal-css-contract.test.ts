@@ -33,8 +33,27 @@ describe('ShareModal production styling contract', () => {
     expect(stage).toMatch(/min-width:\s*0/);
   });
 
-  it('the JS stacking breakpoint matches the CSS one (no reversed-column band)', () => {
-    const cssBreak = shareModalCss.match(/@media\s*\(max-width:\s*(\d+)px\)/)?.[1];
-    expect(shareModalSource).toContain(`(max-width: ${cssBreak}px)`);
+  it('the stylesheet alone stacks the modal, in DOM order (no reversed-column band)', () => {
+    // The JS used to set an inline flexDirection at the same breakpoint, which always beat the
+    // media query — so the stylesheet asserted `column-reverse` while users saw `column`.
+    expect(shareModalSource).not.toContain('flexDirection');
+    const stacked = shareModalCss.match(/@media[^{]*\{\s*\.shm-modal\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    expect(stacked).toMatch(/flex-direction:\s*column;/);
+  });
+
+  it('the tall frames leave room for the modal chrome inside the viewport', () => {
+    // 58px of modal padding-top plus the scrim's 24px gutters: a bare 90vh phone frame opened
+    // taller than the viewport on every common laptop and hid its own preview controls.
+    const portrait = shareModalCss.match(/\[data-aspect='9:16'\]\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    expect(portrait).toMatch(/height:\s*min\(100dvh - 106px/);
+  });
+
+  it('centers the mode switcher on its own midpoint', () => {
+    const tabs = shareModalCss.match(/\.shm-tabs\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    expect(tabs).toMatch(/left:\s*50%/);
+    expect(tabs).toMatch(/translate:\s*-50% 0/);
+    // …and the narrow override re-anchors it to the left edge without that shift.
+    const narrow = shareModalCss.match(/@media[\s\S]*\.shm-tabs\s*\{([\s\S]*?)\}/)?.[1] ?? '';
+    expect(narrow).toMatch(/translate:\s*none/);
   });
 });

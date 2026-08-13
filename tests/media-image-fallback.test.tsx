@@ -8,12 +8,12 @@ import { Avatargroup } from '../src/canvas/blocks/display/Avatargroup';
 // show — never the browser's broken-image glyph. jsdom never loads images, so we fire the error
 // event ourselves to exercise the onError path.
 //
-// The fixture URL must be on safeImageUrl's host allowlist (src/lib/safeImageUrl.ts) — this
-// suite is testing the onError fallback for an ALLOWED host whose specific path 404s, not the
-// separate (and equally real) case of a rejected host, where no <img> mounts at all.
+// The fixture URL must clear safeImageUrl's exact-file list (src/lib/safeImageUrl.ts). jsdom never
+// requests it; firing the error event deterministically exercises the post-clearance load failure.
 afterEach(cleanup);
 
-const DEAD_ALLOWLISTED_URL = 'https://upload.wikimedia.org/dead-test-fixture-does-not-exist.jpg';
+const DEAD_ALLOWLISTED_URL =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
 
 describe('media blocks degrade gracefully when an image URL fails', () => {
   it('lightbox: a dead thumbnail hides itself so the gradient + label remain', () => {

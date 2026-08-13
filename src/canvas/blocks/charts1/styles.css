@@ -679,6 +679,23 @@
 /* Reuses the radar wrap (.c1-radar-wrap / .c1-radar) for the figure + its
    responsive stacking; only the felt-scale chrome and the side balance panel
    are bespoke. The polygon's roundness reads "balance" at a glance. */
+
+/* Rim and score labels are sized in SVG user units, so the wheel's RENDERED width is what sets
+   their type size: at the shared radar's 42cqi share a 10.5-unit rim label lands near 7px. The
+   wheel carries far more in-figure text than the radar does — eight-plus domain names plus a score
+   on every spoke — so it takes a bigger share of the figure row, which the card has the room for.
+   Scaling the whole figure (rather than growing the type) keeps every label's gutter budget in
+   user units exactly as it was, so a long domain name has the same headroom it always had. */
+.c1-radar.c1-lw {
+  max-width: clamp(300px, 62cqi, 520px);
+}
+@media (max-width: 560px) {
+  /* Narrow cards stack the legend under the wheel — keep the shared narrow cap. */
+  .c1-radar.c1-lw {
+    max-width: 260px;
+  }
+}
+
 .c1-lw-score {
   pointer-events: none;
   user-select: none;

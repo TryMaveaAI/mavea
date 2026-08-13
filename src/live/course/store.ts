@@ -600,6 +600,24 @@ export function getCachedCheckpoint(
   }
 }
 
+/** The same lookup WITHOUT the LRU touch — for callers that merely probe the cache rather than open
+ *  the checkpoint. mastery.ts walks every lesson on every graded quiz answer looking for a match; on
+ *  getCachedCheckpoint that walk would rewrite the whole cache to localStorage once per cached
+ *  lesson and shuffle recency around lessons nobody opened. */
+export function peekCachedCheckpoint(
+  courseId: string,
+  lessonId: string,
+): CheckpointQuestion[] | undefined {
+  try {
+    const key = frameKey(courseId, lessonId);
+    const entries = getCheckpoints();
+    const idx = entries.findIndex((e) => e.key === key);
+    return idx < 0 ? undefined : entries[idx].questions;
+  } catch {
+    return undefined;
+  }
+}
+
 // ── writes ───────────────────────────────────────────────────────────────────────────────────
 
 /** Save (or replace) a generated syllabus. A fresh course starts its progress record at lesson 0. */

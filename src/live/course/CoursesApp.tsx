@@ -6,7 +6,7 @@
 // small surface. Real-data-only: an empty library shows an explainer, never sample courses.
 import './courses.css';
 import { homeTarget } from '../../lib/homeTarget';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { FormEvent, ReactElement } from 'react';
 import {
   getCourses,
@@ -243,15 +243,23 @@ function NewCourseSheet({
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Leaving is always available, mid-build included: a syllabus can take a minute and a half to
+  // write, and a sheet you can't back out of for that long is a trap. Dismissing aborts the call —
+  // submitTopic returns early on an aborted signal, so nothing lands after the user is gone.
+  const dismiss = useCallback((): void => {
+    abortRef.current?.abort();
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || busy) return;
+      if (event.key !== 'Escape') return;
       event.preventDefault();
-      onClose();
+      dismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [busy, onClose]);
+  }, [dismiss]);
 
   // Focus imperatively on mount, not via the autoFocus prop — same pattern the rest of Live's
   // sheets use, so a screen reader isn't yanked here without the dialog announcing. When the topic
@@ -273,11 +281,11 @@ function NewCourseSheet({
     const scrim = scrimRef.current;
     if (!scrim) return;
     const closeOnBackdrop = (event: PointerEvent): void => {
-      if (!busy && event.target === scrim) onClose();
+      if (event.target === scrim) dismiss();
     };
     scrim.addEventListener('pointerdown', closeOnBackdrop);
     return () => scrim.removeEventListener('pointerdown', closeOnBackdrop);
-  }, [busy, onClose]);
+  }, [dismiss]);
 
   // The one generation call: builds the syllabus and hands off to Live. Reached only by an explicit
   // Build press (manual or Deep-Zoom-seeded) — never auto-fired, so the user always gets to set a
@@ -339,9 +347,8 @@ function NewCourseSheet({
           <button
             type="button"
             className="cr-ed-close"
-            aria-label="Close"
-            onClick={onClose}
-            disabled={busy}
+            aria-label={busy ? 'Cancel building course' : 'Close'}
+            onClick={dismiss}
           >
             <Icon.x />
           </button>

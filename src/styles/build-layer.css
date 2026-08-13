@@ -1,4 +1,4 @@
-/* ===== BUILD (creation) layer — ported from mavea_mockup_2/styles.css:777-889 ===== */
+/* ===== BUILD (creation) layer ===== */
 /* UnderstandCard */
 .understand-list {
   display: flex;
@@ -28,6 +28,7 @@
 }
 .understand-text {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.45;
@@ -265,11 +266,13 @@
 .buildstep-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
+  min-width: 0;
 }
 .buildstep-label {
   font-size: 13.5px;
   font-weight: 500;
+  line-height: 1.4;
   color: var(--text-primary);
 }
 .buildstep.todo .buildstep-label {
@@ -468,6 +471,28 @@
   font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .understand-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+
+  .understand-meta {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .appact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .appact-when {
+    grid-column: 2;
+  }
 }
 .apptable-head,
 .apptable-row {

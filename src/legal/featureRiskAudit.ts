@@ -120,7 +120,7 @@ export const FEATURE_NOTICE_COPY: Record<
   },
   'voice-data': {
     title: 'Speech can become provider data',
-    body: 'Recognized speech and transcripts may be sent to selected providers. Avoid confidential or sensitive conversations and make sure nearby people know when listening is active.',
+    body: 'Microphone audio is sent to the speech-transcription endpoint configured by this deployment, and the resulting transcript may be sent to your selected model provider. Endpoint operators may log or retain data under their own terms. Avoid sensitive conversations and get any consent required from nearby people before listening starts.',
   },
   credentials: {
     title: 'Remembering a key is a convenience',

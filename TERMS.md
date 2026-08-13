@@ -1,6 +1,6 @@
 # Mavéa Terms of Use
 
-Effective: July 19, 2026
+Effective: August 11, 2026
 
 These Terms of Use (the **Terms**) govern your use of the Mavéa application, command-line package, demos, documentation, and related materials (collectively, the **Service**). **Licensor** means each applicable copyright holder offering software under the PolyForm license. **Maintainers** means the people who publish or contribute to Mavéa; a Maintainer is not necessarily a Licensor. **Deployment operator** means the person or organization hosting the copy you use. **Responsible Party** means the applicable Licensor, Maintainer, or deployment operator responsible for a statement, obligation, service, or claim. In these Terms, **we**, **us**, or **our** means the relevant Responsible Party or Parties in context. A separately operated deployment remains independent from the Licensors and Maintainers unless the same person or organization serves both roles.
 
@@ -40,15 +40,23 @@ You provide and control your own accounts, API keys, OAuth grants, and other cre
 
 All costs of using the Service are your responsibility, including hardware, electricity, network access, hosting, domains, model tokens, search requests, speech services, storage, OAuth applications, connected-account activity, taxes, and any other third-party charges. Labels such as "fast", "balanced", or "thorough" are relative product descriptions, not price quotes or spending limits. You are responsible for provider budgets, quotas, and billing alerts.
 
+The repository's container definitions can be used with compatible container engines, but the engine or desktop application you choose is separate software. In particular, Docker Desktop is not free for every commercial organization under Docker's current subscription terms. You are responsible for selecting and licensing your development, build, hosting, and container tools; Mavéa does not grant rights in them.
+
+The default map style uses OpenFreeMap's public service, which is currently offered without request fees under its own terms and requires attribution. That service has no Mavéa-backed service-level commitment and may change, restrict access, or stop. Preserve all map and data attribution in screen views and exports, or configure a properly licensed alternative.
+
 We do not control and are not responsible for third-party services, content, security, billing, downtime, changes, or data practices. Links and integrations do not imply endorsement.
 
 Provider, service, and model names (for example Google Gemini, Anthropic Claude, OpenAI GPT, xAI Grok, and OpenRouter) are trademarks of their respective owners. Mavéa uses them only to identify the third-party services you can connect; no affiliation with, sponsorship by, or endorsement from those owners is implied.
+
+Mavéa's recording paths are configured to request only the project's reviewed open-media codec allowlist and not H.264, H.265, or AAC. Codec source licenses and published patent commitments can reduce risk but do not prove that no third party will assert a patent in every country, product category, or implementation. No Responsible Party gives a patent-clearance opinion for your deployment or commercial use. Obtain qualified patent advice when your use requires that assurance.
 
 ## 6. User content and sensitive information
 
 You retain any rights you have in prompts, files, audio, credentials, account data, and other material you provide (**User Content**). You give the deployment operator and selected providers only the permission reasonably needed to receive, transmit, process, display, and return User Content for features you request. You are responsible for User Content and must have all rights, notices, consents, workplace approvals, permissions, and lawful bases needed to process it with the Service and your selected third parties.
 
 Do not provide secrets or sensitive, regulated, confidential, privileged, export-controlled, or personal information unless you have assessed the deployment and every recipient and have a lawful basis to do so. Do not submit information about children or third parties without appropriate authority. Mavéa is not a confidential or privileged channel. The Responsible Parties do not acquire ownership of User Content merely because you use the software.
+
+Listening features turn nearby speech into text. Recording and eavesdropping laws differ by place — some require every participant's consent, not just yours — so when you use a listening mode where other people can be heard, you are responsible for telling them and obtaining whatever consent your jurisdiction requires.
 
 If you export a backup of your data, the resulting file is plain, unencrypted content under your sole control — you are responsible for storing, transmitting, and deleting it safely, and for only importing backups you trust. Backups exclude your provider and search keys.
 
@@ -76,6 +84,8 @@ You may not use the Service to:
 Except for third-party materials and User Content, rights in Mavéa and its associated intellectual property remain with their applicable rights holders. No rights are granted except those expressly stated in the PolyForm license and these Terms.
 
 As between you and the Responsible Parties, the Responsible Parties do not claim ownership of output generated for you. That does not mean output is copyrightable, unique, accurate, original, lawful, or free of third-party rights. Similar output may be produced for others. You are responsible for clearance, attribution, review, and compliance before commercial or public use.
+
+Bundled and linked third-party materials can carry copyright licences, attribution requirements, personality or publicity rights, privacy interests, trademark rights, property restrictions, or other limitations. A copyright licence or public-domain label does not necessarily clear every depicted person, place, object, logo, or use. Preserve the notices in `THIRD-PARTY.txt` and `public/demo-assets/CREDITS.md`, follow their source terms, and obtain any additional releases or permissions your use requires.
 
 You may submit issue reports and feature suggestions without including code, patches, documentation changes, confidential information, or trade secrets. You grant the applicable Licensors and Maintainers, and their successors and assigns, a worldwide, perpetual, irrevocable, royalty-free right to use, modify, publish, and commercialize ideas and feedback you voluntarily submit, without restriction or compensation. This does not transfer ownership of inventions or copyrighted materials that are not included in your feedback.
 

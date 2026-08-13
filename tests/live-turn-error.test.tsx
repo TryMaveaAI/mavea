@@ -5,7 +5,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ModelConfig } from '../src/types/mavea';
-import type { LiveResult } from '../src/live/generateLive';
+import { generateLive, type LiveResult } from '../src/live/generateLive';
+import type { Attachment } from '../src/live/attachments';
 import { getLibrary, clearLibrary } from '../src/live/library/store';
 
 // Controllable stand-in for generateLive (the hoisted mock reads it lazily).
@@ -96,6 +97,26 @@ describe('useLiveTurn — a failed turn is an error state, not content', () => {
     expect(result.current.spec).toBeNull();
     expect(result.current.frames).toHaveLength(0);
     expect(getLibrary()).toHaveLength(0);
+  });
+
+  it('carries the ask’s inputs so Retry re-sends the same turn, not a stripped one', async () => {
+    // The composer clears attachments/pins/ink marks on submit. An error that stored only the text
+    // retried an attachment-only ask as "What can you tell me about the attached file?" — with no
+    // file attached.
+    const attachments = [
+      { id: 'a1', name: 'lease.pdf', kind: 'pdf', mime: 'application/pdf', data: 'x' },
+    ] as unknown as Attachment[];
+    const { result } = renderHook(() => useLiveTurn({ getConfig: () => cfg }));
+    await act(() => result.current.run('', attachments));
+    expect(result.current.error?.attachments).toBe(attachments);
+
+    gen.result = okResult();
+    const err = result.current.error!;
+    await act(() =>
+      result.current.run(err.retry, err.attachments, err.selectedBlocks, undefined, err.inkIntents),
+    );
+    const opts = vi.mocked(generateLive).mock.lastCall?.[4];
+    expect(opts?.attachments).toBe(attachments);
   });
 
   it('a successful retry clears the error and lands as a normal answer', async () => {

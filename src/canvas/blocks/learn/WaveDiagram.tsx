@@ -2,6 +2,7 @@ import { useMemo, useId } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear } from '../../lib/scale';
+import { spreadLabels } from '../../lib/spreadLabels';
 import type { WaveDiagramProps, WaveSpec } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
@@ -152,6 +153,18 @@ export function WaveDiagram({
   const ampX = crest ? sx(crest.x) : PAD_L + 18;
   const crestY = crest ? sy(crest.amp) : yZero;
 
+  // Each wave's label rides at that wave's own height where the curve leaves the plot. Waves that
+  // happen to end at the same displacement — harmonics crossing equilibrium together is the
+  // ordinary case, not an exotic one — would stack their labels illegibly, so spread them.
+  const labelled = model.waves.filter((w) => w.label);
+  const labelY = spreadLabels(
+    labelled.map((w, i) => {
+      const k = (2 * Math.PI) / w.wavelength;
+      return { id: i, y: sy(w.amplitude * Math.sin(k * model.xMax + w.phase)) - 5 };
+    }),
+    { gap: 12, top: PAD_T + 6, bottom: H - PAD_B - 4 },
+  );
+
   return (
     <div
       className="card reveal"
@@ -187,12 +200,20 @@ export function WaveDiagram({
           <line x1={PAD_L} y1={yZero} x2={W - PAD_R} y2={yZero} className="wv-axis" />
           <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="wv-axis" />
 
-          {/* x-axis arrowhead + label */}
+          {/* x-axis arrowhead, plus the unit as a conventional axis title under the ticks. It used
+              to float just above the arrowhead, which is exactly where the per-wave labels are
+              anchored — any wave ending near equilibrium buried it. Below the tick row it is clear
+              of the curves entirely, no matter where they happen to end. */}
           <polygon
             points={`${W - PAD_R},${yZero} ${W - PAD_R - 7},${yZero - 3.5} ${W - PAD_R - 7},${yZero + 3.5}`}
             className="wv-axis-arrow"
           />
-          <text x={W - PAD_R - 2} y={yZero - 8} className="wv-axis-lbl" textAnchor="end">
+          <text
+            x={(PAD_L + W - PAD_R) / 2}
+            y={H - PAD_B + 25}
+            className="wv-axis-lbl"
+            textAnchor="middle"
+          >
             {xUnit}
           </text>
 
@@ -290,25 +311,19 @@ export function WaveDiagram({
             </g>
           )}
 
-          {/* Per-wave legend labels, anchored at the right end of each curve */}
-          {model.waves
-            .filter((w) => w.label)
-            .map((w, i) => {
-              const k = (2 * Math.PI) / w.wavelength;
-              const yEnd = w.amplitude * Math.sin(k * model.xMax + w.phase);
-              return (
-                <text
-                  key={`lab${i}`}
-                  x={W - PAD_R - 4}
-                  y={sy(yEnd) - 5}
-                  className="wv-curve-lbl"
-                  fill={w.color}
-                  textAnchor="end"
-                >
-                  {truncate(w.label as string, CURVE_LABEL_MAX_CHARS)}
-                </text>
-              );
-            })}
+          {/* Per-wave legend labels, riding the right end of each curve on the de-collided ladder */}
+          {labelled.map((w, i) => (
+            <text
+              key={`lab${i}`}
+              x={W - PAD_R - 4}
+              y={labelY.get(i)}
+              className="wv-curve-lbl"
+              fill={w.color}
+              textAnchor="end"
+            >
+              {truncate(w.label as string, CURVE_LABEL_MAX_CHARS)}
+            </text>
+          ))}
         </svg>
       </div>
       {footer && (

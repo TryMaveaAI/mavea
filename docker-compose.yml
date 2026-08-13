@@ -1,21 +1,28 @@
-# Mavéa — the one container: the voice.
+# Mavéa — local speech services. Works with Podman Compose or Docker Compose.
 #
 #   pnpm dev               →  starts this container AND the dev server (the normal way in)
-#   docker compose up -d   →  Kokoro TTS on http://localhost:8880, on its own
+#   podman compose up -d   →  Kokoro TTS on :8880 + whisper.cpp STT on :8100
 #
 # Everything else runs on the host: `pnpm dev` serves the app at http://localhost:5173 and
 # proxies /tts → localhost:8880, so the browser never talks to Kokoro directly (no CORS).
-# Without this container Mavéa still works — lines show as captions instead of being spoken.
+# Without these containers Mavéa still works through typing and written captions; microphone
+# transcription stays unavailable rather than sending speech to a browser-vendor service.
 # The optional actions gateway is plain Node (`pnpm actions`), no container needed.
 
 services:
-  # Kokoro TTS — OpenAI-compatible /v1/audio/speech on :8880. Mavéa's only voice. The server
-  # (kokoro-fastapi) and the Kokoro-82M model weights it downloads are both Apache-2.0.
+  # Kokoro TTS — OpenAI-compatible /v1/audio/speech on :8880. Mavéa's only voice. The wrapper and
+  # Kokoro-82M weights are Apache-2.0. The separately pulled image also contains GPL-3.0-or-later
+  # eSpeak NG; commercial use is allowed, and Mavéa neither bundles nor links that separate service.
   # CPU image; the first-run model download means the first few lines may be silent
   # until it's ready — speak() no-ops gracefully until then.
   kokoro:
-    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.2.4@sha256:c8812546d358cbfd6a5c4087a28795b2b001d8e32d7a322eedd246e6bc13cb55
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     environment:
       # How many cores the voice is allowed. Left to itself, torch sizes its pool from
       # hardware_concurrency() and takes every one — past the peak of this model's curve. Measured
@@ -30,4 +37,30 @@ services:
       # it has. `pnpm dev` measures this box once and sets the value; see scripts/dev.mjs.
       OMP_NUM_THREADS: ${MAVEA_VOICE_THREADS:-4}
     ports:
-      - '8880:8880'
+      - '127.0.0.1:8880:8880'
+
+  # whisper.cpp v1.9.1 — MIT-licensed local transcription with the MIT-licensed quantized
+  # small.en model. The source archive and model are checksum-verified before they execute.
+  whisper:
+    image: mavea-whisper-cpp:1.9.1
+    build:
+      context: .
+      dockerfile: voice/whisper.Dockerfile
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    environment:
+      MAVEA_STT_THREADS: ${MAVEA_STT_THREADS:-4}
+    volumes:
+      - whisper-models:/models
+    ports:
+      - '127.0.0.1:8100:8080'
+
+volumes:
+  whisper-models:

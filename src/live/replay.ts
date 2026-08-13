@@ -8,6 +8,7 @@
 // timing, the spotlight, and the voice. No React, no side effects, never throws.
 import type { Beat } from '../orchestration/state';
 import type { ConversationSpec } from '../data/conversation';
+import type { TourMark } from '../engine/liveSchema';
 import { liveTourBeats } from './generateBeats';
 import type { TurnFrame } from './history';
 
@@ -20,15 +21,30 @@ export interface ReplaySegment {
   say: string;
   /** The spotlight walkthrough for this segment, reusing the live tour engine. */
   beats: Beat[];
+  /** Authored gestures resolved to real block ids. Replay and video consume this same semantic
+   *  track, so a circle or connection cannot drift from the spotlight that introduced it. */
+  cues: ReplayCue[];
+}
+
+export interface ReplayCue {
+  spot: string;
+  say?: string;
+  marks: TourMark[];
 }
 
 /** Map a frame's index-based tour to the id-based steps liveTourBeats wants. Indices that
  *  don't resolve to a block with an id are dropped (same rule the live surface uses). */
-function tourFor(frame: TurnFrame): { spot: string; say?: string }[] {
-  const steps: { spot: string; say?: string }[] = [];
+function tourFor(frame: TurnFrame): ReplayCue[] {
+  const steps: ReplayCue[] = [];
   for (const t of frame.tour) {
     const id = frame.spec.blocks[t.index]?.id;
-    if (id) steps.push(t.say ? { spot: id, say: t.say } : { spot: id });
+    if (id) {
+      steps.push({
+        spot: id,
+        ...(t.say ? { say: t.say } : {}),
+        marks: t.marks ?? (t.mark ? [t.mark] : []),
+      });
+    }
   }
   return steps;
 }
@@ -36,12 +52,12 @@ function tourFor(frame: TurnFrame): { spot: string; say?: string }[] {
 /** Build the playable segment for one frame: render its canvas, speak its line, and walk
  *  its tour (the model-authored order when present, else reading order). */
 export function replayFrame(frame: TurnFrame): ReplaySegment {
-  const tour = tourFor(frame);
+  const cues = tourFor(frame);
   const beats = liveTourBeats(frame.spec.blocks, {
     opener: frame.narration,
-    ...(tour.length ? { tour } : {}),
+    ...(cues.length ? { tour: cues.map(({ spot, say }) => (say ? { spot, say } : { spot })) } : {}),
   });
-  return { spec: frame.spec, say: frame.spoken ?? frame.narration, beats };
+  return { spec: frame.spec, say: frame.spoken ?? frame.narration, beats, cues };
 }
 
 /**

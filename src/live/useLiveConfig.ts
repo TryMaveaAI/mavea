@@ -95,6 +95,9 @@ const STORAGE_KEY = 'mavea-live-v2';
 // Secrets (API keys) live in a SEPARATE, encrypted blob — never plaintext in the main config.
 const SECRETS_KEY = 'mavea-live-v2:secrets';
 export const LIVE_V2_EVENT = STORAGE_KEY;
+export const SECRET_PERSISTENCE_EVENT = `${STORAGE_KEY}:secret-persistence`;
+const MAX_CONFIG_IMPORT_BYTES = 250_000;
+const MAX_CONFIG_VALUE_LENGTH = 512;
 
 const DEFAULT: LiveConfigV2 = {
   provider: 'gemini',
@@ -141,7 +144,7 @@ function coerceMap(v: unknown): Partial<Record<ProviderId, string>> {
   if (v && typeof v === 'object') {
     for (const p of PROVIDERS) {
       const val = (v as Record<string, unknown>)[p.id];
-      if (typeof val === 'string') out[p.id] = val;
+      if (typeof val === 'string' && val.length <= MAX_CONFIG_VALUE_LENGTH) out[p.id] = val;
     }
   }
   return out;
@@ -175,7 +178,7 @@ function coerceSearchKeys(v: unknown): Partial<Record<SearchProviderId, string>>
   if (v && typeof v === 'object') {
     for (const id of ['brave', 'tavily'] as const) {
       const val = (v as Record<string, unknown>)[id];
-      if (typeof val === 'string') out[id] = val;
+      if (typeof val === 'string' && val.length <= MAX_CONFIG_VALUE_LENGTH) out[id] = val;
     }
   }
   return out;
@@ -260,28 +263,71 @@ let secretsWriteGen = 0;
 // no secrets" and deleting the real blob out from under the still-in-flight hydrate.
 let secretsHydrated = false;
 
+export type SecretPersistenceStatus =
+  | 'not-requested'
+  | 'pending'
+  | 'persisted'
+  | 'session-only'
+  | 'unavailable';
+
+let secretPersistenceStatus: SecretPersistenceStatus = 'not-requested';
+let secretPersistenceTask: Promise<void> = Promise.resolve();
+
+function reportSecretPersistence(status: SecretPersistenceStatus): void {
+  secretPersistenceStatus = status;
+  try {
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(SECRET_PERSISTENCE_EVENT, { detail: status }));
+    }
+  } catch {
+    /* no window (test/SSR) */
+  }
+}
+
+/** The truthful state of encrypted credential storage. `session-only` means the requested disk
+ *  write failed but the current in-memory keys remain usable; `unavailable` means a saved blob
+ *  could not be restored. */
+export function getSecretPersistenceStatus(): SecretPersistenceStatus {
+  return secretPersistenceStatus;
+}
+
+/** Wait for the latest requested secret write/read before displaying its persistence status. */
+export async function whenSecretPersistenceSettled(): Promise<SecretPersistenceStatus> {
+  await secretPersistenceTask;
+  return secretPersistenceStatus;
+}
+
 // Persist the secrets to their own ENCRYPTED blob (never plaintext in the main config). When the
 // user hasn't opted into "remember", or crypto is unavailable, nothing is written to disk and the
 // keys stay in memory for the session only — we never fall back to writing them in the clear.
 async function persistSecrets(c: LiveConfigV2): Promise<void> {
   const gen = ++secretsWriteGen;
-  if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') {
+    reportSecretPersistence(c.rememberKey && hasSecrets(c) ? 'session-only' : 'not-requested');
+    return;
+  }
   if (!c.rememberKey || !hasSecrets(c)) {
     // An unrelated write (any setLiveConfigV2 call touches this) landing before hydrateSecrets
     // has loaded the real keys must not treat that not-yet-loaded state as "nothing to remember"
     // and wipe the actual on-disk secrets — only a genuine "remember is off" is honored early.
-    if (c.rememberKey && !secretsHydrated) return;
+    if (c.rememberKey && !secretsHydrated) {
+      reportSecretPersistence('pending');
+      return;
+    }
     try {
       localStorage.removeItem(SECRETS_KEY);
     } catch {
       /* ignore */
     }
+    if (gen === secretsWriteGen) reportSecretPersistence('not-requested');
     return;
   }
+  reportSecretPersistence('pending');
   try {
     const enc = await encryptSecret(JSON.stringify({ keys: c.keys, searchKeys: c.searchKeys }));
     if (gen !== secretsWriteGen) return; // a newer write (or a clear) has since started
     localStorage.setItem(SECRETS_KEY, enc);
+    reportSecretPersistence('persisted');
   } catch {
     if (gen !== secretsWriteGen) return;
     // Crypto/IndexedDB unavailable → session-only; do NOT write plaintext as a fallback.
@@ -290,6 +336,7 @@ async function persistSecrets(c: LiveConfigV2): Promise<void> {
     } catch {
       /* ignore */
     }
+    reportSecretPersistence('session-only');
   }
 }
 
@@ -297,16 +344,21 @@ async function persistSecrets(c: LiveConfigV2): Promise<void> {
 // lands shortly after load and broadcasts — keys are read at turn time, long after, so the gap is
 // invisible. A corrupt blob or rotated device key just yields no keys (the user re-enters them).
 async function hydrateSecrets(): Promise<void> {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') {
+    reportSecretPersistence('unavailable');
+    return;
+  }
   let enc: string | null;
   try {
     enc = localStorage.getItem(SECRETS_KEY);
   } catch {
     secretsHydrated = true;
+    reportSecretPersistence('unavailable');
     return;
   }
   if (!enc) {
     secretsHydrated = true;
+    reportSecretPersistence('not-requested');
     return;
   }
   // Snapshot the write generation before the async decrypt: if a real edit (setLiveConfigV2)
@@ -323,9 +375,10 @@ async function hydrateSecrets(): Promise<void> {
         searchKeys: { ...cur.searchKeys, ...coerceSearchKeys(data.searchKeys) },
       };
       broadcast(memory);
+      reportSecretPersistence('persisted');
     }
   } catch {
-    /* corrupt or device key rotated — ignore, keys simply aren't restored */
+    if (gen === secretsWriteGen) reportSecretPersistence('unavailable');
   } finally {
     secretsHydrated = true;
   }
@@ -341,10 +394,17 @@ export function setLiveConfigV2(patch: Partial<LiveConfigV2>): LiveConfigV2 {
       // still carries them for this session regardless.
       const persisted = { ...next, keys: {}, searchKeys: {} };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-      void persistSecrets(next);
+      secretPersistenceTask = persistSecrets(next);
+    } else {
+      reportSecretPersistence(
+        !next.rememberKey ? 'not-requested' : hasSecrets(next) ? 'session-only' : 'unavailable',
+      );
     }
   } catch {
-    /* storage unavailable — still broadcast for in-session readers */
+    // The in-memory config is still usable, but do not leave a stale "persisted" status visible.
+    reportSecretPersistence(
+      !next.rememberKey ? 'not-requested' : hasSecrets(next) ? 'session-only' : 'unavailable',
+    );
   }
   broadcast(next);
   return next;
@@ -362,7 +422,7 @@ function initSecrets(): void {
     secretsHydrated = true;
     setLiveConfigV2({});
   } else {
-    void hydrateSecrets();
+    secretPersistenceTask = hydrateSecrets();
   }
 }
 initSecrets();
@@ -417,50 +477,145 @@ export function exportConfig(): string {
   return JSON.stringify(snapshot, null, 2);
 }
 
+export type CredentialField = 'provider-api-keys' | 'search-api-keys' | 'github-token';
+
+export interface ImportConfigOptions {
+  /** Merge recognized fields onto today's config. Used by whole-install backups so fields added
+   *  after an old backup was created are not reset to factory defaults. */
+  mode?: 'replace' | 'merge';
+  /** Whole-install backups are not a secret-management action, so they must not disable or clear
+   *  credentials that already belong to this browser. */
+  preserveSecretState?: boolean;
+}
+
+export interface ConfigImportSummary {
+  config: LiveConfigV2;
+  credentialsIgnored: CredentialField[];
+  appliedFields: string[];
+}
+
+const IMPORTABLE_CONFIG_FIELDS = [
+  'provider',
+  'models',
+  'webSearch',
+  'searchMode',
+  'quality',
+  'searchProvider',
+  'memoryEnabled',
+  'autoSaveFlashcards',
+  'generativeBlocks',
+  'libraryEnabled',
+  'teachMode',
+  'annotationsEnabled',
+  'morningBrief',
+  'explainLevel',
+  'fontScale',
+  'pttKey',
+  'pttSide',
+  'voiceSpeed',
+] as const;
+
+function hasOwn(o: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(o, key);
+}
+
+function hasCredentialPayload(value: unknown): boolean {
+  if (typeof value === 'string') return value.length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === 'object') return Object.keys(value).length > 0;
+  return value !== undefined && value !== null;
+}
+
+/** Parse a settings file once, apply only recognized non-secret fields, and report credentials a
+ *  crafted file tried to carry. Credentials are never imported; existing in-session credentials
+ *  remain untouched so importing preferences cannot overwrite or exfiltrate them. */
+export function importConfigWithSummary(
+  json: string,
+  options: ImportConfigOptions = {},
+): ConfigImportSummary {
+  const size =
+    typeof TextEncoder === 'function' ? new TextEncoder().encode(json).byteLength : json.length * 2;
+  if (size > MAX_CONFIG_IMPORT_BYTES) {
+    throw new Error('Invalid config file — the settings object is too large.');
+  }
+  let imported: unknown;
+  try {
+    imported = JSON.parse(json);
+  } catch {
+    throw new Error('Invalid config file — could not parse JSON.');
+  }
+  if (!imported || typeof imported !== 'object' || Array.isArray(imported)) {
+    throw new Error('Invalid config file — expected a settings object.');
+  }
+
+  const o = imported as Record<string, unknown>;
+  if (Object.keys(o).length > 64) {
+    throw new Error('Invalid config file — the settings object has too many fields.');
+  }
+  const current = getLiveConfigV2();
+  const source: Record<string, unknown> = options.mode === 'merge' ? { ...current, ...o } : o;
+  const webSearch = coerceBool(source.webSearch, DEFAULT.webSearch);
+  const searchMode =
+    coerceSearchMode(source.searchMode) ??
+    (source.searchMode === undefined && webSearch ? 'realtime' : 'off');
+  const parsed: LiveConfigV2 = {
+    provider: coerceProvider(source.provider),
+    models: coerceMap(source.models),
+    // An imported file is preferences, never a credential transport.
+    keys: current.keys,
+    rememberKey: options.preserveSecretState === false ? false : current.rememberKey,
+    webSearch,
+    searchMode,
+    quality: coerceQuality(source.quality),
+    searchProvider: coerceSearch(source.searchProvider),
+    searchKeys: current.searchKeys,
+    memoryEnabled: coerceBool(source.memoryEnabled, DEFAULT.memoryEnabled),
+    autoSaveFlashcards: coerceBool(source.autoSaveFlashcards, DEFAULT.autoSaveFlashcards),
+    generativeBlocks: coerceBool(source.generativeBlocks, DEFAULT.generativeBlocks),
+    libraryEnabled: coerceBool(source.libraryEnabled, DEFAULT.libraryEnabled),
+    teachMode: coerceBool(source.teachMode, DEFAULT.teachMode),
+    annotationsEnabled: coerceBool(source.annotationsEnabled, DEFAULT.annotationsEnabled),
+    morningBrief: coerceBool(source.morningBrief, DEFAULT.morningBrief),
+    explainLevel: coerceExplainLevel(source.explainLevel),
+    fontScale: coerceFontScale(source.fontScale),
+    pttKey:
+      typeof source.pttKey === 'string' && source.pttKey.length > 0 && source.pttKey.length <= 32
+        ? source.pttKey
+        : DEFAULT.pttKey,
+    pttSide: coercePttSide(source.pttSide),
+    voiceSpeed: coerceSpeed(source.voiceSpeed),
+  };
+
+  const credentialsIgnored: CredentialField[] = [];
+  if (hasOwn(o, 'keys') && hasCredentialPayload(o.keys)) {
+    credentialsIgnored.push('provider-api-keys');
+  }
+  if (hasOwn(o, 'searchKeys') && hasCredentialPayload(o.searchKeys)) {
+    credentialsIgnored.push('search-api-keys');
+  }
+  if (
+    ['githubToken', 'github_token', 'ghToken'].some(
+      (key) => hasOwn(o, key) && hasCredentialPayload(o[key]),
+    )
+  ) {
+    credentialsIgnored.push('github-token');
+  }
+
+  return {
+    config: setLiveConfigV2(parsed),
+    credentialsIgnored,
+    appliedFields: IMPORTABLE_CONFIG_FIELDS.filter((field) => hasOwn(o, field)),
+  };
+}
+
 /**
  * Restore config from a previously exported JSON string.
  * Unknown / invalid fields are silently dropped by the same coercion path
  * used when reading from localStorage — so a file from an older version will
  * still import cleanly, filling any missing keys with defaults.
  */
-export function importConfig(json: string): LiveConfigV2 {
-  try {
-    const o = JSON.parse(json) as Record<string, unknown>;
-    const webSearch = coerceBool(o.webSearch, DEFAULT.webSearch);
-    // Same legacy migration as fromStorage() above — see its comment for the reasoning.
-    const searchMode =
-      coerceSearchMode(o.searchMode) ??
-      (o.searchMode === undefined && webSearch ? 'realtime' : 'off');
-    const parsed: LiveConfigV2 = {
-      provider: coerceProvider(o.provider),
-      models: coerceMap(o.models),
-      keys: coerceMap(o.keys),
-      // Never inherit key-persistence from an untrusted file: a crafted config with
-      // rememberKey:true + leaked keys would silently write them to localStorage on import.
-      // The user re-opts-in via settings if they want persistence.
-      rememberKey: false,
-      webSearch,
-      searchMode,
-      quality: coerceQuality(o.quality),
-      searchProvider: coerceSearch(o.searchProvider),
-      searchKeys: coerceSearchKeys(o.searchKeys),
-      memoryEnabled: coerceBool(o.memoryEnabled, DEFAULT.memoryEnabled),
-      autoSaveFlashcards: coerceBool(o.autoSaveFlashcards, DEFAULT.autoSaveFlashcards),
-      generativeBlocks: coerceBool(o.generativeBlocks, DEFAULT.generativeBlocks),
-      libraryEnabled: coerceBool(o.libraryEnabled, DEFAULT.libraryEnabled),
-      teachMode: coerceBool(o.teachMode, DEFAULT.teachMode),
-      annotationsEnabled: coerceBool(o.annotationsEnabled, DEFAULT.annotationsEnabled),
-      morningBrief: coerceBool(o.morningBrief, DEFAULT.morningBrief),
-      explainLevel: coerceExplainLevel(o.explainLevel),
-      fontScale: coerceFontScale(o.fontScale),
-      pttKey: typeof o.pttKey === 'string' && o.pttKey ? o.pttKey : DEFAULT.pttKey,
-      pttSide: coercePttSide(o.pttSide),
-      voiceSpeed: coerceSpeed(o.voiceSpeed),
-    };
-    return setLiveConfigV2(parsed);
-  } catch {
-    throw new Error('Invalid config file — could not parse JSON.');
-  }
+export function importConfig(json: string, options?: ImportConfigOptions): LiveConfigV2 {
+  return importConfigWithSummary(json, options).config;
 }
 
 /** Derive the per-turn Live capabilities (what generateLive needs). `searchProvider`/

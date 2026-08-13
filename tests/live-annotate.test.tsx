@@ -602,3 +602,76 @@ describe('cross-card "connect" gesture', () => {
     }
   });
 });
+
+// The gesture track is a record of what Mavéa DREW. A request whose target never resolves draws
+// nothing, so it must never be advertised as a mark the reader can go and look at.
+describe('AnnotationLayer — reporting what actually landed', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  function markedHost(spot: string, mark: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.setAttribute('data-spot-id', spot);
+    const el = document.createElement('span');
+    el.setAttribute('data-mark', mark);
+    wrap.appendChild(el);
+    document.body.appendChild(wrap);
+    wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+    el.getBoundingClientRect = () => domRect(40, 60, 80, 30);
+    return wrap;
+  }
+
+  function bareHost(spot: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.setAttribute('data-spot-id', spot);
+    wrap.textContent = 'nothing the line names';
+    document.body.appendChild(wrap);
+    wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+    return wrap;
+  }
+
+  it('reports a mark that lands and stays silent for one that resolves to nothing', () => {
+    const drew = markedHost('drew', 'circle');
+    const missed = bareHost('missed');
+    const placed: string[] = [];
+
+    render(
+      <AnnotationLayer
+        spots={[
+          { spot: 'drew', generous: true },
+          { spot: 'missed', line: 'This loop settles overnight.', generous: true },
+        ]}
+        onPlaced={(request) => placed.push(request.spot)}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(drew.querySelector('.ink-stroke')).toBeTruthy();
+    expect(missed.querySelector('.ink-layer')).toBeNull();
+    expect(placed).toEqual(['drew']);
+  });
+
+  it('reports each landing only once, however often it re-renders', () => {
+    markedHost('drew', 'circle');
+    const placed: string[] = [];
+    const view = render(
+      <AnnotationLayer
+        spots={[{ spot: 'drew', generous: true }]}
+        onPlaced={(request) => placed.push(request.spot)}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(2000));
+    view.rerender(
+      <AnnotationLayer
+        spots={[{ spot: 'drew', generous: true }]}
+        onPlaced={(request) => placed.push(request.spot)}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(placed).toEqual(['drew']);
+  });
+});

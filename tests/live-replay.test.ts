@@ -56,6 +56,12 @@ describe('replayFrame — one captured turn, played exactly as it was', () => {
     expect(spots(seg.beats)).toEqual(['live-3', 'live-1']);
   });
 
+  it('carries the authored Pen marks on the same resolved cue as its spotlight', () => {
+    const mark = { kind: 'circle' as const, at: 'third' };
+    const seg = replayFrame(frame({ tour: [{ index: 2, say: 'third', mark }] }));
+    expect(seg.cues).toEqual([{ spot: 'live-3', say: 'third', marks: [mark] }]);
+  });
+
   it('drops a tour index that points past the blocks', () => {
     const seg = replayFrame(frame({ tour: [{ index: 9 }, { index: 1 }] }));
     expect(spots(seg.beats)).toEqual(['live-2']);

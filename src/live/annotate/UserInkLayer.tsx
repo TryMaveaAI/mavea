@@ -20,7 +20,7 @@ const STUCK_MS = 4000; // a press older than this with no up/cancel is wedged â€
 // (a slider, a before/after divider, a carousel swipe) opts out explicitly via data-interactive
 // instead of a blanket tag ban, so new interactive blocks can't be silently walled off by accident.
 const CARVE_OUT =
-  'input, textarea, select, button, a, summary, [contenteditable], [role="slider"], [role="tab"], [role="switch"], [draggable="true"], .block-ask, .leaflet-container, .geo-map, [data-interactive]';
+  'input, textarea, select, button, a, summary, [contenteditable], [role="slider"], [role="tab"], [role="switch"], [draggable="true"], .block-ask, .geo-map, [data-interactive]';
 
 interface UserInkLayerProps {
   /** Armed for mouse/touch. A pen (pointerType==='pen') always draws regardless. */

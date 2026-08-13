@@ -3748,7 +3748,8 @@
 }
 .bv-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  /* The 320-unit viewBox renders near 1:1 in a narrow card, so these numbers are screen px. */
+  font-size: 9.5px;
 }
 .bv-curve {
   stroke-linecap: round;
@@ -3769,12 +3770,12 @@
 }
 .bv-sweet-lbl {
   fill: var(--presence);
-  font-size: 8px;
+  font-size: 9.5px;
   font-weight: 600;
 }
 .bv-zone-lbl {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-style: italic;
 }
 .bv-axlbl {
@@ -4267,7 +4268,9 @@ table.c2-chrom-table {
 }
 .c2-gel-tick-lbl {
   fill: var(--gel-tick-lbl);
-  font-size: 7.5px;
+  /* The ladder SVG is sized in real pixels (width/height attributes, no scaling), so this number
+     is exactly what renders — 7.5px put every size marker under the legibility floor. */
+  font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2-gel-empty {
@@ -4395,7 +4398,9 @@ table.c2-chrom-table {
 }
 .c2 .ter-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  /* MIN_FS from TernaryPlot.tsx: user units in a 380-wide viewBox that renders near 320px, so
+     anything under ~10.6 lands below the 9px floor. This had drifted to 8.5 (7.2px on screen). */
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .ter-corner {

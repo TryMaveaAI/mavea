@@ -7,7 +7,7 @@ import './flashcards.css';
 // and nothing would change.
 import '../../styles/templates.css';
 import { homeTarget } from '../../lib/homeTarget';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
   getCounts,
@@ -16,6 +16,7 @@ import {
   selectCards,
   setStudyStyle,
   setSuspended,
+  setSuspendedMany,
 } from './store';
 import type { CardFilter, SrsCard, StudyStyle } from './store';
 import { studyCopy } from './copy';
@@ -93,7 +94,10 @@ export function FlashcardsApp(): ReactElement {
   });
   const deckNames = counts.decks.map((d) => d.name);
 
-  const selIds = useMemo(() => [...selected], [selected]);
+  // Only what is on screen can be acted on: the bulk bar is read as "these rows", so a selection
+  // made in one deck must never be what Delete or Move quietly operates on after the user has
+  // switched scope.
+  const selIds = cards.filter((c) => selected.has(c.id)).map((c) => c.id);
   const toggleSel = (id: string): void =>
     setSelected((s) => {
       const n = new Set(s);
@@ -106,6 +110,15 @@ export function FlashcardsApp(): ReactElement {
     setConfirmDelete(false);
     setMoveTo('');
   };
+  // …and the leftover selection is dropped outright the moment the scope changes, so it can't come
+  // back when the user navigates in again. Adjusted during render (React's documented alternative
+  // to a reset effect), same as activeFilter above — no second commit with a stale bulk bar.
+  const scopeKey = JSON.stringify([deck, tag, activeFilter, search]);
+  const [lastScope, setLastScope] = useState(scopeKey);
+  if (lastScope !== scopeKey) {
+    setLastScope(scopeKey);
+    clearSel();
+  }
   const allSelected = cards.length > 0 && cards.every((c) => selected.has(c.id));
   const toggleAll = (): void =>
     setSelected(allSelected ? new Set() : new Set(cards.map((c) => c.id)));
@@ -302,7 +315,7 @@ export function FlashcardsApp(): ReactElement {
                 type="button"
                 className="fc-btn fc-btn-sm"
                 onClick={() => {
-                  selIds.forEach((id) => setSuspended(id, !anySuspendedSelected));
+                  setSuspendedMany(selIds, !anySuspendedSelected);
                   clearSel();
                 }}
               >
@@ -423,6 +436,13 @@ function CardRow({
   onTag: (t: string) => void;
 }): ReactElement {
   const [confirm, setConfirm] = useState(false);
+  // Arming a row for deletion has to be escapable, so the confirm button disarms on blur — and it
+  // takes focus the moment it appears, without which the blur can never fire (Safari doesn't focus
+  // a button on click). Imperative, not the autoFocus prop, like the rest of this app's surfaces.
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirm) confirmRef.current?.focus();
+  }, [confirm]);
   const parkVerb = studyCopy(style).parkVerb;
   const status = rowStatus(card, style, Date.now());
 
@@ -467,7 +487,9 @@ function CardRow({
             type="button"
             className="fc-icon-btn fc-icon-danger"
             aria-label="Confirm delete"
+            ref={confirmRef}
             onClick={onDelete}
+            onBlur={() => setConfirm(false)}
           >
             <Icon.check />
           </button>
@@ -477,7 +499,6 @@ function CardRow({
             className="fc-icon-btn"
             aria-label="Delete card"
             onClick={() => setConfirm(true)}
-            onBlur={() => setConfirm(false)}
           >
             <Icon.x />
           </button>

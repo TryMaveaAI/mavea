@@ -2,14 +2,19 @@
 // (ids, timestamps, and — the key regression a wrong seam would cause — flashcard SM-2 scheduling),
 // MERGE without ever deleting existing data, reject junk files cleanly, and NEVER carry an API key.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildBackup, importBackup, CURRENT_VERSION } from '../src/live/backup/backup';
+import {
+  buildBackup,
+  importBackup,
+  preflightBackup,
+  CURRENT_VERSION,
+} from '../src/live/backup/backup';
 import { getDashboards, invalidate } from '../src/live/dashboards/store';
 import { getAllCards, __resetSrsCacheForTests } from '../src/live/srs/store';
 import { getMemoryNodes, forgetAll } from '../src/live/memory/store';
 import { clearLibrary } from '../src/live/library/store';
 import { clearAtlas } from '../src/live/atlas/store';
 import { __resetCourseCacheForTests } from '../src/live/course/store';
-import { getLiveConfigV2, setLiveConfigV2 } from '../src/live/useLiveConfig';
+import { getLiveConfigV2, resetLiveConfig, setLiveConfigV2 } from '../src/live/useLiveConfig';
 
 function resetAll(): void {
   localStorage.clear();
@@ -19,6 +24,7 @@ function resetAll(): void {
   clearLibrary();
   clearAtlas();
   __resetCourseCacheForTests();
+  resetLiveConfig();
 }
 
 const card = (over: Record<string, unknown> = {}) => ({
@@ -54,8 +60,8 @@ beforeEach(resetAll);
 afterEach(resetAll);
 
 describe('importBackup — fidelity', () => {
-  it('restores dashboards, memory provenance, and flashcard SM-2 scheduling verbatim', () => {
-    const summary = importBackup(JSON.stringify(bundle()));
+  it('restores dashboards, memory provenance, and flashcard SM-2 scheduling verbatim', async () => {
+    const summary = await importBackup(JSON.stringify(bundle()));
     expect(summary).toMatchObject({ dashboards: 1, memory: 1, flashcards: 1 });
 
     const d = getDashboards().find((x) => x.id === 'd-keep');
@@ -74,21 +80,21 @@ describe('importBackup — fidelity', () => {
     });
   });
 
-  it('round-trips through buildBackup → importBackup', () => {
-    importBackup(JSON.stringify(bundle()));
-    const snapshot = buildBackup();
+  it('round-trips through buildBackup → importBackup', async () => {
+    await importBackup(JSON.stringify(bundle()));
+    const snapshot = await buildBackup();
     resetAll();
-    importBackup(JSON.stringify(snapshot));
+    await importBackup(JSON.stringify(snapshot));
     expect(getAllCards().find((x) => x.id === 'c1')?.easeFactor).toBe(2.8);
     expect(getDashboards().some((x) => x.id === 'd-keep')).toBe(true);
   });
 });
 
 describe('importBackup — merge never deletes', () => {
-  it('keeps existing items a later bundle does not carry', () => {
-    importBackup(JSON.stringify(bundle()));
+  it('keeps existing items a later bundle does not carry', async () => {
+    await importBackup(JSON.stringify(bundle()));
     // A second bundle with a DIFFERENT card and no dashboards/memory.
-    importBackup(
+    await importBackup(
       JSON.stringify(
         bundle({
           dashboards: [],
@@ -103,11 +109,11 @@ describe('importBackup — merge never deletes', () => {
     expect(getDashboards().some((x) => x.id === 'd-keep')).toBe(true); // not erased
   });
 
-  it('newer updatedAt wins on an id collision (a stale backup cannot roll back)', () => {
-    importBackup(
+  it('newer updatedAt wins on an id collision (a stale backup cannot roll back)', async () => {
+    await importBackup(
       JSON.stringify(bundle({ dashboards: [{ id: 'd1', title: 'New', updatedAt: 500 }] })),
     );
-    importBackup(
+    await importBackup(
       JSON.stringify(bundle({ dashboards: [{ id: 'd1', title: 'Stale', updatedAt: 100 }] })),
     );
     expect(getDashboards().find((x) => x.id === 'd1')?.title).toBe('New');
@@ -115,41 +121,96 @@ describe('importBackup — merge never deletes', () => {
 });
 
 describe('importBackup — safety', () => {
-  it('rejects unparseable JSON with a friendly error', () => {
-    expect(() => importBackup('not json {')).toThrow(/valid JSON|backup/i);
+  it('rejects unparseable JSON with a friendly error', async () => {
+    await expect(importBackup('not json {')).rejects.toThrow(/valid JSON|backup/i);
   });
 
-  it('rejects a file that is not a Mavéa backup', () => {
-    expect(() => importBackup(JSON.stringify({ hello: 'world' }))).toThrow(/Mavéa backup/i);
+  it('rejects a file that is not a Mavéa backup', async () => {
+    await expect(importBackup(JSON.stringify({ hello: 'world' }))).rejects.toThrow(/Mavéa backup/i);
   });
 
-  it('rejects an oversized string before parsing', () => {
+  it('rejects an oversized string before parsing', async () => {
     const huge = `{"app":"mavea","kind":"backup","version":1,"data":{}, "pad":"${'x'.repeat(30_000_000)}"}`;
-    expect(() => importBackup(huge)).toThrow(/too large/i);
+    await expect(importBackup(huge)).rejects.toThrow(/too large/i);
   });
 
-  it('flags a newer version but still imports the sections it understands', () => {
-    const summary = importBackup(JSON.stringify(bundle({})).replace('"version":1', '"version":99'));
+  it('flags a newer version but still imports the sections it understands', async () => {
+    const summary = await importBackup(
+      JSON.stringify(bundle({})).replace('"version":1', '"version":99'),
+    );
     expect(summary.versionAhead).toBe(true);
     expect(summary.flashcards).toBe(1);
   });
 
-  it('drops a malformed item while keeping the valid ones', () => {
-    const summary = importBackup(
+  it('drops a malformed item while keeping the valid ones', async () => {
+    const summary = await importBackup(
       JSON.stringify(bundle({ flashcards: [card(), { id: 'bad' /* no front/back */ }] })),
     );
     expect(summary.flashcards).toBe(1); // the bad one was dropped by coerceCard
+    expect(summary.sections.flashcards).toMatchObject({ accepted: 1, rejected: 1 });
+    expect(summary.warnings).toContain('entries-rejected');
+  });
+
+  it('enforces per-section bounds before a store sees the data', async () => {
+    const flashcards = Array.from({ length: 1_001 }, (_, index) =>
+      card({ id: `card-${index}`, front: `Q${index}` }),
+    );
+    const summary = await importBackup(JSON.stringify(bundle({ flashcards })));
+    expect(summary.preflight.sections.flashcards).toMatchObject({
+      incoming: 1_001,
+      accepted: 1_000,
+      rejected: 1,
+      limit: 1_000,
+    });
+    expect(summary.warnings).toContain('entries-rejected');
+  });
+
+  it('rejects oversized nested strings and reports intentionally excluded stores', async () => {
+    await expect(
+      importBackup(JSON.stringify(bundle({ memory: [{ body: 'x'.repeat(40_000) }] }))),
+    ).rejects.toThrow(/oversized text/i);
+
+    const summary = await importBackup(JSON.stringify(bundle()));
+    expect(summary.excludedStores).toContainEqual({
+      id: 'active-session-and-turn-history',
+      reason: 'not-yet-portable',
+    });
+    expect(summary.durability).toBe('best-effort-unverified');
+  });
+
+  it('passes imported library blocks through the production block validator', async () => {
+    await importBackup(
+      JSON.stringify(
+        bundle({
+          library: [
+            {
+              id: 'library-hostile',
+              question: 'Show this',
+              title: 'Imported',
+              savedAt: 10,
+              spec: {
+                title: 'Imported',
+                blocks: [{ type: 'not-a-real-block', props: { html: '<script>bad()</script>' } }],
+              },
+            },
+          ],
+        }),
+      ),
+    );
+    const { getLibrary } = await import('../src/live/library/store');
+    expect(getLibrary()[0]?.spec.blocks).toEqual([]);
   });
 });
 
 describe('backup — never carries API keys', () => {
-  it('excludes keys from a built backup even when a key is remembered', () => {
+  it('excludes keys from a built backup even when a key is remembered', async () => {
     setLiveConfigV2({ rememberKey: true, keys: { anthropic: 'sk-ant-SECRET' } });
-    const json = JSON.stringify(buildBackup());
+    const json = JSON.stringify(await buildBackup());
     expect(json).not.toContain('sk-ant-SECRET');
+    expect((await preflightBackup(json)).credentialsPresent).toEqual([]);
   });
 
-  it('never persists a key injected into an imported backup', () => {
+  it('never persists a key injected into an imported backup', async () => {
     const withKey = bundle({
       settings: {
         provider: 'anthropic',
@@ -157,8 +218,38 @@ describe('backup — never carries API keys', () => {
         rememberKey: true,
       },
     });
-    importBackup(JSON.stringify(withKey));
+    const summary = await importBackup(JSON.stringify(withKey));
     expect(getLiveConfigV2().keys.anthropic).toBeUndefined();
     expect(getLiveConfigV2().rememberKey).toBe(false);
+    expect(summary.credentialsIgnored).toContain('provider-api-keys');
+  });
+
+  it('preserves this browser’s credentials and newer settings fields when restoring an old backup', async () => {
+    setLiveConfigV2({
+      rememberKey: true,
+      keys: { anthropic: 'sk-current-device' },
+      fontScale: 'larger',
+    });
+    const summary = await importBackup(
+      JSON.stringify(
+        bundle({
+          settings: {
+            provider: 'anthropic',
+            keys: { anthropic: 'sk-crafted-file' },
+            githubToken: 'ghp-crafted-file',
+          },
+        }),
+      ),
+    );
+
+    expect(getLiveConfigV2()).toMatchObject({
+      provider: 'anthropic',
+      fontScale: 'larger',
+      rememberKey: true,
+      keys: { anthropic: 'sk-current-device' },
+    });
+    expect(summary.credentialsIgnored).toEqual(
+      expect.arrayContaining(['provider-api-keys', 'github-token']),
+    );
   });
 });

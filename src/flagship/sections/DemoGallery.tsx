@@ -1,6 +1,6 @@
-// The demo gallery. Every card replays a frozen model-generated fixture on the same Live surface
+// The demo gallery. Every card replays a curated model-generated fixture on the same Live surface
 // used by interactive sessions. Clicking a card hands off to #/live in demo replay mode; no key is
-// needed, and the UI labels the replay plainly so it cannot be mistaken for a live provider call.
+// needed, and the UI labels the fictional choreography so it cannot be mistaken for a live result.
 import { DEMO_CATEGORIES, castMember, type DemoCastMember } from '../../demo/cast';
 import { Icon } from '../../icons/icons';
 import { SectionHead } from '../parts';
@@ -22,10 +22,10 @@ export function DemoGallery({ onPlay }: { onPlay: (p: DemoCastMember) => void })
   return (
     <>
       <SectionHead
-        eyebrow="See it for real"
-        sub="Each is a frozen, model-generated session replayed on the production UI — not a live provider call."
+        eyebrow="Curated examples"
+        sub="Each fictional scenario is a prerecorded, model-generated answer sequence with curated feature choreography on the production UI. No live provider call runs during playback."
       >
-        Watch a frozen session
+        Watch a prerecorded workflow
       </SectionHead>
 
       <div className="fl-demo-grid">
@@ -51,7 +51,7 @@ export function DemoGallery({ onPlay }: { onPlay: (p: DemoCastMember) => void })
             </div>
             <span className="fl-demo-blurb">{p.blurb}</span>
             <span className="fl-demo-play">
-              <Icon.play /> Play the session
+              <Icon.play /> Play curated replay
             </span>
           </button>
         ))}

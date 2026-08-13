@@ -106,6 +106,9 @@ function resolveLabelCollisions<T extends { px: number; py: number }>(
 // glyph, a locale variant) from bleeding past the card edge since SVG text never wraps or clips
 // itself. Truncate defensively so the legend can never render past the plot's right boundary.
 const LEGEND_MAX_CHARS = 6;
+// The 320-unit viewBox renders near 1:1 in a narrow card, so this is effectively screen px —
+// the nullcline legend was set at 7 and painted at 7px, well under the 9px legibility floor.
+const LEGEND_FS = 9.5;
 const LEGEND_X_LABEL = 'ẋ=0';
 const LEGEND_Y_LABEL = 'ẏ=0';
 
@@ -714,7 +717,7 @@ export function PhasePortrait({
                 strokeWidth="1.5"
                 strokeDasharray="3 2"
               />
-              <text x={W - PAD.r - 47} y={PAD.t + 11} fontSize="7" fill="var(--text-muted)">
+              <text x={W - PAD.r - 47} y={PAD.t + 11} fontSize={LEGEND_FS} fill="var(--text-muted)">
                 {LEGEND_X_LABEL.length > LEGEND_MAX_CHARS && <title>{LEGEND_X_LABEL}</title>}
                 {truncateLegend(LEGEND_X_LABEL)}
               </text>
@@ -727,7 +730,7 @@ export function PhasePortrait({
                 strokeWidth="1.5"
                 strokeDasharray="3 2"
               />
-              <text x={W - PAD.r - 47} y={PAD.t + 22} fontSize="7" fill="var(--text-muted)">
+              <text x={W - PAD.r - 47} y={PAD.t + 22} fontSize={LEGEND_FS} fill="var(--text-muted)">
                 {LEGEND_Y_LABEL.length > LEGEND_MAX_CHARS && <title>{LEGEND_Y_LABEL}</title>}
                 {truncateLegend(LEGEND_Y_LABEL)}
               </text>

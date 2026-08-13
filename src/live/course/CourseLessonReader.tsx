@@ -34,7 +34,7 @@ import {
 } from './store';
 import type { TopicCourse } from './model';
 import type { LiveResult } from '../generateLive';
-import type { TurnFrame } from '../history';
+import { createTurnFrameId, type TurnFrame } from '../history';
 import { applyTheme, readTheme } from '../../lib/theme';
 import { Icon } from '../../icons/icons';
 import { createPreloadableLazy } from '../../lib/preloadableLazy';
@@ -97,7 +97,9 @@ function syncHash(courseId: string, lessonIdx: number): void {
  *  interchangeable with one openCourseLesson would have cached. Keep every voice-ready twin so a
  *  cached lesson, replay, or reel sounds identical to the fresh lesson without another model call. */
 function toLessonFrame(result: LiveResult, question: string): TurnFrame {
+  const at = Date.now();
   return {
+    id: createTurnFrameId(at),
     question,
     narration: result.narration,
     ...(result.spoken ? { spoken: result.spoken } : {}),
@@ -110,7 +112,7 @@ function toLessonFrame(result: LiveResult, question: string): TurnFrame {
       ...(t.marks ? { marks: t.marks } : {}),
     })),
     spec: result.spec,
-    at: Date.now(),
+    at,
   };
 }
 

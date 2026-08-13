@@ -4,9 +4,7 @@ import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { Icon } from '../icons/icons';
 import { ACCEPTED_TYPES } from '../live/attachments';
 
-// How long the user must hold the mic button before it switches from tap-to-toggle
-// to push-to-talk (PTT) mode. Under this threshold it's treated as a normal click.
-const PTT_THRESHOLD_MS = 350;
+type MicInputMode = 'tap' | 'hold' | 'always';
 
 interface Props {
   value: string;
@@ -14,6 +12,14 @@ interface Props {
   onSend: (v: string) => void;
   listening: boolean;
   onMic: () => void;
+  /** Tap and Always use a click; Hold starts immediately on press and finishes on release. */
+  micMode?: MicInputMode;
+  /** An Always-on session can be armed between utterances without actively hearing speech. */
+  micArmed?: boolean;
+  /** Session-local pause; the saved Always-on preference remains selected. */
+  micPaused?: boolean;
+  /** Captured audio is being resolved; Tap/Hold cannot start a second overlapping capture. */
+  micProcessing?: boolean;
   /** Hard-disable voice input (the scripted Demo's mute blocks its mic). This is about the
    *  USER's microphone only — muting Mavéa's voice output must never set it. */
   micDisabled?: boolean;
@@ -33,10 +39,12 @@ interface Props {
    *  even a model with no vision can still explode an Office/text/data attachment (extracted
    *  client-side), so a reason to caveat belongs in this copy, not behind a disabled state. */
   attachTitle?: string;
-  /** Called when a PTT hold starts (>350ms) — host should start listening. */
+  /** Called when a Hold-mode press starts — host should start listening immediately. */
   onMicDown?: () => void;
-  /** Called on PTT release — host should force-submit whatever was heard. */
+  /** Called on Hold-mode release — host should submit whatever was heard. */
   onForceStop?: () => void;
+  /** Called when a Hold gesture is cancelled, so partial audio is never submitted by accident. */
+  onMicCancel?: () => void;
   /** Optional input-mode controls (e.g. the Mark/draw-to-ask toggle) rendered inline with the
    *  attach/send cluster, so they sit with the other input affordances instead of in a separate bar. */
   tools?: ReactNode;
@@ -51,6 +59,10 @@ export function CommandComposer({
   onSend,
   listening,
   onMic,
+  micMode = 'tap',
+  micArmed = false,
+  micPaused = false,
+  micProcessing = false,
   micDisabled = false,
   placeholder,
   disabled,
@@ -61,6 +73,7 @@ export function CommandComposer({
   attachPulse,
   onMicDown,
   onForceStop,
+  onMicCancel,
   tools,
   micExtra,
 }: Props) {
@@ -76,10 +89,28 @@ export function CommandComposer({
     return () => clearTimeout(t);
   }, [attachPulse]);
 
-  // PTT state — refs so they never cause re-renders.
-  const pttTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pttActiveRef = useRef(false); // currently in PTT hold mode
-  const skipNextClickRef = useRef(false); // PTT release happened — skip the upcoming click
+  const holdActiveRef = useRef(false);
+  const holdPointerRef = useRef<number | null>(null);
+  const skipNextClickRef = useRef(false);
+  const onMicCancelRef = useRef(onMicCancel);
+  onMicCancelRef.current = onMicCancel;
+
+  useEffect(
+    () => () => {
+      if (holdActiveRef.current) onMicCancelRef.current?.();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (micMode === 'hold') return;
+    skipNextClickRef.current = false;
+    if (holdActiveRef.current) {
+      holdActiveRef.current = false;
+      holdPointerRef.current = null;
+      onMicCancelRef.current?.();
+    }
+  }, [micMode]);
 
   useEffect(() => {
     if (!listening && inputRef.current) inputRef.current.focus();
@@ -91,49 +122,128 @@ export function CommandComposer({
 
   const handleMicPointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (micDisabled || listening) return; // already listening — let click handle the stop
-      e.currentTarget.setPointerCapture(e.pointerId); // keep events even if finger drifts
-      pttActiveRef.current = false;
-      pttTimerRef.current = setTimeout(() => {
-        pttActiveRef.current = true;
-        onMicDown?.();
-      }, PTT_THRESHOLD_MS);
+      if (micMode !== 'hold' || micDisabled || micProcessing || listening || holdActiveRef.current)
+        return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      holdActiveRef.current = true;
+      holdPointerRef.current = e.pointerId;
+      skipNextClickRef.current = true;
+      onMicDown?.();
     },
-    [micDisabled, listening, onMicDown],
+    [micDisabled, micProcessing, listening, micMode, onMicDown],
   );
 
-  const handleMicPointerUp = useCallback(() => {
-    if (pttTimerRef.current !== null) {
-      clearTimeout(pttTimerRef.current);
-      pttTimerRef.current = null;
-    }
-    if (pttActiveRef.current) {
-      pttActiveRef.current = false;
-      skipNextClickRef.current = true; // tell onClick to skip — PTT already handled it
-      onForceStop?.();
-    }
+  const finishHold = useCallback(() => {
+    if (!holdActiveRef.current) return;
+    holdActiveRef.current = false;
+    holdPointerRef.current = null;
+    onForceStop?.();
   }, [onForceStop]);
 
+  const handleMicPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (holdPointerRef.current !== e.pointerId) return;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      finishHold();
+    },
+    [finishHold],
+  );
+
+  const cancelHold = useCallback(
+    (e?: React.PointerEvent<HTMLButtonElement>) => {
+      if (!holdActiveRef.current) return;
+      if (
+        e &&
+        holdPointerRef.current === e.pointerId &&
+        e.currentTarget.hasPointerCapture(e.pointerId)
+      ) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      holdActiveRef.current = false;
+      holdPointerRef.current = null;
+      onMicCancel?.();
+    },
+    [onMicCancel],
+  );
+
+  const handleMicKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (
+        micMode !== 'hold' ||
+        micDisabled ||
+        micProcessing ||
+        listening ||
+        holdActiveRef.current ||
+        e.repeat ||
+        (e.key !== ' ' && e.key !== 'Enter')
+      )
+        return;
+      e.preventDefault();
+      holdActiveRef.current = true;
+      skipNextClickRef.current = true;
+      onMicDown?.();
+    },
+    [listening, micDisabled, micMode, micProcessing, onMicDown],
+  );
+
+  const handleMicKeyUp = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (micMode !== 'hold' || (e.key !== ' ' && e.key !== 'Enter')) return;
+      e.preventDefault();
+      finishHold();
+    },
+    [finishHold, micMode],
+  );
+
   const handleMicClick = useCallback(() => {
-    if (skipNextClickRef.current) {
+    if (micMode === 'hold' || skipNextClickRef.current) {
       skipNextClickRef.current = false;
-      return; // came from a PTT release — already handled in onPointerUp
+      return;
     }
-    if (micDisabled) return; // a disabled mic is honestly dead, not secretly listening
+    if (micDisabled || (micProcessing && micMode !== 'always')) return;
     onMic();
-  }, [onMic, micDisabled]);
+  }, [onMic, micDisabled, micMode, micProcessing]);
+
+  const micLabel = micDisabled
+    ? 'Microphone off'
+    : micProcessing && micMode !== 'always'
+      ? 'Finishing voice input'
+      : listening
+        ? 'Finish and send'
+        : micPaused
+          ? 'Resume always-on'
+          : micArmed
+            ? 'Pause always-on'
+            : micMode === 'hold'
+              ? 'Hold to talk'
+              : 'Talk to Mavéa';
 
   const micButton = (
     <button
-      className={'mic-btn' + (listening ? ' listening' : '') + (micDisabled ? ' mic-off' : '')}
+      className={
+        'mic-btn' +
+        (listening ? ' listening' : '') +
+        (micArmed ? ' armed' : '') +
+        (micPaused ? ' paused' : '') +
+        (micProcessing ? ' processing' : '') +
+        (micDisabled ? ' mic-off' : '')
+      }
       onClick={handleMicClick}
       onPointerDown={handleMicPointerDown}
       onPointerUp={handleMicPointerUp}
-      onPointerCancel={handleMicPointerUp}
+      onPointerCancel={cancelHold}
+      onKeyDown={handleMicKeyDown}
+      onKeyUp={handleMicKeyUp}
       // title mirrors aria-label so the icon-only button also shows a native hover tooltip
       // (aria-label alone is screen-reader-only — nothing appears when a sighted user hovers).
-      title={micDisabled ? 'Microphone off' : listening ? 'Stop listening' : 'Talk to Mavéa'}
-      aria-label={micDisabled ? 'Microphone off' : listening ? 'Stop listening' : 'Talk to Mavéa'}
+      title={micLabel}
+      aria-label={micLabel}
+      // Not `disabled`: in always-on mode a tap during transcription is honoured (it pauses the
+      // mic), and disabling would drop the button out of focus order mid-interaction.
+      aria-busy={micProcessing}
     >
       {micDisabled ? <Icon.micOff /> : <Icon.mic />}
     </button>

@@ -5,6 +5,8 @@
 // note entries never leak into per-card stroke portals. Rects are stubbed jsdom-style, exactly
 // like live-annotate.test.tsx.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, act } from '@testing-library/react';
 import { condenseForNote, layoutNotes } from '../src/live/annotate/marginNote';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
@@ -228,6 +230,26 @@ describe('MarginNoteRail — the gutter rail in Everything view', () => {
     //   must already be clean. The pipe check below is what a regression would trip.
     const line = 'It costs $5,000 monthly.';
     expect(condenseForNote(line)).not.toContain('|');
+  });
+});
+
+// The gutter is reserved as padding on BOTH sides (a note is written in whichever margin is
+// nearest). Below the fit threshold the rail is hidden, so every reserved pixel is dead strip —
+// releasing only one side left a 218px empty column beside the cards on a laptop. jsdom parses no
+// stylesheet, so this is a source scan (the idiom responsive-css-guards.test.ts uses).
+describe('margin-note gutter — the belt below the fit threshold releases both margins', () => {
+  const css = readFileSync(join(__dirname, '../src/live/annotate/annotate.css'), 'utf8');
+
+  it('reserves both margins above the threshold and zeroes both below it', () => {
+    const base = /\.live-voice \.card-grid\.note-gutter\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(base).toMatch(/padding-left:\s*218px/);
+    expect(base).toMatch(/padding-right:\s*218px/);
+    const belt =
+      /@media \(max-width: 1279px\)\s*\{[\s\S]*?\.live-voice \.card-grid\.note-gutter\s*\{([^}]*)\}/.exec(
+        css,
+      )?.[1] ?? '';
+    expect(belt).toMatch(/padding-left:\s*0/);
+    expect(belt).toMatch(/padding-right:\s*0/);
   });
 });
 

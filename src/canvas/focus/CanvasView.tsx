@@ -11,6 +11,7 @@ import type { Block, ConversationSpec } from '../../data/conversation';
 import { BlockBoundary } from '../BlockBoundary';
 import { FallbackCard } from '../FallbackCard';
 import { blockLabel } from '../blockLabel';
+import { useFocusTrap } from '../../live/useFocusTrap';
 import { prefersReducedMotion } from './motion';
 import { useSpatialCanvas } from '../spatial/useSpatialCanvas';
 import { focusPoint, screenToWorld, type Bbox } from '../spatial/camera';
@@ -154,12 +155,16 @@ export function CanvasTakeover(props: Props) {
   // visible confirmation: the exit button doubles as that confirmation once something is pinned.
   const selectedCount = selectedBlockIds?.size ?? 0;
 
-  // Hand focus to the board so arrows/Home/Esc work immediately, and give it back on close.
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
-    rootRef.current?.querySelector<HTMLElement>('.cv-viewport')?.focus();
-    return () => prev?.focus?.();
+  // Keyboard focus stays inside the takeover (it claims aria-modal, so Tabbing out into the page
+  // behind it would strand a keyboard or screen-reader user), Escape closes from anywhere in it —
+  // not just while the board itself holds focus — and the trigger gets focus back on close.
+  // The viewport is resolved in a layout effect so it's already set when the trap's own effect
+  // runs and hands it the initial focus: arrows/Home work on the board immediately.
+  const viewportRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    viewportRef.current = rootRef.current?.querySelector<HTMLElement>('.cv-viewport') ?? null;
   }, []);
+  useFocusTrap(rootRef, { onEscape: onExit, initialFocus: viewportRef });
 
   // The page behind must not scroll while the board owns the screen.
   useEffect(() => {
@@ -214,14 +219,7 @@ export function CanvasTakeover(props: Props) {
   );
 }
 
-export function CanvasView({
-  blocks,
-  spot,
-  renderBlock,
-  onAskBlock,
-  selectedBlockIds,
-  onExit,
-}: Props) {
+export function CanvasView({ blocks, spot, renderBlock, onAskBlock, selectedBlockIds }: Props) {
   // Only id-bearing blocks are nodes (the spotlightable set, same rule as FocusStage).
   const nodes = useMemo(() => blocks.filter((b) => !!b.id), [blocks]);
   const cols = useMemo(() => pickCols(nodes.length), [nodes.length]);
@@ -264,12 +262,18 @@ export function CanvasView({
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
   const focusIdx = useRef(0);
+  // Has the camera been aimed since the last auto-fit? Late content (a map tile, a lazy image)
+  // keeps re-measuring for seconds, and every re-measure changes `world` — without this the board
+  // would snap back to the whole-canvas fit under the user's hands mid-pan, or yank the camera off
+  // the card the spotlight just flew to. Explicit fits (open, Home, ⊡, spotlight release) still run.
+  const navigated = useRef(false);
 
   // Fit the whole board on open + when the measured layout settles. A double rAF lets the viewport
   // lay out first (a same-tick measure can read 0 height and no-op, clipping the board). A second
   // fit after the takeover's 300ms entrance re-frames against the final viewport — the animation
   // scales the whole layer, so a fit measured mid-entrance reads a shrunken rect.
   useEffect(() => {
+    if (navigated.current) return;
     let r1 = 0;
     let r2 = 0;
     r1 = requestAnimationFrame(() => {
@@ -290,6 +294,7 @@ export function CanvasView({
       const el = viewportRef.current;
       const p = placed[idx];
       if (!el || !p) return;
+      navigated.current = true;
       focusIdx.current = idx;
       const r = el.getBoundingClientRect();
       const s = Math.min(Math.max(cameraRef.current.scale, 0.85), CLAMP.max);
@@ -303,7 +308,10 @@ export function CanvasView({
   const hadSpot = useRef(false);
   useEffect(() => {
     if (!spot) {
-      if (hadSpot.current) fitTo(world);
+      if (hadSpot.current) {
+        navigated.current = false; // the walk is over — let a late re-measure settle the board again
+        fitTo(world);
+      }
       hadSpot.current = false;
       return;
     }
@@ -321,9 +329,13 @@ export function CanvasView({
   const last = useRef({ x: 0, y: 0 });
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only the primary button pans. A right/middle press opens the context menu (or auto-scroll)
+    // and the browser swallows the matching pointerup, so the pan would stay latched to the cursor
+    // long after the menu closed. Touch and pen primary presses report button 0, so they still pan.
+    if (e.button !== 0) return;
     // A press that starts on a control is a click, NOT a pan — bail out before capturing the
     // pointer, or the capture eats the control's own click and it "does nothing". That includes
-    // every interactive element INSIDE a node: a map's Leaflet zoom anchors, a block's tabs or
+    // every interactive element INSIDE a node: a map's MapLibre controls, a block's tabs or
     // sliders — the cards on the board are the real, working blocks.
     if (
       (e.target as HTMLElement).closest(
@@ -332,6 +344,7 @@ export function CanvasView({
     )
       return;
     dragging.current = true;
+    navigated.current = true;
     moved.current = false;
     setPanning(true);
     last.current = { x: e.clientX, y: e.clientY };
@@ -381,6 +394,7 @@ export function CanvasView({
     if (!el) return;
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault();
+      navigated.current = true;
       zoomAtClient(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -392,12 +406,14 @@ export function CanvasView({
       const el = viewportRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
+      navigated.current = true;
       zoomAtClient(factor, r.left + r.width / 2, r.top + r.height / 2);
     },
     [viewportRef, zoomAtClient],
   );
 
-  // --- keyboard node-nav + exit ---
+  // --- keyboard node-nav. Escape belongs to the takeover's focus trap, which closes the board from
+  // anywhere inside it (including the header) — handling it here as well fired onExit twice. ---
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -409,12 +425,9 @@ export function CanvasView({
       } else if (e.key === 'Home') {
         e.preventDefault();
         fitTo(world);
-      } else if (e.key === 'Escape' && onExit) {
-        e.preventDefault();
-        onExit();
       }
     },
-    [flyToIdx, fitTo, world, placed.length, onExit],
+    [flyToIdx, fitTo, world, placed.length],
   );
 
   // Level of detail: the per-node "Ask" pill only appears once you've zoomed in a bit.
@@ -452,13 +465,14 @@ export function CanvasView({
         >
           −
         </button>
+        {/* ⊡ — content inside a frame; ⤢/⤡ mean full-screen expand/collapse elsewhere. */}
         <button
           type="button"
           onClick={() => fitTo(world)}
           title="Fit the whole canvas"
           aria-label="Fit the whole canvas"
         >
-          ⤢
+          ⊡
         </button>
       </div>
       <div

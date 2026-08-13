@@ -79,7 +79,7 @@ describe('pronounceForSpeech', () => {
   });
 });
 
-// The REAL speech chokepoint composes both cleaners — kokoro.ts/webSpeech.ts speak
+// The real speech chokepoint composes both cleaners before Kokoro speaks
 // pronounceForSpeech(sayable(text)), and the streamed narration reaches them with its
 // [[shown|said]] annotations still inline. The bug this pins down: sayable's decorative-glyph
 // strip ate the span's `|`, degrading the annotation into a bare [[…]] whose WHOLE content

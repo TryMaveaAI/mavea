@@ -1,6 +1,6 @@
 // streamTts.ts — low-latency streaming playback for Kokoro TTS.
 //
-// The whole-clip path (see kokoro.ts) can't make a sound until the ENTIRE mp3 has been
+// The whole-clip path (see kokoro.ts) can't make a sound until the entire WAV has been
 // synthesized and downloaded — seconds for a sentence or two — which is why the voice used to
 // trail the canvas, which streams in block by block. This path asks Kokoro for raw PCM and
 // plays it through WebAudio the instant the first chunk arrives, so speech starts in a few
@@ -98,9 +98,22 @@ let voiceGain = 1;
 let outputMuted = false;
 const effectiveGain = (): number => (outputMuted ? 0 : voiceGain);
 
+/** HTMLAudio sinks that must obey the SAME output policy but can't live on the WebAudio graph:
+ *  the whole-clip blob fallback (kokoro.ts) and the voice preview. Registered only while their
+ *  clip plays — each caller releases its element when the clip ends, so nothing is retained. */
+const boundSinks = new Set<HTMLMediaElement>();
+const muteListeners = new Set<() => void>();
+
+/** Push the current policy to every live sink — the streaming graph and any bound element. */
+function applyOutputGain(): void {
+  const g = effectiveGain();
+  if (active) active.gain.gain.value = g;
+  for (const el of boundSinks) el.volume = g;
+}
+
 export function setVoiceGain(g: number): void {
   voiceGain = Math.min(1, Math.max(0.05, g));
-  if (active) active.gain.gain.value = effectiveGain();
+  applyOutputGain();
 }
 
 /** Voice speed (0.75×–2×), applied MODEL-SIDE: Kokoro renders each line at this rate, so the
@@ -116,8 +129,37 @@ export function getVoiceSpeed(): number {
 }
 
 export function setOutputMuted(on: boolean): void {
+  const changed = outputMuted !== on;
   outputMuted = on;
-  if (active) active.gain.gain.value = effectiveGain();
+  applyOutputGain();
+  if (changed) for (const listener of muteListeners) listener();
+}
+
+/** Whether the speaker is muted right now — the honest answer for a surface that has to explain
+ *  a silence (the voice picker's preview) instead of looking broken. */
+export function isOutputMuted(): boolean {
+  return outputMuted;
+}
+
+/** Subscribe to mute changes (useSyncExternalStore-shaped). No timer, no work while idle. */
+export function subscribeOutputMuted(listener: () => void): () => void {
+  muteListeners.add(listener);
+  return () => {
+    muteListeners.delete(listener);
+  };
+}
+
+/**
+ * Route an HTMLAudio sink through the same mute/quiet-hours policy as the streaming graph: sets
+ * its volume now and keeps it in step for as long as it plays, so muting mid-sentence is instant
+ * on this path too. Returns the release to call when the clip ends.
+ */
+export function bindOutputGain(el: HTMLMediaElement): () => void {
+  el.volume = effectiveGain();
+  boundSinks.add(el);
+  return () => {
+    boundSinks.delete(el);
+  };
 }
 
 interface ActiveStream {

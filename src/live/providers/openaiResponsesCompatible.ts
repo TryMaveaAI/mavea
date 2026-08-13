@@ -231,6 +231,10 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
         headers: headers(cfg),
         body: JSON.stringify({
           model: cfg.model,
+          // OpenAI's Responses API retains application state by default. Mavéa never needs a
+          // provider-side response object after this stream ends, so opt out explicitly. xAI's
+          // compatible endpoint does not document this field and must not receive it.
+          ...(id === 'openai' ? { store: false } : {}),
           instructions: stableSystem,
           input: [...jsonNudge, ...historyInput, { role: 'user', content: userContent }],
           text: { format: textFormat },

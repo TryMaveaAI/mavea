@@ -8,6 +8,7 @@ import https from 'node:https';
 import {
   createReadStream,
   existsSync,
+  readFileSync,
   statSync,
   mkdirSync,
   renameSync,
@@ -18,6 +19,7 @@ import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { spawn, execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { constants, createBrotliCompress, createGzip } from 'node:zlib';
 import { homedir, platform, tmpdir } from 'node:os';
 import readline from 'node:readline';
@@ -68,10 +70,14 @@ const LAZY_ASSETS = {
   'ort-wasm-simd-threaded.wasm': {
     url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort-wasm-simd-threaded.wasm',
     mime: 'application/wasm',
+    bytes: 13_022_405,
+    sha256: '040d52ce5066707a10d45cb9500c35e70a9c2fb33c4fb63428da9ae45b956b97',
   },
   'silero_vad_v5.onnx': {
     url: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.30/dist/silero_vad_v5.onnx',
     mime: 'application/octet-stream',
+    bytes: 2_327_524,
+    sha256: '2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f',
   },
 };
 
@@ -91,9 +97,58 @@ function lazyCacheDir() {
 // .wasm and its already-loaded .mjs glue both kicking off near-simultaneously) share one fetch
 // instead of downloading twice.
 const inFlightDownloads = new Map();
+const verifiedLazyAssets = new Set();
 
-async function fetchToCache(url, cachePath) {
-  if (existsSync(cachePath)) return;
+function cachedAssetIsValid(cachePath, checksumPath, expectedBytes, expectedSha256) {
+  const cacheKey = `${cachePath}:${expectedSha256}`;
+  try {
+    if (!existsSync(cachePath) || !existsSync(checksumPath)) return false;
+    if (verifiedLazyAssets.has(cacheKey)) return true;
+    if (
+      statSync(cachePath).size !== expectedBytes ||
+      readFileSync(checksumPath, 'utf8').trim() !== expectedSha256
+    ) {
+      return false;
+    }
+    const actualSha256 = createHash('sha256').update(readFileSync(cachePath)).digest('hex');
+    if (actualSha256 !== expectedSha256) return false;
+    verifiedLazyAssets.add(cacheKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readBoundedAsset(res, expectedBytes) {
+  const declared = Number(res.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > expectedBytes) {
+    throw new Error('voice asset exceeded its pinned size');
+  }
+  if (!res.body) throw new Error('voice asset response had no body');
+  const reader = res.body.getReader();
+  const chunks = [];
+  let received = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > expectedBytes) {
+        await reader.cancel();
+        throw new Error('voice asset exceeded its pinned size');
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (received !== expectedBytes) throw new Error('voice asset did not match its pinned size');
+  return Buffer.concat(chunks, received);
+}
+
+async function fetchToCache(url, cachePath, expectedBytes, expectedSha256) {
+  const checksumPath = `${cachePath}.sha256`;
+  if (cachedAssetIsValid(cachePath, checksumPath, expectedBytes, expectedSha256)) return;
   const existing = inFlightDownloads.get(cachePath);
   if (existing) return existing;
   const task = (async () => {
@@ -106,8 +161,14 @@ async function fetchToCache(url, cachePath) {
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`fetch ${url} -> ${res.status}`);
-      await writeFile(tmpPath, Buffer.from(await res.arrayBuffer()));
+      const bytes = await readBoundedAsset(res, expectedBytes);
+      const actualSha256 = createHash('sha256').update(bytes).digest('hex');
+      if (actualSha256 !== expectedSha256) throw new Error(`checksum mismatch for ${url}`);
+      await writeFile(tmpPath, bytes);
+      if (existsSync(cachePath)) unlinkSync(cachePath);
       renameSync(tmpPath, cachePath);
+      await writeFile(checksumPath, `${expectedSha256}\n`);
+      verifiedLazyAssets.add(`${cachePath}:${expectedSha256}`);
     } finally {
       clearTimeout(timer);
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
@@ -124,11 +185,11 @@ async function fetchToCache(url, cachePath) {
 async function serveLazyAsset(name, asset, res) {
   const cachePath = join(lazyCacheDir(), name);
   try {
-    await fetchToCache(asset.url, cachePath);
+    await fetchToCache(asset.url, cachePath, asset.bytes, asset.sha256);
   } catch {
     // Same failure mode as a missing asset always had here: the client (onnxruntime-web / Silero
-    // VAD) treats a 404/502 on this path as "voice model unavailable" and falls back gracefully
-    // (WebSpeech) rather than breaking the turn — offline or a CDN hiccup degrades, never crashes.
+    // VAD) treats a 404/502 on this path as "voice model unavailable" and surfaces the local mic
+    // as unavailable rather than breaking the typed conversation.
     sendProblem(res, 502, 'The optional voice asset is unavailable.');
     return;
   }
@@ -723,7 +784,7 @@ function serveStatic(req, res, requestTarget, distDir = DIST) {
   // as it is produced either way — and 'end' lands once the last chunk has gone out.
   const chunks = [];
   compressor.on('data', (chunk) => chunks.push(chunk));
-  compressor.once('end', () => cacheCompressed(`${encoding} ${filePath}`, Buffer.concat(chunks)));
+  compressor.once('end', () => cacheCompressed(`${encoding}\0${filePath}`, Buffer.concat(chunks)));
 }
 
 export function createMaveaServer({ distDir = DIST, proxies = PROXIES, now = Date.now } = {}) {
@@ -825,24 +886,6 @@ function openBrowser(url) {
   }
 }
 
-function dockerInstalled() {
-  try {
-    execSync('docker --version', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function dockerRunning() {
-  try {
-    execSync('docker info', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function commandExists(cmd) {
   try {
     execSync(process.platform === 'win32' ? `where ${cmd}` : `command -v ${cmd}`, {
@@ -855,164 +898,129 @@ function commandExists(cmd) {
   }
 }
 
-function waitForDocker(timeoutMs = 90_000) {
-  return new Promise((resolve) => {
-    const started = Date.now();
-    const tick = () => {
-      if (dockerRunning()) return resolve(true);
-      if (Date.now() - started > timeoutMs) return resolve(false);
-      setTimeout(tick, 2000);
-    };
-    tick();
-  });
-}
-
-async function kokoroReachable(url) {
+function commandReady(command, args) {
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 800);
-    await fetch(url, { signal: ctrl.signal });
-    clearTimeout(timer);
+    execSync([command, ...args].join(' '), { stdio: 'ignore' });
     return true;
   } catch {
     return false;
   }
 }
 
-function askYesNo(question) {
+function composeRuntime() {
+  if (commandReady('podman', ['info'])) {
+    if (commandReady('podman', ['compose', 'version'])) {
+      return { command: 'podman', prefix: ['compose'], label: 'Podman' };
+    }
+    if (commandReady('podman-compose', ['--version'])) {
+      return { command: 'podman-compose', prefix: [], label: 'Podman' };
+    }
+  }
+  if (commandReady('docker', ['info'])) {
+    return { command: 'docker', prefix: ['compose'], label: 'Docker' };
+  }
+  return null;
+}
+
+function installedRuntime() {
+  if (commandExists('podman')) return 'podman';
+  if (commandExists('docker')) return 'docker';
+  return null;
+}
+
+async function serviceReachable(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 800);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function startSpeechServices(runtime) {
+  console.log(
+    '  Starting Kokoro TTS + whisper.cpp STT. The first run builds/downloads pinned models…',
+  );
+  spawn(runtime.command, [...runtime.prefix, '-f', COMPOSE_FILE, 'up', '-d', '--build'], {
+    stdio: 'inherit',
+  });
+}
+
+function askYesNo(question, defaultYes = true) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(question, (answer) => {
       rl.close();
-      resolve(/^y/i.test(answer.trim()) || answer.trim() === '');
+      const normalized = answer.trim();
+      resolve(/^y/i.test(normalized) || (defaultYes && normalized === ''));
     });
   });
 }
 
-function startKokoro() {
-  console.log('  Starting Kokoro TTS (first run downloads the voice model, ~1 min)…');
-  spawn('docker', ['compose', '-f', COMPOSE_FILE, 'up', '-d'], { stdio: 'inherit' });
-}
-
 const VOICE_INTRO =
-  '\n◌ Voice — Mavéa speaks its replies aloud using a local TTS model (Kokoro).\n' +
-  '  It runs in a small Docker container, fully on your machine — no audio ever\n' +
-  '  leaves your computer.\n';
-
-async function offerDockerInstall() {
-  console.log(VOICE_INTRO);
-  console.log("  Docker isn't installed, so for now Mavéa is text-only:");
-  console.log('    ✗ no spoken replies — lines appear as captions instead');
-  console.log('    ✓ everything else works: demo, live mode, gallery, actions\n');
-
-  const later =
-    '  To enable voice later: install Docker (https://docker.com/get-started),\n' +
-    '  then re-run `npx @mavea/mavea` — it will detect Docker and set voice up for you.';
-
-  if (process.platform === 'darwin' && commandExists('brew')) {
-    const yes = await askYesNo(
-      '  Install Docker now via Homebrew? [Y/n]  (~600 MB, then launch Docker\n' +
-        '  Desktop once and re-run `npx @mavea/mavea` — voice will offer to start itself) ',
-    );
-    if (!yes) return console.log('  Skipping.\n' + later);
-    const r = spawn('brew', ['install', '--cask', 'docker'], { stdio: 'inherit' });
-    r.on('exit', (code) => {
-      console.log(
-        code === 0
-          ? '  ✓ Docker installed. Launch Docker Desktop once (to accept its service\n' +
-              '    agreement), then re-run `npx @mavea/mavea` to enable voice.'
-          : '  Homebrew install failed.\n' + later,
-      );
-    });
-    return;
-  }
-
-  if (process.platform === 'win32' && commandExists('winget')) {
-    const yes = await askYesNo(
-      '  Install Docker Desktop now via winget? [Y/n]  (then launch it once and\n' +
-        '  re-run `npx @mavea/mavea` — voice will offer to start itself) ',
-    );
-    if (!yes) return console.log('  Skipping.\n' + later);
-    const r = spawn('winget', ['install', '-e', '--id', 'Docker.DockerDesktop'], {
-      stdio: 'inherit',
-    });
-    r.on('exit', (code) => {
-      console.log(
-        code === 0
-          ? '  ✓ Docker installed. Launch Docker Desktop once, then re-run `npx @mavea/mavea`.'
-          : '  winget install failed.\n' + later,
-      );
-    });
-    return;
-  }
-
-  if (process.platform === 'linux') {
-    // Docker's install script needs sudo — print it, never run it on the user's behalf.
-    console.log('  To install Docker, run:\n');
-    console.log('    curl -fsSL https://get.docker.com | sh\n');
-    console.log(
-      '  then re-run `npx @mavea/mavea` — it will detect Docker and set voice up for you.',
-    );
-    return;
-  }
-
-  const yes = await askYesNo('  Open the Docker download page in your browser? [Y/n] ');
-  if (yes) openBrowser('https://www.docker.com/get-started/');
-  console.log(later);
-}
-
-async function offerDockerStart() {
-  console.log(VOICE_INTRO);
-  console.log('  Docker is installed but not running.\n');
-  if (process.platform === 'darwin' || process.platform === 'win32') {
-    const yes = await askYesNo('  Start Docker Desktop now? [Y/n] ');
-    if (!yes) {
-      console.log(
-        '  Skipping — captions only. Start Docker Desktop and re-run `npx @mavea/mavea`.',
-      );
-      return;
-    }
-    if (process.platform === 'darwin') {
-      spawn('open', ['-a', 'Docker'], { stdio: 'ignore', detached: true }).unref();
-    } else {
-      spawn('cmd', ['/c', 'start', '""', 'docker desktop'], {
-        stdio: 'ignore',
-        detached: true,
-      }).unref();
-    }
-    process.stdout.write('  … waiting for Docker to start ');
-    const up = await waitForDocker();
-    if (!up) {
-      console.log('\n  Docker did not come up in time — captions only for now.');
-      console.log('  Once Docker Desktop is running, re-run `npx @mavea/mavea` to enable voice.');
-      return;
-    }
-    console.log('✓');
-    startKokoro();
-    return;
-  }
-  console.log('  Start it (e.g. `sudo systemctl start docker`), then re-run `npx @mavea/mavea`.');
-}
+  '\n◌ Configured speech — Kokoro reads replies and whisper.cpp transcribes your mic.\n' +
+  '  The defaults are loopback-only. A custom WHISPER_URL receives microphone audio at that endpoint.\n';
 
 async function maybeOfferVoice() {
   const kokoroUrl = process.env.KOKORO_URL || 'http://localhost:8880';
-  if (await kokoroReachable(kokoroUrl)) return;
+  const whisperUrl = process.env.WHISPER_URL || 'http://localhost:8100';
+  const [kokoroReady, whisperReady] = await Promise.all([
+    serviceReachable(kokoroUrl),
+    serviceReachable(whisperUrl),
+  ]);
+  if (kokoroReady && whisperReady) return;
   if (!existsSync(COMPOSE_FILE) || !process.stdin.isTTY) {
     console.log(
-      "Voice (Kokoro TTS) isn't running — lines will show as captions only. " +
-        'Re-run `npx @mavea/mavea` in a terminal to set it up, or start Kokoro yourself on :8880.',
+      'Local speech is not fully running — captions and typing still work. ' +
+        'Re-run in a terminal to set up Kokoro + whisper.cpp.',
     );
     return;
   }
-  if (!dockerInstalled()) return offerDockerInstall();
-  if (!dockerRunning()) return offerDockerStart();
   console.log(VOICE_INTRO);
-  const yes = await askYesNo('  Start it now? [Y/n] ');
-  if (!yes) {
-    console.log('  Skipping — captions only. Re-run `npx @mavea/mavea` any time to enable voice.');
+  const runtime = composeRuntime();
+  if (!runtime) {
+    const installed = installedRuntime();
+    if (installed === 'podman') {
+      console.log(
+        '  Podman is installed but not ready. Start `podman machine`, then re-run Mavéa.',
+      );
+    } else if (installed === 'docker') {
+      console.log('  Docker is installed but not ready. Start its engine, then re-run Mavéa.');
+      console.log('  Docker Desktop may require a paid subscription for some commercial users.');
+    } else {
+      console.log('  Install Podman Desktop (Apache-2.0): https://podman-desktop.io/downloads');
+      console.log('  Docker also works when its license permits your use.');
+    }
     return;
   }
-  startKokoro();
+  console.log(
+    `  ${runtime.label} is ready. Missing: ${[
+      !kokoroReady && 'spoken replies',
+      !whisperReady && 'local mic transcription',
+    ]
+      .filter(Boolean)
+      .join(' + ')}.`,
+  );
+  const yes = await askYesNo('  Start the missing local speech services now? [Y/n] ');
+  if (!yes) {
+    console.log('  Skipping — Mavéa remains usable with captions and typing.');
+    return;
+  }
+  if (runtime.label === 'Docker') {
+    const licensed = await askYesNo(
+      '  Docker Desktop has separate terms and may require a paid subscription. Have you read them and confirmed your Docker installation is licensed for this use? [y/N] ',
+      false,
+    );
+    if (!licensed) {
+      console.log('  Skipping Docker — use Podman instead, or continue with captions and typing.');
+      return;
+    }
+  }
+  startSpeechServices(runtime);
 }
 
 async function main() {
@@ -1033,7 +1041,7 @@ Usage: npx @mavea/mavea [options]
 Options:
   --port, -p <n>   Port to serve on (default 4173, or $PORT)
   --no-open        Don't open a browser automatically
-  --no-voice       Skip the Kokoro (local TTS) Docker prompt
+  --no-voice       Skip the local Kokoro + whisper.cpp container prompt
   --help, -h       Show this help
 
 The CLI listens only on 127.0.0.1. Live mode needs your own model API key (BYOK) — add it in
@@ -1042,6 +1050,7 @@ AI output may be inaccurate and is not professional advice. Provider terms and c
 
 License: PolyForm Noncommercial 1.0.0 (noncommercial use only)
 Terms, privacy, disclaimer, and third-party notices ship with this package.
+Podman is the recommended free/open-source container runtime. Docker Desktop has separate terms.
 `);
     return;
   }

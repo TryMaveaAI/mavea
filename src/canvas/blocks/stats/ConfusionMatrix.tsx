@@ -12,11 +12,17 @@ type Props = ConfusionMatrixProps & { delay?: number };
 // LEFT/TOP carry an axis TITLE row outside the per-class tick labels so nothing shares a baseline.
 const W = 360;
 const H = 320;
-const LEFT = 96; // y-axis: a title column (rotated) + the per-row class labels
+const LEFT = 104; // y-axis: a title column (rotated) + the per-row class labels
 const TOP = 56; // x-axis: a title row + the per-column class labels
 const RIGHT = 16;
 const BOTTOM = 20;
-const TOTAL_BAND = 30; // width/height of the optional row/column totals strip
+const TOTAL_BAND = 34; // width/height of the optional row/column totals strip
+const AXIS_TITLE_X = 18; // centre of the rotated "Actual" title column
+const CLASS_PAD = 8; // gap between a row class label and the grid edge
+// Left edge of the row class labels. The rotated title occupies half a line either side of
+// AXIS_TITLE_X, so the labels start clear of it — otherwise a long class name runs straight
+// through the axis title, which no amount of right-alignment saves.
+const CLASS_GUTTER_X = 30;
 
 /** Sum a numeric row, treating missing/non-finite entries as 0 so a ragged matrix never NaNs. */
 function rowSum(row: readonly number[]): number {
@@ -33,15 +39,16 @@ function pct(n: number): string {
 }
 
 // Class labels are author-supplied strings of unbounded length, but the row gutter and column
-// cells are fixed/shrinking geometry (LEFT stays 96px regardless of class count; a column's
+// cells are fixed/shrinking geometry (LEFT stays 104px regardless of class count; a column's
 // share of `side` shrinks as n grows). Unclipped SVG <text> doesn't wrap, so a long label — or
 // just more columns — bleeds into the frame or a neighbouring label. Truncate to a per-axis
-// character budget derived from the box each label actually gets, at the .cfm-class font-size
-// (10px, ~5.6px/char average), and keep the full string as a native <title> tooltip.
-const CFM_CHARS_PER_PX = 1 / 5.6;
+// character budget derived from the box each label actually gets, and keep the full string as
+// a native <title> tooltip.
+const CLASS_FONT_SIZE = 11.5; // keep in step with .cfm-class in styles.css
+const CLASS_CHAR_W = CLASS_FONT_SIZE * 0.56; // average glyph advance for the UI sans at 600
 
 function truncateLabel(text: string, boxWidth: number): string {
-  const max = Math.max(3, Math.floor(boxWidth * CFM_CHARS_PER_PX));
+  const max = Math.max(3, Math.floor(boxWidth / CLASS_CHAR_W));
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
@@ -190,13 +197,14 @@ export function ConfusionMatrix({
 
             {/* Row (actual) class labels down the left, right-aligned into the LEFT gutter.
                 Gutter width is fixed regardless of class count, so long labels are clipped to
-                what actually fits and the untruncated string rides along as a <title> tooltip. */}
+                what actually fits — the span between the rotated axis title and the grid edge —
+                and the untruncated string rides along as a <title> tooltip. */}
             {classes.map((label, i) => {
-              const rowLabel = truncateLabel(label, LEFT - 12);
+              const rowLabel = truncateLabel(label, LEFT - CLASS_PAD - CLASS_GUTTER_X);
               return (
                 <text
                   key={`rl${i}`}
-                  x={model.x0 - 8}
+                  x={model.x0 - CLASS_PAD}
                   y={model.ey(i) + model.cell / 2}
                   className="cfm-class"
                   textAnchor="end"
@@ -231,7 +239,7 @@ export function ConfusionMatrix({
             <text
               x={0}
               y={0}
-              transform={`translate(18, ${model.y0 + model.side / 2}) rotate(-90)`}
+              transform={`translate(${AXIS_TITLE_X}, ${model.y0 + model.side / 2}) rotate(-90)`}
               className="cfm-axis-title"
               textAnchor="middle"
             >

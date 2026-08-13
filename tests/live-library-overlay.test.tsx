@@ -47,7 +47,8 @@ describe('LibraryOverlay', () => {
     // The overlay portals into document.body, so query the document, not the render container.
     const onClose = vi.fn();
     renderOverlay({ onClose });
-    fireEvent.keyDown(window, { key: 'Escape' });
+    // The dialog traps focus, so Escape is pressed inside the panel — where the user's focus is.
+    fireEvent.keyDown(document.querySelector('.lib-ov-panel') as Element, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
 
     fireEvent.click(document.querySelector('.lib-ov-scrim') as Element);
@@ -67,5 +68,18 @@ describe('LibraryOverlay', () => {
   it('renders nothing when there are no past conversations', () => {
     renderOverlay({ entries: [] });
     expect(document.querySelector('.lib-ov-scrim')).toBeNull();
+  });
+
+  it('asks the parent to close when the last conversation is removed', () => {
+    // Otherwise the dialog just vanishes while the parent still believes it's open — focus is
+    // stranded on <body> and the only way out is a reload.
+    const onClose = vi.fn();
+    const { rerender } = renderOverlay({ onClose });
+    expect(onClose).not.toHaveBeenCalled();
+    rerender(
+      <LibraryOverlay entries={[]} onResume={vi.fn()} onRemove={vi.fn()} onClose={onClose} />,
+    );
+    expect(document.querySelector('.lib-ov-scrim')).toBeNull();
+    expect(onClose).toHaveBeenCalled();
   });
 });

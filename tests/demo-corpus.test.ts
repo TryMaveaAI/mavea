@@ -1,4 +1,4 @@
-// demo-corpus.test.ts — the baked demo sessions must be complete, real, and in lockstep with
+// demo-corpus.test.ts — the baked demo examples must be complete, renderable, and in lockstep with
 // their scripts. Every cast member ships a shard; every shard has exactly one frame per turn
 // step; multi-turn threading is genuine (an augment/refine frame preserves the prior frame's
 // content — proof the bake ran through the real merge, not one-shot asks stapled together);
@@ -78,7 +78,7 @@ describe('demo corpus — every cast member has a complete baked session', () =>
         });
       });
 
-      it('records the model context it was baked with (real history, provenance)', () => {
+      it('records the model context it was baked with (history and provenance)', () => {
         if (!convo) return;
         expect(convo.model.length).toBeGreaterThan(0);
         // Two messages per turn: what the model was sent, what it answered.
@@ -86,4 +86,13 @@ describe('demo corpus — every cast member has a complete baked session', () =>
       });
     });
   }
+
+  it("does not invent a churn cause from the CFO scenario's aggregate figures", async () => {
+    const convo = await loadDemoConversation('cfo');
+    expect(convo).not.toBeNull();
+    const replay = JSON.stringify(convo?.frames ?? []);
+    expect(replay).not.toMatch(
+      /CRM integration|onboarding completion|real root cause|churn lever/i,
+    );
+  });
 });

@@ -180,7 +180,7 @@ export const MEDIA_EXAMPLES: Record<string, Record<string, unknown>> = {
       to: 'var(--presence-soft)',
       label: 'Play tutorial',
     },
-    video: 'https://example.com/tutorial-complete.mp4',
+    video: 'https://example.com/tutorial-complete.webm',
     poster: 'https://example.com/tutorial-poster.jpg',
     durationLabel: '12:40',
     chapters: [

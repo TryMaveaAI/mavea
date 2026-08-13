@@ -2,7 +2,7 @@
 // presentational: all the honesty/precedence reasoning lives in tileModel.ts, this just lays the
 // model out. `now` and `paused` are supplied by the caller (never read live in here) so a render is
 // reproducible and this component stays ignorant of the budget/cadence machinery that decides them.
-import { useMemo, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { dashHref } from '../route';
 import { useDataPending } from '../dataPending';
 import { Icon } from '../../../icons/icons';
@@ -49,9 +49,22 @@ function renderViz(model: TileModel, now: number): ReactElement | null {
   }
 }
 
+/** What a tapped check that came back with nothing usable says, in the detail header's own words
+ *  (DashboardDetail's Refresh hints) — the home grid was ending the spinner and saying nothing at
+ *  all, so a failed check looked exactly like a check that found no news. */
+const CHECK_NOTE: Record<'failed' | 'unverified', string> = {
+  failed: 'Couldn’t reach your model — check its key or quota, then try again.',
+  unverified: 'Checked, but no source could verify new values — keeping the last real ones.',
+};
+/** Long enough to read once, short enough that the tile goes back to its own subject on its own. */
+const CHECK_NOTE_MS = 8000;
+
 export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps): ReactElement {
   const model = useMemo(() => buildTileModel(dashboard, now), [dashboard, now]);
   const checking = useDataPending(dashboard.id);
+  const [checkNote, setCheckNote] = useState<'failed' | 'unverified' | null>(null);
+  const noteTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(noteTimer.current), []);
 
   const showPaused = paused && model.pauseEligible;
   const chipState: 'paused' | 'live' | 'plain' = showPaused
@@ -60,19 +73,33 @@ export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps
       ? 'live'
       : 'plain';
 
+  const flashNote = (note: 'failed' | 'unverified'): void => {
+    setCheckNote(note);
+    noteTimer.current = window.setTimeout(() => setCheckNote(null), CHECK_NOTE_MS);
+  };
+
   // A span with role="button", not a real <button> — the whole tile is already an <a> (interactive
   // content can't nest inside interactive content), and this stays reachable + activatable exactly
   // like a button (click, Enter, Space) without breaking that or the tile's own click-to-open area.
   // useDashboardLoop is dynamically imported here (not at module top) — the home grid is eagerly
   // mounted with DashboardsApp, and that module's refresh/provider chain must stay out of its
-  // chunk (tests/eager-bundle.test.ts) until a check is actually requested.
+  // chunk (tests/eager-bundle.test.ts) until a check is actually requested. Of the outcomes it can
+  // return, only 'failed'/'unverified' need a word here: 'busy' has the spinner and 'no-model' has
+  // the home connect banner.
   const checkNow = (e: { preventDefault(): void; stopPropagation(): void }): void => {
     e.preventDefault();
     e.stopPropagation();
     if (checking) return;
-    void import('../useDashboardLoop').then(({ refreshDashboardNow }) =>
-      refreshDashboardNow(dashboard.id),
-    );
+    window.clearTimeout(noteTimer.current);
+    setCheckNote(null);
+    void import('../useDashboardLoop')
+      .then(({ refreshDashboardNow }) => refreshDashboardNow(dashboard.id))
+      .then((outcome) => {
+        if (outcome === 'failed' || outcome === 'unverified') flashNote(outcome);
+      })
+      // A chunk that never loads is a check that never happened — say so, rather than leaving an
+      // unhandled rejection and a tile that looks untouched.
+      .catch(() => flashNote('failed'));
   };
 
   return (
@@ -101,7 +128,9 @@ export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps
           </span>
         )}
       </div>
-      <p className="tile-context">{checking ? 'Checking for live data…' : model.context}</p>
+      <p className={`tile-context${!checking && checkNote ? ' tile-context--note' : ''}`}>
+        {checking ? 'Checking for live data…' : checkNote ? CHECK_NOTE[checkNote] : model.context}
+      </p>
 
       <div className="tile-viz">{renderViz(model, now)}</div>
 

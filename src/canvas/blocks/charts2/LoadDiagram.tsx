@@ -23,7 +23,7 @@ const PANEL_H = 78; // plotting height of each of the shear / moment panels
 const GAP = 30; // label-row gap above each plot panel
 const SHEAR_TOP = BEAM.top + BEAM.h + GAP;
 const MOMENT_TOP = SHEAR_TOP + PANEL_H + GAP;
-const H = MOMENT_TOP + PANEL_H + 24; // + bottom axis labels
+const H = MOMENT_TOP + PANEL_H + 36; // separate tick and axis-title rows
 // viewBox headroom above the beam: a tall point-load arrow + its value label reach above y=0,
 // so start the viewBox a little higher to keep "P = … kN" inside (the card clips overflow).
 const VB_TOP = -12;
@@ -245,7 +245,7 @@ export function LoadDiagram({
               {t}
             </text>
           ))}
-          <text className="c2-ld-axlbl" x={W - MR} y={MOMENT_TOP + PANEL_H + 13} textAnchor="end">
+          <text className="c2-ld-axlbl" x={ML + plotW / 2} y={H - 3} textAnchor="middle">
             position
           </text>
         </svg>
@@ -391,7 +391,7 @@ function PanelFrame({
     <g>
       <rect className="c2-ld-panel" x={ML} y={top} width={plotW} height={PANEL_H} />
       <line className="c2-ld-baseline" x1={sx(0)} y1={mid} x2={sx(L)} y2={mid} />
-      <text className="c2-ld-panel-lbl" x={ML} y={top - 6}>
+      <text className="c2-ld-panel-lbl" x={ML + 42} y={top - 6}>
         {label}
       </text>
     </g>

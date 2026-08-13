@@ -346,7 +346,13 @@ async function hydrateAsync(): Promise<void> {
     /* corrupt, or this device's content key was rotated/cleared — not restored */
   }
 }
-void hydrateAsync();
+const initialHydration = hydrateAsync();
+
+/** Resolve after the eager encrypted read finishes so backup/export cannot snapshot the temporary
+ *  empty cache exposed while Web Crypto is still decrypting. */
+export function whenMemoryHydrated(): Promise<void> {
+  return initialHydration;
+}
 
 function get(): MemoryStore {
   if (cache) return cache;

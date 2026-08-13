@@ -118,6 +118,10 @@
     background 120ms ease,
     color 120ms ease;
 }
+.ls-tab:hover:not(.active) {
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--surface-elevated) 55%, transparent);
+}
 .ls-tab.active {
   background: var(--surface-elevated);
   color: var(--text-primary);

@@ -192,18 +192,21 @@ describe('veracity — the citation-must-verify gate', () => {
 });
 
 let adapterReply: string | object = '{"verdicts":[]}';
+let adapterFails = false;
 let generateCalls = 0;
 
 vi.mock('../src/live/providers', () => ({
   getAdapter: () => ({
     generate: async () => {
       generateCalls += 1;
+      if (adapterFails) throw new Error('rate limited');
       return { raw: adapterReply };
     },
   }),
 }));
 
 const { runVeracity } = await import('../src/live/prism/veracity/verify');
+const { runReconcile } = await import('../src/live/prism/reconcile/run');
 
 // runVeracity checks a settled map's LOAD-BEARING claims against the world: it retrieves real snippets
 // per claim (here, a fake provider), makes ONE batched model call, and gates every citation. We assert
@@ -489,6 +492,31 @@ describe('reconcile — numbers pulled from quotes, verdicts in pure code', () =
       expect(
         growthVerdict(pct(40), atom({ value: 10, unit: 'count' }), money(13, '$13'), 'r'),
       ).toBeNull();
+    });
+  });
+});
+
+// The whole point of the Reconcile strip is that "every number checks out" is a CLAIM. A pass that
+// never ran (a 429, a dropped connection) must come back as null so the overlay can say so — an []
+// there reads on screen as an all-clear the document never earned.
+describe('reconcile — a failed pass is null, never a false all-clear', () => {
+  const cfg = { provider: 'anthropic', model: 'claude' } as unknown as ModelConfig;
+  const sources = [{ id: 'c1', page: 1, quote: 'Revenue rose from $10M to $13M, a 40% increase.' }];
+  const corpus = [['Revenue rose from $10M to $13M, a 40% increase.']];
+
+  beforeEach(() => {
+    adapterFails = false;
+    adapterReply = '{"checks":[]}';
+  });
+
+  describe('runReconcile', () => {
+    it('returns [] when the pass ran and nothing was flagged', async () => {
+      expect(await runReconcile(sources, corpus, cfg)).toEqual([]);
+    });
+
+    it('returns null when the model call fails outright', async () => {
+      adapterFails = true;
+      expect(await runReconcile(sources, corpus, cfg)).toBeNull();
     });
   });
 });

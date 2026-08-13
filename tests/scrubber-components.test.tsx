@@ -129,10 +129,25 @@ describe('Overview', () => {
   it('closes on Escape and on a backdrop click', () => {
     const onClose = vi.fn();
     render(<Overview chapters={CHAPTERS} currentIndex={0} onJump={() => {}} onClose={onClose} />);
-    fireEvent.keyDown(window, { key: 'Escape' });
+    // The dialog traps focus, so Escape is pressed inside the panel — where the user's focus is.
+    fireEvent.keyDown(document.querySelector('.ovw-panel')!, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.click(document.querySelector('.ovw-scrim')!);
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps keyboard focus where the user tabbed to across a parent re-render', () => {
+    // LiveApp passes an inline onClose arrow, so the overlay re-renders constantly while open. The
+    // open sequence must not re-run and drag focus back to the first moment mid-browse.
+    const { rerender } = render(
+      <Overview chapters={CHAPTERS} currentIndex={0} onJump={() => {}} onClose={() => {}} />,
+    );
+    const moments = document.querySelectorAll<HTMLButtonElement>('.ovw-moment');
+    moments[1].focus();
+    rerender(
+      <Overview chapters={CHAPTERS} currentIndex={0} onJump={() => {}} onClose={() => {}} />,
+    );
+    expect(document.activeElement).toBe(moments[1]);
   });
 
   it('renders nothing on an empty conversation', () => {

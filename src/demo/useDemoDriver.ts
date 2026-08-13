@@ -1,4 +1,4 @@
-// useDemoDriver — the STEP player for a persona demo. Each step replays one real recorded
+// useDemoDriver — the STEP player for a curated persona demo. Each turn step replays one baked
 // turn on the actual Live surface (the ask types into the real composer, the baked frame
 // reveals with its own narration and walk), then performs the step's feature beats — every
 // one a real control, driven through the same TourOps closures the first-run walkthrough
@@ -200,7 +200,7 @@ export function useDemoDriver(opts: {
     };
 
     if (step.ask && frame) {
-      // A real recorded turn. It arrives the way the persona produced it: by pressing a
+      // A baked model turn. It arrives the way the script specifies: by pressing a
       // follow-up chip the previous canvas REALLY offers (checked against the baked frame —
       // never a mislabeled press), or by typing into the real composer.
       const turnIdx = script.steps.slice(0, index + 1).filter((s) => !!s.ask).length - 1;
@@ -224,9 +224,10 @@ export function useDemoDriver(opts: {
       // A feature step: no new turn — the beats ARE the content, over the current canvas.
       // A jumped-to or resumed boot may not have one up yet; seed the conversation's latest
       // canvas silently first (no narration, no walk — the same guarantee the tour's
-      // needsCanvas gives its chapters), so beats never perform over an empty stage.
+      // needsCanvas gives its chapters), so beats never perform over an empty stage. `silent`
+      // keeps the recorded frame authentic, so Create-video still has this turn's narration.
       if (!o.hasCanvas() && beatFrame) {
-        o.showFrame({ ...beatFrame, narration: '', tour: [] }, beatFrame.question);
+        o.showFrame(beatFrame, beatFrame.question, { silent: true });
       }
       after(300, fireBeats);
     }

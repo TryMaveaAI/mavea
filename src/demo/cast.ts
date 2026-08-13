@@ -1,5 +1,5 @@
-// cast.ts — the demo cast: who the recorded sessions belong to. Identity only (name, role,
-// look); what each person actually asks lives in scripts.ts, and their real recorded answers
+// cast.ts — fictional personas for curated prerecorded examples. Identity only (name, role,
+// look); what each scenario asks lives in scripts.ts, and its baked model answers
 // in corpus/. This file is deliberately tiny and dependency-free: the landing's demo cards
 // import it eagerly, so it must never pull the Live surface, the corpus, or anything heavy
 // into the landing bundle.
@@ -10,7 +10,7 @@ export interface DemoCastMember {
    *  This LEADS everywhere a demo is offered; the persona is the supporting detail. */
   useCase: string;
   name: string;
-  /** Short human context shown under the name ("CFO · 48"). */
+  /** Short fictional context shown under the name ("Fictional CFO"). */
   role: string;
   /** A single letter (initials disc) or a single emoji (tinted disc). */
   avatar: string;
@@ -37,7 +37,7 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
   { id: 'travel', label: 'Travel', persona: 'traveler' },
 ];
 
-/** The recorded sessions — one per landing category, each led by its USE CASE. Kept small
+/** The curated prerecorded examples — one per landing category, each led by its USE CASE. Kept small
  *  and flagship-grade on purpose: together the four double as a feature tour (pin, bend,
  *  pen, focus, spatial canvas, chips, export, present, dashboards, flashcards, share, ⌘K).
  *  Each entry has a script (scripts.ts) and a baked corpus shard
@@ -47,7 +47,7 @@ export const DEMO_CAST: DemoCastMember[] = [
     id: 'cfo',
     useCase: 'Run a quarterly review',
     name: 'Renata',
-    role: 'CFO · 48',
+    role: 'Fictional CFO',
     avatar: 'R',
     accent: '#3ed8a6',
     blurb: 'The whole quarter in one canvas, then board-ready in a tap.',
@@ -57,7 +57,7 @@ export const DEMO_CAST: DemoCastMember[] = [
     id: 'student',
     useCase: 'Study for an exam',
     name: 'Maya',
-    role: 'Student · 20',
+    role: 'Fictional student',
     avatar: 'M',
     accent: '#4fc3e8',
     blurb: 'Cramming for an econ exam, explained so it sticks.',
@@ -67,7 +67,7 @@ export const DEMO_CAST: DemoCastMember[] = [
     id: 'dev',
     useCase: 'Reason about architecture',
     name: 'Devon',
-    role: 'Engineer · 33',
+    role: 'Fictional engineer',
     avatar: 'D',
     accent: '#54c7c0',
     blurb: 'OAuth, sessions vs JWTs — the architecture, drawn out.',
@@ -77,7 +77,7 @@ export const DEMO_CAST: DemoCastMember[] = [
     id: 'traveler',
     useCase: 'Plan a trip',
     name: 'Lena',
-    role: 'Traveler · 34',
+    role: 'Fictional traveler',
     avatar: 'L',
     accent: '#ff9a6b',
     blurb: 'Three days in Lisbon, mapped, planned, and print-ready.',

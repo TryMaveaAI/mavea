@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -37,10 +37,29 @@ describe('production build and package-manager policy', () => {
     // than keeping `{}` — the release workflow's version bump produces exactly that shape, so
     // treat absent and empty as the same "dependency-free" fact rather than one specific spelling.
     expect(pkg.dependencies ?? {}).toEqual({});
-    expect((pkg.publishConfig as { engines: { node: string } }).engines.node).toBe('>=20.19');
+    const publishConfig = pkg.publishConfig as {
+      access: string;
+      engines: { node: string };
+      provenance: boolean;
+    };
+    expect(publishConfig.access).toBe('public');
+    expect(publishConfig.provenance).toBe(true);
+    expect(publishConfig.engines.node).toBe('>=20.19');
     const files = pkg.files as string[];
     expect(files).toContain('!dist/ort-wasm-simd-threaded.wasm');
     expect(files).toContain('!dist/silero_vad_v5.onnx');
+    expect(files).toContain('!dist/semantic');
+  });
+
+  it('checksum-verifies every voice asset fetched lazily by the published CLI', () => {
+    const cli = read('bin/mavea.mjs');
+    expect(cli).toContain('040d52ce5066707a10d45cb9500c35e70a9c2fb33c4fb63428da9ae45b956b97');
+    expect(cli).toContain('2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f');
+    expect(cli).toContain('bytes: 13_022_405');
+    expect(cli).toContain('bytes: 2_327_524');
+    expect(cli).toContain("createHash('sha256').update(bytes).digest('hex')");
+    expect(cli).toContain('actualSha256 !== expectedSha256');
+    expect(cli).toContain('received > expectedBytes');
   });
 
   it('serves `pnpm preview` through the CLI server, not the proxy-less `vite preview`', () => {
@@ -71,6 +90,20 @@ describe('production build and package-manager policy', () => {
     expect(vite).toContain('sourcemap: false');
   });
 
+  it('keeps every top-level public/ entry on the reviewed inventory', () => {
+    // Everything under public/ ships verbatim to every visitor, so a new entry is a provenance
+    // decision, not a routine asset drop. Subset check only: public/semantic is generated and
+    // absent on fresh checkouts.
+    const reviewed = ['_headers', 'demo-assets', 'favicon.svg', 'fonts', 'semantic', 'sw.js'];
+    const entries = readdirSync(resolve(root, 'public')).filter((entry) => !entry.startsWith('.'));
+    for (const entry of entries) {
+      expect(
+        reviewed,
+        `public/${entry}: new public/ assets need a provenance/license decision recorded in scripts/check-licenses.mjs NOTICE_NON_NPM`,
+      ).toContain(entry);
+    }
+  });
+
   it('uses frozen, cache-aware installs in every dependency-installing CI job', () => {
     for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/release.yml']) {
       const installs = [...read(workflow).matchAll(/pnpm install[^\n]*/g)].map((match) => match[0]);
@@ -80,5 +113,28 @@ describe('production build and package-manager policy', () => {
         expect(install).toContain('--prefer-offline');
       }
     }
+  });
+
+  it('keeps public CI on free standard runners and release publishing tokenless', () => {
+    const workflows = readdirSync(resolve(root, '.github/workflows')).filter((path) =>
+      /\.ya?ml$/.test(path),
+    );
+    for (const workflow of workflows) {
+      const source = read(`.github/workflows/${workflow}`);
+      for (const runner of source.matchAll(/runs-on:\s*([^\n]+)/g)) {
+        expect(runner[1].trim(), `${workflow} must use a standard GitHub-hosted runner`).toBe(
+          'ubuntu-latest',
+        );
+      }
+      expect(source, `${workflow} must not upload billable artifacts`).not.toContain(
+        'actions/upload-artifact',
+      );
+    }
+
+    const release = read('.github/workflows/release.yml');
+    expect(release).toContain('id-token: write');
+    expect(release).toContain('run: npm publish --access public');
+    expect(release).not.toContain('NODE_AUTH_TOKEN');
+    expect(release).not.toContain('NPM_TOKEN');
   });
 });

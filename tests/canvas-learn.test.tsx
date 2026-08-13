@@ -7,7 +7,9 @@ import { BodyMap } from '../src/canvas/blocks/learn/BodyMap';
 import { BohrModel } from '../src/canvas/blocks/learn/BohrModel';
 import { CellDiagram } from '../src/canvas/blocks/learn/CellDiagram';
 import { ChordDiagram } from '../src/canvas/blocks/learn/ChordDiagram';
+import { CircleOfFifths } from '../src/canvas/blocks/learn/CircleOfFifths';
 import { CrossSection } from '../src/canvas/blocks/learn/CrossSection';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 import { DevelopmentMilestone } from '../src/canvas/blocks/learn/DevelopmentMilestone';
 import { EquationBlock } from '../src/canvas/blocks/learn/EquationBlock';
 import { FractionBar } from '../src/canvas/blocks/learn/FractionBar';
@@ -135,12 +137,15 @@ describe('AreaModel', () => {
 });
 
 // Regression coverage: region labels render as plain SVG <text> at a fixed lx/ly with no width
-// constraint (viewBox is only 120 wide). A long anatomical/custom label — well within what a
-// caller can legitimately pass via `label` or the built-in guide names — would run past the
-// viewBox edge or collide with a neighbouring label. Every rendered label must be capped to a
-// character budget, with the untruncated text preserved via a native <title> tooltip.
+// constraint. A long anatomical/custom label — well within what a caller can legitimately pass
+// via `label` or the built-in guide names — would run past the viewBox edge or collide with a
+// neighbouring label. Every rendered label must be capped to a character budget, with the
+// untruncated text preserved via a native <title> tooltip.
 
 describe('BodyMap', () => {
+  // Mirrors LABEL_MAX_CHARS: the budget the side gutters actually hold at .bm-label's size.
+  const LABEL_MAX_CHARS = 11;
+
   it('truncates a long region label instead of letting it overflow the viewBox', () => {
     const longLabel = 'Left gastrocnemius and soleus complex';
     const { container } = render(
@@ -149,7 +154,7 @@ describe('BodyMap', () => {
     const labelNodes = Array.from(container.querySelectorAll('text.bm-label'));
     expect(labelNodes).toHaveLength(1);
     for (const node of labelNodes) {
-      expect(visibleText(node).length).toBeLessThanOrEqual(14);
+      expect(visibleText(node).length).toBeLessThanOrEqual(LABEL_MAX_CHARS);
     }
     expect(visibleText(labelNodes[0]).endsWith('…')).toBe(true);
     // The untruncated string is still available, via a native <title> tooltip.
@@ -173,7 +178,7 @@ describe('BodyMap', () => {
     const labelNodes = Array.from(container.querySelectorAll('text.bm-label--muted'));
     expect(labelNodes.length).toBeGreaterThan(5);
     for (const node of labelNodes) {
-      expect(visibleText(node).length).toBeLessThanOrEqual(14);
+      expect(visibleText(node).length).toBeLessThanOrEqual(LABEL_MAX_CHARS);
     }
   });
 
@@ -191,8 +196,39 @@ describe('BodyMap', () => {
     const labelNodes = Array.from(container.querySelectorAll('text.bm-label'));
     expect(labelNodes).toHaveLength(3);
     for (const node of labelNodes) {
-      expect(visibleText(node).length).toBeLessThanOrEqual(14);
+      expect(visibleText(node).length).toBeLessThanOrEqual(LABEL_MAX_CHARS);
     }
+  });
+
+  it('reserves gutter room outside the figure for the outward-reading limb labels', () => {
+    // The arm/hand labels anchor at the very edge of the silhouette and read away from the body,
+    // so the drawing box has to extend past it on both sides — an SVG viewport clips anything
+    // outside the viewBox, and the label budget is only honest if that room actually exists.
+    const { container } = render(
+      <BodyMap
+        title="Injury"
+        regions={[
+          { id: 'leftForearm', label: 'Forearm strain' },
+          { id: 'rightForearm', label: 'Forearm strain' },
+        ]}
+      />,
+    );
+    const [minX, , width] = (container.querySelector('svg.bm-svg')?.getAttribute('viewBox') ?? '')
+      .split(' ')
+      .map(Number);
+    const anchors = Array.from(container.querySelectorAll('text.bm-label')).map((n) => ({
+      x: Number(n.getAttribute('x')),
+      anchor: n.getAttribute('text-anchor'),
+    }));
+    const readsLeft = anchors.find((a) => a.anchor === 'end');
+    const readsRight = anchors.find((a) => a.anchor === 'start');
+    expect(readsLeft).toBeDefined();
+    expect(readsRight).toBeDefined();
+    // A full-budget label runs roughly 7 units per character at .bm-label's size, so the gutter
+    // on whichever side it reads toward has to hold that much or the truncation budget is a lie.
+    const NEEDED = LABEL_MAX_CHARS * 7;
+    expect(Number(readsLeft?.x) - minX).toBeGreaterThanOrEqual(NEEDED);
+    expect(minX + width - Number(readsRight?.x)).toBeGreaterThanOrEqual(NEEDED);
   });
 });
 
@@ -204,6 +240,11 @@ describe('BodyMap', () => {
 
 describe('BohrModel', () => {
   const GUTTER_LEFT = 360 - 96 + 6; // W - GUTTER + 6, mirrors BohrModel's internal leader-line x
+  const CONFIG_FONT = 10.5; // viewBox units, mirrors CONFIG_FONT / .boh-config
+  // The summary is digits joined by interpuncts and spaces; a tabular-nums digit is the widest of
+  // those, measured at ~0.56em in the rendered face. Bounding a line by the widest glyph it can
+  // contain is what makes this a real width check rather than a restatement of the wrap constant.
+  const WIDEST_GLYPH = CONFIG_FONT * 0.56;
 
   it('wraps a long electron-configuration summary instead of overflowing the gutter', () => {
     // Uranium: 7 shells, well beyond the small demo fixtures — the joined count string alone
@@ -220,11 +261,10 @@ describe('BohrModel', () => {
       // Every wrapped line stays right-anchored at the same x as the shell-occupancy labels,
       // so it never drifts outside the gutter column horizontally.
       expect(Number(line.getAttribute('x'))).toBe(350);
-      // No single line's estimated width should be wider than the gutter itself — the whole
-      // point of wrapping is that no rendered line runs past the leader-line column.
+      // No single line's width should exceed the gutter itself — the whole point of wrapping is
+      // that no rendered line runs past the leader-line column.
       const text = line.textContent ?? '';
-      const estWidth = text.length * (9.5 * 0.62);
-      expect(estWidth).toBeLessThanOrEqual(350 - GUTTER_LEFT + 1);
+      expect(text.length * WIDEST_GLYPH).toBeLessThanOrEqual(350 - GUTTER_LEFT);
     }
     // The full configuration is preserved verbatim across the wrapped lines — wrapping must
     // never silently drop electrons the way a truncation with an ellipsis would.
@@ -306,21 +346,26 @@ describe('CellDiagram', () => {
   });
 
   it('stays within the fixed diagram viewBox regardless of label length', () => {
-    const { container } = render(
-      <CellDiagram
-        title="Cell"
-        cellType="plant"
-        parts={[
-          { key: 'chloroplast', label: 'Chloroplasts Performing Photosynthesis Constantly' },
-          { key: 'vacuole', label: 'The Large Central Storage Vacuole' },
-        ]}
-      />,
-    );
-    const svg = container.querySelector('svg.cel-svg');
-    expect(svg).toBeTruthy();
-    // The viewBox is the fixed 320×230 canvas plus its gutters — unchanged by label content,
-    // since truncation (not rescaling) is what keeps long labels inside it.
-    expect(svg?.getAttribute('viewBox')).toBe('-42 0 372 230');
+    const viewBoxFor = (chloroplast: string, vacuole: string) => {
+      const { container } = render(
+        <CellDiagram
+          title="Cell"
+          cellType="plant"
+          parts={[
+            { key: 'chloroplast', label: chloroplast },
+            { key: 'vacuole', label: vacuole },
+          ]}
+        />,
+      );
+      const svg = container.querySelector('svg.cel-svg');
+      expect(svg).toBeTruthy();
+      return svg?.getAttribute('viewBox');
+    };
+    // The canvas is a fixed cell plus its label gutters — unchanged by label content, since
+    // truncation (not rescaling) is what keeps long labels inside it.
+    expect(
+      viewBoxFor('Chloroplasts Performing Photosynthesis Constantly', 'The Large Central Vacuole'),
+    ).toBe(viewBoxFor('Plastid', 'Sac'));
   });
 });
 
@@ -419,9 +464,33 @@ describe('CrossSection — concentric orientation', () => {
       />,
     );
     const label = container.querySelector('text.lr-xs-ring-lbl')!;
-    expect(visibleText(label).length).toBeLessThanOrEqual(16);
-    expect(visibleText(label).endsWith('…')).toBe(true);
-    expect(label.querySelector('title')?.textContent).toBe('Upper Mantle Transition Zone');
+    const lines = Array.from(label.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
+
+    // Wrapped against the measured gutter, not ellipsized — every word still reaches the reader.
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join(' ')).toBe('Upper Mantle Transition Zone');
+    const fontSize = Number(label.getAttribute('font-size'));
+    expect(fontSize).toBeGreaterThanOrEqual(10);
+    for (const line of lines) {
+      expect(estimateTextWidth(line, fontSize, true)).toBeLessThanOrEqual(96);
+    }
+  });
+
+  // The names own a column beside the art. Before this they were stacked from the top of the
+  // viewBox at a fixed step, which piled them onto the rings they were naming.
+  it('keeps every ring label clear of the circles', () => {
+    const { container } = render(
+      <CrossSection title="Planet interior" orientation="concentric" layers={layers(4)} />,
+    );
+    const circles = Array.from(container.querySelectorAll('circle.lr-xs-ring'));
+    const outerRadius = Math.max(...circles.map((c) => Number(c.getAttribute('r'))));
+    const cx = Number(circles[0].getAttribute('cx'));
+
+    const labels = Array.from(container.querySelectorAll('text.lr-xs-ring-lbl'));
+    expect(labels).toHaveLength(4);
+    for (const label of labels) {
+      expect(Number(label.getAttribute('x'))).toBeGreaterThan(cx + outerRadius);
+    }
   });
 });
 
@@ -706,7 +775,30 @@ describe('FreeBodyDiagram', () => {
     // labels must fit within it rather than growing it.
     const svg = container.querySelector('svg.fbd-svg');
     expect(svg).toBeTruthy();
-    expect(svg?.getAttribute('viewBox')).toBe('0 0 420 340');
+    const { container: plain } = render(
+      <FreeBodyDiagram title="Simple object" forces={[{ label: 'Weight', angle: 270 }]} />,
+    );
+    expect(svg?.getAttribute('viewBox')).toBe(
+      plain.querySelector('svg.fbd-svg')?.getAttribute('viewBox'),
+    );
+  });
+
+  it('stacks a force magnitude on its own line rather than trailing the label', () => {
+    // Side by side, a full-budget name plus its value ran wider than the room between the
+    // arrowhead and the edge of the canvas — and the diagram has vertical slack where it has
+    // none horizontally.
+    const { container } = render(
+      <FreeBodyDiagram
+        title="Block"
+        forces={[{ label: 'Normal reaction', angle: 90, magnitude: 12 }]}
+      />,
+    );
+    const label = container.querySelector('text.fbd-lbl');
+    const magnitude = container.querySelector('tspan.fbd-mag');
+    expect(magnitude?.textContent).toContain('12');
+    // Same x, one line lower — an inline continuation would carry neither placement attribute.
+    expect(magnitude?.getAttribute('x')).toBe(label?.getAttribute('x'));
+    expect(Number(magnitude?.getAttribute('y'))).toBeGreaterThan(Number(label?.getAttribute('y')));
   });
 });
 
@@ -2182,5 +2274,87 @@ describe('WorkedExample', () => {
     render(<WorkedExample title="Solve it" steps={steps} progressive={false} />);
     expect(screen.getByText('Final step')).toBeInTheDocument();
     expect(screen.getByText('Isolate x')).toBeInTheDocument();
+  });
+});
+
+// Regression coverage for a real, whole-family bug: inside a viewBox a font-size is in USER
+// UNITS, so what lands on the retina is the authored size times the SVG's drawn width over its
+// viewBox width. These four diagrams sized their labels as if those units were pixels — some off
+// the card-relative type ramp, which scales a second time — and drew at well under 1:1 in a canvas
+// card, so their labels landed at 6.6–8.2px, under the library's 9px legibility floor. The size is
+// therefore a ratio: widening a viewBox shrinks every label in it as surely as shrinking the font.
+describe('learn diagrams — SVG label type stays on the 9px rendered floor', () => {
+  const FLOOR_PX = 9;
+  const css = readFileSync(join(__dirname, '..', 'src/canvas/blocks/learn/styles.css'), 'utf8');
+
+  const fontSize = (selector: string): number => {
+    const rule = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(css);
+    const px = rule ? /font-size:\s*([\d.]+)px/.exec(rule[1])?.[1] : undefined;
+    expect(px, `${selector} declares no fixed px font-size`).toBeDefined();
+    return Number(px);
+  };
+
+  const viewBoxWidth = (svg: Element | null): number => {
+    expect(svg, 'diagram renders no svg').toBeTruthy();
+    return Number((svg!.getAttribute('viewBox') ?? '').split(/\s+/)[2]);
+  };
+
+  // `drawnPx` is the width each diagram is actually painted at in a canvas card, measured with
+  // scripts/ui-audit.mts at the widths it sweeps and rounded down — the conversion from authored
+  // units to rendered pixels. Every one of them is narrower than its own viewBox, which is the
+  // trap: the type shrinks with the drawing.
+  const DIAGRAMS = [
+    {
+      name: 'FreeBodyDiagram',
+      drawnPx: 300,
+      svg: () =>
+        render(
+          <FreeBodyDiagram
+            title="Block"
+            forces={[{ label: 'Weight', angle: 270, magnitude: 10 }]}
+          />,
+        ).container.querySelector('svg.fbd-svg'),
+      labels: ['.fbd-obj-lbl', '.fbd-lbl', '.fbd-mag'],
+    },
+    {
+      name: 'BodyMap',
+      drawnPx: 210,
+      svg: () =>
+        render(
+          <BodyMap title="Body" regions={[{ id: 'leftShin', label: 'Calf' }]} />,
+        ).container.querySelector('svg.bm-svg'),
+      labels: ['.bm-label'],
+    },
+    {
+      name: 'BohrModel',
+      drawnPx: 315,
+      svg: () =>
+        render(
+          <BohrModel title="Sodium" protons={11} neutrons={12} shells={[2, 8, 1]} />,
+        ).container.querySelector('svg.boh-svg'),
+      labels: [
+        '.boh-nuc-p',
+        '.boh-nuc-n',
+        '.boh-ion',
+        '.boh-name',
+        '.boh-shell-lbl',
+        '.boh-config',
+      ],
+    },
+    {
+      name: 'CircleOfFifths',
+      drawnPx: 290,
+      svg: () => render(<CircleOfFifths title="Keys" />).container.querySelector('svg.cof-svg'),
+      labels: ['.cof-key-lbl', '.cof-minor', '.cof-sig', '.cof-hub-lbl'],
+    },
+  ];
+
+  it.each(DIAGRAMS)('$name draws every label at or above the floor', ({ drawnPx, svg, labels }) => {
+    const scale = drawnPx / viewBoxWidth(svg());
+    for (const selector of labels) {
+      expect(fontSize(selector) * scale, `${selector} rendered size`).toBeGreaterThanOrEqual(
+        FLOOR_PX,
+      );
+    }
   });
 });

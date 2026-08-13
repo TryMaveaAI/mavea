@@ -1,0 +1,149 @@
+/* drop-select.css — the styled replacement for native datalist/select popups, shared by the
+   model combobox (ModelSelect) and the closed-set pickers (DropSelect). Owned by the components
+   rather than the wizard stylesheet: both render on standalone routes (#/courses, #/ripple) that
+   never load Live's runtime CSS, where these rules used to be missing entirely. */
+.drop-select {
+  position: relative;
+}
+/* Scoped one level deeper so it outranks the surface's own field class (.setup-input) whatever
+   order the bundler emits the two stylesheets in — the mono type and the chevron gutter are the
+   whole point of the model field. */
+.drop-select .drop-select-input {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding-right: 40px;
+}
+.drop-select-trigger {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  text-align: left;
+}
+.drop-select-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.drop-select-trigger > svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  height: 8px;
+  transition: rotate var(--m-fast);
+  width: 12px;
+}
+.drop-select-trigger[aria-expanded='true'] > svg {
+  rotate: 180deg;
+}
+.drop-select-option-label {
+  color: var(--text-primary);
+  font: 500 13.5px/1.2 var(--font);
+}
+.drop-select-option.is-current .drop-select-option-label {
+  color: var(--presence);
+  font-weight: 650;
+}
+.drop-select-chevron {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: color var(--m-fast);
+  width: 40px;
+}
+.drop-select-chevron:hover {
+  color: var(--text-primary);
+}
+.drop-select-chevron svg {
+  height: 8px;
+  transition: rotate var(--m-fast);
+  width: 12px;
+}
+.drop-select-chevron[aria-expanded='true'] svg {
+  rotate: 180deg;
+}
+.drop-select-menu {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inset-inline: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 30;
+}
+.drop-select-option {
+  border-radius: calc(var(--r-md) - 4px);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+}
+.drop-select-option.is-active {
+  background: color-mix(in oklab, var(--presence) 10%, transparent);
+}
+.drop-select-option-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.drop-select-id {
+  color: var(--text-primary);
+  font: 500 13px/1.2 var(--mono);
+  overflow-wrap: anywhere;
+}
+.drop-select-option.is-current .drop-select-id {
+  color: var(--presence);
+  font-weight: 650;
+}
+.drop-select-badge {
+  border: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
+  border-radius: var(--r-full);
+  color: var(--presence);
+  flex-shrink: 0;
+  font: 600 10px/1 var(--font);
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+.drop-select-note {
+  color: var(--text-muted);
+  font: 11.5px/1.35 var(--font);
+}
+.drop-select-foot {
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font: 11.5px/1.4 var(--font);
+  gap: 4px 10px;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding: 8px 10px 5px;
+}
+.drop-select-foot a {
+  color: var(--presence);
+  flex-shrink: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.drop-select-foot a:hover {
+  text-decoration: underline;
+}

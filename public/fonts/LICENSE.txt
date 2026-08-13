@@ -1,34 +1,38 @@
-The font files in this directory (including export/families/) are licensed under the SIL Open
-Font License 1.1 (https://openfontlicense.org), which permits free commercial use, bundling, and
-redistribution:
+The font files in this directory and export/families/ are distributed under the SIL Open Font
+License 1.1. The complete license is in OFL-1.1.txt. It permits commercial use and bundling subject
+to its conditions, including the restriction against selling a font by itself, preservation of
+the copyright notice and license, and Reserved Font Name rules for modified versions.
 
-- Hanken Grotesk — Copyright 2020 The Hanken Grotesk Project Authors
-  https://github.com/marcologous/hanken-grotesk
-- IBM Plex Mono — Copyright 2017 IBM Corp.
-  https://github.com/IBM/plex
-- Newsreader — Copyright 2020 Production Type
-  https://github.com/productiontype/Newsreader
-- Instrument Serif — Copyright 2022 The Instrument Serif Project Authors
-  https://github.com/Instrument/instrument-serif
-- JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
-  https://github.com/JetBrains/JetBrainsMono
-- Archivo — Copyright 2020 The Archivo Project Authors
-  https://github.com/Omnibus-Type/Archivo
-- Space Grotesk — Copyright 2020 The Space Grotesk Project Authors
-  https://github.com/floriankarsten/space-grotesk
+Copyright and Reserved Font Name notices, copied from the shipped font metadata:
+
+- Archivo — Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
 - Bodoni Moda — Copyright 2020 The Bodoni Moda Project Authors
-  https://github.com/indestructible-type/Bodoni
-- IBM Plex Sans — Copyright 2017 IBM Corp.
-  https://github.com/IBM/plex
-- Lora — Copyright 2011 The Lora Project Authors
-  https://github.com/cyrealtype/Lora-Cyrillic
-- Libre Franklin — Copyright 2020 The Libre Franklin Project Authors
-  https://github.com/googlefonts/Libre-Franklin
-- Source Serif 4 — Copyright 2014 The Source Serif 4 Project Authors
-  https://github.com/adobe-fonts/source-serif
-- Spectral — Copyright 2017 The Spectral Project Authors
-  https://github.com/productiontype/Spectral
+  (https://github.com/indestructible-type/Bodoni)
 - EB Garamond — Copyright 2017 The EB Garamond Project Authors
-  https://github.com/octaviopardo/EBGaramond12
+  (https://github.com/octaviopardo/EBGaramond12)
+- Hanken Grotesk — Copyright 2021 The Hanken Grotesk Project Authors
+  (https://github.com/marcologous/hanken-grotesk)
+- IBM Plex Sans — Copyright 2019 IBM Corp. All rights reserved.
+- IBM Plex Mono — Copyright 2017 IBM Corp. All rights reserved.
+- Instrument Serif — Copyright 2022 The Instrument Serif Project Authors
+  (https://github.com/Instrument/instrument-serif)
+- JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
+  (https://github.com/JetBrains/JetBrainsMono)
+- Libre Franklin — Copyright 2020 The Libre Franklin Project Authors
+  (https://github.com/googlefonts/Libre-Franklin)
+- Lora — Copyright 2011 The Lora Project Authors
+  (https://github.com/cyrealtype/Lora-Cyrillic), with Reserved Font Name "Lora".
+- Newsreader — Copyright 2020 The Newsreader Project Authors
+  (http://github.com/productiontype/Newsreader)
+- Source Serif 4 — © 2014–2021 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved
+  Font Name “Source”.
+- Space Grotesk — Copyright 2020 The Space Grotesk Project Authors
+  (https://github.com/floriankarsten/space-grotesk)
+- Spectral — Copyright 2017 The Spectral Project Authors
+  (https://github.com/productiontype/Spectral)
 
-Latin-subset woff2 builds as served by Google Fonts.
+PROVENANCE.md records every shipped filename, embedded version, and SHA-256 digest. These are
+Google Fonts-served Latin-subset WOFF2 binaries and were not modified by this project after
+retrieval. The original retrieval timestamp was not retained; the files entered this repository on
+July 21, 2026. Do not replace or regenerate them without updating the manifest and reviewing any
+Reserved Font Name conditions.

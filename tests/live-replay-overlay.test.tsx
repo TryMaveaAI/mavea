@@ -77,4 +77,18 @@ describe('ReplayOverlay — scroll back and replay', () => {
     fireEvent.click(screen.getByText(/← Live/i));
     expect(onClose).toHaveBeenCalled();
   });
+
+  // It is a modal: one dialog announced to assistive tech (not a page-sized button wrapping every
+  // control), and Escape gets a keyboard user back out of it.
+  it('is a labelled modal dialog that closes on Escape', () => {
+    const onClose = vi.fn();
+    render(<ReplayOverlay frames={frames} initialIndex={0} onClose={onClose} />);
+    const dialog = screen.getByRole('dialog', { name: 'Replay' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    // No wrapper pretending to be a button — the timeline buttons are the only buttons here.
+    expect(screen.queryByRole('button', { name: /close replay overlay/i })).toBeNull();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
 });

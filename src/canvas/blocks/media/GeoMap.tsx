@@ -1,28 +1,19 @@
-// A REAL, interactive map — Leaflet + free CARTO/OpenStreetMap tiles (no API key). The model
-// supplies actual coordinates (it reliably knows lat/lng for real places), so location answers
-// render a draggable, zoomable map with pins + "Open in Google Maps" popups, instead of the
-// stylized grid or an unreliable model-supplied photo.
-//
-// Leaflet is loaded via a lazy import() so it's code-split into its own chunk, fetched only when a
-// map actually renders — its CSS rides along in that same chunk. The boundary to the untyped
-// module is `any` — kept tight to this file.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef, useState } from 'react';
+// A real, interactive vector map backed by OpenFreeMap. Its public-service terms were reviewed on
+// 2026-08-11; MapLibre is BSD-3-Clause and is loaded only when a map renders.
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { Icon } from '../../../icons/icons';
 import { safeCssColor } from '../../../lib/safeCssColor';
+import { loadMapLibre } from './maplibreRuntime';
+import { MapAttribution } from './MapAttribution';
 import type { GeoMapProps, GeoZone, ZoneCategory } from './types';
 
-const CARTO_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const styleUrl = (light: boolean): string =>
+  `https://tiles.openfreemap.org/styles/${light ? 'positron' : 'dark'}`;
 
-const tileUrl = (light: boolean): string =>
-  `https://{s}.basemaps.cartocdn.com/${light ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
-
-// Light vs dark basemap. Inside a static export figure the map should match the SKIN (the embed
-// wrapper carries `data-theme-mode`), not the app's live theme — so a light document never shows a
-// dark map. Live (no embed wrapper) follows the app theme as before.
+// Inside a static export the fixed figure theme wins; live maps follow the app theme.
 const isLight = (el?: HTMLElement | null): boolean => {
   const fig = el?.closest('.figure-embed') as HTMLElement | null;
   if (fig) return fig.getAttribute('data-theme-mode') !== 'dark';
@@ -32,16 +23,6 @@ const isLight = (el?: HTMLElement | null): boolean => {
   );
 };
 
-const esc = (s: string): string =>
-  s.replace(
-    /[&<>"]/g,
-    (c) =>
-      (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }) as Record<string, string>)[c],
-  );
-
-// zoning overlay — additive: every zone/marker/route path above is untouched when `zones` is
-// omitted. One fixed color per land-use category, drawn as a filled Leaflet polygon under the
-// pins, plus a legend chip row naming only the categories actually present.
 const ZONE_CATEGORIES = new Set<ZoneCategory>([
   'residential',
   'commercial',
@@ -70,10 +51,6 @@ interface ValidZone {
   label: string;
 }
 
-/** Only zones with a real (≥3-point, in-range) polygon survive — a loose model reply is dropped
- *  rather than drawn, the same call this file already makes for a marker with a bad coordinate.
- *  An unrecognised/missing category falls back to 'mixed' rather than being dropped, since the
- *  polygon itself is still real data worth showing. */
 function validZones(zones: GeoZone[] | undefined): ValidZone[] {
   if (!Array.isArray(zones)) return [];
   return zones
@@ -96,6 +73,26 @@ function validZones(zones: GeoZone[] | undefined): ValidZone[] {
     .filter((z): z is ValidZone => z !== null);
 }
 
+function resolvedColor(el: HTMLElement, value: string): string {
+  const token = /^var\((--[^)]+)\)$/.exec(value)?.[1];
+  return token ? getComputedStyle(el).getPropertyValue(token).trim() || 'transparent' : value;
+}
+
+function popupContent(title: string, detail?: string): HTMLDivElement {
+  const root = document.createElement('div');
+  root.className = 'geo-pop';
+  const strong = document.createElement('b');
+  strong.textContent = title;
+  root.append(strong);
+  if (detail) {
+    const copy = document.createElement('div');
+    copy.className = 'geo-pop-d';
+    copy.textContent = detail;
+    root.append(copy);
+  }
+  return root;
+}
+
 type Props = GeoMapProps & { delay?: number };
 
 export function GeoMap({
@@ -110,22 +107,21 @@ export function GeoMap({
 }: Props) {
   const Ic = Icon[icon] || Icon.globe;
   const ref = useRef<HTMLDivElement>(null);
-  // Drives the shimmer veil (styles.css): the pane sits behind it until the basemap has actually
-  // painted, so a slow tile CDN shows a deliberate loading state instead of a grey void.
   const [tilesReady, setTilesReady] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
 
-  // Only real, in-range coordinates (model data is untrusted).
-  const pins = (markers || []).filter(
-    (m) =>
-      Number.isFinite(m.lat) &&
-      Number.isFinite(m.lng) &&
-      Math.abs(m.lat) <= 90 &&
-      Math.abs(m.lng) <= 180,
+  const pins = useMemo(
+    () =>
+      (markers || []).filter(
+        (m) =>
+          Number.isFinite(m.lat) &&
+          Number.isFinite(m.lng) &&
+          Math.abs(m.lat) <= 90 &&
+          Math.abs(m.lng) <= 180,
+      ),
+    [markers],
   );
-  const pinsKey = JSON.stringify(pins);
-  const zonesValid = validZones(zones);
-  const zonesKey = JSON.stringify(zonesValid);
-  // Only the categories actually present, in a stable first-seen order, for the legend row.
+  const zonesValid = useMemo(() => validZones(zones), [zones]);
   const legendCategories = zonesValid.reduce<ZoneCategory[]>((acc, z) => {
     if (!acc.includes(z.category)) acc.push(z.category);
     return acc;
@@ -135,105 +131,130 @@ export function GeoMap({
     const el = ref.current;
     if (!el || !pins.length) return;
     let cancelled = false;
-    let map: any = null;
-    let tiles: any = null;
+    let map: MapLibreMap | null = null;
+    let mapMarkers: MapLibreMarker[] = [];
     let themeObs: MutationObserver | null = null;
-
-    // Re-veil on every rebuild (new pins/zoom = a fresh blank pane), then drop the veil on the
-    // first complete tile load. The 8s cap is the honest-degrade path: if the CDN crawls (or the
-    // 'load' event never comes), show whatever tiles have arrived rather than shimmer forever.
     setTilesReady(false);
+    let unveilCap = 0;
     const unveil = () => {
+      window.clearTimeout(unveilCap);
+      unveilCap = 0;
       if (!cancelled) setTilesReady(true);
     };
-    const unveilCap = window.setTimeout(unveil, 8000);
+    unveilCap = window.setTimeout(unveil, 8000);
 
     void (async () => {
-      // leaflet ships no type declarations, so the import boundary stays `any`.
-      // @ts-expect-error — no declaration file for 'leaflet'
-      const mod: any = await import('leaflet').catch(() => null);
-      const L = mod?.default ?? mod;
-      if (cancelled || !ref.current || !L?.map) return;
-
-      // Instant zoom (no CSS transition): the animated zoom waits on a transitionend that never
-      // arrives if the tab hides mid-animation, leaving the +/− controls permanently dead.
-      map = L.map(ref.current, {
-        scrollWheelZoom: false,
-        attributionControl: true,
-        zoomAnimation: false,
-      });
-      tiles = L.tileLayer(tileUrl(isLight(ref.current)), {
-        subdomains: 'abcd',
-        maxZoom: 19,
-        attribution: CARTO_ATTR,
-        // The tiles set `Access-Control-Allow-Origin: *`; requesting them anonymously lets the
-        // export rasterizer read the canvas without tainting it, so a real map survives into the PDF.
-        crossOrigin: 'anonymous',
-      }).addTo(map);
-      tiles.once('load', unveil);
-      // If the CARTO basemap is blocked or unreachable, the panel would otherwise sit blank/grey.
-      // Fall back ONCE to OpenStreetMap so the user still gets real streets under the pins.
-      let fellBack = false;
-      tiles.on('tileerror', () => {
-        if (fellBack || cancelled || !map) return;
-        fellBack = true;
-        map.removeLayer(tiles);
-        tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          subdomains: 'abc',
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          crossOrigin: 'anonymous',
-        }).addTo(map);
-        // the swap threw away the CARTO layer's pending 'load' — re-arm on the replacement
-        tiles.once('load', unveil);
+      const ml = await loadMapLibre();
+      if (cancelled || !ref.current) return;
+      if (!ml) {
+        // Nothing will ever paint, so waiting out the cap would only shimmer for 8s and then
+        // fade to an empty slab — say so now instead.
+        window.clearTimeout(unveilCap);
+        setMapFailed(true);
+        return;
+      }
+      map = new ml.Map({
+        container: ref.current,
+        style: styleUrl(isLight(ref.current)),
+        center: [pins[0].lng, pins[0].lat],
+        zoom: zoom ?? 13,
+        // The always-expanded control shows the style's own OpenFreeMap/OpenMapTiles/OSM credit;
+        // a customAttribution copy of the same text would render the line twice.
+        attributionControl: { compact: false },
+        scrollZoom: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        fadeDuration: 0,
+        maxTileCacheSize: 48,
+        canvasContextAttributes: { preserveDrawingBuffer: true, powerPreference: 'low-power' },
       });
 
-      // zoning overlay, drawn under the pins so a marker never hides behind a zone fill
-      zonesValid.forEach((z) => {
-        const color = CATEGORY_COLOR[z.category];
-        const poly = L.polygon(z.coords, {
-          color,
-          weight: 1.5,
-          fillColor: color,
-          fillOpacity: 0.22,
-        }).addTo(map);
-        poly.bindPopup(
-          `<div class="geo-pop"><b>${esc(z.label)}</b><div class="geo-pop-d">${esc(CATEGORY_LABEL[z.category])}</div></div>`,
-        );
-      });
-
-      pins.forEach((m, i) => {
-        // The marker colour is model-supplied and lands in a live `style` attribute, so it has to
-        // clear the CSS gate — not the HTML one. `esc()` escapes &<>" and nothing else, which is
-        // exactly right for text between tags and useless inside a declaration: a value like
-        // `red;background:url(...)` carries no HTML metacharacters at all, survives escaping intact,
-        // and closes out --geo-c to inject a second declaration. safeCssColor is the gate every
-        // other colour-bearing block already uses.
-        const color = safeCssColor(m.color);
-        const ic = L.divIcon({
-          className: 'geo-divicon',
-          html: `<span class="geo-pin" style="--geo-c:${esc(color)}">${i + 1}</span>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
+      const addZones = () => {
+        if (!map || !ref.current || !map.isStyleLoaded() || map.getSource('mavea-zones')) return;
+        const features = zonesValid.map((zone, index) => ({
+          type: 'Feature' as const,
+          id: index,
+          properties: {
+            label: zone.label,
+            category: CATEGORY_LABEL[zone.category],
+            color: resolvedColor(ref.current!, CATEGORY_COLOR[zone.category]),
+          },
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [
+              [
+                ...zone.coords.map(([lat, lng]) => [lng, lat]),
+                [zone.coords[0][1], zone.coords[0][0]],
+              ],
+            ],
+          },
+        }));
+        map.addSource('mavea-zones', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features },
         });
-        const gmaps = `https://www.google.com/maps/search/?api=1&query=${m.lat},${m.lng}`;
-        const popup = `<div class="geo-pop"><b>${esc(m.name)}</b>${
-          m.detail ? `<div class="geo-pop-d">${esc(m.detail)}</div>` : ''
-        }<a class="geo-pop-a" href="${gmaps}" target="_blank" rel="noopener noreferrer">Open in Google Maps ↗</a></div>`;
-        L.marker([m.lat, m.lng], { icon: ic }).addTo(map).bindPopup(popup);
+        map.addLayer({
+          id: 'mavea-zones-fill',
+          type: 'fill',
+          source: 'mavea-zones',
+          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.22 },
+        });
+        map.addLayer({
+          id: 'mavea-zones-line',
+          type: 'line',
+          source: 'mavea-zones',
+          paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 },
+        });
+      };
+
+      map.on('styledata', addZones);
+      map.on('idle', unveil);
+
+      mapMarkers = pins.map((marker, index) => {
+        const pin = document.createElement('span');
+        pin.className = 'geo-pin';
+        pin.style.setProperty('--geo-c', safeCssColor(marker.color));
+        pin.textContent = String(index + 1);
+        // setPopup makes the pin focusable and Space/Enter-operable; a name and a role are all
+        // it still needs so a screen reader announces the place, not a bare number.
+        pin.setAttribute('role', 'button');
+        pin.setAttribute('aria-label', marker.name);
+        const popup = popupContent(marker.name, marker.detail);
+        const link = document.createElement('a');
+        link.className = 'geo-pop-a';
+        link.href = `https://www.google.com/maps/search/?api=1&query=${marker.lat},${marker.lng}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open in Google Maps ↗';
+        popup.append(link);
+        // The pin is a tail-less circle, so its centre — MapLibre's default anchor — is what
+        // sits on the coordinate; bottom-anchoring would float it half a badge north.
+        return new ml.Marker({ element: pin })
+          .setLngLat([marker.lng, marker.lat])
+          .setPopup(new ml.Popup({ offset: 18 }).setDOMContent(popup))
+          .addTo(map!);
       });
 
-      // Fit to every pin AND every zone vertex when zones are present, so the whole overlay is
-      // in frame — identical to the pin-only framing below when `zones` is omitted.
-      const boundsPts: [number, number][] = pins.map((m) => [m.lat, m.lng] as [number, number]);
-      for (const z of zonesValid) boundsPts.push(...z.coords);
-      if (boundsPts.length > 1) map.fitBounds(boundsPts, { padding: [34, 34] });
-      else map.setView([pins[0].lat, pins[0].lng], zoom ?? 13);
+      const bounds = new ml.LngLatBounds();
+      for (const marker of pins) bounds.extend([marker.lng, marker.lat]);
+      for (const zone of zonesValid) {
+        for (const [lat, lng] of zone.coords) bounds.extend([lng, lat]);
+      }
+      if (pins.length + zonesValid.flatMap((zone) => zone.coords).length > 1) {
+        map.fitBounds(bounds, { padding: 34, duration: 0 });
+      }
 
-      // keep the live basemap in sync with light/dark theme (a no-op inside a fixed-theme export,
-      // and skipped once we've fallen back to OSM, which has no light/dark variant to swap to)
+      let currentStyle = styleUrl(isLight(ref.current));
       themeObs = new MutationObserver(() => {
-        if (!fellBack) tiles?.setUrl(tileUrl(isLight(ref.current)));
+        const nextStyle = styleUrl(isLight(ref.current));
+        if (!map || nextStyle === currentStyle) return;
+        currentStyle = nextStyle;
+        setTilesReady(false);
+        // Re-veiling needs the cap re-armed (the first one already fired), or a style that never
+        // loads shimmers forever; clear first, since the theme can flip twice inside the window.
+        window.clearTimeout(unveilCap);
+        unveilCap = window.setTimeout(unveil, 8000);
+        map.setStyle(nextStyle);
       });
       themeObs.observe(document.documentElement, {
         attributes: true,
@@ -245,10 +266,15 @@ export function GeoMap({
       cancelled = true;
       window.clearTimeout(unveilCap);
       themeObs?.disconnect();
-      if (map) map.remove();
+      for (const marker of mapMarkers) marker.remove();
+      mapMarkers = [];
+      map?.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinsKey, zonesKey, zoom]);
+  }, [pins, zonesValid, zoom]);
+
+  // Nothing on the card may describe a map that isn't on screen: no legend for zones that were
+  // never drawn, no "drag to explore" under an empty slab.
+  const mapShown = pins.length > 0 && !mapFailed;
 
   return (
     <div
@@ -258,7 +284,9 @@ export function GeoMap({
       <div className="card-eyebrow">
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
-      {pins.length ? (
+      {mapFailed ? (
+        <div className="geo-map geo-map-empty faint">Map couldn’t load.</div>
+      ) : pins.length ? (
         <div
           ref={ref}
           className="geo-map"
@@ -268,7 +296,8 @@ export function GeoMap({
       ) : (
         <div className="geo-map geo-map-empty faint">No locations to map.</div>
       )}
-      {legendCategories.length > 0 && (
+      {mapShown && <MapAttribution />}
+      {mapShown && legendCategories.length > 0 && (
         <div className="geo-zone-legend">
           {legendCategories.map((cat) => (
             <span className="geo-zone-chip" key={cat}>
@@ -278,13 +307,15 @@ export function GeoMap({
           ))}
         </div>
       )}
-      <div className="insight-summary" style={{ marginTop: 10 }}>
-        {footer || (
-          <span className="faint">
-            Real map · {pins.length} location{pins.length === 1 ? '' : 's'} · drag to explore
-          </span>
-        )}
-      </div>
+      {(footer || mapShown) && (
+        <div className="insight-summary" style={{ marginTop: 10 }}>
+          {footer || (
+            <span className="faint">
+              Real map · {pins.length} location{pins.length === 1 ? '' : 's'} · drag to explore
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -191,13 +191,23 @@ export function ExtractionPreview({
   const quotes = useMemo(() => (draft ? quotesOf(draft) : []), [draft]);
   const existing = useMemo<Dashboard[]>(() => getDashboards(), []);
 
+  // The labels of the metrics that survive the remove toggles. A tripwire is bound to its metric by
+  // label at build time, so one kept over a REMOVED metric binds to nothing and sits in the standing
+  // alerts as AWAITING forever — armed, unable to ever evaluate. It goes with its metric.
+  const keptMetricLabels = useMemo(
+    () => new Set((draft?.metrics ?? []).filter((_, i) => !dropMetric.has(i)).map((m) => m.label)),
+    [draft, dropMetric],
+  );
+
   const keptDraft = (): DashboardDraft | null => {
     if (!draft) return null;
     return {
       ...draft,
       title: name.trim() || draft.title,
       metrics: draft.metrics.filter((_, i) => !dropMetric.has(i)),
-      tripwires: draft.tripwires.filter((_, i) => !dropTrip.has(i)),
+      tripwires: draft.tripwires.filter(
+        (t, i) => !dropTrip.has(i) && keptMetricLabels.has(t.metricLabel),
+      ),
     };
   };
 
@@ -380,15 +390,19 @@ export function ExtractionPreview({
                       onToggle={() => toggle(setDropMetric, i)}
                     />
                   ))}
-                  {draft.tripwires.map((t, i) => (
-                    <Comp
-                      key={`t${i}`}
-                      kind="RISK"
-                      body={`Alert: ${t.label}`}
-                      on={!dropTrip.has(i)}
-                      onToggle={() => toggle(setDropTrip, i)}
-                    />
-                  ))}
+                  {draft.tripwires.map((t, i) => {
+                    const orphaned = !keptMetricLabels.has(t.metricLabel);
+                    return (
+                      <Comp
+                        key={`t${i}`}
+                        kind="RISK"
+                        body={`Alert: ${t.label}`}
+                        on={!dropTrip.has(i) && !orphaned}
+                        onToggle={() => toggle(setDropTrip, i)}
+                        lockedLabel={orphaned ? 'Needs its metric' : undefined}
+                      />
+                    );
+                  })}
 
                   <div className="xt-pick xt-cadence-pick">
                     <span className="xt-pick-label">How often</span>
@@ -432,7 +446,7 @@ export function ExtractionPreview({
                       {confirming ? 'Confirming live data…' : 'Build dashboard →'}
                     </button>
                   </div>
-                  {confirmErr && <p className="dash-plan-estimate">{confirmErr}</p>}
+                  {confirmErr && <p className="xt-confirm-err">{confirmErr}</p>}
 
                   {existing.length > 0 && (
                     <div className="xt-fold">
@@ -486,18 +500,28 @@ function Comp({
   body,
   on,
   onToggle,
+  lockedLabel,
 }: {
   kind: Tag;
   body: string;
   on: boolean;
   onToggle: () => void;
+  /** Set when the row can't be included at all whatever the toggle says (an alert whose metric was
+   *  removed) — reads as the reason and takes the toggle out of play, instead of the row claiming
+   *  "Included ✓" over something the build drops. */
+  lockedLabel?: string;
 }): ReactElement {
   return (
     <div className={`xt-comp xt-comp--${kind.toLowerCase()} ${on ? '' : 'xt-off'}`}>
       <div className="xt-comp-head">
         <span className="xt-comp-kind">{kind}</span>
-        <button type="button" className="xt-comp-toggle" onClick={onToggle}>
-          {on ? 'Included ✓' : 'Removed ✕'}
+        <button
+          type="button"
+          className="xt-comp-toggle"
+          onClick={onToggle}
+          disabled={lockedLabel !== undefined}
+        >
+          {lockedLabel ?? (on ? 'Included ✓' : 'Removed ✕')}
         </button>
       </div>
       <div className="xt-comp-body">{body}</div>

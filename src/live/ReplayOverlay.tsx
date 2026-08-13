@@ -11,8 +11,11 @@
 // player down on unmount or when the user navigates — so audio + timers never leak.
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { TopicCanvas } from '../canvas';
+import { AnnotationLayer, type InkRequest } from './annotate/AnnotationLayer';
 import type { TurnFrame } from './history';
 import { replaySequence, type ReplaySegment } from './replay';
+import { useFocusTrap } from './useFocusTrap';
+import './replay-overlay.css';
 
 interface ReplayOverlayProps {
   frames: TurnFrame[];
@@ -40,10 +43,12 @@ export function ReplayOverlay({
   // canvas is just the selected frame and nothing is spotlit.
   const [spot, setSpot] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [inked, setInked] = useState<InkRequest[]>([]);
   // The spec shown right now: during playback it follows the playing segment; otherwise the
   // selected frame's canvas.
   const [liveSpec, setLiveSpec] = useState(() => frames[initialIndex]?.spec ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   // Cancels an in-flight player loop (timers + the "still playing" guard).
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -56,7 +61,18 @@ export function ReplayOverlay({
     cancelSpeak?.();
     setPlaying(false);
     setSpot(null);
+    setInked([]);
   }, [cancelSpeak]);
+
+  // Leaving the overlay always tears the player down first, however the user leaves.
+  const close = useCallback(() => {
+    stop();
+    onClose();
+  }, [stop, onClose]);
+
+  // Board-grade modal behavior, matching the other Live overlays: keyboard focus stays inside the
+  // dialog, Escape closes it, and focus returns to whatever opened it.
+  useFocusTrap(dialogRef, { onEscape: close });
 
   // Play a list of segments in order: render each segment's canvas, highlight its turn in the
   // timeline, speak its line, walk its spotlight beats, then advance. `fromFrame` is the frame
@@ -85,6 +101,7 @@ export function ReplayOverlay({
         // Reflect this segment's turn in the timeline + canvas, and narrate it.
         setIndex(fromFrame + segIdx);
         setLiveSpec(seg.spec);
+        setInked([]);
         cancelSpeak?.();
         if (seg.say) speak?.(seg.say);
 
@@ -97,7 +114,25 @@ export function ReplayOverlay({
             return;
           }
           const beat = seg.beats[beatIdx++];
-          if (beat.set && 'spot' in beat.set) setSpot(beat.set.spot ?? null);
+          if (beat.set && 'spot' in beat.set) {
+            const nextSpot = beat.set.spot ?? null;
+            setSpot(nextSpot);
+            const cue = nextSpot ? seg.cues.find((item) => item.spot === nextSpot) : undefined;
+            if (cue?.marks.length) {
+              setInked((current) => [
+                ...current,
+                ...cue.marks.map((mark, markIndex) => ({
+                  spot: cue.spot,
+                  line: cue.say,
+                  mark,
+                  delayMs: markIndex * 240,
+                  ...(mark.kind === 'connect' && typeof mark.onIndex === 'number'
+                    ? { toSpot: seg.spec.blocks[mark.onIndex]?.id }
+                    : {}),
+                })),
+              ]);
+            }
+          }
           timer = setTimeout(runBeat, beat.ms ?? 0);
         };
         runBeat();
@@ -156,157 +191,75 @@ export function ReplayOverlay({
   if (!frame || !liveSpec) return null;
 
   return (
-    <div
-      onClick={() => {
-        stop();
-        onClose();
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="Close replay overlay"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          if (e.key === ' ') e.preventDefault();
-          stop();
-          onClose();
-        }
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.6)',
-        zIndex: 60,
-        display: 'flex',
-        padding: 20,
-        gap: 16,
-      }}
-    >
-      {/* Timeline — every turn, click to view; the live canvas is on the right. */}
+    // The scrim's only job is the backdrop click; it carries no role of its own, so the dialog
+    // below is what assistive tech announces (a role="button" wrapper around every control would
+    // read as one giant button with buttons nested inside it).
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    <div className="replay-scrim" onClick={close}>
+      {/* Clicks inside the dialog are swallowed so they don't bubble to the scrim and close it —
+          a propagation guard, not a click affordance, so it has no keyboard twin. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
+        className="replay-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Replay"
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            if (e.key === ' ') e.preventDefault();
-            e.stopPropagation();
-          }
-        }}
-        style={{
-          flex: '0 0 240px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          overflow: 'auto',
-          background: 'var(--surface-elevated)',
-          border: '1px solid var(--line)',
-          borderRadius: 12,
-          padding: 12,
-        }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Conversation</span>
-          <button
-            className="entry-action"
-            style={{ fontSize: 12 }}
-            onClick={() => {
-              stop();
-              onClose();
-            }}
-          >
-            ← Live
-          </button>
-        </div>
-        {frames.map((f, i) => {
-          const active = i === index;
-          return (
+        {/* Timeline — every turn, click to view; the live canvas is on the right. */}
+        <div className="replay-timeline">
+          <div className="replay-timeline-head">
+            <span>Conversation</span>
+            <button className="entry-action" style={{ fontSize: 12 }} onClick={close}>
+              ← Live
+            </button>
+          </div>
+          {frames.map((f, i) => (
             <button
               key={i}
+              className={'replay-turn' + (i === index ? ' is-active' : '')}
               onClick={() => select(i)}
               title={f.question}
-              style={{
-                textAlign: 'left',
-                padding: '8px 10px',
-                borderRadius: 8,
-                border: '1px solid ' + (active ? 'var(--presence)' : 'var(--line)'),
-                background: active ? 'var(--surface-elevated)' : 'transparent',
-                cursor: 'pointer',
-                color: 'inherit',
-                font: 'inherit',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
             >
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: active ? 600 : 400,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <span className="replay-turn-title">
                 {i + 1}. {f.question || f.spec.title}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              <span className="replay-turn-meta">
                 {f.spec.blocks.length} cards
                 {f.mode !== 'replace' ? ` · ${f.mode}` : ''}
               </span>
             </button>
-          );
-        })}
-      </div>
-
-      {/* The selected (or playing) canvas + replay controls. */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            if (e.key === ' ') e.preventDefault();
-            e.stopPropagation();
-          }
-        }}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span className="faint" style={{ fontSize: 12.5, marginRight: 'auto' }}>
-            {frame.spec.title}
-          </span>
-          {playing ? (
-            <button className="entry-action" style={{ fontSize: 13 }} onClick={stop}>
-              ◼ Stop
-            </button>
-          ) : (
-            <>
-              <button className="entry-action" style={{ fontSize: 13 }} onClick={replayOne}>
-                ▶ Replay this
-              </button>
-              <button className="entry-action" style={{ fontSize: 13 }} onClick={replayFromHere}>
-                ▶ From here
-              </button>
-              <button className="entry-action" style={{ fontSize: 13 }} onClick={replayAll}>
-                ▶ From start
-              </button>
-            </>
-          )}
+          ))}
         </div>
-        <div
-          ref={scrollRef}
-          className="canvas-scroll"
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            background: 'var(--surface-elevated)',
-            border: '1px solid var(--line)',
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <div className="topic-wrap">
-            <TopicCanvas data={liveSpec} spot={spot} built={{}} onProve={() => {}} />
+
+        {/* The selected (or playing) canvas + replay controls. */}
+        <div className="replay-main">
+          <div className="replay-bar">
+            <span className="faint replay-bar-title">{frame.spec.title}</span>
+            {playing ? (
+              <button className="entry-action" onClick={stop}>
+                ◼ Stop
+              </button>
+            ) : (
+              <>
+                <button className="entry-action" onClick={replayOne}>
+                  ▶ Replay this
+                </button>
+                <button className="entry-action" onClick={replayFromHere}>
+                  ▶ From here
+                </button>
+                <button className="entry-action" onClick={replayAll}>
+                  ▶ From start
+                </button>
+              </>
+            )}
+          </div>
+          <div ref={scrollRef} className="canvas-scroll replay-canvas">
+            <div className="topic-wrap">
+              <TopicCanvas data={liveSpec} spot={spot} built={{}} onProve={() => {}} />
+            </div>
+            <AnnotationLayer spots={inked} within={scrollRef.current} revision={index} />
           </div>
         </div>
       </div>

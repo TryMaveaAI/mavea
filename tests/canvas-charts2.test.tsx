@@ -20,6 +20,7 @@ import { Plot } from '../src/canvas/blocks/charts2/Plot';
 import { QQPlot } from '../src/canvas/blocks/charts2/QQPlot';
 import { SeasonBand } from '../src/canvas/blocks/charts2/SeasonBand';
 import { Slopegraph } from '../src/canvas/blocks/charts2/Slopegraph';
+import { TernaryPlot } from '../src/canvas/blocks/charts2/TernaryPlot';
 import type {
   AreaCurve,
   BubbleCategory,
@@ -35,7 +36,11 @@ import type {
   RangePoint,
   SeasonRow,
   SlopeRow,
+  TernaryAxes,
+  TernaryPoint,
+  TernaryZone,
 } from '../src/canvas/blocks/charts2/types';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 
 // A <title> tooltip nested inside a <text> node is part of its DOM textContent too, so reading
 // the actually-rendered glyphs means the node's own direct text children, not the <title>'s.
@@ -1292,6 +1297,21 @@ describe('QQPlot', () => {
     const { container } = render(<QQPlot title="Normality check" values={values} />);
     expect(italicAnnotation(container)).toBeUndefined();
   });
+
+  it('sizes its own tick and axis type rather than inheriting the shrinking shared clamp', () => {
+    // .cx-tick / .cx-axlbl size type in cqi against the CARD, which stacks a second shrink on top
+    // of the viewBox scale and left every tick around 7.7px — under the 9px legibility floor. An
+    // inline size beats the class and holds at any card width.
+    const values = [58, 61, 63, 65, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79];
+    const { container } = render(<QQPlot title="Normality check" values={values} />);
+    const labels = Array.from(
+      container.querySelectorAll<SVGTextElement>('text.cx-tick, text.cx-axlbl'),
+    );
+    expect(labels.length).toBeGreaterThan(4);
+    for (const el of labels) {
+      expect(Number.parseFloat(el.style.fontSize)).toBeGreaterThanOrEqual(10);
+    }
+  });
 });
 
 // Regression coverage for a real bug: the row label <text> sits at a fixed x = PAD_L - 8
@@ -1413,5 +1433,95 @@ describe('Slopegraph', () => {
     expect(label).toBeTruthy();
     const maxWidthPct = Number.parseFloat(label!.style.maxWidth);
     expect(maxWidthPct).toBeGreaterThan(46);
+  });
+});
+
+// Regression coverage for a real bug: every label on the simplex was authored for a viewBox that
+// renders SMALLER than 1:1 (380 user units into a ~320px card), so sizes chosen as if they were
+// pixels — 8.5 for the edge ticks, 9.5 for zone/point labels — landed at 7.2–8.0px on screen,
+// under the library's 9px legibility floor. Raising them puts the wrapped corner labels closer to
+// the bottom of the viewBox, which is the second half of the contract pinned here.
+describe('TernaryPlot', () => {
+  // The floor the component authors to: 9px on screen ÷ the ~0.85 user-unit-to-px scale.
+  const MIN_FS = 11.5;
+
+  /** The drawing box the labels must stay inside, read from the component's own viewBox. */
+  function viewBox(container: HTMLElement): { w: number; h: number } {
+    // `.ter-svg` specifically — the card eyebrow carries an icon <svg> of its own.
+    const [, , w, h] = container
+      .querySelector('.ter-svg')!
+      .getAttribute('viewBox')!
+      .split(/\s+/)
+      .map(Number);
+    return { w, h };
+  }
+
+  const points: TernaryPoint[] = [
+    { label: 'Raised bed', a: 18, b: 42, c: 40 },
+    { label: 'Riverbank deposit', a: 8, b: 12, c: 80 },
+  ];
+  const zones: TernaryZone[] = [
+    {
+      label: 'Loam',
+      vertices: [
+        { a: 27, b: 45, c: 28 },
+        { a: 7, b: 52, c: 41 },
+        { a: 27, b: 23, c: 50 },
+      ],
+    },
+  ];
+
+  function renderPlot(axes: TernaryAxes) {
+    return render(
+      <TernaryPlot title="Soil texture" axes={axes} unit="%" points={points} zones={zones} />,
+    );
+  }
+
+  it('authors every sized label at or above the legibility floor', () => {
+    const { container } = renderPlot({ a: 'Clay', b: 'Sand', c: 'Silt' });
+    const sized = Array.from(container.querySelectorAll('svg text[font-size]'));
+    // Corner ×3, zone ×1, point ×2 — every label whose size the component picks itself.
+    expect(sized.length).toBeGreaterThanOrEqual(6);
+    for (const el of sized) {
+      expect(Number.parseFloat(el.getAttribute('font-size')!)).toBeGreaterThanOrEqual(MIN_FS);
+    }
+  });
+
+  it('sizes the edge ticks from CSS at the same floor', () => {
+    // The ticks take their size from the stylesheet, which jsdom does not apply — assert the
+    // CSS contract directly, the same way the tooltip-width rule is pinned above.
+    const css = readFileSync(join(__dirname, '..', 'src/canvas/blocks/charts2/styles.css'), 'utf8');
+    const tickRule = css.match(/\.c2 \.ter-tick\s*\{[^}]*\}/)?.[0] ?? '';
+    const size = Number.parseFloat(tickRule.match(/font-size:\s*([\d.]+)px/)?.[1] ?? '0');
+    expect(size).toBeGreaterThanOrEqual(MIN_FS);
+  });
+
+  const cornerCases: [name: string, axes: TernaryAxes][] = [
+    ['short', { a: 'Clay', b: 'Sand', c: 'Silt' }],
+    // Wraps both base corner labels onto a second line at the larger corner type.
+    ['wrapped', { a: 'Clay fraction', b: 'Coarse sand fraction', c: 'Silt and finer' }],
+  ];
+
+  it.each(cornerCases)('keeps every %s corner label inside the viewBox', (_name, axes) => {
+    const { container } = renderPlot(axes);
+    const { w: W, h: H } = viewBox(container);
+    const corners = Array.from(container.querySelectorAll('svg text.ter-corner'));
+    expect(corners).toHaveLength(3);
+    for (const corner of corners) {
+      const fs = Number.parseFloat(corner.getAttribute('font-size')!);
+      const spans = Array.from(corner.querySelectorAll('tspan'));
+      expect(spans.length).toBeGreaterThan(0);
+      for (const span of spans) {
+        const x = Number.parseFloat(span.getAttribute('x')!);
+        const y = Number.parseFloat(span.getAttribute('y')!);
+        // Baseline plus the descender below it / ascender above it — the ink, not just the anchor.
+        expect(y + fs * 0.25).toBeLessThanOrEqual(H);
+        expect(y - fs).toBeGreaterThanOrEqual(0);
+        // Corner labels are middle-anchored, so half the line grows either side of x.
+        const half = estimateTextWidth(span.textContent ?? '', fs, true) / 2;
+        expect(x - half).toBeGreaterThanOrEqual(0);
+        expect(x + half).toBeLessThanOrEqual(W);
+      }
+    }
   });
 });

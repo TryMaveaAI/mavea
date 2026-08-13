@@ -2,6 +2,7 @@ import { useMemo, useId } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { scaleLinear, niceDomain, extent } from '../../lib/scale';
+import { estimateTextWidth } from '../../lib/fitText';
 import { formatValue } from '../../lib/format';
 import type { QQPlotProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -10,24 +11,33 @@ type Props = QQPlotProps & { delay?: number };
 
 const W = 320;
 const H = 248;
+// `l` is a FLOOR — the real left gutter is measured from the y labels (see `padL`).
 const PAD = { l: 48, r: 18, t: 16, b: 38 };
-const ANNOT_CHAR_W = 4.6; // approx glyph width in viewBox units for the 9px italic annotation text
-
-/** Estimated rendered width of the (short, fixed-vocabulary) annotation label. */
-function annotWidth(text: string): number {
-  return text.length * ANNOT_CHAR_W;
-}
+// Type sizes live here, in viewBox user units, because a 320-unit viewBox renders at roughly 1:1
+// inside a canvas card — so these numbers are what actually lands on screen, and the 9px
+// legibility floor can be honoured directly. The shared .cx-tick / .cx-axlbl clamps size type
+// against the CARD (cqi units), which stacks a second shrink on top of the viewBox scale and left
+// every tick around 7.7px; an inline size beats the class and holds at any card width, since the
+// viewBox already scales the text with the card.
+const TICK_FS = 10;
+const AXIS_FS = 11;
+const ANNOT_FS = 10;
+const TICK_STYLE: CSSProperties = { fontSize: TICK_FS };
+const AXIS_STYLE: CSSProperties = { fontSize: AXIS_FS };
+// The rotated y-axis title occupies roughly x ∈ [0, 16] at AXIS_FS; tick labels must clear it.
+const Y_TITLE_BAND = 16;
+const TICK_GAP = 4; // gap between a y tick label and the axis line
 
 /**
  * Clamp an annotation's anchor x so its full label — growing leftward from x when
  * end-anchored, rightward when start-anchored — always stays within the plot's
  * horizontal padding, regardless of which edge the outlier point sits near.
  */
-function clampAnnotX(x: number, width: number, anchor: 'start' | 'end'): number {
+function clampAnnotX(x: number, width: number, anchor: 'start' | 'end', padL: number): number {
   if (anchor === 'end') {
-    return Math.max(PAD.l + width, Math.min(W - PAD.r, x));
+    return Math.max(padL + width, Math.min(W - PAD.r, x));
   }
-  return Math.min(W - PAD.r - width, Math.max(PAD.l, x));
+  return Math.min(W - PAD.r - width, Math.max(padL, x));
 }
 
 // Beasley-Springer-Moro rational approximation of the standard normal quantile (Φ⁻¹).
@@ -112,8 +122,23 @@ export function QQPlot({
     const [xLo, xHi] = niceDomain(xExt![0], xExt![1]);
     const [yLo, yHi] = niceDomain(yExt![0], yExt![1]);
 
-    const sx = scaleLinear([xLo, xHi], [PAD.l, W - PAD.r]);
     const sy = scaleLinear([yLo, yHi], [H - PAD.b, PAD.t]);
+    const yTicks = sy.ticks(5);
+
+    // The y axis carries the caller's own values, so its labels run anywhere from "3" to
+    // "1,240,000" — a fixed gutter only ever fits the sample data. Measure the widest label and
+    // give it the room it needs, keeping it clear of the rotated axis title against the card edge.
+    // Capped at half the drawing width so a pathological label can never swallow the plot.
+    const widestY = yTicks.reduce(
+      (m, t) => Math.max(m, estimateTextWidth(formatValue(t), TICK_FS)),
+      0,
+    );
+    const padL = Math.min(
+      Math.max(PAD.l, Math.ceil(Y_TITLE_BAND + TICK_GAP * 2 + widestY)),
+      (W - PAD.r) / 2,
+    );
+
+    const sx = scaleLinear([xLo, xHi], [padL, W - PAD.r]);
 
     const yRange = yHi - yLo;
 
@@ -146,22 +171,37 @@ export function QQPlot({
       const topPt = pts[pts.length - 1];
       annotAnchor = 'end';
       // end-anchored text grows leftward from x, so x must leave room for the full
-      // label before PAD.l — clamping only the right edge (as before) let long labels
-      // or far-left outliers push the rendered text past the card's left/right bounds.
-      annotX = clampAnnotX(sx(topPt.theoretical), annotWidth(annotation), annotAnchor);
+      // label before the left gutter — clamping only the right edge (as before) let long
+      // labels or far-left outliers push the rendered text past the card's left/right bounds.
+      annotX = clampAnnotX(
+        sx(topPt.theoretical),
+        estimateTextWidth(annotation, ANNOT_FS),
+        annotAnchor,
+        padL,
+      );
       annotY = Math.max(PAD.t + 10, sy(topPt.sample) - 7);
     } else if (yRange > 0 && Math.abs(topRes) > threshold && topRes > 0) {
       annotation = 'Right skew';
       const topPt = pts[pts.length - 1];
       annotAnchor = 'end';
-      annotX = clampAnnotX(sx(topPt.theoretical), annotWidth(annotation), annotAnchor);
+      annotX = clampAnnotX(
+        sx(topPt.theoretical),
+        estimateTextWidth(annotation, ANNOT_FS),
+        annotAnchor,
+        padL,
+      );
       annotY = Math.max(PAD.t + 10, sy(topPt.sample) - 7);
     } else if (yRange > 0 && Math.abs(botRes) > threshold && botRes < 0) {
       annotation = 'Left skew';
       const botPt = pts[0];
       annotAnchor = 'start';
       // start-anchored text grows rightward from x, so x must leave room before PAD.r
-      annotX = clampAnnotX(sx(botPt.theoretical), annotWidth(annotation), annotAnchor);
+      annotX = clampAnnotX(
+        sx(botPt.theoretical),
+        estimateTextWidth(annotation, ANNOT_FS),
+        annotAnchor,
+        padL,
+      );
       annotY = Math.min(H - PAD.b - 5, sy(botPt.sample) + 13);
     }
 
@@ -169,8 +209,9 @@ export function QQPlot({
       pts,
       sx,
       sy,
+      padL,
       xTicks: sx.ticks(5),
-      yTicks: sy.ticks(5),
+      yTicks,
       xLo,
       xHi,
       yLo,
@@ -207,6 +248,7 @@ export function QQPlot({
     pts,
     sx,
     sy,
+    padL,
     xTicks,
     yTicks,
     xLo,
@@ -222,7 +264,7 @@ export function QQPlot({
     annotAnchor,
   } = geom;
 
-  const innerMidX = PAD.l + (W - PAD.l - PAD.r) / 2;
+  const innerMidX = padL + (W - padL - PAD.r) / 2;
   const innerMidY = PAD.t + (H - PAD.t - PAD.b) / 2;
 
   return (
@@ -245,7 +287,7 @@ export function QQPlot({
       >
         <defs>
           <clipPath id={clipId}>
-            <rect x={PAD.l} y={PAD.t} width={W - PAD.l - PAD.r} height={H - PAD.t - PAD.b} />
+            <rect x={padL} y={PAD.t} width={W - padL - PAD.r} height={H - PAD.t - PAD.b} />
           </clipPath>
         </defs>
 
@@ -262,7 +304,7 @@ export function QQPlot({
         {yTicks.map((t, i) => (
           <line
             key={`gy${i}`}
-            x1={PAD.l}
+            x1={padL}
             y1={sy(t)}
             x2={W - PAD.r}
             y2={sy(t)}
@@ -270,8 +312,8 @@ export function QQPlot({
           />
         ))}
 
-        <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} className="cx-axis-l" />
-        <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} className="cx-axis-l" />
+        <line x1={padL} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} className="cx-axis-l" />
+        <line x1={padL} y1={PAD.t} x2={padL} y2={H - PAD.b} className="cx-axis-l" />
 
         {/* Reference line clipped so steep slopes don't bleed outside the plot frame */}
         <line
@@ -307,17 +349,31 @@ export function QQPlot({
         </g>
 
         {xTicks.map((t, i) => (
-          <text key={`xt${i}`} x={sx(t)} y={H - PAD.b + 12} className="cx-tick" textAnchor="middle">
+          <text
+            key={`xt${i}`}
+            x={sx(t)}
+            y={H - PAD.b + 12}
+            className="cx-tick"
+            style={TICK_STYLE}
+            textAnchor="middle"
+          >
             {formatValue(t)}
           </text>
         ))}
         {yTicks.map((t, i) => (
-          <text key={`yt${i}`} x={PAD.l - 4} y={sy(t) + 3.5} className="cx-tick" textAnchor="end">
+          <text
+            key={`yt${i}`}
+            x={padL - TICK_GAP}
+            y={sy(t) + 3.5}
+            className="cx-tick"
+            style={TICK_STYLE}
+            textAnchor="end"
+          >
             {formatValue(t)}
           </text>
         ))}
 
-        <text x={innerMidX} y={H - 4} className="cx-axlbl" textAnchor="middle">
+        <text x={innerMidX} y={H - 4} className="cx-axlbl" style={AXIS_STYLE} textAnchor="middle">
           {xlabel}
         </text>
 
@@ -326,6 +382,7 @@ export function QQPlot({
           x={0}
           y={0}
           className="cx-axlbl"
+          style={AXIS_STYLE}
           textAnchor="middle"
           transform={`translate(11, ${innerMidY}) rotate(-90)`}
         >
@@ -337,7 +394,7 @@ export function QQPlot({
             x={annotX}
             y={annotY}
             fill="var(--text-muted)"
-            fontSize={9}
+            fontSize={ANNOT_FS}
             fontStyle="italic"
             textAnchor={annotAnchor}
           >

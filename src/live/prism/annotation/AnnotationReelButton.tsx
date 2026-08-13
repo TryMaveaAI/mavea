@@ -5,7 +5,6 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactElement } from 'react';
-import type { ModelConfig } from '../../../types/mavea';
 import type { Attachment } from '../../attachments';
 import type { Placed } from '../layout';
 import type { PrismSpec } from '../types';
@@ -25,7 +24,6 @@ export function AnnotationReelButton({
   steps,
   spec,
   pdfs,
-  cfg,
   placed,
   verdicts,
 }: {
@@ -33,7 +31,6 @@ export function AnnotationReelButton({
   steps: { readonly current: AnnotationStep[] };
   spec: PrismSpec;
   pdfs: readonly Attachment[];
-  cfg: ModelConfig | null;
   placed?: readonly Placed[];
   verdicts?: ReadonlyMap<string, Verdict>;
 }): ReactElement {
@@ -59,6 +56,10 @@ export function AnnotationReelButton({
         return;
       }
       setScript(buildAnnotationReel(use, { fileName: spec.fileName }));
+    } catch {
+      // A failed chunk load or an offscreen render that threw — say so, the same way the "nothing to
+      // show yet" case does, instead of leaving the button silently dead.
+      toast('Couldn’t build the reel — try again', 'warn');
     } finally {
       setBusy(false);
     }
@@ -79,7 +80,7 @@ export function AnnotationReelButton({
       {script &&
         createPortal(
           <AsyncSurface label="Annotation reel" overlay>
-            <ShareModal script={script} cfg={cfg ?? undefined} onClose={() => setScript(null)} />
+            <ShareModal script={script} onClose={() => setScript(null)} />
           </AsyncSurface>,
           document.body,
         )}

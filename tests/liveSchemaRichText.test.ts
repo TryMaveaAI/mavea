@@ -122,6 +122,52 @@ describe('ai-family rich fields — formatting survives the schema, XSS dies at 
     expect(b.props.chunks[0].snippet).toBe('a ‹ b snippet');
   });
 
+  // Second invariant on the same exemption: skipping tag-neutralization must not also smuggle the
+  // model's voice markup onto the card. It marks speech-risky spans as [[shown|said]] in whatever
+  // field it is writing, and a block is never spoken.
+  it('resolves voice annotations in raw prose fields while keeping their markup', () => {
+    const r = validateLiveResponse(
+      {
+        title: 'T',
+        sub: '',
+        narration: 'n',
+        blocks: [
+          {
+            type: 'stacktrace',
+            props: {
+              title: 'Crash',
+              errorType: 'ThermalThrottleError',
+              message: '[[CPU|C-P-U]] temperature exceeded 95 [[Celsius|celsius]].',
+              fix: 'Cap the <strong>[[TDP|T-D-P]]</strong> and retry.',
+              frames: [{ file: 'thermal.rs', line: 42 }],
+            },
+          },
+        ],
+      },
+      new Set<string>([...FRONTIER_BLOCK_TYPES, 'stacktrace']),
+    );
+    const b = r!.blocks[0];
+    if (b.type !== 'stacktrace') throw new Error('expected stacktrace');
+    expect(b.props.message).toBe('CPU temperature exceeded 95 Celsius.');
+    expect(b.props.fix).toBe('Cap the <strong>TDP</strong> and retry.');
+  });
+
+  it('leaves brackets alone where they are the field’s own syntax', () => {
+    const code = 'if [[ -f a || -f b ]]; then\n  echo "[[nodiscard]]"\nfi';
+    const r = validateLiveResponse(
+      {
+        title: 'T',
+        sub: '',
+        narration: 'n',
+        blocks: [{ type: 'codeblock', props: { title: 'Guard', lang: 'bash', code } }],
+      },
+      new Set<string>([...FRONTIER_BLOCK_TYPES, 'codeblock']),
+    );
+    const b = r!.blocks[0];
+    if (b.type !== 'codeblock') throw new Error('expected codeblock');
+    expect(b.props.code).toBe(code);
+  });
+
   it('renders sanitized bold and strips a malicious <img onerror> / <script> at the boundary', () => {
     // The render boundary (richInnerHtml) is what makes the exemption safe: it keeps the formatting
     // but removes the entire XSS surface — event-handler attributes, <script>, and any tag carrying

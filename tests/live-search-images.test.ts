@@ -310,10 +310,12 @@ describe('search context + citations', () => {
 describe('liveSchema — photo block, chips, web sources', () => {
   const allowedWithPhoto = new Set([...FRONTIER_BLOCK_TYPES, PHOTO_BLOCK_TYPE]);
 
-  // Mavéa doesn't generate images, so a photo is only ever a REAL one the model found. A block
+  // Mavéa doesn't generate images, so a photo must reference an individually reviewed file. A block
   // carrying nothing but a description has no image to show — it used to survive as a broken frame
   // wearing an "AI image" badge, which both lied about the source and looked broken. It's dropped.
-  it('keeps a photo with a real allowlisted image, and drops one with no image at all', () => {
+  it('keeps a photo with an individually cleared image, and drops one with no image at all', () => {
+    const cleared =
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
     const real = validateLiveResponse(
       {
         title: 'T',
@@ -323,8 +325,8 @@ describe('liveSchema — photo block, chips, web sources', () => {
           {
             type: 'photo',
             props: {
-              title: 'Fox',
-              src: 'https://images.pexels.com/photos/1/red-fox.jpg',
+              title: 'Shibuya crossing',
+              src: cleared,
             },
           },
         ],
@@ -333,7 +335,7 @@ describe('liveSchema — photo block, chips, web sources', () => {
     );
     const photo = real!.blocks.find((b) => b.type === 'photo');
     expect(photo).toBeTruthy();
-    expect((photo as { props: { src: string } }).props.src).toContain('images.pexels.com');
+    expect((photo as { props: { src: string } }).props.src).toBe(cleared);
 
     const promptOnly = validateLiveResponse(
       {

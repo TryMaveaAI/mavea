@@ -8,7 +8,7 @@ type Props = SurfacePlotProps & { delay?: number };
 
 const W = 320;
 const H = 248;
-const PAD = { l: 44, r: 20, t: 16, b: 38 };
+const PAD = { l: 44, r: 34, t: 16, b: 38 };
 
 function zToHsl(t: number): string {
   const clamped = Math.max(0, Math.min(1, t));
@@ -343,18 +343,18 @@ export function SurfacePlot({
               />
             ))}
             <text
-              x={legendX + 3}
+              x={legendX + 8}
               y={PAD.t - 2}
-              textAnchor="middle"
+              textAnchor="start"
               fontSize={8}
               fill="var(--text-muted)"
             >
               {fmt(zMax)}
             </text>
             <text
-              x={legendX + 3}
+              x={legendX + 8}
               y={PAD.t + legendH + 9}
-              textAnchor="middle"
+              textAnchor="start"
               fontSize={8}
               fill="var(--text-muted)"
             >

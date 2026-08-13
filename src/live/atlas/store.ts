@@ -122,7 +122,12 @@ async function hydrateAsync(): Promise<void> {
     /* corrupt, or this device's content key was rotated/cleared — not restored */
   }
 }
-void hydrateAsync();
+const initialHydration = hydrateAsync();
+
+/** Resolve after the eager encrypted read finishes. */
+export function whenAtlasHydrated(): Promise<void> {
+  return initialHydration;
+}
 
 function get(): AtlasRecord[] {
   cache ??= read();

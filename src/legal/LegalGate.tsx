@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore, type ReactElement, type ReactNode } from 'react';
 import { acceptLegalTerms, hasLegalAcceptance, subscribeLegalAcceptance } from './acceptance';
 import { legalDocumentHref } from './links';
+import { FEATURE_NOTICE_COPY } from './featureRiskAudit';
 import './legal-gate.css';
 
 export function LegalGate({
@@ -15,12 +16,15 @@ export function LegalGate({
   // already on screen here (the 'storage' event notifies) — no stale gate demanding a reload.
   const accepted = useSyncExternalStore(subscribeLegalAcceptance, hasLegalAcceptance);
   const [checked, setChecked] = useState(false);
+  // Listening is confirmed on its own rather than folded into the general acknowledgement: it can
+  // pick up people who never opened Mavéa, so it deserves its own deliberate tick.
+  const [speechChecked, setSpeechChecked] = useState(false);
   const [error, setError] = useState('');
 
   if (bypass || accepted) return <>{children}</>;
 
   const continueToProduct = (): void => {
-    if (!checked) return;
+    if (!checked || !speechChecked) return;
     if (!acceptLegalTerms()) {
       setError(
         'Mavéa could not save your acknowledgement in this browser. Enable local storage and try again.',
@@ -39,7 +43,7 @@ export function LegalGate({
         aria-labelledby="legal-gate-title"
         aria-describedby="legal-gate-summary"
       >
-        <span className="legal-gate-kicker">One-time acknowledgement</span>
+        <span className="legal-gate-kicker">Updated legal acknowledgement</span>
         <h1 id="legal-gate-title">Before using connected features</h1>
         <p id="legal-gate-summary">
           Mavéa uses AI and third-party services you choose. It cannot guarantee output, privacy,
@@ -52,8 +56,12 @@ export function LegalGate({
             emergency help.
           </li>
           <li>
-            Prompts, speech, files, code, and context may pass through this deployment to selected
-            providers.
+            <strong>{FEATURE_NOTICE_COPY['voice-data'].title}.</strong>{' '}
+            {FEATURE_NOTICE_COPY['voice-data'].body}
+          </li>
+          <li>
+            Prompts, files, code, and context may also pass through this deployment to the providers
+            you select.
           </li>
           <li>
             All provider charges are your sole responsibility. Mavéa does not charge you or pay
@@ -92,9 +100,24 @@ export function LegalGate({
             onChange={(event) => setChecked(event.target.checked)}
           />
           <span>
-            I am at least 18 years old, I agree to the Terms of Use and PolyForm Noncommercial
-            License 1.0.0, and I acknowledge the Privacy Notice, Disclaimer, and Important
-            Information notice.
+            I am at least 18 years old. I have read and agree to the Terms of Use and PolyForm
+            Noncommercial License 1.0.0, and I have read and acknowledge the Privacy Notice,
+            Disclaimer, and Important Information notice.
+          </span>
+        </label>
+
+        <label className="legal-gate-consent">
+          <input
+            type="checkbox"
+            checked={speechChecked}
+            onChange={(event) => setSpeechChecked(event.target.checked)}
+          />
+          <span>
+            I understand that if I use listening features, microphone audio and the resulting
+            transcripts leave this device to the speech endpoint and model provider I select, that
+            those operators may log or retain them under their own terms, and that I alone am
+            responsible for avoiding sensitive conversations and for obtaining any consent required
+            from other people before listening starts.
           </span>
         </label>
 
@@ -108,7 +131,7 @@ export function LegalGate({
           <a className="legal-gate-back" href="#/">
             Back to home
           </a>
-          <button type="button" disabled={!checked} onClick={continueToProduct}>
+          <button type="button" disabled={!checked || !speechChecked} onClick={continueToProduct}>
             Continue to Mavéa
           </button>
         </div>

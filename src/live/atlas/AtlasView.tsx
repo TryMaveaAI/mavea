@@ -344,20 +344,26 @@ export function AtlasView({
     [hoods, enterHood],
   );
 
-  // Scroll zoom only matters in the galaxy (the hood/night tiers are framed views).
-  const handleWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
+  // Scroll zoom only matters in the galaxy (the hood/night tiers are framed views). Wired as a
+  // NATIVE listener rather than an onWheel prop: React registers its root wheel listener as
+  // passive, so preventDefault() from a React handler is ignored — the page scrolled underneath
+  // the zoom and every notch logged an intervention warning. { passive: false } is the only way
+  // to actually suppress the scroll.
+  useEffect(() => {
+    const el = viewRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent): void => {
       if (tier !== 'galaxy') return;
       e.preventDefault();
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const fx = e.clientX - rect.left;
-      const fy = e.clientY - rect.top;
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const rect = el.getBoundingClientRect();
       stopFlying();
-      setCamera((c) => zoomCamera(c, factor, fx, fy));
-    },
-    [tier, stopFlying],
-  );
+      setCamera((c) =>
+        zoomCamera(c, e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - rect.left, e.clientY - rect.top),
+      );
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [tier, stopFlying]);
 
   // ── Click-and-drag to pan ──────────────────────────────────────────────────
   // Grab anywhere on the sheet and move the map. We track the drag on a ref (no re-render per
@@ -434,12 +440,18 @@ export function AtlasView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return;
+      // Escape belongs to the "Fly to…" search while it holds a query — clearing what you typed
+      // must not also dismiss the whole atlas out from under you.
+      if (query) {
+        setQuery('');
+        return;
+      }
       if (tier !== 'galaxy') backOut();
       else onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [tier, backOut, onClose]);
+  }, [tier, backOut, onClose, query]);
 
   const now = Date.now();
   const oldest = records.length ? Math.min(...records.map((r) => r.firstSeen)) : now;
@@ -585,7 +597,6 @@ export function AtlasView({
         <div
           className={'atlas-viewport' + (panning ? ' is-panning' : '')}
           ref={viewRef}
-          onWheel={handleWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}

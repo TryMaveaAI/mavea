@@ -7,8 +7,14 @@ import { tmpdir } from 'node:os';
 // @ts-expect-error — the published CLI is intentionally a dependency-free ESM module.
 import * as cliServer from '../bin/mavea.mjs';
 
-const { createMaveaServer, listenOnLoopback, LOCAL_SECURITY_HEADERS, LOOPBACK_HOST, parseArgs } =
-  cliServer;
+const {
+  createMaveaServer,
+  listenOnLoopback,
+  LOCAL_SECURITY_HEADERS,
+  LOOPBACK_HOST,
+  parseArgs,
+  readBoundedAsset,
+} = cliServer;
 
 type Response = {
   status: number;
@@ -72,6 +78,15 @@ afterEach(async () => {
 });
 
 describe('mavea CLI server security boundary', () => {
+  it('accepts only the exact pinned byte count for lazy voice assets', async () => {
+    const exact = await readBoundedAsset(new globalThis.Response(new Uint8Array([1, 2, 3])), 3);
+    expect([...exact]).toEqual([1, 2, 3]);
+
+    await expect(
+      readBoundedAsset(new globalThis.Response(new Uint8Array([1, 2, 3])), 2),
+    ).rejects.toThrow(/pinned size/);
+  });
+
   it('validates CLI input and never accepts a public bind address', () => {
     expect(parseArgs([], {})).toMatchObject({ port: 4173, open: true, voice: true });
     expect(parseArgs(['--port', '0', '--no-open'], {})).toMatchObject({ port: 0, open: false });

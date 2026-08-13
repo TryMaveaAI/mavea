@@ -5,7 +5,7 @@
 // hand — that produces the random blobs freehand SVG gives. So the model supplies only the
 // SMILES, and OpenChemLib (a real cheminformatics engine) computes accurate atom positions and
 // bonds. We then draw those with our own MolecularStructure component, so the result is precise
-// AND on-brand. Same "headless library, our pixels" pattern as KaTeX / Leaflet.
+// AND on-brand. Same "headless library, our pixels" pattern as KaTeX / MapLibre.
 //
 // OpenChemLib (BSD-3, ~1 MB pure-JS ESM, no WASM) is loaded lazily via a dynamic import() on first
 // use, so it's code-split into its own chunk and chemistry pays for the engine only when it's

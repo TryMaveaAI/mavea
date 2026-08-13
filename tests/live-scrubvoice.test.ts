@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   recorderTap,
   beginTurn,
+  endTurn,
+  setTapSuspended,
   markBlocks,
   snapshot,
   blocksAt,
@@ -15,7 +17,10 @@ import {
 const SR = 24000;
 const secs = (n: number) => new Float32Array(Math.round(n * SR));
 
-beforeEach(beginTurn);
+beforeEach(() => {
+  setTapSuspended(false);
+  beginTurn();
+});
 
 describe('recorder', () => {
   it('concatenates heard lines into spans on one timeline', () => {
@@ -69,6 +74,60 @@ describe('recorder', () => {
     recorderTap.end(true);
     beginTurn();
     expect(snapshot()).toBeNull();
+  });
+
+  // Replaying an older answer narrates through the SAME streaming tap. Left unguarded, the
+  // replayed lines appended themselves to the live turn's track — and the retain effect then
+  // wrote that corrupted track over the head turn's snapshot (and any reel exported from it).
+  it('is deaf while the tap is suspended: replayed audio never joins the turn', () => {
+    recorderTap.begin('The live answer.');
+    recorderTap.push(secs(1));
+    recorderTap.end(true);
+
+    setTapSuspended(true);
+    markBlocks(9);
+    recorderTap.begin('A replayed answer from three turns ago.');
+    recorderTap.push(secs(4));
+    recorderTap.end(true);
+    setTapSuspended(false);
+
+    const audio = snapshot()!;
+    expect(audio.spans.map((s) => s.text)).toEqual(['The live answer.']);
+    expect(audio.duration).toBeCloseTo(1, 5);
+    expect(audio.marks.some((m) => m.blocks === 9)).toBe(false);
+  });
+
+  it('drops a line the suspension caught mid-sentence, clock included', () => {
+    recorderTap.begin('Interrupted by a replay.');
+    recorderTap.push(secs(2));
+    setTapSuspended(true);
+    recorderTap.end(true);
+    setTapSuspended(false);
+
+    recorderTap.begin('The next live line.');
+    recorderTap.push(secs(1));
+    recorderTap.end(true);
+    const audio = snapshot()!;
+    expect(audio.spans).toHaveLength(1);
+    expect(audio.spans[0].t0).toBeCloseTo(0, 5); // the discarded samples left the clock
+    expect(audio.duration).toBeCloseTo(1, 5);
+  });
+
+  // Voice previews and the Watch-Me-Think settle line speak AFTER the answer is done. The
+  // recording used to stay open forever, so they were appended to the settled turn's track.
+  it('endTurn closes the recording — post-turn speech is not this answer', () => {
+    recorderTap.begin('The answer.');
+    recorderTap.push(secs(1));
+    recorderTap.end(true);
+    endTurn();
+
+    recorderTap.begin('Voice preview audition.');
+    recorderTap.push(secs(3));
+    recorderTap.end(true);
+    markBlocks(9);
+    const audio = snapshot()!;
+    expect(audio.spans.map((s) => s.text)).toEqual(['The answer.']);
+    expect(audio.duration).toBeCloseTo(1, 5);
   });
 
   it('notifies the UI when a spoken line settles after the turn has rendered', () => {

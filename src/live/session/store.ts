@@ -30,7 +30,7 @@
 import type { ChatMessage } from '../providers/types';
 import type { ConversationSpec } from '../../data/conversation';
 import type { Mode } from '../lifecycle';
-import type { TurnFrame, FrameTourStep } from '../history';
+import { turnFrameId, type TurnFrame, type FrameTourStep } from '../history';
 import type { TourMark } from '../../engine/liveSchema';
 import { friendlyAsk } from '../friendlyAsk';
 import { validateMindShape } from '../mindshape/validate';
@@ -154,10 +154,11 @@ function coerceFrame(v: unknown): TurnFrame | null {
   // Re-validate a persisted Watch-Me-Think map (no transcript → grounding skipped) so the read-only
   // viewer survives a reload; drops silently if the stored shape is corrupt.
   const mind = o.mind ? validateMindShape(o.mind) : null;
-  return {
+  const frame: TurnFrame = {
     // Clean a synthetic prompt saved before `displayAs` shipped, so a legacy session never
     // renders the raw instruction in the hero/sidebar/scrubber on resume.
     question: friendlyAsk(o.question),
+    ...(typeof o.id === 'string' && o.id.trim() ? { id: o.id } : {}),
     narration: typeof o.narration === 'string' ? o.narration : '',
     ...(typeof o.spoken === 'string' ? { spoken: o.spoken } : {}),
     mode: isMode(o.mode) ? o.mode : 'replace',
@@ -170,6 +171,10 @@ function coerceFrame(v: unknown): TurnFrame | null {
     at: typeof o.at === 'number' && Number.isFinite(o.at) ? o.at : 0,
     ...(mind ? { mind } : {}),
   };
+  // Normalize pre-ID sessions once at the persistence boundary. From here on selection and retained
+  // audio never depend on a frame's current array position.
+  frame.id = turnFrameId(frame);
+  return frame;
 }
 
 /** The last known good session (independent of any particular "now" — TTL is applied at read

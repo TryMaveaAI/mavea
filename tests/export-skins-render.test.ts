@@ -17,6 +17,7 @@ import {
   StandardRunningHeader,
 } from '../src/export/skins/chrome/standard';
 import { EditorialMasthead, SwissMasthead } from '../src/export/skins/chrome/mastheads';
+import { Page } from '../src/export/skins/chrome/Page';
 import { SectionHeading } from '../src/export/skins/sections/parts';
 import { DistributionBars, MetricTiles } from '../src/export/skins/sections/data';
 import { SLIDE_SKINS } from '../src/slides/skins/registry';
@@ -182,6 +183,38 @@ describe('masthead issue numbering', () => {
       createElement(EditorialMasthead, { meta: meta({ num: 5 }), skin: SKINS.editorial }),
     );
     expect(numbered).toContain('No. 05');
+  });
+});
+
+// `--tint` is the wash every tinted callout/tile/chip fills with, so it has to follow `--accent`.
+// It didn't: an export with a custom accent painted its accent text onto chips still mixed from
+// the template's original accent (Editorial's warm rose over Editorial's blue wash).
+describe('Page — an accent override carries its own tint', () => {
+  const t = SKINS.editorial.tokens;
+  const page = (accent?: string) =>
+    renderToStaticMarkup(
+      createElement(Page, {
+        skin: SKINS.editorial,
+        header: null,
+        footer: null,
+        accent,
+        format: 'letter',
+        children: null,
+      }),
+    );
+
+  it("keeps the skin's authored tint with no override — and when the accent IS the skin's own", () => {
+    // The modal always passes an accent (defaulting to the skin's), so "same colour" must be
+    // indistinguishable from "not set", or every default export would lose its hand-tuned wash.
+    expect(page()).toContain(`--tint:${t.tint}`);
+    expect(page(t.accent)).toContain(`--tint:${t.tint}`);
+  });
+
+  it('derives the tint from a genuinely different accent', () => {
+    const html = page('#7A2E33');
+    expect(html).toContain('--accent:#7A2E33');
+    expect(html).toContain(`--tint:color-mix(in oklab, #7A2E33 10%, ${t.pageBg})`);
+    expect(html).not.toContain(`--tint:${t.tint}`);
   });
 });
 

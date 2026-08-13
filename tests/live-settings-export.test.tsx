@@ -15,6 +15,9 @@ describe('LiveSettings — credential-safe settings export', () => {
     setLiveConfigV2({ rememberKey: true });
     render(<LiveSettings />);
     expect(screen.getByText(/API and search keys are never included/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/encrypted on this device when supported.*never saved as plaintext/i),
+    ).toBeInTheDocument();
   });
 
   it('says credentials are excluded when keys are session-only', () => {

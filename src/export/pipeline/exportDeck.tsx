@@ -191,6 +191,15 @@ async function printPortal(className: string, render: () => ReactElement): Promi
 
   const host = document.createElement('div');
   host.className = className;
+  // The portal is `display: none` until the print rules reveal it, and a node with no layout can
+  // never settle its async figures — same reasoning (and same undo) as printFallback.printDoc.
+  Object.assign(host.style, {
+    display: 'block',
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: `${STAGE_W}px`,
+  });
   document.body.appendChild(host);
   const root = createRoot(host);
 
@@ -212,6 +221,8 @@ async function printPortal(className: string, render: () => ReactElement): Promi
     });
     await nextFrame();
     await nextFrame();
+    await ensureFigureReady(host);
+    host.removeAttribute('style');
     timer = window.setTimeout(cleanup, 120_000);
     window.addEventListener('afterprint', cleanup);
     document.body.classList.add('mavea-printing');

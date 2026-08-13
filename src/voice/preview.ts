@@ -16,12 +16,13 @@
 import type { VoicePreset } from './presets';
 import { fetchWithTimeout } from '../live/providers/http';
 import { cancelSpeech } from './tts';
-import { streamSpeak, cancelActiveStream } from './streamTts';
+import { streamSpeak, cancelActiveStream, bindOutputGain, isOutputMuted } from './streamTts';
 
 const SAMPLE = "Hi, I'm ready. Ask me anything.";
 
 let previewAudio: HTMLAudioElement | null = null;
 let previewUrl: string | null = null;
+let previewGainRelease: (() => void) | null = null;
 let previewAbort: AbortController | null = null;
 let generation = 0;
 
@@ -53,6 +54,8 @@ export function stopPreview(): void {
   cancelActiveStream();
   previewAbort?.abort();
   previewAbort = null;
+  previewGainRelease?.();
+  previewGainRelease = null;
   releaseAudio(previewAudio, previewUrl);
   previewAudio = null;
   previewUrl = null;
@@ -74,7 +77,7 @@ async function tryKokoroBlob(
           model: 'kokoro',
           input: SAMPLE,
           voice: preset.kokoro,
-          response_format: 'mp3',
+          response_format: 'wav',
           speed: 1.0,
         }),
       },
@@ -87,19 +90,25 @@ async function tryKokoroBlob(
 
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    // An audition is Mavéa's voice too, so it obeys the same output policy as a spoken line —
+    // quiet hours audition at ember volume rather than at full blast.
+    const releaseGain = bindOutputGain(audio);
     // Own resources are always released via this closure, whether or not we're still the
     // current preview — an old clip's 'ended'/'error' firing after a newer one has already
     // taken over must clean up ONLY itself, never the newer preview's shared refs.
     const onDone = (): void => {
+      releaseGain();
       if (isCurrent(myGen)) {
         previewAudio = null;
         previewUrl = null;
         previewAbort = null;
+        previewGainRelease = null;
       }
       releaseAudio(audio, url);
     };
     previewUrl = url;
     previewAudio = audio;
+    previewGainRelease = releaseGain;
     audio.onended = onDone;
     audio.onerror = onDone;
     const p = audio.play();
@@ -126,8 +135,13 @@ async function playPreview(preset: VoicePreset, myGen: number): Promise<void> {
 
 /** Play a short audition clip for `preset` (Kokoro only). Cancels any in-flight or playing
  *  preview first, and hushes the live conversation queue so a preview never sounds on top of
- *  an answer; a silent no-op when Kokoro isn't reachable. */
+ *  an answer; a silent no-op when Kokoro isn't reachable, or while the voice is muted. */
 export function previewVoice(preset: VoicePreset): void {
+  // Mute is the switch for Mavéa's voice, and an audition IS Mavéa's voice — playing one anyway
+  // would be the single sound a silenced session makes. Synthesizing a clip nobody can hear is
+  // pure waste, so stop here; the picker states the silence (VoiceOffHint) rather than leaving
+  // the button looking broken.
+  if (isOutputMuted()) return;
   cancelSpeech();
   stopPreview();
   const myGen = generation; // stopPreview() just bumped it — this call now owns it

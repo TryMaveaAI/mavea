@@ -30,9 +30,8 @@ export interface SlotMap {
   steps: { stops: { label: string; state?: 'done' | 'active' | 'todo' }[] };
   recap: { topic: string; metrics: { label: string; value: string }[] };
   // A document page with a pen mark drawn over a cited passage — Prism's annotation reel. Built
-  // directly from recorded annotations (never by the model director), so it's intentionally absent
-  // from CONTENT_TYPES: the director's schema enum + allow-set derive from that array, so the model
-  // can never author it. The page raster + rects let the finish replay the exact stroke.
+  // directly from recorded annotations (never by the local director). The page raster + rects let
+  // the finish replay the exact stroke.
   markup: {
     pageImage: string;
     imgW: number;
@@ -53,21 +52,6 @@ export interface SlotMap {
 export type ContentType = Exclude<keyof SlotMap, 'title' | 'outro'>;
 export type SlotKey = keyof SlotMap;
 export type SlotsFor<K extends SlotKey> = SlotMap[K];
-
-export const CONTENT_TYPES: ContentType[] = [
-  'stat',
-  'metrics',
-  'ranked',
-  'quote',
-  'list',
-  'concept',
-  'conceptmap',
-  'qa',
-  'chat',
-  'diagram',
-  'steps',
-  'recap',
-];
 
 /**
  * Every visual "finish" the reel can wear. Many finishes render the SAME content type (e.g. a dozen

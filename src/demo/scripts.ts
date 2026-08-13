@@ -5,8 +5,8 @@
 // The honesty rule, applied to every ask: it must be (a) publicly answerable, (b) pure math on
 // numbers the persona STATES in the ask, or (c) planning/advice. The model is never asked to
 // conjure someone's private data — a CFO demo works because Renata gives her figures in the
-// ask, not because the model invents a company. That is what lets the landing say "real
-// session" without an asterisk.
+// ask, not because the model invents a company. The UI still labels each replay as a curated,
+// fictional example because feature choreography and baked model output are not a live result.
 import type { DemoBeat } from './beats';
 
 export interface DemoStep {

@@ -56,6 +56,13 @@ export function CycleTrack({
 
   const days = Array.from({ length: len }, (_, i) => i + 1);
 
+  // "Today" reads centred over its marker, but a marker in the opening or closing days would push
+  // half the word past the band and the card clips it — so near an edge the label hangs inward.
+  // Half of the widest "Today" at .ct-today-label's 10px/700 type, in viewBox units (the band is
+  // ~1:1 with px), with slack for a wider fallback face.
+  const TODAY_HALF = 16;
+  const todayX = today !== undefined ? dayX(today) + slot / 2 : undefined;
+
   return (
     <div
       className="card reveal"
@@ -101,15 +108,17 @@ export function CycleTrack({
         )}
 
         {/* Today — a marker line + tick above the band. */}
-        {today !== undefined && (
+        {todayX !== undefined && (
           <g className="ct-today">
-            <line
-              x1={dayX(today) + slot / 2}
-              y1={TRACK_Y - 8}
-              x2={dayX(today) + slot / 2}
-              y2={TRACK_Y + TRACK_H + 2}
-            />
-            <text x={dayX(today) + slot / 2} y={TRACK_Y - 11} className="ct-today-label">
+            <line x1={todayX} y1={TRACK_Y - 8} x2={todayX} y2={TRACK_Y + TRACK_H + 2} />
+            <text
+              x={todayX}
+              y={TRACK_Y - 11}
+              textAnchor={
+                todayX < TODAY_HALF ? 'start' : todayX > VB_W - TODAY_HALF ? 'end' : 'middle'
+              }
+              className="ct-today-label"
+            >
               Today
             </text>
           </g>

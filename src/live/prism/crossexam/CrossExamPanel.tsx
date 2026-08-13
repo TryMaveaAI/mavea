@@ -10,6 +10,8 @@ import './crossexam.css';
 export interface CrossExamPanelProps {
   objections: Objection[];
   busy: boolean;
+  /** The pass never ran (the model call failed) — never dress that up as "nothing stuck". */
+  failed?: boolean;
   /** Spotlight an objection's anchor on the real page (+ fly the camera). */
   onFocusObjection: (o: Objection) => void;
   activeId: string | null;
@@ -21,6 +23,7 @@ export interface CrossExamPanelProps {
 export function CrossExamPanel({
   objections,
   busy,
+  failed,
   onFocusObjection,
   activeId,
   multiDoc,
@@ -91,7 +94,9 @@ export function CrossExamPanel({
         )}
         {!busy && objections.length === 0 && (
           <p className="prism-xe-empty">
-            No objection stuck — the load-bearing claims hold up to their own logic.
+            {failed
+              ? 'Couldn’t run the cross-examination — try again.'
+              : 'No objection stuck — the load-bearing claims hold up to their own logic.'}
           </p>
         )}
         {open.length > 0 && (

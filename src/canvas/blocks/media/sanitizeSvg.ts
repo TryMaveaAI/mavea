@@ -140,6 +140,24 @@ const FRAGMENT_PAINT_REF = /^url\(#[\w-]+\)$/;
  *  style rather than try to patch just the one declaration. */
 const RAW_STYLE_COLOR = /\b(?:fill|stroke|color|stop-color)\s*:\s*(?!var\(--)[^;]+/i;
 
+/** The smallest text the block is allowed to draw, in CSS pixels. Below ~9px reading turns into
+ *  squinting (the UI audit flags it), and a model reliably authors 6–7 unit labels — the same
+ *  "taught but not followed" problem the color rewrite above solves. */
+const MIN_LEGIBLE_PX = 9.5;
+/** The figure's on-screen box, capped by .svgb-inner / .svgb-inner svg in styles.css — keep these
+ *  three numbers in sync with that rule. The SVG is width:100% with a viewBox and letterboxes
+ *  inside those caps, so ONE user unit lands on screen at min(maxW / vbW, maxH / vbH) pixels. */
+const MAX_RENDER_W = 640;
+const MAX_RENDER_H = 440;
+/** SVG's initial font-size, used when a label inherits its size rather than declaring one. */
+const DEFAULT_FONT_SIZE = 16;
+/** An absolute, unit-agnostic font-size ("8", "8px"). A relative one (em/%/rem) or a keyword
+ *  depends on a cascade this sanitizer doesn't own, so it is left exactly as authored. */
+const ABSOLUTE_FONT_SIZE = /^\s*([\d.]+)(?:px)?\s*$/;
+/** A font-size declaration inside a style attribute — it outranks the presentation attribute, so
+ *  raising a label means clearing this too, not just setting font-size="…". */
+const STYLE_FONT_SIZE = /^\s*font-size\s*:/i;
+
 function isAllowedColor(value: string): boolean {
   const v = value.trim();
   return (
@@ -158,6 +176,44 @@ function safeColorFallback(attrName: string, el: Element): string {
     return tag === 'text' || tag === 'tspan' ? 'var(--text-primary)' : 'var(--surface-card)';
   }
   return 'var(--text-secondary)';
+}
+
+/** The font-size an element declares in its own style attribute, if any — style beats the
+ *  presentation attribute, so it has to be read (and later cleared) separately. */
+function styleFontSize(style: string | null): string | null {
+  const decl = style?.split(';').find((d) => STYLE_FONT_SIZE.test(d));
+  return decl ? decl.slice(decl.indexOf(':') + 1) : null;
+}
+
+/** The font-size that actually applies to `el`, in user units: its own declaration, else the
+ *  nearest ancestor's, else SVG's initial size. Null means it was authored relatively (em/%/a
+ *  keyword), which resolves against a cascade this sanitizer doesn't own — left as authored. */
+function resolvedFontSize(el: Element): number | null {
+  for (let node: Element | null = el; node; node = node.parentElement) {
+    const raw = styleFontSize(node.getAttribute('style')) ?? node.getAttribute('font-size');
+    if (raw == null) continue;
+    const abs = ABSOLUTE_FONT_SIZE.exec(raw);
+    return abs ? Number(abs[1]) : null;
+  }
+  return DEFAULT_FONT_SIZE;
+}
+
+/** Raise any label that would land under the legibility floor. A model authors font sizes against
+ *  the viewBox it imagined, not the box the block renders in, so its labels regularly arrive at
+ *  7px on screen — unreadable, which makes the figure decorative rather than informative. Growing
+ *  the type (never shrinking it) is the honest trade against a slightly tighter drawing. */
+function enforceLegibleText(root: Element, vbW: number, vbH: number): void {
+  const floor = MIN_LEGIBLE_PX * Math.max(vbW / MAX_RENDER_W, vbH / MAX_RENDER_H);
+  for (const el of Array.from(root.querySelectorAll('text, tspan'))) {
+    const size = resolvedFontSize(el);
+    if (size === null || size >= floor) continue;
+    el.setAttribute('font-size', String(Math.round(floor * 100) / 100));
+    const style = el.getAttribute('style');
+    if (style === null) continue;
+    const kept = style.split(';').filter((d) => d.trim() && !STYLE_FONT_SIZE.test(d));
+    if (kept.length) el.setAttribute('style', kept.join(';'));
+    else el.removeAttribute('style');
+  }
 }
 
 /** Strict, synchronous SVG sanitizer. Returns safe, responsive SVG markup, or null if the input
@@ -206,6 +262,10 @@ export function sanitizeSvg(input: unknown): string | null {
   ) {
     return null;
   }
+
+  // With the viewBox known, the on-screen size of every label is known too — so a label too small
+  // to read can be caught here rather than shipped.
+  enforceLegibleText(root, viewBoxValues[2], viewBoxValues[3]);
 
   // Enforce responsive sizing: drop fixed width/height and scale to the container.
   root.removeAttribute('width');

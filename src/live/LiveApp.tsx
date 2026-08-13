@@ -67,11 +67,13 @@ import { prewarmLive } from './prewarm';
 import { warmSemanticFit, embedText } from './semantic';
 import { Icon } from '../icons/icons';
 import { useVoiceController } from '../voice/useVoiceController';
+import type { VoicePhase } from '../voice/types';
 import {
   speakLine as speakLineTwoVoice,
   primeLine,
   cancelSpeech,
   isSpeaking,
+  subscribeSpeaking,
   type SpokenLine,
 } from '../voice/tts';
 import { setKokoroVoice, kokoroKnownAvailable } from '../voice/kokoro';
@@ -100,7 +102,7 @@ import './livedock.css';
 import { liveTourBeats, shouldRevealTour } from './generateBeats';
 import { revealInkPlan } from './mutedReveal';
 import { claim as claimStepper } from '../canvas/focus/stepDriver';
-import { runDiagramWalk } from './diagramWalk';
+import { runDiagramWalk, STEP_DWELL_MS } from './diagramWalk';
 import { prefersReducedMotion } from '../canvas/focus/motion';
 import { TopbarMenu, type TopbarMenuItem } from './TopbarMenu';
 import type { PaletteItem } from './features/CommandPalette';
@@ -119,6 +121,7 @@ import {
   toModelConfig,
   toCaps,
   getLiveConfigV2,
+  type LiveConfigV2,
 } from './useLiveConfig';
 import { providerInfo, getAdapter } from './providers';
 import {
@@ -133,7 +136,7 @@ import {
 import { SetupWizard } from './setup/SetupWizard';
 import { isSetupDone } from './setup/setup';
 import { TemplatePicker } from './TemplatePicker';
-import { MicModePopover } from './voice/MicModePopover';
+import { MicModePopover, type MicMode } from './voice/MicModePopover';
 import { applyPresenceStyle, automaticPresenceStyle, clearPresenceStyle } from './presenceStyles';
 import type { ExportAnswer } from '../export';
 import { DashPill } from './dashboards/DashPill';
@@ -212,6 +215,8 @@ import { setStreamTap } from '../voice/streamTts';
 import {
   recorderTap,
   beginTurn as beginTurnAudio,
+  endTurn as endTurnAudio,
+  setTapSuspended,
   getVersion as getTurnAudioVersion,
   markBlocks,
   subscribe as subscribeTurnAudio,
@@ -220,6 +225,7 @@ import {
 } from './scrubvoice/recorder';
 import { unbuiltCount } from './scrubvoice/unbuild';
 import { TurnAudioStore } from './scrubvoice/retain';
+import { turnFrameId } from './history';
 import { VoiceScrubber } from './scrubvoice/VoiceScrubber';
 import { VoiceSpeedChip } from './scrubvoice/VoiceSpeedChip';
 import { ExplainLevelChip } from './ExplainLevelChip';
@@ -229,11 +235,11 @@ import { useWhisper, WHISPER_GAIN } from './whisper/quietHours';
 import { useMindShape } from './mindshape/useMindShape';
 import { MindShapeCanvas } from './mindshape/MindShapeCanvas';
 import { mindShapeToPrompt } from './mindshape/mindShapeToPrompt';
-import { completeWordsOnly, countThoughts, looksLikeThinkingAloud } from './mindshape/localExtract';
+import { completeWordsOnly, countThoughts } from './mindshape/localExtract';
 import type { MindShapeSpec } from './mindshape/types';
 import './whisper/whisper.css';
 import { setVoiceGain, setOutputMuted } from '../voice/streamTts';
-import { isThoughtsTrigger, bankable, sortAsk } from './thinkaloud/thinkaloud';
+import { isThoughtsTrigger, bankable, sortAsk, listenChipTitle } from './thinkaloud/thinkaloud';
 import {
   sharedUrl,
   looksLikeShare,
@@ -259,7 +265,12 @@ import {
 import { pendingCard } from './turnstate/pendingCard';
 import { anyOverlayOpen } from './hooks/overlayGuard';
 import { markCircleLoop } from '../tour/markCircle';
-import { MIC_AUDIO_MSG, MIC_DENIED_MSG, MIC_UNSUPPORTED_MSG } from './voiceMessages';
+import {
+  MIC_AUDIO_MSG,
+  MIC_DENIED_MSG,
+  MIC_TRANSCRIPTION_MSG,
+  MIC_UNSUPPORTED_MSG,
+} from './voiceMessages';
 import { useAttachments } from './hooks/useAttachments';
 import { useBookmarks } from './hooks/useBookmarks';
 import { useAskHint } from './hooks/useAskHint';
@@ -278,15 +289,29 @@ const CANVAS_LOADING_SHAPE = [{ col: 6 }, { col: 6 }, { col: 12 }];
 
 const RAIL_COLLAPSED_STORAGE_KEY = 'mavea-live-rail-collapsed-v1';
 
-// Remembers a Hold pick in MicModePopover (vs. Tap) so the checkmark there reflects what the
-// user actually chose. Purely a display/default preference — Hold-to-talk itself is already
-// available whenever the mic isn't in Always-on mode, this key doesn't gate that.
+// Remembers a Hold pick in MicModePopover (vs. Tap) so it remains a true input mode across visits.
 const MIC_HOLD_PREFERRED_STORAGE_KEY = 'mavea-mic-hold-preferred';
+const LOW_CONFIDENCE_VOICE_MSG = 'I may have misheard that. Review the draft, then send it.';
 
-// Watch Me Think settles the live map into its resolved shape after this much extra quiet PAST a
-// VAD utterance boundary (which is itself ~2.2s of silence) — so ~5s of total silence reads as
-// "done thinking aloud" rather than a mid-thought pause. Any new speech cancels it.
-const SETTLE_SILENCE_MS = 3000;
+// VAD already waits ~1.6s to close an utterance. Another 6.4s makes quiet-only Watch Me Think
+// settling an 8s fallback; the visible Done thinking button is the primary completion action.
+const SETTLE_SILENCE_MS = 6400;
+
+// A settled answer is usually still talking: the reveal tour holds every stop past its own line
+// (MIN_STOP_MS) and a claimed diagram dwells a whole step with nothing spoken (STEP_DWELL_MS), so
+// plain silence is not the end of the turn. Quiet held past both of those is — the moment the
+// voice recording can close without eating the rest of the tour.
+const TURN_VOICE_QUIET_MS = STEP_DWELL_MS + MIN_STOP_MS;
+
+/** True when a transport key (←/→/Space) belongs to the focused control, not to the walkthrough
+ *  or demo replay. Both drive REAL UI under a pointer-transparent overlay — the API-key input,
+ *  the end-card buttons — so a global preventDefault would swallow typing and a focused button's
+ *  native Space activation. Escape stays global: it always means "leave the tour". */
+function transportKeyBelongsToControl(e: KeyboardEvent): boolean {
+  if (inTextField(e.target)) return true;
+  const isSpace = e.key === ' ' || e.key === 'Spacebar';
+  return isSpace && e.target instanceof HTMLElement && !!e.target.closest('button');
+}
 
 // Overlays and modals that only ever mount on an explicit user action — open Prism, compare
 // sources, export, share the reel, replay a moment, pin to a dashboard, present, rehearse a
@@ -544,6 +569,7 @@ export function LiveApp(): ReactElement {
   // has seen it (dismissed or used it), it never returns.
   const { askHintSeen, dismissAskHint } = useAskHint();
   const [listening, setListening] = useState(false);
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
   const [heard, setHeard] = useState<string | null>(null);
   // The ask that produced the canvas on screen — the answer hero's "YOU — …" label. Null for a
   // files-only turn (there's no sentence to quote) and before the first ask.
@@ -710,6 +736,7 @@ export function LiveApp(): ReactElement {
   const rambleRef = useRef<string[]>([]);
   const [rambleCount, setRambleCount] = useState(0);
   const rambleStartRef = useRef(0);
+  const listenTitle = listenChipTitle(justListen, rambleCount);
   // "Watch Me Think" mode — the user talks, a mindshape forms live, no prose answer.
   // Utterances bank here (like justListen's ramble) so the canvas sees the full
   // accumulated transcript, not just each individual VAD segment.
@@ -728,6 +755,16 @@ export function LiveApp(): ReactElement {
   // Watch Me Think resolves ("settle") when the user has been quiet a beat longer than a normal
   // between-thoughts pause. This holds that pending timer.
   const settleTimerRef = useRef<number | null>(null);
+  // Done thinking can land while the active utterance is still being finalized. The next result
+  // is banked first, then this flag settles the complete transcript exactly once.
+  const finishWatchPendingRef = useRef(false);
+  const voicePhaseRef = useRef<VoicePhase>('idle');
+  const settleWatchThinkingNow = useCallback((): void => {
+    const ramble = mindShapeRambleRef.current.join(' ').trim();
+    if (ramble && mindShapeRef.current.phase === 'listening') {
+      mindShapeRef.current.onSpeechEnd(ramble);
+    }
+  }, []);
   // Whisper mode: quiet hours dim the room and drop the voice to a murmur.
   const whisper = useWhisper();
   // Small screens only: the conversation rail collapses into a bottom sheet; this opens it.
@@ -784,11 +821,14 @@ export function LiveApp(): ReactElement {
       return false;
     }
   });
+  // Session-local pause: the durable Always-on preference stays selected, but the mic hardware is
+  // released until the user clicks Resume. This must never be persisted as a mode change.
+  const [alwaysPaused, setAlwaysPaused] = useState(false);
   // null when no listening surface currently has always-on borrowed; see enterListening below.
-  const alwaysOnBeforeListenRef = useRef<boolean | null>(null);
-  // Hold-to-talk is always available whenever the mic isn't in Always-on mode (it's a gesture
-  // layered on top of Tap, not a separate listening lifecycle) — but picking it in MicModePopover
-  // IS a real, remembered preference: it decides which of Tap/Hold shows as checked there.
+  // Preserve a paused Always-on session too — Watch/Listen may borrow the mic, but must return it
+  // to the exact armed/paused state the user left behind.
+  const alwaysOnBeforeListenRef = useRef<{ enabled: boolean; paused: boolean } | null>(null);
+  // Hold is a distinct input mode: only a held mic button or the configured shortcut opens it.
   const [micHoldPreferred, setMicHoldPreferred] = useState(() => {
     try {
       return localStorage.getItem(MIC_HOLD_PREFERRED_STORAGE_KEY) === 'true';
@@ -796,6 +836,7 @@ export function LiveApp(): ReactElement {
       return false;
     }
   });
+  const micMode: MicMode = alwaysOn ? 'always' : micHoldPreferred ? 'hold' : 'tap';
 
   // Apply any stored Mavéa voice preset (set here or in the Demo's tweaks). Kokoro is the only
   // real voice; when its service isn't reachable, lines are silent (captions still show). The
@@ -854,7 +895,12 @@ export function LiveApp(): ReactElement {
 
   // Holds the live voice controller so `speak` (defined before the controller) can flag it as
   // speaking. Filled in once `voice` exists below; the ref breaks the definition-order cycle.
-  const voiceRef = useRef<{ setMaveaSpeaking: (s: boolean) => void } | null>(null);
+  const voiceRef = useRef<{
+    setMaveaSpeaking: (s: boolean) => void;
+    start: (ctx?: { inCanvas: boolean; continuous?: boolean }) => void;
+    stop: () => void;
+    forceStop: () => void;
+  } | null>(null);
 
   // A ref mirror of `muted` so callers that outlive a render — the spoken tour's setTimeout chain
   // and `speak` itself — read the CURRENT mute state at call time, not the value captured when the
@@ -1229,6 +1275,20 @@ export function LiveApp(): ReactElement {
       noteText?: string;
     })[]
   >([]);
+  // Which of those gestures actually LANDED. The track is a record of what Mavéa drew, so a
+  // request whose target never resolved (a conceptual line naming nothing on the card) must not be
+  // advertised as a mark the reader can go look at. Keyed by request identity — `inked` entries are
+  // appended once and never rebuilt, and the whole set is dropped with them each turn.
+  const [drawnInk, setDrawnInk] = useState<ReadonlySet<object>>(() => new Set());
+  const notePlaced = useCallback((request: object) => {
+    setDrawnInk((cur) => (cur.has(request) ? cur : new Set(cur).add(request)));
+  }, []);
+  // A margin note is written into the rail rather than placed on a card, so it reports no landing
+  // and is always its own proof — it shows in the track as soon as it exists.
+  const drawnEntries = useMemo(
+    () => inked.filter((e) => e.noteText !== undefined || drawnInk.has(e)),
+    [inked, drawnInk],
+  );
   // The reference epoch for elapsed-time display in the gesture track (reset each turn).
   const turnStartMsRef = useRef<number>(Date.now());
   // Interim speech results arrive several times a second; each `setHeard` re-renders this large
@@ -1252,6 +1312,7 @@ export function LiveApp(): ReactElement {
   );
   useEffect(() => {
     setInked([]);
+    setDrawnInk(new Set());
     turnStartMsRef.current = Date.now();
   }, [turn.turn]);
   // Whether the pen popover is open. It opens only when the user clicks the pill — never on its
@@ -1262,6 +1323,16 @@ export function LiveApp(): ReactElement {
   // Which spots have their annotation hidden by the user (eye toggle in the gesture track).
   const [hiddenSpots, setHiddenSpots] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => setHiddenSpots(new Set()), [turn.turn]);
+  // The Retry card mounts at the TOP of the canvas. On a tall answer the user is usually scrolled
+  // well past it, so a failed follow-up would land off-screen and read as "nothing happened".
+  // Bring the top back into view on the null → error transition ONLY (the ref), so ordinary
+  // re-renders can't keep yanking the scroll position while the card is up.
+  const hadErrorRef = useRef(false);
+  useEffect(() => {
+    const failed = !!turn.error;
+    if (failed && !hadErrorRef.current) scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    hadErrorRef.current = failed;
+  }, [turn.error]);
   // Whether the Everything grid has room for the margin-note gutter. Below the threshold the
   // cards would drop to a cramped column budget just to host notes, so the gutter stays off and
   // the words keep flowing through the reading ribbon + the pen pill's log (and, in Focus, the
@@ -1394,6 +1465,20 @@ export function LiveApp(): ReactElement {
   // Set true by onBargeIn (VAD detected speech mid-playback) so onResult knows to apply
   // the continue-vs-real-question logic even though isSpeaking() is already false by then.
   const bargedInRef = useRef(false);
+  // Whether a turn is still generating, readable inside the onResult closure. A spoken question
+  // that lands while Mavéa is busy but SILENT (thinking, or a muted answer) is never flagged as a
+  // barge-in, so without this it reached submit() unforced and turn.run's busy guard dropped it —
+  // the mic stayed open, the transcript showed, and nothing happened.
+  const busyRef = useRef(false);
+  busyRef.current = turn.busy;
+
+  // A pen chapter of the walkthrough / demo replay flips the user's REAL annotation settings so
+  // Mavéa can draw on the canvas. This holds what they were before the first override, so the run
+  // can hand them back — a scripted run must never permanently change a preference the user owns.
+  // Cleared on restore, and by a manual toggle (the user has taken ownership; see togglePen).
+  const penConfigRestoreRef = useRef<Pick<LiveConfigV2, 'annotationsEnabled' | 'teachMode'> | null>(
+    null,
+  );
 
   // The pen toggle (header pill + gesture track share it). Off clears strokes; back ON
   // restores exactly what was there — the full snapshot, not a partial replay.
@@ -1402,6 +1487,9 @@ export function LiveApp(): ReactElement {
   const inkSnapshotRef = useRef<typeof inked>([]);
   const togglePen = useCallback(() => {
     const next = !annotationsEnabledRef.current;
+    // The user just chose for themselves — drop any tour snapshot so the end of the run can't
+    // undo their choice.
+    penConfigRestoreRef.current = null;
     setLiveConfigV2({ annotationsEnabled: next, teachMode: next });
     if (!next) {
       // Turning off: save the full ink state then clear.
@@ -1507,6 +1595,22 @@ export function LiveApp(): ReactElement {
     setCanvasRevision((g) => g + 1);
   }
 
+  const restorePenConfig = useCallback(() => {
+    const snapshot = penConfigRestoreRef.current;
+    if (!snapshot) return;
+    penConfigRestoreRef.current = null;
+    annotationsEnabledRef.current = snapshot.annotationsEnabled;
+    setLiveConfigV2(snapshot);
+  }, []);
+  /** Switch Mavéa's own annotation layer on for a pen chapter, remembering what it displaced. */
+  const enablePenForRun = useCallback(() => {
+    if (annotationsEnabledRef.current) return;
+    const { annotationsEnabled, teachMode } = getLiveConfigV2();
+    penConfigRestoreRef.current ??= { annotationsEnabled, teachMode };
+    annotationsEnabledRef.current = true;
+    setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
+  }, []);
+
   // Everything a scripted driver needs to drive THIS real surface — the closures behind the
   // first-run walkthrough AND the demo replay (only one is ever active per boot). Declared
   // here, below every setter it exposes, so a driver can fire Focus / Present / Share / the
@@ -1515,12 +1619,16 @@ export function LiveApp(): ReactElement {
     isBusy: () => turn.busy || walkActive.current,
     isSpeaking: () => isSpeaking(),
     hasCanvas: () => !!turn.spec,
-    showFrame: (frame, question) => {
+    showFrame: (frame, question, opts) => {
       setLastAsk(question);
       setValue('');
       // Never interrupt: a chapter's coach line finishes, THEN the frame's narration follows.
       // Muted reveals the canvas immediately — there is no voice for the reveal beat to track.
-      turn.showFrame(frame, question, { interrupt: false, revealNow: mutedRef.current });
+      turn.showFrame(frame, question, {
+        interrupt: false,
+        revealNow: mutedRef.current,
+        silent: opts?.silent,
+      });
     },
     typeInto: setValue,
     // A chapter's coach line bypasses the per-turn narration walk (it isn't a new turn), so
@@ -1620,10 +1728,7 @@ export function LiveApp(): ReactElement {
     drawPenTourStep: (step) => {
       // The tour demonstrates Mavéa's own orange annotation layer. Keep this separate from the
       // user's Highlight tool, which creates a question target instead of explaining the answer.
-      if (!annotationsEnabledRef.current) {
-        annotationsEnabledRef.current = true;
-        setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
-      }
+      enablePenForRun();
       if (step === 'result') {
         // Keep the answer header in view while the strokes land below it. Centering the card with
         // turn.setSpot would scroll the sticky Pen underneath the app bar, where its tour ring can
@@ -1653,10 +1758,7 @@ export function LiveApp(): ReactElement {
     drawPenOnFirstBlock: () => {
       const block = turn.spec?.blocks.find((b) => !!b.id);
       if (!block?.id) return;
-      if (!annotationsEnabledRef.current) {
-        annotationsEnabledRef.current = true;
-        setLiveConfigV2({ annotationsEnabled: true, teachMode: true });
-      }
+      enablePenForRun();
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       // Generous mode resolves the block's own spoken note or its stamped salient value, so this
       // works on any recorded answer without pretending a hard-coded number belongs to it.
@@ -1718,6 +1820,7 @@ export function LiveApp(): ReactElement {
       // is already up rather than requesting a fresh one) lets a stale mark try to re-resolve
       // its host against a since-changed card and redraw in the wrong place.
       setInked([]);
+      setDrawnInk(new Set());
       setHiddenSpots(new Set());
       setTrackVisible(false);
       setPresenting(false);
@@ -1777,6 +1880,8 @@ export function LiveApp(): ReactElement {
       const t = tourDriveRef.current;
       if (e.key === 'Escape') {
         t.skip();
+      } else if (transportKeyBelongsToControl(e)) {
+        return;
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         t.next();
@@ -1800,6 +1905,8 @@ export function LiveApp(): ReactElement {
       const d = demoDriveRef.current;
       if (e.key === 'Escape') {
         d.skip();
+      } else if (transportKeyBelongsToControl(e)) {
+        return;
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         d.next();
@@ -1814,6 +1921,13 @@ export function LiveApp(): ReactElement {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // A pen chapter borrowed the user's annotation settings (see penConfigRestoreRef) — hand them
+  // back the moment the run finishes, and again on unmount so leaving Live mid-run also restores.
+  useEffect(() => {
+    if (tourDrive.done || demoDrive.done) restorePenConfig();
+  }, [tourDrive.done, demoDrive.done, restorePenConfig]);
+  useEffect(() => () => restorePenConfig(), [restorePenConfig]);
 
   const { narrate: narrateBlock, narratingId } = useTapNarration(
     {
@@ -2464,10 +2578,12 @@ export function LiveApp(): ReactElement {
   clearInkRef.current = () => userInk.clear();
 
   const submit = useCallback(
-    // `force` bypasses turn.run's busy guard: a barge-in's new question must abort whatever
-    // the interrupted turn was still generating rather than being silently dropped because
-    // that turn hasn't settled yet. Every other caller (typed composer, chips) omits it — those
-    // are already gated on `disabled={turn.busy}` at the UI level, so they never get here busy.
+    // `force` bypasses turn.run's busy guard: a spoken question that arrives mid-turn must abort
+    // whatever was still generating rather than being silently dropped because that turn hasn't
+    // settled yet. That covers both a barge-in over audible speech and the busy-but-silent window
+    // (thinking, or a muted answer), where nothing flags the utterance as an interruption. Every
+    // other caller (typed composer, chips) omits it — those are already gated on
+    // `disabled={turn.busy}` at the UI level, so they never get here busy.
     (text: string, force = false) => {
       const t = text.trim();
       // Watch Me Think: the main composer doubles as the typed-thought input — a submitted line
@@ -2893,12 +3009,10 @@ export function LiveApp(): ReactElement {
     prevFrameLen.current = len;
   }, [turn.frames.length]);
 
-  // Voice: real STT when the browser supports it.
-  // alwaysOn mode uses VadVoice (Silero VAD + Whisper), which handles sentence
-  // boundary detection internally — no timer-based accumulation needed.
-  // Tap mode uses plain WebSpeech (one-shot per mic press).
+  // Voice input is local in every mode: Silero detects speech boundaries and whisper.cpp
+  // transcribes the captured PCM. Tap/Hold stop after one utterance; Always on rearms.
   const voice = useVoiceController({
-    mode: alwaysOn ? 'vad' : 'webspeech',
+    mode: 'vad',
     onBargeIn: () => {
       // VAD detected the user speaking mid-playback — cut everything paced immediately so the
       // interruption feels instant: not just the TTS line, but the reveal walk it was pacing
@@ -2915,6 +3029,28 @@ export function LiveApp(): ReactElement {
       // interrupted turn's busy guard (that turn is aborted, not waited on) instead of being
       // silently dropped the way an ordinary submission would be while busy.
       const wasBargeIn = bargedInRef.current;
+
+      if (r.lowConfidence && text) {
+        bargedInRef.current = false;
+        setHeard(null);
+        setValue(text);
+        setVoiceNotice(LOW_CONFIDENCE_VOICE_MSG);
+        setComposerFocus((n) => n + 1);
+        // Done thinking may have been pressed while this final transcript was resolving. Preserve
+        // the uncertain words as a draft, but still honor the explicit completion action instead
+        // of leaving Watch stuck open with a pending flag that can never bank this utterance.
+        if (finishWatchPendingRef.current && watchThinkingRef.current) {
+          finishWatchPendingRef.current = false;
+          voiceRef.current?.stop();
+          if (mindShapeRambleRef.current.length > 0) {
+            settleWatchThinkingNow();
+          } else {
+            watchThinkingRef.current = false;
+            setWatchThinking(false);
+          }
+        }
+        return;
+      }
 
       // Barge-in (always-on only): TTS was already cancelled by onBargeIn the moment the
       // VAD detected speech. Here we decide what to do with the transcript:
@@ -2939,12 +3075,20 @@ export function LiveApp(): ReactElement {
       if (watchThinkingRef.current) {
         mindShapeRambleRef.current = [...mindShapeRambleRef.current, text];
         setHeard(null);
-        mindShape.onTranscript(mindShapeRambleRef.current.join(' '));
+        const ramble = mindShapeRambleRef.current.join(' ');
+        mindShape.onTranscript(ramble);
+        if (finishWatchPendingRef.current) {
+          finishWatchPendingRef.current = false;
+          settleWatchThinkingNow();
+        }
         return;
       }
       // Think-out-loud: while "just listening", utterances bank into the ramble instead of
       // answering — until the wake phrase asks for the sort.
       if (justListenRef.current) {
+        // This utterance is consumed here (banked, sorted, or ignored) — clear the partial, or the
+        // composer stays swapped for the "heard" readout and the user can't type at all.
+        setHeard(null);
         if (isThoughtsTrigger(text)) {
           setJustListen(false);
           const ramble = rambleRef.current;
@@ -2980,22 +3124,19 @@ export function LiveApp(): ReactElement {
           },
           text,
         )
-      )
-        return;
-      // Smart default: a short, direct question answers right away; speech that reads as thinking
-      // aloud opens the live map instead. Once mapping is on, the watchThinkingRef branch above
-      // keeps every later utterance flowing into the same map until the user acts on it.
-      if (mindShapeCfg && looksLikeThinkingAloud(text)) {
-        setWatchThinking(true);
-        watchThinkingRef.current = true; // apply now so this very utterance seeds the map
-        mindShapeRambleRef.current = [...mindShapeRambleRef.current, text];
-        setHeard(null); // banked into the ramble — don't let the interim effect re-feed it
-        mindShape.onTranscript(mindShapeRambleRef.current.join(' '));
+      ) {
+        // Same as the branches above: the words went into the hole, so the partial must go —
+        // otherwise the composer input stays hidden behind the "heard" readout.
+        setHeard(null);
         return;
       }
-      submit(text, wasBargeIn);
+      // `busyRef` forces the same abort-and-restart path a barge-in takes: a turn that's still
+      // generating (but not audibly speaking) would otherwise swallow this question outright.
+      submit(text, wasBargeIn || busyRef.current);
     },
     onStateChange: (e) => {
+      voicePhaseRef.current = e.phase;
+      setVoicePhase(e.phase);
       setListening(e.phase === 'listening');
       // A barge-in whose utterance transcribed to nothing never reaches onResult (VadVoice drops an
       // empty result), which would leave bargedInRef stuck true and mis-route the NEXT real utterance
@@ -3012,18 +3153,24 @@ export function LiveApp(): ReactElement {
           window.clearTimeout(settleTimerRef.current);
           settleTimerRef.current = null;
         }
-      } else if (e.phase === 'idle' && watchThinkingRef.current) {
-        // The VAD just ended an utterance (~2.2s of silence) while Watch Me Think is live. If the
-        // quiet holds a beat longer, the user is done thinking aloud → settle the map into its
-        // resolved shape (center + themes + the "unsaid"). This is the ONLY trigger for the settle
-        // phase; without it the map builds forever and never resolves.
+      } else if (
+        e.phase === 'idle' &&
+        watchThinkingRef.current &&
+        mindShapeRef.current.phase === 'listening'
+      ) {
+        if (finishWatchPendingRef.current) {
+          finishWatchPendingRef.current = false;
+          settleWatchThinkingNow();
+          return;
+        }
+        // The VAD just ended an utterance (~1.6s of silence) while Watch Me Think is live. If the
+        // quiet holds to eight seconds total, settle as a fallback. Done thinking below is the
+        // deterministic path for loud rooms and users who do not want to wait.
         if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
         settleTimerRef.current = window.setTimeout(() => {
           settleTimerRef.current = null;
-          const ramble = mindShapeRambleRef.current.join(' ').trim();
-          if (ramble && mindShapeRef.current.phase === 'listening') {
-            mindShapeRef.current.onSpeechEnd(ramble);
-          }
+          voiceRef.current?.stop();
+          settleWatchThinkingNow();
         }, SETTLE_SILENCE_MS);
       }
       // Surface controller errors that were previously invisible (the controller settles back
@@ -3032,27 +3179,51 @@ export function LiveApp(): ReactElement {
       if (e.error === 'not-allowed') setVoiceNotice(MIC_DENIED_MSG);
       else if (e.error === 'unsupported') setVoiceNotice(MIC_UNSUPPORTED_MSG);
       else if (e.error === 'audio') setVoiceNotice(MIC_AUDIO_MSG);
+      else if (e.error === 'transcription') setVoiceNotice(MIC_TRANSCRIPTION_MSG);
     },
   });
   const sttOk = voice.capabilities.stt;
   voiceRef.current = voice;
+
+  const finishWatchThinking = useCallback((): void => {
+    if (!watchThinkingRef.current) return;
+    if (settleTimerRef.current !== null) {
+      window.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
+    if (listening || voicePhaseRef.current === 'transcribing') {
+      finishWatchPendingRef.current = true;
+      // Done thinking pauses the Watch session after this utterance even if it borrowed Always on.
+      // exitWatchThinking restores a genuine Always-on preference when the user leaves the map.
+      if (listening) voice.start({ inCanvas: !!turn.spec, continuous: false });
+      voice.forceStop();
+      return;
+    }
+    voice.stop();
+    if (mindShapeRambleRef.current.length === 0) {
+      watchThinkingRef.current = false;
+      setWatchThinking(false);
+      return;
+    }
+    settleWatchThinkingNow();
+  }, [listening, settleWatchThinkingNow, voice, turn.spec]);
 
   // Leave "Watch Me Think" back to the normal conversation: stop the mic and drop the live map
   // (the watchThinking effect below resets the mindshape + clears the ramble), so the answer
   // canvas underneath returns. Wired to a visible pill in the overlay and to the Escape key —
   // previously the only way out was a page refresh.
   const exitWatchThinking = useCallback((): void => {
-    // In always-on the mic-gate effect below is the SOLE owner of the mic — stopping it here would
-    // strand it closed for the rest of the session (none of that effect's deps change on exit, so it
-    // never re-arms). Only stop the mic when we own it directly (manual / push-to-talk mode).
-    if (listening && !alwaysOn) voice.stop();
+    // Release the Watch capture now. The borrowed-mode restoration effect below re-arms a genuine
+    // unpaused Always-on session, or returns a previously paused/Tap session to its exact state.
+    if (listening) voice.stop();
     if (settleTimerRef.current !== null) {
       window.clearTimeout(settleTimerRef.current);
       settleTimerRef.current = null;
     }
     setHeard(null);
+    finishWatchPendingRef.current = false;
     setWatchThinking(false);
-  }, [listening, alwaysOn, voice]);
+  }, [listening, voice]);
 
   // Is a dismissable overlay layered ON TOP of the mindshape? A settled map's own "kept this shape"
   // panel can open Share or Present (or the user can hit the command palette) WITHOUT leaving Watch
@@ -3154,21 +3325,17 @@ export function LiveApp(): ReactElement {
     [],
   );
 
-  // Clear the always-on echo gate once Mavéa's speech has fully drained. `speak()` arms it; here
-  // we poll until both TTS engines report silence, then disarm so the user's next utterance is
-  // accepted normally. Runs only while alwaysOn (the only mode with a continuous mic to gate).
+  // Track the echo gate to whether Mavéa is actually audible. `speak()` arms it before the audio
+  // starts; this releases it the moment the line drains, so the user's next utterance is heard as
+  // a question rather than as a barge-in. It runs in EVERY mic mode, not just always-on: Tap and
+  // Hold arm the same gate, and leaving it armed made every later tap utterance take the barge
+  // path — a filler word there re-spoke the whole previous answer. Driven by the TTS speaking
+  // subscription rather than a 200ms poll, so no timer runs while the session is quiet.
   useEffect(() => {
-    if (!alwaysOn) return;
-    let poll = 0;
-    const tick = (): void => {
-      if (!isSpeaking()) {
-        voice.setMaveaSpeaking(false);
-      }
-      poll = window.setTimeout(tick, 200);
-    };
-    tick();
-    return () => window.clearTimeout(poll);
-  }, [alwaysOn, voice]);
+    const sync = (): void => voice.setMaveaSpeaking(isSpeaking() && !mutedRef.current);
+    sync();
+    return subscribeSpeaking(sync);
+  }, [voice]);
 
   // ---- always-on: keep the mic continuously open EXCEPT while you're typing. ----
   // Silero VAD detects turn boundaries internally and our echo gate (setMaveaSpeaking) drops Mavéa's
@@ -3182,11 +3349,11 @@ export function LiveApp(): ReactElement {
   // restart hinged on a turn status that never returned to 'idle', re-submitting Mavéa's own answer.)
   const composerHasText = value.trim().length > 0;
   useEffect(() => {
-    if (!micShouldBeOpen({ alwaysOn, sttOk, composerHasText })) return;
+    if (!micShouldBeOpen({ alwaysOn: alwaysOn && !alwaysPaused, sttOk, composerHasText })) return;
     let cancelled = false;
     // Let the VAD/WASM settle, then open the mic once.
     const t = setTimeout(() => {
-      if (!cancelled) void voice.start({ inCanvas: !!turn.spec });
+      if (!cancelled) void voice.start({ inCanvas: !!turn.spec, continuous: true });
     }, 100);
     return () => {
       cancelled = true;
@@ -3196,32 +3363,50 @@ export function LiveApp(): ReactElement {
     // turn.spec is read once at start for the start context; we intentionally don't re-run on every
     // canvas change (that would needlessly restart the mic mid-conversation).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alwaysOn, sttOk, voice, composerHasText]);
+  }, [alwaysOn, alwaysPaused, sttOk, voice, composerHasText]);
 
   // A backgrounded tab (or a sleeping device) can suspend VAD's own capture AudioContext without
   // ever telling us — nothing above reacts to that, so the mic could go quietly dead while the
   // UI still claims to be listening. Release it explicitly on hide and verify/restart on return.
   useAlwaysOnVisibility(
-    { alwaysOn, sttOk, composerHasText, listening },
-    { start: () => voice.start({ inCanvas: !!turn.spec }), stop: voice.stop },
+    { alwaysOn: alwaysOn && !alwaysPaused, sttOk, composerHasText, listening },
+    {
+      start: () => voice.start({ inCanvas: !!turn.spec, continuous: true }),
+      stop: voice.stop,
+    },
   );
 
   const onMic = useCallback(() => {
     if (!sttOk) {
-      // No SpeechRecognition in this browser (Firefox/Safari): say so instead of a dead click.
+      // The local capture path is unavailable.
       setVoiceNotice(MIC_UNSUPPORTED_MSG);
       setComposerFocus((n) => n + 1);
       return;
     }
-    if (listening) {
-      voice.stop();
+    if (alwaysOn) {
+      if (listening) {
+        voice.forceStop();
+      } else if (alwaysPaused) {
+        setAlwaysPaused(false);
+        showAll();
+        voice.start({ inCanvas: !!turn.spec, continuous: true });
+      } else if (voicePhaseRef.current === 'transcribing') {
+        setAlwaysPaused(true);
+        voice.forceStop();
+      } else {
+        setAlwaysPaused(true);
+        voice.stop();
+      }
+    } else if (listening) {
+      // A second tap is an explicit completion action, never a discard.
+      voice.forceStop();
     } else {
       // Hush Mavéa before opening the mic — otherwise the recognizer can transcribe Mavéa's own
       // playback as if it were the user (a feedback loop), and the interruption doesn't feel real.
-      cancelSpeech();
+      showAll();
       voice.start({ inCanvas: !!turn.spec });
     }
-  }, [sttOk, listening, voice, turn.spec]);
+  }, [sttOk, alwaysOn, alwaysPaused, listening, voice, turn.spec, showAll]);
 
   // Speak-then-show choreography: on EVERY turn the face comes to centre and speaks its opening
   // line for a short beat — "Mavéa appears and says a sentence," the way the scripted demo does —
@@ -3671,21 +3856,42 @@ export function LiveApp(): ReactElement {
         setVoiceNotice(MIC_UNSUPPORTED_MSG);
         return;
       }
-      if (alwaysOnBeforeListenRef.current === null) alwaysOnBeforeListenRef.current = alwaysOn;
+      showAll();
+      if (alwaysOnBeforeListenRef.current === null) {
+        alwaysOnBeforeListenRef.current = { enabled: alwaysOn, paused: alwaysPaused };
+      }
+      setAlwaysPaused(false);
       setAlwaysOn(true);
-      if (mode === 'think') setWatchThinking(true);
-      else setJustListen(true);
+      if (mode === 'think') {
+        setJustListen(false);
+        justListenRef.current = false;
+        setWatchThinking(true);
+        watchThinkingRef.current = true;
+      } else {
+        setWatchThinking(false);
+        watchThinkingRef.current = false;
+        setJustListen(true);
+        justListenRef.current = true;
+      }
     },
-    [sttOk, alwaysOn],
+    [sttOk, alwaysOn, alwaysPaused, showAll],
   );
-  // Once both borrowed listening surfaces are closed, put the mic mode back how it was found.
+  // Once both borrowed listening surfaces are closed, put the mic back exactly how it was found.
+  // Re-arm explicitly: a genuine Always-on preference remains `true` throughout Watch, so merely
+  // setting the same React state again would not rerun the ordinary mic-gate effect.
   useEffect(() => {
     if (watchThinking || justListen) return;
     const before = alwaysOnBeforeListenRef.current;
     if (before === null) return;
     alwaysOnBeforeListenRef.current = null;
-    setAlwaysOn(before);
-  }, [watchThinking, justListen]);
+    setAlwaysPaused(before.paused);
+    setAlwaysOn(before.enabled);
+    if (before.enabled && !before.paused && sttOk && !value.trim()) {
+      voice.start({ inCanvas: !!turn.spec, continuous: true });
+    } else {
+      voice.stop();
+    }
+  }, [watchThinking, justListen, sttOk, value, voice, turn.spec]);
 
   // The registry resolved to live actions + availability. One map so the palette and the menu
   // can never disagree about what exists. Behavioral/automatic features (whisper, ghost, focus)
@@ -3793,9 +3999,8 @@ export function LiveApp(): ReactElement {
     share: {
       available: turn.frames.length > 0,
       reason: 'Once there is something to share',
-      // "Share this conversation as a story" — the Reel (ShareModal), NOT the PDF export. These two
-      // actions sit next to each other and were both pointed at setExportOpen, so Share opened the
-      // Export-as-PDF deck instead of the reel it advertises.
+      // Video Studio is distinct from document export: Conversation is the default and Reel remains
+      // its editorial sibling inside the same lazy surface.
       run: () => setShareOpen(true),
       preload: shareModalLoad.preload,
     },
@@ -4032,8 +4237,8 @@ export function LiveApp(): ReactElement {
       show: turn.frames.length > 0,
     },
     {
-      label: 'Share',
-      blurb: 'Share this conversation as a story',
+      label: 'Video',
+      blurb: 'Share a moment, a topic, or the whole conversation',
       onClick: featureActions.share.run,
       preload: featureActions.share.preload,
       show: turn.frames.length > 0,
@@ -4119,14 +4324,27 @@ export function LiveApp(): ReactElement {
     setStreamTap(recorderTap);
     return () => setStreamTap(null);
   }, []);
+  // Whether the recording has already been closed for the turn it was opened for — endTurnAudio
+  // bumps the recorder version the settle effect below watches, so without this it would re-arm
+  // its close timer forever. Starts closed: nothing is recorded until a turn opens the recorder.
+  const turnAudioClosed = useRef(true);
   // A new turn restarts the recording and drops the previous scrub state.
   useEffect(() => {
     if (turn.busy) {
       beginTurnAudio();
+      turnAudioClosed.current = false;
       setTurnAudio(null);
       resetScrub();
     }
   }, [turn.busy, turn.turn, resetScrub]);
+  // Replaying an older answer narrates it through this very tap, so the replayed lines would
+  // append themselves to the live turn's track — and the retain below would then write that
+  // corrupted track over the head turn's snapshot. Deafen the tap for as long as the overlay is
+  // up. Suspended, not closed: this turn's own tour still has lines to land.
+  useEffect(() => {
+    setTapSuspended(replayAt !== null);
+    return () => setTapSuspended(false);
+  }, [replayAt]);
   // Jumping to a different moment (a past chat, or back to live) starts it at rest, so a scrub
   // position from the previous view doesn't carry over to an unrelated track.
   useEffect(() => resetScrub(), [turn.viewIndex, resetScrub]);
@@ -4140,21 +4358,37 @@ export function LiveApp(): ReactElement {
   // also retain the finished track against this turn's frame, so the scrubber works after you move
   // on to later answers (the recorder itself only keeps the current turn).
   useEffect(() => {
-    if (!turn.busy && turn.spec) {
+    if (turn.busy) return;
+    if (turn.spec) {
       const snap = snapshotTurnAudio();
       if (snap) {
         setTurnAudio(snap);
         const idx = turn.frames.length - 1;
-        if (idx >= 0) audioStore.set(idx, snap);
+        const frame = turn.frames[idx];
+        if (frame) audioStore.set(turnFrameId(frame), snap);
       }
     }
+    // The answer has settled; once the voice has stayed quiet past the tour's own holds it has
+    // stopped talking for good, so close the recording. Anything spoken after this — a voice
+    // audition in Settings, a Watch-Me-Think line — belongs to no turn, and left open it would
+    // append itself to the very track this effect just retained.
+    if (speakingNow || turnAudioClosed.current) return;
+    const closeTimer = window.setTimeout(() => {
+      turnAudioClosed.current = true;
+      endTurnAudio();
+    }, TURN_VOICE_QUIET_MS);
+    return () => window.clearTimeout(closeTimer);
   }, [speakingNow, turn.busy, turn.spec, turnAudioVersion, turn.frames, audioStore]);
   // The voice track for whatever moment is on screen: the live head's, or a past frame's retained
   // one (null when that chat has aged out of the bounded store).
   const viewedAudio = useMemo(
     () =>
-      viewingLive ? turnAudio : turn.viewIndex != null ? audioStore.get(turn.viewIndex) : null,
-    [viewingLive, turnAudio, turn.viewIndex, audioStore],
+      viewingLive
+        ? turnAudio
+        : turn.viewIndex != null && turn.frames[turn.viewIndex]
+          ? audioStore.get(turnFrameId(turn.frames[turn.viewIndex]))
+          : null,
+    [viewingLive, turnAudio, turn.viewIndex, turn.frames, audioStore],
   );
   // The canvas, rebuilt to the scrub moment: what the voice had SAID by then (tour stops matched to
   // spoken spans), floored by what had genuinely streamed in by that audio time. The hero/title
@@ -4199,10 +4433,19 @@ export function LiveApp(): ReactElement {
           type="button"
           className="live-error-btn primary"
           onClick={() => {
-            // Re-run the real prompt (raw instruction for a synthetic turn), not the label shown.
+            // Re-run the real prompt (raw instruction for a synthetic turn), not the label shown —
+            // with the files, pinned blocks, and ink marks the ask carried, so a retry re-sends
+            // the SAME question rather than a stripped-down version of it.
             const err = turn.error;
             if (err)
-              void turn.run(err.retry, undefined, undefined, undefined, undefined, err.question);
+              void turn.run(
+                err.retry,
+                err.attachments,
+                err.selectedBlocks,
+                undefined,
+                err.inkIntents,
+                err.question,
+              );
           }}
           disabled={turn.busy}
         >
@@ -4251,13 +4494,23 @@ export function LiveApp(): ReactElement {
             // speech merges into the existing atoms. Re-arm the mic if it had stopped.
             setHeard(null);
             mindShape.resume();
-            if (!listening && sttOk) voice.start({ inCanvas: !!turn.spec });
+            if (!listening && sttOk) {
+              voice.start({
+                inCanvas: !!turn.spec,
+                continuous: alwaysOn && !alwaysPaused,
+              });
+            }
           } else if (action === 'not-quite') {
             // Scrap it: wipe the map and the banked thoughts, back to a blank listen.
             mindShapeRambleRef.current = [];
             mindShape.resume(false);
             setHeard(null);
-            if (!listening && sttOk) voice.start({ inCanvas: !!turn.spec });
+            if (!listening && sttOk) {
+              voice.start({
+                inCanvas: !!turn.spec,
+                continuous: alwaysOn && !alwaysPaused,
+              });
+            }
           } else if (action === 'share') {
             // From the "kept this shape" panel — open the share flow on what's on screen.
             setShareOpen(true);
@@ -4328,6 +4581,12 @@ export function LiveApp(): ReactElement {
       />
     </div>
   ) : null;
+
+  const watchThinkingActionLabel = !watchThinking
+    ? 'Watch me think'
+    : mindShape.phase === 'settled' || mindShape.phase === 'pausing'
+      ? 'Add thought'
+      : 'Done thinking';
 
   return (
     <div
@@ -4427,7 +4686,7 @@ export function LiveApp(): ReactElement {
               question={hero?.question ?? null}
               narration={hero?.narration ?? turn.narration}
               skinId={persona}
-              autoAdvanceMs={tourMode.current ? 2600 : undefined}
+              autoAdvanceMs={tourMode.current || demoPersona.current ? 2600 : undefined}
               onExit={() => setPresenting(false)}
             />
           </LazyOverlay>
@@ -4543,15 +4802,18 @@ export function LiveApp(): ReactElement {
 
       {/* bottom dock — the composer's fixed home */}
       <DockBar
-        holdEnabled={sttOk && !alwaysOn}
+        holdEnabled={sttOk && micMode === 'hold'}
         // The inline "Hold ⌥ to talk" hint duplicated the mic's own MicModePopover (its "Hold"
         // row shows the same thing) and cluttered the input row the Design canvas kept clean —
         // key customization still lives in full in LiveSettings, nothing lost by hiding it here.
         showHint={false}
         pttKey={cfg.pttKey}
         pttSide={cfg.pttSide}
-        onHoldStart={() => voice.start({ inCanvas: !!turn.spec })}
-        onHoldEnd={() => voice.forceStop?.()}
+        onHoldStart={() => {
+          showAll();
+          voice.start({ inCanvas: !!turn.spec });
+        }}
+        onHoldEnd={() => voice.forceStop()}
         onChangePttKey={(key) => setLiveConfigV2({ pttKey: key })}
         onChangePttSide={(side) => setLiveConfigV2({ pttSide: side })}
       >
@@ -4559,21 +4821,21 @@ export function LiveApp(): ReactElement {
           <div className="dock-modes" role="group" aria-label="Listening modes">
             {whisper && <span className="whisper-badge">won't wake anyone</span>}
             {alwaysOn && sttOk && (
-              // "Watch me think" is no longer a chip — thinking aloud opens the live map
-              // automatically (see the onResult Smart default). Only "Just listen" stays explicit.
               <button
                 type="button"
                 className={'listen-mode-chip' + (justListen ? ' on' : '')}
                 aria-pressed={justListen}
                 onClick={() => {
                   setJustListen((v) => !v);
-                  if (watchThinking) setWatchThinking(false);
+                  if (watchThinking) {
+                    watchThinkingRef.current = false;
+                    setWatchThinking(false);
+                  }
                 }}
-                title={
-                  justListen
-                    ? 'Stop banking and go back to answering'
-                    : 'Bank everything you say without answering — say "thoughts?" when you want the sort'
-                }
+                // The discard warning rides the accessible name too — a screen-reader user must
+                // hear it before the click, not read it in a tooltip they never see.
+                title={listenTitle}
+                aria-label={listenTitle}
               >
                 {justListen ? `Just listening · ${rambleCount} banked` : 'Just listen'}
               </button>
@@ -4606,10 +4868,10 @@ export function LiveApp(): ReactElement {
             )}
           </div>
         )}
-        {(justListen || watchThinking) && <FeatureUseNotice kind="voice-data" from="live" />}
+        {sttOk && <FeatureUseNotice kind="voice-data" from="live" />}
         {voiceNotice && (
           <div className="voice-notice" role="status">
-            <Icon.micOff />
+            {voiceNotice === LOW_CONFIDENCE_VOICE_MSG ? <Icon.spark /> : <Icon.micOff />}
             <span>{voiceNotice}</span>
             <button
               type="button"
@@ -4851,14 +5113,14 @@ export function LiveApp(): ReactElement {
                 onClick={() => setShowSettings((s) => !s)}
                 title={
                   demoPersona.current
-                    ? 'The model that generated this recorded session'
+                    ? 'The model that generated this curated prerecorded example'
                     : latencyLabel
                       ? `Model settings · last reply ${latencyLabel}`
                       : 'Model settings'
                 }
               >
                 <span className="chip-dot" aria-hidden="true" />
-                {/* During a demo replay the chip names the model that REALLY produced these
+                {/* During a demo replay the chip names the model that produced these baked
                     answers (shard provenance) — showing the visitor's own configured model
                     would claim it generated content it never saw. */}
                 <span className="chip-model">
@@ -4881,6 +5143,10 @@ export function LiveApp(): ReactElement {
             listening={listening}
             heard={heard}
             onMic={onMic}
+            micMode={micMode}
+            micArmed={alwaysOn && !alwaysPaused}
+            micPaused={alwaysOn && alwaysPaused}
+            micProcessing={voicePhase === 'transcribing'}
             placeholder={
               watchThinking
                 ? 'Talk, or type a thought — it lands on the map…'
@@ -4908,13 +5174,46 @@ export function LiveApp(): ReactElement {
               if (!sttOk) return; // the click handler (onMic) surfaces the unsupported notice
               // Hush Mavéa the moment a hold starts, same as the tap toggle — a held mic is just
               // as much an interruption as a tapped one.
-              cancelSpeech();
+              showAll();
               voice.start({ inCanvas: !!turn.spec });
             }}
-            onForceStop={() => voice.forceStop?.()}
+            onForceStop={() => voice.forceStop()}
+            onMicCancel={() => voice.stop()}
             // Mark (draw-to-ask) lives with the input controls, shown only once there's an answer
             // to mark — so a resting canvas isn't cluttered by an orphaned bar.
-            tools={turn.spec ? <MarkToggle armed={inkArmed} onToggle={setInkArmed} /> : undefined}
+            tools={
+              <>
+                {turn.spec && <MarkToggle armed={inkArmed} onToggle={setInkArmed} />}
+                <button
+                  type="button"
+                  className={'composer-watch' + (watchThinking ? ' on' : '')}
+                  aria-pressed={watchThinking}
+                  aria-label={watchThinkingActionLabel}
+                  onClick={() => {
+                    if (!watchThinking) enterListening('think');
+                    else if (mindShape.phase === 'settled' || mindShape.phase === 'pausing') {
+                      setHeard(null);
+                      mindShape.resume();
+                      if (!listening && sttOk) {
+                        voice.start({ inCanvas: !!turn.spec, continuous: true });
+                      }
+                    } else {
+                      finishWatchThinking();
+                    }
+                  }}
+                  title={
+                    !watchThinking
+                      ? 'Build a live map while you think aloud'
+                      : mindShape.phase === 'settled' || mindShape.phase === 'pausing'
+                        ? 'Add another thought'
+                        : 'Finish now without waiting for silence'
+                  }
+                >
+                  <Icon.spark />
+                  <span>{watchThinkingActionLabel}</span>
+                </button>
+              </>
+            }
             // Mic mode (Tap/Always-on): a setting you pick once and rarely revisit doesn't earn a
             // standing row next to the mic — it lives behind a small chevron on the mic button
             // itself instead (Design canvas: both treatments converged on this after a floating
@@ -4922,7 +5221,7 @@ export function LiveApp(): ReactElement {
             micExtra={
               sttOk ? (
                 <MicModePopover
-                  mode={alwaysOn ? 'always' : micHoldPreferred ? 'hold' : 'tap'}
+                  mode={micMode}
                   pttKey={cfg.pttKey}
                   pttSide={cfg.pttSide}
                   onChange={(next) => {
@@ -4930,9 +5229,14 @@ export function LiveApp(): ReactElement {
                     // even if a listening surface borrowed always-on to get here. Don't let that
                     // surface's exit revert this choice out from under them.
                     alwaysOnBeforeListenRef.current = null;
+                    setAlwaysPaused(false);
                     setAlwaysOn(next === 'always');
                     setMicHoldPreferred(next === 'hold');
-                    if (next !== 'always' && listening) voice.stop();
+                    if (next === 'always' && alwaysOn && !listening && !value.trim()) {
+                      voice.start({ inCanvas: !!turn.spec, continuous: true });
+                    } else if (next !== 'always' && listening) {
+                      voice.stop();
+                    }
                   }}
                 />
               ) : undefined
@@ -4946,7 +5250,7 @@ export function LiveApp(): ReactElement {
       {listening && !watchThinking && (
         <ListeningCard
           transcript={heard}
-          mode={alwaysOn ? 'always' : 'tap'}
+          mode={micMode}
           note={
             justListen
               ? `Just listening · ${Math.max(1, Math.round((Date.now() - rambleStartRef.current) / 60_000))}m — say "thoughts?" when you want me`
@@ -5152,13 +5456,13 @@ export function LiveApp(): ReactElement {
                         <PenPill
                           enabled={cfg.annotationsEnabled}
                           open={trackVisible}
-                          inkCount={inked.length}
+                          inkCount={drawnEntries.length}
                           onClick={() => setTrackVisible((v) => !v)}
                         />
                         {trackVisible && (
                           <div className="pen-popover">
                             <GestureTrack
-                              entries={inked}
+                              entries={drawnEntries}
                               turnStartMs={turnStartMsRef.current}
                               annotationsEnabled={cfg.annotationsEnabled}
                               hiddenSpots={hiddenSpots}
@@ -5166,6 +5470,7 @@ export function LiveApp(): ReactElement {
                               onKeep={() => setTrackVisible(false)}
                               onClear={() => {
                                 setInked([]);
+                                setDrawnInk(new Set());
                                 setHiddenSpots(new Set());
                                 setTrackVisible(false);
                               }}
@@ -5189,6 +5494,7 @@ export function LiveApp(): ReactElement {
                     hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked
                   }
                   revision={canvasRevision}
+                  onPlaced={notePlaced}
                 />
               )}
               {turn.busy && viewingLive && (
@@ -5248,7 +5554,7 @@ export function LiveApp(): ReactElement {
             onStartTalking={() => {
               setConversationStarted(true);
               if (!sttOk) {
-                // No SpeechRecognition: land on the conversation surface with an honest notice
+                // No local microphone capture: land on the conversation surface with an honest notice
                 // and the composer focused, instead of a silent dead end inside the wizard.
                 setVoiceNotice(MIC_UNSUPPORTED_MSG);
                 setComposerFocus((n) => n + 1);
@@ -5371,7 +5677,7 @@ export function LiveApp(): ReactElement {
         <LazyOverlay>
           <ShareModal
             frames={turn.frames}
-            cfg={tourMode.current || demoPersona.current ? undefined : toModelConfig(cfg)}
+            retainedAudio={(frame) => audioStore.get(turnFrameId(frame))}
             onClose={() => setShareOpen(false)}
             onShared={() => interject.enqueue('clipShared')}
           />

@@ -220,10 +220,10 @@ describe('auditCardOverlap', () => {
     expect(auditCardOverlap(card)).toBeTruthy();
   });
 
-  it('exempts leaflet map markers colliding with each other, but not a caption over the map', () => {
+  it('exempts MapLibre markers colliding with each other, but not a caption over the map', () => {
     const card = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 } });
     const pane = make('div', { rect: { left: 0, right: 200, top: 0, bottom: 200 }, parent: card });
-    pane.className = 'leaflet-marker-pane';
+    pane.className = 'maplibregl-marker';
     // Two pins at close geographic coordinates — their overlap is data, not layout.
     textRun('span', '1', { left: 40, right: 66, top: 40, bottom: 66 }, pane);
     textRun('span', '3', { left: 55, right: 81, top: 50, bottom: 76 }, pane);

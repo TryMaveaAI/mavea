@@ -74,11 +74,14 @@ docker compose up -d      # Kokoro TTS on :8880
 
 Kokoro downloads its voice model on first start, so the first few lines may be silent until it's
 ready. Without the container, TTS falls back to captions and the transcript remains available.
+The in-conversation **Mavéa's voice** toggle turns output speech off without changing microphone
+input; a paced answer then reveals in full immediately with captions, notes, and Pen marks.
 
-**Speech-to-text** needs no self-hosted service: the mic uses the browser's built-in speech
-recognition. If you run an OpenAI-compatible Whisper server on `localhost:8100`
-(override with `WHISPER_URL`), Live upgrades transcription to it automatically and falls back
-to the browser when it's absent.
+**Speech-to-text** uses the bundled whisper.cpp container on `localhost:8100` by default. `pnpm
+dev` starts it with Kokoro; if it is unavailable, microphone transcription stays unavailable and
+typing continues to work. Mavéa never falls back to a browser-vendor speech-recognition service.
+If a deployment overrides `WHISPER_URL`, microphone audio is sent through the same-origin proxy to
+that configured endpoint, which must be covered by the operator's security and privacy notice.
 
 ---
 

@@ -129,5 +129,10 @@ export function svgBlockMenu(): string {
     '• FORBIDDEN: <script>, <style>, <foreignObject>, <image>, <a>, event handlers (onclick…),',
     '  animation (<animate>/<set>), and ANY external URL or javascript:/data: reference.',
     '• Strokes and text use currentColor-style tokens; keep line weights consistent and legible.',
+    '• Type must stay READABLE once the figure is scaled to fit a card. font-size is in viewBox',
+    '  units, so it shrinks with everything else: keep every label at or above 1.5% of the',
+    '  viewBox width (a 400-wide viewBox means font-size 6 at the very smallest, ~10 preferred).',
+    '  A label nobody can read is worse than one you left out — drop the label or enlarge the',
+    '  viewBox rather than shrinking type to make it fit.',
   ].join('\n');
 }
