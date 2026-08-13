@@ -40,7 +40,7 @@
   /* The stage is fixed to the whole viewport, so the session rail sits ON TOP of its left edge:
      without this the docked face and the leftmost cards were laid out underneath the rail, and the
      camera centred the map against a box a rail-width wider than what anyone can see. */
-  padding: 70px 32px calc(var(--dock-h, 76px) + 108px) calc(32px + var(--rail-w, 0px));
+  padding: 70px 32px calc(var(--dock-h, 76px) + 44px) calc(32px + var(--rail-w, 0px));
   box-sizing: border-box;
   /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the
      page background. Tokens handle light/dark automatically. */
@@ -57,7 +57,7 @@
    which floats over the foot of the stage: without it the lowest theme label was drawn behind
    those chips, half-legible. */
 .ms-stage-fill[data-phase='settled'] {
-  padding-bottom: calc(var(--dock-h, 76px) + 108px);
+  padding-bottom: calc(var(--dock-h, 76px) + 44px);
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
     color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
@@ -790,6 +790,17 @@
 .ms-canvas[data-has-actions='true'] .ms-actions,
 .ms-canvas[data-phase='settled'] .ms-actions {
   transform: translateY(0);
+}
+
+/* Settled: the bar rides the DOCK, not the bottom of the map's box. The box is padded clear of the
+   dock so no card is drawn behind it — and on a tall dock (notices stacked above the composer, 337px
+   measured on a 5K display) that edge is hundreds of pixels up the screen, leaving the bar hanging
+   in open space. Fixed to the dock, it sits where every other bottom control does. */
+.ms-canvas[data-phase='settled'] .ms-actions {
+  position: fixed;
+  bottom: calc(var(--dock-h, 76px) + 12px);
+  left: var(--rail-w, 0px);
+  right: 0;
 }
 
 .ms-action-btn {
