@@ -146,7 +146,7 @@ function groupRows(specs: SpanSpec[], budget: number): number[][] {
   // crushed into a pair, while letting ordinary content (min ≤ 6) tile.
   const canShare = (a: number[], b: number[]): boolean =>
     a.length + b.length <= maxPerRow && rowMinSum(a) + rowMinSum(b) <= budget;
-  for (let r = 0; r < rows.length; ) {
+  for (let r = 0; r < rows.length;) {
     if (rows[r].length !== 1) {
       r++;
       continue;

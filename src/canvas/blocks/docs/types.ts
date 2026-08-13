@@ -456,12 +456,7 @@ export interface ResumeProps {
    each entry badge-tagged by kind (added/changed/fixed/removed/deprecated/security) along a
    color-coded rail, reusing ClinicalTimeline's event-type→color pattern for release kinds. ── */
 export type ChangelogEntryKind =
-  | 'added'
-  | 'changed'
-  | 'fixed'
-  | 'removed'
-  | 'deprecated'
-  | 'security';
+  'added' | 'changed' | 'fixed' | 'removed' | 'deprecated' | 'security';
 export interface ChangelogEntry {
   kind: ChangelogEntryKind;
   text: string;

@@ -46,8 +46,7 @@ export function anthropicUserContent(
 // ── OpenAI (and OpenAI-compatible gateways): content is an array of {type:'text'|'image_url'}.
 //    The chat API reads images but NOT raw PDFs, so a PDF degrades to the text note. ──
 type OpenAIPart =
-  | { type: 'text'; text: string }
-  | { type: 'image_url'; image_url: { url: string } };
+  { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
 
 export function openaiUserContent(text: string, attachments?: Attachment[]): string | OpenAIPart[] {
   if (!attachments?.length) return text;
@@ -68,8 +67,7 @@ export function openaiUserContent(text: string, attachments?: Attachment[]): str
 //    `detail` is a REQUIRED field on input_image (missing it 400s); 'auto' matches the
 //    provider's own default so it doesn't change anything the Chat Completions path did. ──
 type ResponsesPart =
-  | { type: 'input_text'; text: string }
-  | { type: 'input_image'; image_url: string; detail: 'auto' };
+  { type: 'input_text'; text: string } | { type: 'input_image'; image_url: string; detail: 'auto' };
 
 export function openaiResponsesUserContent(
   text: string,

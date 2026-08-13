@@ -10,27 +10,25 @@ import type { ChatMessage } from '../src/live/providers/types';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 
 vi.mock('../src/live/generateLive', () => ({
-  generateLive: vi.fn(
-    async (): Promise<LiveResult> => ({
-      spec: {
-        id: 'live',
-        workspace: 'Live',
-        title: "Couldn't answer",
-        sub: '',
-        opener: '',
-        context: [],
-        blocks: [],
-        proof: null,
-        extras: {},
-        group: 'home',
-        suggests: [],
-        keywords: [],
-      } as unknown as ConversationSpec,
-      narration: '',
-      tier: 'frontier',
-      error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' },
-    }),
-  ),
+  generateLive: vi.fn(async (): Promise<LiveResult> => ({
+    spec: {
+      id: 'live',
+      workspace: 'Live',
+      title: "Couldn't answer",
+      sub: '',
+      opener: '',
+      context: [],
+      blocks: [],
+      proof: null,
+      extras: {},
+      group: 'home',
+      suggests: [],
+      keywords: [],
+    } as unknown as ConversationSpec,
+    narration: '',
+    tier: 'frontier',
+    error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' },
+  })),
 }));
 
 import { LiveApp } from '../src/live/LiveApp';

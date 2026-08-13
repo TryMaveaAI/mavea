@@ -13,14 +13,12 @@ import type { Block, ConversationSpec } from '../src/data/conversation';
 // A turn that fails settles exactly like one that succeeds (busy → not busy, canvas untouched)
 // without dragging the reveal walk and its audio waits into the test.
 vi.mock('../src/live/generateLive', () => ({
-  generateLive: vi.fn(
-    async (): Promise<LiveResult> => ({
-      spec: null as unknown as ConversationSpec,
-      narration: '',
-      tier: 'frontier',
-      error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' },
-    }),
-  ),
+  generateLive: vi.fn(async (): Promise<LiveResult> => ({
+    spec: null as unknown as ConversationSpec,
+    narration: '',
+    tier: 'frontier',
+    error: { kind: 'auth', status: 401, message: 'Your API key was rejected.' },
+  })),
 }));
 
 import { LiveApp } from '../src/live/LiveApp';

@@ -1634,8 +1634,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   // answer was built on (an honest receipts panel, not the demo's fabricated file rows).
   if (sources.length) {
     const lead = composed.blocks.find((b) => (b as { type: string }).type === 'insight') as
-      | (Block & { prove?: boolean })
-      | undefined;
+      (Block & { prove?: boolean }) | undefined;
     if (lead) lead.prove = true;
   }
   // Keep the spoken line conversational for the ask: a tweet for a trivial answer, up to a

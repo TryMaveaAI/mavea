@@ -84,8 +84,7 @@ describe('itemShape round-trip — model synonyms coerce to visible text', () =>
         12,
       );
       const block = result?.blocks.find((b) => b.type === type) as
-        | { props: Record<string, unknown> }
-        | undefined;
+        { props: Record<string, unknown> } | undefined;
       // The block must survive (its required item array is non-empty after repair)…
       expect(
         block,

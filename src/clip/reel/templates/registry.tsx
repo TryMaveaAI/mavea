@@ -175,9 +175,7 @@ export const COERCE: { [K in SlotKey]: (r: Raw, ctx: CoerceCtx) => SlotsFor<K> }
         return {
           label: S(objectValue(s).label, SLOT_BUDGET.label, '—'),
           state: (state === 'done' || state === 'active' || state === 'todo' ? state : 'todo') as
-            | 'done'
-            | 'active'
-            | 'todo',
+            'done' | 'active' | 'todo',
         };
       }),
   }),

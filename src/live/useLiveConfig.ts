@@ -264,11 +264,7 @@ let secretsWriteGen = 0;
 let secretsHydrated = false;
 
 export type SecretPersistenceStatus =
-  | 'not-requested'
-  | 'pending'
-  | 'persisted'
-  | 'session-only'
-  | 'unavailable';
+  'not-requested' | 'pending' | 'persisted' | 'session-only' | 'unavailable';
 
 let secretPersistenceStatus: SecretPersistenceStatus = 'not-requested';
 let secretPersistenceTask: Promise<void> = Promise.resolve();

@@ -9,16 +9,7 @@ import type { FC } from 'react';
 import type { Slide, SlideKind } from '../model/Slide';
 
 export type SlideSkinId =
-  | 'folio'
-  | 'meridian'
-  | 'noir'
-  | 'north'
-  | 'lumen'
-  | 'grid'
-  | 'terra'
-  | 'cobalt'
-  | 'press'
-  | 'sol';
+  'folio' | 'meridian' | 'noir' | 'north' | 'lumen' | 'grid' | 'terra' | 'cobalt' | 'press' | 'sol';
 
 /** The colour world of a skin. Layouts read these (never literals) so one component fits all. */
 export interface SlideTokens {

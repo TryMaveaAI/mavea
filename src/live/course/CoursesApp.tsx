@@ -31,8 +31,7 @@ import { preloadRoute } from '../../routes';
 import { preloadIntentProps, scheduleIdlePreload } from '../../lib/preloadableLazy';
 
 let courseBuilderPromise:
-  | Promise<[typeof import('./generateCourse'), typeof import('../useLiveConfig')]>
-  | undefined;
+  Promise<[typeof import('./generateCourse'), typeof import('../useLiveConfig')]> | undefined;
 
 /** Code only: generation still starts exclusively inside submitTopic after Build is pressed. */
 function preloadCourseBuilder(): Promise<

@@ -151,13 +151,7 @@ export interface ErDiagramProps {
 /* ── circuitdiagram: a simple schematic on a grid — components (battery, resistor, etc.) placed
    on a 0..100 canvas and joined by wires. Physics, EE, electronics education. ── */
 export type CircuitKind =
-  | 'battery'
-  | 'resistor'
-  | 'capacitor'
-  | 'bulb'
-  | 'switch'
-  | 'ground'
-  | 'node';
+  'battery' | 'resistor' | 'capacitor' | 'bulb' | 'switch' | 'ground' | 'node';
 export interface CircuitComponent {
   id: string;
   kind: CircuitKind;
@@ -350,13 +344,7 @@ export interface ProbabilityTreeProps {
    domains: code, education. ── */
 
 export type DataStructureKind =
-  | 'array'
-  | 'linkedlist'
-  | 'stack'
-  | 'queue'
-  | 'tree'
-  | 'bst'
-  | 'heap';
+  'array' | 'linkedlist' | 'stack' | 'queue' | 'tree' | 'bst' | 'heap';
 
 /** One cell/node for the linear kinds — either a bare value or `{ value }`. */
 export interface DsCell {
@@ -1017,14 +1005,7 @@ export interface ControlBlockDiagramProps {
    topology. Use for "draw the system architecture", "whiteboard this design", a load-balanced
    web service, a CQRS/event pipeline, a CDN-fronted API. domains: code, tech, business. ── */
 export type SysArchNodeKind =
-  | 'client'
-  | 'loadbalancer'
-  | 'service'
-  | 'database'
-  | 'cache'
-  | 'queue'
-  | 'gateway'
-  | 'cdn';
+  'client' | 'loadbalancer' | 'service' | 'database' | 'cache' | 'queue' | 'gateway' | 'cdn';
 export interface SysArchNode {
   id: string;
   label: string;
@@ -1314,12 +1295,7 @@ export interface ThreatBoundary {
   contains: string[];
 }
 export type StrideKind =
-  | 'spoofing'
-  | 'tampering'
-  | 'repudiation'
-  | 'info-disclosure'
-  | 'dos'
-  | 'elevation';
+  'spoofing' | 'tampering' | 'repudiation' | 'info-disclosure' | 'dos' | 'elevation';
 export type ThreatStatus = 'mitigated' | 'open';
 export interface ThreatEntry {
   assetId: string;

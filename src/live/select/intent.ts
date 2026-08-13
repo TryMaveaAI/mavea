@@ -10,14 +10,7 @@
 import type { ChatMessage } from '../providers/types';
 
 export type IntentDomain =
-  | 'career'
-  | 'money'
-  | 'health'
-  | 'legal'
-  | 'relationship'
-  | 'tech'
-  | 'travel'
-  | 'learning';
+  'career' | 'money' | 'health' | 'legal' | 'relationship' | 'tech' | 'travel' | 'learning';
 
 export interface IntentSignals {
   /** weighing a choice — "should I", "is it worth", "which is better" */

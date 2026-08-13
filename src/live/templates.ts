@@ -14,12 +14,7 @@ import { readTheme, applyTheme } from '../lib/theme';
 
 export type TemplateId = 'paper' | 'daylight' | 'ink' | 'console' | 'marquee' | 'default';
 export type TemplatePersona =
-  | 'Generalist'
-  | 'Scholar'
-  | 'Planner'
-  | 'Editor'
-  | 'Operator'
-  | 'Storyteller';
+  'Generalist' | 'Scholar' | 'Planner' | 'Editor' | 'Operator' | 'Storyteller';
 export type TemplateGeometry = 'soft' | 'paper' | 'airy' | 'editorial' | 'technical' | 'poster';
 
 export interface TemplatePreview {

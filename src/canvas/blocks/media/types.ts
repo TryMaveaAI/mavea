@@ -614,16 +614,7 @@ export interface MixerBoardProps {
  *  low-fidelity sketch (lorem bars for text, a diagonal-crossed box for an image, a pill
  *  for a button…). A closed set so the renderer can map every kind to a shape. */
 export type WireKind =
-  | 'header'
-  | 'hero'
-  | 'nav'
-  | 'image'
-  | 'text'
-  | 'button'
-  | 'card'
-  | 'list'
-  | 'footer'
-  | 'input';
+  'header' | 'hero' | 'nav' | 'image' | 'text' | 'button' | 'card' | 'list' | 'footer' | 'input';
 export interface WireRegion {
   kind: WireKind;
   /** label drawn on/under the placeholder (e.g. "Hero", "Feature card") */

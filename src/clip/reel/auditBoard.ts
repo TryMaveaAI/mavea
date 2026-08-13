@@ -145,8 +145,7 @@ export function auditBoard(board: HTMLElement): AuditFlag[] {
   // aspect; this catches the subtle whole-composition left lean that overflow checks cannot see.
   const stage = board.querySelector<HTMLElement>('.reel-stage');
   const fitInner = stage?.firstElementChild?.firstElementChild?.firstElementChild as
-    | HTMLElement
-    | undefined;
+    HTMLElement | undefined;
   const visualRoot = fitInner?.firstElementChild as HTMLElement | undefined;
   if (stage && visualRoot) {
     const s = stage.getBoundingClientRect();

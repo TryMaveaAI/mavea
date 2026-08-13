@@ -15,8 +15,7 @@
 export type SandboxLang = 'js' | 'javascript' | 'ts' | 'typescript' | 'python' | 'py';
 
 export type SandboxResult =
-  | { ok: true; output: string; elapsed: number }
-  | { ok: false; error: string; elapsed: number };
+  { ok: true; output: string; elapsed: number } | { ok: false; error: string; elapsed: number };
 
 export const SANDBOX_TIMEOUT_MS = 10_000;
 export const MAX_SANDBOX_CODE_BYTES = 128 * 1024;

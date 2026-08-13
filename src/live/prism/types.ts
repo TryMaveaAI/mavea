@@ -7,13 +7,7 @@ import type { GroundableClaim } from './grounding';
 /** The kind palette — tints a claim card; does not organize layout (regions do that). `diagram`
  *  marks a claim ABOUT a figure/chart/table, so the source view outlines the graphic on the page. */
 export type ClaimKind =
-  | 'forecast'
-  | 'stat'
-  | 'finding'
-  | 'risk'
-  | 'definition'
-  | 'method'
-  | 'diagram';
+  'forecast' | 'stat' | 'finding' | 'risk' | 'definition' | 'method' | 'diagram';
 
 /** How much weight a claim carries in the document's case — drives the answer-first hierarchy so the
  *  few claims that matter bloom large and the camera frames them, instead of dumping 20 equal cards.

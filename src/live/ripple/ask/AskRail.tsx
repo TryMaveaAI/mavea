@@ -178,8 +178,7 @@ export function AskRail({
                       data-coverage={t.answer.coverage}
                       style={
                         { '--cover-color': COVERAGE_META[t.answer.coverage].token } as
-                          | React.CSSProperties
-                          | undefined
+                          React.CSSProperties | undefined
                       }
                     >
                       <span className="ripple-ask-cover-dot" aria-hidden="true" />

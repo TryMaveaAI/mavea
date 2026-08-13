@@ -7,13 +7,7 @@ import { agoLine, headlineMetric, refreshableWidgetCount } from '../format';
 import type { CadenceWindow, Dashboard, DataCadenceMode, MetricSpec } from '../types';
 
 export type TileKind =
-  | 'scheduled'
-  | 'live-event'
-  | 'sports'
-  | 'weather'
-  | 'probability'
-  | 'price'
-  | 'generic';
+  'scheduled' | 'live-event' | 'sports' | 'weather' | 'probability' | 'price' | 'generic';
 
 /** Which viz component the slot renders. A finer grain than TileKind: 'price' and a bare 'generic'
  *  trend both plot MetricSpec.history, but a price earns the filled, direction-tinted AreaChart

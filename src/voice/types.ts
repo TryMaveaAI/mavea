@@ -34,12 +34,7 @@ export interface VoiceResult {
 }
 
 export type VoiceError =
-  | 'no-speech'
-  | 'not-allowed'
-  | 'audio'
-  | 'unsupported'
-  | 'transcription'
-  | 'aborted';
+  'no-speech' | 'not-allowed' | 'audio' | 'unsupported' | 'transcription' | 'aborted';
 
 export interface VoiceStateEvent {
   phase: VoicePhase;

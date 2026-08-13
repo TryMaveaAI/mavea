@@ -811,8 +811,7 @@ describe('generic, metadata-driven coercion (the long tail beyond the hand-built
       new Set(['funnel']),
     );
     const block = r!.blocks.find((b) => b.type === 'funnel') as
-      | { props: { title: string } }
-      | undefined;
+      { props: { title: string } } | undefined;
     expect(block?.props.title.includes('<')).toBe(false);
   });
 });

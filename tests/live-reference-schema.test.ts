@@ -113,8 +113,7 @@ describe('generic live component structural references', () => {
       1,
     );
     const props = res?.blocks[0]?.props as
-      | { rows?: Array<{ name: string; values: Record<string, number> }> }
-      | undefined;
+      { rows?: Array<{ name: string; values: Record<string, number> }> } | undefined;
     expect(props?.rows).toHaveLength(2);
     expect(props?.rows?.[0]?.values).toEqual({ revenue: 120, winRate: 62 });
   });
@@ -149,8 +148,7 @@ describe('nested closed vocabularies (validated ⇒ substantive)', () => {
       ['logicmodel'],
     );
     const props = res?.blocks[0]?.props as
-      | { columns?: Array<{ stage: string; items: string[] }> }
-      | undefined;
+      { columns?: Array<{ stage: string; items: string[] }> } | undefined;
     expect(props?.columns?.map((c) => c.stage)).toEqual([
       'inputs',
       'activities',
@@ -217,8 +215,7 @@ describe('nested closed vocabularies (validated ⇒ substantive)', () => {
       ['chatthread'],
     );
     const props = res?.blocks[0]?.props as
-      | { messages?: Array<{ role: string; text: string; status?: string }> }
-      | undefined;
+      { messages?: Array<{ role: string; text: string; status?: string }> } | undefined;
     expect(props?.messages).toHaveLength(2);
     expect(props?.messages?.[0]?.status).toBeUndefined();
     expect(props?.messages?.[0]?.text).toBe('Any update on the refund?');

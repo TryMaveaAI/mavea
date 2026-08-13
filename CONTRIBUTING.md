@@ -275,9 +275,7 @@ export const myproviderAdapter: ProviderAdapter = {
   async probe(cfg: ModelConfig) {
     // Must never throw — return { ok: false } on any error
     try {
-      const res = await fetch('/llm/myprovider/models', {
-        /* auth header */
-      });
+      const res = await fetch('/llm/myprovider/models', {/* auth header */});
       return { ok: res.ok, model: true };
     } catch {
       return { ok: false, model: false };
@@ -287,9 +285,7 @@ export const myproviderAdapter: ProviderAdapter = {
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn) {
     // Stream raw JSON to onDelta; return the full accumulated text.
     // Do NOT validate or parse — validateLiveResponse handles that.
-    const res = await fetch('/llm/myprovider/v1/chat', {
-      /* … */
-    });
+    const res = await fetch('/llm/myprovider/v1/chat', {/* … */});
     // … stream handling …
     return { raw: fullText };
   },

@@ -8,13 +8,7 @@ import type { IconKey } from '../../../types/mavea';
 
 /* ── buttonbar ── gallery of button variants (all clickable, ripple/press) ── */
 export type ButtonVariant =
-  | 'primary'
-  | 'secondary'
-  | 'ghost'
-  | 'outline'
-  | 'destructive'
-  | 'icon'
-  | 'loading';
+  'primary' | 'secondary' | 'ghost' | 'outline' | 'destructive' | 'icon' | 'loading';
 export interface ButtonSpec {
   /** visible label (omit/ignored for the icon variant) */
   label?: string;
@@ -283,11 +277,7 @@ export interface PreflightchecklistProps {
 
 /* ── estateplanchecklist ── estate-planning documents grouped by category, status per item ── */
 export type EstateDocCategory =
-  | 'Will'
-  | 'POA'
-  | 'Healthcare Proxy'
-  | 'Beneficiary designations'
-  | 'Digital assets';
+  'Will' | 'POA' | 'Healthcare Proxy' | 'Beneficiary designations' | 'Digital assets';
 export type EstateDocStatus = 'done' | 'missing' | 'needs-update';
 export interface EstateDocument {
   /** which of the five estate-planning pillars this document covers */

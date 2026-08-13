@@ -37,12 +37,7 @@ interface NullSeg {
 }
 
 type EqType =
-  | 'stable-node'
-  | 'unstable-node'
-  | 'stable-spiral'
-  | 'unstable-spiral'
-  | 'saddle'
-  | 'center';
+  'stable-node' | 'unstable-node' | 'stable-spiral' | 'unstable-spiral' | 'saddle' | 'center';
 
 interface Equilibrium {
   px: number;

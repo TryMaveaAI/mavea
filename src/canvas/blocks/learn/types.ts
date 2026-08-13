@@ -1946,13 +1946,7 @@ export interface CircleOfFifthsProps {
    teeth …". */
 
 export type ToothStatus =
-  | 'healthy'
-  | 'caries'
-  | 'filling'
-  | 'crown'
-  | 'missing'
-  | 'implant'
-  | 'rootcanal';
+  'healthy' | 'caries' | 'filling' | 'crown' | 'missing' | 'implant' | 'rootcanal';
 
 export interface ToothEntry {
   /** Tooth number in the chart's `system` — Universal 1–32 or FDI two-digit (e.g. 11, 26, 36). */

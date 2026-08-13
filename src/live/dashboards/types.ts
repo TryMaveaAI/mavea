@@ -62,14 +62,7 @@ export interface MetricSpec {
 /** How a tripwire compares a metric to its threshold. `crosses_*`/`pct_*` need the metric's PREVIOUS
  *  value so a tripwire fires on the transition (the move), not on every poll while still over. */
 export type Comparator =
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte'
-  | 'crosses_up'
-  | 'crosses_down'
-  | 'pct_drop'
-  | 'pct_rise';
+  'gt' | 'gte' | 'lt' | 'lte' | 'crosses_up' | 'crosses_down' | 'pct_drop' | 'pct_rise';
 
 /** WATCHING = armed, not breached; CLEAR = comfortably on-thesis; TRIGGERED = it moved against you;
  *  AWAITING = no real value yet, so we won't pretend it's clear. */

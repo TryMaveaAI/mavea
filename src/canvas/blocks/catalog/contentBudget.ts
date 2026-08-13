@@ -183,9 +183,12 @@ export function contentBudgetPromptClause(meta: ComponentMeta): string {
   const keys = [...meta.requires, ...meta.optional];
   for (const key of keys) {
     if (clauses.length >= 4) break;
-    if (
-      !(TITLE_KEYS.test(key) || LABEL_KEYS.test(key) || PROSE_KEYS.test(key) || LONG_KEYS.test(key))
-    )
+    if (!(
+      TITLE_KEYS.test(key) ||
+      LABEL_KEYS.test(key) ||
+      PROSE_KEYS.test(key) ||
+      LONG_KEYS.test(key)
+    ))
       continue;
     const b = fieldContentBudget(meta.type, key, 'text', meta.contentBudget);
     if (b.maxGraphemes) clauses.push(`${key}≤${b.maxGraphemes} chars`);
