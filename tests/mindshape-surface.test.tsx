@@ -476,6 +476,18 @@ describe('computeLayout', () => {
     }
   });
 
+  it('clears the settled hub by a whole card, not just its radius', () => {
+    // The hub is a WORLD circle (260 units across) holding the question, and a card's position is
+    // its CENTRE — so reserving only the radius would leave every card's near edge inside the
+    // circle. Both fixed-overlay attempts at this failed the same way, at zoom instead of at rest.
+    const { positions } = computeLayout(mkAtoms(7), undefined, undefined, false, true);
+    for (const [id, p] of positions) {
+      const clearsX = Math.abs(p.x - CX) >= 130 + CARD_HW;
+      const clearsY = Math.abs(p.y - CY) >= 130 + CARD_HH;
+      expect(clearsX || clearsY, `card ${id} overlaps the question hub`).toBe(true);
+    }
+  });
+
   it('parks a theme label clear of the cards it names', () => {
     const atoms = mkAtoms(6);
     const clusters = [

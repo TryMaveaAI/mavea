@@ -342,14 +342,18 @@ export function MindShape({
   // (append-stable — see computeLayout's `prev`). Reset the seed whenever the grouping changes, so a
   // theme forming is still free to reorganise the map instead of freezing cards in their old places.
   const prevPositionsRef = useRef<Map<string, MindShapePoint>>(new Map());
-  const clusterKey = (clusters ?? []).map((c) => `${c.id}:${c.atomIds.join(',')}`).join('|');
+  const docked = phase === 'settled';
+  // The dock frees the middle of the stage, so the seed has to be dropped when it flips — otherwise
+  // every card keeps the spot it was given while the centre was still reserved, and the map settles
+  // lopsided around a hole that is no longer there.
+  const clusterKey = `${docked}|${(clusters ?? []).map((c) => `${c.id}:${c.atomIds.join(',')}`).join('|')}`;
   const prevClusterKeyRef = useRef<string>('');
   const seed = clusterKey === prevClusterKeyRef.current ? prevPositionsRef.current : undefined;
   const { positions, centroidOf, labels } = useMemo(
-    () => computeLayout(atoms, clusters, seed, !!unsaid),
+    () => computeLayout(atoms, clusters, seed, !!unsaid, docked),
     // seed is derived from clusters (via clusterKey), so it needs no separate dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [atoms, clusters, unsaid],
+    [atoms, clusters, unsaid, docked],
   );
   prevPositionsRef.current = positions;
   prevClusterKeyRef.current = clusterKey;
@@ -601,6 +605,16 @@ export function MindShape({
           })}
         </svg>
 
+        {/* Settled: the question becomes the hub at the centre of the map, with every card
+            arranged around it — the shape a mind map actually has. It lives IN the world, sized in
+            the same world units the layout reserves for it (HUB_KEEPOUT), so it cannot drift onto a
+            card at any zoom the way a fixed-size screen element did. */}
+        {docked && center && (
+          <div className="ms-hub" style={{ left: `${CX}px`, top: `${CY}px` }} aria-live="polite">
+            <span className="ms-hub-text">{center}</span>
+          </div>
+        )}
+
         {/* ── Atom cards ──────────────────────────────────────────────── */}
         {atoms.map((atom, i) => {
           const p = positions.get(atom.id);
@@ -623,13 +637,15 @@ export function MindShape({
       <div className="ms-center">
         {/* Signal chip: transient Mavéa reaction above the face during listening */}
         {currentSignal && phase !== 'settled' && <SignalChip signal={currentSignal} />}
-        <div className="ms-center-pip-wrap">
+        {/* Settled: wear Live's own corner-orb rules (presence-canvas.css) so the docked face is
+            the same chibi silhouette people already know from a canvas takeover. */}
+        <div className={docked ? 'ms-center-pip-wrap presence-layer corner' : 'ms-center-pip-wrap'}>
           <Presence state={presenceState} emotion="neutral" gaze="center" />
         </div>
         <div className="ms-center-label" aria-hidden="true">
           {settledCenterLabel}
         </div>
-        {center && (
+        {center && !docked && (
           <div className="ms-center-question" aria-live="polite">
             {center}
           </div>

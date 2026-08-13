@@ -20,6 +20,22 @@ const CENTER_TEXT_HW = 105;
 /** Half-extent of a theme label, for keeping it off the cards it names. */
 const LABEL_HW = 82;
 const LABEL_HH = 16;
+/** Where the face parks once the shape has settled — the corner, the same move Live makes when a
+ *  canvas takes over. While listening it stays centred (thoughts orbit the thing hearing them); on
+ *  settle it docks and the middle of the stage becomes ordinary space instead of a reserved hole. */
+/** Radius of the settled hub — the circle holding the question at the centre of the map (see
+ *  .ms-hub, which is 2×HUB_R wide in these same world units). A card's POSITION is its centre, so
+ *  the clear zone has to be the hub's radius plus the card's own half-extent plus a gap, per axis —
+ *  reserving only the radius would let every card's near edge sit inside the circle. */
+const HUB_R = 130;
+const HUB_KEEPOUT_X = HUB_R + CARD_HW + 20;
+const HUB_KEEPOUT_Y = HUB_R + CARD_HH + 20;
+
+export const DOCK_X = 0.1 * VW;
+export const DOCK_Y = 0.12 * VH;
+const DOCK_HW = 120;
+const DOCK_HH = 80;
+
 /** The unsaid card is pinned — it is the one card the person has not said yet, and it always waits
  *  in the same corner so it never looks like just another thought. Pinned, but not invisible: the
  *  relaxation has to push real atoms OFF it, or the two render as one unreadable pile. */
@@ -43,6 +59,8 @@ function separate(
   halfWidth: number,
   halfHeight: number,
   pinned: ReadonlyArray<{ x: number; y: number; hw: number; hh: number }> = [],
+  /** True once the face has docked — the centre is ordinary space again. */
+  docked = false,
 ): void {
   const ids = Array.from(positions.keys());
   const minDX = halfWidth * 2 + SEP_GAP;
@@ -51,10 +69,10 @@ function separate(
   // The centre's text is WIDER than the face — a two-line question and the tension summary run to
   // the measure below it — so the keep-out has to clear the text, not the jelly. A card level with
   // that block used to sit right on the sentence that explains the map.
-  const keepoutX = keepout + CENTER_TEXT_HW;
-  const keepoutAbove = keepout + halfHeight * 0.9;
+  const keepoutX = docked ? HUB_KEEPOUT_X : keepout + CENTER_TEXT_HW;
+  const keepoutAbove = docked ? HUB_KEEPOUT_Y : keepout + halfHeight * 0.9;
   // Taller below: that is where the centre's own text lives (see CENTER_STACK_BELOW).
-  const keepoutBelow = keepoutAbove + CENTER_STACK_BELOW;
+  const keepoutBelow = docked ? HUB_KEEPOUT_Y : keepoutAbove + CENTER_STACK_BELOW;
   for (let iteration = 0; iteration < 400; iteration++) {
     for (const id of ids) {
       const point = positions.get(id)!;
@@ -176,6 +194,8 @@ export function computeLayout(
   previous?: ReadonlyMap<string, MindShapePoint>,
   /** True while the map is showing the pinned "unsaid" card, so atoms keep clear of it. */
   hasUnsaid = false,
+  /** True once the face has docked (settled): the centre opens up, the dock is what to avoid. */
+  docked = false,
 ): MindShapeLayout {
   const positions = new Map<string, MindShapePoint>();
   const centroidOf = new Map<string, MindShapePoint>();
@@ -229,7 +249,11 @@ export function computeLayout(
     positions,
     CARD_HW,
     CARD_HH,
-    hasUnsaid ? [{ x: UNSAID_X, y: UNSAID_Y, hw: UNSAID_HW, hh: CARD_HH }] : [],
+    [
+      ...(hasUnsaid ? [{ x: UNSAID_X, y: UNSAID_Y, hw: UNSAID_HW, hh: CARD_HH }] : []),
+      ...(docked ? [{ x: DOCK_X, y: DOCK_Y, hw: DOCK_HW, hh: DOCK_HH }] : []),
+    ],
+    docked,
   );
   // Labels are placed against the SETTLED cards, not the seed ring they were spawned from.
   placeLabels(labels, positions, groups);
