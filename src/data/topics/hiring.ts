@@ -208,6 +208,55 @@ export const hiring: ConversationSpec = {
           'Engineering carries the widest gap, 11 budgeted seats still open, 7 with active reqs.',
       },
     },
+    {
+      type: 'dosdonts',
+      col: 8,
+      delay: 560,
+      props: {
+        title: 'Running the panel',
+        icon: 'shield',
+        iconColor: 'var(--insight)',
+        heading: 'What the two stalled loops last quarter taught us',
+        doLabel: 'Do',
+        dontLabel: 'Don’t',
+        pairs: [
+          {
+            topic: 'Opening',
+            do: 'Say up front how long you have and what you plan to cover.',
+            dont: 'Open with “so, tell me about yourself”.',
+            why: 'A stated agenda settles nerves; the open prompt just rewards whoever rehearsed hardest.',
+          },
+          {
+            topic: 'Questions',
+            do: 'Ask every candidate the same four scored questions.',
+            dont: 'Improvise a follow-up you would not ask the next person.',
+            why: 'Different questions mean the scorecard is comparing nothing.',
+          },
+          {
+            topic: 'Off limits',
+            do: 'Keep to the role, scope, tradeoffs, and how they handled a hard week.',
+            dont: 'Ask about family plans, age, health, or immigration status.',
+            hazard: true,
+            why: 'Unlawful to ask in most jurisdictions, and one slip can void the whole loop.',
+          },
+          {
+            topic: 'Scoring',
+            do: 'Write your score down before you read anyone else’s.',
+            dont: 'Debrief in the hallway on the way back to your desk.',
+            why: 'The first opinion said out loud anchors the rest of the panel to it.',
+          },
+          {
+            topic: 'Closing',
+            dont: 'Promise a decision date the recruiter has not agreed to.',
+          },
+          {
+            do: 'Leave the last five minutes for their questions, every time.',
+          },
+        ],
+        footer:
+          'Both loops that stalled last quarter stalled on the scoring step, not on the candidate.',
+      },
+    },
   ],
   proof: null,
   extras: {

@@ -1,5 +1,6 @@
 import { entry, type BlockRegistry } from '../registry-types';
 import { AlgorithmTrace } from './AlgorithmTrace';
+import { AnalogyMap } from './AnalogyMap';
 import { ArgumentMap } from './ArgumentMap';
 import { BinaryTree } from './BinaryTree';
 import { CastMap } from './CastMap';
@@ -50,6 +51,7 @@ import './styles.css';
  *  media Diagram, so every shapes/labels block crashed in layoutNodes.) */
 export const diagramsRegistry: BlockRegistry = {
   algorithmtrace: entry(AlgorithmTrace),
+  analogymap: entry(AnalogyMap),
   argumentmap: entry(ArgumentMap),
   binarytree: entry(BinaryTree),
   castmap: entry(CastMap),

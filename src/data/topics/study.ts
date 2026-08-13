@@ -366,6 +366,69 @@ export const study: ConversationSpec = {
           'Only first-order kinetics gives a constant half-life regardless of starting amount.',
       },
     },
+    // ── quizsession: the graded run, next to the single stateless quiz card above ──
+    {
+      type: 'quizsession',
+      col: 7,
+      delay: 900,
+      props: {
+        title: 'Chapter check',
+        icon: 'check',
+        iconColor: 'var(--insight)',
+        subject: 'Org. Chem · Ch. 6–8',
+        passMark: 70,
+        questions: [
+          {
+            tag: 'Substitution',
+            question:
+              'A tertiary alkyl halide is left to react in a polar protic solvent, with no strong base present. Which path dominates?',
+            options: [
+              {
+                text: 'S<sub>N</sub>1',
+                correct: true,
+                feedback: 'Right — the tertiary carbocation is stable enough to form first.',
+              },
+              {
+                text: 'S<sub>N</sub>2',
+                feedback: 'Three alkyl groups block the backside attack S<sub>N</sub>2 needs.',
+              },
+              { text: 'E2', feedback: 'E2 needs a strong base, and there isn’t one here.' },
+              { text: 'Radical substitution' },
+            ],
+            explanation:
+              'Polar protic solvents stabilise both the leaving group and the cation, so ionisation runs first.',
+          },
+          {
+            tag: 'Oxidation',
+            question: 'Which reagent stops a primary alcohol at the aldehyde?',
+            options: [
+              { text: 'PCC in CH<sub>2</sub>Cl<sub>2</sub>', correct: true },
+              { text: 'Hot KMnO<sub>4</sub>', feedback: 'That one runs all the way to the acid.' },
+              { text: 'Jones reagent (CrO<sub>3</sub>/H<sub>2</sub>SO<sub>4</sub>)' },
+              {
+                text: 'NaBH<sub>4</sub>',
+                feedback: 'NaBH<sub>4</sub> reduces — it never oxidises.',
+              },
+              { text: 'H<sub>2</sub> over Pd/C' },
+            ],
+            explanation:
+              'PCC is anhydrous, so no hydrate forms and the oxidation halts at the aldehyde.',
+          },
+          {
+            tag: 'Structure',
+            question: 'What is the hybridisation of the carbonyl carbon in a ketone?',
+            options: [
+              { text: 'sp' },
+              { text: 'sp<sup>2</sup>', correct: true },
+              { text: 'sp<sup>3</sup>' },
+            ],
+            explanation:
+              'Three sigma bonds and one pi bond — sp<sup>2</sup>, trigonal planar, about 120°.',
+          },
+        ],
+        footer: 'Miss two or more and the wrap-up re-queues exactly those for a second pass.',
+      },
+    },
     // ── Wave 2 breadth primitives (demo coverage) ──
     {
       type: 'piedonut',

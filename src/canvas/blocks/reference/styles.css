@@ -2219,3 +2219,160 @@
   font-weight: 700;
   color: var(--text-primary);
 }
+
+/* ── distinctioncard ── two or three confusable terms under the one rule that separates them */
+/* The panel row. `--dcd-cols` is set inline from the term count (see columnCount in
+   DistinctionCard.tsx) and is ALWAYS 1–3: 1, 2, or 3 terms sit in a single row; 4 wrap 2×2, 5
+   wrap 3+2, and any longer list keeps wrapping onto rows of at most 3 rather than adding a
+   fourth column. So nothing here silently breaks at 4 — the row count grows, the column count
+   never does. Both step-downs read the count too (never a literal): a mid-width card caps the
+   row at two panels and the narrowest stacks them, so a narrow slot never shaves a panel below
+   its readable width, whichever count arrived. `minmax(0, 1fr)` lets a track shrink past its
+   content so a long unbroken term can't push the row wider than the card. */
+.dcd-terms {
+  display: grid;
+  grid-template-columns: repeat(var(--dcd-cols, 2), minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+@container (max-width: 520px) {
+  .dcd-terms {
+    grid-template-columns: repeat(var(--dcd-cols-narrow, 2), minmax(0, 1fr));
+  }
+}
+@container (max-width: 380px) {
+  .dcd-terms {
+    grid-template-columns: 1fr;
+  }
+}
+.dcd-term {
+  min-width: 0;
+  padding: 10px 12px 11px;
+  border-radius: var(--r-sm, 6px);
+  border: 1px solid color-mix(in oklab, var(--dcd-c, var(--presence)) 24%, transparent);
+  border-top: 3px solid var(--dcd-c, var(--presence));
+  background: color-mix(in oklab, var(--dcd-c, var(--presence)) 7%, var(--surface-elevated));
+}
+.dcd-term-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 7px;
+  min-width: 0;
+}
+/* mixed toward text-primary so the soft accents stay readable as a headline in both themes */
+.dcd-term-name {
+  min-width: 0;
+  font-size: var(--fs-lg, 16px);
+  font-weight: 800;
+  line-height: 1.25;
+  color: color-mix(in oklab, var(--dcd-c, var(--presence)) 78%, var(--text-primary));
+  overflow-wrap: anywhere;
+}
+.dcd-term-tag {
+  min-width: 0;
+  padding: 1px 7px;
+  border-radius: var(--r-full, 999px);
+  font-size: var(--fs-xs, 11px);
+  font-weight: 700;
+  line-height: 1.7;
+  color: color-mix(in oklab, var(--dcd-c, var(--presence)) 70%, var(--text-primary));
+  background: color-mix(in oklab, var(--dcd-c, var(--presence)) 14%, transparent);
+  overflow-wrap: anywhere;
+}
+.dcd-gist {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+/* the in-context example — quoted off the panel's own accent so it reads as evidence */
+.dcd-example {
+  margin: 8px 0 0;
+  padding-left: 8px;
+  border-left: 2px solid color-mix(in oklab, var(--dcd-c, var(--presence)) 40%, transparent);
+  font-size: var(--fs-sm, 13px);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.dcd-example-k {
+  margin-right: 5px;
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--fs-xs, 11px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+/* the anchor: the single test that tells the terms apart — the heaviest element on the card */
+.dcd-rule {
+  min-width: 0;
+  margin-top: 14px;
+  padding: 11px 14px 13px;
+  border-radius: var(--r-md, 10px);
+  border: 1px solid color-mix(in oklab, var(--insight) 34%, transparent);
+  border-left: 3px solid var(--insight);
+  background: color-mix(in oklab, var(--insight) 11%, var(--surface-elevated));
+}
+.dcd-rule-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-xs, 11px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--insight);
+  overflow-wrap: anywhere;
+}
+.dcd-rule-label .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.dcd-rule-text {
+  margin: 5px 0 0;
+  font-size: var(--fs-xl, 19px);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.dcd-mistake {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  margin: 10px 0 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.dcd-mistake .ic {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--warning);
+}
+.dcd-mistake-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.dcd-mistake-k {
+  font-weight: 700;
+  color: var(--warning);
+}
+.dcd-empty {
+  font-size: var(--fs-sm, 13px);
+  font-style: italic;
+  color: var(--text-faint);
+}

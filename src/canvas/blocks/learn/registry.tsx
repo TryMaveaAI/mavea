@@ -8,6 +8,7 @@ import { EquationBlock } from './EquationBlock';
 import { NumberLine } from './NumberLine';
 import { WorkedExample } from './WorkedExample';
 import { Quiz } from './Quiz';
+import { QuizSession } from './QuizSession';
 import { Flashcard } from './Flashcard';
 import { MolecularStructure } from './MolecularStructure';
 import { PeriodicTable } from './PeriodicTable';
@@ -81,6 +82,7 @@ export const learnRegistry: BlockRegistry = {
   numberline: entry(NumberLine),
   workedexample: entry(WorkedExample),
   quiz: entry(Quiz),
+  quizsession: entry(QuizSession),
   flashcard: entry(Flashcard),
   molecularstructure: (p, c) => (
     <MolecularStructure {...(p as MolecularStructureProps)} delay={c.delay} />

@@ -3427,3 +3427,241 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ── analogymap: an unfamiliar concept mapped part by part onto a familiar one ─────────────
+   Two labelled columns (known → new) with one correspondence row per mapped part. Deliberately
+   HTML rather than a viewBox: each connector lives inside its own row, so it is centred on that
+   row by layout — correct for two pairs or twenty — and a long label wraps and grows its row
+   instead of overflowing. The `--ana-cols` template is shared by the header strip and every row
+   so the headers always sit exactly over the columns they name. Below 460px the columns stack
+   and the connectors turn to point downward, preserving the known → new reading order. */
+.ana {
+  container-type: inline-size;
+  margin-top: 12px;
+  --ana-cols: minmax(0, 1fr) minmax(104px, 148px) minmax(0, 1fr);
+}
+
+/* Header strip — stacked (known, "maps onto", new) on a narrow card, the column grid on a wide
+   one. Stacking rather than wrapping matters: a two-domain name pair side by side on a phone-width
+   card wrapped the second header under the first joint and read as one run-on line. */
+.ana-heads {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.ana-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ana-head-role {
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.ana-head--familiar .ana-head-role {
+  color: var(--insight);
+}
+.ana-head--target .ana-head-role {
+  color: var(--presence);
+}
+.ana-head-name {
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ana-head-joint {
+  font-size: var(--fs-2xs, 10px);
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.ana-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ana-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+/* Stacked rows need their own separator; the wide layout reads as rows on its own. */
+.ana-row + .ana-row {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ana-side {
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 14px);
+  background: var(--surface-elevated);
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ana-side--familiar {
+  border-left: 3px solid var(--insight);
+}
+.ana-side--target {
+  border-left: 3px solid var(--presence);
+  background: color-mix(in oklab, var(--presence) 9%, var(--surface-elevated));
+  font-weight: 600;
+}
+
+/* The correspondence connector. `--ana-dash` carries the solid/dashed decision through both
+   orientations, so the wide-layout rule can restate the border without a specificity fight. */
+.ana-link {
+  --ana-line: color-mix(in oklab, var(--presence) 55%, transparent);
+  --ana-mark: var(--presence);
+  --ana-dash: solid;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 2px 0;
+}
+.ana-link--loose {
+  --ana-line: color-mix(in oklab, var(--warning) 62%, transparent);
+  --ana-mark: var(--warning);
+  --ana-dash: dashed;
+}
+.ana-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.ana-rail-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full, 999px);
+  background: var(--ana-mark);
+}
+.ana-rail-line {
+  flex: 1 1 auto;
+  min-height: 9px;
+  border-left: 1.5px var(--ana-dash) var(--ana-line);
+}
+.ana-rail-head {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-top: 6px solid var(--ana-mark);
+  border-right: 4px solid transparent;
+  border-bottom: 0;
+  border-left: 4px solid transparent;
+}
+/* The correspondence gloss sits between the two line segments — part of the rail, not stacked
+   under it, so the connector stays centred on the row no matter how far the note wraps. */
+.ana-note {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-block: 3px;
+  font-size: var(--fs-2xs, 10px);
+  line-height: 1.3;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.ana-legend {
+  margin-top: 10px;
+  font-size: var(--fs-2xs, 10px);
+  color: var(--text-muted);
+}
+
+@container (min-width: 460px) {
+  .ana-heads {
+    display: grid;
+    grid-template-columns: var(--ana-cols);
+    gap: 0 10px;
+    align-items: end;
+  }
+  .ana-head-joint {
+    text-align: center;
+  }
+  .ana-rows {
+    gap: 8px;
+  }
+  .ana-row {
+    grid-template-columns: var(--ana-cols);
+    gap: 0 10px;
+  }
+  .ana-row + .ana-row {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .ana-rail {
+    flex-direction: row;
+  }
+  .ana-rail-line {
+    min-width: 10px;
+    min-height: 0;
+    border-top: 1.5px var(--ana-dash) var(--ana-line);
+    border-left: 0;
+  }
+  .ana-note {
+    margin-block: 0;
+    margin-inline: 4px;
+  }
+  .ana-rail-head {
+    border-top: 4px solid transparent;
+    border-right: 0;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--ana-mark);
+  }
+}
+
+/* Where the analogy breaks down — warning-tinted because it is a correction, not a footnote. */
+.ana-limits {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in oklab, var(--warning) 34%, transparent);
+  border-radius: var(--r-md, 14px);
+  background: color-mix(in oklab, var(--warning) 9%, var(--surface-elevated));
+}
+.ana-limits-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+/* A plain list, NOT a flex column — flex blockifies the items and eats their bullets. */
+.ana-limits-list {
+  margin: 0;
+  padding-inline-start: 16px;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.ana-limits-list li {
+  overflow-wrap: anywhere;
+}
+.ana-limits-list li + li {
+  margin-top: 4px;
+}
+
+.ana-caption {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.45;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

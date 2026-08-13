@@ -142,6 +142,7 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   parallelcoordinates: 'charts2',
   scatterplotmatrix: 'charts2',
   pictogramchart: 'charts2',
+  stackedbars: 'charts2',
   // — stats —
   sparkstat: 'stats',
   counter: 'stats',
@@ -348,6 +349,8 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   storyarc: 'layout',
   devicemark: 'layout',
   thoughtrecord: 'layout',
+  dosdonts: 'layout',
+  variantswitch: 'layout',
   // — status —
   progressbar: 'status',
   stepindicator: 'status',
@@ -472,6 +475,7 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   classdiagram: 'diagrams',
   trie: 'diagrams',
   wiringdiagram: 'diagrams',
+  analogymap: 'diagrams',
   // — learn —
   equationblock: 'learn',
   numberline: 'learn',
@@ -545,6 +549,7 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   karyotype: 'learn',
   frayermodel: 'learn',
   numberbond: 'learn',
+  quizsession: 'learn',
   // — compose —
   messagedraft: 'compose',
   chatthread: 'compose',
@@ -555,6 +560,8 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   voicestyle: 'compose',
   screenplay: 'compose',
   socialpost: 'compose',
+  longread: 'compose',
+  ideaboard: 'compose',
   // — everyday —
   forecast: 'everyday',
   weathernow: 'everyday',
@@ -628,6 +635,7 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   worldgrid: 'reference',
   warconflict: 'reference',
   posbreakdown: 'reference',
+  distinctioncard: 'reference',
   // — code —
   stacktrace: 'code',
   syntaxbreakdown: 'code',

@@ -196,6 +196,55 @@ export const explain: ConversationSpec = {
           'All three pass through <b>(2, 4)</b>, but past it, 2ˣ pulls away. Compounding is exponential, which is why it eventually beats any fixed rate.',
       },
     },
+    {
+      type: 'analogymap',
+      col: 8,
+      id: 'snowball',
+      delay: 540,
+      props: {
+        title: 'Compound interest is a snowball',
+        icon: 'link',
+        iconColor: 'var(--insight)',
+        familiar: 'A snowball rolling downhill',
+        target: 'Compound interest',
+        pairs: [
+          {
+            familiar: 'The handful of snow you pack to start',
+            target: 'Your first deposit',
+            note: 'the seed everything else grows on',
+          },
+          {
+            familiar: 'The snow it picks up on one turn',
+            target: 'The interest one period pays',
+            note: 'added on top, never set aside',
+          },
+          {
+            familiar: 'A wider ball, so the next turn sweeps up more',
+            target: 'A bigger balance, so the next period earns more',
+            note: 'this is the whole trick',
+          },
+          {
+            familiar: 'How long the hill is',
+            target: 'How many years you leave it alone',
+            note: 'the biggest lever, by far',
+          },
+          {
+            familiar: 'Kicking the ball apart halfway down',
+            target: 'Withdrawing early',
+            note: 'you restart from a smaller ball',
+            loose: true,
+          },
+        ],
+        breaksDown: [
+          'A snowball adds roughly the same layer on every turn; a balance adds a fixed percentage of itself, which is why the curve bends upward instead of running straight.',
+          'The hill ends. A balance keeps compounding for as long as you leave it, so there is no bottom of the slope to stop it.',
+        ],
+        caption:
+          "Every row is the same one idea: this period's gain becomes next period's starting point.",
+        footer:
+          'The hill length is the load-bearing part &mdash; <b>time</b> beats deposit size, which is exactly why the 30-year line pulls away so hard.',
+      },
+    },
   ],
   proof: null,
   extras: {

@@ -621,6 +621,42 @@ export interface PosBreakdownProps {
   footer?: HtmlString;
 }
 
+/* ── distinctioncard ── the one test that separates easily-confused terms ──
+   Two or three term panels side by side (each a gist plus a concrete in-context example)
+   under a single prominent discriminator — the rule that actually tells them apart, which is
+   the whole point of the block. Designed for 2 or 3 terms; a longer list still renders, wrapping
+   onto balanced rows of at most three rather than crushing every panel to a sliver.
+   Use for "what's the difference between X and Y" — affect/effect, HTTP/HTTPS, weather/climate.
+   Pick comparematrix instead when the answer is many attributes across many options (the
+   discriminating rule is just one row among them), venn for set membership and counts, and
+   deflist/gloss when the terms are defined independently and nothing separates them. */
+export interface DistinctionTerm {
+  /** the term itself, e.g. "affect", "weather" */
+  term: string;
+  /** one line on what this one actually is */
+  gist: string;
+  /** a concrete usage that shows it in context, e.g. "The rain affected the crops." */
+  example?: string;
+  /** a short classifier shown beside the term, e.g. "verb", "encrypted", "long-run" */
+  tag?: string;
+  /** tints this term's panel; terms without one fall back to a default sequence */
+  color?: AccentVar;
+}
+export interface DistinctionCardProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  /** the easily-confused terms — two or three */
+  terms: DistinctionTerm[];
+  /** THE point of the card: the single test that tells them apart, in one sentence */
+  discriminator: string;
+  /** label above the rule; defaults to "The test" */
+  discriminatorLabel?: string;
+  /** the mix-up people actually make, shown as a quiet caution line beneath the rule */
+  commonMistake?: string;
+  footer?: HtmlString;
+}
+
 export type ReferenceBlock =
   | (BlockBase & { type: 'factsheet'; props: FactSheetProps })
   | (BlockBase & { type: 'newsdigest'; props: NewsDigestProps })
@@ -644,4 +680,5 @@ export type ReferenceBlock =
   | (BlockBase & { type: 'countrycard'; props: CountryCardProps })
   | (BlockBase & { type: 'worldgrid'; props: WorldGridProps })
   | (BlockBase & { type: 'warconflict'; props: WarConflictProps })
-  | (BlockBase & { type: 'posbreakdown'; props: PosBreakdownProps });
+  | (BlockBase & { type: 'posbreakdown'; props: PosBreakdownProps })
+  | (BlockBase & { type: 'distinctioncard'; props: DistinctionCardProps });

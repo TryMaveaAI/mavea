@@ -8,6 +8,8 @@ import { SlideDeck } from './SlideDeck';
 import { VoiceStyle } from './VoiceStyle';
 import { Screenplay } from './Screenplay';
 import { SocialPost } from './SocialPost';
+import { Longread } from './Longread';
+import { IdeaBoard } from './IdeaBoard';
 // The family's own styles ride its chunk — cssCodeSplit inserts them before evaluation.
 import './styles.css';
 
@@ -28,4 +30,7 @@ export const composeRegistry: BlockRegistry = {
   screenplay: entry(Screenplay),
 
   socialpost: entry(SocialPost),
+
+  longread: entry(Longread),
+  ideaboard: entry(IdeaBoard),
 };

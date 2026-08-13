@@ -72,11 +72,61 @@ export const CATALOG_LEARN: ComponentCatalog = [
     tier: 'frontier',
     colDefault: 7,
     coercer: 'generic',
-    blurb: 'Interactive multiple-choice question with selectable options and optional explanation.',
+    blurb:
+      'ONE interactive multiple-choice question: selectable options, the answer revealed on pick, ' +
+      'optional explanation. A single standalone self-check — it never scores and never advances. ' +
+      'Never for a set of questions or a graded run ("quiz me on chapter 7", "10 practice ' +
+      'questions", "mock exam"): use quizsession.',
     itemShapes: [{ prop: 'options', text: 'text', textAliases: ['label', 'choice', 'answer'] }],
     propHints: {
       'options[].correct': 'true on exactly one option',
     },
+  }),
+  createMeta('quizsession', {
+    family: 'learn',
+    dataShapes: ['selection', 'sequence'],
+    requires: ['title', 'questions'],
+    optional: ['icon', 'iconColor', 'subject', 'passMark', 'footer'],
+    interactive: true,
+    wowWeight: 0.86,
+    tier: 'frontier',
+    colDefault: 7,
+    colMin: 5,
+    coercer: 'generic',
+    blurb:
+      'A GRADED RUN of questions: one multiple-choice question on screen at a time, a progress ' +
+      'rail tracking answered/correct/missed, the explanation revealed only after answering, ' +
+      'and a wrap-up score that can re-queue just the missed ones for a second round. Use this ' +
+      'whenever the ask is for MORE THAN ONE question — "quiz me on chapter 7", "test me on the ' +
+      '50 states", "10 practice questions", "mock exam" — and put every question in ONE ' +
+      'quizsession block; emitting a row of separate `quiz` blocks shows every answer up front ' +
+      'and never scores. Use `quiz` only for a single standalone self-check.',
+    itemShapes: [
+      {
+        prop: 'questions',
+        text: 'question',
+        textAliases: ['prompt', 'q', 'text'],
+        children: { prop: 'options', text: 'text', textAliases: ['label', 'choice', 'answer'] },
+      },
+    ],
+    propHints: {
+      'questions[].options': '2–6 choices; exactly ONE has `correct: true`',
+      'questions[].options[].correct': 'true on exactly one option per question',
+      'questions[].options[].feedback': 'optional one-line reply shown when THIS option is picked',
+      'questions[].explanation': 'why the right answer is right — held back until they answer',
+      'questions[].tag': 'short label for the question, e.g. "Glycolysis", "Hard"',
+      subject: 'what the run covers, e.g. "Chapter 7 · Cellular respiration"',
+      passMark: 'pass threshold as a percentage 0-100 — omit when the run is not pass/fail',
+    },
+    // A graded run is subject-agnostic: "test me on photosynthesis" and "10 practice questions on
+    // Spanish verb conjugation" detect as {science} / {language}, never {education} (see
+    // select/domains.ts), and the domain gate is a HARD filter — tagging this block with a domain
+    // would drop it from exactly the asks it exists to serve. It stays domain-NEUTRAL on purpose.
+    intents: ['teach', 'reference', 'track'],
+    // A run is graded out of every question it asks, so the 16-item default would silently turn
+    // "test me on the 50 states" into a 16-question set that scores 16/16 as if it were the whole
+    // thing. 40 is the ceiling the component itself is built and reviewed against.
+    contentBudget: { fields: { questions: { maxItems: 40 } } },
   }),
   createMeta('flashcard', {
     family: 'learn',

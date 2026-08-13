@@ -822,6 +822,49 @@ export const lookup: ConversationSpec = {
         footer: 'Source: National Park Service, American Battlefield Trust.',
       },
     },
+
+    // ── distinctioncard: the swap test that separates affect / effect / impact ──
+    {
+      type: 'distinctioncard',
+      col: 7,
+      id: 'lookup-distinctioncard',
+      delay: 1060,
+      props: {
+        title: 'Affect vs. effect',
+        icon: 'proof',
+        iconColor: 'var(--presence)',
+        terms: [
+          {
+            term: 'affect',
+            tag: 'verb',
+            gist: 'To influence or change something.',
+            example: 'The drought affected the harvest.',
+            color: 'var(--presence)',
+          },
+          {
+            term: 'effect',
+            tag: 'noun',
+            gist: 'The result that influence produces.',
+            example: 'The drought had a lasting effect on the harvest.',
+            color: 'var(--insight)',
+          },
+          {
+            term: 'impact',
+            tag: 'verb or noun',
+            gist: 'Grammatical as both, but it reads as jargon — reach for affect or effect first.',
+            example: 'The drought impacted the harvest.',
+            color: 'var(--warning)',
+          },
+        ],
+        discriminator:
+          'Swap the word for "influence". If the sentence still reads, you want affect; if "result" fits instead, you want effect.',
+        discriminatorLabel: 'The swap test',
+        commonMistake:
+          'Writing "the affects of the drought" — anything you can put "the" in front of is a noun, so it has to be effect.',
+        footer:
+          'Each word has a rarer second life: <b>affect</b> is a noun in psychology (observable emotion), and <b>effect</b> is a verb meaning to bring something about, as in "effect change".',
+      },
+    },
   ],
   proof: null,
   extras: {},

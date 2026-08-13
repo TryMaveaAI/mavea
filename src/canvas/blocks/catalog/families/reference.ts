@@ -582,4 +582,55 @@ export const CATALOG_REFERENCE: ComponentCatalog = [
     domains: ['education', 'language'],
     intents: ['explain', 'teach', 'reference'],
   }),
+  createMeta('distinctioncard', {
+    family: 'reference',
+    dataShapes: ['comparison', 'text'],
+    requires: ['title', 'terms', 'discriminator'],
+    optional: ['icon', 'iconColor', 'discriminatorLabel', 'commonMistake', 'footer'],
+    interactive: false,
+    wowWeight: 0.66,
+    tier: 'base',
+    colDefault: 7,
+    colMin: 5,
+    coercer: 'generic',
+    blurb:
+      'The answer to "what\'s the difference between X and Y", "how is X different from Y", ' +
+      '"is it X or Y", or "I keep confusing X and Y — which is which": two or three ' +
+      'easily-confused terms such as affect/effect, weather/climate, HTTP/HTTPS, ' +
+      'apartment/condo. Each term gets a panel with its gist and a concrete in-context example, ' +
+      "and beneath them, as the card's anchor, the single discriminating rule that tells them " +
+      'apart, plus the mistake people actually make. Pick comparematrix instead when the answer ' +
+      'is many attributes across many options, venn for set membership and counts, and ' +
+      'gloss/deflist when the terms are just defined independently with nothing separating them.',
+    itemShapes: [
+      {
+        prop: 'terms',
+        text: 'term',
+        textAliases: ['name', 'label', 'word'],
+        requiredFields: ['gist'],
+      },
+    ],
+    propHints: {
+      discriminator:
+        "the ONE test that tells them apart, in a single sentence, e.g. \"If you can swap in 'influence', it's affect; if you can swap in 'result', it's effect.\"",
+      discriminatorLabel: 'label above the rule; defaults to "The test"',
+      'terms[].gist': 'one line on what this term actually is',
+      'terms[].example':
+        'a concrete usage showing it in context, e.g. "The rain affected the crops."',
+      'terms[].tag': 'a short classifier beside the term, e.g. "verb", "encrypted", "long-run"',
+      'terms[].color':
+        'var(--presence)|var(--insight)|var(--warning)|var(--danger) — omit to use the default sequence',
+      commonMistake: 'the mix-up people actually make, in one line',
+    },
+    // Deliberately domain-NEUTRAL (no `domains`). "What's the difference between X and Y" is a
+    // SHAPE of question, not a subject: the confusable pair can be grammar, meteorology, housing,
+    // networking, biology. `domains` is a HARD filter in rank.ts (domainFitsOrNeutral) and the
+    // ask's own domains are keyword-detected, which collides with the shorthand phrasing — a bare
+    // "X vs Y" gets no pin from the request rule in select/shapes.ts, and the `vs` itself reads as
+    // the `decision` domain ("weather vs climate" → {nature, decision}, "apartment vs condo" →
+    // {home, decision}). An {education, language} tag therefore dropped the commonest way people
+    // type this ask, while the blocks it competes with (gloss, deflist, quiz, flashcard) carry no
+    // domains and pass untouched. Tag this only if the card ever stops being subject-agnostic.
+    intents: ['explain', 'teach', 'reference'],
+  }),
 ];

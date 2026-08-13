@@ -161,6 +161,35 @@ export const CATALOG_CHARTS2: ComponentCatalog = [
     blurb: 'Clustered bars by group \u2014 compare multiple series side-by-side.',
     stringItems: ['groups'],
   }),
+  createMeta('stackedbars', {
+    family: 'charts2',
+    dataShapes: ['composition', 'comparison', 'series'],
+    requires: ['title', 'groups', 'series'],
+    optional: ['icon', 'iconColor', 'unit', 'mode', 'yLabel', 'footer'],
+    interactive: true,
+    wowWeight: 0.72,
+    tier: 'base',
+    colDefault: 8,
+    colMin: 6,
+    coercer: 'generic',
+    blurb:
+      'Stacked bar chart (stacked columns): one bar per category, split bottom-to-top into shared colour-keyed segments \u2014 revenue by region per quarter, hours by activity per day, spend by category per month. Each column reads as a whole AND as its parts; a value is printed in every segment tall enough to hold one, with the column total above the bar. mode:"percent" normalises every column to 100% to compare MIX alone. Use marimekko instead when column WIDTH should also carry the total, groupedbars when the series are compared side-by-side rather than summed, and stack for a single one-bar breakdown. Values must be \u2265 0 \u2014 for signed +/\u2212 contributions use bridge.',
+    stringItems: ['groups'],
+    // `series[].data` is index-aligned with `groups`, so it must be allowed to be as long: on the
+    // shared default (16 items) a 20-group answer arrives with its last four columns silently
+    // truncated to zero \u2014 data loss the chart would then render as a real, empty reading.
+    contentBudget: { fields: { 'series[].data': { maxItems: 20 } } },
+    itemShapes: [{ prop: 'series', text: 'name', textAliases: ['label', 'segment', 'category'] }],
+    propHints: {
+      groups: 'one category label per BAR, left \u2192 right (quarters, days, departments)',
+      'series[].data':
+        'one value per group, index-aligned with `groups`; \u2265 0 (a negative counts as 0)',
+      'series[].name': 'segment name, shared across every bar \u2014 it keys the colour and legend',
+      mode: "'absolute' (default, real totals on the y-axis) | 'percent' (each column = 100%)",
+      yLabel: 'rotated value-axis title, e.g. "Revenue ($k)"',
+    },
+    intents: ['quantify', 'explain', 'decide'],
+  }),
   createMeta('bridge', {
     family: 'charts2',
     dataShapes: ['composition', 'flow', 'comparison'],

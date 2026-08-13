@@ -776,6 +776,72 @@ export interface ThoughtrecordProps {
   footer?: HtmlString;
 }
 
+/* ── dosdonts ── paired guidance: what TO do next to the thing it replaces, so the contrast
+   reads ACROSS each row. Distinct from proscons, which weighs a decision the user actually
+   posed (PROS/CONS headers over two independent columns, plus a for/against tally) — advice
+   under those headers reads as a verdict on a choice nobody asked about. Also distinct from
+   takeaways, a flat numbered checklist with no counterpart per line. Pairs are deliberately
+   the unit: real guidance is rarely evenly matched, so either side of a pair may be absent
+   and the surviving side then spans the row on its own. */
+export interface DosDontsPair {
+  /** the thing to do — the recommended move */
+  do?: HtmlString;
+  /** the thing it replaces — what to avoid doing instead */
+  dont?: HtmlString;
+  /** one short line on why the contrast matters */
+  why?: HtmlString;
+  /** a genuine hazard (safety, legal, irreversible) rather than ordinary bad form —
+   *  raises the don't side from `--warning` to `--danger` with an alert mark */
+  hazard?: boolean;
+  /** short label for what this pair is about, e.g. "Opening line" */
+  topic?: string;
+}
+export interface DosDontsProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  /** context line above the pairs, e.g. "In the first five minutes" */
+  heading?: string;
+  /** column header for the do side (default "Do") */
+  doLabel?: string;
+  /** column header for the don't side (default "Don't") */
+  dontLabel?: string;
+  pairs: DosDontsPair[];
+  footer?: HtmlString;
+}
+
+/* ── variantswitch ── ONE answer re-framed along ONE axis (tone, length, audience), switched
+   between rather than stacked. compose/variants renders every variant at once as a single
+   run of text apiece — right for three subject lines, unreadable for three multi-paragraph
+   rewrites — and tabs is a navigation control whose panels are different SECTIONS, not the
+   same content said differently. Scoped to text on purpose: the body is paragraphs, never
+   nested blocks. */
+export interface SwitchVariant {
+  /** the switch label, e.g. "Firm", "One paragraph", "For an exec" */
+  label: string;
+  /** the body of this framing, one entry per paragraph */
+  paragraphs: string[];
+  /** one line on when to reach for this framing */
+  when?: string;
+  /** optional icon on this variant's switch chip */
+  icon?: IconKey;
+}
+export interface VariantSwitchProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  /** what the variants vary ALONG, e.g. "Tone", "Length", "Audience" */
+  axis?: string;
+  /** the shared thing being re-framed, quoted above the switch */
+  subject?: string;
+  variants: SwitchVariant[];
+  /** which variant is shown first (default 0) */
+  defaultVariant?: number;
+  /** accent for the active chip and the axis rail */
+  accent?: AccentVar;
+  footer?: HtmlString;
+}
+
 export type LayoutBlock =
   | (BlockBase & { type: 'callout'; props: CalloutProps })
   | (BlockBase & { type: 'verdictcard'; props: VerdictcardProps })
@@ -811,4 +877,6 @@ export type LayoutBlock =
   | (BlockBase & { type: 'picturesequence'; props: PictureSequenceProps })
   | (BlockBase & { type: 'storyarc'; props: StoryArcProps })
   | (BlockBase & { type: 'devicemark'; props: DeviceMarkProps })
-  | (BlockBase & { type: 'thoughtrecord'; props: ThoughtrecordProps });
+  | (BlockBase & { type: 'thoughtrecord'; props: ThoughtrecordProps })
+  | (BlockBase & { type: 'dosdonts'; props: DosDontsProps })
+  | (BlockBase & { type: 'variantswitch'; props: VariantSwitchProps });

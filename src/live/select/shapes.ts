@@ -173,6 +173,17 @@ const REQUEST_RULES: { test: RegExp; types: string[] }[] = [
     test: /\b(variant\w*|alternativ\w*|\d+ (?:version\w*|option\w*|draft\w*)|rewrit\w*|different (?:tone\w*|style\w*|version\w*))\b/,
     types: ['variants'],
   },
+  // The imperative RE-FRAME — "make it firmer", "say this more gently", "a shorter version",
+  // "explain this for an exec" — asks for the SAME content re-said at a different setting on one
+  // axis, which is exactly what the switcher renders (one variant at a time, the named setting
+  // leading). It deliberately shares no token with the `variants` rule above (which needs "rewrite",
+  // "alternative", "different tone/style", or "N versions"), so "a shorter version" — which matched
+  // nothing at all before — pins this and only this, and "rewrite this in a different tone" still
+  // belongs to variants. ELI5 / "like I'm five" is deliberately NOT here: see analogymap below.
+  {
+    test: /\b(?:make|say|write|phrase|word|put) (?:it|this|that|the \w{2,14}) (?:more |a bit |a little |much |way )?(?:firm|soft|warm|blunt|gentl|harsh|kind|stern|polit|casual|formal|direct|punchi|short|long|terse|friendl)\w*\b|\b(?:firmer|softer|warmer|blunter|gentler|harsher|sterner|punchier|shorter|longer|friendlier) (?:version|tone|wording|take|draft|phrasing)\b|\bexplain (?:it|this|that) (?:for|to) (?:an? )?(?:exec|executive|engineer|beginner|expert|layperson)\b|\b(?:at|in) (?:different|two|three|several) (?:levels?|tones?|registers?|reading levels?)\b|\bfor (?:different|two|three|several) audiences\b/,
+    types: ['variantswitch'],
+  },
   // "Translate X into Y" — explicitly routes to translation, not compare/syntaxbreakdown.
   {
     test: /\b(translat\w+|in (?:french|spanish|japanese|german|chinese|portuguese|italian|korean|arabic|russian|hindi|dutch|swedish|polish|turkish|vietnamese|thai|hebrew|greek|latin)|from (?:english|spanish|french|japanese|german|chinese) (?:to|into))\b/,
@@ -222,14 +233,91 @@ const REQUEST_RULES: { test: RegExp; types: string[] }[] = [
     types: ['compare'],
   },
   {
+    // Two (or three) confusable TERMS — "affect vs effect", "weather and climate" — want the swap
+    // test that separates them, not a feature table. The discriminator is that both sides are BARE
+    // single words: a product/plan comparison names multi-word things ("a roth ira and a traditional
+    // 401k", "the iphone 15 pro and the pixel 9"), which keeps that traffic on `compare` above and on
+    // the comparematrix specialist. The confusion phrasings ("I mix them up", "commonly confused
+    // with", "tell them apart", "which is which", "are they the same thing", "when to use X vs Y")
+    // are unambiguous and pin on their own. A bare "difference between X and Y" pins BOTH this and
+    // compare — deliberate, since a pin only ADDS to the menu: the model then reaches for the card
+    // when the two things are words and for the table when they're products.
+    test: /\bdifferences? between (?:an? |the )?\w+ and (?:an? |the )?\w+\b|\bhow (?:is|are|does|do) (?:an? |the )?\w+ (?:and (?:an? |the )?\w+ )?differ\w*\b|\bconfus\w+ (?:with|between|for)\b|\b(?:commonly|easily|often) confused\b|\bmix\w* (?:them|these two|those two|the two) up\b|\b(?:them|these two|those two|the two) (?:mixed|confused)\b|\btell\b[^.?!]{0,30}\bapart\b|\bwhich (?:one )?is which\b|\bare\b[^.?!]{1,40}\bthe same thing\b|\bwhen (?:to|do i|should i) use\b[^.?!]{1,30}\b(?:vs\.?|versus|instead of)\b/,
+    types: ['distinctioncard'],
+  },
+  {
     // "quiz me", "make a quiz", "test me on", "practice questions" → an interactive quiz.
     test: /\bquiz\b|\btest me on\b|\bpractice questions\b/,
     types: ['quiz'],
   },
   {
+    // A graded RUN of questions — "quiz me on chapter 7", "a mock exam", "10 practice questions",
+    // "20-question quiz", "exam prep". This OVERLAPS the `quiz` rule directly above on "quiz me" /
+    // "test me on", which is intended: both are offered and the model takes the session when it has
+    // more than one question to ask and the single card for a one-off check. A bare number of
+    // questions only counts behind a request verb ("give me 10 questions") or a study qualifier
+    // ("10 practice questions"), so "I have 3 questions about the lease" is never a study session,
+    // and "write a test for this function" stays a code ask.
+    test: /\b(?:quiz|test|grill|drill) me\b|\btest my knowledge\b|\b(?:mock|practice|sample) (?:exam|test)\b|\b\d+[-\s]question\b|\b\d+ (?:practice|review|exam|multiple[-\s]choice|short[-\s]answer) questions?\b|\b(?:ask|give|write|make|generate) me \d+ questions\b|\bexam prep\b/,
+    types: ['quizsession'],
+  },
+  {
     // "flashcards for …" → two-sided recall cards.
     test: /\bflash\s?cards?\b/,
     types: ['flashcard'],
+  },
+  {
+    // "stacked bar chart", "stacked columns", "100% stacked" — the user named the CHART form. Nothing
+    // else in this file matches the word "stacked" (the closest, datatable, needs the literal
+    // "table"), and shape scoring alone hands a composition ask to a pie/waffle/marimekko, none of
+    // which show a total split by category ACROSS a series. "Stacked AREA" is deliberately excluded —
+    // that one belongs to the stream/area family, not to bars.
+    test: /\b(?:100\s?%\s?)?stacked\s+(?:bar|column)s?(?:\s+(?:chart|graph))?\b|\bstacked\s+(?:chart|graph)\b|\b100\s?%\s?stacked\b/,
+    types: ['stackedbars'],
+  },
+  {
+    // The user asked for PROSE they'll read or send: an essay, a cover letter, a personal statement,
+    // a toast, "a few paragraphs", "write it out in full". Anchored on a write-verb or a named piece
+    // so a topical mention ("the essay section of the SAT") doesn't trip it, and deliberately avoiding
+    // the FIRST rule's document vocabulary ("the paper", "the article", "the document") — those name
+    // a document that already EXISTS and belongs to the reader, not one to write. "N drafts" is left
+    // to `variants`: several short takes to compare, not one long piece to read.
+    test: /\b(?:write|draft|compose|give me|make me) (?:me )?(?:an? |the )?(?:\w+[- ]){0,2}(?:essays?|articles?|blog posts?|op-?eds?)\b|\b(?:essays?|blog posts?) (?:about|on|arguing)\b|\b(?:cover letter|personal statement|statement of purpose|college essay)\b|\bin prose\b|\blong[-\s]?form\b|\b(?:wedding|best man'?s?|maid of honou?r|retirement|graduation|farewell) (?:toast|speech)\b|\b(?:few|couple(?: of)?|several|\d+) paragraphs\b|\bwrite (?:it|this) out in full\b/,
+    types: ['longread'],
+  },
+  {
+    // Divergent idea generation — "brainstorm names", "ideas for dinner", "what should I call this",
+    // "what could I do about X" — a spread across angles with nothing ranked. Plural
+    // "ideas/suggestions" only, so a singular topical mention ("the idea for the movie") stays quiet;
+    // and a leading count only counts behind a request verb ("give me 10 ideas"), so "rank the top 5
+    // ideas by cost" remains a ranking. "N options" is deliberately left to `variants` — options are
+    // alternatives to one thing, ideas are a spread of different things.
+    test: /\bbrainstorm\w*\b|\b(?:ideas|suggestions) (?:for|on|about)\b|\b(?:some|any|other|more|fresh|a few) (?:ideas|suggestions|names)\b|\b(?:give|list|need|want) (?:me |us )?\d+ (?:ideas|suggestions|names)\b|\bgive me ideas\b|\bideas on how\b|\bwhat (?:should|could) (?:i|we) (?:call|name) (?:it|this|my|our|the)\b|\bname (?:ideas|suggestions)\b|\bwhat could (?:i|we) do about\b|\bpossible (?:approaches|angles|directions)\b|\bcome up with (?:some |a few |\d+ )?(?:ideas|names|concepts|angles|titles)\b/,
+    types: ['ideaboard'],
+  },
+  {
+    // Coaching phrased as what TO do and what NOT to — "dos and don'ts", "what not to say",
+    // "etiquette", "common mistakes", "things to avoid". Without a pin these fall to proscons, which
+    // sets the advice under PROS/CONS headers with a for/against tally and implies a decision the
+    // user never posed. The "what should I do" family is admitted only with a situational anchor
+    // (when/if/at/during), so a bare "what should I do with my old laptop" isn't hijacked, and no
+    // existing rule uses "etiquette", "mistake", "avoid" or "not to say".
+    test: /\bdo(?:'|’)?s and don(?:'|’)?ts\b|\bwhat not to (?:say|do|wear|bring|ask|write|post)\b|\bwhat (?:should|do) i (?:say|do)\b[^.?!]{0,4}\b(?:when|if|at|during)\b|\bwhat (?:should|do) i avoid\b|\b(?:screw|mess|blow|botch) (?:this|it|that) up\b|\betiquette\b|\b(?:common|rookie|beginner|classic|typical) mistakes?\b|\bthings to avoid\b/,
+    types: ['dosdonts'],
+  },
+  {
+    // "give me an analogy for X", "is there a metaphor for …", "explain Kubernetes like a restaurant
+    // kitchen" — and ELI5, which is the same ask in slang. ELI5 lands HERE rather than on
+    // variantswitch on purpose: it's a one-shot request to SIMPLIFY, not a request for several
+    // framings to switch between, and its level half is already handled (simpleLevel.ts forces the
+    // 'simple' explain level for "eli5" / "like I'm five"), so the pin only has to supply the missing
+    // FORM. Matches analog(y|ies) only — never "analogous" or "analogue", so a colour-wheel or
+    // signals ask is untouched — and "metaphor" only in the "metaphor FOR x" framing, so "identify
+    // the metaphors in this poem" stays with the devicemark specialist. The explain-like clause is
+    // held to one sentence and an INDEFINITE article ("like a …"), so "explain it like the doc says"
+    // doesn't trip it.
+    test: /\banalog(?:y|ies) for\b|\bmetaphors? for\b|\b(?:an?|another|any|the) (?:\w+ ){0,2}analog(?:y|ies)\b|\bby analogy\b|\beli ?5\b|\blike i(?:'|’)?m (?:five|5)\b|\bfor a (?:five|5)[-\s]?year[-\s]?old\b|\b(?:explain|describe)\b[^.?!]{0,40}\blike\s+an?\b/,
+    types: ['analogymap'],
   },
 
   // ── Domain-specific components: concrete enough that data-shape scoring alone
@@ -331,6 +419,14 @@ const REQUESTED_FORM_LABEL: Record<string, string> = {
   variants: 'variations',
   translation: 'a translation',
   bracketbar: 'a ranking',
+  stackedbars: 'a stacked bar chart',
+  distinctioncard: 'a distinction between the terms',
+  longread: 'a long-form written piece',
+  ideaboard: 'a board of ideas',
+  dosdonts: "a do's-and-don'ts list",
+  variantswitch: 'the same content at several settings',
+  quizsession: 'a graded quiz run',
+  analogymap: 'an analogy',
 };
 
 export function requestedFormLabel(type: string): string {

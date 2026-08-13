@@ -13,7 +13,7 @@ The canvas is data, not components: every answer is a list of typed `{ type, pro
 (`data/conversation.ts`). A model never emits UI — it emits those same blocks, which
 `live/generateLive` streams, validates, and repairs into the `ConversationSpec` contract. The
 demo replays are frozen outputs of this exact pipeline, so they render through the same
-contract and renderer. The generated selection catalog contains **600 component contracts across
+contract and renderer. The generated selection catalog contains **608 component contracts across
 23 families**, and the gallery production-renders every one of them — including the types that
 are gated or surface-owned rather than offered in ordinary model selection. Every provider sits
 behind one `ProviderAdapter`; Live credentials and prompts cross the same-origin proxy operated
@@ -106,7 +106,7 @@ other blocks and so lives in the core union.)
 `canvas/TopicCanvas.tsx` renders the blocks: it lays them out on a 12-column grid, applies the
 spotlight/dim treatment on the grid wrapper (so _every_ block type can be spotlighted, not just
 one), and maps each block to its component. Beyond the core union, an **extended library** under
-`canvas/blocks/` adds 570 components across **23 self-contained families** (data-viz & content:
+`canvas/blocks/` adds 578 components across **23 self-contained families** (data-viz & content:
 `charts1 charts2 stats tables flows docs ai media layout status diagrams learn code everyday
 reference finance`; the UI kit: `overlays forms pickers nav display compose`; plus `dashboard`). Each family is a 4-file unit
 (`types.ts` · `*.tsx` · `registry.tsx` ·
@@ -128,9 +128,9 @@ rendering fully under our control.
 ```mermaid
 graph TD
     B["Block (discriminated union)"] --> CORE["Core — 31 types\nsrc/data/conversation.ts"]
-    B --> EXT["Extended — 23 families, 570 components\nsrc/canvas/blocks/"]
+    B --> EXT["Extended — 23 families, 578 components\nsrc/canvas/blocks/"]
     CORE --> c1["insight · chart · breakdown\ntimeline · compare · kpi\nring · bars · stack · donut\ngauge · …20 more"]
-    EXT --> e1["charts1 · charts2 · stats · tables · flows · finance\ndocs · ai · media · layout · status · diagrams · dashboard\nlearn · code · everyday · reference · compose\noverlays · forms · pickers · nav · display (570 total)"]
+    EXT --> e1["charts1 · charts2 · stats · tables · flows · finance\ndocs · ai · media · layout · status · diagrams · dashboard\nlearn · code · everyday · reference · compose\noverlays · forms · pickers · nav · display (578 total)"]
 ```
 
 ### On-the-fly visuals
@@ -166,7 +166,7 @@ there `pnpm gen:catalog` derives:
 
 - **`facts.generated.ts`** — one tuple per component (family, archetype, data shapes, tier, wow,
   required props…), with every repeated string interned into a shared table. This is what the
-  selector ranks over, and it is always resident: ~49 KB of source, ~13 KB gzipped, for 600
+  selector ranks over, and it is always resident: ~49 KB of source, ~13 KB gzipped, for 608
   components. Objects with repeated keys would be ~130 KB.
 - **`catalog/details/shard*.ts`** — the blurbs, optional props, item shapes and prop hints. These are
   ~70% of the catalog's bytes and are read by only two consumers: the prompt menu (for the ≤30

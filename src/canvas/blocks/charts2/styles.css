@@ -4532,3 +4532,54 @@ table.c2-chrom-table {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
+
+/* ───────────────────────── StackedBars ─────────────────────────
+   Namespaced `.c2-stk-*` (`.c2-sb-*` is SeasonBand's). Hovering any segment lifts that
+   series in every column and dims the rest, which is the whole read of a stacked bar:
+   following one band across categories. */
+.c2-stk-wrap {
+  height: clamp(190px, 52cqi, 380px);
+  overflow: hidden;
+}
+.c2-stk-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.c2-stk-part {
+  transition: opacity var(--m-fast) var(--ease-out);
+}
+.c2-stk-part.dim {
+  opacity: 0.24;
+}
+.c2-stk-val {
+  fill: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  /* Legibility over an arbitrary accent fill: a halo in the card's own surface colour, so it
+     themes automatically instead of guessing which side of the contrast line the band is on. */
+  paint-order: stroke fill;
+  stroke: var(--surface-default);
+  stroke-width: 2.2px;
+  stroke-linejoin: round;
+}
+.c2-stk-total {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+/* Category labels are thinned to a legible stride rather than drawn for every column, so the
+   ones that survive carry the whole x-axis read — the AA-contrast token, not the faint one
+   `.cx-tick` gives a gridline number. Scoped under `.c2` so it outranks `.cx-tick` whichever
+   order the two stylesheets land in. */
+.c2 .c2-stk-cat {
+  fill: var(--text-muted);
+}
+.c2-stk-note {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}

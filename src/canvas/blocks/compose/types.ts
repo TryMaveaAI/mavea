@@ -165,6 +165,46 @@ export interface SocialPostProps {
   footer?: HtmlString;
 }
 
+/* ── longread ── Mavéa's OWN long-form prose, typeset to be read ── */
+// Use for: a 400–1500-word connected answer, or a piece the user will take away and use
+// (cover letter, personal statement, wedding toast, blog post).
+// Deliberately carries NO filename, page number, or any other uploaded-document chrome —
+// `docview` always prints a file bar, which frames Mavéa's own writing as somebody else's
+// document. Body text is PLAIN strings (React text nodes, escaped), never markup.
+export interface LongreadSection {
+  heading?: string; // section heading; omit to continue the previous section without a new one
+  paragraphs: string[]; // the section's prose, one plain-text paragraph per string
+}
+export interface LongreadProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  standfirst?: string; // the opening sentence or two that sets the piece up, set larger
+  sections: LongreadSection[];
+  readingTime?: number; // minutes; derived from the word count when omitted
+  copySections?: boolean; // add a copy button beside each headed section, not just the whole piece
+  footer?: HtmlString;
+}
+
+/* ── ideaboard ── a deliberately UNRANKED spread of ideas for a brainstorm ── */
+// Use for: "give me ideas", "what should I name this", "what could I do about X".
+// Every other list block converges — `picks` ranks, `tierlist` grades, `takeaways` concludes,
+// `variants` rewrites the SAME text. This one shows breadth: ideas grouped into equal-weight
+// angles (lenses), none of them marked as the winner.
+export interface Idea {
+  label: string; // the idea itself, kept short
+  note?: string; // one line on what it would look like — never a reason it's the best
+  angle?: string; // the lens it belongs to, e.g. "Safe" · "Bold" · "Left-field"
+}
+export interface IdeaBoardProps {
+  title: string;
+  icon?: IconKey;
+  iconColor?: AccentVar;
+  ask?: string; // the brainstorm question these ideas answer
+  ideas: Idea[]; // grouped by `angle` in first-appearance order; no angles → one flat spread
+  footer?: HtmlString;
+}
+
 export type ComposeBlock =
   | (BlockBase & { type: 'messagedraft'; props: MessageDraftProps })
   | (BlockBase & { type: 'chatthread'; props: ChatThreadProps })
@@ -174,4 +214,6 @@ export type ComposeBlock =
   | (BlockBase & { type: 'slidedeck'; props: SlideDeckProps })
   | (BlockBase & { type: 'voicestyle'; props: VoiceStyleProps })
   | (BlockBase & { type: 'screenplay'; props: ScreenplayProps })
-  | (BlockBase & { type: 'socialpost'; props: SocialPostProps });
+  | (BlockBase & { type: 'socialpost'; props: SocialPostProps })
+  | (BlockBase & { type: 'longread'; props: LongreadProps })
+  | (BlockBase & { type: 'ideaboard'; props: IdeaBoardProps });
