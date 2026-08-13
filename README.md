@@ -11,9 +11,9 @@
 
 <!-- Screenshots are GENERATED, never hand-captured: `pnpm gen:media` re-shoots every image below
      from the recorded demo replays (scripts/capture-media.mts), so refreshing them after a UI change
-     is a command rather than a chore. Served over jsDelivr from the published npm tarball — npm's
-     package page does not resolve repo-relative paths, and this repo is private, so the CDN is the
-     one source both GitHub and npm can read. -->
+     is a command rather than a chore. Served over jsDelivr from the published npm tarball rather
+     than by repo-relative path: npm's package page cannot resolve those, so the CDN is the one
+     source GitHub and npm can both read. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-dark.jpg" />
   <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-light.jpg" alt="Mavéa answering a trip-planning question: the spoken line above a canvas of cards" width="820" />
@@ -24,9 +24,7 @@ and evidence you can check, marking the exact figure each line is about.
 [See it in motion →](docs/FEATURES.md)
 
 <p>
-  <!-- No CI status badge: GitHub Actions badges for a PRIVATE repo require authentication, so
-       they 404 for anyone viewing this README anonymously (e.g. on npm's package page). Add one
-       back the day this repo goes public. -->
+  <a href="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml"><img src="https://github.com/TryMaveaAI/mavea/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 6" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
