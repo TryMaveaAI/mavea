@@ -2590,6 +2590,13 @@ export function LiveApp(): ReactElement {
       // banks into the live map instead of starting a turn. No second text box needed.
       if (watchThinkingRef.current && t) {
         setValue('');
+        // Typing IS thinking. The mic's silence fallback would otherwise resolve the map mid-flow —
+        // eight quiet seconds while someone types their third thought, and the shape settles around
+        // the two it had. Any typed thought cancels that pending settle, exactly as speaking does.
+        if (settleTimerRef.current !== null) {
+          window.clearTimeout(settleTimerRef.current);
+          settleTimerRef.current = null;
+        }
         mindShapeRambleRef.current = [...mindShapeRambleRef.current, t];
         mindShape.onTranscript(mindShapeRambleRef.current.join(' '));
         return;

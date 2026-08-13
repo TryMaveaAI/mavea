@@ -76,6 +76,26 @@ function statusRank(a: MindAtom): number {
   return a.status === 'stable' ? 2 : a.status === 'forming' ? 1 : 0;
 }
 
+/** Carry forward any thought the settle did not account for. The settle is the one prune
+ *  authority, so it REPLACES the map — but a model that summarizes five spoken thoughts into two
+ *  atoms deletes three things the person actually said, and watching your own words disappear is
+ *  the opposite of being listened to. So: when the settled map came back SMALLER than what was on
+ *  screen, the unmatched atoms ride along (deduped by quote, and never past the leak cap). A
+ *  settle that genuinely consolidates — same size or larger — is left exactly as the model built
+ *  it. Exported for unit tests. */
+export function keepUnaccountedAtoms(prior: MindAtom[], settled: MindShapeSpec): MindShapeSpec {
+  if (settled.atoms.length >= prior.length) return settled;
+  const covered = new Set(settled.atoms.map((a) => quoteKey(a.quote)));
+  const carried = prior.filter((a) => {
+    const key = quoteKey(a.quote);
+    if (!key || covered.has(key)) return false;
+    covered.add(key);
+    return true;
+  });
+  if (!carried.length) return settled;
+  return { ...settled, atoms: [...settled.atoms, ...carried].slice(0, MAX_ATOMS) };
+}
+
 /** Apply a model patch delta to the live spec — additive only (settle is the one prune
  *  authority). Guardrails: G3 fold a new-id atom whose quote already exists onto the original
  *  id (no twin cards); G4 cap total atoms; G2 drop any link whose endpoints didn't survive.
@@ -283,7 +303,7 @@ export function useMindShape(cfg: ModelConfig | null): UseMindShapeReturn {
     try {
       const settled = await settleMindShape(transcript, c, ctrl.signal);
       if (ctrl.signal.aborted || !settled) return;
-      setSpecSync(settled);
+      setSpecSync(keepUnaccountedAtoms(specRef.current?.atoms ?? [], settled));
     } finally {
       if (!ctrl.signal.aborted) inFlightRef.current = false;
     }

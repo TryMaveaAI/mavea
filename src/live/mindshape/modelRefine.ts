@@ -116,6 +116,8 @@ ATOM KINDS:
 
 Pick deliberately: a subject of curiosity is a question, a sub-area or path is an option, an unknown they circle is an open_loop; reserve want for an actual stated desire. A map where every atom is the same kind is wrong — make the kinds reflect the real variety in what they said.
 
+COVER EVERYTHING THEY SAID. Every distinct thought gets its own atom. Do not compress five spoken thoughts into two tidy ones, and do not drop the small concrete ones (a date, a budget, who wants what) because they seem minor — those are usually the constraints the whole decision turns on. If two sentences really are the same thought, merge them; otherwise keep both.
+
 LINK KINDS:
 - tensions: what genuinely conflicts or pulls against what — THE HERO LINK
 - supports: one thing enables or justifies another

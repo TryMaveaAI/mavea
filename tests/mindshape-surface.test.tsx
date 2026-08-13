@@ -12,7 +12,7 @@ import {
   act,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useMindShape, mergeDelta } from '../src/live/mindshape/useMindShape';
+import { useMindShape, mergeDelta, keepUnaccountedAtoms } from '../src/live/mindshape/useMindShape';
 import { useSignals } from '../src/live/mindshape/useSignals';
 import { mindShapeToSpec } from '../src/live/mindshape/mindShapeToSpec';
 import { settleMindShape } from '../src/live/mindshape/modelRefine';
@@ -1240,5 +1240,61 @@ describe('MindShape — interactive unsaid card', () => {
     expect(screen.queryByRole('button', { name: /not this/i })).toBeNull();
     // But the card content itself is visible
     expect(screen.getByText("Maybe it's not about money")).toBeTruthy();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The settle REPLACES the live map — it is the one prune authority. But a model that folds five
+// spoken thoughts into two atoms deletes three things the person actually said, and watching your
+// own words vanish is the opposite of being listened to. Anything the settle didn't account for
+// rides along.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('keepUnaccountedAtoms', () => {
+  const atom = (id: string, quote: string): MindAtom => ({
+    id,
+    kind: 'option',
+    label: quote.slice(0, 40),
+    quote,
+    status: 'stable',
+    confidence: 'said',
+  });
+  const settledWith = (atoms: MindAtom[]): MindShapeSpec => ({
+    center: 'What are we really deciding?',
+    atoms,
+    links: [],
+  });
+
+  it('carries the thoughts a shrinking settle dropped', () => {
+    const prior = [
+      atom('a1', 'dev wants a hackathon'),
+      atom('a2', 'design wants a beach'),
+      atom('a3', 'the budget resets in April'),
+      atom('a4', 'half the team is remote'),
+    ];
+    const settled = settledWith([atom('s1', 'dev wants a hackathon')]);
+    const merged = keepUnaccountedAtoms(prior, settled);
+    expect(merged.atoms.map((a) => a.quote)).toEqual([
+      'dev wants a hackathon',
+      'design wants a beach',
+      'the budget resets in April',
+      'half the team is remote',
+    ]);
+    expect(merged.center).toBe('What are we really deciding?');
+  });
+
+  it('leaves a settle that consolidated on purpose exactly as the model built it', () => {
+    const prior = [atom('a1', 'one'), atom('a2', 'two')];
+    const settled = settledWith([atom('s1', 'one'), atom('s2', 'two'), atom('s3', 'three')]);
+    expect(keepUnaccountedAtoms(prior, settled)).toBe(settled);
+  });
+
+  it('does not duplicate a thought the settle rephrased but kept quoted', () => {
+    const prior = [atom('a1', 'The budget resets in April'), atom('a2', 'dev wants a hackathon')];
+    const settled = settledWith([
+      { ...atom('s1', 'the budget  resets in april!'), label: 'April' },
+    ]);
+    const merged = keepUnaccountedAtoms(prior, settled);
+    expect(merged.atoms).toHaveLength(2);
+    expect(merged.atoms.map((a) => a.id)).toEqual(['s1', 'a2']);
   });
 });

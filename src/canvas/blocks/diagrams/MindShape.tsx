@@ -122,6 +122,11 @@ const KIND_LABEL: Record<MindAtomKind, string> = {
   question: 'Question',
 };
 
+/** A theme label's own half-extents, for keeping the camera's frame around it (mindshape.css caps
+ *  the chip at 150px wide). */
+const LABEL_FIT_HW = 80;
+const LABEL_FIT_HH = 18;
+
 /** Quadratic Bézier tension arc between two atoms. Perpendicular control-point offset
  *  keeps the curve visually clear from a straight spoke. Returns the SVG `d` attribute
  *  and the midpoint label position (slightly outward from the curve apex). */
@@ -366,6 +371,12 @@ export function MindShape({
       halfW = Math.max(halfW, Math.abs(p.x - CX) + CARD_HW);
       halfH = Math.max(halfH, Math.abs(p.y - CY) + CARD_HH);
     }
+    // Theme labels sit OUTSIDE their cards, so a map framed on cards alone crops its own headings —
+    // the bottom theme's name landed under the action bar, half drawn.
+    for (const label of labels) {
+      halfW = Math.max(halfW, Math.abs(label.x - CX) + LABEL_FIT_HW);
+      halfH = Math.max(halfH, Math.abs(label.y - CY) + LABEL_FIT_HH);
+    }
     if (unsaid) {
       halfW = Math.max(halfW, Math.abs(UNSAID_X - CX) + CARD_HW);
       halfH = Math.max(halfH, Math.abs(UNSAID_Y - CY) + CARD_HH);
@@ -373,7 +384,7 @@ export function MindShape({
     halfW += MARGIN;
     halfH += MARGIN;
     return { x: CX - halfW, y: CY - halfH, w: 2 * halfW, h: 2 * halfH };
-  }, [positions, unsaid]);
+  }, [positions, labels, unsaid]);
   useEffect(() => {
     fitTo(fitBbox);
   }, [fitBbox, fitTo]);

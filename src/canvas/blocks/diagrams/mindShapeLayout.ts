@@ -14,17 +14,17 @@ const SEP_GAP = 26;
  *  right on top of that text, which is how a settled map came to read as a pile. Reserve the
  *  column that stack actually occupies. */
 const CENTER_STACK_BELOW = 150;
-/** Half-width of that same stack: the centre question wraps to a ~200px measure, so the reserved
- *  column is wider than the 80px face it sits under. */
-const CENTER_TEXT_HW = 40;
+/** Half-width of that same stack: the centre question and the tension line both wrap to a ~200px
+ *  measure, so the reserved column is far wider than the 80px face it sits under. */
+const CENTER_TEXT_HW = 105;
 /** Half-extent of a theme label, for keeping it off the cards it names. */
 const LABEL_HW = 82;
 const LABEL_HH = 16;
 /** The unsaid card is pinned — it is the one card the person has not said yet, and it always waits
  *  in the same corner so it never looks like just another thought. Pinned, but not invisible: the
  *  relaxation has to push real atoms OFF it, or the two render as one unreadable pile. */
-export const UNSAID_X = 0.72 * VW;
-export const UNSAID_Y = 0.88 * VH;
+export const UNSAID_X = 0.82 * VW;
+export const UNSAID_Y = 0.9 * VH;
 const UNSAID_HW = 120;
 
 export interface MindShapePoint {
