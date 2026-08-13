@@ -40,7 +40,11 @@ const SHOTS: Shot[] = [
   { name: 'canvas-plan', persona: 'traveler', settleMs: 30_000, scrollTop: 360 },
 ];
 
-const THEMES = ['light', 'dark'] as const;
+/** The README shows one look, not two: the paper template in light, which is what the product is
+ *  art-directed around. A dark twin behind prefers-color-scheme meant half of readers saw a
+ *  different product than the one being described. */
+const TEMPLATE = 'paper';
+const THEME = 'light';
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);
@@ -78,7 +82,7 @@ async function main(): Promise<void> {
   const browser = await chromium.launch({ headless: true });
   try {
     for (const shot of SHOTS) {
-      for (const theme of THEMES) {
+      {
         const ctx = await browser.newContext({
           viewport: VIEWPORT,
           // Settled, not mid-animation: a reveal caught halfway reads as a rendering bug.
@@ -86,22 +90,24 @@ async function main(): Promise<void> {
         });
         const page = await ctx.newPage();
         await page.addInitScript(
-          ({ initialTheme, legalKey, legalVersion }) => {
+          ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
             localStorage.setItem('mavea-theme', initialTheme);
+            localStorage.setItem('mavea-template', initialTemplate);
             localStorage.setItem(
               legalKey,
               JSON.stringify({ version: legalVersion, acceptedAt: '2026-08-12T00:00:00.000Z' }),
             );
           },
           {
-            initialTheme: theme,
+            initialTheme: THEME,
+            initialTemplate: TEMPLATE,
             legalKey: LEGAL_ACCEPTANCE_STORAGE_KEY,
             legalVersion: LEGAL_ACCEPTANCE_VERSION,
           },
         );
         await page.goto(`${baseUrl}/#/live?demo=${shot.persona}`, { waitUntil: 'load' });
         await startReplay(page, shot);
-        const path = `${OUT_DIR}/${shot.name}-${theme}.jpg`;
+        const path = `${OUT_DIR}/${shot.name}.jpg`;
         await page.screenshot({ path, type: 'jpeg', quality: QUALITY });
         console.log(`✓ ${path}`);
         await ctx.close();

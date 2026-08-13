@@ -11,13 +11,9 @@
 
 <!-- Screenshots are GENERATED, never hand-captured: `pnpm gen:media` re-shoots every image below
      from the recorded demo replays (scripts/capture-media.mts), so refreshing them after a UI change
-     is a command rather than a chore. Served over jsDelivr from the published npm tarball rather
-     than by repo-relative path: npm's package page cannot resolve those, so the CDN is the one
-     source GitHub and npm can both read. -->
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-dark.jpg" />
-  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-light.jpg" alt="Mavéa answering a trip-planning question: the spoken line above a canvas of cards" width="820" />
-</picture>
+     is a command rather than a chore. Served by absolute URL, not a repo-relative path: npm's
+     package page cannot resolve those, and raw.githubusercontent serves the file that is on main. -->
+<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/hero.jpg" alt="Mavéa answering a trip-planning question: the spoken line above a canvas of cards" width="820" />
 
 It listens, speaks the headline the instant it forms, then draws the answer — in charts, timelines,
 and evidence you can check, marking the exact figure each line is about.
@@ -45,15 +41,9 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 Every answer is typed data, not prose — so Mavéa draws it. The same question renders as comparison
 tables, checklists, timelines and figures, and the pen marks the exact claim it is talking about.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-build-dark.jpg" />
-  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-build-light.jpg" alt="An OAuth walkthrough: a protocol comparison table and a security checklist with Mavéa's pen marks on two items" width="880" />
-</picture>
+<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-build.jpg" alt="An OAuth walkthrough: a protocol comparison table and a security checklist with Mavéa's pen marks on two items" width="880" />
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-plan-dark.jpg" />
-  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-plan-light.jpg" alt="A three-day Lisbon itinerary built as day-by-day cards under the spoken answer" width="880" />
-</picture>
+<img src="https://raw.githubusercontent.com/TryMaveaAI/mavea/main/docs/media/canvas-plan.jpg" alt="A three-day Lisbon itinerary built as day-by-day cards under the spoken answer" width="880" />
 
 Both are real recorded sessions — replay them yourself with no key via `npx @mavea/mavea`.
 
