@@ -37,7 +37,10 @@
   /* Clear the topbar (top) and the dock + scrubber + chips assembly (bottom) so no card is
      ever drawn under the fixed chrome. The bottom value accounts for dock-h + scrubber + the
      floating Just-listen/Mapping chips that sit above the dock. */
-  padding: 70px 32px 168px;
+  /* The stage is fixed to the whole viewport, so the session rail sits ON TOP of its left edge:
+     without this the docked face and the leftmost cards were laid out underneath the rail, and the
+     camera centred the map against a box a rail-width wider than what anyone can see. */
+  padding: 70px 32px 168px calc(32px + var(--rail-w, 0px));
   box-sizing: border-box;
   /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the
      page background. Tokens handle light/dark automatically. */
