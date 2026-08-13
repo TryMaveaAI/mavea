@@ -9,11 +9,15 @@
 
 ### Talk to AI. See what it means.
 
-<!-- HERO GIF — the single highest-leverage thing in this README. Record a 10-second autoplay loop
-     (voice asks → face listens → canvas blooms into charts → ink draws on the answer) from the Demo
-     (needs no keys) or via "Share as a Mavéa Story", save it to docs/media/hero.gif, and uncomment
-     the <img> below. Until then the signature-move line keeps the fold looking intentional. -->
-<!-- <img src="docs/media/hero.gif" alt="Mavéa in ten seconds — voice in, a living canvas out" width="820" /> -->
+<!-- Screenshots are GENERATED, never hand-captured: `pnpm gen:media` re-shoots every image below
+     from the recorded demo replays (scripts/capture-media.mts), so refreshing them after a UI change
+     is a command rather than a chore. Served over jsDelivr from the published npm tarball — npm's
+     package page does not resolve repo-relative paths, and this repo is private, so the CDN is the
+     one source both GitHub and npm can read. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-dark.jpg" />
+  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/hero-light.jpg" alt="Mavéa answering a trip-planning question: the spoken line above a canvas of cards" width="820" />
+</picture>
 
 It listens, speaks the headline the instant it forms, then draws the answer — in charts, timelines,
 and evidence you can check, marking the exact figure each line is about.
@@ -38,10 +42,30 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 ---
 
+## What it looks like
+
+Every answer is typed data, not prose — so Mavéa draws it. The same question renders as comparison
+tables, checklists, timelines and figures, and the pen marks the exact claim it is talking about.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-build-dark.jpg" />
+  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-build-light.jpg" alt="An OAuth walkthrough: a protocol comparison table and a security checklist with Mavéa's pen marks on two items" width="880" />
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-plan-dark.jpg" />
+  <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/canvas-plan-light.jpg" alt="A three-day Lisbon itinerary built as day-by-day cards under the spoken answer" width="880" />
+</picture>
+
+Both are real recorded sessions — replay them yourself with no key via `npx @mavea/mavea`.
+
+---
+
 ## Get started
 
 All you need is **Node 20.19+**. That command above opens the tour and demo replays immediately
-— nothing else to set up.
+— nothing else to set up. Demo replays are fictional, curated prerecorded examples with scripted
+feature choreography; playback does not call a model provider.
 
 **To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
 Gemini / Grok / OpenRouter key. It stays in memory unless you opt into encrypted local
@@ -50,10 +74,18 @@ provider — your key and prompts never pass through Mavéa's own servers, becau
 any. Full options — models, actions, hosting, and the trust boundary — are in
 [docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
 
-**The voice:** Mavéa speaks through [Kokoro](https://github.com/remsky/Kokoro-FastAPI), a natural
-local text-to-speech model that runs in Docker. The first time you start it, Mavéa offers to set
-Docker up for you; without it, every line just appears as a caption instead — nothing else
-changes.
+**Local speech:** Mavéa speaks through Apache-2.0
+[Kokoro weights and wrapper](https://github.com/remsky/Kokoro-FastAPI) and transcribes through MIT-licensed
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp). The defaults run on your machine through
+loopback-only proxies; a deployment that overrides `WHISPER_URL` sends microphone audio to that
+configured endpoint. [Podman](https://podman.io/) is the recommended free/open-source
+container runtime. Docker also works, but Docker Desktop has separate commercial subscription
+terms. Without the configured services, captions and typing still work; audio is never handed to a
+browser-vendor speech service as a fallback.
+
+During a conversation, the **Mavéa's voice** toggle turns output speech off without changing the
+microphone. A paced answer then reveals in full immediately, with captions, notes, and Pen marks in
+place of the spoken walk.
 
 ## What it does
 
@@ -77,7 +109,8 @@ A few specific things worth trying:
 - **The Blank Space.** When an answer needs a number only you have, Mavéa leaves a hole to fill —
   by voice, type, or a dragged card — instead of quietly guessing.
 
-The full tour — Atlas, the Rehearsal, living dashboards, Ripple, Share-as-a-Mavéa-Story, and ~30 more —
+The full tour — Atlas, the Rehearsal, living dashboards, Ripple, selective Conversation video,
+Mavéa Reels, and ~30 more —
 is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
 ## What it needs
@@ -93,15 +126,50 @@ Mavéa runs on your machine, not in a cloud.
 
 Any browser in [Baseline Widely Available](https://web.dev/baseline) — current Chrome, Edge,
 Safari, or Firefox — on macOS, Windows, or Linux. **Minimum** covers the app with voice off,
-alongside the browser and whatever else you already have open. **Recommended** adds Kokoro
-(voice) and Docker on top, with enough room that you never think about it.
+alongside the browser and whatever else you already have open. **Recommended** adds the local
+Kokoro + whisper.cpp services and a container runtime, with enough room that you never think about
+it.
 
-**The voice is the one part that costs real memory, and it's optional.** Kokoro's image holds
-roughly 1.3 GB resident, and Docker Desktop itself adds another ~1.5 GB before a word is spoken.
-At the 8 GB minimum, leaving voice off is usually the better trade — every line becomes a caption
-and nothing else changes. `docker compose down` reclaims it whenever you want it back.
+**Local speech costs real memory, and it's optional.** Kokoro holds roughly 1.3 GB resident;
+whisper.cpp adds its local model and working memory; a desktop container VM adds its own overhead.
+At the 8 GB minimum, leaving local speech off can be the better trade. `podman compose down` (or the
+Docker equivalent) reclaims it whenever you want it back.
 
-## 📄 License
+## Third-party commercial-use policy
+
+Generated videos stay inside an explicit open-media allowlist — AV1 video with Opus audio in an
+MP4 container where the browser can encode them, WebM (VP9/VP8 + Opus) otherwise. Mavéa does
+not generate H.264, H.265, or AAC files or silently fall back to them. Published source licences
+and patent commitments reduce risk but are not a universal patent-clearance opinion. Conversation and Reel direction, rendering, and
+encoding stay local; opening Reel never calls a configured model provider. Narration uses the local
+Kokoro service. Document and presentation exports use bundled permissively licensed libraries and
+self-hosted SIL OFL fonts. Maps use BSD-licensed MapLibre with
+OpenFreeMap, whose public service terms reviewed August 11, 2026 currently permit commercial use
+without request fees; the required map attribution
+stays visible. The Kokoro weights and wrapper are Apache-2.0; the separately pulled service image
+also contains GPL-3.0-or-later eSpeak NG, whose license permits commercial use. Mavéa communicates
+with that separate process over HTTP and does not bundle or link its code. whisper.cpp and its
+selected model are MIT. The Kokoro image is pinned by immutable digest; the speech source archive
+and model are revision-pinned and checksum-verified before execution. The npm package does not
+contain either model or a container image: the user's container runtime fetches/builds those
+artifacts directly. Podman is Apache-2.0 and recommended; Docker Desktop is not universally free
+for commercial organizations, so users who choose it must confirm its terms.
+
+`pnpm check:licenses` scans the installed dependency graph and fails on unapproved, noncommercial,
+or strong-copyleft licenses. The same gate rejects generated-media codecs outside the reviewed allowlist,
+provider-directed Reel generation, restricted tile-service fallbacks, and bundled
+MP4/M4A/AAC/MP3/MOV files. `pnpm verify` and package publication both run this gate. Permissive
+licenses can still require copyright notices or
+attribution; those are preserved in [`THIRD-PARTY.txt`](THIRD-PARTY.txt) and
+[`public/fonts/LICENSE.txt`](public/fonts/LICENSE.txt).
+
+This automated gate is an engineering control, not a legal opinion: it cannot eliminate patent,
+training-data, ownership-chain, provider-terms, or other third-party-claim risk. A commercial launch
+that needs formal assurance should have counsel review the release artifact, notices, provider
+terms, and the rights held by every Mavéa rights holder. Anyone who redistributes the Kokoro image
+itself must also satisfy the GPL obligations carried by eSpeak NG inside that image.
+
+## 📄 Mavéa license
 
 Mavéa is **source-available under the
 [PolyForm Noncommercial License 1.0.0](./LICENSE)**. It is not licensed under MIT and is not
