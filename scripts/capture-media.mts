@@ -15,12 +15,17 @@ import { mkdirSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
 
-/** Laptop-shaped, at 1× — the README renders these ~270px wide in a three-up row, so a taller
- *  frame only buys rows nobody can read and a 2× capture would triple the npm tarball. */
+/** Laptop-shaped: what the product is art-directed for, and short enough that a three-up row of
+ *  them stays readable rather than becoming six tall crops. */
 const VIEWPORT = { width: 1440, height: 900 };
+/** Rasterized at 2× (2880×1800). The README shows each shot ~300px wide, but both GitHub and npm
+ *  open the full file on click — and a reader who clicks in to read the labels is exactly the
+ *  reader worth having, so the file behind the thumbnail is the retina one. */
+const SCALE = 2;
 /** JPEG, not PNG: these are photographic-density UI shots, and `docs/media` ships inside the npm
- *  package, which is size-gated (check-package-artifact.mjs). */
-const QUALITY = 80;
+ *  package, which is size-gated (check-package-artifact.mjs). Chosen against the 2× capture — at
+ *  this scale the artifacts land below a pixel, so the trade buys resolution, not mush. */
+const QUALITY = 72;
 const OUT_DIR = 'docs/media';
 
 interface BaseShot {
@@ -38,9 +43,9 @@ interface BaseShot {
 /** Which key-free surface the shot comes from, and what it needs to get there. */
 type Shot = BaseShot &
   (
-    | { from: 'demo'; persona: string; asCanvas?: boolean }
+    | { from: 'demo'; persona: string; asCanvas?: boolean; then?: string[] }
     | { from: 'tour'; chapter: string }
-    | { from: 'ripple'; section: string }
+    | { from: 'ripple'; section: string; then?: string[] }
     | { from: 'route'; hash: string; ready: string; click?: string[] }
   );
 
@@ -52,7 +57,26 @@ const SHOTS: Shot[] = [
   { name: 'think-map', from: 'tour', chapter: 'think', settleMs: 8000 },
   // Row 2 — what it can be pointed at: a document, a repository, a whole subject.
   { name: 'doc-prism', from: 'tour', chapter: 'prism', settleMs: 30_000 },
-  { name: 'repo-course', from: 'ripple', section: 'Courses', settleMs: 6000 },
+  {
+    name: 'repo-course',
+    from: 'ripple',
+    section: 'Courses',
+    // The curriculum opens on its orientation course, which is two short lessons and reads bare.
+    // Skipping ahead lands on the feature-building course: real files, a cause-and-effect warning.
+    then: ['I already know this, skip ahead'],
+    settleMs: 4000,
+  },
+  { name: 'impact-map', from: 'ripple', section: 'Impact map', settleMs: 6000 },
+  // The export studio, reached the way a person reaches it — the replay's own export beat is
+  // minutes in, and waiting for it would make `pnpm gen:media` a coffee break.
+  {
+    name: 'deck-export',
+    from: 'demo',
+    persona: 'dev',
+    settleMs: 30_000,
+    // The menu item is matched by its blurb: its label alone also matches the topbar trigger.
+    then: ['Share', 'Choose a template and export'],
+  },
   {
     name: 'deep-zoom',
     from: 'route',
@@ -83,6 +107,21 @@ function readFlag(name: string, fallback: string): string {
   return idx !== -1 && argv[idx + 1] ? argv[idx + 1] : fallback;
 }
 
+/** Walk a short click path by accessible name — a menu, then the item inside it, then whatever
+ *  that opened. Used to reach a surface the replay would otherwise only visit minutes in. */
+async function clickThrough(page: Page, labels: readonly string[]): Promise<void> {
+  for (const label of labels) {
+    // Prefer the control whose accessible name STARTS with the label — a menu trigger reads as
+    // "Share", while the item inside it reads as "Export" plus its blurb, so a plain text match
+    // would find the trigger again and close the menu it just opened.
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const byRole = page.getByRole('button', { name: new RegExp(`^${escaped}`, 'i') });
+    const target = (await byRole.count()) ? byRole : page.getByText(label, { exact: false });
+    await target.first().click({ timeout: 20_000 });
+    await page.waitForTimeout(2500);
+  }
+}
+
 /** A lazily-imported surface can lose its first fetch on a cold headless run; the overlay offers
  *  exactly one honest retry, so take it rather than shooting the error state. */
 async function retryOnce(page: Page, waitMs: number): Promise<void> {
@@ -106,6 +145,11 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
       await page.getByRole('button', { name: /view as canvas/i }).click({ timeout: 15_000 });
       await page.waitForTimeout(2500);
     }
+    if (shot.then) {
+      await clickThrough(page, shot.then);
+      // The deck preview composes real slides from the answers so far — give it room to land.
+      await page.waitForTimeout(6000);
+    }
     return;
   }
   if (shot.from === 'tour') {
@@ -126,6 +170,10 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     await page.goto(`${baseUrl}/#/live?ripple=1`, { waitUntil: 'load' });
     await page.waitForSelector('.ripple-panel', { timeout: 60_000 });
     await page.getByRole('button', { name: shot.section }).first().click({ timeout: 20_000 });
+    await page.waitForTimeout(2500);
+    // A section can open on its thinnest state — the first course is a two-lesson orientation.
+    // Follow-up clicks land the shot on the part worth showing.
+    await clickThrough(page, shot.then ?? []);
     await page.waitForTimeout(shot.settleMs);
     return;
   }
@@ -149,6 +197,7 @@ async function main(): Promise<void> {
       if (only && !only.split(',').includes(shot.name)) continue;
       const ctx = await browser.newContext({
         viewport: VIEWPORT,
+        deviceScaleFactor: SCALE,
         // Settled, not mid-animation: a reveal caught halfway reads as a rendering bug.
         reducedMotion: 'reduce',
       });
