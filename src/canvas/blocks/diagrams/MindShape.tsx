@@ -31,6 +31,8 @@ import {
   CY,
   KEEPOUT,
   MARGIN,
+  UNSAID_X,
+  UNSAID_Y,
   VH,
   VW,
   type MindShapePoint,
@@ -227,7 +229,13 @@ function UnsaidCard({
       className="ms-card ms-unsaid"
       data-status="maybe"
       data-interactive={interactive ? 'true' : undefined}
-      style={{ left: '72%', top: '88%', ['--ms-i' as string]: 20 } as CSSProperties}
+      style={
+        {
+          left: `${UNSAID_X}px`,
+          top: `${UNSAID_Y}px`,
+          ['--ms-i' as string]: 20,
+        } as CSSProperties
+      }
       aria-label={`Maybe: ${unsaid.label}`}
     >
       <div className="ms-card-header">
@@ -333,10 +341,10 @@ export function MindShape({
   const prevClusterKeyRef = useRef<string>('');
   const seed = clusterKey === prevClusterKeyRef.current ? prevPositionsRef.current : undefined;
   const { positions, centroidOf, labels } = useMemo(
-    () => computeLayout(atoms, clusters, seed),
+    () => computeLayout(atoms, clusters, seed, !!unsaid),
     // seed is derived from clusters (via clusterKey), so it needs no separate dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [atoms, clusters],
+    [atoms, clusters, unsaid],
   );
   prevPositionsRef.current = positions;
   prevClusterKeyRef.current = clusterKey;
@@ -359,8 +367,8 @@ export function MindShape({
       halfH = Math.max(halfH, Math.abs(p.y - CY) + CARD_HH);
     }
     if (unsaid) {
-      halfW = Math.max(halfW, Math.abs(0.72 * VW - CX) + CARD_HW);
-      halfH = Math.max(halfH, Math.abs(0.88 * VH - CY) + CARD_HH);
+      halfW = Math.max(halfW, Math.abs(UNSAID_X - CX) + CARD_HW);
+      halfH = Math.max(halfH, Math.abs(UNSAID_Y - CY) + CARD_HH);
     }
     halfW += MARGIN;
     halfH += MARGIN;

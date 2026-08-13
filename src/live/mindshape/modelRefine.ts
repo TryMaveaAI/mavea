@@ -112,7 +112,7 @@ ATOM KINDS:
 - tradeoff: a genuine cost-benefit tension in a single choice
 - open_loop: an unresolved question or loose thread they keep circling but haven't answered
 - value: a principle that matters to them (only when explicitly stated)
-- person: a real person mentioned by name or relationship
+- person: a real person mentioned by name or relationship — and what they want, said, or are affected by. A card reading only "Priya" tells the reader nothing; "Priya wants to batch the writes" is the thought. Never emit a bare name.
 
 Pick deliberately: a subject of curiosity is a question, a sub-area or path is an option, an unknown they circle is an open_loop; reserve want for an actual stated desire. A map where every atom is the same kind is wrong — make the kinds reflect the real variety in what they said.
 

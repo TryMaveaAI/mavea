@@ -16,7 +16,15 @@ import { useMindShape, mergeDelta } from '../src/live/mindshape/useMindShape';
 import { useSignals } from '../src/live/mindshape/useSignals';
 import { mindShapeToSpec } from '../src/live/mindshape/mindShapeToSpec';
 import { settleMindShape } from '../src/live/mindshape/modelRefine';
-import { computeLayout } from '../src/canvas/blocks/diagrams/mindShapeLayout';
+import {
+  computeLayout,
+  CARD_HH,
+  CARD_HW,
+  CX,
+  CY,
+  UNSAID_X,
+  UNSAID_Y,
+} from '../src/canvas/blocks/diagrams/mindShapeLayout';
 import { MindShape } from '../src/canvas/blocks/diagrams/MindShape';
 import type {
   MindAtom,
@@ -441,6 +449,49 @@ describe('computeLayout', () => {
   it('is deterministic', () => {
     const atoms = mkAtoms(10);
     expect(computeLayout(atoms).positions).toEqual(computeLayout(atoms).positions);
+  });
+
+  it("leaves the centre's own text column clear, not just the face", () => {
+    // "WHAT I HEARD", the question, and the settled synthesis line stack BELOW the face in screen
+    // space, where the world layout cannot see them — so a symmetric keep-out let a card land on
+    // top of the sentence that explains the whole map.
+    const { positions } = computeLayout(mkAtoms(9));
+    for (const [id, p] of positions) {
+      if (p.y < CY) continue; // above the face: the shorter keep-out is correct there
+      const overCentreColumn = Math.abs(p.x - CX) < CARD_HW;
+      if (overCentreColumn) {
+        expect(p.y - CARD_HH, `${id} covers the synthesis line`).toBeGreaterThan(CY + 150);
+      }
+    }
+  });
+
+  it('keeps thoughts off the pinned unsaid card', () => {
+    // The unsaid card waits in a fixed corner and never moves, so the relaxation has to move the
+    // atoms instead. Without that it renders on top of whichever thought landed there.
+    const { positions } = computeLayout(mkAtoms(8), undefined, undefined, true);
+    for (const [id, p] of positions) {
+      const onUnsaid =
+        Math.abs(p.x - UNSAID_X) < CARD_HW + 120 && Math.abs(p.y - UNSAID_Y) < CARD_HH * 2;
+      expect(onUnsaid, `card ${id} is buried under the unsaid card`).toBe(false);
+    }
+  });
+
+  it('parks a theme label clear of the cards it names', () => {
+    const atoms = mkAtoms(6);
+    const clusters = [
+      { id: 'c1', label: 'The first theme', atomIds: ['a0', 'a1', 'a2'], weight: 3 },
+      { id: 'c2', label: 'The second theme', atomIds: ['a3', 'a4', 'a5'], weight: 2 },
+    ];
+    const { positions, labels } = computeLayout(atoms, clusters);
+    expect(labels).toHaveLength(2);
+    for (const label of labels) {
+      for (const [id, p] of positions) {
+        const insideCard = Math.abs(label.x - p.x) < CARD_HW && Math.abs(label.y - p.y) < CARD_HH;
+        expect(insideCard, `label "${label.label}" sits on card ${id}`).toBe(false);
+      }
+      // …and off the face, which is where a single theme's label used to land.
+      expect(Math.hypot(label.x - CX, label.y - CY)).toBeGreaterThan(120);
+    }
   });
 });
 
