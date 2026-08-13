@@ -54,7 +54,16 @@ const SHOTS: Shot[] = [
   // live while someone is still talking.
   { name: 'answer-ink', from: 'demo', persona: 'dev', settleMs: 20_000 },
   { name: 'canvas-view', from: 'demo', persona: 'dev', settleMs: 26_000, asCanvas: true },
-  { name: 'think-map', from: 'tour', chapter: 'think', settleMs: 8000 },
+  // The settled thought map, from the dev-only harness (#/mindlab) rather than a live session:
+  // its threads and themes come from a model, so a key-free tour chapter can only ever show the
+  // listening half. Same component, same CSS, a real settled spec — and reproducible.
+  {
+    name: 'think-map',
+    from: 'route',
+    hash: '#/mindlab',
+    ready: '.ms-hub',
+    settleMs: 3500,
+  },
   // Row 2 — what it can be pointed at: a document, a repository, a whole subject.
   { name: 'doc-prism', from: 'tour', chapter: 'prism', settleMs: 30_000 },
   {
@@ -97,7 +106,7 @@ const THEME = 'light';
  *  badge, the walkthrough panel, the coach hint — plus any notice, which dates a shot and covers
  *  the canvas. Hidden via a stylesheet, not by removing nodes: the replay keeps driving underneath. */
 const HIDE_HARNESS =
-  '.demox, .demox-banner, .demox-badge, .tourx, .ink-coach, .feature-use-notice { display: none !important; }';
+  '.demox, .demox-banner, .demox-badge, .tourx, .ink-coach, .feature-use-notice, .mindlab-bar { display: none !important; }';
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);

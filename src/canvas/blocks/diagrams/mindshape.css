@@ -40,7 +40,7 @@
   /* The stage is fixed to the whole viewport, so the session rail sits ON TOP of its left edge:
      without this the docked face and the leftmost cards were laid out underneath the rail, and the
      camera centred the map against a box a rail-width wider than what anyone can see. */
-  padding: 70px 32px 168px calc(32px + var(--rail-w, 0px));
+  padding: 70px 32px calc(var(--dock-h, 76px) + 108px) calc(32px + var(--rail-w, 0px));
   box-sizing: border-box;
   /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the
      page background. Tokens handle light/dark automatically. */
@@ -57,7 +57,7 @@
    which floats over the foot of the stage: without it the lowest theme label was drawn behind
    those chips, half-legible. */
 .ms-stage-fill[data-phase='settled'] {
-  padding-bottom: 168px;
+  padding-bottom: calc(var(--dock-h, 76px) + 108px);
   background: radial-gradient(
     ellipse 70% 55% at 50% 44%,
     color-mix(in oklab, var(--surface-elevated) 85%, var(--insight) 15%) 0%,
@@ -224,6 +224,16 @@
   transition:
     left 0.7s cubic-bezier(0.22, 1, 0.36, 1),
     top 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Drag the settled field to pan it, wheel to zoom — a map too crowded to fit is explorable
+   instead of clipped. The cursor says so. */
+.ms-canvas[data-explorable='true'] {
+  cursor: grab;
+  touch-action: none;
+}
+.ms-canvas[data-explorable='true']:active {
+  cursor: grabbing;
 }
 
 /* The settled hub: the question in a circle at the centre, with the cards around it. A WORLD

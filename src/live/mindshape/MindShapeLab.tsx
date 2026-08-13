@@ -5,7 +5,7 @@
 // The spec below is a real settled map (an offsite argument), kept verbatim: cards of every kind
 // the layout has to place, two themes, a hero tension, and an unsaid card — the shape that exposed
 // the hub/keep-out bugs.
-import { useState, type ReactElement } from 'react';
+import { useState, type CSSProperties, type ReactElement } from 'react';
 import { MindShape, type MindPhase } from '../../canvas/blocks/diagrams/MindShape';
 import type { MindAtom, MindCluster, MindLink, MindUnsaid } from './types';
 // The face's own sizing lives in the global presence styles (main.tsx loads them for the app);
@@ -114,6 +114,7 @@ export function MindShapeLab(): ReactElement {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-default)' }}>
       <div
+        className="mindlab-bar"
         style={{
           position: 'fixed',
           zIndex: 100,
@@ -140,7 +141,13 @@ export function MindShapeLab(): ReactElement {
       </div>
       {/* MindShape renders its own .ms-canvas — matching LiveApp, which puts it straight inside the
           stage fill. Wrapping it in a second canvas here would measure the wrong box. */}
-      <div className="ms-stage-fill" data-phase={phase}>
+      {/* No dock or rail in the harness, so it reserves neither — the map gets the whole box, the
+          way it does on a wide screen in the app. */}
+      <div
+        className="ms-stage-fill"
+        data-phase={phase}
+        style={{ ['--dock-h' as string]: '0px', ['--rail-w' as string]: '0px' } as CSSProperties}
+      >
         <MindShape
           asBlock={false}
           phase={phase}

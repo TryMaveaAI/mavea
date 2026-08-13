@@ -500,10 +500,46 @@ export function MindShape({
       general: 'Answer this',
     }[intent] ?? 'Answer this';
 
+  // A crowded map outgrows any fit: the camera can only shrink so far before the cards stop being
+  // readable, so past that point the map has to be explorable. Drag pans it, the wheel zooms about
+  // the cursor. Settled only — while listening, the map is still rearranging itself under you.
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>): void => {
+    if (!docked || e.button !== 0) return;
+    // Cards own their own clicks (remove, confirm) — only drag from the empty field.
+    if ((e.target as HTMLElement).closest('.ms-card, .ms-hub, button')) return;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const dragMove = (e: React.PointerEvent<HTMLDivElement>): void => {
+    const from = dragRef.current;
+    if (!from) return;
+    sc.pan(e.clientX - from.x, e.clientY - from.y);
+    dragRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>): void => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
+  const wheelZoom = (e: React.WheelEvent<HTMLDivElement>): void => {
+    if (!docked) return;
+    sc.zoomAtClient(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+  };
+
   const canvas = (
     <div
       className="ms-canvas"
       ref={sc.viewportRef}
+      onPointerDown={startDrag}
+      onPointerMove={dragMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onWheel={wheelZoom}
+      // The map owns this drag (pan), so the Mark highlighter must not hijack it — the carve-out
+      // rule every draggable block follows (tests/ink-carveout.test.ts).
+      data-interactive
+      data-explorable={docked ? 'true' : undefined}
       // The camera scale also has to reach the CENTER block, which is a fixed sibling of the world
       // rather than a child of it — so it could not read a variable set on .ms-world. Without it the
       // centre text stayed full size while the map zoomed out beneath it, and the question ended up
