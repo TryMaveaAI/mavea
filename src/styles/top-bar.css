@@ -141,6 +141,15 @@
 .mavea-app.live-voice:not(.face-homed):not(.in-wizard) .brand-dot {
   opacity: 0;
 }
+/* …except while Watch Me Think is up — including when the app still counts as face-homed. There
+   the real face has docked into the MAP's own corner (the move Live makes when a canvas takes
+   over), so the brand slot it would otherwise fill is empty and the wordmark reads as a bare
+   "Mavéa" with nothing beside it. The placeholder mini-jelly is the mark again for the duration;
+   the two are never the same face in the same place. */
+.mavea-app.watch-thinking .brand-dot,
+.mavea-app.watch-thinking.face-homed .brand-dot {
+  opacity: 1;
+}
 .brand-name {
   font-size: 16px;
 }

@@ -361,7 +361,9 @@ export function MindShape({
   // Auto-fit camera: frame the atoms' real bounding box, so the map zooms to FILL the canvas (using
   // the full width of the 10:7 stage, not a centred square that wastes the sides). The counter-scale
   // (mindshape-world.css) keeps the cards readable as it zooms out, so the floor can stay low.
-  const sc = useSpatialCanvas({ clamp: { min: 0.12, max: 1.05 }, margin: 20 });
+  // Max 1.6, not 1.05: on a large display a six-card map fitted at 1× is a stamp in an empty
+  // field. The counter-scale (mindshape-world.css) keeps card type sane as it grows.
+  const sc = useSpatialCanvas({ clamp: { min: 0.12, max: 1.6 }, margin: 20 });
   // fitTo is a stable useCallback; depend on it directly so the re-fit effect below has an
   // exhaustive, lint-clean dependency list (the whole `sc` object would over-trigger).
   const { fitTo } = sc;

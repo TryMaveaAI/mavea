@@ -23,6 +23,12 @@ const LABEL_HH = 16;
 /** Where the face parks once the shape has settled — the corner, the same move Live makes when a
  *  canvas takes over. While listening it stays centred (thoughts orbit the thing hearing them); on
  *  settle it docks and the middle of the stage becomes ordinary space instead of a reserved hole. */
+/** Every screen this runs on is wider than it is tall, but the seed ring is circular — so the map
+ *  is always height-constrained, and the camera shrinks it to fit while the sides sit empty. Widen
+ *  the settled field to roughly the shape of the stage. Applied AFTER separation, and only
+ *  outward, so it can never push two cards together. */
+const WIDE_SPREAD = 1.5;
+
 /** Radius of the settled hub — the circle holding the question at the centre of the map (see
  *  .ms-hub, which is 2×HUB_R wide in these same world units). A card's POSITION is its centre, so
  *  the clear zone has to be the hub's radius plus the card's own half-extent plus a gap, per axis —
@@ -255,6 +261,9 @@ export function computeLayout(
     ],
     docked,
   );
+  if (docked) {
+    for (const point of positions.values()) point.x = CX + (point.x - CX) * WIDE_SPREAD;
+  }
   // Spokes tether each card to its theme's centre, so that centre has to be where the theme's
   // cards ENDED UP — not the seed ring they were thrown from. Stale centroids drew long stray
   // threads out to empty space, which read as the map having connections it does not have.
