@@ -201,15 +201,32 @@ export function clearTemplate(doc: Document): void {
   restoreStoredTheme(doc);
 }
 
-/** Hold the persisted skin for the lifetime of a mounted surface, restoring the page on teardown.
- *  Returns the cleanup so a React effect can `return mountTemplateSkin(document)`. Shared by the
- *  topbar picker and by the Dashboards Present view, which REPLACES that topbar — without this the
- *  picker's own unmount would strip `data-template` and Present would fall back to the stock skin. */
+/** How many mounted surfaces are currently holding the skin. Ref-counted because they OVERLAP:
+ *  the setup wizard renders its own picker inside Live, so leaving the wizard for a first answer
+ *  unmounted the picker — and its teardown stripped `data-template` out from under the Live
+ *  surface that was still standing. The chosen skin survived in storage but the new conversation
+ *  rendered in the stock one, which read as "my theme didn't save". Only the LAST holder restores
+ *  the page. */
+let skinHolders = 0;
+
+/** Hold the persisted skin for the lifetime of a mounted surface, restoring the page when the last
+ *  holder lets go. Returns the cleanup so a React effect can `return mountTemplateSkin(document)`.
+ *  Shared by the topbar picker, the Live surface, and the Dashboards Present view, which REPLACES
+ *  that topbar — without the ref-count, whichever one unmounted first took the skin with it. */
 export function mountTemplateSkin(doc: Document = document): () => void {
   const id = readTemplate();
   prewarmTemplateFonts(doc, id);
   applyTemplate(doc, id);
-  return () => clearTemplate(doc);
+  skinHolders += 1;
+  let released = false;
+  return () => {
+    // A React effect cleanup can run more than once in development's double-invoke; releasing
+    // twice would drop the count below the real number of holders and clear an in-use skin.
+    if (released) return;
+    released = true;
+    skinHolders = Math.max(0, skinHolders - 1);
+    if (skinHolders === 0) clearTemplate(doc);
+  };
 }
 
 /** Route prefixes whose surfaces wear the chosen workspace skin. Keep in step with the surfaces

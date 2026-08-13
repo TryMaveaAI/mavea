@@ -280,7 +280,7 @@ import { createPreloadableLazy, scheduleIdlePreload } from '../lib/preloadableLa
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
 import { hasLegalAcceptance } from '../legal/acceptance';
 import { preloadRoute } from '../routes';
-import { applyStartupTemplate, clearTemplate } from './templates';
+import { mountTemplateSkin } from './templates';
 
 // Remembers whether the user collapsed the desktop conversation rail to a slim strip.
 // What the lazy-canvas Suspense fallback sketches while the TopicCanvas chunk downloads: two
@@ -487,10 +487,10 @@ export function LiveApp(): ReactElement {
   const [cfg] = useLiveConfig();
   const info = providerInfo(cfg.provider);
   const connected = cfg.models[cfg.provider] || info.defaultModel;
-  useLayoutEffect(() => {
-    applyStartupTemplate(document, '#/live');
-    return () => clearTemplate(document);
-  }, []);
+  // Hold the skin for as long as Live is mounted. Ref-counted (mountTemplateSkin) because the
+  // setup wizard renders its own picker inside this surface: the picker's unmount used to strip
+  // `data-template`, so the first answer after "New" rendered in the stock skin.
+  useLayoutEffect(() => mountTemplateSkin(document), []);
 
   // Reading text size (Appearance → Text size): stamps the root so the `--fs-scale` token
   // override in wow-polish.css takes effect. 'normal' clears the attribute rather than writing

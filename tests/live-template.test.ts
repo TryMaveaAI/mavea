@@ -327,3 +327,39 @@ describe('template apply / persist / clear', () => {
     expect(document.documentElement.dataset.template).toBe('console');
   });
 });
+
+// ── Overlapping holders ───────────────────────────────────────────────────────
+// Live mounts the skin, and the setup wizard renders its own picker INSIDE Live, which mounts it
+// again. Leaving the wizard for the first answer unmounts the picker — and that teardown used to
+// strip `data-template` off the document while Live was still standing, so a brand-new
+// conversation rendered in the stock skin even though the choice was still in storage.
+describe('mountTemplateSkin — overlapping holders', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.template;
+  });
+
+  it('keeps the skin while another surface still holds it', () => {
+    persistTemplate('ink');
+    const releaseLive = mountTemplateSkin(document);
+    const releasePicker = mountTemplateSkin(document);
+    expect(document.documentElement.dataset.template).toBe('ink');
+
+    releasePicker(); // the wizard's picker goes away as the conversation starts
+    expect(document.documentElement.dataset.template).toBe('ink');
+
+    releaseLive(); // …and only leaving Live itself hands the page back
+    expect(document.documentElement.dataset.template).toBeUndefined();
+  });
+
+  it("ignores a repeated release, so one surface cannot drop another surface's skin", () => {
+    persistTemplate('paper');
+    const releaseLive = mountTemplateSkin(document);
+    const releasePicker = mountTemplateSkin(document);
+    releasePicker();
+    releasePicker(); // development double-invoke, or a defensive caller
+    expect(document.documentElement.dataset.template).toBe('paper');
+    releaseLive();
+    expect(document.documentElement.dataset.template).toBeUndefined();
+  });
+});
