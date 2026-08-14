@@ -1321,14 +1321,21 @@
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Paths finish their entrance by finishing the STROKE — never by a transform. On an SVG element
+     `transform-box` is `view-box`, so a percentage translate resolves against the whole viewBox:
+     the `translate(-50%, -50%)` written for the cards slid the entire connection layer half a map
+     up and to the left, leaving every spoke and thread hanging off the cards it connects. */
   .ms-spoke,
   .ms-thread,
-  .ms-link,
+  .ms-link {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
   .ms-card,
   .ms-card[data-status='forming'] {
     animation: none;
     opacity: 1;
-    stroke-dashoffset: 0;
     transform: translate(-50%, -50%) scale(1);
   }
 
@@ -1368,12 +1375,23 @@
     opacity: 1;
   }
 
-  .ms-canvas[data-revealing='true'] .ms-world .ms-card[data-status='stable'],
-  .ms-canvas[data-revealing='true'] .ms-thread[data-hero='true'],
+  /* Same rule for the settle reveal: end the entrance, keep each element's resting geometry. A card
+     is anchored by its centre and counter-scaled by the camera, so clearing its transform would
+     drop it half a card off its own position — only the action bar rises by a transform. */
+  .ms-canvas[data-revealing='true'] .ms-world .ms-card[data-status='stable'] {
+    animation: none;
+    opacity: 1;
+  }
+
+  .ms-canvas[data-revealing='true'] .ms-thread[data-hero='true'] {
+    animation: none;
+    opacity: 0.7;
+    stroke-dashoffset: 0;
+  }
+
   .ms-canvas[data-revealing='true'] .ms-actions {
     animation: none;
     opacity: 1;
-    stroke-dashoffset: 0;
     transform: none;
   }
 }
