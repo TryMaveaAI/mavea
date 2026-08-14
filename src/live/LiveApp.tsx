@@ -877,14 +877,25 @@ export function LiveApp(): ReactElement {
     };
   }, []);
 
-  // ---- always-on: persist toggle + auto-restart mic after each turn. ----
-  useEffect(() => {
+  /** Write the durable Tap↔Always-on preference. */
+  const persistAlwaysOn = useCallback((enabled: boolean) => {
     try {
-      localStorage.setItem(ALWAYS_ON_STORAGE_KEY, String(alwaysOn));
+      localStorage.setItem(ALWAYS_ON_STORAGE_KEY, String(enabled));
     } catch {
       /* storage unavailable */
     }
-  }, [alwaysOn]);
+  }, []);
+
+  // ---- always-on: persist toggle + auto-restart mic after each turn. ----
+  // Never persist the BORROWED value. Watch Me Think and Just listen flip always-on on for the
+  // duration of the surface (alwaysOnBeforeListenRef holds what the user actually picked) and put
+  // it back on exit — but a reload or a closed tab never reaches that exit, so writing the borrowed
+  // `true` left a Tap user hands-free forever, mic opening by itself, having never chosen it.
+  // A borrow is runtime state; only the user's own choice is a preference.
+  useEffect(() => {
+    const borrowed = alwaysOnBeforeListenRef.current;
+    persistAlwaysOn(borrowed ? borrowed.enabled : alwaysOn);
+  }, [alwaysOn, persistAlwaysOn]);
 
   useEffect(() => {
     try {
@@ -5266,6 +5277,10 @@ export function LiveApp(): ReactElement {
                     alwaysOnBeforeListenRef.current = null;
                     setAlwaysPaused(false);
                     setAlwaysOn(next === 'always');
+                    // Persist the pick here too: picking Always-on while a surface had already
+                    // borrowed it changes no React state, so the effect above would never fire and
+                    // the choice would live only until the next reload.
+                    persistAlwaysOn(next === 'always');
                     setMicHoldPreferred(next === 'hold');
                     if (next === 'always' && alwaysOn && !listening && !value.trim()) {
                       voice.start({ inCanvas: !!turn.spec, continuous: true });
