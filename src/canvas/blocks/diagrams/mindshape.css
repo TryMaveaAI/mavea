@@ -40,12 +40,11 @@
   /* The stage is fixed to the whole viewport, so the session rail sits ON TOP of its left edge:
      without this the docked face and the leftmost cards were laid out underneath the rail, and the
      camera centred the map against a box a rail-width wider than what anyone can see. */
-  /* How much of the bottom the map must stay off. NOT the whole dock: --dock-h measures the dock
-     ELEMENT (337px on a 5K display with two notices up), and its top ~100px is empty air holding a
-     floating chip — reserving all of it left a dead band between the map and the composer. Reserve
-     the dock minus that slack, with a floor for when the notices are dismissed and the dock is
-     barely taller than the composer itself. */
-  --ms-bottom-reserve: max(120px, calc(var(--dock-h, 76px) - 56px));
+  /* How much of the bottom the map must stay off: the WHOLE dock, plus a hair. Its top band looks
+     like empty air — it holds a floating chip — but the dock paints a surface across its full
+     height, so anything the map draws under it is simply covered. Reserving less to reclaim that
+     band is what cut the settled action bar in half: the pills were drawn, then painted over. */
+  --ms-bottom-reserve: calc(var(--dock-h, 76px) + 8px);
   padding: 70px 32px var(--ms-bottom-reserve) calc(32px + var(--rail-w, 0px));
   box-sizing: border-box;
   /* Radial spotlight: lighter center keeps the jelly face in focus; edges fade to the

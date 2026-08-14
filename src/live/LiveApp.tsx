@@ -18,6 +18,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -4477,8 +4478,31 @@ export function LiveApp(): ReactElement {
   // appeared later, on the first thought — which reads as a broken button, not a mode. The empty
   // map is the honest first frame: the face, listening, waiting for something to place.
   const mindActive = watchThinking;
+  // The dock's real height, watched: the map has to end above it, and nothing else on the page
+  // reports that number reliably (see the style comment on .ms-stage-fill below).
+  const [dockReserve, setDockReserve] = useState(160);
+  useEffect(() => {
+    if (!mindActive) return;
+    const dock = document.querySelector<HTMLElement>('.live-dock');
+    if (!dock) return;
+    const apply = (): void => setDockReserve(Math.round(dock.getBoundingClientRect().height) + 8);
+    apply();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(apply);
+    ro.observe(dock);
+    return () => ro.disconnect();
+  }, [mindActive]);
   const mindOverlay = mindActive ? (
-    <div className="ms-stage-fill" data-phase={mindShape.phase}>
+    <div
+      className="ms-stage-fill"
+      data-phase={mindShape.phase}
+      // Measured, not inherited. --dock-h is set from the dock's offsetHeight by its own observer
+      // and can lag what is on screen (read 131px against a 168px dock while a notice was up), and
+      // the dock paints an opaque surface across its whole height — so a reserve short by 37px
+      // doesn't crop the map, it hides whatever the map drew there. The settled action bar was
+      // being painted over, half a row of buttons at a time.
+      style={{ ['--ms-bottom-reserve' as string]: `${dockReserve}px` } as CSSProperties}
+    >
       {/* Always-present way back to the conversation — the overlay must never trap the user. */}
       <button
         type="button"
