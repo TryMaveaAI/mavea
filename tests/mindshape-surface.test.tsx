@@ -488,6 +488,29 @@ describe('computeLayout', () => {
     }
   });
 
+  it('never leaves a card sitting on the face', () => {
+    // Two ways this happened: a single-member theme placed at its group centre — which for one
+    // theme IS the map's centre — and a point exactly on the centre having no direction for the
+    // keep-out to push it in (hypot(0,0) falls back to 1, so the test passed and the card stayed).
+    for (const n of [1, 2, 3]) {
+      const { positions } = computeLayout(mkAtoms(n));
+      for (const [id, p] of positions) {
+        expect(
+          Math.hypot(p.x - CX, p.y - CY),
+          `card ${id} sits on the face at n=${n}`,
+        ).toBeGreaterThan(160);
+      }
+    }
+    // …and with a lone atom in its own theme beside a crowded one.
+    const clusters = [
+      { id: 'c1', label: 'Most of it', atomIds: ['a0', 'a1'], weight: 2 },
+      { id: 'c2', label: 'Alone', atomIds: ['a2'], weight: 1 },
+    ];
+    for (const [id, p] of computeLayout(mkAtoms(3), clusters).positions) {
+      expect(Math.hypot(p.x - CX, p.y - CY), `card ${id} sits on the face`).toBeGreaterThan(160);
+    }
+  });
+
   it('keeps a lone thought with the map instead of exiling it', () => {
     // An unclustered atom, or a theme holding one card, used to orbit an invisible group centre —
     // landing hundreds of units out in empty space, reading as unrelated to everything else.

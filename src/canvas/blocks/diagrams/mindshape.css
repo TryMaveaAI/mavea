@@ -328,6 +328,13 @@
   left: 24px;
   top: 20px;
   transform: none;
+  /* A card, not loose type. With the face gone upstairs to the brand slot, the heading was two
+     lines of bare text floating on the field with nothing to belong to. */
+  padding: 10px 14px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, transparent);
+  border: 1px solid var(--line-soft, var(--line));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   /* Orb in its own column, the heading stacked beside it — so the dock reads as one object rather
      than a face with a paragraph hanging off the bottom. */
   display: grid;

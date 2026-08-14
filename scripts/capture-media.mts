@@ -75,7 +75,9 @@ const SHOTS: Shot[] = [
     then: ['I already know this, skip ahead'],
     settleMs: 4000,
   },
-  { name: 'impact-map', from: 'ripple', section: 'Impact map', settleMs: 6000 },
+  // The settled answer's own spoken track, as a waveform you can drag: the canvas un-builds to
+  // what had been SAID by that moment, then rebuilds as the voice replays.
+  { name: 'voice-scrub', from: 'demo', persona: 'dev', settleMs: 42_000, scrollTop: 0 },
   // The export studio, reached the way a person reaches it — the replay's own export beat is
   // minutes in, and waiting for it would make `pnpm gen:media` a coffee break.
   {

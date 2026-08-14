@@ -675,13 +675,15 @@ export function MindShape({
       <div className="ms-center">
         {/* Signal chip: transient Mavéa reaction above the face during listening */}
         {currentSignal && phase !== 'settled' && <SignalChip signal={currentSignal} />}
-        {/* Settled: the docked face wears the same chibi silhouette Live's corner orb does. Its
-            APPEARANCE only (ms-orb, mindshape.css) — borrowing Live's `.presence-layer.corner`
-            class brought that layer's own positioning with it and parked the face in the middle of
-            the map it had just stepped out of. */}
-        <div className={docked ? 'ms-center-pip-wrap ms-orb' : 'ms-center-pip-wrap'}>
-          <Presence state={presenceState} emotion="neutral" gaze="center" />
-        </div>
+        {/* One jelly, ever. While listening, the face is the centre of the map — the thing being
+            talked to. On settle it steps aside, and the app's own face has already docked into the
+            topbar's brand slot (.face-homed), so drawing another here would put two Mavéas on
+            screen a few pixels apart. The heading stays; the face is upstairs. */}
+        {!docked && (
+          <div className="ms-center-pip-wrap">
+            <Presence state={presenceState} emotion="neutral" gaze="center" />
+          </div>
+        )}
         <div className="ms-center-label" aria-hidden="true">
           {settledCenterLabel}
         </div>

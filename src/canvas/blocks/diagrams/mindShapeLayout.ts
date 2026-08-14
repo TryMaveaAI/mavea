@@ -80,8 +80,15 @@ function separate(
   // Taller below: that is where the centre's own text lives (see CENTER_STACK_BELOW).
   const keepoutBelow = docked ? HUB_KEEPOUT_Y : keepoutAbove + CENTER_STACK_BELOW;
   for (let iteration = 0; iteration < 400; iteration++) {
-    for (const id of ids) {
+    for (const [index, id] of ids.entries()) {
       const point = positions.get(id)!;
+      // A point sitting EXACTLY on the centre has no direction to be pushed in — hypot(0,0) falls
+      // back to 1, the keep-out test passes, and the card stays on the face forever. Give it one.
+      if (point.x === CX && point.y === CY) {
+        const angle = (index / Math.max(1, ids.length)) * 2 * Math.PI;
+        point.x = CX + Math.cos(angle);
+        point.y = CY + Math.sin(angle);
+      }
       const dx = point.x - CX;
       const dy = point.y - CY;
       const keepoutY = dy >= 0 ? keepoutBelow : keepoutAbove;
@@ -232,14 +239,18 @@ export function computeLayout(
       labels.push({ id: group.id, label: group.label, x: centerX, y: centerY });
     }
     const memberCount = group.members.length;
-    // A one-card theme IS its centre — orbiting a single member around an invisible point threw
-    // stragglers (an unclustered thought, a theme with one card) hundreds of units into empty space,
-    // where they read as unrelated to the map rather than part of it.
+    // A one-card theme IS its centre, so its member sits ON that centre rather than orbiting an
+    // invisible point — which used to fling stragglers into empty space. Except when that centre is
+    // the MAP's centre (a single theme, ring radius 0): there the face and its text live, so the
+    // lone card still needs the ring, or it lands squarely on the jelly.
+    const soloRadius = Math.max(KEEPOUT + 150, 230 + memberCount * 26);
     const memberRadius =
       memberCount <= 1
-        ? 0
+        ? single
+          ? soloRadius
+          : 0
         : single
-          ? Math.max(KEEPOUT + 150, 230 + memberCount * 26)
+          ? soloRadius
           : Math.min(220, 110 + memberCount * 16);
     const centroid: MindShapePoint = { x: centerX, y: centerY };
     group.members.forEach((atom, index) => {
