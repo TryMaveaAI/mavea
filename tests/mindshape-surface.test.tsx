@@ -488,6 +488,21 @@ describe('computeLayout', () => {
     }
   });
 
+  it('keeps a lone thought with the map instead of exiling it', () => {
+    // An unclustered atom, or a theme holding one card, used to orbit an invisible group centre —
+    // landing hundreds of units out in empty space, reading as unrelated to everything else.
+    const atoms = mkAtoms(5);
+    const clusters = [
+      { id: 'c1', label: 'The main theme', atomIds: ['a0', 'a1', 'a2'], weight: 3 },
+      { id: 'c2', label: 'On its own', atomIds: ['a3'], weight: 1 },
+    ];
+    const { positions } = computeLayout(atoms, clusters, undefined, false, true);
+    const spans = [...positions.values()].map((p) => Math.hypot(p.x - CX, p.y - CY));
+    const furthest = Math.max(...spans);
+    const median = spans.sort((a, b) => a - b)[Math.floor(spans.length / 2)];
+    expect(furthest, 'one card is thrown far past the rest of the map').toBeLessThan(median * 2.6);
+  });
+
   it('parks a theme label clear of the cards it names', () => {
     const atoms = mkAtoms(6);
     const clusters = [

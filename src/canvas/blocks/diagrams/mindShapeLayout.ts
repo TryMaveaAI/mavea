@@ -232,9 +232,15 @@ export function computeLayout(
       labels.push({ id: group.id, label: group.label, x: centerX, y: centerY });
     }
     const memberCount = group.members.length;
-    const memberRadius = single
-      ? Math.max(KEEPOUT + 150, 230 + memberCount * 26)
-      : Math.min(220, 110 + memberCount * 16);
+    // A one-card theme IS its centre — orbiting a single member around an invisible point threw
+    // stragglers (an unclustered thought, a theme with one card) hundreds of units into empty space,
+    // where they read as unrelated to the map rather than part of it.
+    const memberRadius =
+      memberCount <= 1
+        ? 0
+        : single
+          ? Math.max(KEEPOUT + 150, 230 + memberCount * 26)
+          : Math.min(220, 110 + memberCount * 16);
     const centroid: MindShapePoint = { x: centerX, y: centerY };
     group.members.forEach((atom, index) => {
       const seeded = previous?.get(atom.id);
@@ -262,7 +268,14 @@ export function computeLayout(
     docked,
   );
   if (docked) {
-    for (const point of positions.values()) point.x = CX + (point.x - CX) * WIDE_SPREAD;
+    // Widen, but not without limit: past about half the stage a card stops reading as part of the
+    // same map. Cards beyond that keep their distance rather than being pushed further out.
+    const reach = VW * 0.42;
+    for (const point of positions.values()) {
+      const dx = point.x - CX;
+      const spread = Math.abs(dx) * WIDE_SPREAD;
+      point.x = CX + Math.sign(dx) * Math.min(spread, Math.max(Math.abs(dx), reach));
+    }
   }
   // Spokes tether each card to its theme's centre, so that centre has to be where the theme's
   // cards ENDED UP — not the seed ring they were thrown from. Stale centroids drew long stray

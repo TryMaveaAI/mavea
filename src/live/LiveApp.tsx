@@ -4472,7 +4472,11 @@ export function LiveApp(): ReactElement {
   // during listening (dock/scrubber chrome stays on top and usable); CSS raises it only when settled.
   // `mindActive` is the single source of truth for "the takeover is on screen" — it gates the
   // overlay, the body class, and the suppression of the answer canvas's ink underneath.
-  const mindActive = watchThinking && mindShape.phase !== 'idle';
+  // Note `watchThinking` alone, NOT "…and the map has atoms": pressing Watch me think used to
+  // leave you on the answer canvas with only a changed button to show for it, and the surface
+  // appeared later, on the first thought — which reads as a broken button, not a mode. The empty
+  // map is the honest first frame: the face, listening, waiting for something to place.
+  const mindActive = watchThinking;
   const mindOverlay = mindActive ? (
     <div className="ms-stage-fill" data-phase={mindShape.phase}>
       {/* Always-present way back to the conversation — the overlay must never trap the user. */}

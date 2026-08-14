@@ -113,6 +113,10 @@
 .composer-watch {
   height: 38px;
   flex-shrink: 0;
+  /* The label swaps with the phase — "Watch me think" → "Done thinking" → "Add thought" — and each
+     is a different width, so the button resized under the cursor and shoved Highlight, the
+     paperclip and send along with it. Hold the widest of the three. */
+  min-width: 132px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
