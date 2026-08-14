@@ -1,19 +1,26 @@
 name: Release
 
 # "Cut a release" = run this workflow (Actions tab → Run workflow, or `gh workflow run release.yml
-# -f bump=patch`). Pick patch/minor/major; everything else — bumping package.json, committing,
-# tagging, creating the GitHub Release, verifying, and publishing to npm — happens automatically
-# in one run. No standing bot PR, no manual package.json edits.
+# -f bump=none`). Tagging, creating the GitHub Release, verifying, and publishing to npm happen
+# automatically in one run.
 #
+# Two modes, because `main` is protected twice over — a ruleset (pull request + verified signatures)
+# and classic protection (7 required checks + a code-owner review), and only admins bypass either.
+# github-actions[bot] is not an admin, so a bot commit to main is rejected outright:
+#   • bump=none              — main ALREADY carries the version to release (bumped like any other
+#                              change, through the normal path). The workflow only tags what is
+#                              there. Tags are not protected, so this always works. THE DEFAULT.
+#   • patch | minor | major  — the workflow bumps and commits to main itself. Needs an actor that
+#                              can push to main; keep it for if that ever becomes true again.
 on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump size
+        description: Version bump size (none = release the version already on main)
         required: true
-        default: patch
+        default: none
         type: choice
-        options: [patch, minor, major]
+        options: [none, patch, minor, major]
 
 permissions:
   contents: read
@@ -63,24 +70,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
-      - name: Bump package.json version
+      - name: Resolve the version to release
         id: tag
         run: |
-          pnpm version "${{ inputs.bump }}" --no-git-tag-version
-          # Read the bumped version back from package.json itself rather than parsing pnpm's
-          # stdout — pnpm's "Version bumped successfully: <name>: <old> → <new>" summary format
-          # is not a stable contract (it broke this exact parse once already) and package.json is
-          # the actual source of truth the rest of this workflow already checks against.
+          if [ "${{ inputs.bump }}" != "none" ]; then
+            pnpm version "${{ inputs.bump }}" --no-git-tag-version
+          fi
+          # Read the version back from package.json itself rather than parsing pnpm's stdout —
+          # pnpm's "Version bumped successfully: <name>: <old> → <new>" summary format is not a
+          # stable contract (it broke this exact parse once already) and package.json is the
+          # actual source of truth the rest of this workflow already checks against.
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "tag_name=v$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Commit, tag, and push
+      - name: Refuse a version that is already released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag_name }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::$TAG already exists; bump the version on main before releasing"
+            exit 1
+          fi
+
+      - name: Tag and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore(release): ${{ steps.tag.outputs.tag_name }}"
-          git tag "${{ steps.tag.outputs.tag_name }}"
-          git push origin main "${{ steps.tag.outputs.tag_name }}"
+          TAG="${{ steps.tag.outputs.tag_name }}"
+          if [ "${{ inputs.bump }}" = "none" ]; then
+            # Nothing to commit: main already carries this version. Only the tag is pushed, which
+            # is what keeps this mode working under branch protection.
+            git tag "$TAG"
+            git push origin "$TAG"
+          else
+            git commit -am "chore(release): $TAG"
+            git tag "$TAG"
+            git push origin main "$TAG"
+          fi
 
       - name: Create GitHub Release
         env:
