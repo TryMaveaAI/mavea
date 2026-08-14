@@ -68,6 +68,9 @@ export interface MindShapeProps extends Partial<MindShapeSpec> {
   intent?: MindIntent;
   /** Whether the 1.8s settle reveal sequence is currently playing. Gates cascade animations. */
   isRevealing?: boolean;
+  /** The last model call for this map came back empty-handed — so an empty map says so, rather
+   *  than blaming the speaker for not saying enough. */
+  modelUnavailable?: boolean;
   /** Current transient signal chip — Mavéa noticing a pattern during listening. */
   currentSignal?: MindSignal | null;
   /** Post-settle action. `detail` carries the focus for actions that target a specific thing —
@@ -328,6 +331,7 @@ export function MindShape({
   phase = 'settled',
   intent = 'general',
   isRevealing = false,
+  modelUnavailable = false,
   currentSignal,
   onAction,
   onRemoveAtom,
@@ -699,6 +703,14 @@ export function MindShape({
           (atoms.length > 0 ? (
             <div className="ms-synthesis-line" aria-live="polite">
               {synthesisLine({ atoms, links }, heroTension)}
+            </div>
+          ) : modelUnavailable ? (
+            // Not the same failure at all: the words were there, the model would not answer
+            // (rate-limited, refused, unreachable). Telling someone who just typed six thoughts
+            // that they were too quiet sends them to re-say everything for nothing.
+            <div className="ms-synthesis-line" aria-live="polite">
+              I couldn't reach the model just now — nothing you said was lost. Try again in a
+              moment.
             </div>
           ) : (
             <div className="ms-synthesis-line" aria-live="polite">

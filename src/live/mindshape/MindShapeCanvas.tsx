@@ -77,6 +77,7 @@ export function MindShapeCanvas({
       center={spec?.center ?? ''}
       atoms={spec?.atoms ?? []}
       links={spec?.links ?? []}
+      modelUnavailable={mindShape.modelUnavailable}
       clusters={spec?.clusters}
       unsaid={spec?.unsaid}
       intent={intent}

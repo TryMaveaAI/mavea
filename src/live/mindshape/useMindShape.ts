@@ -23,6 +23,10 @@ export interface UseMindShapeReturn {
   confirmUnsaid: () => void;
   /** Dismiss the unsaid card — the user said "not quite". Remembered so it doesn't resurface. */
   dismissUnsaid: () => void;
+  /** True when the last model call for the map came back empty-handed — rate-limited, refused, or
+   *  unreachable. The map has no atoms in that case for a reason that is NOT "you didn't say
+   *  enough", and telling someone who typed six thoughts that they were too quiet is a lie. */
+  modelUnavailable: boolean;
   reset: () => void;
   /** Go back to listening. `keepMap` true (default) preserves the atoms so new speech merges in
    *  ("I forgot a few things"); false wipes them for a fresh map but stays on the live surface
@@ -143,6 +147,7 @@ const EMPTY_SPEC: MindShapeSpec = { center: '', atoms: [], links: [] };
 
 export function useMindShape(cfg: ModelConfig | null): UseMindShapeReturn {
   const [phase, setPhase] = useState<MindPhase>('idle');
+  const [modelUnavailable, setModelUnavailable] = useState(false);
   const [spec, setSpec] = useState<MindShapeSpec | null>(null);
 
   // Mutable refs — avoid stale closures in callbacks
@@ -302,7 +307,14 @@ export function useMindShape(cfg: ModelConfig | null): UseMindShapeReturn {
     inFlightRef.current = true;
     try {
       const settled = await settleMindShape(transcript, c, ctrl.signal);
-      if (ctrl.signal.aborted || !settled) return;
+      if (ctrl.signal.aborted) return;
+      if (!settled) {
+        // The transcript had words in it and the model gave nothing back — a refusal, a rate
+        // limit, or an unreachable provider. Remember that, so the empty map can say which.
+        setModelUnavailable(true);
+        return;
+      }
+      setModelUnavailable(false);
       setSpecSync(keepUnaccountedAtoms(specRef.current?.atoms ?? [], settled));
     } finally {
       if (!ctrl.signal.aborted) inFlightRef.current = false;
@@ -466,6 +478,7 @@ export function useMindShape(cfg: ModelConfig | null): UseMindShapeReturn {
     phase,
     spec,
     intent,
+    modelUnavailable,
     onTranscript,
     onSpeechEnd,
     removeAtom,

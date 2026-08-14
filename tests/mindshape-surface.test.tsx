@@ -1299,6 +1299,25 @@ describe('MindShape — interactive unsaid card', () => {
 // own words vanish is the opposite of being listened to. Anything the settle didn't account for
 // rides along.
 // ─────────────────────────────────────────────────────────────────────────────
+describe('an empty map says which failure it was', () => {
+  const empty = {
+    center: 'What are we deciding?',
+    atoms: [] as MindAtom[],
+    links: [] as MindLink[],
+  };
+
+  it('blames nobody when the model would not answer', () => {
+    render(<MindShape {...empty} phase="settled" modelUnavailable />);
+    expect(screen.getByText(/couldn't reach the model/i)).toBeInTheDocument();
+    expect(screen.queryByText(/didn't catch enough/i)).not.toBeInTheDocument();
+  });
+
+  it('still says so plainly when there really was too little to map', () => {
+    render(<MindShape {...empty} phase="settled" />);
+    expect(screen.getByText(/didn't catch enough/i)).toBeInTheDocument();
+  });
+});
+
 describe('keepUnaccountedAtoms', () => {
   const atom = (id: string, quote: string): MindAtom => ({
     id,
