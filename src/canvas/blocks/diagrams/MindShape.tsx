@@ -124,7 +124,7 @@ const KIND_LABEL: Record<MindAtomKind, string> = {
 
 /** A theme label's own half-extents, for keeping the camera's frame around it (mindshape.css caps
  *  the chip at 150px wide). */
-const LABEL_FIT_HW = 80;
+const LABEL_FIT_HW = 96;
 const LABEL_FIT_HH = 18;
 
 /** Quadratic Bézier tension arc between two atoms. Perpendicular control-point offset
