@@ -805,16 +805,10 @@
   transform: translateY(0);
 }
 
-/* Settled: the bar rides the DOCK, not the bottom of the map's box. The box is padded clear of the
-   dock so no card is drawn behind it — and on a tall dock (notices stacked above the composer, 337px
-   measured on a 5K display) that edge is hundreds of pixels up the screen, leaving the bar hanging
-   in open space. Fixed to the dock, it sits where every other bottom control does. */
-.ms-canvas[data-phase='settled'] .ms-actions {
-  position: fixed;
-  bottom: calc(var(--ms-bottom-reserve, 120px) - 46px);
-  left: var(--rail-w, 0px);
-  right: 0;
-}
+/* The bar stays INSIDE the canvas, at its own bottom inset. Taking it out to `position: fixed` so
+   it could ride the dock put it past the canvas's overflow-hidden edge, where it was clipped to a
+   sliver — `fixed` doesn't escape that clip here. It no longer needs to: the canvas's bottom
+   reserve is the dock minus its empty top band, so this edge already sits close to the composer. */
 
 .ms-action-btn {
   font-size: 11px;

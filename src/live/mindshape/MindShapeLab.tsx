@@ -157,6 +157,9 @@ export function MindShapeLab(): ReactElement {
           clusters={clusters}
           {...(withUnsaid ? { unsaid: UNSAID } : {})}
           intent="decision"
+          // The settled action bar only renders with a handler — without one the harness would
+          // show a view the product never has, and could not catch the bar being clipped.
+          onAction={() => undefined}
         />
       </div>
     </div>
