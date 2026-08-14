@@ -43,6 +43,10 @@ export interface SpatialCanvasOptions {
   clamp?: { min: number; max: number };
   /** Padding (px) kept between content and the viewport edge when fitting. */
   margin?: number;
+  /** Height (px) at the FOOT of the viewport that a fit must stay out of — for chrome that floats
+   *  over the canvas rather than sitting beside it (the mindshape action bar). Content is fitted
+   *  and centred in what's left above it, so the band stays free at every zoom. */
+  insetBottom?: number;
 }
 
 export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas {
@@ -51,6 +55,7 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
   const clampMin = opts.clamp?.min ?? DEFAULT_CLAMP.min;
   const clampMax = opts.clamp?.max ?? DEFAULT_CLAMP.max;
   const margin = opts.margin ?? 0;
+  const insetBottom = opts.insetBottom ?? 0;
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
@@ -62,8 +67,10 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
     if (!el) return null;
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return null; // not laid out yet (jsdom / display:none)
-    return { w: r.width, h: r.height };
-  }, []);
+    // The fit box is anchored at the viewport's top-left, so subtracting the inset here both
+    // shrinks the fit and centres it above the band — no second offset to keep in step.
+    return { w: r.width, h: Math.max(1, r.height - insetBottom) };
+  }, [insetBottom]);
 
   const fitTo = useCallback(
     (content: Bbox | null) => {
@@ -103,14 +110,9 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
       raf = requestAnimationFrame(() => {
         const content = lastContent.current;
         if (!content) return;
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) return;
-        setCamera(
-          fitToContent(content, { w: r.width, h: r.height }, margin, {
-            min: clampMin,
-            max: clampMax,
-          }),
-        );
+        const vp = measureViewport();
+        if (!vp) return;
+        setCamera(fitToContent(content, vp, margin, { min: clampMin, max: clampMax }));
       });
     });
     ro.observe(el);
@@ -118,7 +120,7 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [margin, clampMin, clampMax]);
+  }, [measureViewport, margin, clampMin, clampMax]);
 
   return {
     camera,

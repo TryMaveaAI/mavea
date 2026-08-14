@@ -54,6 +54,31 @@ describe('useSpatialCanvas — auto-fit', () => {
   });
 });
 
+describe('useSpatialCanvas — reserved foot', () => {
+  function BandHarness({ content }: { content: Bbox }): React.ReactElement {
+    const sc = useSpatialCanvas({ clamp: { min: 0.01, max: 100 }, insetBottom: 100 });
+    return (
+      <div>
+        <div ref={sc.viewportRef} data-testid="vp" />
+        <button onClick={() => sc.fitTo(content)}>fit</button>
+        <output data-testid="t">{sc.transform}</output>
+      </div>
+    );
+  }
+
+  it('fits above chrome that floats over the foot of the canvas', () => {
+    // The mindshape action bar is painted INSIDE the canvas, so a fit that uses the whole box
+    // draws the map's bottom row right where the pills are. 200×200 viewport less a 100px band
+    // → 100-tall content fits at 1× and sits in the top half, leaving the band clear.
+    const { getByTestId, getByText } = render(
+      <BandHarness content={{ x: 0, y: 0, w: 100, h: 100 }} />,
+    );
+    stubRect(getByTestId('vp'), 200, 200);
+    fireEvent.click(getByText('fit'));
+    expect(getByTestId('t').textContent).toBe('translate(50px, 0px) scale(1)');
+  });
+});
+
 describe('useSpatialCanvas — resource cleanup', () => {
   beforeEach(installResourceTracking);
   afterEach(uninstallResourceTracking);

@@ -130,6 +130,11 @@ const KIND_LABEL: Record<MindAtomKind, string> = {
 const LABEL_FIT_HW = 96;
 const LABEL_FIT_HH = 18;
 
+/** The settled action bar floats INSIDE the canvas (mindshape.css: 28px up from the foot, one row
+ *  of pills ~44px tall, two when they wrap). The camera has to treat that strip as unusable, or the
+ *  bottom theme's label is fitted right where the pills are painted and reads as half-drawn. */
+const ACTIONS_BAND = 104;
+
 /** Quadratic Bézier tension arc between two atoms. Perpendicular control-point offset
  *  keeps the curve visually clear from a straight spoke. Returns the SVG `d` attribute
  *  and the midpoint label position (slightly outward from the curve apex). */
@@ -367,7 +372,12 @@ export function MindShape({
   // (mindshape-world.css) keeps the cards readable as it zooms out, so the floor can stay low.
   // Max 1.6, not 1.05: on a large display a six-card map fitted at 1× is a stamp in an empty
   // field. The counter-scale (mindshape-world.css) keeps card type sane as it grows.
-  const sc = useSpatialCanvas({ clamp: { min: 0.12, max: 1.6 }, margin: 20 });
+  const hasActions = !!onAction && atoms.length > 0;
+  const sc = useSpatialCanvas({
+    clamp: { min: 0.12, max: 1.6 },
+    margin: 20,
+    insetBottom: hasActions ? ACTIONS_BAND : 0,
+  });
   // fitTo is a stable useCallback; depend on it directly so the re-fit effect below has an
   // exhaustive, lint-clean dependency list (the whole `sc` object would over-trigger).
   const { fitTo } = sc;
