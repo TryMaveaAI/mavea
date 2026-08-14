@@ -55,6 +55,18 @@ function microphoneError(error: unknown): VoiceError {
   return name === 'NotAllowedError' || name === 'SecurityError' ? 'not-allowed' : 'audio';
 }
 
+/** How long one utterance's transcription may take, given whether /stt has answered before in this
+ *  session. The first window used to be 3.5s — meant to keep a MISSING service from stalling the
+ *  turn, but a missing service doesn't stall: the fetch rejects in milliseconds (connection
+ *  refused, or the dev proxy's own error). What 3.5s actually excluded was a service that works
+ *  slowly. whisper.cpp on a CPU box takes 15-17s to return one second of audio, so every utterance
+ *  timed out and the user was told transcription was "still starting or unavailable" — with the
+ *  transcriber running the whole time. The first window is now longer than a real local model
+ *  needs; a proven one gets longer still, for genuinely long utterances. */
+export function whisperWindowMs(provenWorking: boolean): number {
+  return provenWorking ? 45_000 : 25_000;
+}
+
 export class VadVoice implements VoiceController {
   readonly mode: VoiceMode = 'vad';
   readonly capabilities: VoiceCapabilities;
@@ -102,6 +114,12 @@ export class VadVoice implements VoiceController {
   // long enough that a service that isn't installed costs one request per window, not per word.
   private static readonly WHISPER_RETRY_MS = 10_000;
 
+  /** A HEAD on /stt answers in milliseconds whether the service EXISTS. Availability and speed are
+   *  different questions, and conflating them is what made a working transcriber report itself
+   *  missing: the first inference was given 3.5s to prove the service was there, but whisper.cpp on
+   *  a CPU box takes 15s+ to return one second of audio, so it timed out every single time and the
+   *  user was told to "try again in a moment" forever. Ask about existence cheaply; then give the
+   *  actual transcription the room it needs. */
   // null = not probed yet; false = the last attempt failed; true = working.
   private whisperOk: boolean | null = null;
   // A failure suppresses further /stt round-trips only until this moment. The copy the user sees
@@ -471,10 +489,11 @@ export class VadVoice implements VoiceController {
       fd.append('file', new Blob([wav], { type: 'audio/wav' }), 'speech.wav');
       fd.append('language', 'en');
       fd.append('response_format', 'verbose_json');
-      // Until we know Whisper is up, give it only a SHORT window so a missing /stt service
-      // can't stall the turn (this was the ~10s "it just turns off" hang). Once Whisper has
-      // answered once, allow a longer window for genuinely long utterances.
-      const timeoutMs = this.whisperOk === true ? 12_000 : 3_500;
+      // A missing /stt service must not stall the turn (the old ~10s "it just turns off" hang),
+      // but a SLOW one must not be mistaken for a missing one. Settle that with a cheap ping
+      // before committing to a window: reachable → give the transcription real time; silent →
+      // keep the short leash that fails fast and says so.
+      const timeoutMs = whisperWindowMs(this.whisperOk === true);
       const timeoutSignal = AbortSignal.timeout(timeoutMs);
       const signal = outerSignal ? AbortSignal.any([outerSignal, timeoutSignal]) : timeoutSignal;
       const res = await fetch('/stt/inference', {
