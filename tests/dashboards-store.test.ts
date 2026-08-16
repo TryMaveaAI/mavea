@@ -767,6 +767,23 @@ describe('lastTouchedByUserAt (eviction ordering)', () => {
     expect(ids).toHaveLength(24);
     expect(ids).toContain('cared-about');
   });
+
+  // The same reasoning applies to what the reader SEES, which used to sort on updatedAt: every
+  // background check bumps it, so tiles rearranged themselves mid-glance while nobody touched
+  // anything.
+  it('a background refresh never reorders the grid; a user touch does', () => {
+    addDashboard(makeDash({ id: 'first' }));
+    addDashboard(makeDash({ id: 'second' }));
+    updateMetricValue('first', 'm1', 1, '1', 'user', 1000);
+    updateMetricValue('second', 'm1', 1, '1', 'user', 2000);
+    expect(getDashboards().map((d) => d.id)).toEqual(['second', 'first']);
+
+    updateMetricValue('first', 'm1', 5, '5', 'search', 9_000_000); // automated check
+    expect(getDashboards().map((d) => d.id)).toEqual(['second', 'first']);
+
+    updateMetricValue('first', 'm1', 6, '6', 'user', 3000); // a person moved it
+    expect(getDashboards().map((d) => d.id)).toEqual(['first', 'second']);
+  });
 });
 
 describe('quota canary', () => {

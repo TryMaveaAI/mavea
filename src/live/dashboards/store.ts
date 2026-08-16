@@ -460,11 +460,17 @@ function patchOne(
 let sortedSnapshot: Dashboard[] | null = null;
 let sortedFrom: Dashboard[] | null = null;
 
-/** Every dashboard, most-recently-updated first. */
+/** Every dashboard, most-recently-touched-by-the-user first. Deliberately NOT `updatedAt`: every
+ *  background check bumps that, so the grids rearranged themselves under the reader each time a
+ *  refresh landed — tiles swapping places on their own while nobody touched anything. Ordering by
+ *  engagement (the same reasoning capList applies to eviction) means only a person moves a card.
+ *  `createdAt` covers a dashboard predating the field. */
 export function getDashboards(): Dashboard[] {
   const c = get();
   if (sortedFrom !== c || sortedSnapshot === null) {
-    sortedSnapshot = [...c].sort((a, b) => b.updatedAt - a.updatedAt);
+    sortedSnapshot = [...c].sort(
+      (a, b) => (b.lastTouchedByUserAt ?? b.createdAt) - (a.lastTouchedByUserAt ?? a.createdAt),
+    );
     sortedFrom = c;
   }
   return sortedSnapshot;
