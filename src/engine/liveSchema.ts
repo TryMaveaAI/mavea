@@ -87,6 +87,7 @@ import { Icon, ICON_KEYS, type IconKey } from '../icons/icons';
 import { completedBlocks as recoverBlocks, extractStringField } from '../live/streamParse';
 import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.generated';
 import {
+  trimToSentence,
   collapseRepeatedValues,
   forDisplay,
   forSpeech,
@@ -189,6 +190,11 @@ export interface LiveResponse {
    *  ('replace'), add to the canvas ('augment'), or update it ('refine'). The surface
    *  treats this as a hint only — a deterministic topic-shift check is the safety net. */
   continuity?: 'replace' | 'augment' | 'refine';
+  /** Whether the answer just written explains a MECHANISM — things that brought about other
+   *  things — and so has a causal web worth opening as a living world. The model is the only
+   *  honest judge here: it wrote the answer, and no pattern over the reader's phrasing can tell
+   *  "how does photosynthesis work" (a mechanism) from "how do I center a div" (a recipe). */
+  causal?: boolean;
   /** Optional model-authored spotlight order: a tour of block INDICES (0-based) each with
    *  a short line, so a capable model can choreograph which block it talks about when.
    *  Indices (not ids) survive the lifecycle's re-numbering; the surface drops any
@@ -290,12 +296,13 @@ const LIBRARY_SIZE_LABEL = `${Math.floor(CATALOG_FACTS.length / 50) * 50}+`;
  * The system prompt. Compact, prescriptive, ONE few-shot example.
  * ------------------------------------------------------------------ */
 export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first AI presence. The user asks something; reply with ONLY a single JSON object (no prose, no markdown, no code fences):
-{"narration": string, "title": string, "sub": string, "topic": string, "continuity": "replace"|"augment"|"refine", "blocks": Block[], "chips": string[], "tour": [{"index": number, "say": string, "mark"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}, "marks"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}[]}], "bend"?: {"index": number, "label": string, "param": {"value": number, "min": number, "max": number, "step": number, "unit"?: string}, "outputs": [{"label": string, "formula": string, "unit"?: string}]}}
+{"narration": string, "title": string, "sub": string, "topic": string, "continuity": "replace"|"augment"|"refine", "causal": boolean, "blocks": Block[], "chips": string[], "tour": [{"index": number, "say": string, "mark"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}, "marks"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}[]}], "bend"?: {"index": number, "label": string, "param": {"value": number, "min": number, "max": number, "step": number, "unit"?: string}, "outputs": [{"label": string, "formula": string, "unit"?: string}]}}
 (Emit "narration" FIRST so the spoken line streams and can be voiced the instant it arrives.)
 - "title": a short, factual noun-phrase headline — the answer's subject, not a conversational opener. NEVER write "Here's what I can say", "Here's what I found", "My response", "What you asked", or any hedge phrase. Good: "Cricket: How the Game Works", "Sleep and Memory: The Science". Bad: "Here's what I can say about cricket".
 - "sub": one short supporting line.
 - "topic": 1-3 word semantic category for this conversation — used to group it on your atlas map. Pick a REAL subject domain: "Finance", "Biology", "Travel", "Sports", "Programming", "History", "Music", "Physics", "Nutrition", "Business", "Mathematics", "Law", "Psychology", "Cooking", "Technology", "Art", "Language", "Medicine", "Economics", "Astronomy". Match the domain honestly; don't default to generic labels like "General" or "Advice".
 - "continuity": how this turn relates to the PREVIOUS answer on screen — "replace" (a genuinely new subject: clear the canvas and build fresh), "augment" (same thread: keep the canvas and add new cards — any follow-up, drill-in, or "tell me more"), or "refine" (same thread: update cards already on screen with corrected or recalculated values). The first turn of a conversation is always "replace". A follow-up that re-words things, asks about one part, or pivots WITHIN the same subject is still the same thread — when a related ask could go either way, prefer "augment"; wiping a canvas the user is still reading is worse than adding to it.
+- "causal": true when your answer explains a MECHANISM — one thing bringing about another, whether it is history, science, engineering, business or health. "Why did the 2008 crisis happen", "how does photosynthesis work", "what happened to Kodak", "explain the French Revolution", "why is our churn rising" are all true: each has causes, steps in between, and an outcome. False when the answer has no causal chain to draw: a lookup or definition ("capital of France"), a recipe or procedure ("how do I center a div"), a comparison or recommendation, a calculation, or anything you were asked to WRITE. Judge the answer you just wrote, not the wording of the question.
 - "tour": for any multi-part answer, 3-5 {"index","say"} stops that walk the key blocks in order — each "say" is SPOKEN ALOUD, like a friend talking you through the screen, exactly as that block is spotlighted (so write each line about THAT block). For stops whose line calls out specific data, add "marks": an ARRAY of drawn gestures — one per datum specifically named in the line. One thing named → one mark. Two things compared → two marks. Four figures in a table row → four marks. Let the line dictate the count; there is no fixed ceiling. Omit the tour only for a one-glance answer.
 - "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Lead with the most useful takeaway, in plain language, and never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
 - "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — see PER-SLIDE NOTES.
@@ -2338,11 +2345,15 @@ export function validateLiveResponse(
     }
   }
   const obj = asObj(parsed);
+  // forDisplay first: the model may annotate a tricky name anywhere it writes prose, and the
+  // pronunciation is for the VOICE — a reader must never be shown a literal
+  // "[[Titanic|tie-tan-ick]]". The block props below have always resolved theirs; the answer's own
+  // title and subtitle were the two that did not, so a single annotated name reached the screen.
   const title = capContentText(
-    asStr(obj.title).trim(),
+    forDisplay(asStr(obj.title).trim()),
     fieldContentBudget('response', 'title', 'text'),
   );
-  const sub = capContentText(asStr(obj.sub).trim(), {
+  const sub = capContentText(forDisplay(asStr(obj.sub).trim()), {
     maxGraphemes: 180,
     maxLines: 4,
   });
@@ -2351,7 +2362,10 @@ export function validateLiveResponse(
   // stop a runaway narration, without pre-truncating a legitimately longer rich line.
   // The narration may carry inline [[shown|said]] annotations: the screen gets the shown side,
   // the voice the said side. Cap first, then split — so both halves share one length bound.
-  const narrationRaw = capTweet(asStr(obj.narration).trim(), 320);
+  // Sentence-aware, unlike capTweet: this line is both spoken and printed as the answer's opening,
+  // and a word-boundary cut left the reader staring at "…a protected site, the…". A shorter whole
+  // sentence is an answer; a longer fragment is the software trailing off.
+  const narrationRaw = trimToSentence(asStr(obj.narration).trim(), 320);
   // collapseRepeatedValues drops an accidental back-to-back restatement ("$200, $200" → "$200")
   // a completion turn can produce, on both the shown and said sides.
   // proseFor* also strips any inline citation/URL the model dropped into the spoken line — it renders
@@ -2428,6 +2442,15 @@ export function validateLiveResponse(
   const hint = asStr(obj.continuity).toLowerCase().trim();
   const continuity =
     hint === 'replace' || hint === 'augment' || hint === 'refine' ? hint : undefined;
+
+  // A judgement the model actually made must survive as itself — including "no". Dropping a false
+  // here is indistinguishable from silence, and silence sends the caller to its word-shape
+  // fallback, which then offers a world the model just declined. Presence and verdict are separate
+  // facts, so both are carried.
+  const causalWord = asStr(obj.causal).toLowerCase().trim();
+  const causalSaid =
+    typeof obj.causal === 'boolean' || causalWord === 'true' || causalWord === 'false';
+  const causal = obj.causal === true || causalWord === 'true';
 
   // Optional model-authored tour: keep only in-range block indices, de-duplicated. Each spoken
   // line may carry inline [[shown|said]] annotations — the spotlight caption shows the clean side
@@ -2585,6 +2608,7 @@ export function validateLiveResponse(
     blocks,
     ...(topic ? { topic } : {}),
     ...(continuity ? { continuity } : {}),
+    ...(causalSaid ? { causal } : {}),
     ...(tour.length ? { tour } : {}),
     ...(sources ? { sources } : {}),
     ...(chips ? { chips } : {}),

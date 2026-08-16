@@ -41,6 +41,8 @@ import { Toulmin } from './Toulmin';
 import { TournamentBracket } from './TournamentBracket';
 import { Trie } from './Trie';
 import { WiringDiagram } from './WiringDiagram';
+import { WorldPreview } from './WorldPreview';
+import type { WorldPreviewProps } from './types';
 // The family's own styles ride its chunk — cssCodeSplit inserts them before evaluation.
 import './styles.css';
 
@@ -92,4 +94,9 @@ export const diagramsRegistry: BlockRegistry = {
   tournamentbracket: entry(TournamentBracket),
   trie: entry(Trie),
   wiringdiagram: entry(WiringDiagram),
+  // The world card needs `blockId`: it is the handle the explore button hands to the openWorld
+  // registry, which is how the live surface knows WHICH world to take the screen over with.
+  world: (p, c) => (
+    <WorldPreview {...(p as WorldPreviewProps)} delay={c.delay} blockId={c.blockId} />
+  ),
 };

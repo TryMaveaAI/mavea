@@ -6,6 +6,9 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
 import { safeHttpUrl } from '../../lib/sourceHost';
+import { EdgeEvidencePanel } from '../trust/EdgeEvidencePanel';
+import { asEdgeRelation } from '../trust/relations';
+import { deriveEdgeStatus } from '../trust/receipts';
 import { cascade } from './engine';
 import { layoutWhy, NODE_W, NODE_H } from './layout';
 import type { Intervention, WhyDag, WhyEdge, WhyNode } from './types';
@@ -305,11 +308,18 @@ export function WhyMachineOverlay({ dag, onClose }: Props): React.ReactElement {
                   receipt={sel.node.receipt}
                 />
               )}
+              {/* A link's evidence is the trust layer's, not this file's: it is the one place that
+                  knows how to show several receipts, a counter-quote, and — always — what the
+                  relation does NOT claim. The node arm keeps EvidenceView, which is a single
+                  receipt on a single figure and has no such vocabulary to carry. */}
               {sel?.kind === 'edge' && (
-                <EvidenceView
-                  tier={sel.edge.tier}
-                  label={sel.edge.verb ? `“${sel.edge.verb}”` : 'this link'}
-                  receipt={sel.edge.receipt}
+                <EdgeEvidencePanel
+                  relation={asEdgeRelation(sel.edge.relation)}
+                  sign={sel.edge.sign}
+                  status={sel.edge.status ?? deriveEdgeStatus(sel.edge)}
+                  receipts={sel.edge.receipts ?? (sel.edge.receipt ? [sel.edge.receipt] : [])}
+                  counter={sel.edge.counter}
+                  provisional={sel.edge.provisional}
                 />
               )}
             </div>

@@ -16,6 +16,17 @@
   --text-muted: #606876; /* darkened from #7c8798 — the old value failed WCAG AA (3.3-3.6:1) against surface-default/-elevated; this clears 4.5:1 against both with margin */
   --text-faint: #a7afbe;
 
+  /* The categorical row, darkened against a light ground: the dark-theme lightness (0.72) is set
+     to carry on a dark surface and washes out on this one. Same single-chroma discipline. */
+  --domain-health: oklch(0.56 0.15 15);
+  --domain-economy: oklch(0.56 0.15 70);
+  --domain-conflict: oklch(0.56 0.15 110);
+  --domain-environment: oklch(0.56 0.15 145);
+  --domain-science: oklch(0.56 0.15 195);
+  --domain-technology: oklch(0.56 0.15 250);
+  --domain-policy: oklch(0.56 0.15 295);
+  --domain-society: oklch(0.56 0.15 340);
+
   --presence-deep: #3346b0;
   --glow-presence: rgba(110, 140, 255, 0.16);
   --glow-insight: rgba(20, 160, 110, 0.14);

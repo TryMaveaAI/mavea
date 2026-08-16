@@ -1,0 +1,666 @@
+/* morph.css — the morph stage's skin.
+ *
+ * The whole illusion rests on one idea: a node is a POSITION, not a component. Every node paints
+ * all three of its faces at once and the representation only decides which one is opaque, so a
+ * morph from the causal web to the timeline to the chart moves the same element instead of
+ * unmounting a card and mounting a mark. Everything that animates is therefore transform or
+ * opacity — never a size, a colour or a layout property, which would tear the illusion apart on a
+ * hundred nodes at once.
+ *
+ * The camera lives on .mv-world (useSpatialCanvas publishes the transform; the transition here is
+ * the flight). --mv-counter is the shared counter-scale: as the camera zooms a dense world out,
+ * cards and chrome text scale back UP toward a constant on-screen size, so growing the world costs
+ * legibility much more slowly than it otherwise would. */
+
+.mv-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  /* The stage is mounted by whoever needs it — an overlay, a lab route — so it states its own
+     type rather than inheriting whatever wrapper it happens to land in. */
+  font-family: var(--font);
+  color: var(--text-primary);
+}
+.mv-viewport[data-panning='true'] {
+  cursor: grabbing;
+}
+
+.mv-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  /* One switch for the whole flight, inherited by every node: `data-morphing` is on only while a
+     CHOREOGRAPHED move is running (a fit, a morph between representations, a fly-to after a
+     breakdown unfolds). A drag or a wheel tick is the reader's own hand and lands on the frame it
+     was asked for — 0ms is not a transition, so nothing is scheduled and nothing is interpolated.
+     Gating it here rather than per element is what keeps a zoom from restarting a transform
+     transition on all N nodes: one attribute flip, no per-node style writes. */
+  --mv-flight: 0ms;
+  transition: transform var(--mv-flight) cubic-bezier(0.22, 0.9, 0.3, 1);
+  /* The ceiling is not a taste call: a layout reserves COL_W (300) for a CARD_W (200) face, so a
+     counter-scale above 1.5 grows cards into each other and the composition collapses at exactly
+     the zoom level this rule exists to rescue. 1.4 keeps a gutter at every scale — and
+     graphLayout's LEGIBLE_SCALE is its reciprocal, which is what makes a chain wrap instead of
+     shrinking past the point cards can still be read. */
+  --mv-counter: clamp(1, calc(1 / var(--mv-cam-scale, 1)), 1.4);
+}
+.mv-world[data-morphing] {
+  --mv-flight: var(--m-cinematic, 1100ms);
+}
+
+/* A compositor layer is rented, not owned: held for the whole time the surface is open it costs
+   the memory of a world-sized texture and re-rasterizes on every zoom, for the sake of moves that
+   only happen while something is actually flying or a finger is down. Promotion is asked for at
+   the moment the move is asked for — the layer is created in the same style pass that starts the
+   transition, so the flight still begins promoted — and dropped when the surface settles.
+   Under reduced motion there is no flight to promote for (the block at the foot of the sheet kills
+   the transition), and `data-morphing` would then never be retired by a transitionend that never
+   comes — so the flight half of this lives inside `no-preference`. The pointer half does not: a
+   drag is a real transform change at any motion preference, and pointerup always ends it. */
+.mv-viewport[data-panning='true'] .mv-world {
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mv-world[data-morphing] {
+    will-change: transform;
+  }
+}
+
+/* --- nodes ------------------------------------------------------------------------------- */
+
+/* A zero-size anchor at the node's world centre; the faces hang off it. Keeping the box empty
+   means the counter-scale never changes what the layout measured. */
+.mv-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform: translate(var(--nx), var(--ny)) scale(var(--mv-counter));
+  /* The world assembles instead of appearing: each node fades up a beat after the one before it
+     (@starting-style below is the entrance). The stagger is capped so the last card of a big web
+     is not still arriving when the reader reaches for it — and killing this transition, which the
+     reduced-motion rule at the foot of the sheet already does, ends the entrance outright.
+     The transform half rides `--mv-flight` from the world above (0ms unless a morph is running):
+     this transform also carries the counter-scale, so leaving it always-on made every wheel tick
+     start a 1.1s interpolation on every node in the world. The opacity half is unconditional —
+     it is the entrance and the fold, neither of which is a camera move. */
+  transition:
+    transform var(--mv-flight, 0ms) cubic-bezier(0.22, 0.9, 0.3, 1),
+    opacity var(--m-expressive, 420ms) var(--ease-out, ease) calc(min(var(--mv-i, 0), 14) * 26ms);
+}
+@starting-style {
+  .mv-node {
+    opacity: 0;
+  }
+}
+
+.mv-face {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  /* `filter` rides the same curve so a what-if's desaturation arrives with its dimming rather than
+     a beat behind it. */
+  transition:
+    opacity var(--m-expressive, 420ms) ease,
+    filter var(--m-expressive, 420ms) ease;
+}
+.mv-node[data-face='card'] .mv-face-card,
+.mv-node[data-face='entry'] .mv-face-entry,
+.mv-node[data-face='mark'] .mv-face-mark {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Face footprints mirror CARD_W/CARD_H, ENTRY_W/ENTRY_H and MARK in layouts/lanes.ts — the layout
+   reserves exactly this much room, so the two must move together. */
+.mv-face-card {
+  display: flex;
+  flex-direction: column;
+  /* Tight on purpose: every pixel of a card's height is paid for by every card in the web, and
+     past a certain total the composition stops fitting a laptop at a scale its labels can be read
+     at — 4px rather than 6 because the foot row below it is 24 tall (it carries hit-floor targets)
+     and the composition was a thousandth of a scale point off the legibility budget with a whole
+     breakdown unfolded. Keep in step with CARD_H_MAX in layouts/lanes.ts. */
+  gap: 4px;
+  width: 200px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  /* A lit top edge over a settled body — the card reads as a surface catching light, not a box.
+     Fully opaque on purpose: a translucent card lets the edges behind it show through its face,
+     which reads as a rendering fault long before it reads as depth. */
+  background: linear-gradient(180deg, var(--surface-elevated-2), var(--surface-elevated));
+  box-shadow: var(--shadow-raised);
+  transition:
+    opacity var(--m-expressive, 420ms) ease,
+    border-color var(--m-fast, 160ms) var(--ease-out, ease),
+    box-shadow var(--m-normal, 280ms) var(--ease-out, ease),
+    background var(--m-fast, 160ms) var(--ease-out, ease);
+}
+/* The seed: each card blooms out of a soft presence glow that settles into its resting shadow
+   (the bloom idiom), so the world grows rather than blinks into place. */
+@starting-style {
+  .mv-face-card {
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--presence) 26%, transparent);
+  }
+}
+/* One flow, not two stacked ones. Whatever the host adds to this face leads the label's own text
+   (MorphStage), so the box holds exactly two wrapped lines and nothing sizes itself past it. */
+.mv-face-entry {
+  display: grid;
+  align-content: center;
+  width: 160px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--surface-elevated) 82%, transparent);
+  box-shadow: var(--shadow-raised);
+}
+/* The mark is a small dot inside a hand-sized box. A node on the chart has nothing else to press —
+   the dot IS the way into its provenance — so the box carries MARK's hit floor and the dot only has
+   to be seen. Drawing the dot as the box instead is what once left a 14px target under a fingertip
+   twice its width. */
+.mv-face-mark {
+  display: grid;
+  place-items: center;
+  /* Mirrors MARK in layouts/lanes.ts, which is 30 rather than the 24px hit floor because this is a
+     WORLD size scaled by the camera — see the note there. */
+  width: 30px;
+  height: 30px;
+}
+.mv-face-mark::after {
+  content: '';
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full);
+  background: var(--presence);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--presence) 22%, transparent);
+}
+
+/* A cause has to LOOK touchable — the hover lifts it toward the reader, and a keyboard reader gets
+   the same offer as a pointer one. */
+.mv-viewport:not([data-panning='true']) .mv-node[role='button'] .mv-face-card,
+.mv-viewport:not([data-panning='true']) .mv-node[role='button'] .mv-face-entry {
+  cursor: pointer;
+}
+.mv-node[role='button']:hover .mv-face-card {
+  border-color: var(--line-strong);
+  background: linear-gradient(
+    180deg,
+    var(--surface-elevated-2),
+    color-mix(in oklab, var(--surface-elevated-2) 82%, var(--surface-elevated))
+  );
+  box-shadow: var(--shadow-floating);
+}
+/* The open card wears a ring, not a shadow: hover already owns the shadow, and a reader hovering
+   the very card they opened must still be able to see which one is open. */
+.mv-node[data-selected] .mv-face-card {
+  border-color: color-mix(in oklab, var(--presence) 72%, transparent);
+  outline: 2px solid color-mix(in oklab, var(--presence) 48%, transparent);
+  outline-offset: 2px;
+}
+/* ── What-if, shown in place ───────────────────────────────────────────────────────────────────
+   A counterfactual changes how much a cause MATTERS, never where it sits or when it happened — so
+   it is painted entirely in weight and never in geometry. Nothing here moves a card or a path by a
+   pixel: a reader dragging a lever must be able to trust that the map itself held still.
+
+   `--mv-shift` is the relative strength (1 = untouched). It is deliberately never printed: it is
+   computed from the world's own structure with nothing measuring it, so the surface states the move
+   in prose (trust/phrase) and paints it as prominence. */
+/* A weakened cause recedes: it desaturates and dims toward the floor, but never past legibility —
+   a cause the reader pruned to nothing is still a cause they need to be able to read.
+
+   Scoped to the face that is SHOWING, and that is not a detail. Face visibility on this stage IS
+   opacity (`.mv-face` is 0, the one matching `data-face` is 1), so a shift rule written against all
+   three faces at once un-hides the two that are meant to be hidden and paints every card two or
+   three times over. Match the existing `data-face` pairing exactly. */
+.mv-node[data-shift='weaker'][data-face='card'] .mv-face-card,
+.mv-node[data-shift='weaker'][data-face='entry'] .mv-face-entry,
+.mv-node[data-shift='weaker'][data-face='mark'] .mv-face-mark {
+  opacity: clamp(0.42, calc(0.42 + 0.58 * var(--mv-shift, 1)), 1);
+  filter: saturate(clamp(0.25, var(--mv-shift, 1), 1));
+}
+/* A strengthened one lifts, with a hard ceiling: the ratio is unbounded above (a cause can be
+   scaled many times over) and an unclamped glow would blow out the whole card. */
+.mv-node[data-shift='stronger'] .mv-face-card {
+  border-color: color-mix(in oklab, var(--insight) 55%, var(--line-soft));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--insight) 30%, transparent);
+}
+
+/* The links leaving a weakened cause thin with it — otherwise the cards recede while the web
+   between them keeps asserting the old strength. */
+.mv-edge-g[data-shift] .morph-edge {
+  transition:
+    opacity var(--m-expressive, 420ms) var(--ease-out, ease),
+    stroke-width var(--m-expressive, 420ms) var(--ease-out, ease);
+}
+.mv-edge-g[data-shift='weaker'] .morph-edge {
+  opacity: clamp(0.28, calc(0.28 + 0.72 * var(--mv-shift, 1)), 1);
+  stroke-width: calc(var(--mv-edge-w, 1.5) * clamp(0.35, var(--mv-shift, 1), 1));
+}
+
+/* ── Flow: contribution ribbons ────────────────────────────────────────────────────────────────
+   A ribbon is a heavy STROKE, not a filled area, so `non-scaling-stroke` keeps its weight constant
+   on the glass as the camera moves — a filled polygon would shrink with the world and stop being
+   comparable to the one beside it. Rounded so a wide ribbon does not end in a chisel. */
+.morph-ribbon {
+  stroke-linecap: round;
+  opacity: 0.5;
+}
+.mv-edge-g:hover .morph-ribbon {
+  opacity: 0.72;
+}
+
+/* The node itself is a zero-size anchor, so the ring has to land on the face that is showing. */
+.mv-node:focus {
+  outline: none;
+}
+.mv-node:focus-visible .mv-face-card,
+.mv-node:focus-visible .mv-face-entry,
+.mv-node:focus-visible .mv-face-mark {
+  outline: 2px solid var(--presence);
+  outline-offset: 3px;
+}
+
+.mv-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  /* A model-authored label has no length budget: wrap it, cap it, and never let it push the card
+     off its own footprint. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  /* TWO lines, not three: the layouts reserve CARD_H_MAX (lanes.ts) for every card in the web, and
+     a third line is height every one of them pays for — enough to stop a composition fitting a
+     laptop at a scale its labels can still be read at. */
+  -webkit-line-clamp: 2;
+  line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.mv-face-entry .mv-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  /* TWO lines, which is what the 32px of inner height holds (2 × 12px × 1.3). A compact face is
+     where a model-authored label is most likely to be too long, and two lines carry all but the
+     longest of them whole — one line put an ellipsis through "MBS / CDO exposure spread". */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  /* Load-bearing: a grid item's automatic minimum is its own max-content, which for a long label is
+     wider than the track — so the clamp above never engaged and the words ran out of the box and
+     across the entry beside it. The shelf packs entries one ENTRY_W apart, so the spill read as
+     boxes overlapping when it was only ever the text. */
+  min-width: 0;
+}
+.mv-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 18px;
+}
+.mv-card-foot:empty {
+  display: none;
+}
+.mv-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--insight);
+  font-variant-numeric: tabular-nums;
+}
+/* The receipt indicator: what tier of evidence stands behind this card, pushed hard right so the
+   eye can scan a column of them without reading a word. */
+.mv-tier {
+  margin-left: auto;
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+}
+
+/* --- what a card SAYS about itself ---------------------------------------------------------
+   Four independent facts, four separate channels, none of them borrowed from another meaning:
+   ROLE is the card's part in the story (tint + accent), TIER is how well it is evidenced (the
+   chip's colour), DOMAIN is the sphere it belongs to (a dot), and a SERIES is whether it has a
+   history to plot (a small rising mark). Dashes stay reserved for "not real" (an asserted link
+   and provisional links) and are used by none of them. */
+
+/* The outcome is the thing being explained: it carries the presence tint the rest of the product
+   uses for "this is the subject", so a reader finds the end of the story without tracing arrows. */
+.mv-node[data-role='outcome'] .mv-face-card {
+  border-color: color-mix(in oklab, var(--presence) 42%, var(--line));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--presence) 9%, var(--surface-elevated-2)),
+    color-mix(in oklab, var(--presence) 5%, var(--surface-elevated))
+  );
+}
+/* A root cause is where a chain STARTS — marked with an inset edge rather than a border, so the
+   200px footprint the layout reserved is untouched. */
+.mv-node[data-role='root'] .mv-face-card {
+  box-shadow:
+    inset 3px 0 0 color-mix(in oklab, var(--insight) 55%, transparent),
+    var(--shadow-raised);
+}
+
+/* Evidence level, on the chip that already names it. T0 is the no-number tier: it stays quiet
+   rather than broken — a dashed card would read as unevidenced, which it is not. */
+.mv-node[data-tier='T1'] .mv-tier {
+  color: var(--insight);
+  border-color: color-mix(in oklab, var(--insight) 45%, transparent);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.mv-node[data-tier='T2'] .mv-tier {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, transparent);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.mv-node[data-tier='T3'] .mv-tier {
+  color: var(--warning);
+  border-color: color-mix(in oklab, var(--warning) 45%, transparent);
+  background: color-mix(in oklab, var(--warning) 14%, transparent);
+}
+.mv-node[data-tier='T0'] .mv-face-card {
+  border-color: var(--line-soft);
+}
+.mv-node[data-tier='T0'] .mv-label {
+  color: var(--text-secondary);
+}
+
+/* The sphere. One rule per member of the closed vocabulary — an unknown domain never reaches the
+   DOM (the gate drops it), so a card either wears a colour from the set or wears no dot at all. */
+.mv-domain {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--mv-domain, var(--text-faint));
+}
+.mv-node[data-domain='economy'] {
+  --mv-domain: var(--domain-economy);
+}
+.mv-node[data-domain='policy'] {
+  --mv-domain: var(--domain-policy);
+}
+.mv-node[data-domain='technology'] {
+  --mv-domain: var(--domain-technology);
+}
+.mv-node[data-domain='science'] {
+  --mv-domain: var(--domain-science);
+}
+.mv-node[data-domain='environment'] {
+  --mv-domain: var(--domain-environment);
+}
+.mv-node[data-domain='society'] {
+  --mv-domain: var(--domain-society);
+}
+.mv-node[data-domain='health'] {
+  --mv-domain: var(--domain-health);
+}
+.mv-node[data-domain='conflict'] {
+  --mv-domain: var(--domain-conflict);
+}
+/* The mark face is a bare dot on the chart and the timeline: colouring it by domain is what stops
+   those two representations from reading as one undifferentiated constellation. */
+.mv-node[data-domain] .mv-face-mark::after {
+  background: var(--mv-domain);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--mv-domain) 22%, transparent);
+}
+
+/* "This one has a history." Three rising bars, drawn in the same ink as a measured value, so the
+   cards worth putting on a chart announce themselves while still in the graph. */
+.mv-node[data-series] .mv-card-foot::before {
+  content: '';
+  flex: none;
+  width: 9px;
+  height: 8px;
+  background:
+    linear-gradient(var(--insight), var(--insight)) 0 100% / 2px 3px no-repeat,
+    linear-gradient(var(--insight), var(--insight)) 3.5px 100% / 2px 6px no-repeat,
+    linear-gradient(var(--insight), var(--insight)) 7px 100% / 2px 8px no-repeat;
+  opacity: 0.55;
+}
+
+/* Far from the world, the secondary lines are below the legibility floor even counter-scaled —
+   drop them rather than paint a smear the reader has to zoom in to decode. The level of detail
+   stays on the NODE, not on the world: the host sheet hangs its own far-zoom rules off
+   `.mv-node[data-lod]` (src/live/world/world.css), and hoisting it would silently unhook them. */
+.mv-node[data-lod='far'] .mv-value,
+.mv-node[data-lod='far'] .mv-tier {
+  display: none;
+}
+
+/* Narrower than a placed entry — it carries a name and nothing else. Keep in step with
+   SHELF_ENTRY_W in layouts/lanes.ts. */
+.mv-node[data-shelved] .mv-face-entry {
+  width: 116px;
+  border-color: color-mix(in oklab, var(--warning) 32%, transparent);
+}
+
+/* A folded breakdown is parked exactly on the card it belongs to — present in the layout, ready to
+   unfold, but it must not paint or it hides its own parent. It fades out where it stands and back
+   in beside it, which is the semantic-zoom gesture made visible. */
+.mv-node[data-folded],
+.mv-node[data-folded] .mv-face {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- chrome ------------------------------------------------------------------------------ */
+
+/* The visible state is the BASE rule, and @starting-style animates IN from hidden — so chrome is
+   never left stuck invisible where animations are paused or unsupported. */
+.mv-chrome {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity var(--m-expressive, 420ms) ease;
+}
+@starting-style {
+  .mv-chrome {
+    opacity: 0;
+  }
+}
+.mv-chrome[data-exiting] {
+  opacity: 0;
+}
+
+.mv-chrome-svg,
+.mv-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.mv-edges {
+  pointer-events: none;
+}
+
+.mv-band {
+  fill: var(--surface-glass);
+  stroke: var(--line-soft);
+  vector-effect: non-scaling-stroke;
+}
+.mv-band.morph-shelf {
+  fill: color-mix(in oklab, var(--warning) 7%, transparent);
+  stroke: color-mix(in oklab, var(--warning) 26%, transparent);
+}
+/* One strip per reading band, so a wrapped chain reads as rows of a paragraph before the reader
+   has traced a single arrow. Barely there on purpose — it is a hint, not a container. */
+.mv-band.morph-reading-band {
+  fill: color-mix(in oklab, var(--presence) 4%, transparent);
+  stroke: none;
+}
+
+.morph-gridline {
+  stroke: var(--grid-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.morph-axis,
+.morph-tick {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.morph-series {
+  stroke: var(--presence);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Edges are the argument, not the decoration: they carry full weight and a head that says which
+   way the causation runs. Sign is doubled up — colour AND tip shape — so neither has to be the
+   only signal. */
+.morph-edge {
+  stroke: var(--insight);
+  /* The layout publishes a contribution-weighted thickness where it has one to publish. */
+  stroke-width: var(--mv-edge-w, 2);
+  stroke-opacity: 0.85;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  marker-end: url(#mv-arrow);
+  pointer-events: none;
+  transition:
+    stroke-opacity var(--m-fast, 160ms) var(--ease-out, ease),
+    stroke-width var(--m-fast, 160ms) var(--ease-out, ease);
+}
+/* What the link CLAIMS, drawn at its tip. Ordered before the sign and provisional rules on
+   purpose: a dampening link keeps its crossbar, and an unbacked one keeps its bare end — the
+   relation may describe a link, never overrule how well it is evidenced. */
+.morph-edge--rel-causes {
+  marker-end: url(#mv-arrow);
+}
+.morph-edge--rel-contributes {
+  marker-end: url(#mv-arrow-open);
+}
+.morph-edge--rel-enables {
+  marker-end: url(#mv-arrow-ring);
+}
+.morph-edge--rel-correlates {
+  marker-start: url(#mv-dot);
+  marker-end: url(#mv-dot);
+  stroke-dasharray: 1 5;
+}
+
+.morph-edge--damp {
+  stroke: var(--warning);
+  marker-end: url(#mv-arrow-damp);
+}
+/* Asserted with nothing behind it — faint and broken, and it never grows a solid head. */
+.morph-edge--provisional {
+  stroke-dasharray: 3 7;
+  stroke-opacity: 0.4;
+  marker-end: none;
+}
+.mv-marker-up path {
+  fill: var(--insight);
+}
+.mv-marker-down path {
+  fill: none;
+  stroke: var(--warning);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+/* Open head and ring: hollow, so a partial claim reads as lighter than a full one at a glance. */
+.mv-marker-open path,
+.mv-marker-ring circle {
+  fill: none;
+  stroke: var(--insight);
+  stroke-width: 1.6;
+}
+.mv-marker-dot circle {
+  fill: var(--insight);
+}
+
+/* The hit target: the same curve drawn fat and invisible, so a link can be hovered and opened
+   without pixel-hunting a 2px line. */
+.mv-edge-hit {
+  stroke: transparent;
+  stroke-width: 18;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.mv-edge-g:hover .morph-edge {
+  stroke-opacity: 1;
+  stroke-width: calc(var(--mv-edge-w, 2) + 1.6);
+}
+
+/* Chrome text is HTML, not <text>: inside a viewBox a percentage transform resolves against the
+   viewBox, and these labels need translate(-50%) anchoring AND the world's counter-scale. */
+.mv-chrome-labels {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.mv-chrome-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+  transform: translate(0, -50%) scale(var(--mv-counter));
+  transform-origin: 0 50%;
+}
+.mv-chrome-label[data-anchor='middle'] {
+  transform: translate(-50%, -50%) scale(var(--mv-counter));
+  transform-origin: 50% 50%;
+}
+.mv-chrome-label[data-anchor='end'] {
+  transform: translate(-100%, -50%) scale(var(--mv-counter));
+  transform-origin: 100% 50%;
+}
+.mv-chrome-label.morph-series-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+/* The shelf says out loud what a representation could not place — never a silent omission. */
+/* The held-aside band's heading. 12px rather than the 11px the other chrome labels use: it names
+   why a group of causes is NOT on the view, which is the one caption a reader must never squint at
+   — and at 11px it landed a fraction under the 9px floor on a wide world. */
+.mv-shelf-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklab, var(--warning) 78%, var(--text-secondary));
+  transform-origin: 0 0;
+  transform: scale(var(--mv-counter));
+}
+
+/* Reduced motion ENDS every entrance and never restates geometry: a transform declaration here
+   would resolve against the viewBox on any SVG it touched (see tests/mindshape-reduced-motion),
+   and re-anchoring a face would undo its centring. Killing the transitions is the whole job — the
+   base rules already describe the settled state. */
+@media (prefers-reduced-motion: reduce) {
+  .mv-world,
+  .mv-node,
+  .mv-face,
+  .mv-chrome {
+    transition: none;
+  }
+}

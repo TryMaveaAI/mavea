@@ -37,6 +37,30 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
       'unpredictable real people',
     ],
   },
+  // A causal web invites the two readings the honesty ladder exists to refuse: that a modelled link
+  // is a measured one, and that a lever's counterfactual is a forecast. Both are labelled in the
+  // surface itself ("relative, not measured" · "HYPOTHETICAL (MODELED)"), and an ungrounded world
+  // cannot produce an exact figure at all.
+  //
+  // The counterfactual now also lands ON the measured world's own cards rather than in a separately
+  // banded lane, which is the higher-risk placement of the two and is why its wording is
+  // constrained by construction: a shifted cause is described by trust/phrase's `shiftChip`, which
+  // emits a fixed vocabulary and cannot produce a digit, so a projection can never appear beside a
+  // receipt as though it were one.
+  //
+  // The narrated walkthrough speaks the same surface and adds no claim to it: its lines are
+  // composed from fields already on screen, and a FIGURE is spoken only where the trust registry
+  // can back it (world/worldStory) — an illustrative magnitude is hedged aloud as illustrative.
+  'living-answer': {
+    notice: 'simulation',
+    reviewed: [
+      'modeled causation',
+      'counterfactual is not a forecast',
+      'counterfactual shown in place, worded without figures',
+      'spoken narration asserts nothing the surface does not show',
+      'consequential topics',
+    ],
+  },
   review: { notice: 'learning', reviewed: ['AI-authored study material', 'retention claims'] },
   flashcards: { notice: 'learning', reviewed: ['AI-authored study material', 'local persistence'] },
   courses: { notice: 'learning', reviewed: ['AI-authored lessons', 'professional topics'] },

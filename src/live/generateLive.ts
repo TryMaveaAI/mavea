@@ -88,6 +88,12 @@ import {
 } from './effort';
 import { buildSendHistory, KEEP_RECENT_TURNS } from './history';
 import { safePdfUrl, pdfProxyUrl } from './doc/safeUrl';
+import { detectWorldAsk, followUpPlan } from './world/detect';
+import { evolveWorld } from './world/explode';
+import { rememberTurnGrounding, turnCorpus } from './world/grounding';
+import type { WorldSpec } from './world/types';
+import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
+import type { Representation } from '../canvas/spatial/morph/types';
 import {
   autoFix,
   checkConsistency,
@@ -128,6 +134,11 @@ export interface LiveCaps {
    *  Off unless the user enabled it; when off these blocks are excluded from the per-turn
    *  menu + schema, so a paid model is never offered them and spends no tokens on them. */
   generativeBlocks?: boolean;
+  /** Build a LIVING WORLD for a causal ask — a standing, explorable causal web the thread keeps
+   *  alive and follow-ups evolve (see world/detect + world/explode). Off unless the user enabled
+   *  it; when on it costs one extra, format-constrained model call on the turns the deterministic
+   *  causal gate actually fires, and never on the others. */
+  worldEnabled?: boolean;
   /** Explanation level for this turn: 'simple' makes BOTH the words and the visuals plainer;
    *  'deep' gives the full-rigor treatment; defaults to 'standard'. A per-turn voice trigger
    *  ("explain like I'm 5" / "go deeper") can force a level for one turn regardless of the
@@ -199,6 +210,10 @@ export interface GenerateLiveOpts {
    *  topicLockLine mechanism so the lesson can't drift off its own syllabus entry. Undefined for
    *  every ordinary turn; only the course integration sets this. */
   lesson?: { directive: string; topic: string };
+  /** The living world already on the canvas, if this thread has one. A follow-up that asks it to
+   *  change shape ("over time", "what if…") EVOLVES this world in place instead of exploding a
+   *  new one — see world/explode's evolveWorld and the worldEnabled capability. */
+  priorWorld?: WorldSpec;
 }
 
 /** Why a turn failed, in plain language — so the surface can render an HONEST error state
@@ -1401,6 +1416,22 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
   };
 
+  // LIVING WORLD — OFFERING one is free. A causal ask leaves a card carrying the question, and the
+  // model call that builds the world runs when (and only when) a reader opens it: Mavéa is BYOK, so
+  // a turn must never bill a second call for something nobody asked to see. The one world call that
+  // can still ride a turn is an EVOLVE, and only when the standing world genuinely cannot answer
+  // the follow-up from the series it already holds (followUpPlan) — every other reshape is a local
+  // re-layout the surface does for nothing. Fired here so it overlaps the canvas call; the
+  // rejection is swallowed (logged in dev only), and a failed evolve leaves the world as it was.
+  const worldArm = worldArmFor(userText, caps, opts.priorWorld);
+  const pendingWorld =
+    worldArm?.kind === 'evolve' && opts.priorWorld
+      ? evolveStanding(opts.priorWorld, userText, cfg, opts).catch((err: unknown) => {
+          if (import.meta.env?.DEV) console.warn('[live] world evolve failed', err);
+          return null;
+        })
+      : null;
+
   let raw: string | object;
   try {
     const genStart = performance.now();
@@ -1528,7 +1559,11 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
       );
       const second = validateLiveResponse(out2.raw, allowed, recoverCap, sources.length > 0);
       // Keep whichever pass produced the richer canvas — never regress if the retry did worse.
-      if (second && second.blocks.length > (validated?.blocks.length ?? 0)) validated = second;
+      // The recovery instruction asks for blocks, not a fresh causal judgement, so carry the first
+      // pass's verdict when the retry stays silent — otherwise restructuring an answer would
+      // silently withdraw its living world.
+      if (second && second.blocks.length > (validated?.blocks.length ?? 0))
+        validated = { ...second, causal: second.causal ?? validated?.causal };
     } catch {
       /* recovery is best-effort — fall through to whatever the first pass gave */
     }
@@ -1539,6 +1574,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     // first, so it's almost always complete; works for Gemini's parsed-object response too) and
     // present + speak that, so a collapsed turn degrades to the spoken answer, not a wall of braces.
     const salvaged = salvageNarration(raw) || validated?.narration || '';
+    logWorldGate(userText, caps, { causal: validated?.causal, arm: null, collapsed: true });
     return { spec: fallbackSpec(salvaged), narration: salvaged, tier };
   }
 
@@ -1600,6 +1636,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
             understood: result.understood ?? fixed2.understood,
             corrects: result.corrects ?? fixed2.corrects,
             spoken: result.spoken ?? fixed2.spoken,
+            causal: result.causal ?? fixed2.causal,
           };
       }
     } catch {
@@ -1637,6 +1674,19 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
       (Block & { prove?: boolean }) | undefined;
     if (lead) lead.prove = true;
   }
+  // The world lands AFTER the tiling pass and BEFORE the spec is built, so settleTurn merges it,
+  // the TurnFrame captures it, and a replay renders it like any other block — it is part of the
+  // answer, not a side channel. Appended last: the canvas reads as the answer, then the world it
+  // opens onto. adaptiveCols never sees it (there is no catalog span for a capability-gated type),
+  // hence the explicit half-width column. It sits below the source merge because an offered world
+  // parks THIS turn's sources as the grounding its explode will read.
+  const arm: WorldArm | null =
+    worldArm ?? (offersWorld(userText, caps, result) ? { kind: 'offer' } : null);
+  logWorldGate(userText, caps, { causal: result.causal, arm, collapsed: false });
+  if (arm) {
+    const props = await worldCard(arm, userText, result.title, sources, opts, pendingWorld);
+    if (props) composed.blocks.push(worldBlock(props, composed.blocks.length + 1));
+  }
   // Keep the spoken line conversational for the ask: a tweet for a trivial answer, up to a
   // couple of sentences for a rich one — the canvas carries the depth, never the monologue.
   const narration = capSpoken(result.narration, complexity);
@@ -1653,6 +1703,121 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     ...(result.corrects ? { corrects: result.corrects } : {}),
     ...(spoken ? { spoken } : {}),
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * The LIVING WORLD arm of a turn. Offering a world is FREE: the card carries the question the turn
+ * already has, and the one call that builds the web runs when a reader opens it. Only a follow-up
+ * the standing world cannot answer out of its own series spends a call here, and every failure
+ * path returns null — the turn is the ordinary canvas it would have been anyway. Nothing here may
+ * throw into the turn.
+ * ------------------------------------------------------------------ */
+
+/** What this turn does about a living world: offer a new one (free), re-open the standing one in
+ *  the view a follow-up named (free), or spend one delta call because the ask needs data the
+ *  standing world does not hold. */
+type WorldArm = { kind: 'offer' } | { kind: 'local'; view: Representation } | { kind: 'evolve' };
+
+/** The arm a FOLLOW-UP earns on the world already standing, decided before the canvas call so an
+ *  evolve can overlap it. A fresh ask is not judged here — see offersWorld, which waits for the
+ *  answer itself. */
+function worldArmFor(
+  userText: string,
+  caps: LiveCaps,
+  priorWorld: WorldSpec | undefined,
+): WorldArm | null {
+  if (!caps.worldEnabled) return null;
+  if (priorWorld) {
+    const plan = followUpPlan(priorWorld, userText);
+    if (plan) return plan;
+  }
+  return null;
+}
+
+/** Whether THIS answer should carry a world card.
+ *
+ *  Decided after the answer exists, because the only good judge is the model that just wrote it:
+ *  it knows whether it explained a mechanism or looked a fact up, and no pattern over the reader's
+ *  phrasing can tell "how does photosynthesis work" from "how do I center a div". `causal` costs a
+ *  few tokens in a response the turn was already paying for. The word-shape gate remains as the
+ *  fallback for a model that ignores the field. The small tier is NOT excluded: offering is free,
+ *  and if a local model's world cannot be grounded the coercion gate drops it, which is the honest
+ *  outcome rather than a capability guess made before anyone asked to see one. */
+function offersWorld(userText: string, caps: LiveCaps, result: LiveResponse): boolean {
+  if (!caps.worldEnabled) return false;
+  return result.causal ?? detectWorldAsk(userText);
+}
+
+/** Why this turn did or didn't offer a world, on the dev console only.
+ *
+ *  The decision has four independent inputs and, until this existed, a silent outcome: a reader
+ *  seeing no world could not tell a capability switched off from a model that judged the answer
+ *  uncausal from a turn that collapsed before the question was ever asked. Stripped from
+ *  production builds; one line per turn, never surfaced in the UI. */
+function logWorldGate(
+  userText: string,
+  caps: LiveCaps,
+  verdict: { causal?: boolean; arm?: WorldArm | null; collapsed: boolean },
+): void {
+  if (!import.meta.env?.DEV) return;
+  console.info('[live] world gate', {
+    worldEnabled: !!caps.worldEnabled,
+    causal: verdict.causal,
+    detect: detectWorldAsk(userText),
+    arm: verdict.arm?.kind ?? null,
+    offered: !!verdict.arm,
+    collapsed: verdict.collapsed,
+  });
+}
+
+/** The one call a follow-up can cost: a delta on the standing world, grounded ONLY in what the
+ *  turn that offered that world already had (world/grounding). A follow-up never searches again. */
+async function evolveStanding(
+  prior: WorldSpec,
+  userText: string,
+  cfg: ModelConfig,
+  opts: GenerateLiveOpts,
+): Promise<WorldSpec | null> {
+  const corpus = await turnCorpus(prior.title);
+  if (opts.signal?.aborted) return null;
+  return evolveWorld(prior, userText, corpus, cfg, opts.signal);
+}
+
+/** The props this turn's world card carries, or null for no card. An OFFER carries only what the
+ *  turn already knows — the question and the answer's headline — and parks the turn's own sources
+ *  as the grounding for an explode that may never be asked for. */
+async function worldCard(
+  arm: WorldArm,
+  userText: string,
+  headline: string,
+  sources: readonly WebSource[],
+  opts: GenerateLiveOpts,
+  pending: Promise<WorldSpec | null> | null,
+): Promise<WorldPreviewProps | null> {
+  if (arm.kind === 'offer') {
+    // Re-asking the question a built world already answers must never wipe the world the reader
+    // paid for — the card's signature is its question, so a bare offer would replace it in place.
+    if (opts.priorWorld?.title === userText) {
+      return { title: userText, world: opts.priorWorld };
+    }
+    rememberTurnGrounding(userText, {
+      attachments: opts.attachments ?? [],
+      sources: [...sources],
+    });
+    return { title: userText, ...(headline ? { outcome: headline } : {}) };
+  }
+  const prior = opts.priorWorld;
+  if (!prior) return null;
+  if (arm.kind === 'local') return { title: prior.title, world: prior, view: arm.view };
+  const evolved = await pending;
+  return evolved ? { title: evolved.title, world: evolved } : null;
+}
+
+/** The world card as a canvas block. `props.title` is the world's own pinned question, which is
+ *  what lifecycle's blockSignature reads — so an evolved world (mapOntoWorld pins the title)
+ *  replaces its card in place on a refine instead of stacking a second one. */
+function worldBlock(props: WorldPreviewProps, index: number): Block {
+  return { type: 'world', id: `live-${index}`, col: 6, props };
 }
 
 /** Remote pictures are deliberately absent: a model cannot clear rights in a particular file. */

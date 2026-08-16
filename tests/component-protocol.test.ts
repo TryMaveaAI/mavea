@@ -76,6 +76,12 @@ const META_OPTIONAL = [
   'alignmentgauge',
   'standingalerts',
   'sourceslineage',
+  // `world` is built by the living-answer arm of a turn (generateLive's worldEnabled capability +
+  // the deterministic causal gate in live/world/detect), injected into the settled spec after
+  // validation, and never offered to the model at all — a static ComponentMeta would let Live
+  // choose to "draw a world" from thin air, with no grounded WorldSpec behind it. Same
+  // capability-gated rationale as photo/mindshape. A conscious choice.
+  'world',
 ];
 const metaTypes = new Set(RAW_CATALOG.map((m: { type: string }) => m.type));
 const registryTypes = Object.keys(EXTENDED_REGISTRY);

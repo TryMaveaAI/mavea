@@ -1,7 +1,8 @@
 // why/engine.ts — the pure counterfactual engine. Zero deps, zero model calls: every lever drag /
 // prune re-runs this synchronously. The honesty rule is baked in, not bolted on: a precise outcome
 // delta or "% explained" is produced ONLY when the entire causal path to the outcome is grounded
-// (T1/T2 with real weights). The instant any contributing edge is ungrounded or weightless, the
+// (T1/T2 with real weights) and the web has not declared itself illustrative. The instant any
+// contributing edge is ungrounded or weightless — or the whole web is a textbook explanation — the
 // numeric result is null — the UI shows "—", never a plausible-but-invented figure.
 import { isReal } from '../ground/types';
 import type { CascadeResult, Intervention, WhyDag } from './types';
@@ -39,6 +40,10 @@ export function topoOrder(d: WhyDag): string[] | null {
 /** Every edge is weighted + T1/T2, and the outcome has a grounded (T1/T2) value. Only then may the
  *  engine report precise pp deltas / "% explained". */
 export function isFullyGrounded(d: WhyDag): boolean {
+  // An illustrative web measured NOTHING, whatever tiers its author wrote on it: it is a textbook
+  // explanation of a mechanism, so a delta computed from it would be arithmetic on invented figures.
+  // The declaration outranks the tiers — a T2 receipt inside a textbook world cites the textbook.
+  if (d.provenance.illustrative === true) return false;
   const outcome = d.nodes.find((n) => n.id === d.outcomeId);
   if (
     !outcome ||

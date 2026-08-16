@@ -130,8 +130,10 @@ export const TEMPLATES: readonly TemplateDef[] = [
 
 export const TEMPLATE_KEY = 'mavea-template';
 
-/** What Live looks like out of the box — the classic Mavéa surface; the skins are the opt-in. */
-export const DEFAULT_LIVE_TEMPLATE: TemplateId = 'default';
+/** What Live looks like out of the box. Paper — the composed reading room — rather than the bare
+ *  surface: an answer is something to READ, and the first impression should look composed rather
+ *  than unstyled. The other skins, and 'default', stay one click away in Settings. */
+export const DEFAULT_LIVE_TEMPLATE: TemplateId = 'paper';
 
 function isTemplateId(v: unknown): v is TemplateId {
   return TEMPLATES.some((t) => t.id === v);

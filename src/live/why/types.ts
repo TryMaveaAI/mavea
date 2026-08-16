@@ -3,6 +3,7 @@
 // straight from the shared honesty spine, so a number here obeys the same rule as everywhere else: a
 // real figure needs a T1/T2 receipt, everything else is qualitative (T0) and shown faint.
 import type { Tier, Receipt } from '../ground/types';
+import type { EdgeRelation, EdgeStatus } from '../trust/relations';
 
 export type CausalRole = 'root' | 'mechanism' | 'outcome';
 
@@ -35,6 +36,17 @@ export interface WhyEdge {
   receipt?: Receipt;
   /** A model-asserted link with no receipt: rendered faint/dashed, never wears a receipt badge. */
   provisional?: boolean;
+  /** What the link CLAIMS, from trust/relations' closed vocabulary. Absent = an untyped link, which
+   *  the evidence panel reads as the weakest honest claim rather than a full cause. */
+  relation?: EdgeRelation;
+  /** Independently verified quotes, capped at three. `receipts[0]` is always `receipt`, so every
+   *  existing reader of a single receipt keeps working unchanged. */
+  receipts?: Receipt[];
+  /** DERIVED support level (trust/receipts' deriveEdgeStatus) — never model-authored. */
+  status?: EdgeStatus;
+  /** A verified quote AGAINST the claim. Alongside support, it makes the link 'contested', which a
+   *  reader must see: evidence on both sides is the one state a single receipt cannot express. */
+  counter?: Receipt;
 }
 
 export interface WhyDag {

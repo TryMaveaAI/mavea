@@ -1,14 +1,26 @@
 // WhyLab (#/whylab) — QA harness for the Why Machine overlay. Mounts a seed web so the spatial
 // layout, the lever/prune → live re-cascade, the receipts, and the light/dark rendering can be
-// eyeballed without a full Live turn. The overlay itself is what ships inside Live. Two seeds so both
-// paths are covered: the GROUNDED illustrative web (precise pp deltas) and the STRUCTURAL web (T0,
-// no figures) whose conclusion moves only in relative strength — the case that used to sit dead.
+// eyeballed without a full Live turn. The overlay itself is what ships inside Live.
+//
+// One seed per rung of the honesty ladder, because the readout is a different thing on each and
+// all three have to be judged: GROUNDED moves the conclusion in exact pp; ILLUSTRATIVE is weighted
+// and receipted exactly like it and still may not answer — a textbook web measured nothing, so
+// every exact figure is withheld and only relative strength moves; STRUCTURE-ONLY has no figures
+// to withhold in the first place, the case that used to sit dead.
 import { useState } from 'react';
 import { WhyMachineOverlay } from './WhyMachineOverlay';
-import { WHY_SEED, WHY_SEED_STRUCTURAL } from './seed';
+import { WHY_SEED, WHY_SEED_GROUNDED, WHY_SEED_STRUCTURAL } from './seed';
+import type { WhyDag } from './types';
+
+const RUNGS: ReadonlyArray<{ id: string; label: string; dag: WhyDag }> = [
+  { id: 'grounded', label: 'Grounded (exact pp)', dag: WHY_SEED_GROUNDED },
+  { id: 'illustrative', label: 'Illustrative (no figures)', dag: WHY_SEED },
+  { id: 'structural', label: 'Structure-only (relative)', dag: WHY_SEED_STRUCTURAL },
+];
 
 export function WhyLab(): React.ReactElement {
-  const [structural, setStructural] = useState(false);
+  const [rungId, setRungId] = useState(RUNGS[0].id);
+  const rung = RUNGS.find((r) => r.id === rungId) ?? RUNGS[0];
   return (
     <>
       <div
@@ -21,34 +33,28 @@ export function WhyLab(): React.ReactElement {
           gap: 8,
         }}
       >
-        {(
-          [
-            { on: false, label: 'Grounded (precise)' },
-            { on: true, label: 'Structure-only (relative)' },
-          ] as const
-        ).map(({ on, label }) => (
+        {RUNGS.map(({ id, label }) => (
           <button
-            key={label}
+            key={id}
             type="button"
-            onClick={() => setStructural(on)}
+            onClick={() => setRungId(id)}
             style={{
               padding: '6px 12px',
               borderRadius: 999,
               border: '1px solid var(--line)',
               cursor: 'pointer',
               font: '600 12px/1 var(--font)',
-              background: structural === on ? 'var(--presence)' : 'var(--surface-elevated)',
-              color: structural === on ? 'var(--surface-default)' : 'var(--text-secondary)',
+              background: rungId === id ? 'var(--presence)' : 'var(--surface-elevated)',
+              color: rungId === id ? 'var(--surface-default)' : 'var(--text-secondary)',
             }}
           >
             {label}
           </button>
         ))}
       </div>
-      <WhyMachineOverlay
-        key={structural ? 'structural' : 'grounded'}
-        dag={structural ? WHY_SEED_STRUCTURAL : WHY_SEED}
-      />
+      {/* Keyed so switching rungs remounts: the overlay holds its own lever state and fits the
+          camera once per web, and a lever left on one seed must not carry into the next. */}
+      <WhyMachineOverlay key={rung.id} dag={rung.dag} />
     </>
   );
 }

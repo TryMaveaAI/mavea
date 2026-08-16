@@ -42,3 +42,15 @@ export function toNumber(v: unknown): number | null {
 export function digitsOf(value: number): string {
   return String(value).replace(/[^0-9]/g, '');
 }
+
+/** Whether a claimed value's digits appear in its cited quote. Matched per NUMBER TOKEN in the
+ *  quote, not the whole quote's digits concatenated — a raw substring check would let a fabricated
+ *  value pass by splicing digits from two unrelated numbers in the same sentence ("grew from 12 to
+ *  34" ≠ 1234), or by matching as a sub-run of one larger, different number. A value with no digits
+ *  to check passes vacuously. */
+export function valueInQuote(value: number, quote: string): boolean {
+  const digits = digitsOf(value);
+  if (!digits) return true;
+  const quoteNumbers = quote.match(/\d[\d,.]*\d|\d/g)?.map((s) => s.replace(/[^0-9]/g, ''));
+  return quoteNumbers?.includes(digits) ?? false;
+}

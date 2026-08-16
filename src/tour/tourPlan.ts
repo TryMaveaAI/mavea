@@ -353,6 +353,17 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     hook: "A code change's whole blast radius",
   },
   {
+    id: 'living-answer',
+    title: 'Walk the why',
+    mode: 'explain',
+    coach:
+      'Ask why something happened and the answer opens into the causes behind it. Press walk me through it, and I take you cause by cause.',
+    action: { kind: 'showcase', featureId: 'living-answer' },
+    durationMs: 13000,
+    glyph: '🌍',
+    hook: 'The causal web behind an answer',
+  },
+  {
     id: 'deepzoom',
     title: 'Telescope any topic',
     mode: 'explain',

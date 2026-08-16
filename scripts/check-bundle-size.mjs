@@ -71,6 +71,19 @@ const LAZY_BUDGETS = [
   // The MP4 muxer (Mp4OutputFormat, for approved AV1+Opus exports) is a deliberate
   // +7 kB raw on top of the WebM-only 210 kB floor; the chunk stays export-time lazy.
   { label: 'reel encoder', match: /^src-.*\.js$/, raw: 225, gzip: 58, brotli: 52 },
+  // The living world: the morph stage, the trust layer and the overlay, loaded only when a reader
+  // opens one. Measured at 63/23/20 kB — the headroom is for the world growing a representation,
+  // not for the surface quietly pulling in the Live app it hangs off (tests/eager-bundle.test.ts
+  // guards that direction; this guards the weight).
+  { label: 'living world overlay', match: /^WorldOverlay-.*\.js$/, raw: 85, gzip: 30, brotli: 26 },
+  // The diagrams family, which now also carries the world's preview card. Measured at 31/11/10 kB.
+  {
+    label: 'diagrams family (incl. the world card)',
+    match: /^diagrams-.*\.js$/,
+    raw: 45,
+    gzip: 17,
+    brotli: 14,
+  },
 ];
 
 if (!existsSync(INDEX)) {

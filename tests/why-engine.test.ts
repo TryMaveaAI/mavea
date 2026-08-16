@@ -122,6 +122,21 @@ describe('cascade — ungrounded is null, never fabricated', () => {
     expect(r.fullyGrounded).toBe(false);
     expect(r.outcomeDelta).toBeNull();
   });
+  it('an illustrative web is never fully grounded, whatever tiers it wears', () => {
+    // A textbook explanation written in T1/T2 receipts is still a textbook: the receipts cite the
+    // textbook. `provenance.illustrative` is the web saying it measured nothing, and it outranks
+    // every tier on it — otherwise the seed webs (why/seed, world/seed) hand a reader an exact
+    // delta computed from figures nobody ever observed.
+    const dag = grounded();
+    dag.provenance = { illustrative: true };
+    expect(isFullyGrounded(dag)).toBe(false);
+    const r = cascade(dag, [{ nodeId: 'A', pct: 0 }]);
+    expect(r.fullyGrounded).toBe(false);
+    expect(r.outcomeDelta).toBeNull();
+    expect(r.explainedPct).toBeNull();
+    // The structure-only pass still resolves, so the levers keep moving the conclusion in words.
+    expect(r.relativeOutcome).not.toBeNull();
+  });
 });
 
 // The structure-only relative pass: the ungrounded default must still MOVE when a cause is levered

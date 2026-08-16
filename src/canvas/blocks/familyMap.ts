@@ -475,6 +475,7 @@ export const FAMILY_OF: Record<string, BlockFamily> = {
   classdiagram: 'diagrams',
   trie: 'diagrams',
   wiringdiagram: 'diagrams',
+  world: 'diagrams',
   analogymap: 'diagrams',
   // — learn —
   equationblock: 'learn',

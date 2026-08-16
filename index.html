@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -52,9 +52,10 @@
          and parses. Root() removes #boot on its first commit (src/main.tsx); if the bundle never
          arrives the splash simply stays, which beats a blank page. The CSP above allows inline
          STYLE but no inline script, so this block is the only boot-time styling possible. Colors
-         are literals because no token CSS has loaded yet; each mirrors its token: #0a0e15 =
-         --surface-default (tokens-base.css — dark is the documented startup default, theme.ts),
-         #f3f5fb = light --surface-default (light-theme.css), #6e8cff = --presence. The orb copies
+         are literals because no token CSS has loaded yet; each mirrors its token: #f3f5fb = light
+         --surface-default (light-theme.css — light is the documented startup default, theme.ts, and
+         <html> above carries data-theme="light" so this paints correctly before any script runs),
+         #0a0e15 = dark --surface-default (tokens-base.css), #6e8cff = --presence. The orb copies
          SurfaceFallback's (rootBoundary.css) exactly, so the splash → React hand-off is invisible. -->
     <style>
       #boot {
@@ -64,12 +65,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--surface-default, #0a0e15);
-      }
-      /* applyTheme stamps data-theme at module scope, before React renders — light users are
-         corrected the instant the bundle executes, not at first paint. */
-      :root[data-theme='light'] #boot {
         background: var(--surface-default, #f3f5fb);
+      }
+      /* applyTheme stamps data-theme at module scope, before React renders — a returning DARK
+         reader is corrected the instant the bundle executes, not at first paint. */
+      :root[data-theme='dark'] #boot {
+        background: var(--surface-default, #0a0e15);
       }
       .boot-orb {
         width: 28px;

@@ -1,0 +1,91 @@
+/* worldLab.css — chrome for the dev harness at #/worldlab, and nothing else. The world surface
+   brings world.css and the stage brings morph.css; this sheet only gives the scenario picker a row
+   of its own. Tokens only, so the harness follows light/dark exactly like the product does. */
+
+.wl-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-default);
+}
+
+.wl-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+  padding: var(--s-sm) var(--s-2);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-elevated);
+  font: 500 12px/1.3 var(--font);
+  color: var(--text-secondary);
+}
+
+/* The world surface is `position: fixed` because in the product it covers the conversation. Here it
+   is the harness's content, so it is given a BOX instead of the viewport — otherwise the picker
+   would float on top of the very header it exists to switch, and the audit script could not tell a
+   card that escaped the stage from one sitting under the lab's own chrome. */
+.wl-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.wl-stage .wo-scrim {
+  position: absolute;
+}
+
+.wl-filter,
+.wl-pick,
+.wl-step {
+  font: 500 12px/1.3 var(--font);
+  color: var(--text-primary);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  /* Comfortably past the 24px hit floor the audit holds the product to — a harness nobody can
+     click is a harness nobody uses. */
+  min-height: 28px;
+  padding: 4px 8px;
+}
+.wl-filter {
+  width: clamp(120px, 18vw, 240px);
+}
+.wl-pick {
+  max-width: 340px;
+  cursor: pointer;
+}
+.wl-step {
+  min-width: 28px;
+  font-family: var(--font-data, var(--font));
+  cursor: pointer;
+}
+.wl-step:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-elevated-2, var(--surface-elevated));
+}
+
+.wl-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.wl-id {
+  font: 600 11.5px/1.3 var(--font-data, var(--font));
+  color: var(--insight);
+  padding: 3px 7px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+}
+
+/* Last, and the first thing to give up room: the note says what the world stresses, which is worth
+   a whole line when there is one and worth truncating when there is not. */
+.wl-note {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
