@@ -20,7 +20,7 @@ import { saveSession, clearSession } from '../src/live/session/store';
 import { useStudyableCount } from '../src/live/srs/useStudy';
 import { SCHEDULING_WORDS, studyCopy } from '../src/live/srs/copy';
 import { flashHref, parseRoute } from '../src/live/srs/route';
-import { TEMPLATE_KEY } from '../src/live/templates';
+import { DEFAULT_LIVE_TEMPLATE, TEMPLATE_KEY } from '../src/live/templates';
 import { THEME_KEY } from '../src/lib/theme';
 import {
   blockYieldsCards,
@@ -213,11 +213,13 @@ describe('FlashcardsApp', () => {
       expect(document.documentElement.dataset.template).toBeUndefined();
     });
 
-    it('falls back to the stock skin when none was ever chosen', () => {
+    it("falls back to the app's default skin when none was ever chosen", () => {
       localStorage.removeItem(TEMPLATE_KEY);
       addCards([{ front: 'Q', back: 'A' }]);
       render(<FlashcardsApp />);
-      expect(document.documentElement.dataset.template).toBe('default');
+      // Read from the constant rather than named here: the point is that this surface INHERITS the
+      // app's default, whatever it is, instead of picking a skin of its own.
+      expect(document.documentElement.dataset.template).toBe(DEFAULT_LIVE_TEMPLATE);
     });
   });
 });

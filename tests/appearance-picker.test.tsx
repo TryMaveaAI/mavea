@@ -54,13 +54,19 @@ describe('premium Appearance selector', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog');
     const options = within(dialog).getAllByRole('radio');
+    // Opens on the CURRENT selection, wherever that sits — asserting index 0 quietly assumed the
+    // app's default skin was the first chip, and moved the moment that default changed.
+    const at = options.findIndex((o) => o.getAttribute('aria-checked') === 'true');
+    expect(at).toBeGreaterThanOrEqual(0);
+    const last = options.length - 1;
+    expect(at).toBeLessThan(last);
 
-    await waitFor(() => expect(options[0]).toHaveFocus());
-    fireEvent.keyDown(options[0], { key: 'ArrowRight' });
-    expect(options[1]).toHaveFocus();
-    fireEvent.keyDown(options[1], { key: 'End' });
-    expect(options[5]).toHaveFocus();
-    fireEvent.keyDown(options[5], { key: 'Home' });
+    await waitFor(() => expect(options[at]).toHaveFocus());
+    fireEvent.keyDown(options[at], { key: 'ArrowRight' });
+    expect(options[at + 1]).toHaveFocus();
+    fireEvent.keyDown(options[at + 1], { key: 'End' });
+    expect(options[last]).toHaveFocus();
+    fireEvent.keyDown(options[last], { key: 'Home' });
     expect(options[0]).toHaveFocus();
 
     act(() => fireEvent.keyDown(window, { key: 'Escape' }));

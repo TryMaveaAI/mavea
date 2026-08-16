@@ -10,16 +10,18 @@ export type Theme = 'light' | 'dark';
 /** The localStorage key the brightness preference persists under, shared across surfaces. */
 export const THEME_KEY = 'mavea-theme';
 
-// Dark is the documented default: it matches the App (home / first paint) so the very first
-// frame is unchanged, and it's what every CSS surface assumes before a preference exists.
-// Only an exact 'light' opts into light; absent, unreadable, or invalid storage stays dark.
-const DEFAULT_THEME: Theme = 'dark';
+// Light is the documented default — a first-time visitor lands on the paper reading room, which is
+// a light surface. index.html stamps `data-theme="light"` on <html> statically so the boot splash
+// paints light before any bundle executes; `applyTheme(readTheme())` then corrects a returning dark
+// reader at module scope, which is the same one-frame correction light readers used to get.
+// Only an exact 'dark' opts into dark; absent, unreadable, or invalid storage stays light.
+const DEFAULT_THEME: Theme = 'light';
 
-/** The persisted preference, defaulting to dark on empty, invalid, or unreadable storage. */
+/** The persisted preference, defaulting to light on empty, invalid, or unreadable storage. */
 export function readTheme(): Theme {
   if (typeof localStorage === 'undefined') return DEFAULT_THEME;
   try {
-    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : DEFAULT_THEME;
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
   }
