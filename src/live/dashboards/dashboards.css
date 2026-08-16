@@ -27,7 +27,7 @@
   padding: 10px 14px;
   border: 1px solid color-mix(in oklab, var(--warning) 40%, transparent);
   border-radius: 10px;
-  background: color-mix(in oklab, var(--warning) 8%, var(--surface-1));
+  background: color-mix(in oklab, var(--warning) 8%, var(--surface-elevated));
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.45;
