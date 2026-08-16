@@ -91,23 +91,39 @@ function addedMetricsGrounded(id: string, before: BoardIds | null): boolean {
   return !added.some((m) => m.query.trim() !== '' && !m.blankKey && m.lastValue == null);
 }
 
+/** Why an addition was refused, in the words the check log should use. Distinct causes read very
+ *  differently to someone deciding what to do next: an ungrounded search means reword or retry,
+ *  while an unreachable model means fix the key — and logging both as "no live source" sent the
+ *  reader to the wrong fix. */
+const ROLLBACK_REASON: Record<Exclude<ConfirmOutcome, 'confirmed'>, string> = {
+  unverified: 'no live source could confirm it returns real data',
+  'no-model': 'no model was connected to check it with',
+  failed: 'the model could not be reached to check it',
+};
+
 /** Undo the addition and say so where check outcomes already live. The sheet that started this may
  *  already be gone — it stays dismissible through a probe that can run for the better part of a
  *  minute, and its caller drops the inline error when the user has moved on — so a board that
  *  vanishes leaving no trace anywhere reads as lost data rather than as honesty. The probe's own
  *  pass ledgered whatever search it spent; this entry adds none. */
-function rollBackAndLog(id: string, before: BoardIds | null, title: string): 'unverified' {
+function rollBackAndLog<T extends Exclude<ConfirmOutcome, 'confirmed'>>(
+  id: string,
+  before: BoardIds | null,
+  title: string,
+  outcome: T,
+): T {
   rollBack(id, before);
+  const reason = ROLLBACK_REASON[outcome];
   appendLedger({
     kind: 'alert',
     text:
       before === null
-        ? `“${title}” wasn’t added — no live source could confirm it returns real data.`
-        : `The addition to “${title}” was rolled back — no live source could confirm it returns real data.`,
+        ? `“${title}” wasn’t added — ${reason}.`
+        : `The addition to “${title}” was rolled back — ${reason}.`,
     dashboardIds: before === null ? [] : [id],
     searches: 0,
   });
-  return 'unverified';
+  return outcome;
 }
 
 /**
@@ -135,7 +151,9 @@ export async function confirmRealData(
     // searches per addition and left them staring at "Confirming live data…" for both. Take the
     // result that just landed instead: judged by exactly the same rule as the gate's own pass.
     if ((getDashboard(id)?.lastRefreshedAt ?? 0) >= startedAt) {
-      return addedMetricsGrounded(id, before) ? 'confirmed' : rollBackAndLog(id, before, title);
+      return addedMetricsGrounded(id, before)
+        ? 'confirmed'
+        : rollBackAndLog(id, before, title, 'unverified');
     }
     outcome = await refreshDashboardNow(id);
   }
@@ -144,8 +162,12 @@ export async function confirmRealData(
   // (A blank-key metric is the user's to fill, and an extraction can seed a value from the
   // cited conversation — both count as held data, not an empty promise.)
   if (outcome === 'done' && addedMetricsGrounded(id, before)) return 'confirmed';
-  rollBackAndLog(id, before, title);
-  if (outcome === 'no-model') return 'no-model';
-  if (outcome === 'failed') return 'failed';
-  return 'unverified';
+  // 'done' that got here means the pass ran but the added tile never filled — unverified, in the
+  // only sense the reader cares about: nothing could stand behind it.
+  return rollBackAndLog(
+    id,
+    before,
+    title,
+    outcome === 'no-model' || outcome === 'failed' ? outcome : 'unverified',
+  );
 }

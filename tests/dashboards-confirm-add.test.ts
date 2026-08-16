@@ -299,3 +299,37 @@ describe('confirmRealData — a concurrent pass is used, not duplicated', () => 
     expect(getLedger().some((e) => e.text.includes('Ungrounded'))).toBe(true);
   });
 });
+
+// The log entry has to name the actual cause. "No live source could confirm it" sends the reader to
+// reword their ask; an unreachable model sends them to their key. Logging every refusal as the
+// former pointed people at the wrong fix — including for a rollback caused by a missing key.
+describe('confirmRealData — the log says WHY it was refused', () => {
+  it('an ungrounded search reads as a source problem', async () => {
+    addDashboard(dash({ title: 'Ungroundable', metrics: [metric()] }));
+    probe.mockResolvedValue('unverified');
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
+    const entry = getLedger().find((e) => e.text.includes('Ungroundable'));
+    expect(entry?.text).toContain('no live source could confirm');
+  });
+
+  it('a missing model reads as a model problem, not a source one', async () => {
+    addDashboard(dash({ title: 'Keyless', metrics: [metric()] }));
+    probe.mockResolvedValue('no-model');
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('no-model');
+    const entry = getLedger().find((e) => e.text.includes('Keyless'));
+    expect(entry?.text).toContain('no model was connected');
+    expect(entry?.text).not.toContain('no live source');
+  });
+
+  it('an unreachable model reads as a reachability problem', async () => {
+    addDashboard(dash({ title: 'Unreachable', metrics: [metric()] }));
+    probe.mockResolvedValue('failed');
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('failed');
+    expect(getLedger().find((e) => e.text.includes('Unreachable'))?.text).toContain(
+      'could not be reached',
+    );
+  });
+});
