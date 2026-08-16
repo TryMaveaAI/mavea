@@ -270,7 +270,7 @@ describe('timeline layout', () => {
       .sort();
     expect(shelvedIds).toEqual(['child-1', 'child-2', 'mech']);
     const band = layout.chrome.bands.find((b) => b.id === 'shelf');
-    expect(band?.label).toBe('3 undated — held aside');
+    expect(band?.label).toBe('3 with no date — the timeline cannot place these');
     for (const id of ['root-a', 'root-b', 'outcome']) {
       const p = layout.positions.get(id)!;
       expect(p.face).toBe('entry');
@@ -307,7 +307,7 @@ describe('chart layout', () => {
       .sort();
     expect(shelvedIds).toEqual(['child-1', 'child-2', 'mech', 'root-b']);
     expect(layout.chrome.bands.find((b) => b.id === 'shelf')?.label).toBe(
-      '4 without a measured series — held aside',
+      '4 with nothing measured over time — the chart cannot plot these',
     );
     const seriesIds = layout.chrome.paths.filter((p) => p.draw).map((p) => p.id);
     expect(seriesIds.sort()).toEqual(['series:outcome', 'series:root-a']);

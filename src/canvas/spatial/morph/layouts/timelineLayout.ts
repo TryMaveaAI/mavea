@@ -29,7 +29,10 @@ import {
 import { placeShelf } from './shelf';
 
 const AXIS_W = 920;
-const LANE_GAP = 24;
+// 16, not 24: the entry itself grew by 8px when its date moved under its label, and the ROW PITCH
+// is what the composition's height is made of. Spending the gap on the entry keeps the pitch — and
+// so the fit — exactly where it was, while the label gets the full width back.
+const LANE_GAP = 16;
 const LANE_H = ENTRY_H + LANE_GAP;
 const AXIS_GAP = 12;
 const TICK_H = 8;
@@ -214,7 +217,12 @@ function place(
     minX === Infinity
       ? { x: 0, y: 0, w: PAD * 2, h: PAD * 2 }
       : { x: minX - PAD, y: 0, w: maxX - minX + PAD * 2, h: maxY + PAD };
-  const shelf = placeShelf(shelved, laneBbox, `${shelved.length} undated — held aside`, viewport);
+  const shelf = placeShelf(
+    shelved,
+    laneBbox,
+    `${shelved.length} with no date — the timeline cannot place these`,
+    viewport,
+  );
   if (shelf.band) chrome.bands.push(shelf.band);
   for (const [id, placed] of shelf.positions) positions.set(id, placed);
   return { positions, edgePaths, chrome, bbox: shelf.bbox };

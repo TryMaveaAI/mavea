@@ -10,15 +10,17 @@ import { claim } from '../src/canvas/focus/stepDriver';
 import { MorphStage } from '../src/canvas/spatial/morph/MorphStage';
 import { worldToMorph } from '../src/canvas/spatial/morph/adapters';
 import { REPRESENTATIONS, useMorphStage } from '../src/canvas/spatial/morph/useMorphStage';
-import type { Representation } from '../src/canvas/spatial/morph/types';
+import type { MorphNodeDatum, NodeFace, Representation } from '../src/canvas/spatial/morph/types';
 import { WORLD_SEED } from '../src/live/world/seed';
+
+type RenderFace = (node: MorphNodeDatum, face: NodeFace) => React.ReactNode;
 
 const WORLD = worldToMorph(WORLD_SEED);
 /** The seed's one node with a breakdown, and a measured series to plot. */
 const PARENT = 'mortgage-volume';
 const DRIVER_ID = 'morph-stage-test';
 
-function Harness(): React.ReactNode {
+function Harness({ renderFace }: { renderFace?: RenderFace }): React.ReactNode {
   const stage = useMorphStage({ world: WORLD, driverId: DRIVER_ID });
   return (
     <>
@@ -36,7 +38,7 @@ function Harness(): React.ReactNode {
       </button>
       {/* A handler, because half of what the stage decides — what is a button, what can be
           tabbed to — only exists once the host says nodes are activatable. */}
-      <MorphStage stage={stage} world={WORLD} onNodeClick={() => {}} />
+      <MorphStage stage={stage} world={WORLD} onNodeClick={() => {}} renderFace={renderFace} />
     </>
   );
 }
@@ -123,7 +125,25 @@ describe('MorphStage', () => {
     expect(
       container.querySelector<HTMLElement>('[data-id="mortgage-volume"]')!.dataset.shelved,
     ).toBeUndefined();
-    expect(container.querySelector('.mv-shelf-label')?.textContent).toContain('held aside');
+    expect(container.querySelector('.mv-shelf-label')?.textContent).toContain('cannot');
+  });
+
+  it('leads the compact label with what the host prints, in one flow and one text run', () => {
+    // The entry is 160×44 — two wrapped lines. A date on a line of its OWN took one of them, so a
+    // dated entry showed half its name; leading the label's own flow costs a few characters of the
+    // first line instead. Two things have to hold for that: the host's element sits INSIDE
+    // `.mv-label` (outside it, it is a second line again), and a real space separates the words —
+    // margin separates the paint, and every text scrape read "2007Home prices climbed".
+    const { container } = render(
+      <Harness renderFace={(_node, face) => (face === 'entry' ? <span>2007</span> : null)} />,
+    );
+    flip(container, 'timeline');
+
+    const entry = container.querySelector('.mv-face-entry')!;
+    const label = entry.querySelector('.mv-label')!;
+    expect(entry.children).toHaveLength(1); // nothing outside the label to take a second line
+    expect(label.firstElementChild?.textContent).toBe('2007');
+    expect(label.textContent).toMatch(/^2007 \S/);
   });
 
   it('never keeps more than one exiting chrome layer, and ignores a stale retire', () => {

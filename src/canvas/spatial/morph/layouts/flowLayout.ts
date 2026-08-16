@@ -158,7 +158,7 @@ export const layoutFlow: LayoutFn = (world, opts) => {
   const shelf = placeShelf(
     shelved,
     flowBbox,
-    `${shelved.length} with no measured share — held aside`,
+    `${shelved.length} with no measured share — the ribbons cannot size these`,
     viewport,
   );
   for (const [id, p] of shelf.positions) positions.set(id, p);

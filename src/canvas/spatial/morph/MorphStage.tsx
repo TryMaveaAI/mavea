@@ -24,6 +24,7 @@ import type {
   NodeFace,
   WorldData,
 } from './types';
+import { SHELF_LABEL_INSET } from './layouts/shelf';
 import type { MorphStageApi } from './useMorphStage';
 import './morph.css';
 
@@ -247,7 +248,10 @@ function ChromeLayer({
             <div
               key={`${band.id}:label`}
               className="mv-shelf-label"
-              style={{ left: band.x - bbox.x + 14, top: band.y - bbox.y + 14 }}
+              style={{
+                left: band.x - bbox.x + SHELF_LABEL_INSET,
+                top: band.y - bbox.y + SHELF_LABEL_INSET,
+              }}
             >
               {band.label}
             </div>
@@ -400,6 +404,11 @@ const WorldContent = memo(function WorldContent({
         // place in the layout, but it must not be clickable or tabbable — an invisible node that
         // answers for the card underneath it is worse than one that is not there at all.
         const live = onNodeClick !== undefined && !placed.folded;
+        // What the host prints ahead of the compact label — a timeline entry's date, today. It
+        // leads the label's own text flow, so it needs a real space after it: `margin` separates
+        // the paint, not the words, and without one every screen reader and every text scrape read
+        // "2021Ground fire escapes".
+        const lead = renderFace?.(node, 'entry');
         return (
           <div
             key={node.id}
@@ -456,9 +465,17 @@ const WorldContent = memo(function WorldContent({
                 {node.tier !== undefined && <span className="mv-tier">{node.tier}</span>}
               </span>
             </div>
+            {/* The compact face is one wrapping text flow, and what the host adds LEADS it rather
+                than sitting under it. A 160×44 entry holds two lines; a date on a line of its own
+                took one of them, so every dated entry showed half its name. Inline, the date is an
+                eyebrow the label wraps around — it costs a few characters of the first line rather
+                than the whole second one, and the row pitch never has to grow. */}
             <div className="mv-face mv-face-entry">
-              <span className="mv-label">{node.label}</span>
-              {renderFace?.(node, 'entry')}
+              <span className="mv-label">
+                {lead}
+                {lead ? ' ' : null}
+                {node.label}
+              </span>
             </div>
             <div className="mv-face mv-face-mark">{renderFace?.(node, 'mark')}</div>
           </div>

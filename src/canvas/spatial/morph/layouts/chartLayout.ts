@@ -374,7 +374,7 @@ function place(
   const shelf = placeShelf(
     shelved,
     plotBbox,
-    `${shelved.length} without a measured series — held aside`,
+    `${shelved.length} with nothing measured over time — the chart cannot plot these`,
     viewport,
   );
   if (shelf.band) chrome.bands.push(shelf.band);

@@ -28,7 +28,7 @@ export const CARD_H = 64;
  *  touch however carefully the pitch was derived. */
 export const CARD_H_MAX = 86;
 export const ENTRY_W = 160;
-export const ENTRY_H = 40;
+export const ENTRY_H = 44;
 /** A mark is the node's whole affordance on the chart — the only way into its provenance — so its
  *  footprint is the hit floor, not the dot. The dot morph.css paints inside it stays small; the box
  *  around it is what a finger has to land in, and what every distance in chartLayout is kept clear
@@ -60,6 +60,12 @@ export const COUNTER_MAX = 1.4;
  */
 export const CARD_SLOT_H = CARD_H_MAX * COUNTER_MAX;
 export const ENTRY_SLOT_W = ENTRY_W * COUNTER_MAX;
+/** A HELD-ASIDE chip is narrower than a placed entry: it carries a name and nothing else — no date,
+ *  no figure — and it is the one thing on the surface competing for room with the view it was
+ *  excluded from. At the placed width its full-counter footprint forced a second row onto the band
+ *  and cost the composition its fit. Keep in step with morph.css's `[data-shelved] .mv-face-entry`. */
+export const SHELF_ENTRY_W = 116;
+export const SHELF_SLOT_W = SHELF_ENTRY_W * COUNTER_MAX;
 
 /** Below this many RENDERED px, type is being squinted at rather than read. The repo's own floor,
  *  and what `scripts/world-audit.mts` fails on. */

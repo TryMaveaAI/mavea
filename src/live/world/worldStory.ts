@@ -107,6 +107,15 @@ function figureLine(
     : { say: `Measured at ${raw}.`, shown: `Measured at ${raw}.` };
 }
 
+/** Does this link claim something a plain "and then" does not already say? A contribution or a
+ *  cause is what a reader assumes from sequence alone; a dampening, an enabling condition or a mere
+ *  correlation is not, and those are the ones worth spending words on. */
+function tellsMore(edge: { kind?: string; sign?: 1 | -1 }): boolean {
+  if (edge.kind)
+    return edge.kind === 'dampens' || edge.kind === 'enables' || edge.kind === 'correlates';
+  return edge.sign === -1;
+}
+
 /** How this link reads aloud: its relation's phrase, falling back to what its sign alone asserts. */
 function linkPhrase(edge: { kind?: string; sign?: 1 | -1 }): string {
   if (edge.kind && RELATION_BY[edge.kind]) return RELATION_BY[edge.kind];
@@ -200,7 +209,12 @@ export function worldStory(
   // the reader on the timeline, and a second play that narrated "what led to what" over a time axis
   // would be describing a picture that isn't there. (Graph is always safe: it is the one
   // representation that can place every node.)
-  const opening = "Here's what shaped this.";
+  // The outcome is not one of the causes — counting it made a three-cause world announce four.
+  const causeCount = order.at(-1) === spec.outcomeId ? order.length - 1 : order.length;
+  const opening =
+    causeCount === 1
+      ? 'One cause, one outcome. Here is how it connects.'
+      : `${causeCount} causes, one outcome. Here is how they connect.`;
   beats.push({
     nodeId: spec.outcomeId,
     wide: true,
@@ -209,15 +223,42 @@ export function worldStory(
     caption: opening,
   });
 
-  for (const id of order) {
+  let previousId: string | null = null;
+  for (const [index, id] of order.entries()) {
     const node = specById.get(id);
     const label = labelOf.get(id) ?? id;
     const arrival = arrivalOf(id);
+    const isOutcome = id === spec.outcomeId && index === order.length - 1;
 
-    // The node leads — it is what the camera is on — and the cause that brought us here trails it.
-    const opener = arrival
-      ? `${label} — ${linkPhrase(arrival)} ${midSentence(labelOf.get(arrival.from) ?? arrival.from)}.`
-      : `${label}.`;
+    // The narrative frame. The LABEL always leads, because a model-authored label is as often a
+    // whole clause as a noun phrase and nothing may be spliced in front of it — so the variation
+    // that makes this a story rather than a list has to come from what surrounds it:
+    //
+    //   • the first cause opens the account,
+    //   • a cause that follows the one just spoken says so with "Then", and points back with "it"
+    //     rather than repeating a name the listener heard one breath ago,
+    //   • a cause reaching back FURTHER names the cause it came from, because "it" would be wrong,
+    //   • a root arriving mid-story is a second thread, not a continuation,
+    //   • and the outcome lands the whole thing.
+    const from = arrival ? (labelOf.get(arrival.from) ?? arrival.from) : null;
+    let opener: string;
+    if (isOutcome) {
+      opener = arrival
+        ? `And it ends here: ${midSentence(label)} — ${linkPhrase(arrival)} ${arrival.from === previousId ? 'it' : midSentence(from ?? '')}.`
+        : `And it ends here: ${midSentence(label)}.`;
+    } else if (!arrival) {
+      opener = index === 0 ? `It starts with ${midSentence(label)}.` : `Alongside it: ${label}.`;
+    } else if (arrival.from === previousId) {
+      // "Then" already carries "and that drove this", so a trailing "driven by it" only repeats the
+      // word the sentence opened with. The phrase earns its place only where the link claims
+      // something the sequence does NOT imply — a dampening, an enabling condition, a correlation.
+      opener = tellsMore(arrival)
+        ? `Then ${midSentence(label)} — ${linkPhrase(arrival)} it.`
+        : `Then ${midSentence(label)}.`;
+    } else {
+      opener = `${label} — ${linkPhrase(arrival)} ${midSentence(from ?? '')}.`;
+    }
+    previousId = id;
     const said: string[] = [opener];
     const shown: string[] = [opener];
 

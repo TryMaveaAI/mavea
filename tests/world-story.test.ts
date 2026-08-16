@@ -76,17 +76,41 @@ describe('worldStory', () => {
   });
 
   it('folds an ordinary label into mid-sentence case but never an acronym', () => {
-    // One cause each: a beat names the single link that brought it in, so two labels cannot both be
-    // exercised on one node.
-    const withCause = (label: string): string => {
+    // Exercised on the opener, which is where a label is spliced into the middle of a sentence.
+    const opener = (label: string): string => {
       const spec = world();
-      spec.nodes = [spec.nodes[0]!, spec.nodes[3]!];
       spec.nodes[0]!.label = label;
-      spec.edges = [{ from: 'a', to: 'out', sign: 1, tier: 'T0', relation: 'causes' }];
-      return scriptOf(spec).join('\n');
+      return scriptOf(spec).find((line) => line.startsWith('It starts with')) ?? '';
     };
-    expect(withCause('A trigger fires')).toContain('by a trigger fires');
-    expect(withCause('MBS exposure')).toContain('by MBS exposure');
+    expect(opener('A trigger fires')).toBe('It starts with a trigger fires.');
+    expect(opener('MBS exposure')).toBe('It starts with MBS exposure.');
+  });
+
+  it('tells a story: it opens, it starts somewhere, and it lands on the outcome', () => {
+    // A walk that reads as a list of "X — driven by Y." is a table read aloud. The arc is the
+    // point: a frame, a first cause, a chain that says "then", and an ending.
+    const said = scriptOf(world());
+    // Three causes and an outcome — the outcome is not one of the causes.
+    expect(said[0]).toBe('3 causes, one outcome. Here is how they connect.');
+    expect(said[1]).toMatch(/^It starts with /);
+    expect(said[2]).toMatch(/^Alongside it: /); // a second root is a new thread, not a continuation
+    expect(said.at(-1)).toMatch(/^And it ends here: /);
+  });
+
+  it('does not repeat the connective a plain "then" already implies', () => {
+    // "Then X — driven by it" says driven twice. The trailing phrase is kept only where the link
+    // claims something sequence alone does not: a dampening, an enabling condition, a correlation.
+    const spec = world();
+    spec.edges = [
+      { from: 'a', to: 'mid', sign: 1, tier: 'T0', relation: 'causes' },
+      { from: 'mid', to: 'out', sign: 1, tier: 'T0', relation: 'enables' },
+    ];
+    spec.nodes = spec.nodes.filter((n) => n.id !== 'b');
+    const said = scriptOf(spec);
+    // A plain cause chained to the one just spoken: "Then X." and nothing more.
+    expect(said.some((l) => l.startsWith('Then mortgage volume surged.'))).toBe(true);
+    // An ENABLING link claims something sequence does not, so it keeps its phrase.
+    expect(said.some((l) => l.includes('made possible by it'))).toBe(true);
   });
 
   it('speaks a figure ONLY when the registry can back it', () => {
