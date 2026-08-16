@@ -17,6 +17,7 @@
 // broadcasts the existing DASHBOARDS_EVENT once it lands. `invalidate()` (cross-tab sync) re-runs
 // that same hydrate.
 import { AI_CADENCE_MIN, nextDue, nextDataDue } from './cadence';
+import { pruneDeadOpens } from './opens';
 import { encryptContent, decryptContent } from '../contentVault';
 import type {
   Cadence,
@@ -605,11 +606,17 @@ export function updateCadence(
 
 export function removeDashboard(id: string): void {
   const rest = get().filter((d) => d.id !== id);
-  if (rest.length !== get().length) persist(rest);
+  if (rest.length === get().length) return;
+  persist(rest);
+  // Open-history is keyed by dashboard id and outlives the dashboard otherwise — a deleted board's
+  // visits kept feeding the cadence optimizer, which reasons about how often boards are looked at.
+  pruneDeadOpens(new Set(rest.map((d) => d.id)));
 }
 
 export function clearDashboards(): void {
-  if (get().length > 0) persist([]);
+  if (get().length === 0) return;
+  persist([]);
+  pruneDeadOpens(new Set());
 }
 
 /* ---- layout (edit mode) ---- */
