@@ -18,6 +18,21 @@
   margin: 12px auto 0;
 }
 
+/* Storage refused a write. A standing line, not an alarm: the app still works, and nothing here
+   blinks or animates — it is a fact to read once and act on when convenient. */
+.dash-quota-note {
+  flex: none;
+  width: min(calc(100% - 40px), var(--canvas-col-max));
+  margin: 12px auto 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--warning) 8%, var(--surface-1));
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* ── shared CTA pill (Overview's "Track something →") ────────────────────────────────────── */
 .dash-cta {
   flex: none;

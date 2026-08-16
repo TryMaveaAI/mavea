@@ -12,6 +12,7 @@ import {
   ensureFirstCheck,
   getDashboard,
   getDashboards,
+  hasDroppedWrite,
   invalidate,
   newDashboardId,
   setCadenceWindow,
@@ -816,6 +817,9 @@ describe('quota canary', () => {
       // The first encrypted save may need to create/load its non-extractable IndexedDB key. Wait
       // for the actual observable contract rather than assuming that work fits in one timer tick.
       await expect.poll(() => seen).toEqual(['quota']);
+      // Latched too, not only announced: the surface that reports this may mount long after the
+      // write failed (a pin made from Live, with the dashboards tab closed).
+      expect(hasDroppedWrite()).toBe(true);
     } finally {
       vi.unstubAllGlobals();
       holder.setItem = originalSetItem;

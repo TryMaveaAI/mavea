@@ -6,6 +6,7 @@ import { useEffect, type ReactElement } from 'react';
 import { DashTopBar } from './DashTopBar';
 import { DashboardHome } from './DashboardHome';
 import { dashHref, parseRoute, useHash } from './route';
+import { useQuotaDropped } from './useDashboards';
 import { applyTheme, readTheme } from '../../lib/theme';
 import { createPreloadableLazy } from '../../lib/preloadableLazy';
 import { AsyncSurface } from '../../components/AsyncSurface';
@@ -48,6 +49,7 @@ export function DashboardsApp(): ReactElement {
   useEffect(() => applyTheme(readTheme()), []);
   const hash = useHash();
   const route = parseRoute(hash);
+  const quotaDropped = useQuotaDropped();
 
   if (route.view === 'present') {
     return (
@@ -92,6 +94,15 @@ export function DashboardsApp(): ReactElement {
     <div className="mavea-app dash-app">
       <DashTopBar view={route.view} />
       <FeatureUseNotice kind="monitoring" className="dash-risk-note" />
+      {/* Storage refused a write: everything still works from memory, so this states the one thing
+          the user can't otherwise know — a reload would throw the change away. Said once, plainly,
+          and never in Present, where a wall display can do nothing about it. */}
+      {quotaDropped && (
+        <p className="dash-quota-note" role="status">
+          This browser’s storage is full, so recent tracker changes are being held in memory and may
+          not survive a reload. Free up space, or remove a tracker you no longer follow.
+        </p>
+      )}
       {body}
       {route.view === 'rewind' && (
         <AsyncSurface label="Weekly rewind" overlay>

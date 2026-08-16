@@ -38,8 +38,8 @@ import { friendlyAsk } from '../friendlyAsk';
 
 const STORAGE_KEY = 'mavea-dashboards-v1';
 export const DASHBOARDS_EVENT = STORAGE_KEY;
-/** Fired when a write is dropped for lack of storage space — a canary, not a blocker: the app
- *  keeps working off the in-memory cache, but a listener (settings/usage UI) can tell the user
+/** Fired when a write is dropped for lack of storage space — a canary, not a blocker: the app keeps
+ *  working off the in-memory cache, but the dashboards surface (via useQuotaDropped) tells the user
  *  their last change may not survive a reload instead of that failing in total silence. */
 export const DASHBOARDS_QUOTA_EVENT = `${STORAGE_KEY}:quota`;
 /** Dashboards are deliberate artifacts, but bounded so localStorage stays healthy. */
@@ -56,6 +56,13 @@ const MAX_PREDICTION_HISTORY = 20;
 
 let cache: Dashboard[] | null = null;
 let idSeq = 0;
+let quotaDropped = false;
+
+/** True once any write has been dropped for lack of storage space this session. Latched, because
+ *  the surface that reports it may not have been mounted when the write failed. */
+export function hasDroppedWrite(): boolean {
+  return quotaDropped;
+}
 
 /** A stable id, preferring crypto.randomUUID with a deterministic-ish fallback (test/SSR). */
 export function newDashboardId(): string {
@@ -311,6 +318,9 @@ async function writeEncrypted(dashboards: Dashboard[]): Promise<void> {
         storageError.code === 22 ||
         storageError.code === 1014);
     if (isQuotaError) {
+      // Latched, not just announced: a write dropped while the dashboards surface was closed (a pin
+      // made from Live, say) still has to be tellable when the user next opens it.
+      quotaDropped = true;
       try {
         if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
           window.dispatchEvent(new CustomEvent(DASHBOARDS_QUOTA_EVENT));
