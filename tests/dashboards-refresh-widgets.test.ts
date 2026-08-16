@@ -298,3 +298,82 @@ describe('refreshDashboard — the prompt teaches each block its shape', () => {
     ]);
   });
 });
+
+// Coverage is the point: a paid product can't teach some topics and shrug at others. Every type
+// the validator will actually accept has a shape hint; the only untaught types are the four
+// demo-fixture-only renderers the validator itself refuses from a model (custom coercer, no
+// builder), which therefore can never appear in a Live answer, never be pinned, and never become
+// a refresh target. A new type joining this list is a regression, not a footnote.
+describe('blockShapeHint — every reachable type is taught', () => {
+  it('teaches all catalog types except the demo-only renderers', async () => {
+    const { blockShapeHint } = await import('../src/engine/liveSchema');
+    const { CATALOG_FACTS } = await import('../src/canvas/blocks/catalog/facts');
+    const untaught = CATALOG_FACTS.map((f) => f.type).filter((t) => blockShapeHint(t) === null);
+    expect(untaught.sort()).toEqual(['heat', 'preview', 'schema', 'videoembed']);
+  });
+});
+
+// buildComposite strips 'composite' from the allowed set it hands its children, so validating a
+// composite refresh against {composite} alone left the children an EMPTY allowed set — every
+// child died, the region list came back under the floor, and a pinned composite card could never
+// refresh at all.
+describe('refreshDashboard — a composite widget can actually refresh', () => {
+  it('re-fills a composite using its existing children as the allowed composition', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            blocks: [
+              {
+                type: 'composite',
+                props: {
+                  title: 'Market snapshot',
+                  regions: [
+                    {
+                      block: {
+                        type: 'kpi',
+                        props: { title: 'Prices', items: [{ label: 'NVDA', value: '$225.30' }] },
+                      },
+                    },
+                    {
+                      block: {
+                        type: 'list',
+                        props: { title: 'Movers', items: ['NVDA up', 'INTC down'] },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      sources: [{ title: 's', url: 'https://example.com' }],
+    });
+
+    const w = widget({
+      block: {
+        type: 'composite',
+        id: 'b1',
+        col: 12,
+        props: {
+          title: 'Market snapshot',
+          regions: [
+            { block: { type: 'kpi', id: 'c1', col: 6, props: { title: 'Prices', items: [] } } },
+            { block: { type: 'list', id: 'c2', col: 6, props: { title: 'Movers', items: [] } } },
+          ],
+        },
+      } as never,
+      refreshQuery: 'semiconductor market snapshot',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    expect(out.widgets.w1).toBeDefined();
+    expect(out.widgets.w1.type).toBe('composite');
+    const regions = (out.widgets.w1 as { props: { regions: Array<{ block: { type: string } }> } })
+      .props.regions;
+    expect(regions.map((r) => r.block.type)).toEqual(['kpi', 'list']);
+  });
+});

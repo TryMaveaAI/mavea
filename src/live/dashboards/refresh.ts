@@ -292,6 +292,24 @@ export interface RefreshBatchMember {
   targets: RefreshableWidget[];
 }
 
+/** The block types a refresh of `target` is allowed to produce. Its own type — plus, for a
+ *  composite, its existing children's types: buildComposite strips 'composite' from the allowed
+ *  set it hands the children, so validating against {composite} alone leaves the children an
+ *  EMPTY allowed set and a pinned composite card could never refresh at all. The children the
+ *  card already holds are exactly the composition a refresh is asked to re-fill. */
+function allowedTypesFor(target: RefreshableWidget): string[] {
+  const types: string[] = [target.block.type];
+  if (target.block.type === 'composite') {
+    const regions = (target.block.props as { regions?: Array<{ block?: { type?: string } }> })
+      .regions;
+    for (const r of regions ?? []) {
+      const t = r?.block?.type;
+      if (typeof t === 'string' && t) types.push(t);
+    }
+  }
+  return types;
+}
+
 /** Rough per-dashboard token cost — enough to decide how many dashboards fit one call before the
  *  rest spill to the next 15s tick, not exact accounting. */
 function estimateCost(d: Dashboard, metrics: MetricSpec[], targets: RefreshableWidget[]): number {
@@ -443,7 +461,7 @@ export async function refreshDashboards(
   if (members.length === 0 && !opts.briefingContext) return empty;
   try {
     const adapter = getAdapter(cfg.provider);
-    const allowedTypes = new Set(members.flatMap((m) => m.targets.map((w) => w.block.type)));
+    const allowedTypes = new Set(members.flatMap((m) => m.targets.flatMap(allowedTypesFor)));
     const anyTargets = allowedTypes.size > 0;
     // The schema module both validates the answer AND teaches the question: each BLOCK line below
     // carries its type's exact prop shape from blockShapeHint. Without that, the model saw only the
@@ -656,7 +674,7 @@ export async function refreshDashboards(
           // insight-shaped must both refresh, not have the second one silently dropped.
           const single = validateLiveResponse(
             { narration: '', title: 'x', sub: '', blocks: [rawBlock] },
-            new Set([target.block.type]),
+            new Set(allowedTypesFor(target)),
             1,
             grounded,
           );

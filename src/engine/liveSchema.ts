@@ -319,6 +319,13 @@ const CORE_SHAPE_HINTS: Record<string, string> = {
     '{"title": string, "value": number, "max"?: number, "band"?: string, "conf"?: "strong"|"partial"|"inferred"}',
   blanks:
     '{"title": string, "intro"?: string, "slots": [{"key": string, "label": string, "prompt": string, "kind": "date"|"number"|"text"|"choice", "unit"?: string, "options"?: string[], "placeholder"?: string}]}',
+  // The two custom-coerced types the base prompt never taught inline (their teaching lived in the
+  // per-turn menu) — spelled here so a dashboards refresh can teach them too. "from"/"to" reference
+  // node ids; a composite region's block is any other offered type, never another composite.
+  diagramflow:
+    '{"title": string, "nodes": [{"id": string, "label": string, "sub"?: string, "kind"?: "default"|"start"|"accent"|"good"|"warn"|"muted"}], "edges": [{"from": string, "to": string, "label"?: string, "kind"?: "default"|"accent"|"good"|"warn"|"muted", "bidirectional"?: boolean, "dashed"?: boolean}], "layout"?: "cycle"|"layered"|"free", "footer"?: string}',
+  composite:
+    '{"title": string, "regions": [{"block": {"type": string, "props": object}, "span"?: number(1-12)}]}',
 };
 
 /** The prop shape a model should copy when emitting a block of `type` — the same teaching the
