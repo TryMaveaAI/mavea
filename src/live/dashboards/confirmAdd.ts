@@ -16,6 +16,7 @@
 // is nothing to ground, and a hand-typed board must never be blocked by a search hiccup.
 import { getDashboard, removeDashboard, updateDashboard } from './store';
 import { hasLiveContent } from './format';
+import { appendLedger } from './ledger';
 import { refreshDashboardNow } from './useDashboardLoop';
 import type { Dashboard } from './types';
 
@@ -86,6 +87,8 @@ export async function confirmRealData(
   const dash = getDashboard(id);
   if (!dash) return 'failed';
   if (!hasLiveContent(dash)) return 'confirmed';
+  // Read the title BEFORE the probe: a rolled-back create no longer exists to be asked its name.
+  const title = dash.title;
 
   let outcome = await refreshDashboardNow(id);
   for (let waited = 0; outcome === 'busy' && waited < BUSY_WAIT_MS; waited += BUSY_POLL_MS) {
@@ -103,6 +106,20 @@ export async function confirmRealData(
     if (empty.length === 0) return 'confirmed';
   }
   rollBack(id, before);
+  // The sheet that started this may already be gone — it stays dismissible through a probe that can
+  // run for the better part of a minute, and its caller drops the inline error when it is. The
+  // rollback happened either way, so record it where outcomes already live: a board that vanishes
+  // leaving no trace anywhere reads as lost data, not as honesty. The probe's own pass ledgered
+  // whatever search it spent; this entry adds none.
+  appendLedger({
+    kind: 'alert',
+    text:
+      before === null
+        ? `“${title}” wasn’t added — no live source could confirm it returns real data.`
+        : `The addition to “${title}” was rolled back — no live source could confirm it returns real data.`,
+    dashboardIds: before === null ? [] : [id],
+    searches: 0,
+  });
   if (outcome === 'no-model') return 'no-model';
   if (outcome === 'failed') return 'failed';
   return 'unverified';

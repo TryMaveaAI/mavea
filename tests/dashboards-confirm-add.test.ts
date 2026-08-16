@@ -23,6 +23,7 @@ import {
   removeDashboard,
   updateDashboard,
 } from '../src/live/dashboards/store';
+import { clearLedger, getLedger } from '../src/live/dashboards/ledger';
 
 const dash = (over: Partial<Dashboard> = {}): Dashboard => ({
   id: 'd1',
@@ -73,6 +74,7 @@ beforeEach(() => {
   localStorage.clear();
   probe.mockReset();
   removeDashboard('d1');
+  clearLedger();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -214,5 +216,45 @@ describe('confirmRealData — fold (everything the fold added rolls back, nothin
     groundingProbe('m-old', 'm-new');
     await expect(confirmRealData('d1', before)).resolves.toBe('confirmed');
     expect(getDashboard('d1')!.metrics.map((m) => m.id)).toEqual(['m-old', 'm-new']);
+  });
+});
+
+// A rollback is silent by construction: the sheet that started the probe stays dismissible for the
+// up-to-45s it can run, and its caller drops the inline error when the user has moved on. So the
+// board simply vanished, with nothing anywhere to say why. The check log is the durable record.
+describe('confirmRealData — a rollback is never silent', () => {
+  it('logs the rolled-back create where check outcomes already live', async () => {
+    addDashboard(dash({ title: 'Yankees', metrics: [metric()] }));
+    probe.mockResolvedValue('unverified');
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
+
+    expect(getDashboard('d1')).toBeNull();
+    const entry = getLedger().find((e) => e.text.includes('Yankees'));
+    expect(entry?.kind).toBe('alert');
+    expect(entry?.searches).toBe(0);
+  });
+
+  it('names the board when a FOLD is rolled back, and points the entry at it', async () => {
+    const oldMetric = metric({ id: 'm-old', label: 'BTC', query: 'BTC price', lastValue: 60000 });
+    const before = boardIds(dash({ metrics: [oldMetric] }));
+    addDashboard(
+      dash({ title: 'Crypto', metrics: [oldMetric, metric({ id: 'm-new', label: 'invented' })] }),
+    );
+    groundingProbe('m-old');
+
+    await expect(confirmRealData('d1', before)).resolves.toBe('unverified');
+
+    const entry = getLedger().find((e) => e.text.includes('Crypto'));
+    expect(entry?.kind).toBe('alert');
+    expect(entry?.dashboardIds).toEqual(['d1']);
+  });
+
+  it('says nothing when the addition confirmed', async () => {
+    addDashboard(dash({ title: 'Fine', metrics: [metric()] }));
+    groundingProbe('m1');
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('confirmed');
+    expect(getLedger().some((e) => e.text.includes('Fine'))).toBe(false);
   });
 });
