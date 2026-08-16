@@ -2,7 +2,7 @@
 // gallery (home), detail, settings, and an overview explainer. A shared top bar ties it to the
 // other surfaces (Live, Gallery) so dashboards feel native, not bolted on. It rides the chosen
 // theme and workspace skin like Live, and never touches the Demo or Live answer canvas.
-import { Suspense, useEffect, useState, type ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { DashTopBar } from './DashTopBar';
 import { DashboardHome } from './DashboardHome';
 import { dashHref, parseRoute, useHash } from './route';
@@ -34,15 +34,11 @@ const dashboardSettings = createPreloadableLazy(() =>
 const dashboardOverview = createPreloadableLazy(() =>
   import('./DashboardOverview').then((m) => ({ default: m.DashboardOverview })),
 );
-const dashboardLoop = createPreloadableLazy(() =>
-  import('./DashboardLoopRuntime').then((m) => ({ default: m.DashboardLoopRuntime })),
-);
 const RewindOverlay = rewindOverlay.Component;
 const DashPresent = dashPresent.Component;
 const DashboardDetail = dashboardDetail.Component;
 const DashboardSettings = dashboardSettings.Component;
 const DashboardOverview = dashboardOverview.Component;
-const DashboardLoopRuntime = dashboardLoop.Component;
 
 function closeOverlay(): void {
   window.location.hash = dashHref.gallery;
@@ -50,11 +46,6 @@ function closeOverlay(): void {
 
 export function DashboardsApp(): ReactElement {
   useEffect(() => applyTheme(readTheme()), []);
-  const [startLoop, setStartLoop] = useState(false);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setStartLoop(true), 600);
-    return () => window.clearTimeout(timer);
-  }, []);
   const hash = useHash();
   const route = parseRoute(hash);
 
@@ -102,11 +93,6 @@ export function DashboardsApp(): ReactElement {
       <DashTopBar view={route.view} />
       <FeatureUseNotice kind="monitoring" className="dash-risk-note" />
       {body}
-      {startLoop && (
-        <Suspense fallback={<span hidden aria-hidden="true" />}>
-          <DashboardLoopRuntime />
-        </Suspense>
-      )}
       {route.view === 'rewind' && (
         <AsyncSurface label="Weekly rewind" overlay>
           <RewindOverlay onClose={closeOverlay} />

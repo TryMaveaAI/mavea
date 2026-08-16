@@ -1,8 +1,8 @@
 // DashPresent — the ambient "glance from across a room" view: the full tracking grid at a larger
-// scale, no chrome, no interaction beyond exit. Reads ONLY already-fetched store state (the same
-// useDashboardLoop mounted by DashboardsApp keeps refreshing dashboards in the background exactly
-// as it does everywhere else) — this view spends nothing on its own. Scheduling, per-tile
-// full-screen takeover, and OLED-drift protection are deliberately out of scope for this v1.
+// scale, no chrome, no interaction beyond exit. Reads ONLY already-fetched store state (the loop
+// mounted app-wide by DashboardLoopGate keeps refreshing dashboards in the background exactly as it
+// does everywhere else) — this view spends nothing on its own. Scheduling, per-tile full-screen
+// takeover, and OLED-drift protection are deliberately out of scope for this v1.
 import { useEffect, useState, type ReactElement } from 'react';
 import { useDashboards } from './useDashboards';
 import { useLedger } from './useLedger';

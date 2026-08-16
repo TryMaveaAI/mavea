@@ -99,6 +99,12 @@ describe('eager bundle — the landing must not statically pull the heavy machin
     'live/select/catalog.ts', // the selector's catalog view
     'live/srs/FlashcardsApp.tsx', // the flashcards manage surface — lazy behind #/flashcards
     'live/srs/CardEditor.tsx', // the add/edit sheet — pulled only through the lazy Live/Flashcards chunks
+    // The refresh loop is mounted from the root (see Root in main.tsx), which is exactly why its
+    // gate has to stay behind a dynamic import — a static edge would put the dashboards store, and
+    // through the engine the whole provider stack, in front of the landing's first paint.
+    'live/dashboards/DashboardLoopGate.tsx',
+    'live/dashboards/useDashboardLoop.ts',
+    'live/dashboards/store.ts',
   ];
 
   const graph = eagerGraph();
@@ -343,6 +349,13 @@ describe('priority surface import boundaries', () => {
         'live/dashboards/DashboardSettings.tsx',
         'live/dashboards/DashboardOverview.tsx',
       ],
+    },
+    // The refresh loop is mounted app-wide (main.tsx → DashboardLoopGate), so both hops of that
+    // path have to stay dynamic: the root must not pull the gate, and the gate must not pull the
+    // engine. Either one going static would land the provider stack in the landing's bundle.
+    {
+      entry: 'live/dashboards/DashboardLoopGate.tsx',
+      forbidden: ['live/dashboards/useDashboardLoop.ts', 'live/generateLive.ts'],
     },
     {
       entry: 'live/ripple/RippleOverlay.tsx',

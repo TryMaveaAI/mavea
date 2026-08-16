@@ -16,6 +16,16 @@ import { RootBoundary, SurfaceFallback } from './RootBoundary';
 import { routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
 import { isLegalGateBypassed } from './legal/routePolicy';
+import { createPreloadableLazy } from './lib/preloadableLazy';
+
+// Dashboards refresh while Mavéa is open, not while #/dashboards happens to be the visible surface
+// — so the loop is owned here, above the router, rather than by any one surface. Dynamically
+// imported (invisible to the eager bundle) and gated on its own side: the gate mounts the engine
+// only once a dashboard exists and the legal terms are accepted. See DashboardLoopGate.
+const dashboardLoopGate = createPreloadableLazy(() =>
+  import('./live/dashboards/DashboardLoopGate').then((m) => ({ default: m.DashboardLoopGate })),
+);
+const DashboardLoopGate = dashboardLoopGate.Component;
 
 // No StrictMode: the choreography is timing-sensitive (the reveal walks drive real timers),
 // and development double-invocation would fire those effects twice.
@@ -48,6 +58,13 @@ function Root() {
   useEffect(() => {
     document.getElementById('boot')?.remove();
   }, []);
+  // Arm the refresh loop after first paint, never alongside it — the same delay the dashboards
+  // surface used when it owned the mount.
+  const [startLoop, setStartLoop] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setStartLoop(true), 600);
+    return () => window.clearTimeout(timer);
+  }, []);
   return (
     <RootBoundary>
       {/* Suspense covers every lazy surface chunk; FlagshipHost (the landing) renders
@@ -61,6 +78,12 @@ function Root() {
           <FlagshipHost />
         )}
       </Suspense>
+      {/* Its own boundary: a slow gate chunk must never pull SurfaceFallback over a live surface. */}
+      {startLoop && (
+        <Suspense fallback={null}>
+          <DashboardLoopGate />
+        </Suspense>
+      )}
     </RootBoundary>
   );
 }
