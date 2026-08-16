@@ -343,6 +343,42 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
     expect(body.temperature).toBeUndefined(); // reasoning models reject a custom temperature
   });
 
+  it('Responses: a search-metric turn (medium effort) floors the budget high enough to actually write', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
+    // A dashboards refresh: search on, no blockTypes (not a canvas turn), a ~3000 caller cap. The
+    // adapter lifts effort to 'medium' because search is reasoning-gated — and medium reasoning
+    // routinely burns thousands of tokens BEFORE the first output token. The old flat 1500 floor
+    // let the whole budget go to thinking: billed reasoning + billed search, zero answer, every
+    // single check ("used its entire output budget on reasoning").
+    await openaiAdapter.generate({ ...req, maxTokens: 3000, tools: { webSearch: true } }, cfg);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as {
+      reasoning?: unknown;
+      max_output_tokens: number;
+    };
+    expect(body.reasoning).toEqual({ effort: 'medium' });
+    expect(body.max_output_tokens).toBe(8000);
+  });
+
+  it('Responses: the grounding retry (high effort) gets the largest floor', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
+    await openaiAdapter.generate(
+      { ...req, maxTokens: 3000, tools: { webSearch: true }, thinkingLevel: 'high' },
+      cfg,
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as {
+      reasoning?: unknown;
+      max_output_tokens: number;
+    };
+    expect(body.reasoning).toEqual({ effort: 'high' });
+    expect(body.max_output_tokens).toBe(12000);
+  });
+
   it('Responses: a classic model keeps its exact cap + temperature and sends no reasoning field', async () => {
     const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);

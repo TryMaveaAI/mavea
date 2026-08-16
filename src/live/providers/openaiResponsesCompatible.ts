@@ -240,10 +240,19 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           text: { format: textFormat },
           // A reasoning model meters hidden thinking tokens out of THIS budget, so a small cap
           // (the tiny on-demand callers pass 150–500) can be spent entirely on reasoning, ending
-          // the turn `incomplete` with no answer. Floor reasoning models to 1500 so even a
-          // low-effort think leaves room to write; classic models keep the caller's exact cap.
+          // the turn `incomplete` with no answer. The floor scales with the effort chosen ABOVE,
+          // because that choice is this adapter's own: a search-metric turn lifted to medium/high
+          // routinely burns thousands of reasoning tokens before its first output token, and the
+          // old flat 1500 floor left a dashboard refresh (caller cap ~3000) failing with "used its
+          // entire output budget on reasoning" on every check — billed reasoning + billed search,
+          // zero answer. A cap only bounds spend; the raised floor costs nothing unless the
+          // reasoning genuinely needs the room, and an errored call that delivered nothing is the
+          // one outcome more expensive than answering.
           max_output_tokens: reasoning
-            ? Math.max(req.maxTokens ?? 1024, 1500)
+            ? Math.max(
+                req.maxTokens ?? 1024,
+                effort === 'high' ? 12_000 : effort === 'medium' ? 8_000 : 1500,
+              )
             : (req.maxTokens ?? 1024),
           // Reasoning models (gpt-5.x) reject a custom temperature (fixed at 1) and use
           // `reasoning.effort` instead; classic models keep `temperature`. `effort` (computed above)
