@@ -75,6 +75,34 @@ const BUSY_POLL_MS = 1_500;
 const BUSY_WAIT_MS = 45_000;
 const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Did every search metric this addition brought in actually land a value? A blank-key metric is
+ *  the user's own to fill, and an extraction can seed one from the cited conversation — both count
+ *  as held data rather than an empty promise. */
+function addedMetricsGrounded(id: string, before: BoardIds | null): boolean {
+  const cur = getDashboard(id);
+  const added = (cur?.metrics ?? []).filter((m) => !(before?.metrics.has(m.id) ?? false));
+  return !added.some((m) => m.query.trim() !== '' && !m.blankKey && m.lastValue == null);
+}
+
+/** Undo the addition and say so where check outcomes already live. The sheet that started this may
+ *  already be gone — it stays dismissible through a probe that can run for the better part of a
+ *  minute, and its caller drops the inline error when the user has moved on — so a board that
+ *  vanishes leaving no trace anywhere reads as lost data rather than as honesty. The probe's own
+ *  pass ledgered whatever search it spent; this entry adds none. */
+function rollBackAndLog(id: string, before: BoardIds | null, title: string): 'unverified' {
+  rollBack(id, before);
+  appendLedger({
+    kind: 'alert',
+    text:
+      before === null
+        ? `“${title}” wasn’t added — no live source could confirm it returns real data.`
+        : `The addition to “${title}” was rolled back — no live source could confirm it returns real data.`,
+    dashboardIds: before === null ? [] : [id],
+    searches: 0,
+  });
+  return 'unverified';
+}
+
 /**
  * Probe a just-persisted addition for real data, and ROLL IT BACK when the probe can't ground
  * every added search metric. Resolves 'confirmed' when the grounded read landed for each new
@@ -90,36 +118,26 @@ export async function confirmRealData(
   // Read the title BEFORE the probe: a rolled-back create no longer exists to be asked its name.
   const title = dash.title;
 
+  const startedAt = Date.now();
   let outcome = await refreshDashboardNow(id);
   for (let waited = 0; outcome === 'busy' && waited < BUSY_WAIT_MS; waited += BUSY_POLL_MS) {
     await delay(BUSY_POLL_MS);
+    // Creating a board arms its first check, so the automatic loop usually claims this very
+    // dashboard a beat before the gate can — and the pass it is running is the same grounded search
+    // the gate wants. Waiting it out only to fire an identical second search cost the user two web
+    // searches per addition and left them staring at "Confirming live data…" for both. Take the
+    // result that just landed instead: judged by exactly the same rule as the gate's own pass.
+    if ((getDashboard(id)?.lastRefreshedAt ?? 0) >= startedAt) {
+      return addedMetricsGrounded(id, before) ? 'confirmed' : rollBackAndLog(id, before, title);
+    }
     outcome = await refreshDashboardNow(id);
   }
-  if (outcome === 'done') {
-    // Pass-level grounding isn't tile-level. 'done' also covers a grounded no-change pass, so an
-    // added metric search couldn't answer still shows itself here: its value never filled in.
-    // (A blank-key metric is the user's to fill, and an extraction can seed a value from the
-    // cited conversation — both count as held data, not an empty promise.)
-    const cur = getDashboard(id);
-    const added = (cur?.metrics ?? []).filter((m) => !(before?.metrics.has(m.id) ?? false));
-    const empty = added.filter((m) => m.query.trim() !== '' && !m.blankKey && m.lastValue == null);
-    if (empty.length === 0) return 'confirmed';
-  }
-  rollBack(id, before);
-  // The sheet that started this may already be gone — it stays dismissible through a probe that can
-  // run for the better part of a minute, and its caller drops the inline error when it is. The
-  // rollback happened either way, so record it where outcomes already live: a board that vanishes
-  // leaving no trace anywhere reads as lost data, not as honesty. The probe's own pass ledgered
-  // whatever search it spent; this entry adds none.
-  appendLedger({
-    kind: 'alert',
-    text:
-      before === null
-        ? `“${title}” wasn’t added — no live source could confirm it returns real data.`
-        : `The addition to “${title}” was rolled back — no live source could confirm it returns real data.`,
-    dashboardIds: before === null ? [] : [id],
-    searches: 0,
-  });
+  // Pass-level grounding isn't tile-level. 'done' also covers a grounded no-change pass, so an
+  // added metric search couldn't answer still shows itself here: its value never filled in.
+  // (A blank-key metric is the user's to fill, and an extraction can seed a value from the
+  // cited conversation — both count as held data, not an empty promise.)
+  if (outcome === 'done' && addedMetricsGrounded(id, before)) return 'confirmed';
+  rollBackAndLog(id, before, title);
   if (outcome === 'no-model') return 'no-model';
   if (outcome === 'failed') return 'failed';
   return 'unverified';

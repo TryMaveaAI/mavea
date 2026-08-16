@@ -258,3 +258,44 @@ describe('confirmRealData — a rollback is never silent', () => {
     expect(getLedger().some((e) => e.text.includes('Fine'))).toBe(false);
   });
 });
+
+// Creating a board arms its first check, so the automatic loop usually claims the very dashboard
+// the gate is about to probe. The gate used to wait that pass out and then fire an identical second
+// search — two web searches billed per addition, and the user watching "Confirming live data…" for
+// the length of both. It now takes the result the concurrent pass just landed.
+describe('confirmRealData — a concurrent pass is used, not duplicated', () => {
+  it('confirms off the in-flight pass instead of paying for a second search', async () => {
+    addDashboard(dash({ metrics: [metric()] }));
+    // Busy at first: the loop holds this dashboard. While we wait, its pass lands and grounds.
+    probe.mockImplementation(async (id) => {
+      const cur = getDashboard(id);
+      updateDashboard(id, {
+        metrics: (cur?.metrics ?? []).map((m) => ({
+          ...m,
+          lastValue: 3,
+          origin: 'search' as const,
+        })),
+        lastRefreshedAt: Date.now(),
+      });
+      return 'busy';
+    });
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('confirmed');
+    // One call — the initial 'busy' answer, which spends nothing. No second search was issued.
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(getDashboard('d1')).not.toBeNull();
+  });
+
+  it('still rolls back when that concurrent pass grounded nothing for the added tile', async () => {
+    addDashboard(dash({ title: 'Ungrounded', metrics: [metric()] }));
+    // The pass completes (lastRefreshedAt moves) but the added metric never fills in.
+    probe.mockImplementation(async (id) => {
+      updateDashboard(id, { lastRefreshedAt: Date.now() });
+      return 'busy';
+    });
+
+    await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
+    expect(getDashboard('d1')).toBeNull();
+    expect(getLedger().some((e) => e.text.includes('Ungrounded'))).toBe(true);
+  });
+});
