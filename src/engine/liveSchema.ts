@@ -292,6 +292,56 @@ const COL_BY_TYPE: Record<string, number> = {
  *  than needing to track the exact count. */
 const LIBRARY_SIZE_LABEL = `${Math.floor(CATALOG_FACTS.length / 50) * 50}+`;
 
+/** The exact prop shape taught for each hand-coerced core type — ONE source for both the base
+ *  prompt below and `blockShapeHint` (the dashboards refresh teaches a widget's shape from this;
+ *  see that function). Shape only: any usage guidance ("ONLY for values changing OVER TIME")
+ *  stays in the prompt text beside the interpolation. */
+const CORE_SHAPE_HINTS: Record<string, string> = {
+  insight:
+    '{"title": string, "summary"?: string, "stat"?: string, "delta"?: string, "deltaDir"?: "up"|"down"|"good", "conf"?: "strong"|"partial"|"inferred"}',
+  chart:
+    '{"title": string, "unit"?: string, "labels": string[], "series": [{"name": string, "color": string, "data": number[]}], "footer"?: string, "conf"?: "strong"|"partial"|"inferred"}',
+  breakdown:
+    '{"title": string, "rows": [{"name": string, "val": string, "pct": number(0-100), "hot"?: boolean, "tag"?: string}], "conf"?: "strong"|"partial"|"inferred"}',
+  list: '{"title": string, "items": string[]}',
+  timeline:
+    '{"eyebrow"?: string, "events": [{"time": string, "title": string, "detail"?: string}]}',
+  compare:
+    '{"eyebrow"?: string, "options": [{"name": string, "sub"?: string, "pick"?: boolean}], "criteria": [{"label": string, "cells": [{"v": string, "win"?: boolean}]}], "recommendation"?: string}',
+  kpi: '{"title": string, "items": [{"label": string, "value": string, "sub"?: string}], "conf"?: "strong"|"partial"|"inferred"}',
+  ring: '{"title": string, "rings": [{"label": string, "pct": number(0..1), "display": string, "hint"?: string}]}',
+  bars: '{"title": string, "unit"?: string, "bars": [{"label": string, "value": number, "hot"?: boolean}], "conf"?: "strong"|"partial"|"inferred"}',
+  stack:
+    '{"title": string, "total"?: string, "segments": [{"label": string, "value": number, "display": string, "color": string}], "conf"?: "strong"|"partial"|"inferred"}',
+  donut:
+    '{"title": string, "rows": [{"label": string, "pct": number(0-100), "color": string}], "conf"?: "strong"|"partial"|"inferred"}',
+  gauge:
+    '{"title": string, "value": number, "max"?: number, "band"?: string, "conf"?: "strong"|"partial"|"inferred"}',
+  blanks:
+    '{"title": string, "intro"?: string, "slots": [{"key": string, "label": string, "prompt": string, "kind": "date"|"number"|"text"|"choice", "unit"?: string, "options"?: string[], "placeholder"?: string}]}',
+};
+
+/** The prop shape a model should copy when emitting a block of `type` — the same teaching the
+ *  Live prompt gives. Hand-coerced core types return their canonical line; every generic catalog
+ *  type derives a value-free skeleton from its structural reference (arrays trimmed to one item,
+ *  since the item TEACHES the shape and repetition only spends tokens). Null when nothing can
+ *  teach the type — the caller simply omits the hint. */
+export function blockShapeHint(type: string): string | null {
+  const hand = CORE_SHAPE_HINTS[type];
+  if (hand) return hand;
+  const ref = STRUCTURAL_REFERENCES[type];
+  if (!ref || typeof ref !== 'object' || Array.isArray(ref)) return null;
+  const trim = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.slice(0, 1).map(trim)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, trim(x)]),
+          )
+        : v;
+  return JSON.stringify(trim(ref));
+}
+
 /* ------------------------------------------------------------------ *
  * The system prompt. Compact, prescriptive, ONE few-shot example.
  * ------------------------------------------------------------------ */
@@ -346,14 +396,14 @@ FILL THE DETAILS — this is what separates a hand-built demo from a bare answer
 CONFIDENCE IS FOR ESTIMATES, NOT FACTS — "conf":"inferred" means YOUR estimate, projection, recommendation, or opinion (a suggested budget split, a forecast, a "probably"). It is NOT for established facts you actually know — a definition, how an algorithm works, a historical date, a math/CS fundamental, a Big-O cost. For those, OMIT "conf" entirely (no badge) or, when you want to signal certainty, use "conf":"strong". NEVER stamp "inferred" on a textbook fact — an honest teaching answer is confident, and a wrongly-hedged fact reads as a guess. Set "conf" on the opening insight ONLY when it is genuinely your estimate or recommendation.
 
 Block shapes:
-- insight: {"title": string, "summary"?: string, "stat"?: string, "delta"?: string, "deltaDir"?: "up"|"down"|"good", "conf"?: "strong"|"partial"|"inferred"}
-- chart: {"title": string, "unit"?: string, "labels": string[], "series": [{"name": string, "color": string, "data": number[]}], "footer"?: string, "conf"?: "strong"|"partial"|"inferred"} — ONLY for values changing OVER TIME.
-- breakdown: {"title": string, "rows": [{"name": string, "val": string, "pct": number(0-100), "hot"?: boolean, "tag"?: string}], "conf"?: "strong"|"partial"|"inferred"}
-- list: {"title": string, "items": string[]}
-- timeline: {"eyebrow"?: string, "events": [{"time": string, "title": string, "detail"?: string}]}
-- compare: {"eyebrow"?: string, "options": [{"name": string, "sub"?: string, "pick"?: boolean}], "criteria": [{"label": string, "cells": [{"v": string, "win"?: boolean}]}], "recommendation"?: string}
-- kpi: {"title": string, "items": [{"label": string, "value": string, "sub"?: string}], "conf"?: "strong"|"partial"|"inferred"}
-- ring: {"title": string, "rings": [{"label": string, "pct": number(0..1), "display": string, "hint"?: string}]} — "display" is the SHORT value shown INSIDE the ring (a number/percent or ONE word like "High"); put any longer phrase in "label" (under the ring) or "hint", never in "display".
+- insight: ${CORE_SHAPE_HINTS.insight}
+- chart: ${CORE_SHAPE_HINTS.chart} — ONLY for values changing OVER TIME.
+- breakdown: ${CORE_SHAPE_HINTS.breakdown}
+- list: ${CORE_SHAPE_HINTS.list}
+- timeline: ${CORE_SHAPE_HINTS.timeline}
+- compare: ${CORE_SHAPE_HINTS.compare}
+- kpi: ${CORE_SHAPE_HINTS.kpi}
+- ring: ${CORE_SHAPE_HINTS.ring} — "display" is the SHORT value shown INSIDE the ring (a number/percent or ONE word like "High"); put any longer phrase in "label" (under the ring) or "hint", never in "display".
 
 "conf" ON A NUMERIC BLOCK — the same honesty rule as insight applies to ANY block stamping a specific figure (a chart's series, a breakdown's amounts, a kpi's stats): set "conf":"inferred" when the numbers are your estimate or projection, not an established fact; omit it (or use "strong") for a number you actually know. Never mark a genuinely unverified figure "strong".
 
@@ -377,11 +427,11 @@ User: How should I budget a $5000 monthly income?
 const FRONTIER_BLOCKS_ADDENDUM = `
 
 PREFERRED BLOCKS — reach for these before falling back to the base types:
-- bars: {"title": string, "unit"?: string, "bars": [{"label": string, "value": number, "hot"?: boolean}], "conf"?: "strong"|"partial"|"inferred"} — compare magnitudes across categories (richer than a list of numbers).
-- stack: {"title": string, "total"?: string, "segments": [{"label": string, "value": number, "display": string, "color": string}], "conf"?: "strong"|"partial"|"inferred"} — one total split into parts (richer than breakdown when you have a clear total).
-- donut: {"title": string, "rows": [{"label": string, "pct": number(0-100), "color": string}], "conf"?: "strong"|"partial"|"inferred"} — composition as a ring (great paired with a kpi or compare).
-- gauge: {"title": string, "value": number, "max"?: number, "band"?: string, "conf"?: "strong"|"partial"|"inferred"} — a single value against a max (score, readiness, risk).
-- blanks: {"title": string, "intro"?: string, "slots": [{"key": string, "label": string, "prompt": string, "kind": "date"|"number"|"text"|"choice", "unit"?: string, "options"?: string[], "placeholder"?: string}]} — see THE BLANK SPACE below; use sparingly.
+- bars: ${CORE_SHAPE_HINTS.bars} — compare magnitudes across categories (richer than a list of numbers).
+- stack: ${CORE_SHAPE_HINTS.stack} — one total split into parts (richer than breakdown when you have a clear total).
+- donut: ${CORE_SHAPE_HINTS.donut} — composition as a ring (great paired with a kpi or compare).
+- gauge: ${CORE_SHAPE_HINTS.gauge} — a single value against a max (score, readiness, risk).
+- blanks: ${CORE_SHAPE_HINTS.blanks} — see THE BLANK SPACE below; use sparingly.
 
 Use bars/stack/donut/gauge whenever they present real data more clearly than plain text — they make the answer easier to grasp at a glance.
 
@@ -917,9 +967,22 @@ const MIN_LIST_ITEMS = 2;
 function buildList(p: Record<string, Json>): ListProps | null {
   const title = alias(p, 'title', 'heading', 'header');
   const items = aliasArr(p, 'items', 'points', 'tips', 'list', 'steps', 'bullets')
-    .map((i) =>
-      typeof i === 'string' ? i : alias(asObj(i), 'text', 'label', 'title', 'name', 'item'),
-    )
+    .map((i) => {
+      if (typeof i === 'string') return i;
+      const o = asObj(i);
+      const text = alias(o, 'text', 'label', 'title', 'name', 'item');
+      if (text) return text;
+      // A model that invented its own item schema ({ticker, companyName, currentPrice}) still
+      // fetched real data — a grounded search someone paid for. Salvage it as one legible row
+      // instead of mapping every item to '' and throwing the whole block away.
+      return Object.values(o)
+        .filter(
+          (v): v is string | number =>
+            (typeof v === 'string' && v.trim() !== '') ||
+            (typeof v === 'number' && Number.isFinite(v)),
+        )
+        .join(' — ');
+    })
     .filter((i) => i !== '');
   if (!title || items.length < MIN_LIST_ITEMS) return null;
   return { title, items };

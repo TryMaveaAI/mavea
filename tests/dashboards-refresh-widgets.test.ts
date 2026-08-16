@@ -209,3 +209,92 @@ describe('refreshDashboard — combined metrics + widgets in one call', () => {
     expect(generateMock).not.toHaveBeenCalled();
   });
 });
+
+// A never-filled board's "current content" is an empty skeleton, which teaches a model nothing
+// about item shape — so it invents field names ({ticker, companyName, currentPrice} on a list),
+// and the validator then rejects the very data the search just paid for. The board read "no new
+// data" forever while every check grounded. Two defenses, both pinned here: the prompt teaches
+// each BLOCK's exact shape, and the list coercer salvages an alien-but-real item.
+describe('refreshDashboard — the prompt teaches each block its shape', () => {
+  it('a list target is taught plain-string items, and a taught reply lands', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            blocks: [
+              {
+                type: 'list',
+                props: { title: 'Top prices', items: ['NVDA — $225.16', 'TSM — $426.35'] },
+              },
+            ],
+          },
+        ],
+      }),
+      sources: [{ title: 's', url: 'https://example.com' }],
+    });
+
+    const w = widget({
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'Top prices', items: [] } } as never,
+      refreshQuery: 'top semiconductor stock prices',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    const req = generateMock.mock.calls[0][0];
+    expect(req.user).toContain('expected props');
+    expect(req.user).toContain('"items": string[]');
+    expect((out.widgets.w1 as { props: { items: string[] } }).props.items).toHaveLength(2);
+  });
+
+  it('a generic-coerced target (scoreboard) is taught from its structural reference', async () => {
+    generateMock.mockResolvedValue({ raw: '{}' });
+    const w = widget({
+      block: { type: 'scoreboard', id: 'b1', col: 8, props: { games: [] } } as never,
+      refreshQuery: 'yankees scores',
+    });
+    await refreshDashboard(dash([w]), cfg);
+
+    const req = generateMock.mock.calls[0][0];
+    expect(req.user).toContain('expected props');
+    expect(req.user).toContain('"games"');
+  });
+
+  it('salvages a list whose items came back as invented objects carrying real data', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            blocks: [
+              {
+                type: 'list',
+                props: {
+                  title: 'Top semiconductor prices',
+                  items: [
+                    { ticker: 'NVDA', companyName: 'NVIDIA Corporation', currentPrice: 225.16 },
+                    { ticker: 'TSM', companyName: 'Taiwan Semiconductor', currentPrice: 426.35 },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      sources: [{ title: 's', url: 'https://example.com' }],
+    });
+
+    const w = widget({
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'Top prices', items: [] } } as never,
+      refreshQuery: 'top semiconductor stock prices',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    const items = (out.widgets.w1 as { props: { items: string[] } }).props.items;
+    expect(items).toEqual([
+      'NVDA — NVIDIA Corporation — 225.16',
+      'TSM — Taiwan Semiconductor — 426.35',
+    ]);
+  });
+});

@@ -226,14 +226,18 @@ type RefreshableWidget = Widget & { refreshQuery: string };
 function metricLine(m: MetricSpec): string {
   return `- VALUE "${m.label}" — ${m.query}`;
 }
-function widgetLine(w: RefreshableWidget, i: number): string {
+function widgetLine(w: RefreshableWidget, i: number, hint: string | null): string {
   // The CURRENT props ride along as a concrete example of the expected detail level AND as the
   // thing the model must check for a state change — without a concrete "was this live?" example,
   // a model asked to "refresh the answer" tends to just restate the same status(observed live: a
   // widget still shown as "live now" long after the real match had already finished, because the
   // model searched but never framed the search as "check whether this has concluded since").
+  // The shape line is load-bearing for a board that has NEVER filled: its current props are an
+  // empty skeleton, which teaches nothing, and a model left to guess item field names produces
+  // data the validator must reject.
   return (
     `- BLOCK #${i} [${w.block.type}] ${w.refreshQuery}\n` +
+    (hint ? `  expected props (use EXACTLY these field names): ${hint}\n` : '') +
     `  current content: ${JSON.stringify(w.block.props ?? {}).slice(0, 600)}`
   );
 }
@@ -321,10 +325,14 @@ function roughAge(at: number, now: number): string {
   return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`;
 }
 
-function dashboardSection(m: RefreshBatchMember, now: number): string {
+function dashboardSection(
+  m: RefreshBatchMember,
+  now: number,
+  hintFor: (type: string) => string | null,
+): string {
   const lines = [
     ...m.metrics.map(metricLine),
-    ...m.targets.map((w, i) => widgetLine(w, i)),
+    ...m.targets.map((w, i) => widgetLine(w, i, hintFor(w.block.type))),
     ...(m.d.prediction
       ? [
           `- PREVIOUS EXPECTATION (made ${roughAge(m.d.prediction.at, now)}): "${m.d.prediction.text}" — grade it.`,
@@ -437,7 +445,15 @@ export async function refreshDashboards(
     const adapter = getAdapter(cfg.provider);
     const allowedTypes = new Set(members.flatMap((m) => m.targets.map((w) => w.block.type)));
     const anyTargets = allowedTypes.size > 0;
-    const sections = members.map((m) => dashboardSection(m, now)).join('\n\n');
+    // The schema module both validates the answer AND teaches the question: each BLOCK line below
+    // carries its type's exact prop shape from blockShapeHint. Without that, the model saw only the
+    // type name plus "current content" — which on a never-filled board is an empty skeleton — so it
+    // invented its own field names, and the validator then (correctly) rejected the very data the
+    // search had just paid for. The board read "no new data" forever while every check grounded.
+    const schema = anyTargets ? await import('../../engine/liveSchema') : null;
+    const sections = members
+      .map((m) => dashboardSection(m, now, schema ? schema.blockShapeHint : () => null))
+      .join('\n\n');
     // Same explicit-schema discipline as before: omitting `format` on a blockTypes-bearing request
     // makes schema-constrained adapters (OpenAI/Anthropic/Grok) constrain to the canvas shape,
     // silently stripping every non-canvas field (values, expects, grade, …).
@@ -539,7 +555,9 @@ export async function refreshDashboards(
       'VALUE item, give its CURRENT real number (no units) or null if unverifiable. For a BLOCK ' +
       'item, produce exactly one block whose "type" is the EXACT bracketed type given — never ' +
       'substitute a different one — matching its current content for detail level (real names, ' +
-      'numbers, dates). CRITICAL — a "current content" showing something live, in progress, or ' +
+      'numbers, dates). Where a BLOCK lists "expected props", copy that shape EXACTLY: the same ' +
+      'field names, and an array shown as string[] takes plain strings, never objects. ' +
+      'CRITICAL — a "current content" showing something live, in progress, or ' +
       'upcoming is NOT necessarily still true right now: explicitly check whether it has SINCE ' +
       'concluded and report the concluding outcome if so, reasoning from the date/time above ' +
       'which of upcoming/live/finished applies at this exact moment. If a dashboard has a ' +
@@ -608,9 +626,7 @@ export async function refreshDashboards(
     const parsedObj = obj(parseLooseJson(rr.raw));
     const grounded = isGrounded(rr, parsedObj);
     const sectionsById = extractSections(parsedObj, members);
-    const validateLiveResponse = anyTargets
-      ? (await import('../../engine/liveSchema')).validateLiveResponse
-      : null;
+    const validateLiveResponse = schema ? schema.validateLiveResponse : null;
 
     const perDashboard: Record<string, DashboardRefreshResult> = {};
     for (const m of members) {
