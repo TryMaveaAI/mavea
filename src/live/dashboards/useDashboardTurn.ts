@@ -77,6 +77,13 @@ export function useDashboardTurn(dashboard: Dashboard): DashboardTurnState {
           generateLive(ask, historyRef.current, cfg, undefined, {
             selectedBlocks,
             signal: ac.signal,
+            // Search on, always — the same standing rule the refresh path applies, and for the same
+            // reason: everything on a dashboard is live, sourced data. Without this the turn ran at
+            // the default 'off', so generateLive fed the model its NO LIVE DATA directive and a
+            // question about the very numbers on screen came back as "I don't have live access —
+            // paste the values yourself", complete with input cards to type them into. That is the
+            // opposite of what this surface promises, and it billed a call to say it.
+            caps: { searchMode: 'realtime' },
           }),
         )
         .then((r) => {

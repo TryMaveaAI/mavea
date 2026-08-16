@@ -11,6 +11,7 @@ import type { Dashboard } from '../src/live/dashboards/types';
 
 let capturedSignal: AbortSignal | undefined;
 let resolveGenerate: ((r: LiveResult) => void) | null = null;
+let capturedCaps: { searchMode?: string } | undefined;
 
 vi.mock('../src/live/generateLive', () => ({
   generateLive: vi.fn(
@@ -19,10 +20,11 @@ vi.mock('../src/live/generateLive', () => ({
       _history: unknown,
       _cfg: unknown,
       _onDelta: unknown,
-      opts: { signal?: AbortSignal },
+      opts: { signal?: AbortSignal; caps?: { searchMode?: string } },
     ) =>
       new Promise<LiveResult>((resolve) => {
         capturedSignal = opts?.signal;
+        capturedCaps = opts?.caps;
         resolveGenerate = resolve;
       }),
   ),
@@ -98,6 +100,7 @@ function erroredResult(): LiveResult {
 beforeEach(() => {
   setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } }); // "ready": key present
   capturedSignal = undefined;
+  capturedCaps = undefined;
   resolveGenerate = null;
 });
 
@@ -235,5 +238,21 @@ describe('TalkToDashboard — command-like phrasing auto-adds, a question still 
     expect(
       screen.queryByRole('button', { name: '+ Add this to the dashboard' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// Everything on a dashboard is live, sourced data — so a question about it searches, the same
+// standing rule the refresh path applies. Left at generateLive's default the turn ran with search
+// OFF, which triggers its NO LIVE DATA directive: an ask about the numbers on screen came back as
+// "I don't have live access — paste the values yourself", with input cards to type them into, and
+// billed a model call to say it.
+describe('useDashboardTurn — a dashboard question can reach live sources', () => {
+  it('asks with real-time search on', async () => {
+    const { result } = renderHook(() => useDashboardTurn(dash('d1')));
+    // The engine is a lazy chunk, so the call lands a microtask after run().
+    await act(async () => {
+      result.current.run('what is NVDA trading at?');
+    });
+    expect(capturedCaps?.searchMode).toBe('realtime');
   });
 });
