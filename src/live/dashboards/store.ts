@@ -381,9 +381,24 @@ function get(): Dashboard[] {
  *  it needs to see lands encrypted, so this also re-arms the async decrypt (settled goes false
  *  again) rather than only clearing the synchronous cache. */
 export function invalidate(): void {
+  const prev = cache;
   cache = null;
   settled = false;
   hydration = hydrateAsync();
+  // That other tab's write is ENCRYPTED, and the synchronous re-read can't decrypt it — so simply
+  // dropping the cache emptied the list ("Nothing on watch yet") until the decrypt landed, and
+  // permanently if this device's content key had been rotated. Hold the last decoded list across
+  // that window instead. Plaintext still re-reads synchronously below, and a genuinely cleared
+  // store genuinely empties; keeping the same array reference means the memoized snapshot doesn't
+  // change, so nothing re-renders until hydrateAsync broadcasts the real list.
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    JSON.parse(raw);
+  } catch {
+    cache = prev;
+  }
 }
 
 /** Keep the MAX_DASHBOARDS the user last actually touched; evict the rest. Sorts by
