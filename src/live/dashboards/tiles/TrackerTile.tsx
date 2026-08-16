@@ -61,7 +61,13 @@ const CHECK_NOTE_MS = 8000;
 
 export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps): ReactElement {
   const model = useMemo(() => buildTileModel(dashboard, now), [dashboard, now]);
-  const checking = useDataPending(dashboard.id);
+  const pending = useDataPending(dashboard.id);
+  // The store-backed pending flag is only set once the refresh module has been fetched and the call
+  // is under way — a real gap on a cold chunk, during which the tile sat there looking untouched
+  // and a second tap was swallowed as 'busy' with nothing on screen to explain it. This covers the
+  // press itself, so the spinner is up from the first click onward.
+  const [launching, setLaunching] = useState(false);
+  const checking = pending || launching;
   const [checkNote, setCheckNote] = useState<'failed' | 'unverified' | null>(null);
   const noteTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(noteTimer.current), []);
@@ -84,14 +90,15 @@ export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps
   // useDashboardLoop is dynamically imported here (not at module top) — the home grid is eagerly
   // mounted with DashboardsApp, and that module's refresh/provider chain must stay out of its
   // chunk (tests/eager-bundle.test.ts) until a check is actually requested. Of the outcomes it can
-  // return, only 'failed'/'unverified' need a word here: 'busy' has the spinner and 'no-model' has
-  // the home connect banner.
+  // return, only 'failed'/'unverified' need a word here: 'no-model' has the home connect banner,
+  // and 'busy' means a pass this tile is already part of is running — the spinner is its answer.
   const checkNow = (e: { preventDefault(): void; stopPropagation(): void }): void => {
     e.preventDefault();
     e.stopPropagation();
     if (checking) return;
     window.clearTimeout(noteTimer.current);
     setCheckNote(null);
+    setLaunching(true);
     void import('../useDashboardLoop')
       .then(({ refreshDashboardNow }) => refreshDashboardNow(dashboard.id))
       .then((outcome) => {
@@ -99,7 +106,8 @@ export function TrackerTile({ dashboard, now, paused = false }: TrackerTileProps
       })
       // A chunk that never loads is a check that never happened — say so, rather than leaving an
       // unhandled rejection and a tile that looks untouched.
-      .catch(() => flashNote('failed'));
+      .catch(() => flashNote('failed'))
+      .finally(() => setLaunching(false));
   };
 
   return (

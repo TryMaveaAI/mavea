@@ -125,3 +125,45 @@ describe('TrackerTile — a check that got nowhere says so', () => {
     expect(getByText('Possession')).toBeTruthy();
   });
 });
+
+// The pending flag the tile used to rely on is set by the refresh module, which is fetched on
+// demand — so between the press and that chunk arriving the tile showed nothing at all. A second
+// tap into that gap came back 'busy', an outcome the tile deliberately says nothing about, so the
+// button read as broken.
+describe('TrackerTile — Check now answers the press immediately', () => {
+  it('shows it is checking from the first click, before the refresh module resolves', async () => {
+    let release: (v: 'done') => void = () => {};
+    refreshDashboardNow.mockReturnValue(
+      new Promise<'done'>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { getByTitle, getByText } = render(<TrackerTile dashboard={dash()} now={1_000} />);
+
+    fireEvent.click(getByTitle('Check now'));
+
+    await waitFor(() => expect(getByText('Checking for live data…')).toBeTruthy());
+    expect(getByTitle('Check now').getAttribute('aria-disabled')).toBe('true');
+
+    release('done');
+    await waitFor(() => expect(getByText('Possession')).toBeTruthy());
+  });
+
+  it('swallows a double tap instead of spending a second call', async () => {
+    let release: (v: 'done') => void = () => {};
+    refreshDashboardNow.mockReturnValue(
+      new Promise<'done'>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { getByTitle, getByText } = render(<TrackerTile dashboard={dash()} now={1_000} />);
+
+    fireEvent.click(getByTitle('Check now'));
+    await waitFor(() => expect(getByText('Checking for live data…')).toBeTruthy());
+    fireEvent.click(getByTitle('Check now'));
+
+    release('done');
+    await waitFor(() => expect(getByText('Possession')).toBeTruthy());
+    expect(refreshDashboardNow).toHaveBeenCalledTimes(1);
+  });
+});
