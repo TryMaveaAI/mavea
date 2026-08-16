@@ -90,6 +90,20 @@ describe('useLiveConfig — search mode + quality, with cost-aware caps', () => 
   });
 });
 
+describe('useLiveConfig — living worlds', () => {
+  it('offers worlds on a browser that has never chosen', () => {
+    expect(toCaps(getLiveConfigV2()).worldEnabled).toBe(true);
+  });
+
+  it('honours a stored refusal — a capability the reader switched off stays off', async () => {
+    // A default is for a reader who has not decided; it must never overrule one who has.
+    vi.resetModules();
+    localStorage.setItem('mavea-live-v2', JSON.stringify({ worldEnabled: false }));
+    const fresh = await import('../src/live/useLiveConfig');
+    expect(fresh.toCaps(fresh.getLiveConfigV2()).worldEnabled).toBe(false);
+  });
+});
+
 describe('useLiveConfig — explanation level', () => {
   it('defaults to standard and carries through to caps', () => {
     expect(getLiveConfigV2().explainLevel).toBe('standard');

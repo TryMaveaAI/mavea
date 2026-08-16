@@ -32,6 +32,10 @@ import { bounded } from '../lib/bounded';
 import { SHOWFRAME_REVEAL_CAP_MS } from './walkSync';
 import type { InkIntent } from './annotate/inkIntent';
 import type { MindShapeSpec } from './mindshape/types';
+import { explodeWorld } from './world/explode';
+import { expandWorldNode } from './world/expand';
+import { turnCorpus } from './world/grounding';
+import type { WorldSpec } from './world/types';
 import { extractNarrationProgress, nextSpeakableChunk } from './streamParse';
 import { collapseRepeatedValues, forDisplay } from '../lib/spokenText';
 import { classifyAsk } from './select/complexity';
@@ -158,7 +162,40 @@ function configSignature(cfg: ModelConfig, caps: LiveCaps | undefined): string {
   const explain = caps?.explainLevel ?? 'standard';
   const generative = caps?.generativeBlocks ? 1 : 0;
   const memory = caps?.memoryEnabled ? 1 : 0;
-  return `${cfg.provider}::${cfg.model}::${search}::${quality}::${explain}::${generative}::${memory}`;
+  const world = caps?.worldEnabled ? 1 : 0;
+  return `${cfg.provider}::${cfg.model}::${search}::${quality}::${explain}::${generative}::${memory}::${world}`;
+}
+
+/** The living world currently on screen, if the canvas carries a BUILT one. Read straight off the
+ *  rendered spec so a follow-up lands on exactly the world the user is looking at; the LAST world
+ *  wins, since that is the one a thread which opened a second subject is actually talking about.
+ *  A card nobody has opened yet has no world, so a follow-up about it is an ordinary turn. */
+function currentWorld(spec: ConversationSpec | null): WorldSpec | undefined {
+  const blocks = spec?.blocks ?? [];
+  for (let i = blocks.length - 1; i >= 0; i -= 1) {
+    const block = blocks[i];
+    if (block.type === 'world' && block.props.world) return block.props.world;
+  }
+  return undefined;
+}
+
+/** Write a built world back onto its card. Matched on the card's QUESTION as well as its id: block
+ *  ids are renumbered across a merge, so a build that lands after the next turn must not attach
+ *  itself to whatever card now sits in that slot. Returns the SAME spec when this canvas doesn't
+ *  carry that card (or already has the world), so the reducer can tell a change from a no-op. */
+function withWorld(
+  spec: ConversationSpec,
+  blockId: string,
+  question: string,
+  world: WorldSpec,
+): ConversationSpec {
+  const i = spec.blocks.findIndex((b) => b.id === blockId && b.type === 'world');
+  if (i < 0) return spec;
+  const block = spec.blocks[i];
+  if (block.type !== 'world' || block.props.world || block.props.title !== question) return spec;
+  const blocks = [...spec.blocks];
+  blocks[i] = { ...block, props: { ...block.props, world } };
+  return { ...spec, blocks };
 }
 
 export const INITIAL: LiveTurnState = {
@@ -246,6 +283,8 @@ type Action =
   | { type: 'preview'; spec: ConversationSpec | null }
   // Re-open a saved canvas from the Library: render it as a fresh (replace) canvas — no model call.
   | { type: 'restore'; spec: ConversationSpec; question: string; at: number }
+  // A living answer was built (on the reader's open) — write it back onto its card.
+  | { type: 'world'; blockId: string; question: string; world: WorldSpec }
   // "The Blank Space": user filled / cleared a hole, or the active stop moved.
   | { type: 'fill'; value: FillValue }
   | { type: 'unfill'; key: string }
@@ -417,6 +456,16 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         ].slice(-MESSAGES_CAP),
       };
     }
+    case 'world': {
+      const spec = s.spec ? withWorld(s.spec, a.blockId, a.question, a.world) : s.spec;
+      const frames = s.frames.map((f) => {
+        const patched = withWorld(f.spec, a.blockId, a.question, a.world);
+        return patched === f.spec ? f : { ...f, spec: patched };
+      });
+      // Nothing carried that card — a canvas that moved on keeps its identity.
+      if (spec === s.spec && frames.every((f, i) => f === s.frames[i])) return s;
+      return { ...s, spec, frames };
+    }
     case 'fill': {
       const filled = { ...s.filled, [a.value.key]: a.value };
       return { ...s, filled, activeBlank: firstUnfilled(s.spec?.blanks, filled) };
@@ -532,6 +581,16 @@ export interface UseLiveTurn extends LiveTurnState {
    *  refine (false when there's nothing to complete yet, or the turn is still busy) so a caller
    *  can tell a no-op from a real trigger instead of assuming the call always succeeds. */
   complete: () => boolean;
+  /** Build the living answer a world card is offering — the ONE call it costs, made only when the
+   *  reader opens it. Resolves with the world (already written back onto the card and every frame
+   *  that carries it) or null when the build failed. A card that already carries a world, or a
+   *  turn the legal gate refuses, calls nothing. */
+  generateWorld: (blockId: string) => Promise<WorldSpec | null>;
+  /** Break ONE cause of a standing world into its parts — a second, smaller call, made only when
+   *  the reader presses for it. Resolves with the world plus that breakdown, or null when there is
+   *  nothing honest to add (an atomic cause, a failed call, a node that already has one). The
+   *  result is the surface's to hold: a breakdown is a closer look, not a change to the answer. */
+  expandWorld: (blockId: string, nodeId: string) => Promise<WorldSpec | null>;
   /** Inject a PRE-BAKED turn (the first-run tour): render this frame exactly as a live answer —
    *  the face narrates, the canvas reveals, the spotlight walk plays — with NO model call. It
    *  drives the same `start → speak → show` reducer path a real turn does, so the surface can't
@@ -551,6 +610,11 @@ export interface UseLiveTurn extends LiveTurnState {
 export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   const { canRun, getConfig, getCaps, speak, cancelSpeak, getLibraryEnabled } = args;
   const [state, dispatch] = useReducer(reducer, args.initial ?? INITIAL);
+  // The surface rebuilds these arrow props every render, so a callback that must stay
+  // identity-stable (generateWorld, driven from an effect) reads them here instead of closing
+  // over them.
+  const argsRef = useRef(args);
+  argsRef.current = args;
 
   // Refs so run() reads current values without re-binding the callback.
   const busyRef = useRef(false);
@@ -569,6 +633,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // The rendered (persistent) canvas + last snapshot, so run() can merge against them.
   const specRef = useRef<ConversationSpec | null>(state.spec);
   specRef.current = state.spec;
+  // The canvas the reader is LOOKING at, and every frame this session holds — read through refs so
+  // the world callbacks below stay identity-stable (the surface drives them from effects and hands
+  // them to a memoized stage).
+  const viewSpecRef = useRef<ConversationSpec | null>(null);
+  const framesRef = useRef<readonly TurnFrame[]>([]);
+  framesRef.current = state.frames;
   const priorRef = useRef<TurnSnapshot | null>(state.prior);
   priorRef.current = state.prior;
   // The values filled into the current answer's holes, so complete() reads them at click time.
@@ -800,6 +870,9 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             // The prior answer's headline — pins a topic-less continuation ("more in depth",
             // "continue") to the current thread so a weak model can't drift to an older topic.
             priorTopic: prior?.title || undefined,
+            // The living world already on the canvas, so a follow-up ("over time", "what if…")
+            // evolves THAT world instead of exploding a second one beside it.
+            priorWorld: currentWorld(specRef.current),
             // Topic Courses: this turn is one lesson in a course — the directive + topic pin
             // ride straight through to generateLive (see GenerateLiveOpts.lesson).
             lesson: opts?.lesson,
@@ -1086,7 +1159,75 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     if (spec) preloadBlockFamilies(spec.blocks); // composed blocks may pull families not yet loaded
     dispatch({ type: 'preview', spec });
   }, []);
+  // THE one model call a living answer costs, fired only when a reader opens a world card. It is
+  // deliberately NOT abortable: the tokens are committed the moment the request leaves, so letting
+  // a build the reader walked away from finish is what makes their next open free (explodeWorld
+  // memoises it in-session and caches it across sessions). A card that already carries a world
+  // never calls anything.
+  //
+  // Identity-STABLE (the gate and the config are read through a ref) because the surface drives it
+  // from an effect: a callback that changed every render would re-fire the build on every render.
+  // The world card a reader taps may belong to an answer they have scrolled BACK to, not to the
+  // live head — so a block is looked for on the viewed canvas and in every frame this session
+  // holds, not only on the newest one. (The reverse direction is already safe: dispatching a built
+  // world writes it onto the block and every frame that carries it.)
+  const findBlock = useCallback((blockId: string): Block | undefined => {
+    const seen = viewSpecRef.current?.blocks.find((b) => b.id === blockId);
+    if (seen) return seen;
+    const live = specRef.current?.blocks.find((b) => b.id === blockId);
+    if (live) return live;
+    for (const frame of framesRef.current) {
+      const hit = frame.spec.blocks.find((b) => b.id === blockId);
+      if (hit) return hit;
+    }
+    return undefined;
+  }, []);
+
+  const generateWorld = useCallback(
+    async (blockId: string): Promise<WorldSpec | null> => {
+      const { canRun: gate, getConfig: readConfig } = argsRef.current;
+      if (gate && !gate()) return null;
+      const block = findBlock(blockId);
+      if (block?.type !== 'world') return null;
+      if (block.props.world) return block.props.world;
+      const question = block.props.title;
+      try {
+        // Only the grounding the offering turn already had — a world never opens a fresh search.
+        const world = await explodeWorld(question, await turnCorpus(question), readConfig());
+        if (world) dispatch({ type: 'world', blockId, question, world });
+        return world;
+      } catch {
+        // Honest dead end: the surface shows the failure, never a stand-in world.
+        return null;
+      }
+    },
+    [findBlock],
+  );
+
+  // Breaking one cause down — the second, smaller call a living answer can cost, and only ever on
+  // an explicit press. The result deliberately does NOT go through dispatch: an expansion is a
+  // reader looking closer, not new canvas content, and `withWorld` refuses to overwrite a block
+  // that already holds a world (rightly — that is the answer's own record). The surface keeps it,
+  // and a re-open pays nothing because expandWorldNode caches the children.
+  const expandWorld = useCallback(
+    async (blockId: string, nodeId: string): Promise<WorldSpec | null> => {
+      const { canRun: gate, getConfig: readConfig } = argsRef.current;
+      if (gate && !gate()) return null;
+      const block = findBlock(blockId);
+      if (block?.type !== 'world') return null;
+      const world = block.props.world;
+      if (!world) return null;
+      try {
+        return await expandWorldNode(world, nodeId, await turnCorpus(world.title), readConfig());
+      } catch {
+        return null;
+      }
+    },
+    [findBlock],
+  );
+
   // The Blank Space: a fill/clear updates the accumulator; the active stop follows.
+
   const fill = useCallback((value: FillValue) => dispatch({ type: 'fill', value }), []);
   const unfill = useCallback((key: string) => dispatch({ type: 'unfill', key }), []);
   const setActiveBlank = useCallback(
@@ -1219,6 +1360,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     : state.viewIndex == null
       ? state.spec
       : (state.frames[state.viewIndex]?.spec ?? state.spec);
+  // Published for the world lookups above, which run from callbacks rather than from this render.
+  viewSpecRef.current = viewSpec;
 
   // Abort any in-flight turn, pending showFrame reveal, and all prefetches on unmount.
   useEffect(
@@ -1240,6 +1383,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     previewSpec,
     fill,
     unfill,
+    generateWorld,
+    expandWorld,
     setActiveBlank,
     complete,
     showFrame,

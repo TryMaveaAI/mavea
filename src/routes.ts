@@ -129,6 +129,11 @@ const LAB_ROUTES: RouteEntry[] = import.meta.env.DEV
       defineRoute('#/whylab', () =>
         import('./live/why/WhyLab').then((m) => ({ default: m.WhyLab })),
       ),
+      // The World lab (#/worldlab): the living-answer surface on its seed world, for the morph
+      // between representations, provenance cards, edge receipts and what-if lanes.
+      defineRoute('#/worldlab', () =>
+        import('./live/world/WorldLab').then((m) => ({ default: m.WorldLab })),
+      ),
     ]
   : [];
 

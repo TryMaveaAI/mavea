@@ -13,6 +13,7 @@
 // identically on every tier.
 import type { Beat } from '../orchestration/state';
 import type { Block } from '../data/conversation';
+import { spokenMs } from './walkSync';
 
 /** One model-authored (or derived) stop on the tour: light `spot`, say `say`. */
 export interface TourStep {
@@ -38,15 +39,6 @@ export interface TourOptions {
 }
 
 const DEFAULT_DWELL = 1700;
-
-/** Roughly how long a line takes to speak, so a spotlight holds for as long as Mavéa talks
- *  about it (≈155 wpm). Used as the per-stop dwell — and as the fallback cap when the surface
- *  syncs to actual speech-end. Bounded so an empty/huge line can't stall or flash the tour. */
-function spokenMs(text: string, dwell: number): number {
-  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-  if (!words) return dwell;
-  return Math.min(7000, Math.max(1500, Math.round(words * 385 + 500)));
-}
 
 /** Pull a human-readable label from a block's props, for a caption when none is given.
  *  Defensive across the whole union: tries the keys components actually use, else ''. */

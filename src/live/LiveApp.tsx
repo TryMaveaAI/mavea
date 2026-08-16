@@ -38,7 +38,7 @@ const TopicCanvas = lazy(() =>
   import('../canvas/TopicCanvas').then((m) => ({ default: m.TopicCanvas })),
 );
 import { useTapNarration } from '../canvas/focus/useTapNarration';
-import { useViewMode } from '../canvas/focus/useFocusMode';
+import { savedViewMode, useViewMode } from '../canvas/focus/useFocusMode';
 import { blockLabel, speakableLine } from '../canvas/blockLabel';
 import { CommandComposer } from '../components/CommandComposer';
 import { takeSeedQuery } from './seedQuery';
@@ -235,6 +235,8 @@ import { GhostRow } from './ghost/GhostRow';
 import { useWhisper, WHISPER_GAIN } from './whisper/quietHours';
 import { useMindShape } from './mindshape/useMindShape';
 import { MindShapeCanvas } from './mindshape/MindShapeCanvas';
+import { registerWorldOpener } from './world/openWorld';
+import './world/worldChip.css';
 import { mindShapeToPrompt } from './mindshape/mindShapeToPrompt';
 import { completeWordsOnly, countThoughts } from './mindshape/localExtract';
 import type { MindShapeSpec } from './mindshape/types';
@@ -289,6 +291,13 @@ import { mountTemplateSkin } from './templates';
 const CANVAS_LOADING_SHAPE = [{ col: 6 }, { col: 6 }, { col: 12 }];
 
 const RAIL_COLLAPSED_STORAGE_KEY = 'mavea-live-rail-collapsed-v1';
+
+// The world view, named against its neighbour so the pair reads as a pair rather than as two words
+// for the same thing: "View as canvas" spreads THIS answer's cards in space; "View as world" opens
+// why the answer is true. The reason is what a reader gets instead of a button that does nothing —
+// worlds are offered for causal questions, so most answers honestly have none.
+const WORLD_VIEW_LABEL = 'View as world';
+const WORLD_VIEW_HINT = 'Why this answer is true — the causal web behind it, and its receipts';
 
 // Remembers a Hold pick in MicModePopover (vs. Tap) so it remains a true input mode across visits.
 const MIC_HOLD_PREFERRED_STORAGE_KEY = 'mavea-mic-hold-preferred';
@@ -409,6 +418,12 @@ const prismOverlayLoad = createPreloadableLazy(() =>
   import('./prism/PrismOverlay').then((m) => ({ default: m.PrismOverlay })),
 );
 const PrismOverlay = prismOverlayLoad.Component;
+// The living-answer takeover. Heavy (the morph stage, the trust layer, the cascade engine) and
+// only ever reached by tapping a world card, so it never rides the first paint.
+const worldOverlayLoad = createPreloadableLazy(() =>
+  import('./world/WorldOverlay').then((m) => ({ default: m.WorldOverlay })),
+);
+const WorldOverlay = worldOverlayLoad.Component;
 const synthesisOverlayLoad = createPreloadableLazy(() =>
   import('./prism/SynthesisOverlay').then((m) => ({ default: m.SynthesisOverlay })),
 );
@@ -928,6 +943,17 @@ export function LiveApp(): ReactElement {
   // per-stop pacing. A stale handle (from a burst that already played out) is harmless: its
   // promises are settled, so any await on it resolves immediately.
   const burstLineRef = useRef<SpokenLine | null>(null);
+
+  // A world the WALKTHROUGH seeded. The overlay renders only off world blocks on the canvas, so a
+  // key-free visitor — who has no answer and cannot pay for one — had nothing to be shown. This is
+  // the same answer deepzoom and synthesis give (a canned surface), expressed the way this feature
+  // works: the shipped illustrative world, mounted as an ordinary block. Loaded lazily so the seed
+  // never rides in the Live bundle.
+  const [seededWorld, setSeededWorld] = useState<Extract<Block, { type: 'world' }> | null>(null);
+  // Read-through so the walkthrough's showcase, which is defined above the world state, can ask
+  // whether the reader already has a world of their own before seeding one.
+  const worldBlocksRef = useRef<ReadonlyArray<Extract<Block, { type: 'world' }>>>([]);
+  const enterWorldRef = useRef<(blockId?: string) => void>(() => {});
   const speak = useCallback((text: string): SpokenLine => {
     // Muted still SYNTHESIZES — the output gain is zero (streamTts.setOutputMuted), so nothing
     // is heard, but the scrubber's recorder taps the raw PCM upstream of that gain and keeps a
@@ -1731,6 +1757,21 @@ export function LiveApp(): ReactElement {
       }
       if (featureId === 'synthesis') {
         window.location.hash = '#/synthesis?demo=1';
+        return;
+      }
+      // The living world is built by a model call, so a key-free walkthrough has nothing to open.
+      // Seed the shipped illustrative world instead — imported here rather than at module scope so
+      // the fixture stays out of the Live bundle.
+      if (featureId === 'living-answer' && worldBlocksRef.current.length === 0) {
+        void import('./world/seed').then(({ WORLD_SEED }) => {
+          setSeededWorld({
+            type: 'world',
+            id: 'tour-world',
+            col: 12,
+            props: { title: WORLD_SEED.title, world: WORLD_SEED },
+          });
+          enterWorldRef.current('tour-world');
+        });
         return;
       }
       featureActionsRef.current[featureId]?.run();
@@ -3912,6 +3953,87 @@ export function LiveApp(): ReactElement {
     }
   }, [watchThinking, justListen, sttOk, value, voice, turn.spec]);
 
+  // ── The living answer, as a VIEW ────────────────────────────────────────────────────────────
+  // 'world' is a view of the current answer, peer to Focus and the spatial Canvas and driven by the
+  // same view-mode store — so the header switcher, the palette and the world card all arrive
+  // through one door. The card lives in the block registry, which knows nothing about live/, so its
+  // request comes through the openWorld module registry rather than a prop chain.
+  //
+  // Entering is ALSO where the world gets built: a turn only OFFERS one (that costs nothing), and
+  // the single model call behind it runs here, on the reader's explicit intent — see
+  // useLiveTurn.generateWorld. Once built it is written back onto the card, so a second entry, a
+  // scroll-back and a replay all render it for free.
+  const [worldPick, setWorldPick] = useState<string | null>(null);
+  const [worldFailed, setWorldFailed] = useState(false);
+  const [worldAttempt, setWorldAttempt] = useState(0);
+  // Resolved against the canvas being LOOKED AT every render: a turn that evolves the world keeps
+  // the view open on the updated spec, and a turn that replaces the canvas leaves nothing to show —
+  // which is what sends the reader back out below, rather than leaving a stale world on screen.
+  //
+  // `viewSpec`, not the live head: an answer a reader has scrolled back to carries its own world,
+  // and reading the newest canvas instead meant only ever the LATEST answer offered one — every
+  // earlier world in the session became unreachable the moment the next question was asked.
+  const worldBlocks = useMemo(() => {
+    const onCanvas = ((turn.viewSpec ?? turn.spec)?.blocks ?? []).filter(
+      (b): b is Extract<Block, { type: 'world' }> => b.type === 'world',
+    );
+    // The reader's own world always wins; the seeded one only stands in when there is none.
+    if (onCanvas.length > 0) return onCanvas;
+    return seededWorld ? [seededWorld] : [];
+  }, [turn.viewSpec, turn.spec, seededWorld]);
+  // The world the view shows: the one whose card was tapped, else this answer's own. A pick that no
+  // longer resolves simply falls back, so a renumbered canvas needs no reset of its own.
+  const worldBlock = useMemo(
+    () => worldBlocks.find((b) => b.id === worldPick) ?? worldBlocks[0],
+    [worldBlocks, worldPick],
+  );
+  worldBlocksRef.current = worldBlocks;
+  const worldOffered = worldBlock !== undefined;
+  const inWorldView = viewMode === 'world' && worldOffered;
+  const enterWorld = useCallback(
+    (blockId?: string) => {
+      if (blockId) setWorldPick(blockId);
+      setWorldFailed(false);
+      setViewMode('world');
+    },
+    [setViewMode],
+  );
+  // Back to the reader's OWN standing choice, never a blind 'everything' — a Focus reader who looks
+  // at a world must land back in Focus.
+  enterWorldRef.current = enterWorld;
+  const leaveWorldView = useCallback(() => setViewMode(savedViewMode()), [setViewMode]);
+  useEffect(() => registerWorldOpener(enterWorld), [enterWorld]);
+  // A view mode with nothing to show is a blank screen. This is the one fallback that covers both
+  // ways in: a canvas that moved on under an open world, and a 'world' mode arriving from anywhere
+  // it was never meant to survive.
+  useEffect(() => {
+    if (viewMode === 'world' && !worldOffered) leaveWorldView();
+  }, [viewMode, worldOffered, leaveWorldView]);
+  // The build itself: only for a card that is still an offer, and once per entry (generateWorld is
+  // identity-stable, and re-entering a built card returns what the card already carries).
+  const openWorldId = inWorldView ? (worldBlock.id ?? null) : null;
+  const worldUnbuilt = inWorldView && worldBlock.props.world === undefined;
+  const { generateWorld } = turn;
+  useEffect(() => {
+    if (!openWorldId || !worldUnbuilt) return;
+    let live = true;
+    setWorldFailed(false);
+    void generateWorld(openWorldId).then((world) => {
+      if (live && !world) setWorldFailed(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [openWorldId, worldUnbuilt, worldAttempt, generateWorld]);
+  // Breaking one cause down, bound to the card the reader has open. Identity-stable off the block
+  // id: the overlay hands this to the memoized stage, so a callback that changed every render
+  // would re-render every card on the world on every camera frame.
+  const { expandWorld } = turn;
+  const expandWorldNode = useCallback(
+    (nodeId: string) => (openWorldId ? expandWorld(openWorldId, nodeId) : Promise.resolve(null)),
+    [openWorldId, expandWorld],
+  );
+
   // The registry resolved to live actions + availability. One map so the palette and the menu
   // can never disagree about what exists. Behavioral/automatic features (whisper, ghost, focus)
   // teach via a soft notice rather than forcing a manual trigger.
@@ -4041,6 +4163,13 @@ export function LiveApp(): ReactElement {
       // Spread the current answer's cards onto the spatial board — the same mode the footer chip and
       // the tour's canvas chapter show.
       run: () => setViewMode('canvas'),
+    },
+    'living-answer': {
+      available: worldOffered,
+      reason: 'Once an answer has causes to trace',
+      // The same door the header chip and the world card use — entering is also what builds it.
+      run: () => enterWorld(),
+      preload: worldOverlayLoad.preload,
     },
     ink: {
       available: !!turn.spec,
@@ -5499,38 +5628,62 @@ export function LiveApp(): ReactElement {
                       <VoiceScrubber audio={viewedAudio} t={scrubT} onSeek={onScrub} />
                     ) : undefined
                   }
+                  /* The world's entrance sits BESIDE "View as canvas" because it is that button's
+                     peer: Canvas puts this answer's cards in space, World opens why the answer is
+                     true. Absent — not dimmed — on the many answers that have no world: a control
+                     the reader can never use on most questions teaches them to stop looking, and
+                     its appearing is itself the signal that this answer has causes worth tracing. */
+                  viewSlot={
+                    // Not gated on `viewingLive`: a world belongs to the answer that earned it, and
+                    // it is already built and stored on that answer's own block — so scrolling back
+                    // to an earlier question must offer its world again, not only the newest one's.
+                    worldOffered ? (
+                      <button
+                        type="button"
+                        className="canvas-open world-open"
+                        title={WORLD_VIEW_HINT}
+                        aria-label={WORLD_VIEW_LABEL}
+                        onClick={() => enterWorld()}
+                      >
+                        <Icon.globe className="ic" aria-hidden />
+                        {WORLD_VIEW_LABEL}
+                      </button>
+                    ) : undefined
+                  }
                   headerSlot={
                     viewingLive ? (
-                      // Anchor wrapper — the popover floats below this div via position:absolute.
-                      <div className="pen-anchor" ref={penAnchorRef}>
-                        <PenPill
-                          enabled={cfg.annotationsEnabled}
-                          open={trackVisible}
-                          inkCount={drawnEntries.length}
-                          onClick={() => setTrackVisible((v) => !v)}
-                        />
-                        {trackVisible && (
-                          <div className="pen-popover">
-                            <GestureTrack
-                              entries={drawnEntries}
-                              turnStartMs={turnStartMsRef.current}
-                              annotationsEnabled={cfg.annotationsEnabled}
-                              hiddenSpots={hiddenSpots}
-                              onToggle={togglePen}
-                              onKeep={() => setTrackVisible(false)}
-                              onClear={() => {
-                                setInked([]);
-                                setDrawnInk(new Set());
-                                setHiddenSpots(new Set());
-                                setTrackVisible(false);
-                              }}
-                              onClip={() => setShareOpen(true)}
-                              onJumpTo={jumpToSpot}
-                              onToggleSpot={toggleSpot}
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <>
+                        {/* Anchor wrapper — the popover floats below this div via position:absolute. */}
+                        <div className="pen-anchor" ref={penAnchorRef}>
+                          <PenPill
+                            enabled={cfg.annotationsEnabled}
+                            open={trackVisible}
+                            inkCount={drawnEntries.length}
+                            onClick={() => setTrackVisible((v) => !v)}
+                          />
+                          {trackVisible && (
+                            <div className="pen-popover">
+                              <GestureTrack
+                                entries={drawnEntries}
+                                turnStartMs={turnStartMsRef.current}
+                                annotationsEnabled={cfg.annotationsEnabled}
+                                hiddenSpots={hiddenSpots}
+                                onToggle={togglePen}
+                                onKeep={() => setTrackVisible(false)}
+                                onClear={() => {
+                                  setInked([]);
+                                  setDrawnInk(new Set());
+                                  setHiddenSpots(new Set());
+                                  setTrackVisible(false);
+                                }}
+                                onClip={() => setShareOpen(true)}
+                                onJumpTo={jumpToSpot}
+                                onToggleSpot={toggleSpot}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </>
                     ) : undefined
                   }
                 />
@@ -5656,6 +5809,23 @@ export function LiveApp(): ReactElement {
           bleeding around it. Out here `inset: 0` means the whole app, in every branch (canvas,
           wizard, fresh session), which is also what the full-page takeover wants. */}
       {mindOverlay}
+
+      {/* The world view, mounted at the app root for the same reason the map is: it is a full-page
+          takeover, and a stage-mounted overlay would inherit the spotlight walk's pan. */}
+      {inWorldView && (
+        <LazyOverlay label="Living answer">
+          <WorldOverlay
+            spec={worldBlock.props.world ?? null}
+            question={worldBlock.props.title}
+            failed={worldFailed}
+            onRetry={() => setWorldAttempt((n) => n + 1)}
+            onClose={leaveWorldView}
+            view={worldBlock.props.view}
+            onExpandNode={expandWorldNode}
+            speakLine={speak}
+          />
+        </LazyOverlay>
+      )}
 
       {/* Dragging a file over the surface — the only sign a document drop attaches at all,
           otherwise that capability is invisible until you stumble on the paperclip. */}

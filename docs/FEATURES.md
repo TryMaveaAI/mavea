@@ -72,6 +72,14 @@ index, or open the **Explore** menu in the top bar.
   cadence while Mavéa is open (`#/dashboards`), with its checks and estimated provider cost visible.
 - 🔄 **Bendable answers** — a calculation answer can carry its model-authored formula; drag the one
   number worth dragging and the outputs recompute in front of you, auditable.
+- 🌍 **View any "why" as a world** — an answer about causes opens into the causal web behind it.
+  Press **Walk me through it** and the camera flies from cause to cause while Mavéa narrates each
+  one, drawing the link it is talking about; or read the same web four ways — what led to what, how
+  much each cause was _measured_ to contribute, when each happened, and what each one measured over
+  time. A view is only offered when the world can actually fill it. Every figure on the surface can
+  prove itself (tap it for the quote, the source, and what breaks if it changes), and every arrow
+  states what it does **not** claim. Pull a what-if lever and the world re-weights in place —
+  described in words, never in numbers nobody measured.
 - ◌ **The Blank Space** — when an answer turns on something only you can know (a real deadline, your
   budget, a dealbreaker), Mavéa is designed to leave a glowing
   hole right in the answer. Fill it by typing, speaking, or dragging a card in, hit **Complete**, and

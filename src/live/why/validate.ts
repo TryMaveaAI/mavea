@@ -6,8 +6,10 @@
 // A precise causal number can never reach the screen on the model's say-so alone.
 import { parseLooseJson } from '../ground/json';
 import { makeVerbatimGrounder } from '../ground/verbatim';
-import { hostOf } from '../ground/citation';
+import { valueInQuote } from '../ground/number';
 import type { Receipt, Tier } from '../ground/types';
+import { asEdgeRelation } from '../trust/relations';
+import { collectReceipts, deriveEdgeStatus, pickReceipt, quoteOf } from '../trust/receipts';
 import type { CausalRole, WhyDag, WhyEdge, WhyNode } from './types';
 
 const ROLES = new Set<CausalRole>(['root', 'mechanism', 'outcome']);
@@ -30,30 +32,6 @@ export function makeWhyGrounder(corpus: string): (quote: string) => boolean {
 }
 
 /** Build a Receipt from a raw receipt object + a verified quote. */
-function pickReceipt(rawReceipt: unknown, quote: string): Receipt {
-  const r = (rawReceipt && typeof rawReceipt === 'object' ? rawReceipt : {}) as Record<
-    string,
-    unknown
-  >;
-  const url = str(r.url, 400);
-  const host = str(r.host, 80) ?? (url ? hostOf(url) : null);
-  const date = str(r.date, 40);
-  const cell = str(r.cell, 12);
-  return {
-    quote,
-    ...(url ? { url } : {}),
-    ...(host ? { host } : {}),
-    ...(date ? { date } : {}),
-    ...(cell ? { cell } : {}),
-  };
-}
-
-function quoteOf(r: Record<string, unknown>): string | null {
-  if (r.receipt && typeof r.receipt === 'object')
-    return str((r.receipt as Record<string, unknown>).quote, 240);
-  return str(r.quote, 240);
-}
-
 /**
  * Parse + ground a WhyDag from raw model output. Returns null if unsalvageable (no center, <2 nodes).
  * `corpus` is the concatenated grounding text (attachment + search snippets); pass '' for a purely
@@ -101,14 +79,7 @@ export function coerceWhyDag(raw: unknown, corpus: string): WhyDag | null {
         receipt = pickReceipt(r.receipt, quote);
         // A grounded node keeps its receipt even without a number (a real event); but a claimed value
         // must have its digits present in the quote, or it's stripped (no number on the model's say-so).
-        // Matched per NUMBER TOKEN in the quote, not the whole quote's digits concatenated — a raw
-        // substring check would let a fabricated value pass by splicing digits from two unrelated
-        // numbers in the same sentence, or matching as a sub-run of one larger, different number.
-        if (value !== undefined) {
-          const digits = String(value).replace(/[^0-9]/g, '');
-          const quoteNumbers = quote.match(/\d[\d,.]*\d|\d/g)?.map((s) => s.replace(/[^0-9]/g, ''));
-          if (digits && !quoteNumbers?.includes(digits)) value = undefined;
-        }
+        if (value !== undefined && !valueInQuote(value, quote)) value = undefined;
       } else {
         tier = 'T0'; // claimed real but ungrounded → demote, strip the number
         value = undefined;
@@ -148,28 +119,43 @@ export function coerceWhyDag(raw: unknown, corpus: string): WhyDag | null {
     let tier: Tier = TIERS.includes(r.tier as Tier) ? (r.tier as Tier) : 'T0';
     let weight =
       typeof r.weight === 'number' && Number.isFinite(r.weight) ? clampWeight(r.weight) : undefined;
-    const quote = quoteOf(r);
-    let receipt: Receipt | undefined;
+    // Every quote is verified on its own, so three claims where one is real leave a link carrying
+    // one receipt rather than a link that looks three times as certain as it is.
+    const receipts = collectReceipts(r, ground);
+    const relation = r.relation == null ? undefined : asEdgeRelation(r.relation);
+    const rawCounter = r.counter;
+    const counterQuote =
+      rawCounter && typeof rawCounter === 'object'
+        ? quoteOf(rawCounter as Record<string, unknown>)
+        : null;
+    // A counter-quote is held to exactly the standard the claim is: evidence against a link that
+    // the corpus does not actually contain would be a fabrication in the reader's favour, which is
+    // still a fabrication.
+    const counter =
+      counterQuote && ground(counterQuote) ? pickReceipt(rawCounter, counterQuote) : undefined;
     let provisional = false;
 
-    if (isReal(tier) && weight !== undefined && quote && ground(quote)) {
-      receipt = pickReceipt(r.receipt, quote);
-    } else {
+    if (!(isReal(tier) && weight !== undefined && receipts.length > 0)) {
       tier = 'T0'; // ungrounded link → qualitative, faint, no weight
       weight = undefined;
       provisional = true;
     }
 
-    edges.push({
+    const edge: WhyEdge = {
       from,
       to,
       sign,
       tier,
       ...(verb ? { verb } : {}),
       ...(weight !== undefined ? { weight } : {}),
-      ...(receipt ? { receipt } : {}),
+      // receipts[0] IS receipt: every existing reader of a single receipt keeps working, and the
+      // panel that wants all of them has all of them.
+      ...(receipts.length ? { receipt: receipts[0], receipts } : {}),
+      ...(counter ? { counter } : {}),
+      ...(relation ? { relation } : {}),
       ...(provisional ? { provisional: true } : {}),
-    });
+    };
+    edges.push({ ...edge, status: deriveEdgeStatus(edge) });
   }
 
   let outcomeId = str(o.outcomeId, 40);

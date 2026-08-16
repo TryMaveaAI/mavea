@@ -52,6 +52,16 @@ export function finishCapMs(estimateMs: number): number {
   return estimateMs * 2 + 12_000;
 }
 
+/** Roughly how long a line takes to say (≈155 wpm), bounded so a one-word line still reads and a
+ *  long one cannot stall a walk. It is the dwell when there is no voice, and the failure-only cap
+ *  when there is — every walk in the app paces off this one curve, which is why it lives here with
+ *  the other pacing constants rather than as a private copy inside each of them. */
+export function spokenMs(text: string, dwell = 1700): number {
+  const trimmed = text.trim();
+  if (!trimmed) return dwell;
+  return Math.min(7_000, Math.max(1_500, Math.round(trimmed.split(/\s+/).length * 385 + 500)));
+}
+
 /** Plain cancellable-by-neglect delay; the caller re-checks its own cancel flags after it. */
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

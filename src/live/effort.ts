@@ -22,6 +22,7 @@
 // Zero-dependency, word-bounded, never-throws — same spirit as classifyAsk / detectShapes,
 // and identical on every model/provider so behavior doesn't drift by backend.
 import type { ThinkingLevel } from './providers/types';
+import { trimToSentence } from '../lib/spokenText';
 import type { AskComplexity } from './select/complexity';
 import type { IntentSignals } from './select/intent';
 
@@ -111,22 +112,6 @@ export function temperatureFor(
 const SPOKEN_LEAN = 140;
 const SPOKEN_RICH = 320;
 
-/** Trim a string to a character budget. Prefers landing on the end of a complete sentence — a
- *  fragment reads as an abandoned thought, but a shorter complete sentence stands on its own.
- *  Falls back to the last whole word plus an ellipsis when no sentence boundary fits (mirrors
- *  the existing capTweet), so a cut line still never slices through a word. */
-function trimToWord(s: string, max: number): string {
-  if (s.length <= max) return s;
-  const cut = s.slice(0, max - 1);
-  const sentenceEnds = [...cut.matchAll(/[.!?](?=\s|$)/g)];
-  const lastSentence = sentenceEnds.at(-1);
-  if (lastSentence && lastSentence.index !== undefined && lastSentence.index > max * 0.3) {
-    return cut.slice(0, lastSentence.index + 1);
-  }
-  const sp = cut.lastIndexOf(' ');
-  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + '…';
-}
-
 /**
  * Cap the narrated line to a conversational length for the ask. Lean → ~140 chars; rich →
  * up to ~320 (a couple of sentences). The canvas carries the depth, so the voice stays
@@ -134,7 +119,7 @@ function trimToWord(s: string, max: number): string {
  */
 export function capSpoken(text: string, complexity: AskComplexity): string {
   const max = complexity === 'lean' || complexity === 'brief' ? SPOKEN_LEAN : SPOKEN_RICH;
-  return trimToWord(text.trim(), max);
+  return trimToSentence(text.trim(), max);
 }
 
 /** The character ceiling for a complexity — exported so a prompt can tell the model the

@@ -61,10 +61,11 @@ export function isReal(t: Tier): t is 'T1' | 'T2' {
   return t === 'T1' || t === 'T2';
 }
 
-/** Construct a T0 (qualitative, no-number) resolution — the honest degrade when nothing grounds. */
+/** Construct a T0 (qualitative, no-number) resolution — the honest degrade when nothing grounds.
+ *  Typed as the T0 arm itself, so a caller holding a structure-only slot can use it directly. */
 export function qualitative(
   raw: string,
   note = 'Leading hypothesis — here is how to confirm.',
-): Resolution {
+): Extract<Resolution, { tier: 'T0' }> {
   return { ok: true, tier: 'T0', raw, note, surface: 'model' };
 }

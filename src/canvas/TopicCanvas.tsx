@@ -300,6 +300,10 @@ interface Props {
   /** Optional node rendered at the trailing edge of the canvas header, next to the
    *  Focus/Everything toggle. Used by Live to inject the persistent pen toggle. */
   headerSlot?: ReactNode;
+  /** Optional node rendered beside "View as canvas", at the very end of the header's action row.
+   *  For controls that are that button's PEER — another way of looking at this same answer — so
+   *  they read as a set rather than as one control stranded at the far end of the row. */
+  viewSlot?: ReactNode;
   /** Optional node rendered between the canvas header and the card grid. Used by Live to
    *  place the voice scrubber below the Pen/Focus/Everything controls. */
   belowHeaderSlot?: ReactNode;
@@ -330,6 +334,7 @@ export function TopicCanvas({
   onAddToFlashcard,
   flashedIds,
   headerSlot,
+  viewSlot,
   belowHeaderSlot,
   presenting,
   blankFill,
@@ -643,6 +648,7 @@ export function TopicCanvas({
               {focusCapable && onViewMode && (
                 <FocusToggle value={focused ? 'focus' : 'everything'} onChange={onViewMode} />
               )}
+              {viewSlot}
               {/* Canvas is an OPT-IN alternate view of this one answer, not a sticky mode: a button
                   that appears only when the answer is board-shaped, never the default. */}
               {canvasCapable && onViewMode && (

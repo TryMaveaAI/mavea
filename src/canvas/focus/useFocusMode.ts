@@ -2,23 +2,33 @@
 //
 // 'everything' is the full adaptive grid (the long-standing default — zero surprise for
 // existing flows). 'focus' holds one card on a center stage and rails the rest, pacing the
-// answer like a friend across the table. The choice is a single shared preference (one key,
-// both surfaces) so flipping it in the Demo carries into Live and back.
+// answer like a friend across the table. 'canvas' spreads THIS answer's cards on a board you can
+// wander, and 'world' opens the causal web behind it — why the answer is true. The choice is a
+// single shared preference (one key, both surfaces) so flipping it in the Demo carries into Live
+// and back.
 //
 // Mirrors the memory/useLiveConfig store idiom exactly: an in-session cache + localStorage +
 // a CustomEvent so any mounted view re-reads on change. It NEVER throws — storage failure or
 // a bad value degrades to the default. The store half is framework-free; the hook subscribes.
 import { useCallback, useEffect, useState } from 'react';
 
-export type ViewMode = 'focus' | 'everything' | 'canvas';
+export type ViewMode = 'focus' | 'everything' | 'canvas' | 'world';
 
 const STORAGE_KEY = 'mavea-view-mode';
 /** Broadcast on every write so live views re-read (same key, so it's self-describing). */
 export const VIEW_MODE_EVENT = STORAGE_KEY;
 const DEFAULT: ViewMode = 'everything';
 
+/**
+ * The views that belong to ONE answer rather than to the reader's standing preference: the spatial
+ * board, and the world behind the answer. Neither is ever written to storage — and neither is read
+ * back from it, so a value left by an older build (or a hand-edited key) can only ever restore into
+ * a view the reader actually has something to see in.
+ */
+const TRANSIENT: ReadonlySet<string> = new Set<ViewMode>(['canvas', 'world']);
+
 function isViewMode(v: unknown): v is ViewMode {
-  return v === 'focus' || v === 'everything' || v === 'canvas';
+  return v === 'focus' || v === 'everything' || v === 'canvas' || v === 'world';
 }
 
 // In-session source of truth, so re-reads within a session are cheap and consistent.
@@ -28,10 +38,16 @@ function fromStorage(): ViewMode {
   try {
     if (typeof localStorage === 'undefined') return DEFAULT;
     const raw = localStorage.getItem(STORAGE_KEY);
-    return isViewMode(raw) ? raw : DEFAULT;
+    return isViewMode(raw) && !TRANSIENT.has(raw) ? raw : DEFAULT;
   } catch {
     return DEFAULT;
   }
+}
+
+/** The reader's own standing choice — what a transient view falls back to when it ends. Read from
+ *  storage rather than the cache, since the cache holds whatever takeover is on screen right now. */
+export function savedViewMode(): ViewMode {
+  return fromStorage();
 }
 
 /** The current view mode (cached after first read). */
@@ -46,9 +62,9 @@ export function setViewMode(mode: ViewMode): void {
   if (!isViewMode(mode)) return;
   cache = mode;
   try {
-    // 'canvas' is a transient per-answer view, not a saved preference — never persist it (and don't
-    // clobber the saved focus/everything choice), so it can't stick across answers or a reload.
-    if (typeof localStorage !== 'undefined' && mode !== 'canvas') {
+    // A transient per-answer view is not a saved preference — never persist it (and don't clobber
+    // the saved focus/everything choice), so it can't stick across answers or a reload.
+    if (typeof localStorage !== 'undefined' && !TRANSIENT.has(mode)) {
       localStorage.setItem(STORAGE_KEY, mode);
     }
   } catch {

@@ -43,6 +43,21 @@
   --warning-soft: #ffce8a;
   --danger: #ff7a85; /* used sparingly */
 
+  /* --- categorical (a closed set, for data that is a KIND rather than a level) ---
+     The three accents above carry meaning (action / verified / uncertain) and must keep it, so a
+     categorical scale needs its own row. Authored in oklch at one lightness and one chroma so no
+     category shouts louder than its neighbours — hue is the only thing that varies, which is what
+     makes these read as eight members of one set rather than eight decisions. Used today by the
+     living world's domain marks (src/canvas/spatial/morph/morph.css). */
+  --domain-health: oklch(0.72 0.13 15);
+  --domain-economy: oklch(0.72 0.13 70);
+  --domain-conflict: oklch(0.72 0.13 110);
+  --domain-environment: oklch(0.72 0.13 145);
+  --domain-science: oklch(0.72 0.13 195);
+  --domain-technology: oklch(0.72 0.13 250);
+  --domain-policy: oklch(0.72 0.13 295);
+  --domain-society: oklch(0.72 0.13 340);
+
   /* glows */
   --glow-presence: rgba(110, 140, 255, 0.35);
   --glow-insight: rgba(62, 216, 166, 0.3);

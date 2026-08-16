@@ -126,3 +126,27 @@ export function collapseRepeatedValues(text: string): string {
   } while (out !== prev);
   return out;
 }
+
+/**
+ * Trim to a character budget, landing on the end of a complete sentence.
+ *
+ * A spoken line is read aloud and printed as the answer's opening: cutting it mid-clause leaves
+ * the reader with "…and while it is a protected site, the…", which reads as the software giving
+ * up rather than as a short answer. A shorter COMPLETE sentence always beats a longer fragment, so
+ * the last sentence boundary inside the budget wins — provided enough of the line survives to
+ * still be an answer (below that, a one-clause stub would be worse than the trim).
+ *
+ * The ellipsis fallback remains for the case the budget cannot fix: a single sentence longer than
+ * the whole allowance. Nothing can end that cleanly, and cutting mid-word would be worse.
+ */
+export function trimToSentence(text: string, max: number, floor = 0.3): string {
+  const s = text.trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const lastEnd = [...cut.matchAll(/[.!?](?=["')\]]?(?:\s|$))/g)].at(-1);
+  if (lastEnd?.index !== undefined && lastEnd.index > max * floor) {
+    return cut.slice(0, lastEnd.index + 1);
+  }
+  const sp = cut.lastIndexOf(' ');
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + '…';
+}

@@ -7,6 +7,7 @@ import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers/index';
 import { speedTierFor } from '../speed';
 import { cacheGet, cachePut, rippleCacheKey } from '../ripple/cache';
+import { EDGE_RELATIONS } from '../trust/relations';
 import { coerceWhyDag } from './validate';
 import type { WhyDag } from './types';
 
@@ -17,7 +18,9 @@ HARD HONESTY RULES:
 - If a cause or link comes from general knowledge with NO source sentence, set "tier":"T0" and OMIT value/weight/quote. Never invent a number, a percentage, or a citation.
 - If SOURCES is empty, EVERY node and edge is "T0" with no numbers — a qualitative structure only.
 - "sign" is 1 (reinforces) or -1 (dampens). "role" is "root" | "mechanism" | "outcome". "depth" grows from roots (0) to the outcome.
-Shape: {"center":"the question","outcomeId":"<id of the outcome node>","nodes":[{"id":"","label":"","role":"","depth":0,"tier":"T0","value":0,"unit":"","quote":""}],"edges":[{"from":"","to":"","verb":"","weight":0,"sign":1,"tier":"T0","quote":""}],"provenance":{"illustrative":false}}`;
+- "relation" says what the link CLAIMS, one of: contributes | causes | dampens | enables | correlates. Choose the WEAKEST one that is true — "causes" asserts a sole or direct cause, and most links are "contributes". Use "correlates" when the two move together and you cannot say which drives which.
+- A link may carry up to 3 "receipts" (each an independently quotable sentence), and a "counter" receipt quoting a source that DISPUTES it. Both are held to the same rule as everything else: verbatim from SOURCES or omitted.
+Shape: {"center":"the question","outcomeId":"<id of the outcome node>","nodes":[{"id":"","label":"","role":"","depth":0,"tier":"T0","value":0,"unit":"","quote":""}],"edges":[{"from":"","to":"","verb":"","weight":0,"sign":1,"tier":"T0","quote":"","relation":""}],"provenance":{"illustrative":false}}`;
 
 const NODE_ITEM = {
   type: 'object',
@@ -33,6 +36,16 @@ const NODE_ITEM = {
   },
   required: ['id', 'label', 'role'],
 };
+const RECEIPT_ITEM = {
+  type: 'object',
+  properties: {
+    quote: { type: 'string' },
+    url: { type: 'string' },
+    host: { type: 'string' },
+    date: { type: 'string' },
+  },
+  required: ['quote'],
+};
 const EDGE_ITEM = {
   type: 'object',
   properties: {
@@ -43,6 +56,9 @@ const EDGE_ITEM = {
     sign: { type: 'number' },
     tier: { type: 'string', enum: ['T0', 'T1', 'T2', 'T3'] },
     quote: { type: 'string' },
+    relation: { type: 'string', enum: [...EDGE_RELATIONS] },
+    receipts: { type: 'array', items: RECEIPT_ITEM },
+    counter: RECEIPT_ITEM,
   },
   required: ['from', 'to', 'sign'],
 };

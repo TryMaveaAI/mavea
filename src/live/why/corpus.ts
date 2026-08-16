@@ -3,6 +3,10 @@
 // NOT the assistant's own prior answers — grounding a causal claim against the model's earlier output
 // would be a fake receipt (citing itself). If both sources are empty, the corpus is empty and the
 // causal web honestly degrades to all-T0 (qualitative, no numbers).
+//
+// A living world takes only `attachmentsToText` from here (see world/grounding.ts): it is built
+// when the reader opens it, long after the turn, and searching again at that point would spend the
+// user's search budget a second time for material the turn already had.
 import { base64ToBytes, extractOfficePages } from '../prism/officeDoc';
 import { isCsv, isOffice, isText, isXlsx, type Attachment } from '../attachments';
 import { parseDataset } from '../data/parse';

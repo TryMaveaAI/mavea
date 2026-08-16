@@ -110,6 +110,7 @@
     "audit:ui": "node --import tsx scripts/ui-audit.mts",
     "audit:browsers": "node --import tsx scripts/browser-matrix.mts",
     "audit:interactions": "node --import tsx scripts/interaction-matrix.mts",
+    "perf:world": "node --import tsx scripts/world-perf.mts",
     "perf": "node --import tsx scripts/perf-probe.mts",
     "perf:memory": "node --import tsx scripts/memory-probe.mts",
     "audit:tap": "node --import tsx scripts/tap-audit.mts",

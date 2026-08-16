@@ -1,8 +1,15 @@
-// why/seed.ts — a hand-authored, clearly-illustrative causal web shown before a real explode (and in
-// the gallery/QA route). It demonstrates the grounded experience — weighted edges + receipts + a live
-// counterfactual — WITHOUT pretending to be the user's data: provenance.illustrative is true, so the
-// overlay shows the "illustrative — shows the shape, not your numbers" banner (the Ripple SEED_SHIP
-// example precedent). Every receipt points at the bundled sample text, never a real private source.
+// why/seed.ts — the hand-authored webs the QA route (#/whylab) mounts: one per rung of the honesty
+// ladder, so all three readouts can be judged side by side without a live turn.
+//
+//   WHY_SEED_GROUNDED    receipted and fully weighted → exact pp deltas and "% explained".
+//   WHY_SEED             the same machine on an ILLUSTRATIVE web → every exact figure withheld,
+//                        because a textbook explanation measured nothing (why/engine's rule), so
+//                        the conclusion moves in relative strength only.
+//   WHY_SEED_STRUCTURAL  no figures to withhold in the first place → relative strength only.
+//
+// None of them is a user's data. The illustrative one says so in its provenance and wears the
+// banner; the grounded one is grounded against the sample text bundled below it, and its receipts
+// name that sample as their source rather than pointing at any real private or web document.
 import type { WhyDag } from './types';
 
 // A STRUCTURE-ONLY web (the default a real document explode produces before any data is attached or
@@ -87,6 +94,13 @@ export const WHY_SEED_STRUCTURAL: WhyDag = {
   ],
 };
 
+// An ILLUSTRATIVE web: a textbook churn story, weighted and receipted so the machinery all runs,
+// but declared `illustrative` — which is the web saying it measured nothing. why/engine fails
+// closed on that declaration whatever tiers the nodes wear, so this rung shows the SHAPE of a
+// causal web with every exact figure withheld: no pp delta, no "% explained", just the relative
+// readout under the illustrative banner. (It reached the screen as the pre-turn placeholder, hence
+// the sample-report receipts: they are the bundled example text, never a real source.)
+// WHY_SEED_GROUNDED is the rung where the numbers are real.
 export const WHY_SEED: WhyDag = {
   center: 'Why did churn spike in March?',
   outcomeId: 'churn',
@@ -212,6 +226,174 @@ export const WHY_SEED: WhyDag = {
         quote: 'Win-back surveys cited the competitor for ~a quarter of losses.',
         host: 'sample report',
       },
+    },
+  ],
+};
+
+// ── The GROUNDED rung ────────────────────────────────────────────────────────────────────────
+//
+// Every sentence the grounded web cites, held once and used twice: the corpus below is built FROM
+// these lines, and each receipt quotes the same constant — so a receipt can never drift out of the
+// text it claims to come from, and a figure can never drift from the sentence carrying its digits.
+// (The same trick world/seed.ts uses to keep a series point and its receipt honest.)
+const OPS = {
+  late: 'Late deliveries rose 7.4 points in June, from 5.1% of parcels to 12.5%.',
+  drivers: 'Driver cover ended June 12% below the May roster.',
+  routing: 'The new routing engine shipped on 3 June and stayed on for the rest of the month.',
+  queue: 'Parcels queued at the north depot on 14 of the month’s 21 working days.',
+  misroute: 'Misrouted parcels had to be re-scanned at the sorting belt.',
+  heatShare: 'The heatwave drove 70% of the depot queue.',
+  driverShare: 'Thin driver cover added the remaining 30% of the queue.',
+  routingShare: 'The routing release caused 80% of the misroutes.',
+  queueShare: 'Hub queueing accounted for 52% of June’s late deliveries.',
+  misrouteShare: 'Re-scanned misroutes accounted for another 24%.',
+  driverDirect: 'Thin driver cover put a further 12% of late deliveries on the road.',
+} as const;
+
+const BULLETIN = {
+  heat: 'A four-day heatwave closed the north route on 9 June.',
+} as const;
+
+/** The sample grounding corpus, in the shape assembleWhyCorpus builds one: the attached file's
+ *  text first, then the search snippets. Pass this beside WHY_SEED_GROUNDED to why/validate and
+ *  the web survives whole — which is exactly what makes it a demonstration of the grounded rung
+ *  rather than an assertion of one. */
+export const WHY_SEED_GROUNDED_CORPUS: string = [
+  ['June operations note — north depot.', ...Object.values(OPS)].join('\n'),
+  ['Regional transport bulletin.', ...Object.values(BULLETIN)].join('\n'),
+].join('\n\n');
+
+const OPS_HOST = 'sample ops note';
+const BULLETIN_HOST = 'sample bulletin';
+
+/**
+ * A fully GROUNDED web: not illustrative, every node and edge receipted at T1/T2, every edge
+ * weighted — the one state in which why/engine may report an exact delta, so this is the rung
+ * where the honesty ladder pays off. Pruning the heatwave takes the outcome from 7.4pp to 4.7pp,
+ * and the baseline reads "83% explained" — 88 points of attributed share, less the fifth of the
+ * misroutes the routing release does not account for.
+ *
+ * The figures are the sample note's own, never a real person's data: the receipts name the sample
+ * as their host and carry no URL, since there is no real page to send a reader to.
+ */
+export const WHY_SEED_GROUNDED: WhyDag = {
+  center: 'Why did late deliveries jump in June?',
+  outcomeId: 'late',
+  provenance: {
+    notes: [
+      'Read from the bundled sample ops note and bulletin — a worked example of a fully grounded web.',
+    ],
+  },
+  nodes: [
+    {
+      id: 'heat',
+      label: 'Heatwave closed the north route',
+      role: 'root',
+      depth: 0,
+      tier: 'T2',
+      receipt: { quote: BULLETIN.heat, host: BULLETIN_HOST },
+    },
+    {
+      id: 'drivers',
+      label: 'Driver cover down 12%',
+      role: 'root',
+      depth: 0,
+      tier: 'T1',
+      value: 12,
+      unit: '%',
+      receipt: { quote: OPS.drivers, host: OPS_HOST },
+    },
+    {
+      id: 'routing',
+      label: 'New routing engine shipped',
+      role: 'root',
+      depth: 0,
+      tier: 'T1',
+      receipt: { quote: OPS.routing, host: OPS_HOST },
+    },
+    {
+      id: 'queue',
+      label: 'Parcels queued at the depot',
+      role: 'mechanism',
+      depth: 1,
+      tier: 'T1',
+      value: 14,
+      unit: 'days',
+      receipt: { quote: OPS.queue, host: OPS_HOST },
+    },
+    {
+      id: 'misroute',
+      label: 'Misrouted parcels re-scanned',
+      role: 'mechanism',
+      depth: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.misroute, host: OPS_HOST },
+    },
+    {
+      id: 'late',
+      label: 'Late deliveries +7.4pp',
+      role: 'outcome',
+      depth: 2,
+      tier: 'T1',
+      value: 7.4,
+      unit: 'pp',
+      receipt: { quote: OPS.late, host: OPS_HOST },
+    },
+  ],
+  edges: [
+    {
+      from: 'heat',
+      to: 'queue',
+      verb: 'closed',
+      weight: 0.7,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.heatShare, host: OPS_HOST },
+    },
+    {
+      from: 'drivers',
+      to: 'queue',
+      verb: 'thinned',
+      weight: 0.3,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.driverShare, host: OPS_HOST },
+    },
+    {
+      from: 'routing',
+      to: 'misroute',
+      verb: 'caused',
+      weight: 0.8,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.routingShare, host: OPS_HOST },
+    },
+    {
+      from: 'queue',
+      to: 'late',
+      verb: 'delayed',
+      weight: 0.52,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.queueShare, host: OPS_HOST },
+    },
+    {
+      from: 'misroute',
+      to: 'late',
+      verb: 'added',
+      weight: 0.24,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.misrouteShare, host: OPS_HOST },
+    },
+    {
+      from: 'drivers',
+      to: 'late',
+      verb: 'slowed',
+      weight: 0.12,
+      sign: 1,
+      tier: 'T1',
+      receipt: { quote: OPS.driverDirect, host: OPS_HOST },
     },
   ],
 };

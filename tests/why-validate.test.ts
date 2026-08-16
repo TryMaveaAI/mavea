@@ -114,3 +114,90 @@ describe('coerceWhyDag grounding', () => {
     expect(coerceWhyDag({ center: 'x', nodes: [] }, CORPUS)).toBeNull();
   });
 });
+
+describe('coerceWhyDag — a link that carries more than one quote', () => {
+  const CORPUS_MULTI =
+    'The heatwave drove 70% of the depot queue. Two independent reviews reached the same 70% figure. ' +
+    'Regulators later argued the heat link was overstated.';
+
+  const dagWith = (edge: Record<string, unknown>) =>
+    coerceWhyDag(
+      {
+        center: 'Why did the queue grow?',
+        outcomeId: 'queue',
+        nodes: [
+          { id: 'heat', label: 'Heatwave', role: 'root', depth: 0, tier: 'T0' },
+          { id: 'queue', label: 'Depot queue', role: 'outcome', depth: 1, tier: 'T0' },
+        ],
+        edges: [{ from: 'heat', to: 'queue', sign: 1, ...edge }],
+      },
+      CORPUS_MULTI,
+    )!;
+
+  const supported = {
+    tier: 'T2',
+    weight: 0.7,
+    quote: 'The heatwave drove 70% of the depot queue.',
+    receipts: [{ quote: 'Two independent reviews reached the same 70% figure.' }],
+  };
+
+  it('keeps every quote the corpus actually contains, and drops the ones it does not', () => {
+    const edge = dagWith({
+      ...supported,
+      receipts: [
+        { quote: 'Two independent reviews reached the same 70% figure.' },
+        { quote: 'A sentence nobody wrote.' },
+      ],
+    }).edges[0];
+    expect(edge.receipts?.map((r) => r.quote)).toEqual([
+      'The heatwave drove 70% of the depot queue.',
+      'Two independent reviews reached the same 70% figure.',
+    ]);
+  });
+
+  it('counts the same sentence once, however often it is cited', () => {
+    const edge = dagWith({
+      ...supported,
+      receipts: [
+        { quote: 'The heatwave drove 70% of the depot queue.' },
+        { quote: 'Two independent reviews reached the same 70% figure.' },
+      ],
+    }).edges[0];
+    expect(edge.receipts).toHaveLength(2);
+  });
+
+  it('keeps receipt and receipts[0] the same thing, so an old reader still works', () => {
+    const edge = dagWith(supported).edges[0];
+    expect(edge.receipts?.[0]).toEqual(edge.receipt);
+  });
+
+  it('derives the status instead of believing one', () => {
+    // The model is not asked what its own link is worth, and if it says anyway it is ignored.
+    const edge = dagWith({ ...supported, status: 'supported', counter: undefined }).edges[0];
+    expect(edge.status).toBe('supported');
+    expect(dagWith({ status: 'supported' }).edges[0].status).toBe('provisional');
+  });
+
+  it('says contested when a source disputes a link that other sources back', () => {
+    const edge = dagWith({
+      ...supported,
+      counter: { quote: 'Regulators later argued the heat link was overstated.' },
+    }).edges[0];
+    expect(edge.status).toBe('contested');
+    expect(edge.counter?.quote).toMatch(/overstated/);
+  });
+
+  it('will not carry a counter-quote the corpus never said', () => {
+    // Evidence AGAINST a claim is held to the same standard as evidence for it — a fabrication in
+    // the reader's favour is still a fabrication.
+    const edge = dagWith({ ...supported, counter: { quote: 'Nobody wrote this rebuttal.' } })
+      .edges[0];
+    expect(edge.counter).toBeUndefined();
+    expect(edge.status).toBe('supported');
+  });
+
+  it('puts an unrecognised relation on the allowlist rather than through to the screen', () => {
+    expect(dagWith({ ...supported, relation: 'proves' }).edges[0].relation).toBe('contributes');
+    expect(dagWith({ ...supported, relation: 'enables' }).edges[0].relation).toBe('enables');
+  });
+});

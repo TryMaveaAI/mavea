@@ -247,6 +247,27 @@ export const FEATURES: Feature[] = [
 
   // ── This session (what's in front of you right now) ─────────────────────────
   {
+    id: 'living-answer',
+    label: 'View as world',
+    blurb: 'Open the causal web behind this answer — walk it, weigh it, and see its receipts',
+    group: 'This session',
+    surface: 'live',
+    keywords: [
+      'world',
+      'living answer',
+      'causal',
+      'why',
+      'evidence',
+      'receipts',
+      'what if',
+      'walk me through it',
+      'narrate',
+      'explain',
+      'contribution',
+      'timeline',
+    ],
+  },
+  {
     id: 'recap',
     label: 'Recap',
     blurb: "What we've covered so far this session",

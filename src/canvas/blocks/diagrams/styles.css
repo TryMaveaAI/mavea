@@ -3665,3 +3665,66 @@
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
+
+/* ── world: the living-answer strip — the question, what it explains, and the way into the
+   explorable surface. Deliberately not a preview of the web: the card sits in a grid cell on
+   every render, and drawing a graph layout there cost more than it told anyone. ── */
+.wp-question {
+  margin: 10px 0 0;
+  font-size: var(--fs-md, 15px);
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.wp-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--warning) 38%, transparent);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+  font-size: var(--fs-2xs, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+
+.wp-outcome {
+  margin: 12px 0 0;
+  font-size: var(--fs-sm, 13px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.wp-meta {
+  margin: 4px 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-muted);
+}
+
+.wp-open {
+  margin-top: 12px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--presence) 45%, transparent);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-sm, 13px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.wp-open:hover {
+  background: color-mix(in oklab, var(--presence) 24%, transparent);
+}
+.wp-open .ic {
+  width: 14px;
+  height: 14px;
+}

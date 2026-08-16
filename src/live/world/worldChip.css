@@ -1,0 +1,23 @@
+/* The world view's entrance, sitting in the canvas header beside Focus and "View as canvas".
+   `.canvas-open` (styles/canvas.css) owns the pill — this is its peer, so it wears that class and
+   adds only the one state canvas.css never needed: an answer with no causal web to open.
+
+   It lives in its own file rather than in world.css because that stylesheet ships inside the
+   overlay's lazy chunk, and this control has to be styled long before anyone opens a world. */
+/* The globe from the world card's eyebrow, so the two entrances read as one feature. `.ic` carries
+   no size of its own — every caller sets it — and an unsized SVG in a flex row lays out at its
+   300×150 default, which would push the whole header apart. */
+.world-open .ic {
+  width: 14px;
+  height: 14px;
+}
+
+/* Both selectors, because `.canvas-open:hover` still matches a disabled button — an unreachable
+   control must not light up under the pointer, it must sit still and explain itself (title/aria). */
+.world-open:disabled,
+.world-open:disabled:hover {
+  border-color: var(--line);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  cursor: default;
+}

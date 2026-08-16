@@ -87,6 +87,15 @@ export function liveJsonSchema(
           required: ['title', 'url'],
         },
       },
+      // Optional: the model's own read on whether this answer explains a mechanism. Declared for
+      // the same reason as `sources` above — the prompt asks for it, so a schema that omits it
+      // guides a constrained sampler into dropping it, and the living-world offer then falls back
+      // to a regex on the question alone.
+      causal: {
+        type: 'boolean',
+        description:
+          'true ONLY when this answer explains a mechanism — causes producing an outcome. false for lookups, procedures, comparisons, calculations, or anything you were asked to write.',
+      },
     },
     required: ['narration', 'title', 'sub', 'blocks'],
   };

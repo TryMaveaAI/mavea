@@ -1188,6 +1188,154 @@ export const study: ConversationSpec = {
       },
     },
     {
+      // A settled living answer parked in the canvas. Illustrative on purpose: the receipts point
+      // at the bundled textbook passage, not a real source, so the card can demonstrate the shape
+      // of a causal world without any figure pretending to be measured.
+      type: 'world',
+      col: 6,
+      props: {
+        title: 'Why did the Irish potato famine happen?',
+        world: {
+          title: 'Why did the Irish potato famine happen?',
+          outcomeId: 'famine',
+          provenance: {
+            illustrative: true,
+            notes: ['Illustrative example — a textbook causal web, not sourced data.'],
+          },
+          nodes: [
+            {
+              id: 'monoculture',
+              label: 'A single potato variety',
+              role: 'root',
+              depth: 0,
+              tier: 'T3',
+              detail:
+                'Most of the crop was the same cultivar, so one pathogen could reach all of it.',
+              receipt: {
+                quote: 'Nearly the whole crop was a single variety.',
+                host: 'sample passage',
+              },
+              children: [
+                {
+                  id: 'monoculture.lumper',
+                  label: 'The Lumper',
+                  role: 'root',
+                  depth: 0,
+                  tier: 'T0',
+                },
+                {
+                  id: 'monoculture.seed-reuse',
+                  label: 'Seed potatoes reused',
+                  role: 'root',
+                  depth: 0,
+                  tier: 'T0',
+                },
+              ],
+            },
+            {
+              id: 'blight',
+              label: 'Phytophthora arrives',
+              role: 'root',
+              depth: 0,
+              tier: 'T3',
+              receipt: {
+                quote: 'The blight reached Ireland in the autumn of 1845.',
+                host: 'sample passage',
+              },
+              series: {
+                tier: 'T3',
+                unit: '% of crop lost',
+                points: [
+                  { t: '1845', value: 33 },
+                  { t: '1846', value: 75 },
+                  { t: '1847', value: 25 },
+                  { t: '1848', value: 50 },
+                ],
+              },
+            },
+            {
+              id: 'tenancy',
+              label: 'Smallholder tenancy',
+              role: 'mechanism',
+              depth: 1,
+              tier: 'T0',
+              detail: 'Rents were paid in grain, leaving the potato as the household staple.',
+            },
+            {
+              id: 'exports',
+              label: 'Grain kept leaving',
+              role: 'mechanism',
+              depth: 1,
+              tier: 'T0',
+            },
+            {
+              id: 'famine',
+              label: 'Mass starvation and emigration',
+              role: 'outcome',
+              depth: 2,
+              tier: 'T3',
+              receipt: {
+                quote: 'A million died and a million more left the island.',
+                host: 'sample passage',
+              },
+            },
+          ],
+          edges: [
+            {
+              from: 'monoculture',
+              to: 'blight',
+              verb: 'let it spread',
+              sign: 1,
+              tier: 'T3',
+              relation: 'enables',
+              status: 'provisional',
+              provisional: true,
+            },
+            {
+              from: 'blight',
+              to: 'famine',
+              verb: 'destroyed the staple',
+              sign: 1,
+              weight: 0.6,
+              tier: 'T3',
+              relation: 'causes',
+              status: 'supported',
+              receipt: {
+                quote: 'The blight reached Ireland in the autumn of 1845.',
+                host: 'sample passage',
+              },
+              receipts: [
+                {
+                  quote: 'The blight reached Ireland in the autumn of 1845.',
+                  host: 'sample passage',
+                },
+              ],
+            },
+            {
+              from: 'tenancy',
+              to: 'famine',
+              verb: 'left no fallback',
+              sign: 1,
+              tier: 'T0',
+              relation: 'contributes',
+              status: 'provisional',
+              provisional: true,
+            },
+            {
+              from: 'exports',
+              to: 'famine',
+              verb: 'drained the surplus',
+              sign: 1,
+              tier: 'T0',
+              relation: 'contributes',
+              status: 'provisional',
+              provisional: true,
+            },
+          ],
+        },
+      },
+    },
+    {
       type: 'areaplot',
       col: 8,
       delay: 320,

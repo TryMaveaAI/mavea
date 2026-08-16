@@ -12,6 +12,8 @@ import type { BlockBase, AccentVar, HtmlString } from '../../../data/conversatio
 import type { IconKey } from '../../../icons/icons';
 import type { BigOClass } from '../charts2/types';
 import type { MindAtom, MindCluster, MindLink, MindUnsaid } from '../../../live/mindshape/types';
+import type { WorldSpec } from '../../../live/world/types';
+import type { Representation } from '../../spatial/morph/types';
 
 /** A node's visual role — drives its accent and glyph, nothing structural. */
 export type DiagramNodeKind = 'default' | 'start' | 'accent' | 'good' | 'warn' | 'muted';
@@ -173,6 +175,24 @@ export interface CircuitDiagramProps {
   footer?: string;
 }
 
+/** Props for the `world` card — a living answer parked in the canvas (live / replay / library /
+ *  export). `title` is the world's own pinned question, repeated at the top level because it is
+ *  what lifecycle's blockSignature keys on: a follow-up that EVOLVES the same world must land on
+ *  the same signature so a refine replaces the card in place instead of appending a second one. */
+export interface WorldPreviewProps {
+  title: string;
+  /** The built world. ABSENT until a reader opens the card: a turn offers a world for free and the
+   *  one model call that builds it runs on that open, after which the result is written back here
+   *  so the settled turn, a re-open and every replay reuse it instead of paying again. */
+  world?: WorldSpec;
+  /** The answer's own headline — free from the turn that offered the world, so an unbuilt card
+   *  still says what it is about. */
+  outcome?: string;
+  /** Opens straight into this representation. A follow-up the standing world can already answer
+   *  ("show that over time", when it holds the series) is a pure local morph, never a call. */
+  view?: Representation;
+}
+
 /** Persisted props for a settled mindshape block (replay / library / present).
  *  `clusters` is optional so blocks persisted before emergent themes still render. */
 export interface MindShapeBlockProps {
@@ -259,7 +279,8 @@ export type DiagramsBlock =
   | (BlockBase & { type: 'threatmodel'; props: ThreatModelProps })
   | (BlockBase & { type: 'foodweb'; props: FoodWebProps })
   | (BlockBase & { type: 'primefactortree'; props: PrimeFactorTreeProps })
-  | (BlockBase & { type: 'analogymap'; props: AnalogyMapProps });
+  | (BlockBase & { type: 'analogymap'; props: AnalogyMapProps })
+  | (BlockBase & { type: 'world'; props: WorldPreviewProps });
 
 /* ── cyclewheel: an illustrated closed loop — 3–8 stages spaced evenly AROUND a ring, each an
    icon + label + short caption, joined by curved arrows that flow one into the next and close

@@ -51,6 +51,10 @@ export interface LiveConfigV2 {
    *  generative diagram/composite family). On by default; disabling it removes those contracts
    *  from the model menu. */
   generativeBlocks: boolean;
+  /** Build a living world for a causal ask — a standing, explorable causal web the conversation
+   *  keeps alive and follow-ups evolve. On by default; the model call behind a world runs only
+   *  when a reader opens one, so an unopened offer costs nothing. */
+  worldEnabled: boolean;
   /** Keep a local library of the canvases you generate, so you can pick any one back up later.
    *  On by default; stored only in this browser and fully user-managed. */
   libraryEnabled: boolean;
@@ -115,6 +119,11 @@ const DEFAULT: LiveConfigV2 = {
   memoryEnabled: false,
   autoSaveFlashcards: false,
   generativeBlocks: true,
+  // On by default: OFFERING a world costs nothing — the card carries only what the turn already
+  // knew, and the single model call behind it runs when a reader opens one. An opt-in default was
+  // right while the explode rode along with every causal turn; keeping it after that changed only
+  // hid the feature from the people who would never think to go looking for it in settings.
+  worldEnabled: true,
   libraryEnabled: true,
   teachMode: false,
   annotationsEnabled: true,
@@ -212,6 +221,7 @@ function fromStorage(): LiveConfigV2 {
       memoryEnabled: coerceBool(o.memoryEnabled, DEFAULT.memoryEnabled),
       autoSaveFlashcards: coerceBool(o.autoSaveFlashcards, DEFAULT.autoSaveFlashcards),
       generativeBlocks: coerceBool(o.generativeBlocks, DEFAULT.generativeBlocks),
+      worldEnabled: coerceBool(o.worldEnabled, DEFAULT.worldEnabled),
       libraryEnabled: coerceBool(o.libraryEnabled, DEFAULT.libraryEnabled),
       teachMode: coerceBool(o.teachMode, DEFAULT.teachMode),
       annotationsEnabled: coerceBool(o.annotationsEnabled, DEFAULT.annotationsEnabled),
@@ -500,6 +510,7 @@ const IMPORTABLE_CONFIG_FIELDS = [
   'memoryEnabled',
   'autoSaveFlashcards',
   'generativeBlocks',
+  'worldEnabled',
   'libraryEnabled',
   'teachMode',
   'annotationsEnabled',
@@ -568,6 +579,7 @@ export function importConfigWithSummary(
     memoryEnabled: coerceBool(source.memoryEnabled, DEFAULT.memoryEnabled),
     autoSaveFlashcards: coerceBool(source.autoSaveFlashcards, DEFAULT.autoSaveFlashcards),
     generativeBlocks: coerceBool(source.generativeBlocks, DEFAULT.generativeBlocks),
+    worldEnabled: coerceBool(source.worldEnabled, DEFAULT.worldEnabled),
     libraryEnabled: coerceBool(source.libraryEnabled, DEFAULT.libraryEnabled),
     teachMode: coerceBool(source.teachMode, DEFAULT.teachMode),
     annotationsEnabled: coerceBool(source.annotationsEnabled, DEFAULT.annotationsEnabled),
@@ -626,6 +638,7 @@ export function toCaps(c: LiveConfigV2): LiveCaps {
     quality: c.quality,
     memoryEnabled: c.memoryEnabled,
     generativeBlocks: c.generativeBlocks,
+    worldEnabled: c.worldEnabled,
     explainLevel: c.explainLevel,
   };
 }

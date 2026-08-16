@@ -1,0 +1,648 @@
+/* world.css — the world surface's own chrome, and nothing else. The stage brings morph.css and the
+   trust layer brings trust.css; this sheet only frames them: the panel, the header with its view
+   chips, the illustrative banner, and the evidence rail. Tokens only, so light and dark (and every
+   theme template) follow for free. */
+
+.wo-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Near full-bleed: the world IS the screen while it is open. The margin is just enough to keep
+     the panel's own edge visible, so it still reads as a surface over the conversation. */
+  padding: clamp(0px, 1.2vw, 20px);
+  background: color-mix(in srgb, var(--surface-deep) 68%, transparent);
+}
+
+.wo-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 1800px;
+  /* The panel states its own type and text colour rather than inheriting whatever surface it was
+     mounted over — a lab route and a live overlay are not the same host. */
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+  overflow: hidden;
+}
+
+/* --- header ------------------------------------------------------------------------------ */
+
+.wo-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-md);
+  padding: var(--s-md) var(--s-lg);
+  border-bottom: 1px solid var(--line-soft);
+}
+.wo-kicker,
+.wo-rail-kicker {
+  font: 600 11px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.wo-title h2 {
+  margin: 2px 0 0;
+  font: 600 clamp(17px, 2vw, 22px) / 1.25 var(--font);
+  color: var(--text-primary);
+  max-width: 62ch;
+}
+.wo-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.wo-views {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+}
+.wo-chip {
+  font: 500 12px/1 var(--font);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  border-radius: var(--r-full);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    background var(--m-fast, 120ms) var(--ease-out, ease),
+    color var(--m-fast, 120ms) var(--ease-out, ease);
+}
+.wo-chip:hover {
+  color: var(--text-primary);
+}
+.wo-chip[aria-pressed='true'] {
+  background: var(--presence);
+  color: var(--surface-default);
+}
+
+.wo-btn {
+  font: 500 13px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background var(--m-fast, 120ms) var(--ease-out, ease);
+}
+.wo-btn:hover:not(:disabled) {
+  background: var(--surface-elevated-2, var(--surface-elevated));
+}
+.wo-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.wo-btn-close {
+  padding: 7px 10px;
+}
+
+.wo-banner {
+  padding: 8px var(--s-lg);
+  font: 500 12.5px/1.4 var(--font);
+  border-bottom: 1px solid var(--line-soft);
+}
+/* The accents are one set across both themes, so warning-on-light is pale enough to read as an
+   afterthought. Mixing toward the body colour keeps the warmth and lands the contrast in both. */
+.wo-banner-illustrative {
+  color: color-mix(in oklab, var(--warning) 58%, var(--text-primary));
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+/* --- the wait, and the dead end ------------------------------------------------------------
+   A world is built when a reader opens it, so this is the first thing the surface usually shows.
+   Deliberately quiet: one breathing dot, one line of what is happening, one line of what it
+   costs. Nothing moves except the dot, and it stops moving for a reader who asked it to. */
+
+.wo-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-sm);
+  padding: var(--s-lg);
+  text-align: center;
+  background: var(--surface-deep, var(--surface-default));
+}
+.wo-shell-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--presence);
+  animation: wo-shell-breathe 2s ease-in-out infinite;
+}
+.wo-shell-line {
+  margin: 0;
+  font: 600 15px/1.4 var(--font);
+  color: var(--text-primary);
+}
+.wo-shell-note {
+  margin: 0;
+  max-width: 46ch;
+  font: 400 13px/1.55 var(--font);
+  color: var(--text-muted);
+}
+.wo-shell .wo-btn {
+  margin-top: var(--s-sm);
+}
+@keyframes wo-shell-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wo-shell-pulse {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* One quiet line under the chips saying what THIS view's geometry means. Sized and coloured to be
+   read once and then ignored — it is orientation, not a caption competing with the world. */
+.wo-legend {
+  margin: 0;
+  padding: 7px var(--s-lg) 9px;
+  font: 400 12px/1.45 var(--font);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* --- body -------------------------------------------------------------------------------- */
+
+.wo-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.wo-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  /* Depth, not decoration: a cool wash at the causes' end and a warm one where the outcome lands,
+     so the stage has a horizon even before a single card is placed on it. */
+  background:
+    radial-gradient(
+      70% 60% at 22% 18%,
+      color-mix(in srgb, var(--presence) 9%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      60% 55% at 82% 88%,
+      color-mix(in srgb, var(--insight) 6%, transparent),
+      transparent 70%
+    ),
+    var(--surface-deep, var(--surface-default));
+}
+
+/* Both of a card's affordances are TARGETS, and the card is a world-space object: the counter-scale
+   holds a card at its authored size down to the camera's legibility floor, so a box authored at the
+   24px hit floor is 24px on the glass for as long as the world is legible at all. Small figures
+   ("9%") and a two-word chip both fall well under that on their own ink, which is why the floor is
+   stated on the box rather than left to the padding. */
+.wo-num,
+.wo-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* When an entry sits on the timeline, its own date rides with it: the view places cards BY time,
+   and until each said so the reader had to measure every one against the axis by eye. */
+.wo-when {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+  /* 11.5px, not 10.5: this is the only thing on a timeline entry that says WHEN, and the camera on
+     a wide world settles around 0.6× — where the counter-scale leaves a 10.5px chip at 8.7px, just
+     under the legibility floor. The audit caught it on the seed world's own timeline. */
+  font: 500 11.5px/1 var(--font);
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A figure on a card sits under its label, in the insight accent — the trust layer keeps it plain
+   text until it is hovered, so this is colour and rhythm, never a badge. */
+.wo-num {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--insight);
+  font-variant-numeric: tabular-nums;
+  /* A figure is DATA, so its length is not ours to assume. A card is a fixed 200px box the layout
+     has already reserved room for; a thirty-digit value let loose inside one pushed the box wider
+     than the composition, which widened the world, which made the whole stage scroll sideways. The
+     number is clipped to the box it was given — the card is the glance, and the rail beside it (and
+     the provenance card behind that) is where a figure is read in full. */
+  /* The 24px floor above does double duty: it keeps the figure a pointer-sized target AND, being
+     an explicit min-width, it overrides a flex item's default `min-width: auto` — which is what
+     let a long number set the card's width in the first place. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wo-expand {
+  flex: none;
+  font: 500 9.5px/1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition:
+    color var(--m-fast, 120ms) var(--ease-out, ease),
+    border-color var(--m-fast, 120ms) var(--ease-out, ease);
+}
+.wo-expand:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--line-strong);
+}
+/* Waiting on the one call a breakdown costs. The wording already says so; the pulse is the quiet
+   half of it and only for readers who want motion. Nothing about the card moves — a chip that
+   resized mid-wait would shove the label it sits under. */
+.wo-expand[aria-busy='true'] {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, transparent);
+  cursor: default;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wo-expand[aria-busy='true'] {
+    animation: wo-expand-wait 1.5s ease-in-out infinite;
+  }
+  @keyframes wo-expand-wait {
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+/* A second press while one breakdown is in flight would buy a call the reader cannot see arrive. */
+.wo-expand:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+/* Far from the world the stage drops its own secondary lines rather than paint a smear below the
+   legibility floor (morph.css's far LOD). What this surface adds to a card follows the same rule —
+   the pinch gesture still unfolds a breakdown at that distance. */
+.mv-node[data-lod='far'] .wo-num,
+.mv-node[data-lod='far'] .wo-expand {
+  display: none;
+}
+
+/* --- rail -------------------------------------------------------------------------------- */
+
+.wo-rail {
+  width: clamp(300px, 24vw, 380px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-lg);
+  padding: var(--s-md) var(--s-lg) var(--s-lg);
+  border-left: 1px solid var(--line-soft);
+  background: var(--surface-default);
+  overflow-y: auto;
+}
+
+/* A lever gets a ROW, never a line it shares with its own readout: a cause's label is a sentence
+   ("Cheap credit after 2001"), and a sentence and a number pushed onto one flex line collide. */
+.wo-rail .viz-ctl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s-sm);
+  row-gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid color-mix(in oklab, var(--line-soft) 70%, transparent);
+}
+.wo-rail .viz-ctl-label {
+  grid-area: 1 / 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.wo-rail .viz-ctl-val {
+  grid-area: 1 / 2;
+  font-variant-numeric: tabular-nums;
+}
+.wo-rail .viz-ctl-range {
+  grid-area: 2 / 1 / 3 / 3;
+  max-width: none;
+  align-self: center;
+}
+.wo-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* --- the rail at rest ---------------------------------------------------------------------
+   What the reader gets before they have picked anything: the shape of the world, then the offer.
+   Quiet by construction — this is orientation, not a dashboard competing with the stage. */
+.wo-standing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+}
+.wo-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-md) var(--s-lg);
+  margin: 0;
+}
+.wo-facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wo-facts dt {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.wo-facts dd {
+  margin: 0;
+  font: 600 17px/1.1 var(--font);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.wo-standing-outcome {
+  margin: 0;
+  font: 500 13.5px/1.45 var(--font);
+  color: var(--text-primary);
+}
+.wo-standing-lead {
+  color: var(--text-muted);
+}
+.wo-standing-note {
+  display: block;
+  margin-top: 4px;
+  font: 400 12.5px/1.5 var(--font);
+  color: var(--text-secondary);
+}
+
+/* Before anything is open the rail still has to earn its width: the invitation reads as a
+   waiting surface, not as a paragraph someone forgot to delete. */
+.wo-hint {
+  padding: var(--s-2) var(--s-md);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-glass);
+}
+.wo-detail-title {
+  margin: 2px 0 0;
+  font: 600 14px/1.3 var(--font);
+  color: var(--text-primary);
+}
+.wo-detail-note,
+.wo-hint {
+  margin: 0;
+  font: 400 12.5px/1.5 var(--font);
+  color: var(--text-secondary);
+}
+.wo-hint {
+  color: var(--text-muted);
+}
+.wo-detail-figure {
+  margin: 0;
+  font: 600 18px/1.2 var(--font);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  /* The rail is where a figure is read in FULL, so it wraps rather than clips — but a run of
+     digits has no spaces to break at, and left alone one pushes the rail sideways and takes the
+     evidence beside it out of view. */
+  overflow-wrap: anywhere;
+}
+.wo-series {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wo-series li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-sm);
+  font: 400 12px/1.6 var(--font-data, var(--font));
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid color-mix(in oklab, var(--line-soft) 60%, transparent);
+}
+.wo-series-t {
+  color: var(--text-muted);
+}
+
+@media (max-width: 960px) {
+  .wo-body {
+    flex-direction: column;
+  }
+  .wo-rail {
+    width: auto;
+    max-height: 46%;
+    border-left: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+}
+
+/* What a what-if did to this cause, in words. Deliberately prose and never a percentage: the shift
+   is derived from the world's own structure with nothing measuring it, so a figure here would be
+   the one unbacked number on a surface whose whole rule is that there are none. */
+.wo-shift {
+  /* OUT OF FLOW, in the gap the layout already reserves below each card (graphLayout's ROW_H is
+     CARD_H_MAX + 32). The card is a fixed 200px and its foot row is already carrying a figure, an
+     expand chip and a tier badge; a fourth item there does not shrink, it pushes — and since the
+     card cannot widen, it pushed straight over the neighbouring column. Hanging the phrase under
+     the card costs no layout arithmetic and cannot collide with anything. */
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.wo-shift[data-dir='down'] {
+  color: color-mix(in oklab, var(--warning) 78%, var(--text-muted));
+}
+.wo-shift[data-dir='up'] {
+  color: color-mix(in oklab, var(--insight) 78%, var(--text-muted));
+}
+/* Far from the camera the card is already down to its label — a phrase this small would be a smudge
+   well under the legibility floor, so it goes with the rest of the secondary text. */
+.mv-node[data-lod='far'] .wo-shift {
+  display: none;
+}
+
+/* ── The walk's transport ──────────────────────────────────────────────────────────────────────
+   Floats over the foot of the stage, INSIDE the camera's viewport, which is why the stage reserves
+   `TRANSPORT_BAND` through `insetBottom`. Its height is that same constant, arriving as a custom
+   property from the component so the reserve and the paint cannot drift.
+
+   It is a constant height whether or not a line is showing: a band that grew when the walk started
+   would re-fit the whole world at the exact moment the reader pressed play. */
+.wo-transport {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--wo-transport-h);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  padding: 12px 20px;
+  /* The band is opaque where it overlaps the world: a caption read through a card behind it is not
+     a caption. It fades UP into the stage so the edge is not a hard line across the horizon. */
+  background: linear-gradient(
+    to top,
+    var(--surface-deep, var(--surface-default)) 62%,
+    color-mix(in oklab, var(--surface-deep, var(--surface-default)) 82%, transparent) 88%,
+    transparent
+  );
+  pointer-events: none;
+}
+.wo-transport > * {
+  pointer-events: auto;
+}
+.wo-transport-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* At rest the bar is one pill in the corner, so the rest of the foot of the stage stays the
+   reader's — see the note in WorldTransport. */
+.wo-transport:not([data-open]) .wo-transport-row {
+  width: max-content;
+}
+.wo-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in oklab, var(--presence) 42%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+  color: var(--text-strong, inherit);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background var(--m-quick, 160ms) var(--ease-out, ease);
+}
+.wo-play:hover {
+  background: color-mix(in oklab, var(--presence) 20%, transparent);
+}
+.wo-play-glyph {
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--presence);
+}
+/* One segment per beat: past is filled, the current one is lit, the rest are the empty track. */
+.wo-track {
+  display: flex;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+  align-items: center;
+}
+.wo-tick {
+  flex: 1;
+  /* A 4px bar is not a 24px target. The hit box is the full band height, the ink is the bar — the
+     padding is transparent, so the control is comfortably pressable without looking heavy. */
+  min-width: 0;
+  height: 24px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.wo-tick::before {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track);
+  transition: background var(--m-quick, 160ms) var(--ease-out, ease);
+}
+.wo-tick[data-state='past']::before {
+  background: color-mix(in oklab, var(--presence) 55%, transparent);
+}
+.wo-tick[data-state='now']::before {
+  background: var(--presence);
+}
+.wo-tick:hover::before {
+  background: color-mix(in oklab, var(--presence) 75%, transparent);
+}
+.wo-transport-count {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  flex: none;
+}
+/* Two lines, reserved for the whole walk. Sized against what the authored corpus actually produces
+   (an opener plus a trimmed detail), so the clamp is the pathological backstop rather than something
+   readers meet routinely — and kept to two, because every line here is height the camera does not
+   get to fit the world into. */
+.wo-caption {
+  margin: 0;
+  min-height: 2.6em;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: var(--text-default);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* The lit link: the one a beat is speaking about right now. Weight and opacity only — the geometry
+   is the layout's, and a narration that moved a path would be lying about where the link runs. */
+.mv-edge-g[data-lit] .morph-edge {
+  --mv-edge-w: 3.2;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--presence) 55%, transparent));
+}
+
+/* A reduced-motion reader gets the same surface, arrived at instantly — this ends the transitions
+   and never restates geometry. */
+@media (prefers-reduced-motion: reduce) {
+  .wo-chip,
+  .wo-btn,
+  .wo-expand,
+  .wo-play,
+  .wo-tick::before {
+    transition: none;
+  }
+}

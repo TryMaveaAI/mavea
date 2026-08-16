@@ -357,6 +357,35 @@ describe('priority surface import boundaries', () => {
       forbidden: ['clip/ShareModal.tsx'],
     },
     {
+      // A `world` card sits in an ORDINARY answer, so it ships in the diagrams family chunk every
+      // canvas with a diagram already downloads. It must stay a strip: the morphing stage, the
+      // trust registry and the seed world are the world's own payload and belong in the overlay
+      // chunk, fetched when a reader actually opens one.
+      entry: 'canvas/blocks/diagrams/WorldPreview.tsx',
+      forbidden: [
+        'canvas/spatial/morph/MorphStage.tsx',
+        'live/world/WorldOverlay.tsx',
+        'live/world/seed.ts',
+        'live/trust/registry.ts',
+      ],
+    },
+    {
+      // The overlay RENDERS a world; it never builds one. A static edge to the explode would drag
+      // the provider adapters — and through them the ~300 KB catalog — into the world chunk, and
+      // the 100-scenario corpus (plus the seed it is built on) is lab material, not product.
+      entry: 'live/world/WorldOverlay.tsx',
+      forbidden: ['live/world/explode.ts', 'live/world/scenarios.ts', 'live/world/seed.ts'],
+    },
+    {
+      // Live opens the world lazily, and never carries the lab corpus.
+      entry: 'live/LiveApp.tsx',
+      forbidden: [
+        'live/world/WorldOverlay.tsx',
+        'live/world/scenarios.ts',
+        'live/world/WorldLab.tsx',
+      ],
+    },
+    {
       entry: 'gallery/GalleryApp.tsx',
       forbidden: ['canvas/blocks/index.ts', 'data/topics/index.ts'],
     },

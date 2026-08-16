@@ -1,0 +1,433 @@
+/* trust.css — the trust layer: figures that can prove themselves, the card that proves them, edge
+   receipts, and the what-if frame. Tokens only, so light/dark and every theme template follow for
+   free. Status colour is the ONE thing that varies here: grounded rides --presence, calculated
+   --insight, illustrative --warning (amber, never the accent), and structure stays muted — a
+   figure with no number must never look like a strong one. */
+
+/* ============================ a figure in prose ============================ */
+
+/* Resting state is deliberately indistinguishable from the surrounding text: same font, same
+   colour, no cursor change. The affordance is a hover/focus reveal, not a permanent badge. */
+.tr-num {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: default;
+  text-decoration: none;
+  border-radius: 2px;
+}
+button.tr-num:hover,
+button.tr-num:focus-visible {
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+button.tr-num:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+/* A named quantity with no number behind it — plain, muted, and not a button. */
+.tr-num-qual {
+  color: var(--text-muted);
+}
+
+.tr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================ the provenance card ============================ */
+
+.tr-card {
+  position: fixed;
+  z-index: 70;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-floating);
+}
+.tr-card:focus-visible {
+  outline: none;
+}
+
+.tr-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tr-back {
+  font: 500 11px/1.2 var(--font);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  padding: 0 0 2px;
+  cursor: pointer;
+}
+.tr-back:hover {
+  color: var(--text-primary);
+}
+.tr-back-to {
+  color: var(--text-muted);
+}
+
+.tr-badge {
+  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+}
+.tr-badge[data-status='grounded'] {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.tr-badge[data-status='calculated'] {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, transparent);
+}
+.tr-badge[data-status='illustrative'] {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+}
+
+.tr-figure {
+  margin: 0;
+  font: 700 20px/1.15 var(--font-data, var(--font));
+  color: var(--text-primary);
+}
+.tr-label {
+  margin: 0;
+  font: 500 12px/1.35 var(--font);
+  color: var(--text-secondary);
+}
+
+.tr-sec {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+.tr-sec-title {
+  margin: 0 0 6px;
+  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.tr-quote {
+  margin: 0;
+  padding: 6px 9px;
+  font: 400 12px/1.5 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border-left: 2px solid var(--presence);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.tr-host {
+  margin: 6px 0 0;
+  font: 500 11px/1.35 var(--font-data, var(--font));
+  color: var(--text-muted);
+}
+.tr-host a {
+  color: var(--presence);
+}
+.tr-date {
+  color: var(--text-faint);
+}
+
+.tr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+}
+.tr-chip {
+  font: 500 11px/1.3 var(--font-data, var(--font));
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  padding: 2px 7px;
+}
+
+.tr-formula {
+  margin: 0 0 6px;
+  font: 500 12px/1.45 var(--font-data, var(--font));
+  color: var(--text-primary);
+}
+.tr-inputs,
+.tr-used {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+.tr-input,
+.tr-usedin {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: 500 12px/1.4 var(--font);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: 3px 5px;
+  cursor: pointer;
+  transition: background var(--m-fast, 120ms) var(--ease-out, ease);
+}
+.tr-input:hover,
+.tr-usedin:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+.tr-input-label {
+  flex: 1;
+  min-width: 0;
+}
+.tr-input-val {
+  font-family: var(--font-data, var(--font));
+  color: var(--text-primary);
+}
+.tr-input-missing,
+.tr-usedin-flat {
+  color: var(--text-faint);
+  cursor: default;
+}
+.tr-more,
+.tr-note {
+  margin: 5px 0 0;
+  font: 400 11px/1.4 var(--font);
+  color: var(--text-muted);
+}
+.tr-caveat {
+  margin: 0;
+  font: 400 11px/1.45 var(--font);
+  color: var(--warning);
+}
+.tr-hint {
+  margin: 0;
+  font: 400 11px/1.4 var(--font);
+  color: var(--text-faint);
+}
+
+/* ============================ edge evidence ============================ */
+
+.tr-edge {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-default);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.tr-edge[data-provisional='1'] {
+  border-style: dashed;
+  border-color: var(--line-soft);
+}
+.tr-edge-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tr-rel {
+  font: 600 12px/1.3 var(--font);
+  color: var(--text-primary);
+}
+.tr-sign {
+  font: 600 13px/1 var(--font-data, var(--font));
+  color: var(--text-secondary);
+}
+.tr-sign[data-sign='1'] {
+  color: var(--presence);
+}
+.tr-sign[data-sign='-1'] {
+  color: var(--warning);
+}
+.tr-edge-badge {
+  margin-left: auto;
+}
+.tr-edge-badge[data-status='supported'] {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 14%, transparent);
+}
+.tr-edge-badge[data-status='contested'] {
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+}
+.tr-edge-badge[data-status='provisional'] {
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border: 1px dashed var(--line);
+}
+.tr-receipt {
+  margin: 0;
+}
+.tr-counter {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+.tr-counter .tr-quote {
+  border-left-color: var(--warning);
+}
+.tr-counter .tr-sec-title {
+  color: var(--warning);
+}
+.tr-unverified {
+  margin: 0;
+  font: 400 12px/1.5 var(--font);
+  font-style: italic;
+  color: var(--text-faint);
+}
+/* Always present, always last: what the arrow does NOT claim. */
+.tr-not-as {
+  margin: 0;
+  font: 400 11px/1.45 var(--font);
+  color: var(--text-muted);
+}
+
+/* ============================ the what-if frame ============================ */
+
+.tr-wi {
+  display: flex;
+  gap: var(--s-md, 14px);
+  align-items: stretch;
+}
+.tr-wi-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tr-wi-hypo {
+  padding-left: var(--s-md, 14px);
+  border-left: 1px dashed var(--line);
+}
+.tr-wi-chip {
+  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: var(--surface-elevated);
+  border-color: transparent;
+}
+.tr-wi-chip-hypo {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 12%, transparent);
+  cursor: help;
+}
+.tr-wi-figure {
+  margin: 0;
+  font: 700 clamp(22px, 3vw, 30px) / 1.1 var(--font-data, var(--font));
+  color: var(--text-primary);
+  /* The outcome's own figure, at the largest type on the surface — and its length belongs to the
+     data, not to us. A run of digits has no spaces to break at, so left alone one reaches past the
+     rail and takes the evidence beside it out of view. It wraps instead: this is the place a
+     figure is meant to be read in full. */
+  overflow-wrap: anywhere;
+}
+[data-world='hypothetical'] .tr-wi-figure {
+  color: color-mix(in oklab, var(--insight) 76%, var(--text-primary));
+}
+.tr-wi-figure.tr-wi-dash {
+  color: var(--text-faint);
+}
+/* Words, not a measurement — sized down so prose never wears a figure's weight. */
+.tr-wi-figure.tr-wi-phrase {
+  font: 600 15px/1.3 var(--font);
+}
+.tr-wi-delta {
+  margin: 0;
+  font: 600 13px/1.2 var(--font-data, var(--font));
+  color: var(--text-secondary);
+}
+.tr-wi-note {
+  margin: 0;
+  font: 500 11px/1.35 var(--font);
+  color: var(--text-muted);
+}
+/* A dash on its own reads as a failure; this is the line that says which rung of the ladder the
+   answer stopped on. Quiet, and never a figure. */
+.tr-wi-note.tr-wi-why {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-faint);
+  text-wrap: pretty;
+}
+
+/* ============================ levers ============================ */
+
+.tr-levers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tr-levers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm, 8px);
+}
+.tr-levers-head .tr-sec-title {
+  margin: 0;
+}
+.tr-levers-empty {
+  margin: 0;
+  font: 400 12.5px/1.5 var(--font);
+  color: var(--text-muted);
+}
+/* A lever is the ONE control on this surface a reader is meant to drag, and the shared ParamSlider
+   is authored as an inline chip 16px tall — a stripe a pointer lands on by luck and a thumb a
+   coarse pointer misses entirely. The rail has the room, so the input's own box carries the 24px
+   hit floor; the track and thumb are unchanged and simply centre in the taller box. */
+.tr-levers .viz-ctl-range {
+  min-height: 24px;
+}
+.tr-reset {
+  font: 500 12px/1 var(--font);
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background var(--m-fast, 120ms) var(--ease-out, ease);
+}
+.tr-reset:hover:not(:disabled) {
+  background: var(--surface-elevated-2, var(--surface-elevated));
+}
+.tr-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-input,
+  .tr-usedin,
+  .tr-reset {
+    transition: none;
+  }
+}
