@@ -101,3 +101,27 @@ describe('MetricFill — re-evaluates tripwires against the real previous value'
     expect(getDashboard('d1')!.tripwires[0]!.state).toBe('WATCHING');
   });
 });
+
+// The input seeds itself from the stored value, and its host tile is keyed by widget id — a key
+// that never changes, so the component never remounts. Without a re-sync the box kept displaying
+// the number it was born with while the card above it showed the refreshed one.
+describe('MetricFill — follows the stored value', () => {
+  it('shows the new number after the stored value changes underneath it', () => {
+    seedDash();
+    const { getByRole, rerender } = render(<MetricFill dashboardId="d1" metric={metric(5)} />);
+    expect(getByRole('textbox')).toHaveValue('5');
+
+    rerender(<MetricFill dashboardId="d1" metric={metric(8)} />);
+    expect(getByRole('textbox')).toHaveValue('8');
+  });
+
+  it('leaves a half-typed entry alone while the stored value holds still', () => {
+    seedDash();
+    const { getByRole, rerender } = render(<MetricFill dashboardId="d1" metric={metric(5)} />);
+
+    fireEvent.change(getByRole('textbox'), { target: { value: '12' } });
+    rerender(<MetricFill dashboardId="d1" metric={metric(5)} />);
+
+    expect(getByRole('textbox')).toHaveValue('12');
+  });
+});

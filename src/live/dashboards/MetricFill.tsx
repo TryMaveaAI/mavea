@@ -15,7 +15,18 @@ export function MetricFill({
   dashboardId: string;
   metric: MetricSpec;
 }): ReactElement {
-  const [val, setVal] = useState(metric.lastValue === null ? '' : String(metric.lastValue));
+  // A state initialiser runs once per mount, and this input's host tile is keyed by widget id — a
+  // stable key that survives every store write. Left alone, the box kept showing the number that
+  // was there when the card first rendered, while the card above it showed the new one. Re-seed
+  // when the STORED value moves (a refresh landed, another tab wrote, the value was filled
+  // elsewhere); an untouched store leaves a half-typed entry alone.
+  const seeded = metric.lastValue === null ? '' : String(metric.lastValue);
+  const [val, setVal] = useState(seeded);
+  const [lastSeeded, setLastSeeded] = useState(seeded);
+  if (seeded !== lastSeeded) {
+    setLastSeeded(seeded);
+    setVal(seeded);
+  }
 
   const save = (): void => {
     const n = Number(val.replace(/[^0-9.+-]/g, ''));
