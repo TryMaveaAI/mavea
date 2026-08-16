@@ -12,7 +12,7 @@ import {
   planToTemplate,
 } from './templates/instantiate';
 import { addDashboard, ensureFirstCheck } from './store';
-import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
+import { boardIds, confirmFailureMessage, confirmRealData, CONFIRM_WAIT_NOTE } from './confirmAdd';
 import { estimateSearchesPerMonth } from './cadence';
 import type { Dashboard, DataCadenceMode } from './types';
 import type { TrackerPlan } from './planTracker';
@@ -158,6 +158,7 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
             Create new anyway
           </button>
         </div>
+        {confirming && <p className="tpl-cadence-note">{CONFIRM_WAIT_NOTE}</p>}
         {confirmErr && <p className="tpl-cadence-note">{confirmErr}</p>}
       </div>
     );
@@ -253,6 +254,7 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
           {confirming ? 'Confirming live data…' : 'Create dashboard →'}
         </button>
       </div>
+      {confirming && <p className="tpl-cadence-note">{CONFIRM_WAIT_NOTE}</p>}
       {confirmErr && <p className="tpl-cadence-note">{confirmErr}</p>}
     </div>
   );

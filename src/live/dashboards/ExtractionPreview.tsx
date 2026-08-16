@@ -19,7 +19,7 @@ import {
   groundedDraft,
 } from './extract';
 import { relatedDashboard } from './relate';
-import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
+import { boardIds, confirmFailureMessage, confirmRealData, CONFIRM_WAIT_NOTE } from './confirmAdd';
 import { estimateSearchesPerMonth } from './cadence';
 import { dashHref } from './route';
 import type { Dashboard, DashboardDraft, DataCadenceMode } from './types';
@@ -446,6 +446,7 @@ export function ExtractionPreview({
                       {confirming ? 'Confirming live data…' : 'Build dashboard →'}
                     </button>
                   </div>
+                  {confirming && <p className="xt-confirm-err">{CONFIRM_WAIT_NOTE}</p>}
                   {confirmErr && <p className="xt-confirm-err">{confirmErr}</p>}
 
                   {existing.length > 0 && (

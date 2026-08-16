@@ -127,3 +127,29 @@ describe('PlanReview cadence picker', () => {
     expect(screen.getByText(/≈ 720 searches\/mo/)).toBeTruthy(); // hourly = 720/mo
   });
 });
+
+// The reality probe runs a real web search, which routinely takes tens of seconds. A button frozen
+// at "Confirming live data…" for that long, with nothing else on screen, is indistinguishable from
+// a hang — so the sheet says what it is waiting on, that it can be left, and where the answer lands.
+describe('PlanReview — the wait is explained while the probe runs', () => {
+  it('shows what it is waiting on, and only while it waits', async () => {
+    let release: (v: 'done') => void = () => {};
+    refreshDashboardNow.mockReturnValue(
+      new Promise<'done'>((resolve) => {
+        release = resolve;
+      }),
+    );
+    render(<NewFromTemplate onClose={() => {}} />);
+    await planIt('AAPL stock price');
+
+    expect(screen.queryByText(/can take up to a minute/)).toBeNull();
+
+    fireEvent.click(screen.getByText(/Create dashboard/));
+    const note = await screen.findByText(/can take up to a minute/);
+    expect(note.textContent).toContain('lands in your check log');
+
+    await act(async () => {
+      release('done');
+    });
+  });
+});

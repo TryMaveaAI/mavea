@@ -22,6 +22,13 @@ import type { Dashboard } from './types';
 
 export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'failed';
 
+/** Shown only while the probe runs. A real web search is slow — tens of seconds is normal — and a
+ *  button reading "Confirming live data…" for that long, with nothing else on screen, is
+ *  indistinguishable from a hang. Say what it is doing, that it can be left, and where the answer
+ *  turns up, so waiting is a choice rather than a guess. */
+export const CONFIRM_WAIT_NOTE =
+  'Checking a live source before this joins your board — a search can take up to a minute. You can close this; the result lands in your check log either way.';
+
 /** The one honest line every blocked add shows. */
 export function confirmFailureMessage(outcome: ConfirmOutcome): string {
   if (outcome === 'no-model')
