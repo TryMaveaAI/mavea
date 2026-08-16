@@ -45,8 +45,26 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   ),
   // The Dashboards (#/dashboards): conversations turned into living dashboards that refresh while
   // Mavéa is open. Lazy like Live — it shares the canvas + provider chunk.
+  //
+  // And like Live, it waits for what decrypts asynchronously before mounting. Both the dashboards
+  // themselves and the API keys are encrypted at rest, and mounting ahead of them made the surface
+  // lie twice: it flashed "these trackers can't fetch anything yet" over a perfectly good key, and
+  // — the real damage — a tracker created inside that window failed its add-time reality probe with
+  // "no model", which rolls the new dashboard back and DELETES it. Bounded, so a hung decrypt
+  // degrades to the old behaviour rather than a route that never resolves; the boot splash covers
+  // the wait.
   defineRoute('#/dashboards', () =>
-    import('./live/dashboards/DashboardsApp').then((m) => ({ default: m.DashboardsApp })),
+    Promise.all([
+      import('./live/dashboards/DashboardsApp'),
+      import('./live/dashboards/store'),
+      import('./live/useLiveConfig'),
+    ]).then(async ([m, store, liveConfig]) => {
+      await Promise.race([
+        Promise.all([store.whenDashboardsHydrated(), liveConfig.whenSecretPersistenceSettled()]),
+        new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+      ]);
+      return { default: m.DashboardsApp };
+    }),
   ),
   // The Flashcards (#/flashcards): see, organise (decks + tags), and study the cards captured from
   // answers. Lazy — none of the manage/study surface reaches the eager bundle.
