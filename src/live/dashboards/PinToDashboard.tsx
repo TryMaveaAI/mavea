@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../../icons/icons';
 import { blockLabel } from '../../canvas/blockLabel';
 import type { Block } from '../../data/conversation';
-import { getDashboards } from './store';
+import { getDashboards, whenDashboardsHydrated } from './store';
 import { estimateSearchesPerMonth } from './cadence';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
 import { displayTitle } from './format';
@@ -55,7 +55,7 @@ export function PinToDashboard({
   onAdded?: (dashboardId: string, dashboardTitle: string) => void;
 }): ReactElement {
   // Snapshot the list once on open so it doesn't reshuffle under the cursor mid-choice.
-  const [dashboards] = useState(() => getDashboards());
+  const [dashboards, setDashboards] = useState(() => getDashboards());
   const label = blockLabel(block);
   // With no boards at all the list would be a single "New dashboard" row — skip straight to naming.
   const [naming, setNaming] = useState(dashboards.length === 0);
@@ -63,6 +63,30 @@ export function PinToDashboard({
     displayTitle(question?.trim() || conversationTitle || label),
   );
   const [cadence, setCadence] = useState<DataCadenceMode>('manual');
+
+  // That snapshot can be taken before the store has anything to give: dashboards are encrypted at
+  // rest, so the synchronous read returns nothing until the decrypt lands, and this sheet opens
+  // from Live, whose route has no reason to wait on it. Opening quickly enough therefore hid every
+  // board the user owns behind a "New dashboard" step they never asked for. Correct the snapshot
+  // once — and only if it was empty, so the anti-reshuffle guarantee still holds for a real list.
+  const touched = useRef(false);
+  useEffect(() => {
+    let live = true;
+    void whenDashboardsHydrated().then(() => {
+      if (!live) return;
+      setDashboards((prev) => {
+        if (prev.length > 0) return prev;
+        const fresh = getDashboards();
+        // Only un-railroad someone who hasn't started naming — yanking the step out from under a
+        // half-typed name would be its own kind of rude. The Back button is there either way.
+        if (fresh.length > 0 && !touched.current) setNaming(false);
+        return fresh;
+      });
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Trap focus in the sheet + close on Escape — every other overlay in the app does this
   // (ExtractionPreview, Modal, Drawer…); this one was the odd one out, letting Tab and a
@@ -136,7 +160,10 @@ export function PinToDashboard({
                 ref={nameRef}
                 className="pin-name-input"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  touched.current = true;
+                  setName(e.target.value);
+                }}
                 aria-label="Dashboard name"
               />
             </label>
