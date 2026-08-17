@@ -6,6 +6,8 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-17
+
 ### Added
 
 - The daily search budget is adjustable from any dashboard's Settings, under "Every dashboard" —
