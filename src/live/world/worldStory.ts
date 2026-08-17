@@ -244,7 +244,7 @@ export function worldStory(
     let opener: string;
     if (isOutcome) {
       opener = arrival
-        ? `And it ends here: ${midSentence(label)} — ${linkPhrase(arrival)} ${arrival.from === previousId ? 'it' : midSentence(from ?? '')}.`
+        ? `And it ends here: ${midSentence(label)}, ${linkPhrase(arrival)} ${arrival.from === previousId ? 'it' : midSentence(from ?? '')}.`
         : `And it ends here: ${midSentence(label)}.`;
     } else if (!arrival) {
       opener = index === 0 ? `It starts with ${midSentence(label)}.` : `Alongside it: ${label}.`;
@@ -253,10 +253,10 @@ export function worldStory(
       // word the sentence opened with. The phrase earns its place only where the link claims
       // something the sequence does NOT imply — a dampening, an enabling condition, a correlation.
       opener = tellsMore(arrival)
-        ? `Then ${midSentence(label)} — ${linkPhrase(arrival)} it.`
+        ? `Then ${midSentence(label)}, ${linkPhrase(arrival)} it.`
         : `Then ${midSentence(label)}.`;
     } else {
-      opener = `${label} — ${linkPhrase(arrival)} ${midSentence(from ?? '')}.`;
+      opener = `${label}, ${linkPhrase(arrival)} ${midSentence(from ?? '')}.`;
     }
     previousId = id;
     const said: string[] = [opener];

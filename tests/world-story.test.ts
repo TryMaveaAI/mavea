@@ -71,7 +71,9 @@ describe('worldStory', () => {
     // The label leads and the cause trails as a prepositional phrase — the shape that survives a
     // label authored as a whole clause. "Lending loosened enabled Mortgage volume surged" is what
     // this is here to prevent.
-    expect(mid.say).toMatch(/^Mortgage volume surged — (fed|made possible) by /);
+    // A COMMA, not a dash: these lines are spoken, and a pause dash reads as a stumble — the rule
+    // tests/guided-copy pins on the walkthrough's coach lines, for the same reason.
+    expect(mid.say).toMatch(/^Mortgage volume surged, (fed|made possible) by /);
     expect(mid.edgeId).toBeDefined();
   });
 
@@ -111,6 +113,14 @@ describe('worldStory', () => {
     expect(said.some((l) => l.startsWith('Then mortgage volume surged.'))).toBe(true);
     // An ENABLING link claims something sequence does not, so it keeps its phrase.
     expect(said.some((l) => l.includes('made possible by it'))).toBe(true);
+  });
+
+  it('never puts a pause dash in a line it will SPEAK', () => {
+    // The same rule tests/guided-copy pins on the walkthrough's coach lines and the demo's captions.
+    // These are spoken by Mavéa too, so a dash reads as the same stumble.
+    for (const line of scriptOf(world())) {
+      expect(line, line).not.toMatch(/[—–]/);
+    }
   });
 
   it('speaks a figure ONLY when the registry can back it', () => {

@@ -487,6 +487,14 @@ export function coerceWorldSpec(raw: unknown, corpus: EvidenceCorpus | string): 
     // boom" backs no particular share of anything — yet the graph drew the link thicker for it and
     // the contribution ribbons sized themselves by it, which is an orphan pixel with a citation
     // stapled to it. A share is checked in both the forms a source writes one (`shareInQuote`).
+    //
+    // A node's value HAS an illustrative path (content/value hedges a T3 magnitude rather than
+    // dropping it) and a weight deliberately does not, which is why Contribution is unreachable on a
+    // from-knowledge world. That asymmetry is not an oversight to patch here: the prompt forbids an
+    // illustrative share in the first place, so exempting one would be dead code — and permitting one
+    // means asking a model to invent proportions, which is a product decision about honesty rather
+    // than a gate to loosen. A world with nothing measured shows the causal web and withholds the
+    // ribbons, which is the honest reading of it.
     const claimed = weight;
     if (claimed !== undefined && !receipts.some((rc) => shareInQuote(claimed, rc.quote))) {
       weight = undefined;

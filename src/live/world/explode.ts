@@ -160,7 +160,7 @@ function explodeMessage(question: string, corpus: EvidenceCorpus, nodeCap: numbe
 SOURCES:
 ${sourcesBlock(corpus)}
 
-Build the causal world (${nodeCap} nodes max). Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. Reply as compact JSON on one line.`;
+Build the causal world (${nodeCap} nodes max). Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. DATE every cause you can place in time — a year is enough, and this is not a number needing a source. Reply as compact JSON on one line.`;
 }
 
 /** The roster the follow-up call has to echo: every top-level node's id and label, so the model
@@ -185,7 +185,7 @@ FOLLOW-UP: ${ask.trim()}
 SOURCES:
 ${sourcesBlock(corpus)}
 
-Answer the follow-up on THIS world with a DELTA — only the nodes it changes (${nodeCap} nodes max, existing ids echoed), never the whole web again. Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. Reply as compact JSON on one line.`;
+Answer the follow-up on THIS world with a DELTA — only the nodes it changes (${nodeCap} nodes max, existing ids echoed), never the whole web again. Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. DATE every cause you can place in time — a year is enough, and this is not a number needing a source. Reply as compact JSON on one line.`;
 }
 
 /** One format-constrained call, coerced against the corpus. Null on any failure — a world is

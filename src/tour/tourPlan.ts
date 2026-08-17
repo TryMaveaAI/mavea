@@ -35,7 +35,6 @@ export type TourAction =
   | { kind: 'focusWalk'; convoId: string } // seed an answer, enter Focus, walk the spotlight card-by-card
   | { kind: 'flashcards' } // turn a card into a flashcard (the capture flow)
   | { kind: 'course' } // seed + open a real course lesson in-place (the CourseRail over its canvas)
-  | { kind: 'dashboard' } // open the Dashboards builder, then show its refresh-cadence control
   | { kind: 'connect' } // open the real Model settings with all five providers + the BYOK field
   | { kind: 'present' } // setPresenting(true)
   | { kind: 'share' } // setShareOpen(true) → Reel
@@ -67,12 +66,15 @@ export interface TourChapter {
 
 // The FAST core — the ten chapters a first-time visitor sees, in order. It's built to be amazing
 // but quick: about two minutes end to end. It tells four stories — the answer experience
-// (draw it → mark it → ask across it → spread it), then Dashboards, Prism, and Share.
+// (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and Share.
 // Everything else the product does lives in TOUR_EXTRAS below, one tap away from the end card, so
 // nothing is lost by keeping the first run short. Coach lines are deliberately terse: the
 // auto-advance waits for speech, so short lines are what keep the clock honest.
+// Dashboards' core slot was retired in favor of `living-answer` — `track` in TOUR_EXTRAS already
+// covers the same "keep it current" ground as its own full chapter, so the core no longer needed
+// a second, shorter pass at it.
 //
-// Arc: talk → connect → draw → mark → ask → spread → track it → prove it → share it → your turn.
+// Arc: talk → connect → draw → mark → ask → spread → walk the why → prove it → share it → your turn.
 export const TOUR: readonly TourChapter[] = [
   {
     id: 'talk',
@@ -134,14 +136,20 @@ export const TOUR: readonly TourChapter[] = [
     durationMs: 15000,
   },
   {
-    id: 'dashboards',
-    title: 'Keep it current',
+    id: 'living-answer',
+    title: 'Walk the why',
     mode: 'explain',
+    // Narrated, not instructed. The line said "Ask why something happened" and "Press walk me
+    // through it" while the chapter only OPENED the surface — describing two things the reader was
+    // doing neither of, on a replay where nobody presses anything. The walk starts itself now
+    // (WorldOverlay's `autoWalk`), so the line can just say what is happening on screen.
     coach:
-      'A living dashboard keeps an answer current. Choose when it refreshes, or refresh it whenever you want.',
-    action: { kind: 'dashboard' },
-    durationMs: 12000,
-    needsCanvas: true,
+      'A living answer lays out the causes behind an answer. Watch as I walk it cause by cause and say what each one did.',
+    action: { kind: 'showcase', featureId: 'living-answer' },
+    // Long enough for several beats of the walk to land. A beat waits for its own line to be
+    // audible, so the clock has to allow more than the open; the chapter still moves on mid-walk,
+    // which is fine — the mechanic is what it is here to show.
+    durationMs: 26000,
   },
   {
     id: 'prism',
@@ -351,17 +359,6 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     durationMs: 12000,
     glyph: '🌊',
     hook: "A code change's whole blast radius",
-  },
-  {
-    id: 'living-answer',
-    title: 'Walk the why',
-    mode: 'explain',
-    coach:
-      'Ask why something happened and the answer opens into the causes behind it. Press walk me through it, and I take you cause by cause.',
-    action: { kind: 'showcase', featureId: 'living-answer' },
-    durationMs: 13000,
-    glyph: '🌍',
-    hook: 'The causal web behind an answer',
   },
   {
     id: 'deepzoom',

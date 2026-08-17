@@ -951,6 +951,10 @@ export function LiveApp(): ReactElement {
   // works: the shipped illustrative world, mounted as an ordinary block. Loaded lazily so the seed
   // never rides in the Live bundle.
   const [seededWorld, setSeededWorld] = useState<Extract<Block, { type: 'world' }> | null>(null);
+  // Whether that seeded world should narrate itself on open — true only for the walkthrough's own
+  // world. A world the reader opened is theirs to start. Declared beside the world it belongs to and
+  // above the showcase op that sets it, so the binding is never read through a TDZ window.
+  const [seededWorldWalks, setSeededWorldWalks] = useState(false);
   // Read-through so the walkthrough's showcase, which is defined above the world state, can ask
   // whether the reader already has a world of their own before seeding one.
   const worldBlocksRef = useRef<ReadonlyArray<Extract<Block, { type: 'world' }>>>([]);
@@ -1771,6 +1775,11 @@ export function LiveApp(): ReactElement {
             col: 12,
             props: { title: WORLD_SEED.title, world: WORLD_SEED },
           });
+          // The chapter is called "Walk the why" and its line says it takes the reader cause by
+          // cause. Opening the surface and stopping made that line describe something the reader had
+          // to do themselves, which on a hands-off replay nothing ever does — so the walk starts
+          // itself here. Their first press takes it back; it is the transport's own control.
+          setSeededWorldWalks(true);
           enterWorldRef.current('tour-world');
         });
         return;
@@ -5838,6 +5847,7 @@ export function LiveApp(): ReactElement {
             onClose={leaveWorldView}
             view={worldBlock.props.view}
             onExpandNode={expandWorldNode}
+            autoWalk={seededWorldWalks && worldBlock.id === 'tour-world'}
             speakLine={speak}
           />
         </LazyOverlay>

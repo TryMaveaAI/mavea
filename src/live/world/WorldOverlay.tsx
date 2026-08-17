@@ -167,6 +167,11 @@ interface WorldOverlayProps {
   /** Break one cause into its parts, on demand. Absent = the host cannot buy one (the key-free
    *  lab, a replay, an export), and the affordance is not offered for nodes that have no authored
    *  breakdown — an offer nothing can answer is worse than no offer. */
+  /** Start the narrated walk as soon as there is one to play. For the walkthrough, whose chapter is
+   *  called "Walk the why" and whose coach line says it takes the reader cause by cause — a chapter
+   *  that only OPENS the surface makes that line describe something the reader has to do themselves,
+   *  which on a hands-off replay is a promise nothing keeps. */
+  autoWalk?: boolean;
   /** Buy a breakdown for one cause. Receives the world being SHOWN — the reader's own
    *  expansions are not in the answer's stored copy. */
   onExpandNode?: (nodeId: string, showing: WorldSpec) => Promise<WorldSpec | null>;
@@ -192,6 +197,7 @@ export function WorldOverlay({
   onClose,
   view,
   onExpandNode,
+  autoWalk,
   speakLine,
 }: WorldOverlayProps): ReactElement {
   if (spec)
@@ -201,6 +207,7 @@ export function WorldOverlay({
         view={view}
         onClose={onClose}
         onExpandNode={onExpandNode}
+        autoWalk={autoWalk}
         speakLine={speakLine}
       />
     );
@@ -284,6 +291,7 @@ function WorldSurface({
   view,
   onClose,
   onExpandNode,
+  autoWalk,
   speakLine,
 }: {
   spec: WorldSpec;
@@ -292,6 +300,8 @@ function WorldSurface({
   /** Buy a breakdown for one cause. Receives the world being SHOWN — the reader's own
    *  expansions are not in the answer's stored copy. */
   onExpandNode?: (nodeId: string, showing: WorldSpec) => Promise<WorldSpec | null>;
+  /** Start the narrated walk as soon as there is one to play — see the outer prop. */
+  autoWalk?: boolean;
   speakLine?: (text: string) => SpokenLine;
 }): ReactElement {
   // Breakdowns bought during this viewing, kept HERE rather than written back onto the answer: the
@@ -481,6 +491,17 @@ function WorldSurface({
   useEffect(() => {
     setWalkOpen(playing || beatIndex >= 0);
   }, [playing, beatIndex]);
+
+  // The walkthrough asks for the walk to start itself. Once only, and only once there are beats to
+  // play — the story is composed from the spec, so on a world the reader opened it exists a tick
+  // after the spec lands. A reader who presses anything takes it back: `toggle` is the same control
+  // the transport uses, so their next press pauses rather than fighting a second player.
+  const walkStarted = useRef(false);
+  useEffect(() => {
+    if (!autoWalk || walkStarted.current || beats.length === 0) return;
+    walkStarted.current = true;
+    toggle();
+  }, [autoWalk, beats.length, toggle]);
   // The reader's own hand always wins. Any direct manipulation ends the walk where it stands rather
   // than fighting it for the camera — and the lit link goes with it, since nothing is being said
   // about it any more.
