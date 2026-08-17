@@ -6,15 +6,71 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-16
+
+### Added
+
+- **The living answer.** A "why" answer can now open into the causal web behind it: one spec
+  rendered as four representations — what led to what, how much each cause was measured to
+  explain, when each happened, and what each one measured. "Walk me through it" flies the camera
+  cause to cause while the narration speaks lines composed from the spec itself — zero model
+  calls, so the walk replays free on your own key. A what-if re-runs the cascade locally and
+  re-weights the world in place, stated in prose.
+- **Dashboards refresh anywhere in Mavéa.** The refresh loop now lives at the app root instead
+  of inside the Dashboards tab, so a tracker on a cadence keeps checking while you're on Live or
+  the landing — and in Present, the wall view whose entire point is updating on its own, which
+  previously never refreshed at all. Manual-cadence trackers are still never auto-checked, and
+  every cost guard (visibility, budget, missing key) travels with the loop.
+
 ### Changed
 
 - **The Rehearsal and The Table are one feature now: Rehearse.** One Practice-menu entry covers
   both seats: send your Mavéa to negotiate against the stand-in (the old Table), or take the
   seat yourself and say your own lines against the counterpart in character, spoken aloud, with
   a coach card between takes (the old Rehearsal). Searching "table" in ⌘K still lands on it.
+- A first-time visitor lands on the Paper template in light — an answer is something to read,
+  and the first impression should look composed. The other skins stay one click away.
 
-### Fixed
+### Fixed — the dashboards actually update now
 
+Everything below was found by driving the real product with a real key and watching where the
+data died.
+
+- **A refreshed card kept reading "no new data" while every check grounded.** The refresh prompt
+  told the model only a block's type name plus its current content — an empty skeleton on a
+  never-filled board — so the model invented its own field names and the validator rejected the
+  very data the search had just paid for. Every reachable block type now teaches its exact prop
+  shape in the refresh prompt, a list salvages an alien-but-real item instead of discarding the
+  fetch, a standalone tile may keep a single-item list (the two-item floor is a canvas
+  composition rule), and a pinned composite card — which could never refresh at all — now can.
+- **OpenAI refreshes died thinking.** gpt-5.x meters hidden reasoning out of the same output
+  budget, and search turns run at medium effort where reasoning routinely burns thousands of
+  tokens; the flat budget floor was sized for low. Every dashboard check failed with "used its
+  entire output budget on reasoning" — billed reasoning plus billed search, zero data. The floor
+  now scales with the effort the adapter itself chose.
+- **Creating a tracker was fragile and sometimes expensive.** The add-time reality gate no
+  longer fires a second identical search behind the automatic first check (one addition billed
+  two searches), gives a failed probe the same bounded patience a busy slot gets (a per-minute
+  rate window no longer kills a create), explains the wait while a probe runs, and names the
+  actual reason in the check log when an addition is refused — an ungrounded topic, a missing
+  model, and an unreachable model are three different fixes.
+- **A rolled-back addition vanished without a trace.** The reality gate's rollback is now
+  recorded in the check log whether or not the sheet that started it is still open.
+- **Asking a dashboard about its own numbers answered "I don't have live access — paste the
+  values."** Talk-to-dashboard ran with search off; it now searches like the refresh path, and
+  an ask-the-user form block can no longer be pinned onto a board at all — a dashboard's values
+  arrive from live search, never from a pasted form.
+- **Hydration races on encrypted state.** `#/dashboards` now waits for the encrypted trackers
+  and API keys to decrypt before mounting — previously a tracker created in that window was
+  deleted as "no model" with a key configured — the pin sheet no longer latches the pre-decrypt
+  empty list, and a cross-tab write no longer blanks the other tab's board list (permanently, if
+  the device key had rotated).
+- **Quality-of-life honesty.** Background checks no longer reshuffle the tracker grids; Check
+  now responds on the press instead of after its chunk loads, and a double-tap can't spend a
+  second call; the metric input follows a value refreshed underneath it; a full localStorage now
+  says that changes may not survive a reload instead of losing them silently; a deleted
+  tracker's open-history is pruned with it; and the surface scrolls again regardless of
+  stylesheet order — the detail page had shipped with everything below the fold unreachable.
 - A journey card (storystrip) no longer dies on **Next** when the model invents a panel icon —
   unknown icon names fall back safely, and the schema now drops hallucinated icons at any depth
   for every extended block.
