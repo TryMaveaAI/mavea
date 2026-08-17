@@ -169,6 +169,39 @@ export function rowOf(match: SaidMatch, host: Element): Element | null {
 
 /** The viewport rect of the matched words themselves (first line box when wrapped),
  *  via a DOM Range — null when layout gives nothing (jsdom, display:none). */
+/**
+ * Whether text a reader could actually reach.
+ *
+ * `getClientRects` reports where text WOULD be; it knows nothing about an ancestor's overflow. A
+ * collapsed accordion keeps its content laid out and clips it to no height, so the words inside hand
+ * back a perfectly ordinary box sitting at the closed section's own position — and a pen stroke drawn
+ * there loops blank space beside the header. That is worse than no mark: it reads as the feature being
+ * broken rather than as a gesture with nowhere to land.
+ *
+ * The test is COLLAPSED, not "currently on screen". Intersecting the target against every clipping
+ * ancestor also refuses a target the reader has merely scrolled past — and that one is still a target,
+ * because the layer scrolls its own scroller to bring it back (`scrollerOf`). A scroller has a real
+ * box; a closed section has none. So: does any ancestor that clips have nothing left to clip into?
+ */
+const clips = (cs: CSSStyleDeclaration): boolean =>
+  [cs.overflow, cs.overflowX, cs.overflowY].some((v) => v !== '' && v !== 'visible');
+
+function reachable(node: Node): boolean {
+  const start = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  for (let el = start; el; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) {
+      return false;
+    }
+    // The shorthand as well as both axes: a stylesheet may set any of the three, and not every
+    // engine expands `overflow: hidden` into `overflow-x`/`overflow-y` on the computed style.
+    if (!clips(cs)) continue;
+    const box = el.getBoundingClientRect();
+    if (box.height <= 1 || box.width <= 1) return false;
+  }
+  return true;
+}
+
 export function saidRect(match: SaidMatch): DOMRect | null {
   const range = document.createRange();
   range.setStart(match.node, match.start);
@@ -177,7 +210,8 @@ export function saidRect(match: SaidMatch): DOMRect | null {
   if (typeof range.getClientRects !== 'function') return null;
   const rects = range.getClientRects();
   const r = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
-  return r && r.width > 0 && r.height > 0 ? r : null;
+  if (!r || r.width <= 0 || r.height <= 0) return null;
+  return reachable(match.node) ? r : null;
 }
 
 /** EVERY line box of the matched words — a phrase that wraps reports one rect per rendered
@@ -188,5 +222,6 @@ export function saidRects(match: SaidMatch): DOMRect[] {
   range.setStart(match.node, match.start);
   range.setEnd(match.node, match.end);
   if (typeof range.getClientRects !== 'function') return [];
+  if (!reachable(match.node)) return [];
   return Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
 }

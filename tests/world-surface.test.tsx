@@ -196,7 +196,10 @@ describe('WorldOverlay breaking down a cause that has no authored parts', () => 
     expect(button.textContent).toBe('break down');
 
     fireEvent.click(button);
-    expect(onExpandNode).toHaveBeenCalledWith(PLAIN);
+    // The world being SHOWN rides along, not just the id. The reader's own breakdowns live in this
+    // component's state, so a host resolving the id against the answer's stored copy cannot find a
+    // child the reader just made — which is how breaking down a part of a part failed silently.
+    expect(onExpandNode).toHaveBeenCalledWith(PLAIN, WORLD_SEED);
     expect(chip(container, PLAIN)!.getAttribute('aria-busy')).toBe('true');
 
     await act(async () => settle(withParts(PLAIN)));

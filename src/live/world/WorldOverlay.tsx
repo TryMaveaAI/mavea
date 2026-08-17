@@ -88,6 +88,16 @@ const REP_LEGEND: Record<Representation, string> = {
  *  evidence to have a gap in. The frame's own wording would blame the grounding instead. */
 const ILLUSTRATIVE_BASE_NOTE = 'an illustrative world measures nothing, so there is no baseline';
 
+/** The children of `id`, wherever it sits in the tree. */
+function findChildren(nodes: readonly WorldNode[], id: string): readonly WorldNode[] | undefined {
+  for (const n of nodes) {
+    if (n.id === id) return n.children;
+    const deeper = n.children === undefined ? undefined : findChildren(n.children, id);
+    if (deeper) return deeper;
+  }
+  return undefined;
+}
+
 /** The stage prints a node's own `value` as plain text; this surface prints every figure through
  *  ProvValue instead, so the datum handed to the renderer carries none. */
 function withoutFigure(n: MorphNodeDatum): MorphNodeDatum {
@@ -156,7 +166,9 @@ interface WorldOverlayProps {
   /** Break one cause into its parts, on demand. Absent = the host cannot buy one (the key-free
    *  lab, a replay, an export), and the affordance is not offered for nodes that have no authored
    *  breakdown — an offer nothing can answer is worse than no offer. */
-  onExpandNode?: (nodeId: string) => Promise<WorldSpec | null>;
+  /** Buy a breakdown for one cause. Receives the world being SHOWN — the reader's own
+   *  expansions are not in the answer's stored copy. */
+  onExpandNode?: (nodeId: string, showing: WorldSpec) => Promise<WorldSpec | null>;
   /** Queue one narration line and hand back its lifecycle handle. Absent = this surface has no
    *  voice (the key-free lab, an export), and the walk still runs — captioned, paced by reading
    *  length. It arrives as a PROP rather than by importing `voice/tts` directly, because the host's
@@ -276,7 +288,9 @@ function WorldSurface({
   spec: WorldSpec;
   view?: Representation;
   onClose?: () => void;
-  onExpandNode?: (nodeId: string) => Promise<WorldSpec | null>;
+  /** Buy a breakdown for one cause. Receives the world being SHOWN — the reader's own
+   *  expansions are not in the answer's stored copy. */
+  onExpandNode?: (nodeId: string, showing: WorldSpec) => Promise<WorldSpec | null>;
   speakLine?: (text: string) => SpokenLine;
 }): ReactElement {
   // Breakdowns bought during this viewing, kept HERE rather than written back onto the answer: the
@@ -535,10 +549,16 @@ function WorldSurface({
     (nodeId: string) => {
       if (!onExpandNode || pendingExpand !== null) return;
       setPendingExpand(nodeId);
-      void onExpandNode(nodeId).then(
+      // The world being LOOKED AT, not the one the answer was recorded with. Every breakdown the
+      // reader has already bought lives in this component's own state, so the block's stored world
+      // does not contain the newly-made child they just pressed — the host looked it up there, found
+      // nothing, and returned null. Breaking down a part of a part failed silently for that reason.
+      void onExpandNode(nodeId, spec).then(
         (world) => {
           setPendingExpand(null);
-          const children = world?.nodes.find((n) => n.id === nodeId)?.children;
+          // Searched at ANY depth: a breakdown attaches wherever its cause sits, so a grandchild's
+          // parts come back nested and a top-level scan would miss them.
+          const children = world === null ? undefined : findChildren(world.nodes, nodeId);
           if (!children?.length) return;
           setExpansions((prev) => new Map(prev).set(nodeId, children));
           toggleExpand(nodeId);
@@ -546,7 +566,7 @@ function WorldSurface({
         () => setPendingExpand(null),
       );
     },
-    [onExpandNode, pendingExpand, toggleExpand],
+    [onExpandNode, pendingExpand, spec, toggleExpand],
   );
 
   const renderFace = useCallback(

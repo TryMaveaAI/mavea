@@ -590,7 +590,7 @@ export interface UseLiveTurn extends LiveTurnState {
    *  the reader presses for it. Resolves with the world plus that breakdown, or null when there is
    *  nothing honest to add (an atomic cause, a failed call, a node that already has one). The
    *  result is the surface's to hold: a breakdown is a closer look, not a change to the answer. */
-  expandWorld: (blockId: string, nodeId: string) => Promise<WorldSpec | null>;
+  expandWorld: (blockId: string, nodeId: string, showing?: WorldSpec) => Promise<WorldSpec | null>;
   /** Inject a PRE-BAKED turn (the first-run tour): render this frame exactly as a live answer —
    *  the face narrates, the canvas reveals, the spotlight walk plays — with NO model call. It
    *  drives the same `start → speak → show` reducer path a real turn does, so the surface can't
@@ -1210,12 +1210,16 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // that already holds a world (rightly — that is the answer's own record). The surface keeps it,
   // and a re-open pays nothing because expandWorldNode caches the children.
   const expandWorld = useCallback(
-    async (blockId: string, nodeId: string): Promise<WorldSpec | null> => {
+    async (blockId: string, nodeId: string, showing?: WorldSpec): Promise<WorldSpec | null> => {
       const { canRun: gate, getConfig: readConfig } = argsRef.current;
       if (gate && !gate()) return null;
       const block = findBlock(blockId);
       if (block?.type !== 'world') return null;
-      const world = block.props.world;
+      // The world the reader is LOOKING AT when the surface can say — every breakdown they have
+      // already bought lives in the overlay's own state, deliberately (the block keeps the answer's
+      // own record). Resolving against the block's copy meant a newly-made child was not in the tree
+      // being searched, so breaking down a part of a part returned null and nothing happened.
+      const world = showing ?? block.props.world;
       if (!world) return null;
       try {
         return await expandWorldNode(world, nodeId, await turnCorpus(world.title), readConfig());

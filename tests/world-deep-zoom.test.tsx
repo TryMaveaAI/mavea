@@ -8,8 +8,8 @@
 //
 // The split these pin: the world KNOWS arbitrary depth, the stage DRAWS MAX_DRAWN_DEPTH of it, and
 // anything deeper is read through a lens that draws a whole tree natively.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DRAWN_DEPTH, worldToMorph } from '../src/canvas/spatial/morph/adapters';
 import { worldToContent } from '../src/live/content/fromWorld';
 import { hierarchyLens } from '../src/live/content/lens';
@@ -104,6 +104,53 @@ describe('the stage draws only what it can place', () => {
     const { container } = render(<WorldOverlay spec={deep()} />);
     const drawn = [...container.querySelectorAll<HTMLElement>('.mv-node')].map((n) => n.dataset.id);
     expect(drawn).not.toContain('cost.wages.salary');
+  });
+});
+
+describe('breaking down a part of a part', () => {
+  it('hands the host the world being SHOWN, so a child the reader just made can be found', async () => {
+    // The reported bug. A host resolves the id against the answer's stored world; every breakdown the
+    // reader has bought lives in the overlay's state instead, so the newly-made child was not in the
+    // tree being searched, the lookup returned null, and pressing BREAK DOWN on it did nothing at all.
+    const seen: string[] = [];
+    const onExpandNode = vi.fn(async (nodeId: string, showing: WorldSpec) => {
+      // Resolved the way a host resolves it — against what it was handed.
+      const find = (nodes: readonly WorldNode[]): WorldNode | undefined => {
+        for (const n of nodes) {
+          if (n.id === nodeId) return n;
+          const hit = n.children && find(n.children);
+          if (hit) return hit;
+        }
+        return undefined;
+      };
+      seen.push(find(showing.nodes) ? 'found' : 'MISSING');
+      return applyExpansion(showing, nodeId, [part(`${nodeId}.bought`, 'A bought part', 10)]);
+    });
+
+    const spec: WorldSpec = {
+      ...deep(),
+      nodes: deep().nodes.map((n) => (n.id === 'cost' ? { ...n, children: undefined } : n)),
+    };
+    const { container } = render(<WorldOverlay spec={spec} onExpandNode={onExpandNode} />);
+
+    const press = (id: string): void => {
+      const chip = container.querySelector<HTMLElement>(`.mv-node[data-id="${id}"] .wo-expand`);
+      expect(chip, `no break-down chip on ${id}`).not.toBeNull();
+      fireEvent.click(chip!);
+    };
+
+    press('cost');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    // Now break down the child that press just created.
+    press('cost.bought');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(seen).toEqual(['found', 'found']);
+    expect(onExpandNode).toHaveBeenCalledTimes(2);
   });
 });
 

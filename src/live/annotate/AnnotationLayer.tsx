@@ -106,7 +106,13 @@ function findTarget(
 ): Target | null {
   if (mark) {
     const m = findSaidMatch(host, [mark.at]);
-    if (m) {
+    // `saidRect` first, and not only for its box: it is what refuses a target the reader cannot
+    // SEE. A collapsed accordion keeps its text laid out and clips it to no height, so the words are
+    // findable and their box sits at the closed section's own position — the row path below would
+    // happily loop that blank space beside the header. Asked once, up front, so both paths inherit
+    // the answer.
+    const said = m && saidRect(m);
+    if (m && said) {
       // Circling a LABEL should loop its whole row (the bar and the value), the way a
       // hand would — but only when the row is genuinely loopable. A full-width strip
       // makes a degenerate flattened lasso, so those fall back to the word-box itself.
@@ -124,19 +130,18 @@ function findTarget(
           return { rect: rr, kind: 'circle', el: m.node.parentElement ?? undefined };
         }
       }
-      const r = saidRect(m);
-      if (r) {
-        const t = withSpan(r, mark, host);
-        t.el = m.node.parentElement ?? undefined;
-        // A highlight over a phrase that wraps re-touches each rendered line — collect every
-        // line box so the marker never smears one fat band across the whole wrap.
-        if (mark.kind === 'highlight') {
-          const rows = saidRects(m);
-          if (rows.length > 1) t.rects = rows;
-        }
-        return t;
+      const t = withSpan(said, mark, host);
+      t.el = m.node.parentElement ?? undefined;
+      // A highlight over a phrase that wraps re-touches each rendered line — collect every
+      // line box so the marker never smears one fat band across the whole wrap.
+      if (mark.kind === 'highlight') {
+        const rows = saidRects(m);
+        if (rows.length > 1) t.rects = rows;
       }
+      return t;
     }
+    // Named text that IS on screen but clipped away — a collapsed section, a hidden tab — falls
+    // through here too, and drops for the same reason: there is nowhere honest to draw.
     // The model intended a gesture here but its named text isn't actually on screen (re-worded,
     // split by streaming, or simply wrong) — drop it. A mark only ever attaches to text the model
     // explicitly pointed at; guessing a fallback location (the component's generic salient node)

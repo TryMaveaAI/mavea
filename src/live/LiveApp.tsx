@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { loadFamilies, familiesFor } from '../canvas/blocks/loader';
+import type { WorldSpec } from './world/types';
 import type { Block, Blank } from '../data/conversation';
 import { routeBlankVoice } from './blankVoice';
 import { micShouldBeOpen } from '../voice/alwaysOnGate';
@@ -4030,7 +4031,8 @@ export function LiveApp(): ReactElement {
   // would re-render every card on the world on every camera frame.
   const { expandWorld } = turn;
   const expandWorldNode = useCallback(
-    (nodeId: string) => (openWorldId ? expandWorld(openWorldId, nodeId) : Promise.resolve(null)),
+    (nodeId: string, showing: WorldSpec) =>
+      openWorldId ? expandWorld(openWorldId, nodeId, showing) : Promise.resolve(null),
     [openWorldId, expandWorld],
   );
 
