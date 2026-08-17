@@ -429,7 +429,6 @@ const WorldContent = memo(function WorldContent({
             // custom property, so the sheet can colour by one and scale by the other — and a node
             // the levers never reached carries neither, which is what "unchanged" has to look like.
             data-shift={shiftDirection(node.shift)}
-            data-faded={node.faded ? '' : undefined}
             data-selected={selectedId === node.id ? '' : undefined}
             data-lod={lod}
             style={style}

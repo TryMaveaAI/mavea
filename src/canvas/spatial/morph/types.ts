@@ -22,11 +22,6 @@ export interface MorphNodeDatum {
   /** Whether anything BACKS that date. A timeline states the date as a position, so an unbacked one
    *  is a claim with no receipt like any other — the surface shows the two differently. */
   dateGrounded?: boolean;
-  /** Outside what the host is emphasising right now — recedes without leaving the composition. A
-   *  render channel like `shift`: no layout reads it, so nothing moves and the camera never opens.
-   *  Keeping the node in place is the point when the host is showing what FALLS AWAY under some
-   *  filter; removing it would re-fit the world and hide the very gap being pointed at. */
-  faded?: boolean;
   /** Absent/empty → shelf in chart. */
   series?: Array<{ t: number; v: number }>;
   value?: number;

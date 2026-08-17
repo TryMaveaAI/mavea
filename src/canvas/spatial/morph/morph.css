@@ -229,20 +229,6 @@
   opacity: clamp(0.42, calc(0.42 + 0.58 * var(--mv-shift, 1)), 1);
   filter: saturate(clamp(0.25, var(--mv-shift, 1), 1));
 }
-/* A node the host has faded RECEDES — per face, never on `.mv-node` itself (face visibility is an
-   opacity system, so an opacity on the node multiplies through it and the hidden faces return at a
-   fraction), and through FILTER rather than `opacity`.
-   The channel matters: `opacity` on a face is owned by the visibility rules above and carries their
-   staggered per-node transition, and a declaration that lands mid-flight is held at the value the
-   transition is interpolating — measured in the browser, `filter` from this very rule applied while
-   the `opacity` beside it stayed at 1. `filter: opacity()` is a separate property, so it composes
-   with the face system instead of competing with it. */
-.mv-node[data-faded][data-face='card'] .mv-face-card,
-.mv-node[data-faded][data-face='entry'] .mv-face-entry,
-.mv-node[data-faded][data-face='mark'] .mv-face-mark {
-  filter: saturate(0.12) opacity(0.34);
-}
-
 /* A strengthened one lifts, with a hard ceiling: the ratio is unbounded above (a cause can be
    scaled many times over) and an unclamped glow would blow out the whole card. */
 .mv-node[data-shift='stronger'] .mv-face-card {

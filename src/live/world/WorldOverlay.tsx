@@ -51,9 +51,9 @@ import { cascade } from '../why/engine';
 import type { CascadeResult, Intervention } from '../why/types';
 import { asWhyDag } from './asWhyDag';
 import { worldToContent } from '../content/fromWorld';
-import { hierarchyLens } from '../content/lens';
 import { extendedRender, familiesFor, loadFamilies } from '../../canvas/blocks/loader';
-import { groundedOnly, weakestLink } from './stress';
+import type { ViewPlan } from '../content/lens';
+import { readableLabel } from './labels';
 import { applyExpansion, deriveEdgeStatus } from './validate';
 import type { SpokenLine } from '../../voice/tts';
 import type { WorldNode, WorldSpec } from './types';
@@ -363,15 +363,6 @@ function WorldSurface({
   // What the explanation looks like if the reader believes only what is sourced, and which unsourced
   // link it leans on hardest. Both are local walks over a web capped at 16 nodes (world/stress), so
   // the toggle costs nothing however often it is pulled — which is the point, because this is BYOK.
-  const stress = useMemo(() => groundedOnly(spec), [spec]);
-  const weakest = useMemo(() => weakestLink(spec), [spec]);
-  const weakestEdge = weakest ? spec.edges[weakest.index] : undefined;
-  const [groundedView, setGroundedView] = useState(false);
-  // An illustrative world measures nothing and sources nothing, so "only what is sourced" would
-  // empty it — the banner already says the whole thing is a shape. Offering the toggle there is
-  // offering a view whose content is a wall of excuses, which is the rule the view chips follow.
-  const stressable = !illustrative && stress.cutOff.length > 0;
-
   // What the stage renders: the measured world with its figures withheld (ProvValue prints them),
   // each node carrying what the reader's what-if did to it. A breakdown moves with the cause it
   // breaks down — its own strength is its parent's.
@@ -379,14 +370,13 @@ function WorldSurface({
     const nodes = morphWorld.nodes.map((n) => {
       const bare = withoutFigure(n);
       const shift = stagedShifts?.get(n.parentId ?? n.id);
-      // A cause the sourced links cannot reach RECEDES rather than leaving: removing it would
-      // re-fit the world and close the very gap the toggle exists to show. A breakdown child
-      // inherits its parent's standing, the way it inherits its shift.
-      const faded = groundedView && !stress.standing.has(n.parentId ?? n.id);
-      return { ...bare, ...(shift === undefined ? {} : { shift }), ...(faded ? { faded } : {}) };
+      // A label that paints nothing is a card with no name. Sanitised here, at the world's own edge,
+      // rather than in the spatial renderer — "an unnamed cause" is this surface's wording.
+      const label = readableLabel(n.label);
+      return { ...bare, label, ...(shift === undefined ? {} : { shift }) };
     });
     return { ...morphWorld, nodes };
-  }, [morphWorld, stagedShifts, groundedView, stress]);
+  }, [morphWorld, stagedShifts]);
 
   const nodeById = useMemo(() => {
     const byId = new Map<string, WorldNode>();
@@ -681,38 +671,50 @@ function WorldSurface({
   // What the selected cause is MADE OF, drawn by the catalog's own choice. Compiled from the content
   // graph, so every part is sized by a figure the registry resolved — a part with none is left out
   // rather than drawn at zero, and a subject with fewer than two sizeable parts offers nothing.
-  const partsPlan = useMemo(
-    () => (selectedNode === undefined ? null : hierarchyLens.compile(content, selectedNode.id)),
-    [content, selectedNode],
-  );
-  // Fetched through the per-family LOADER, never the merged registry: importing that here would pull
-  // every extended family into the world's own chunk, which has a budget. The renderer is held as
-  // STATE rather than derived, because `extendedRender` reads module state the loader mutates — a
-  // memo over it would be correct only by accident, and would need a dependency on a counter that
-  // says nothing. Null until the chunk lands, and the panel has one less section until it does.
-  const [partsRender, setPartsRender] = useState<
-    ((props: unknown, common: { delay?: number }) => ReactNode) | null
-  >(null);
+  // The lens plan and the component that draws it, both fetched on SELECTION.
+  //
+  // Neither may sit in the world's static import graph. content/lens reads the catalog's 608-row
+  // facts index, and decoding it is ~200ms that landed in whichever task first touched the module —
+  // measured as the FIRST morph costing 252ms against ~50ms for every morph after it. A reader who
+  // never selects a cause should never pay for the catalog at all, and one who does pays it off the
+  // critical path, while they are reading the cause they just clicked.
+  const [parts, setParts] = useState<{
+    plan: ViewPlan;
+    render: (props: unknown, common: { delay?: number }) => ReactNode;
+  } | null>(null);
   useEffect(() => {
-    if (!partsPlan) {
-      setPartsRender(null);
+    if (selectedNode === undefined) {
+      setParts(null);
       return;
     }
     let live = true;
-    void loadFamilies(familiesFor([partsPlan.block])).then(() => {
-      // Wrapped: a function passed to a setter is otherwise taken for an updater.
-      if (live) setPartsRender(() => extendedRender(partsPlan.block.type));
-    });
+    void (async () => {
+      const { hierarchyLens } = await import('../content/lens');
+      if (!live) return;
+      const plan = hierarchyLens.compile(content, selectedNode.id);
+      if (plan === null) {
+        setParts(null);
+        return;
+      }
+      await loadFamilies(familiesFor([plan.block]));
+      const render = extendedRender(plan.block.type);
+      if (live && render) setParts({ plan, render });
+    })();
     return () => {
       live = false;
     };
-  }, [partsPlan]);
+  }, [content, selectedNode]);
+
   const selectedEdge = selection?.kind === 'edge' ? edgeById.get(selection.id) : undefined;
   const leverRail: Lever[] = useMemo(
     () =>
       spec.nodes
         .filter((n) => n.role === 'root')
-        .map((n) => ({ id: n.id, label: n.label, pct: levers.get(n.id) ?? FULL_PCT })),
+        .map((n) => ({
+          id: n.id,
+          label: readableLabel(n.label),
+          pct: levers.get(n.id) ?? FULL_PCT,
+        })),
     [spec.nodes, levers],
   );
 
@@ -748,19 +750,6 @@ function WorldSurface({
                   </button>
                 ))}
               </div>
-              {/* Not a fifth view — a way of reading whichever one is open. Every representation
-                  draws the same links, so "only what is sourced" applies to all of them, and a chip
-                  in the view group would promise a different geometry. */}
-              {stressable && (
-                <button
-                  type="button"
-                  className="wo-btn wo-btn-stress"
-                  aria-pressed={groundedView}
-                  onClick={() => setGroundedView((on) => !on)}
-                >
-                  Only what is sourced
-                </button>
-              )}
               <button type="button" className="wo-btn" onClick={reset} disabled={!active}>
                 Reset
               </button>
@@ -857,18 +846,6 @@ function WorldSurface({
                         is the only thing joining half the web to the thing being explained. Naming
                         the second — in PROSE, with a count of causes rather than any magnitude — is
                         what turns "some arrows are fainter" into something a reader can act on. */}
-                    {weakest && weakestEdge && (
-                      <p className="wo-weakest">
-                        <span className="wo-weakest-lead">Weakest link</span>
-                        {nodeById.get(weakestEdge.from)?.label} →{' '}
-                        {nodeById.get(weakestEdge.to)?.label}
-                        <span className="wo-standing-note">
-                          Nothing sourced stands behind it, and {weakest.isolates}{' '}
-                          {weakest.isolates === 1 ? 'cause loses' : 'causes lose'} every route to
-                          the outcome without it.
-                        </span>
-                      </p>
-                    )}
                     <p className="wo-hint">Tap a cause or a link to see what stands behind it.</p>
                   </div>
                 )}
@@ -895,10 +872,10 @@ function WorldSurface({
                         (content/lens), so the world reads the parts through the library rather than
                         through more of its own geometry — and a component that draws a whole tree
                         natively is how depth past MAX_DRAWN_DEPTH becomes readable at all. */}
-                    {partsPlan && partsRender && (
+                    {parts && (
                       <div className="wo-parts">
-                        <span className="wo-rail-kicker">{partsPlan.answers.toUpperCase()}</span>
-                        {partsRender(partsPlan.block.props, { delay: 0 })}
+                        <span className="wo-rail-kicker">{parts.plan.answers.toUpperCase()}</span>
+                        {parts.render(parts.plan.block.props, { delay: 0 })}
                       </div>
                     )}
                   </>

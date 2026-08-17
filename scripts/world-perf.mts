@@ -213,6 +213,22 @@ async function main(): Promise<void> {
     const chips = await page
       .locator('.wo-views .wo-chip')
       .evaluateAll((els) => els.map((el) => (el.textContent ?? '').trim()));
+
+    // A silent pass over every view BEFORE anything is measured.
+    //
+    // #/worldlab exists only in dev, so this instrument can only ever drive an unbundled dev server —
+    // which answers hundreds of separate module requests, and evaluates each layout's modules inside
+    // whichever interaction first reaches it. That landed ~185ms of one-time module evaluation on the
+    // FIRST measured morph and nothing on the rest: a two-node world cost 191ms and a sixteen-node
+    // one 226ms, so the number was almost independent of the work. Measuring warm is measuring what a
+    // reader actually feels on every interaction after their first; the genuinely-once cost is what
+    // "open the world" is for. (The same reasoning is why weekly.yml builds the artifact before
+    // running `perf`/`perf:memory` — a dev server cannot answer a response-time question.)
+    for (const label of chips) {
+      await page.getByRole('button', { name: label, exact: true }).click();
+      await settle(page);
+    }
+
     for (const label of chips) {
       results.push(
         await measure(page, `morph → ${label.toLowerCase()}`, async () => {
@@ -278,6 +294,29 @@ async function main(): Promise<void> {
           ),
         ),
       );
+      await settle(page);
+    }
+
+    // Selecting a cause is the most expensive press on the surface now: it resolves the content graph
+    // for that cause, compiles a lens plan against the catalog, and — the first time — pulls a block
+    // FAMILY CHUNK across before anything can draw. Measured on the second press as well, because the
+    // first pays for the chunk and every one after it must not.
+    const cause = await page.locator('.mv-node[role="button"]').count();
+    if (cause) {
+      const press = (nth: number) => (): Promise<void> =>
+        page.evaluate((i) => {
+          document.querySelectorAll<HTMLElement>('.mv-node[role="button"]')[i]?.click();
+        }, nth);
+      results.push(await measure(page, 'select a cause (cold: loads a family)', press(0)));
+      await settle(page);
+      // Said out loud, for the same reason the lever drag says it: a cheap interaction and one that
+      // never happened both measure zero, and a silently-broken selector would read as the best
+      // result in the run.
+      if (!(await page.locator('.wo-detail-title').count())) {
+        throw new Error('selecting a cause opened no detail — the measurement is empty');
+      }
+      results.push(await measure(page, 'select another cause (warm)', press(1)));
+      await settle(page);
     }
   } finally {
     await browser.close();

@@ -265,36 +265,6 @@
   flex: none;
 }
 
-/* The stress toggle is a BUTTON, not a view chip: it reads whichever view is open, so it sits with
-   Reset and Close rather than inside the view group — a chip in that pill would promise a different
-   geometry. Pressed, it takes the warning accent, which is the surface's one colour for "this is
-   about what the evidence does not cover". */
-.wo-btn-stress[aria-pressed='true'] {
-  color: color-mix(in oklab, var(--warning) 72%, var(--text-primary));
-  background: color-mix(in srgb, var(--warning) 12%, var(--surface-elevated));
-  border-color: color-mix(in oklab, var(--warning) 45%, var(--line));
-}
-
-/* The finding: which unsourced link the answer leans on hardest. Prose and a count of causes — no
-   magnitude, because nothing measured one. */
-.wo-weakest {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 10px 0 0;
-  padding-left: 10px;
-  border-left: 2px solid color-mix(in oklab, var(--warning) 55%, transparent);
-  font-size: 13px;
-  color: var(--text-primary);
-}
-.wo-weakest-lead {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in oklab, var(--warning) 75%, var(--text-muted));
-}
-
 /* When an entry sits on the timeline, its own date rides with it: the view places cards BY time,
    and until each said so the reader had to measure every one against the axis by eye. It is an
    eyebrow at the HEAD of the label's own text flow (MorphStage), so it costs the first line a few

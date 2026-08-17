@@ -403,6 +403,22 @@ button.tr-num:focus-visible {
    is authored as an inline chip 16px tall — a stripe a pointer lands on by luck and a thumb a
    coarse pointer misses entirely. The rail has the room, so the input's own box carries the 24px
    hit floor; the track and thumb are unchanged and simply centre in the taller box. */
+/* A cause's name is model-authored and bounded only by LABEL_MAX (120 characters), so the rail has to
+   clamp it. A 111-character instrument tag with no space and nothing to break at wrapped one slider
+   to three lines and pulled the rail's rhythm apart — two lines, then an ellipsis. Scoped to this
+   rail rather than changed on `.viz-ctl-label`, which is a shared control primitive used in places
+   where the label is short by construction. `min-width: 0` because that primitive is `flex: none`,
+   which is what let the text push instead of wrap. */
+.tr-levers .viz-ctl-label {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .tr-levers .viz-ctl-range {
   min-height: 24px;
 }
