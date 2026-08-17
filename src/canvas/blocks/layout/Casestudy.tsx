@@ -47,24 +47,27 @@ export function Casestudy({
           const sec = sections[s.key];
           const SIc = Icon[s.icon];
           const isOpen = open === s.key;
+          const hasLine = i < STAGES.length - 1;
           return (
             <div
               key={s.key}
               className={`lay-cs-stage ${isOpen ? 'open' : ''}`}
               style={{ ['--st' as string]: s.color } as CSSProperties}
             >
+              {/* A stage sibling, not a head child: its height tracks the whole stage (head +
+                  any expanded body) so the rail stays unbroken past an open non-last stage. */}
+              <span className={`lay-cs-rail ${hasLine ? 'has-line' : ''}`}>
+                <span className="lay-cs-node">
+                  <SIc className="ic" />
+                </span>
+                {hasLine && <span className="lay-cs-line" />}
+              </span>
               <button
                 type="button"
                 className="lay-cs-head"
                 onClick={() => setOpen(s.key)}
                 aria-expanded={isOpen}
               >
-                <span className="lay-cs-rail">
-                  <span className="lay-cs-node">
-                    <SIc className="ic" />
-                  </span>
-                  {i < STAGES.length - 1 && <span className="lay-cs-line" />}
-                </span>
                 <span className="lay-cs-label">{s.label}</span>
                 {sec.metric && <span className="lay-cs-metric tab-num">{sec.metric}</span>}
                 <Icon.chevR

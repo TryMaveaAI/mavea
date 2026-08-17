@@ -965,8 +965,15 @@
 .lay-cs-stages {
   display: flex;
   flex-direction: column;
+  /* The rail's column width/gutter and the row's own vertical padding, named once so the
+     head's reserved gutter, the rail's reach into the next stage, and the expanded body's
+     indent can never drift out of sync with each other again. */
+  --cs-rail-w: 26px;
+  --cs-rail-gap: 10px;
+  --cs-row-pad: 6px;
 }
 .lay-cs-stage {
+  position: relative;
   --st: var(--presence);
 }
 .lay-cs-head {
@@ -978,25 +985,33 @@
   min-width: 0;
   background: transparent;
   border: 0;
-  padding: 6px 0;
+  padding: var(--cs-row-pad) 0 var(--cs-row-pad) calc(var(--cs-rail-w) + var(--cs-rail-gap));
   font: inherit;
   text-align: left;
   color: var(--text-primary);
 }
+/* A stage sibling, not a head child: absolutely positioned against `.lay-cs-stage` so its
+   height tracks the WHOLE stage (head + any expanded body), not just the collapsed head row —
+   otherwise the rail breaks the moment a non-last stage opens and grows taller than its head. */
 .lay-cs-rail {
-  position: relative;
+  position: absolute;
+  top: var(--cs-row-pad);
+  left: 0;
+  width: var(--cs-rail-w);
   display: flex;
   flex-direction: column;
   align-items: center;
-  align-self: stretch;
-  flex-shrink: 0;
+  pointer-events: none;
+}
+.lay-cs-rail.has-line {
+  bottom: calc(-1 * var(--cs-row-pad));
 }
 .lay-cs-node {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: var(--cs-rail-w);
+  height: var(--cs-rail-w);
   flex-shrink: 0;
   border-radius: var(--r-full);
   color: var(--st);
@@ -1020,8 +1035,7 @@
   flex: 1;
   width: 2px;
   background: var(--line);
-  margin: 2px 0;
-  min-height: 8px;
+  margin-top: 2px;
 }
 .lay-cs-stage.open .lay-cs-line {
   background: color-mix(in oklab, var(--st) 40%, var(--line));
@@ -1059,7 +1073,7 @@
   font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
-  margin-left: 36px;
+  margin-left: calc(var(--cs-rail-w) + var(--cs-rail-gap));
   text-wrap: pretty;
   overflow-wrap: anywhere;
 }
