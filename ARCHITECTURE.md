@@ -630,10 +630,27 @@ lighting each node and the link that brought it in while Mavéa speaks a line �
 fields the spec already carries, so the walk costs no tokens however often it is replayed. A beat
 lights only once its line is audible; muted and voiceless both caption and pace by reading length.
 
-Two on-demand instruments drive the dev-only `#/worldlab` in a real browser:
-`scripts/world-audit.mts` measures rendered legibility, overlap, clipping and hit targets across the
-corpus (`--sizes` sweeps five window shapes), and `scripts/world-perf.mts` measures per-interaction
-long tasks and blocking under optional CPU throttling.
+**A world is offered on the ANSWER, never on the question.** The model reports whether the answer it
+just wrote explains a mechanism (`causal`); when it omits the field, `world/fitness` reads the answer
+instead — a flow/graph/tree block is a web the model already drew, or its prose states two distinct
+causal relations. No pattern over the reader's phrasing can tell "how does photosynthesis work" from
+"how do I center a div", and one that tried refused only lookups, artifact asks, procedures,
+comparisons and arithmetic, so every other ask got a card.
+
+Every figure proves itself, and three things count as figures. A node's value needs a quote
+containing its digits; an edge's **weight** needs one stating the share (`shareInQuote`, in either
+form a source writes it); and a **date** needs one naming it, because on the timeline the node's
+position is how that claim gets made. A verified quote is attributed to the source whose text
+actually contains it — the model never authors the provenance of its own claim.
+
+Two instruments drive the dev-only `#/worldlab` in a real browser: `scripts/world-audit.mts`
+(`pnpm audit:world`) measures rendered legibility, overlap, clipping and hit targets across the
+corpus (`--sizes` sweeps five window shapes), and `scripts/world-perf.mts` (`pnpm perf:world`)
+measures per-interaction long tasks and blocking under optional CPU throttling. Both run in
+`weekly.yml`'s browser job, which is the only place a dev server exists; `pnpm world:smoke` is the
+bounded version (one world, 1280×720, CPU ×4). They are not per-push, because a CPU-time budget on a
+shared runner is a coin flip — the deterministic half of the same contract is pinned in jsdom by
+`tests/world-lever-drag.test.tsx`, which holds the map still to the pixel.
 
 ## Browser storage
 
