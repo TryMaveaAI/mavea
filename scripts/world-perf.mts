@@ -17,15 +17,20 @@
 //   pnpm perf:world
 //   pnpm perf:world --scenario wide-election --throttle 4
 //
-// Exits 1 with a printed report if any interaction is over budget. Like world-audit this is an
-// on-demand instrument rather than a push gate — the lab route does not exist in a production
-// build, so wiring it into CI needs a dev-server job, a decision for the change that lands this
-// feature rather than one to guess at here.
+// Exits 1 with a printed report if any interaction is over budget. It runs in weekly.yml's
+// browser-gates job, which already has a dev server up — NOT on every push, and deliberately: these
+// are CPU-TIME budgets, and a shared runner's idea of 200ms of main-thread work varies run to run,
+// so a per-push timing gate is a coin flip that eventually gets ignored. What per-push CI enforces
+// instead is the DETERMINISTIC half of the same contract, in jsdom: world-lever-drag pins that a
+// lever re-opens no camera flight and moves no node, which is the regression that actually recurs.
 import { chromium, type Browser, type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
 import { allWorldScenario } from '../src/live/world/scenarios/index';
 
-const VIEWPORT = { width: 1440, height: 900 };
+/** The window the budgets are measured in. `--viewport WxH` narrows it: a smaller stage fits fewer
+ *  nodes at a legible scale, so the camera sits lower, the counter-scale works harder, and the same
+ *  world costs more to lay out — `world:smoke` uses 1280×720 for exactly that reason. */
+const DEFAULT_VIEWPORT = { width: 1440, height: 900 };
 
 /** The response budget. A task longer than this is one the reader feels: the frame it was due to
  *  paint in is gone, and so is the next one. */
@@ -159,12 +164,19 @@ async function main(): Promise<void> {
   const baseUrl = readFlag('url', `http://localhost:${port}`).replace(/\/$/, '');
   const scenario = readFlag('scenario', 'seed-2008');
   const throttle = Number(readFlag('throttle', '1'));
+  const sizeFlag = readFlag('viewport', '');
+  const size = /^\d+x\d+$/.test(sizeFlag)
+    ? { width: Number(sizeFlag.split('x')[0]), height: Number(sizeFlag.split('x')[1]) }
+    : DEFAULT_VIEWPORT;
+  if (sizeFlag && size === DEFAULT_VIEWPORT) {
+    throw new Error(`Bad --viewport "${sizeFlag}". Use WxH, e.g. 1280x720.`);
+  }
   if (!allWorldScenario(scenario)) {
     throw new Error(`Unknown scenario "${scenario}". Pass an id from src/live/world/scenarios.`);
   }
 
   console.log(
-    `[world-perf] ${scenario} at ${VIEWPORT.width}×${VIEWPORT.height}` +
+    `[world-perf] ${scenario} at ${size.width}×${size.height}` +
       `${throttle > 1 ? ` · CPU ×${throttle}` : ''} against ${baseUrl}\n` +
       `             budgets: worst task ≤ ${WORST_TASK_MS}ms · blocking ≤ ${BLOCKING_MS}ms per interaction`,
   );
@@ -172,7 +184,7 @@ async function main(): Promise<void> {
   const browser: Browser = await chromium.launch({ headless: true });
   const results: Measurement[] = [];
   try {
-    const ctx = await browser.newContext({ viewport: VIEWPORT });
+    const ctx = await browser.newContext({ viewport: size });
     await ctx.addInitScript(
       ({ legalKey, legalVersion }) => {
         localStorage.setItem('mavea-theme', 'dark');

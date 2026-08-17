@@ -142,6 +142,13 @@ jobs:
           gate audit:reel         pnpm audit:reel
           gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
           gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
+          # The living world's two instruments. They drive the dev-only #/worldlab, so this job —
+          # which already has a dev server up — is the only place they can run at all; until now
+          # they ran nowhere, and an instrument nothing invokes measures nothing. The audit sweeps
+          # the whole scenario corpus in both themes; the smoke is one world in a SHORT window at
+          # CPU ×4, which is where the camera sits lowest and the layout costs most.
+          gate audit:world        pnpm audit:world -- --url http://127.0.0.1:5173 --theme dark,light
+          gate world:smoke        pnpm world:smoke -- --url http://127.0.0.1:5173
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo ""

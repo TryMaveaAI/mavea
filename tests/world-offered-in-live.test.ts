@@ -152,9 +152,35 @@ describe('a Live turn attaches a world to its answer', () => {
     expect(worlds).toHaveLength(1);
   });
 
-  it('falls back to the ask when the model omits the field', async () => {
-    const worlds = await run('why did Kodak fail', { worldEnabled: true }, answer(undefined));
-    expect(worlds).toHaveLength(1);
+  it('falls back to the ANSWER when the model omits the field', async () => {
+    // Not to the question. An answer that states two distinct causal relations has a web in it, and
+    // that is what earns the card — see world-fitness for the reading itself.
+    const explained = JSON.stringify({
+      title: 'Why Kodak failed',
+      sub: 'The mechanism',
+      narration: 'Film margins collapsed because digital arrived, which drove the write-downs.',
+      blocks: [
+        { type: 'insight', props: { title: 'Digital arrived', summary: 'Sensors got cheap.' } },
+        { type: 'insight', props: { title: 'Margins fell', summary: 'Film revenue went.' } },
+      ],
+    });
+    expect(await run('why did Kodak fail', { worldEnabled: true }, explained)).toHaveLength(1);
+  });
+
+  it('offers nothing when the model omits the field and the answer explains nothing', async () => {
+    // The regression this closes. The old fallback read the reader's words and refused only
+    // lookups, artifact asks, procedures, comparisons and arithmetic — so a descriptive answer to
+    // "tell me about elephants" got a world card that could only ever open onto nothing.
+    const described = JSON.stringify({
+      title: 'Elephants',
+      sub: 'The largest land animals',
+      narration: 'Elephants live in matriarchal herds across Africa and Asia.',
+      blocks: [
+        { type: 'insight', props: { title: 'Herds', summary: 'Led by the oldest female.' } },
+        { type: 'insight', props: { title: 'Range', summary: 'Africa and Asia.' } },
+      ],
+    });
+    expect(await run('tell me about elephants', { worldEnabled: true }, described)).toHaveLength(0);
   });
 
   it('stays out of the way when the model says the answer is not causal', async () => {

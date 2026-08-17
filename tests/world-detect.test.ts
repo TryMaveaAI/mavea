@@ -1,66 +1,12 @@
-// world-detect.test.ts — the word-shape FALLBACK that decides whether a turn offers a world when
-// the model did not judge its own answer (LiveResponse.causal is the primary signal, and it is
-// authoritative — see offersWorld). Offering costs nothing, so this errs toward yes: the earlier
-// causal-verb allowlist missed "how does photosynthesis work" and "explain the French Revolution"
-// and made the feature invisible in ordinary use. What stays refused is only the shapes whose
-// answer has no causal chain at all — a lookup, a procedure, a comparison, an artifact to write.
+// world-detect.test.ts — the FOLLOW-UP gates: what a reader asking the standing world to change
+// shape costs. Whether a turn offers a world in the first place is not decided here — the model's
+// own `causal` flag judges the answer it wrote, and world/fitness reads that answer when the flag is
+// absent (see world-fitness.test.ts). A follow-up is the case where the words ARE the instruction:
+// "over time", "what if", "zoom in" name an operation on a world already on the canvas, and there
+// is no new answer to read.
 import { describe, it, expect } from 'vitest';
-import { detectWorldAsk, detectWorldFollowUp, followUpPlan } from '../src/live/world/detect';
+import { detectWorldFollowUp, followUpPlan } from '../src/live/world/detect';
 import type { WorldSpec } from '../src/live/world/types';
-
-describe('detectWorldAsk', () => {
-  it.each([
-    'Why did the 2008 financial crisis happen?',
-    'why did revenue fall last quarter',
-    'Why is churn spiking in the self-serve tier?',
-    'why has the backlog grown so much',
-    'What caused the outage on Friday?',
-    "what's driving our support volume",
-    'what is the root cause of the delay',
-    'what led to the collapse of the Roman economy',
-    'What drove the spike in signups?',
-    'How did cheap credit lead to the housing crash?',
-    'how does a rate cut cause inflation',
-    'The underlying causes of the famine',
-    // Explanatory asks the old causal-verb allowlist missed — each has a mechanism to draw, and
-    // each is exactly the question a reader would expect a world for.
-    'how does a transformer work',
-    'how does photosynthesis work',
-    'explain the French Revolution',
-    'what happened to Kodak',
-    'why is the sky blue',
-    'tell me about the fall of Rome',
-    // A make-something VERB inside a causal question is the mechanism being asked about, not an
-    // instruction — the refusal rule reads the shape of the ask, not the presence of the word.
-    'why does the body make energy',
-    'how do plants make oxygen from sunlight',
-    'why did the bubble build up so fast',
-    'how does the liver break down alcohol',
-  ])('fires on the explanatory ask %j', (text) => {
-    expect(detectWorldAsk(text)).toBe(true);
-  });
-
-  it.each([
-    'how do I center a div in CSS',
-    'how to reset my password',
-    'what should I cook tonight',
-    'compare Rust and Go for a CLI',
-    'which is better, Postgres or MySQL',
-    'summarise this paper',
-    'write me a poem about rain',
-    'what time is the meeting',
-    'who is the CEO of Apple',
-    'calculate 17 * 23',
-    'thanks',
-    // The artifact ask keeps its refusal whether it opens with the verb or names the thing.
-    'make a marketing plan for Q3',
-    'build me a website',
-    'design the onboarding flow',
-    'please write a cover letter',
-  ])('stays quiet on the ask with no causal chain %j', (text) => {
-    expect(detectWorldAsk(text)).toBe(false);
-  });
-});
 
 describe('detectWorldFollowUp', () => {
   it.each([

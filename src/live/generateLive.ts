@@ -88,7 +88,9 @@ import {
 } from './effort';
 import { buildSendHistory, KEEP_RECENT_TURNS } from './history';
 import { safePdfUrl, pdfProxyUrl } from './doc/safeUrl';
-import { detectWorldAsk, followUpPlan } from './world/detect';
+import { followUpPlan } from './world/detect';
+import { worldFitness } from './world/fitness';
+import type { WorldFitness } from './world/fitness';
 import { evolveWorld } from './world/explode';
 import { rememberTurnGrounding, turnCorpus } from './world/grounding';
 import type { WorldSpec } from './world/types';
@@ -1574,7 +1576,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     // first, so it's almost always complete; works for Gemini's parsed-object response too) and
     // present + speak that, so a collapsed turn degrades to the spoken answer, not a wall of braces.
     const salvaged = salvageNarration(raw) || validated?.narration || '';
-    logWorldGate(userText, caps, { causal: validated?.causal, arm: null, collapsed: true });
+    logWorldGate(caps, { causal: validated?.causal, arm: null, collapsed: true });
     return { spec: fallbackSpec(salvaged), narration: salvaged, tier };
   }
 
@@ -1680,9 +1682,12 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   // opens onto. adaptiveCols never sees it (there is no catalog span for a capability-gated type),
   // hence the explicit half-width column. It sits below the source merge because an offered world
   // parks THIS turn's sources as the grounding its explode will read.
+  // Computed once and shared with the log: judging the answer twice would be free but a second
+  // verdict is a second thing that can disagree with the first.
+  const fitness = worldFitness(result);
   const arm: WorldArm | null =
-    worldArm ?? (offersWorld(userText, caps, result) ? { kind: 'offer' } : null);
-  logWorldGate(userText, caps, { causal: result.causal, arm, collapsed: false });
+    worldArm ?? (offersWorld(caps, result, fitness) ? { kind: 'offer' } : null);
+  logWorldGate(caps, { causal: result.causal, arm, collapsed: false, fitness });
   if (arm) {
     const props = await worldCard(arm, userText, result.title, sources, opts, pendingWorld);
     if (props) composed.blocks.push(worldBlock(props, composed.blocks.length + 1));
@@ -1739,13 +1744,15 @@ function worldArmFor(
  *  Decided after the answer exists, because the only good judge is the model that just wrote it:
  *  it knows whether it explained a mechanism or looked a fact up, and no pattern over the reader's
  *  phrasing can tell "how does photosynthesis work" from "how do I center a div". `causal` costs a
- *  few tokens in a response the turn was already paying for. The word-shape gate remains as the
- *  fallback for a model that ignores the field. The small tier is NOT excluded: offering is free,
+ *  few tokens in a response the turn was already paying for. When a model omits the field, the
+ *  fallback reads the ANSWER (world/fitness) rather than the question: the old word-shape gate
+ *  refused only lookups, artifact asks, procedures, comparisons and arithmetic, so "tell me about
+ *  elephants" got a card, and the question carries less information than the answer beside it. The small tier is NOT excluded: offering is free,
  *  and if a local model's world cannot be grounded the coercion gate drops it, which is the honest
  *  outcome rather than a capability guess made before anyone asked to see one. */
-function offersWorld(userText: string, caps: LiveCaps, result: LiveResponse): boolean {
+function offersWorld(caps: LiveCaps, result: LiveResponse, fitness: WorldFitness): boolean {
   if (!caps.worldEnabled) return false;
-  return result.causal ?? detectWorldAsk(userText);
+  return result.causal ?? fitness.offer;
 }
 
 /** Why this turn did or didn't offer a world, on the dev console only.
@@ -1755,15 +1762,21 @@ function offersWorld(userText: string, caps: LiveCaps, result: LiveResponse): bo
  *  uncausal from a turn that collapsed before the question was ever asked. Stripped from
  *  production builds; one line per turn, never surfaced in the UI. */
 function logWorldGate(
-  userText: string,
   caps: LiveCaps,
-  verdict: { causal?: boolean; arm?: WorldArm | null; collapsed: boolean },
+  verdict: {
+    causal?: boolean;
+    arm?: WorldArm | null;
+    collapsed: boolean;
+    fitness?: WorldFitness;
+  },
 ): void {
   if (!import.meta.env?.DEV) return;
   console.info('[live] world gate', {
     worldEnabled: !!caps.worldEnabled,
     causal: verdict.causal,
-    detect: detectWorldAsk(userText),
+    // Why the answer did or did not read as a mechanism — 'structure', 'prose', 'artifact-only'
+    // or 'no-web'. Only consulted when the model omitted `causal`.
+    fitness: verdict.fitness?.reason,
     arm: verdict.arm?.kind ?? null,
     offered: !!verdict.arm,
     collapsed: verdict.collapsed,

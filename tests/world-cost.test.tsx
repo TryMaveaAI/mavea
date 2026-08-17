@@ -47,10 +47,14 @@ import { generateLive } from '../src/live/generateLive';
 const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-x', apiKey: 'k' };
 const QUESTION = 'Why did the 2008 financial crisis happen?';
 
-/** A minimal, valid model answer — one insight block and a narration. */
+/** A minimal, valid model answer — one insight block and a narration. `causal` is set because what
+ *  is measured here is COST, and the offer gate is a separate question: with the flag present the
+ *  card is earned outright (offersWorld), so a change to how an answer is READ for a causal web
+ *  cannot quietly turn these into tests of nothing. */
 const ANSWER = JSON.stringify({
   title: 'The crisis, in four moves',
   sub: 'What actually happened',
+  causal: true,
   narration: 'Cheap credit met securitization, and the market froze.',
   blocks: [
     {
