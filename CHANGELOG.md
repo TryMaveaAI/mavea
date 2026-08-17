@@ -6,6 +6,87 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- The daily search budget is adjustable from any dashboard's Settings, under "Every dashboard" —
+  one shared cap across all boards, because what it guards is the total daily spend on your key.
+- **An ordinary answer's figures now prove themselves.** Prove it lists every figure the answer
+  printed and what backs it: grounded ones quote the source's own sentence, and the rest are marked
+  as the model's own rather than left to look measured. The living answer had refused an unbacked
+  number since it shipped; every other answer printed its numbers straight from block props, so the
+  rule held on exactly one surface.
+- **A cause can be opened into its parts**, drawn through the component library rather than a fixed
+  chart — and a part can be opened in turn. A subject whose parts nothing measured is named in a
+  list instead of drawn as a proportion, because a hierarchy figure implies measured shares.
+- The guided walkthrough's living-answer chapter now walks itself, cause by cause. Its line has
+  always promised a narration nobody could trigger on a replay.
+
+### Changed
+
+- The Terms, Privacy Notice, and Disclaimer now cover tracked readings (stored per tracker in
+  IndexedDB, encrypted, deleted with the dashboard) and state plainly that tracked or "live"
+  values are best-effort and depend on the model you pick — a completed search can still surface
+  out-of-date figures, alerts are never guaranteed to arrive, and every check spends on the key
+  you supplied. The dashboards first-use notice says the same in plain words, and the alerts card
+  itself now carries the don't-rely-on-this line. The in-app acceptance version was bumped, so
+  existing users are shown the updated documents once.
+- The default daily search budget is 25 (was 40), sized from the app's own cadence math: hourly ≈
+  up to ~24 checks/day while Mavéa is open, so out of the box the cap covers one always-on hourly
+  board. Running more than that is a deliberate spend choice you make by raising the knob; manual
+  actions like Refresh now were never counted against it.
+
+- **A dashboard check now fetches data, not a rendered card.** Checks used to ask the model to
+  rebuild a finished canvas block — exact component type, exact prop names, nested item shapes —
+  which made it responsible for Mavéa's rendering contract; any drift discarded a grounded search
+  you had already paid for. Data-shaped cards (lists, tables, timelines, charts) now come back in a
+  one-line schema and Mavéa builds the component itself. Cards that carry prose keep the old path.
+- **Readings are kept per tracker in IndexedDB**, encrypted with the same device key as the rest of
+  a dashboard, instead of being folded into the one blob that was rewritten whole on every write.
+- Only one browser tab runs the refresh loop now. Every extra open tab used to run its own
+  scheduler and bill your key again for the same checks.
+- **A living answer is offered on the answer, not the question.** Asking "why" is not the same as
+  getting back something with causes in it, so the offer is judged on what the answer actually
+  contains — no more opening a causal web onto an answer that has none.
+- **The "show only what is sourced" filter is gone.** Measured across every scenario, not one
+  receipt carried a followable link or document anchor, so the control promised a reader something
+  it could never show them.
+
+### Fixed
+
+- **Dashboard checks asked for live data and accepted an answer from memory.** The search tool was
+  offered but never required, so a model could skip it and reply from training data; the reply was
+  correctly discarded, after being billed for. Checks now require the search.
+- Creating a tracker no longer waits on its first check. It used to hold the sheet open for the
+  length of a real web search — routinely 30-60 seconds — with the finished board invisible behind
+  it.
+- **A tracker that cannot complete its first check is kept, not deleted.** A provider hiccup used
+  to make a tracker you had just described disappear. It now stays, marked as waiting, and says
+  what it is waiting on. Nothing unverified is ever shown either way.
+- Each failure now names its own cause — a rate limit, a rejected key, an unreachable provider, a
+  search that grounded nothing — and retries on a schedule that fits it, instead of one message and
+  one five-minute retry for all of them.
+- "What happened on the last check?" on a dashboard shows the steps that check actually took, so a
+  failure can be diagnosed without a network panel.
+- Check all stops after a whole round fails at the provider, instead of spending the rest of your
+  per-minute quota collecting the same error.
+- The dashboards surface scrolls again — content below the fold had become unreachable.
+- An ask-the-user form card can no longer be pinned onto a dashboard; a dashboard's values come
+  from live search.
+- **Three places a living answer could state a figure with nothing behind it.** Source excerpts
+  never reached it, so every figure failed the verbatim check however good the sources were; an
+  arrow's share was drawn without any source stating that share, which sized the ribbons by an
+  unproven number; and a date could place a cause on the timeline unproven, where the position
+  _is_ the claim.
+- A new turn could leave the answer blank instead of drawing it.
+- A pen mark aimed at a collapsed section landed on empty space, next to nothing.
+- Breaking down a cause that had itself come from a breakdown did nothing at all, and the fold-up
+  control on one did nothing either.
+- A cause could be named by a truncated slug ("consumer-switch-to-digit") or, with an invisible
+  label, by nothing at all — leaving a nameless card, a nameless lever, and a sentence with no
+  subject.
+- Long connector labels in a flow diagram were drawn wider than the gap between the shapes and
+  painted over by them, leaving the reader a sliver of each word.
+
 ## [1.1.0] - 2026-08-16
 
 ### Added
