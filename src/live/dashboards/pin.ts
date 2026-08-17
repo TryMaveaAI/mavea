@@ -64,10 +64,15 @@ export function pinBlockToDashboard(opts: {
   firstCheck?: boolean;
   now?: number;
 }): PinResult | null {
-  const blocks = (Array.isArray(opts.block) ? opts.block : [opts.block]).slice(
-    0,
-    MAX_BLOCKS_PER_PIN,
-  );
+  const blocks = (Array.isArray(opts.block) ? opts.block : [opts.block])
+    // A "blanks" block is a form asking the USER to supply values — legitimate on a canvas, where
+    // some numbers are genuinely the user's to give, but a contradiction on a dashboard, whose
+    // whole premise is that values arrive from live search. One ungrounded turn auto-pinned its
+    // "paste the exact prices" scaffolding onto a board as if it were trackable content; the
+    // user-supplied mechanism dashboards actually support is the metric-level Blank Space, never
+    // a pasted form card.
+    .filter((b) => b.type !== 'blanks')
+    .slice(0, MAX_BLOCKS_PER_PIN);
   if (blocks.length === 0) return null;
   const now = opts.now ?? Date.now();
   const ask = opts.question?.trim() || undefined;

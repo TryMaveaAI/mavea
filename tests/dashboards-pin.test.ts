@@ -246,3 +246,31 @@ describe('store — the pin path’s write primitives', () => {
     expect(saved.widgets.find((w) => w.id === 'b')!.refreshQuery).toBe('original b');
   });
 });
+
+// A "blanks" block is a form asking the USER for values — legitimate on a canvas, a contradiction
+// on a dashboard, whose premise is that values arrive from live search. One ungrounded turn
+// auto-pinned its "paste the exact prices" scaffolding onto a board as trackable content.
+describe('pinBlockToDashboard — never pins an ask-the-user form', () => {
+  it('filters blanks blocks out of a pin, keeping the real content', () => {
+    const dash = createBlankDashboard({ title: 'B', now: 1000 });
+    addDashboard(dash);
+    const res = pinBlockToDashboard({
+      block: [block('real', 'insight'), block('form', 'blanks')],
+      question: 'scores',
+      target: dash.id,
+    });
+    expect(res).not.toBeNull();
+    const types = getDashboard(dash.id)!.widgets.map((w) => w.block.type);
+    expect(types).toContain('insight');
+    expect(types).not.toContain('blanks');
+  });
+
+  it('a pin that was ONLY a form pins nothing at all', () => {
+    const dash = createBlankDashboard({ title: 'B2', now: 1000 });
+    addDashboard(dash);
+    const before = getDashboard(dash.id)!.widgets.length;
+    const res = pinBlockToDashboard({ block: block('form', 'blanks'), target: dash.id });
+    expect(res).toBeNull();
+    expect(getDashboard(dash.id)!.widgets).toHaveLength(before);
+  });
+});
