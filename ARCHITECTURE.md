@@ -643,6 +643,15 @@ form a source writes it); and a **date** needs one naming it, because on the tim
 position is how that claim gets made. A verified quote is attributed to the source whose text
 actually contains it — the model never authors the provenance of its own claim.
 
+**The reader can stress-test the answer.** "Only what is sourced" walks backward from the outcome
+through supported links alone; every cause it cannot reach RECEDES in place rather than leaving, so
+the gap is visible instead of being closed by a re-fit. Beside it the rail names the weakest link —
+the unsourced link whose removal disconnects the most causes from the outcome, which is a different
+question from "which link is least evidenced": one provisional link is decoration on a cause the
+outcome reaches three other ways, another is the only thing holding half the web on. Both are local
+walks (`world/stress`), so a reader may pull the toggle as often as they like for nothing. Not
+offered on an illustrative world, which sources nothing to begin with.
+
 Two instruments drive the dev-only `#/worldlab` in a real browser: `scripts/world-audit.mts`
 (`pnpm audit:world`) measures rendered legibility, overlap, clipping and hit targets across the
 corpus (`--sizes` sweeps five window shapes), and `scripts/world-perf.mts` (`pnpm perf:world`)

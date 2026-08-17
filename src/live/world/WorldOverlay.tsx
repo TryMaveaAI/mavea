@@ -52,6 +52,7 @@ import type { TrustRegistry, UsedInRef, UsedInSource, WorldValue } from '../trus
 import { cascade } from '../why/engine';
 import type { CascadeResult, Intervention } from '../why/types';
 import { asWhyDag } from './asWhyDag';
+import { groundedOnly, weakestLink } from './stress';
 import { applyExpansion, deriveEdgeStatus } from './validate';
 import type { SpokenLine } from '../../voice/tts';
 import type { WorldNode, WorldSpec } from './types';
@@ -470,6 +471,18 @@ function WorldSurface({
     if (opening) setRep(opening);
   }, [opening, setRep]);
 
+  // What the explanation looks like if the reader believes only what is sourced, and which unsourced
+  // link it leans on hardest. Both are local walks over a web capped at 16 nodes (world/stress), so
+  // the toggle costs nothing however often it is pulled — which is the point, because this is BYOK.
+  const stress = useMemo(() => groundedOnly(spec), [spec]);
+  const weakest = useMemo(() => weakestLink(spec), [spec]);
+  const weakestEdge = weakest ? spec.edges[weakest.index] : undefined;
+  const [groundedView, setGroundedView] = useState(false);
+  // An illustrative world measures nothing and sources nothing, so "only what is sourced" would
+  // empty it — the banner already says the whole thing is a shape. Offering the toggle there is
+  // offering a view whose content is a wall of excuses, which is the rule the view chips follow.
+  const stressable = !illustrative && stress.cutOff.length > 0;
+
   // What the stage renders: the measured world with its figures withheld (ProvValue prints them),
   // each node carrying what the reader's what-if did to it. A breakdown moves with the cause it
   // breaks down — its own strength is its parent's.
@@ -477,10 +490,14 @@ function WorldSurface({
     const nodes = morphWorld.nodes.map((n) => {
       const bare = withoutFigure(n);
       const shift = stagedShifts?.get(n.parentId ?? n.id);
-      return shift === undefined ? bare : { ...bare, shift };
+      // A cause the sourced links cannot reach RECEDES rather than leaving: removing it would
+      // re-fit the world and close the very gap the toggle exists to show. A breakdown child
+      // inherits its parent's standing, the way it inherits its shift.
+      const faded = groundedView && !stress.standing.has(n.parentId ?? n.id);
+      return { ...bare, ...(shift === undefined ? {} : { shift }), ...(faded ? { faded } : {}) };
     });
     return { ...morphWorld, nodes };
-  }, [morphWorld, stagedShifts]);
+  }, [morphWorld, stagedShifts, groundedView, stress]);
 
   const nodeById = useMemo(() => {
     const byId = new Map<string, WorldNode>();
@@ -811,6 +828,19 @@ function WorldSurface({
                   </button>
                 ))}
               </div>
+              {/* Not a fifth view — a way of reading whichever one is open. Every representation
+                  draws the same links, so "only what is sourced" applies to all of them, and a chip
+                  in the view group would promise a different geometry. */}
+              {stressable && (
+                <button
+                  type="button"
+                  className="wo-btn wo-btn-stress"
+                  aria-pressed={groundedView}
+                  onClick={() => setGroundedView((on) => !on)}
+                >
+                  Only what is sourced
+                </button>
+              )}
               <button type="button" className="wo-btn" onClick={reset} disabled={!active}>
                 Reset
               </button>
@@ -900,6 +930,23 @@ function WorldSurface({
                         {outcome.detail ? (
                           <span className="wo-standing-note">{outcome.detail}</span>
                         ) : null}
+                      </p>
+                    )}
+                    {/* The finding, not the legend. A dozen unsourced links matter differently:
+                        one is decoration on a cause the outcome reaches three other ways, another
+                        is the only thing joining half the web to the thing being explained. Naming
+                        the second — in PROSE, with a count of causes rather than any magnitude — is
+                        what turns "some arrows are fainter" into something a reader can act on. */}
+                    {weakest && weakestEdge && (
+                      <p className="wo-weakest">
+                        <span className="wo-weakest-lead">Weakest link</span>
+                        {nodeById.get(weakestEdge.from)?.label} →{' '}
+                        {nodeById.get(weakestEdge.to)?.label}
+                        <span className="wo-standing-note">
+                          Nothing sourced stands behind it, and {weakest.isolates}{' '}
+                          {weakest.isolates === 1 ? 'cause loses' : 'causes lose'} every route to
+                          the outcome without it.
+                        </span>
                       </p>
                     )}
                     <p className="wo-hint">Tap a cause or a link to see what stands behind it.</p>
