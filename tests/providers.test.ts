@@ -646,7 +646,7 @@ describe('openai Responses API — reasoning-model params (gpt-5.x / o-series)',
 
   it('an o-series model is treated as a reasoning model, and its effort is pinned to low', async () => {
     const body = await bodyFor('o4-mini', { thinkingLevel: 'medium' });
-    expect(body.max_output_tokens).toBe(1500); // floored from 900 (reasoning meters thinking from this budget)
+    expect(body.max_output_tokens).toBe(1500); // floored from 900 (thinking is metered from this budget) // 900 + 1000 of low-effort thinking headroom
     // Not 'medium'. Above 'low' these models spend the whole output budget reasoning about a large
     // canvas prompt and return an empty answer — see the pinning comment in the adapter.
     expect(body.reasoning).toEqual({ effort: 'low' });
@@ -1291,5 +1291,47 @@ describe('an HTTP error carries the provider’s reason, not just its status', (
       expect(msg.length).toBeLessThan(200); // trimmed — never the whole page
       expect(describeLiveError(err, 'anthropic').status).toBe(502);
     }
+  });
+});
+
+describe('requiring the search tool, not merely offering it', () => {
+  it('sends tool_choice for a turn that is worthless ungrounded', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
+    await openaiAdapter.generate({ ...req, tools: { webSearch: true, requireSearch: true } }, cfg);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { tool_choice?: unknown; tools?: unknown[] };
+    // Attaching the tool leaves the choice to the model (tool_choice defaults to auto), and a
+    // small model routinely declines — answering a live-price question from training memory with
+    // zero citations, which the dashboards gate then correctly discards after billing for it.
+    expect(body.tools).toHaveLength(1);
+    expect(body.tool_choice).toEqual({ type: 'web_search' });
+  });
+
+  it('never sends the force to a provider that has not documented one (Grok)', async () => {
+    // Same shared adapter, different provider: xAI's Responses API mirrors OpenAI's design but has
+    // never documented tool_choice:{type:'web_search'}, and an undocumented force value that 400s
+    // would kill every Grok dashboard check — strictly worse than a model occasionally declining
+    // to search. Grok keeps the prompt-level insistence and the grounding gate.
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'grok', model: 'grok-4', apiKey: 'k' };
+    await grokAdapter.generate({ ...req, tools: { webSearch: true, requireSearch: true } }, cfg);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { tool_choice?: unknown; tools?: unknown[] };
+    expect(body.tools).toHaveLength(1); // the tool is still offered…
+    expect(body.tool_choice).toBeUndefined(); // …but never forced
+  });
+
+  it('leaves an ordinary search turn free to decide for itself', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
+    await openaiAdapter.generate({ ...req, tools: { webSearch: true } }, cfg);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { tool_choice?: unknown };
+    // Forcing a search on a question that needs none would spend a call to learn nothing.
+    expect(body.tool_choice).toBeUndefined();
   });
 });
