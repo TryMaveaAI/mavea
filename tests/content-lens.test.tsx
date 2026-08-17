@@ -20,7 +20,6 @@ import { worldToContent } from '../src/live/content/fromWorld';
 import {
   componentsFor,
   hierarchyLens,
-  lensesFor,
   ROOT_CONTRACT,
   ROOT_MEANS_SOMETHING_ELSE,
 } from '../src/live/content/lens';
@@ -139,7 +138,6 @@ describe('hierarchyLens', () => {
     };
     expect(hierarchyLens.fitness(one, 'spend')).toBeNull();
     expect(hierarchyLens.compile(one, 'spend')).toBeNull();
-    expect(lensesFor(one, 'spend')).toEqual([]);
   });
 
   it('refuses an entity with no parts at all', () => {

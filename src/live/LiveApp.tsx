@@ -5986,6 +5986,7 @@ export function LiveApp(): ReactElement {
           conf={leadConf}
           sources={turn.spec.sources ?? []}
           hadFiles={turnHadFiles}
+          blocks={turn.spec.blocks}
         />
       )}
       {/* Re-open, read-only, the Watch-Me-Think map a chat grew from (from the session rail). */}

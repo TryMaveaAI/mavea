@@ -231,6 +231,24 @@
   min-height: 24px;
 }
 
+/* The parts by NAME — the honest degrade where nothing measured them, which is most causal answers.
+   A list, not a chart: a hierarchy component needs sizes, and inventing them is the finding nobody
+   made. */
+.wo-part-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.wo-part-list li {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+
 /* WHAT IS THIS MADE OF — the catalog's own drawing of a cause's parts, in the evidence rail. Sized
    to the rail rather than the stage: this is a reading of one selected cause, not a view of the
    world, and it sits under that cause's figure where the reader is already looking. */

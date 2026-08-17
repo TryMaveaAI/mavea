@@ -643,6 +643,11 @@ form a source writes it); and a **date** needs one naming it, because on the tim
 position is how that claim gets made. A verified quote is attributed to the source whose text
 actually contains it — the model never authors the provenance of its own claim.
 
+**An ordinary answer's figures prove themselves too.** The evidence drawer ("Where this came from")
+reads every figure the answer's blocks print, types each one by what actually backs it, and says which
+a source states — the sentence quoted — and which are the model's own. Same two gates a world's node
+value passes: the sentence must be in the corpus AND must state the number.
+
 **One semantic layer, two producers.** `live/content` is what an answer is ABOUT, apart from how it is
 drawn: entities (with unbounded `parentId` nesting), relations, and facts that hold no number — only
 the id the trust registry knows a figure under, so a value with nothing behind it still cannot reach
@@ -700,6 +705,18 @@ small UI-preference and one-time hint keys are intentionally omitted.
 | `mavea-live-atlas-v1`       | Live          | light per-conversation index for the Atlas map                          | Indirectly (titles/asks)                      | Always (synced from the Library; outlives its eviction)         |
 | `mavea-dashboards-v1`       | Dashboards    | Saved dashboard definitions and snapshots                               | Potentially                                   | After dashboard changes                                         |
 | `mavea-live-quiet-hours-on` | Live          | `'1'` when the whisper-mode quiet hours are opted in (off by default)   | No                                            | Always                                                          |
+
+Dashboards additionally keep their **fetched readings** in IndexedDB (`mavea-dashboards`, store
+`observations`) rather than in the `localStorage` blob above. A reading is the highest-frequency
+write the product makes — every metric of every due tracker, every check — and the blob is
+decrypted, mutated and re-encrypted whole on each write, which is what the store's generation
+counters and one-persist-per-batch batching exist to soften. One record per reading, keyed by
+tracker, means a price moving rewrites nothing else. The payload (`{ data, receipts }`) is encrypted
+with the same content key as the blob; only the routing fields (dashboard, target, timestamp) stay
+readable, because the indexes sort on them. History is capped per tracker, deleted with its
+dashboard, and strictly a bonus: the value a card renders comes from the `MetricSpec` in the main
+store, so a browser that refuses IndexedDB loses history and nothing else. See
+`live/dashboards/observationStore.ts`.
 
 The **Library** (`live/library/store.ts`) saves the canvases you generate so you can pick any one
 back up later. It mirrors the memory store (in-memory cache + `localStorage` + `CustomEvent`, never

@@ -87,19 +87,3 @@ export function childrenOf(graph: ContentGraph, parentId: string): readonly Enti
 export function factsOf(graph: ContentGraph, entityId: string): readonly Fact[] {
   return graph.facts.filter((f) => f.entityId === entityId);
 }
-
-/** Depth below the top level: 0 for an entity nobody contains. Walks up, so a cycle in `parentId`
- *  (which a producer should never emit, and a coercer should never pass) terminates rather than
- *  hanging the renderer. */
-export function depthOf(graph: ContentGraph, entityId: string): number {
-  const byId = new Map(graph.entities.map((e) => [e.id, e]));
-  const seen = new Set<string>([entityId]);
-  let depth = 0;
-  let at = byId.get(entityId)?.parentId;
-  while (at !== undefined && !seen.has(at)) {
-    seen.add(at);
-    depth += 1;
-    at = byId.get(at)?.parentId;
-  }
-  return depth;
-}

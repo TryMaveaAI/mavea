@@ -51,6 +51,7 @@ import { cascade } from '../why/engine';
 import type { CascadeResult, Intervention } from '../why/types';
 import { asWhyDag } from './asWhyDag';
 import { worldToContent } from '../content/fromWorld';
+import { childrenOf } from '../content/types';
 import { extendedRender, familiesFor, loadFamilies } from '../../canvas/blocks/loader';
 import type { ViewPlan } from '../content/lens';
 import { readableLabel } from './labels';
@@ -542,6 +543,14 @@ function WorldSurface({
     setLevers(new Map());
   }, [takeOver]);
 
+  // Can this cause's parts be drawn on the STAGE? Only down to MAX_DRAWN_DEPTH — graphLayout places
+  // a breakdown against its parent's block, and only a top-level cause has one. Asked in one place so
+  // the chip and the press can never disagree about where a breakdown will show up.
+  const onStage = useCallback(
+    (nodeId: string) => morphWorld.nodes.find((n) => n.id === nodeId)?.parentId === undefined,
+    [morphWorld],
+  );
+
   // Buy a breakdown for a cause that has none. One press, one call, and an honest no-op when the
   // cause turns out to have no parts worth naming — the chip comes back and nothing is said, because
   // "this cause is atomic" is an answer, not an error to interrupt someone with.
@@ -561,12 +570,17 @@ function WorldSurface({
           const children = world === null ? undefined : findChildren(world.nodes, nodeId);
           if (!children?.length) return;
           setExpansions((prev) => new Map(prev).set(nodeId, children));
-          toggleExpand(nodeId);
+          // A press has to show its result. Parts of a TOP-LEVEL cause unfold on the stage; parts of
+          // a part go to a depth the stage cannot place, so the reader is taken to where they ARE
+          // drawn — selecting the cause puts them in the rail, through the lens. Before this, buying
+          // a breakdown on a part flipped the chip and changed nothing anyone could see.
+          if (onStage(nodeId)) toggleExpand(nodeId);
+          else setSelection({ kind: 'node', id: nodeId });
         },
         () => setPendingExpand(null),
       );
     },
-    [onExpandNode, pendingExpand, spec, toggleExpand],
+    [onExpandNode, onStage, pendingExpand, spec, toggleExpand],
   );
 
   const renderFace = useCallback(
@@ -609,12 +623,18 @@ function WorldSurface({
       if (face !== 'card') return null;
       const open = expandedIds.has(node.id);
       const authored = expandable.has(node.id);
-      // A cause with no authored breakdown can still be opened, wherever it sits — a part is a thing
-      // with parts, and cell → cathode → material is an ordinary question. Only where a host can pay
-      // for one: offering it in the key-free lab would be an affordance that answers with nothing.
-      // What the STAGE can draw stops at MAX_DRAWN_DEPTH; deeper structure is read through the lens
-      // below, which is why going deeper is worth offering at all.
+      // Can this cause's parts be drawn ON THE STAGE? Only down to MAX_DRAWN_DEPTH: graphLayout
+      // places a breakdown against its parent's block, and only a top-level cause has one.
+      const partsOnStage = node.parentId === undefined;
+      // A cause with no breakdown yet can still be opened, WHEREVER it sits — a part is a thing with
+      // parts, and cell → cathode → material is an ordinary question. Only where a host can pay for
+      // one: offering it in the key-free lab would be an affordance that answers with nothing.
       const buyable = !authored && onExpandNode !== undefined;
+      // FOLD UP is offered only where something is actually folded away on the stage. Without this a
+      // part that had been broken down wore a fold-up chip that toggled a state nothing draws: the
+      // parts had gone to a depth the stage does not place, so the press did nothing a reader could
+      // see. Its parts are read in the rail instead, which is where buying one now takes them.
+      const foldable = authored && partsOnStage;
       const waiting = pendingExpand === node.id;
       return (
         <>
@@ -628,21 +648,21 @@ function WorldSurface({
               {shiftChip(node.shift)}
             </span>
           )}
-          {(authored || buyable) && (
+          {(foldable || buyable) && (
             <button
               type="button"
               className="wo-expand"
               aria-expanded={open}
               aria-busy={waiting || undefined}
               disabled={waiting || (buyable && pendingExpand !== null)}
-              aria-label={`${open ? 'Fold up' : 'Break down'} ${node.label}`}
+              aria-label={`${foldable && open ? 'Fold up' : 'Break down'} ${node.label}`}
               onClick={(e) => {
                 e.stopPropagation(); // the card itself selects; the affordance only zooms
-                if (authored) toggleExpand(node.id);
+                if (foldable) toggleExpand(node.id);
                 else buyExpansion(node.id);
               }}
             >
-              {waiting ? 'breaking down…' : open ? 'fold up' : 'break down'}
+              {waiting ? 'breaking down…' : foldable && open ? 'fold up' : 'break down'}
             </button>
           )}
         </>
@@ -691,6 +711,12 @@ function WorldSurface({
   // What the selected cause is MADE OF, drawn by the catalog's own choice. Compiled from the content
   // graph, so every part is sized by a figure the registry resolved — a part with none is left out
   // rather than drawn at zero, and a subject with fewer than two sizeable parts offers nothing.
+  // The selected cause's parts by NAME — what the rail falls back to when the lens cannot size them.
+  const namedParts = useMemo(
+    () => (selectedNode === undefined ? [] : childrenOf(content, selectedNode.id)),
+    [content, selectedNode],
+  );
+
   // The lens plan and the component that draws it, both fetched on SELECTION.
   //
   // Neither may sit in the world's static import graph. content/lens reads the catalog's 608-row
@@ -892,10 +918,23 @@ function WorldSurface({
                         (content/lens), so the world reads the parts through the library rather than
                         through more of its own geometry — and a component that draws a whole tree
                         natively is how depth past MAX_DRAWN_DEPTH becomes readable at all. */}
-                    {parts && (
+                    {(parts || namedParts.length > 0) && (
                       <div className="wo-parts">
-                        <span className="wo-rail-kicker">{parts.plan.answers.toUpperCase()}</span>
-                        {parts.render(parts.plan.block.props, { delay: 0 })}
+                        <span className="wo-rail-kicker">WHAT THIS IS MADE OF</span>
+                        {/* Drawn by the catalog's own choice where the parts carry magnitudes, and
+                            NAMED where they do not. Most causal answers are wholly qualitative, and a
+                            hierarchy component needs sizes — so without the list a reader who broke a
+                            part down got a press that changed nothing they could see. A list of names
+                            is the honest degrade: it is what the answer actually knows. */}
+                        {parts ? (
+                          parts.render(parts.plan.block.props, { delay: 0 })
+                        ) : (
+                          <ul className="wo-part-list">
+                            {namedParts.map((e) => (
+                              <li key={e.id}>{readableLabel(e.label)}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     )}
                   </>

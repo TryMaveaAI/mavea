@@ -43,6 +43,10 @@ export interface ViewPlan {
   type: string;
 }
 
+/** The shape a lens fills. One implements it today; the interface is what tells a second one what it
+ *  owes — a fitness that can say no, and a compile that returns a block the canvas already renders.
+ *  There is deliberately no registry of them yet: a list with one entry and no reader is a guess
+ *  about the second, and the world already cut three views for being rearrangements of a fourth. */
 export interface VisualLens {
   id: string;
   /** What this lens is FOR. A lens that answers no question no other lens answers is the matrix
@@ -195,15 +199,3 @@ export const hierarchyLens: VisualLens = {
     };
   },
 };
-
-/** Every lens Mavéa can bring to a piece of meaning. One today; the list is the extension point, and
- *  a new entry has to name a question the others do not answer. */
-export const LENSES: readonly VisualLens[] = [hierarchyLens];
-
-/** The lenses that can say something about this subject, best-fitting first. */
-export function lensesFor(graph: ContentGraph, subjectId: string): readonly VisualLens[] {
-  return LENSES.map((lens) => ({ lens, fit: lens.fitness(graph, subjectId) }))
-    .filter((x): x is { lens: VisualLens; fit: LensFitness } => x.fit !== null)
-    .sort((a, b) => b.fit.places - a.fit.places)
-    .map((x) => x.lens);
-}

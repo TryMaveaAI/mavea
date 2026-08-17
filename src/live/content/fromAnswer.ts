@@ -29,12 +29,12 @@ import { hostOf } from '../ground/citation';
 import type { Receipt } from '../ground/types';
 import { buildRegistry } from '../trust';
 import type { UsedInSource, WorldValue } from '../trust';
-import { trustValue } from './fromWorld';
+import { trustValue } from './value';
 import type { ContentGraph, Entity, Fact } from './types';
 
 /** A figure's registry id. Block index and a slug of what it measures, so the same answer always
  *  addresses the same figure — and two blocks measuring "Revenue" stay distinct. */
-export const blockValueId = (blockIndex: number, key: string, at?: string): string =>
+const blockValueId = (blockIndex: number, key: string, at?: string): string =>
   `block:${blockIndex}:${key}${at === undefined ? '' : `@${at}`}`;
 
 const slug = (s: string): string =>

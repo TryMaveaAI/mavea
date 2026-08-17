@@ -13,7 +13,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DRAWN_DEPTH, worldToMorph } from '../src/canvas/spatial/morph/adapters';
 import { worldToContent } from '../src/live/content/fromWorld';
 import { hierarchyLens } from '../src/live/content/lens';
-import { depthOf } from '../src/live/content/types';
 import { applyExpansion } from '../src/live/world/validate';
 import type { WorldNode, WorldSpec } from '../src/live/world/types';
 import { WorldOverlay } from '../src/live/world/WorldOverlay';
@@ -84,7 +83,10 @@ describe('the data knows arbitrary depth', () => {
 
   it('carries the full depth into the content graph', () => {
     const graph = worldToContent(deep(), worldToMorph(deep()));
-    expect(depthOf(graph, 'cost.wages.salary')).toBe(2);
+    // Two levels down, and its parent chain intact — the graph caps nothing.
+    const salary = graph.entities.find((e) => e.id === 'cost.wages.salary')!;
+    expect(salary.parentId).toBe('cost.wages');
+    expect(graph.entities.find((e) => e.id === 'cost.wages')!.parentId).toBe('cost');
     expect(graph.entities.map((e) => e.id)).toContain('cost.wages.tax');
   });
 });
@@ -154,6 +156,50 @@ describe('breaking down a part of a part', () => {
   });
 });
 
+describe('a cause whose parts nothing measured', () => {
+  /** The same shape, with every part qualitative — which is what most causal answers are. */
+  const qualitative = (): WorldSpec => ({
+    title: 'Why did the queue build up?',
+    outcomeId: 'queue',
+    provenance: {},
+    nodes: [
+      {
+        id: 'model',
+        label: 'The old store model',
+        role: 'root',
+        depth: 0,
+        tier: 'T0',
+        children: [
+          { id: 'model.late-fees', label: 'late fees', role: 'mechanism', depth: 1, tier: 'T0' },
+          { id: 'model.stores', label: 'physical stores', role: 'mechanism', depth: 1, tier: 'T0' },
+        ],
+      },
+      { id: 'queue', label: 'Shoppers waited', role: 'outcome', depth: 1, tier: 'T0' },
+    ],
+    edges: [{ from: 'model', to: 'queue', sign: 1, tier: 'T0' }],
+  });
+
+  it('NAMES them when the lens cannot size them', async () => {
+    // A hierarchy component needs magnitudes, and inventing them is the finding nobody made. Without
+    // the list, a reader who broke a part down got a press that changed nothing they could see.
+    const { container } = render(<WorldOverlay spec={qualitative()} />);
+    fireEvent.click(container.querySelector<HTMLElement>('.mv-node[data-id="model"]')!);
+    expect(await screen.findByText('WHAT THIS IS MADE OF')).toBeTruthy();
+    expect([...container.querySelectorAll('.wo-part-list li')].map((l) => l.textContent)).toEqual([
+      'late fees',
+      'physical stores',
+    ]);
+    // And it does NOT pretend to a chart.
+    expect(container.querySelector('.wo-parts svg')).toBeNull();
+  });
+
+  it('says nothing for a cause with no parts at all', () => {
+    const { container } = render(<WorldOverlay spec={qualitative()} />);
+    fireEvent.click(container.querySelector<HTMLElement>('.mv-node[data-id="queue"]')!);
+    expect(container.querySelector('.wo-parts')).toBeNull();
+  });
+});
+
 describe('the lens is how the deeper structure is read', () => {
   it('draws every level, including the one the stage refused', () => {
     const graph = worldToContent(deep(), worldToMorph(deep()));
@@ -169,7 +215,7 @@ describe('the lens is how the deeper structure is read', () => {
   it('shows it in the rail when the reader selects the cause', async () => {
     const { container } = render(<WorldOverlay spec={deep()} />);
     fireEvent.click(container.querySelector<HTMLElement>('.mv-node[data-id="cost"]')!);
-    expect(await screen.findByText('What is this made of?'.toUpperCase())).toBeTruthy();
+    expect(await screen.findByText('WHAT THIS IS MADE OF')).toBeTruthy();
   });
 
   it('offers nothing for a cause with no parts', () => {

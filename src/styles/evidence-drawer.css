@@ -230,3 +230,40 @@
   padding: 1px 3px;
   border-radius: 3px;
 }
+
+/* --- the figures in an answer ------------------------------------------------------------------
+   The living world has always refused to print a number with nothing behind it; every other answer
+   prints its numbers straight out of block props. This is where that asymmetry is answered, so each
+   row has to carry the one thing the block itself cannot: what actually backs the figure. */
+.evidence-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.evidence-figure .evidence-top {
+  align-items: baseline;
+}
+.evidence-fig {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+/* GROUNDED reads as established; ILLUSTRATIVE stays quiet and warm — the same two voices the trust
+   layer uses everywhere else, so a reader learns the distinction once. */
+.evidence-figure .evidence-loc[data-status='grounded'] {
+  color: color-mix(in oklab, var(--insight) 72%, var(--text-primary));
+}
+.evidence-figure .evidence-loc[data-status='illustrative'] {
+  color: color-mix(in oklab, var(--warning) 70%, var(--text-muted));
+}
+/* A model's own caveat, NOT a quotation — `.evidence-quote` adds real quotation marks, and wrapping
+   an unsourced note in them would be the smallest possible lie about where a number came from. */
+.evidence-caveat {
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--text-muted);
+  padding: 8px 13px 10px;
+}

@@ -6,12 +6,14 @@
 // real link the user can open. It only appears when the turn was genuinely grounded (the
 // lead insight is marked `prove` in generateLive only when sources exist), so the affordance
 // never promises evidence we don't have. Reuses the demo's drawer chrome so it feels native.
-import { type ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
 import { CONF_TITLE_UNVERIFIED } from '../canvas/trust';
 import { EvidencePill } from '../canvas/provenance';
 import { hostOf, safeHttpUrl } from '../lib/sourceHost';
-import type { Conf, WebSource } from '../data/conversation';
+import type { Block, Conf, WebSource } from '../data/conversation';
+import { answerToContent } from './content/fromAnswer';
+import { numberOf, rawOf, STATUS_LABEL } from './trust';
 
 interface LiveEvidenceProps {
   open: boolean;
@@ -24,6 +26,9 @@ interface LiveEvidenceProps {
   sources: WebSource[];
   /** Whether the user attached files for this turn — drives honest copy when sources are empty. */
   hadFiles?: boolean;
+  /** The answer's own blocks. Every figure they print is read out of them and typed by what actually
+   *  backs it, so the panel can say which numbers a source states and which are the model's. */
+  blocks?: readonly Block[];
 }
 
 export function LiveEvidence({
@@ -33,7 +38,29 @@ export function LiveEvidence({
   conf,
   sources,
   hadFiles = false,
+  blocks,
 }: LiveEvidenceProps): ReactElement {
+  // The figures this answer prints, each typed by what actually backs it.
+  //
+  // The living world has always refused to render a number with nothing behind it. Every other answer
+  // prints its numbers straight out of block props, so this is where that asymmetry is answered: the
+  // figures are read out of the blocks (content/fromAnswer) and grounded against the sentences the
+  // answer's OWN sources contain — the same two gates a world's node value passes. A figure a source
+  // states reads GROUNDED and shows the sentence; one only the model knows reads ILLUSTRATIVE and says
+  // so. Nothing is inferred: a shape the reader cannot parse yields no figure at all.
+  const figures = useMemo(() => {
+    if (!blocks?.length) return [];
+    const corpus = sources
+      .map((s) => s.snippet ?? '')
+      .filter(Boolean)
+      .join('\n');
+    const graph = answerToContent({ title: claim, blocks: [...blocks], sources }, corpus);
+    return graph.facts.flatMap((f) => {
+      const value = graph.trust.values.get(f.valueId);
+      return value === undefined || numberOf(value) === null ? [] : [value];
+    });
+  }, [blocks, claim, sources]);
+  const grounded = figures.filter((v) => v.kind === 'grounded').length;
   // With no sources and no files there is nothing behind the answer — say so plainly
   // instead of dressing model knowledge up as evidence ("grounded in 0 live sources").
   const badgeTitle = sources.length
@@ -114,6 +141,46 @@ export function LiveEvidence({
                 );
               })}
             </ul>
+          )}
+
+          {figures.length > 0 && (
+            <>
+              <div className="drawer-eyebrow">
+                <Icon.chart style={{ width: 14, height: 14 }} /> The figures in this answer
+              </div>
+              <p className="evidence-note">
+                {grounded === 0
+                  ? "None of these is stated by a source — they are the model's own."
+                  : `${grounded} of ${figures.length} ${
+                      grounded === 1 ? 'is' : 'are'
+                    } stated by a source you can read below.`}
+              </p>
+              <ul
+                style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}
+                aria-label="Figures in this answer"
+              >
+                {figures.map((v) => (
+                  <li key={v.id} className="evidence-block evidence-figure">
+                    <div className="evidence-top">
+                      <span className="evidence-file">{v.label}</span>
+                      <span className="evidence-fig">{rawOf(v)}</span>
+                      <span className="evidence-loc" data-status={v.kind}>
+                        {STATUS_LABEL[v.kind]}
+                      </span>
+                    </div>
+                    {/* The sentence a source states it in, when one does — in quotation marks,
+                        because it IS a quote. An illustrative figure carries its caveat instead, and
+                        that gets a plain note: dressing a model's own caveat as a quotation would be
+                        the smallest possible lie about where a number came from. */}
+                    {v.kind === 'grounded' ? (
+                      <div className="evidence-quote">{v.resolution.receipt.quote}</div>
+                    ) : v.kind === 'illustrative' ? (
+                      <div className="evidence-caveat">{v.resolution.illustrative}</div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           <div className="assumption">

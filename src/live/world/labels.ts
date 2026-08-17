@@ -15,3 +15,19 @@ export function readableLabel(label: string | undefined, fallback = 'an unnamed 
   const visible = raw.replace(/[\p{Cf}\p{Cc}]/gu, '').trim();
   return visible.length > 0 ? raw.trim() : fallback;
 }
+
+/**
+ * A machine slug as words: `consumer-switch-to-digital` → `Consumer switch to digital`.
+ *
+ * Only ever used where a slug is all a producer gave us. A child of a breakdown may arrive with an id
+ * and no label, and the id — being an id — is hyphenated and lowercase; printed verbatim it put
+ * "consumer-switch-to-digit" on a card next to "Digital imaging displaced consumer demand for film".
+ * Nothing is invented here: the words are the model's own, only the formatting was machine-shaped.
+ *
+ * Never applied to a label a producer DID write. Real labels carry hyphens that mean something —
+ * "Alt-A", "Third-party retail expansion" — and de-hyphenating those would corrupt them.
+ */
+export function humanizeSlug(slug: string): string {
+  const words = slug.replace(/[-_]+/g, ' ').trim();
+  return words.length === 0 ? slug : words[0].toUpperCase() + words.slice(1);
+}

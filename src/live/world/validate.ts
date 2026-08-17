@@ -25,6 +25,7 @@ import {
   quoteOf,
 } from '../trust/receipts';
 import type { CausalRole } from '../why/types';
+import { humanizeSlug } from './labels';
 import { asWorldDomain, parseWorldTime } from './types';
 import type {
   WorldDate,
@@ -269,7 +270,13 @@ function coerceChildren(
     const id = `${parentId}.${slug}`;
     if (seen.has(id)) continue;
     seen.add(id);
-    const label = str(r.label, LABEL_MAX) ?? slug;
+    // A slug is an ID, not a name. Where a child arrived without a label, its words are read out of
+    // the id rather than printed as one — otherwise a card says "consumer-switch-to-digit" beside a
+    // sibling that says "Digital imaging displaced consumer demand for film". And read out of `local`,
+    // not `slug`: slugOf caps at SLUG_MAX (24) because an id has to stay short and stable, which is
+    // what chopped that label mid-word. A label the model DID write is used verbatim — "Alt-A" and
+    // "Third-party retail expansion" mean their hyphens.
+    const label = str(r.label, LABEL_MAX) ?? humanizeSlug(local);
     const series = coerceSeries(r.series, ev, illustrative);
     out.push({
       id,
@@ -435,6 +442,10 @@ export function coerceWorldSpec(raw: unknown, corpus: EvidenceCorpus | string): 
     const r = rn as Record<string, unknown>;
     const id = str(r.id, ID_MAX);
     const label = str(r.label, LABEL_MAX);
+    // A label that PAINTS nothing (U+200B is not whitespace, so it survives every trim) is caught at
+    // the render layer instead — world/labels' readableLabel names it. Not here, because a scenario
+    // and a demo corpus are authored and never pass through this gate, so the render layer is the only
+    // place that covers both; and `edge-label-degenerates` exists to prove the layout survives one.
     if (!id || !label || seenIds.has(id)) continue; // duplicate — first wins
     seenIds.add(id);
     const series = coerceSeries(r.series, ev, illustrative);
