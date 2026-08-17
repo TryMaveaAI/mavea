@@ -238,17 +238,19 @@ export const FEATURES: Feature[] = [
     label: 'Living dashboards',
     // Distinct from "Track this" below: this OPENS the collection, that one CREATES one from the
     // current conversation — the blurbs say which so a "dashboard" search self-distinguishes.
+    // No tourChapter of its own: the core walkthrough's old 'dashboards' chapter was a near-
+    // duplicate of "Track this" below, so it was retired in favor of `living-answer`'s core slot —
+    // "Track this" is the one mini-demo this territory gets now.
     blurb: 'Open dashboards that refresh on schedule while Mavéa is running',
     group: 'Your world',
     surface: 'both',
-    tourChapter: 'dashboards',
     keywords: ['dashboard', 'dashboards', 'track', 'metrics', 'watch'],
   },
 
   // ── This session (what's in front of you right now) ─────────────────────────
   {
     id: 'living-answer',
-    label: 'View as world',
+    label: 'View as living answer',
     blurb: 'Open the causal web behind this answer — walk it, weigh it, and see its receipts',
     group: 'This session',
     surface: 'live',

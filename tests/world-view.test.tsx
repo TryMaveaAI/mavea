@@ -53,7 +53,7 @@ import { resetLiveConfig, setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { getViewMode, setViewMode, savedViewMode } from '../src/canvas/focus/useFocusMode';
 
 const VIEW_MODE_KEY = 'mavea-view-mode';
-const WORLD_CHIP = /view as world/i;
+const WORLD_CHIP = /view as living answer/i;
 
 // One question per test. world/explode memoizes a built world by question+corpus+model for the
 // process — which is the point of it — so two tests sharing a question would share the build, and

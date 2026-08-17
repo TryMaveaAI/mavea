@@ -294,10 +294,12 @@ const CANVAS_LOADING_SHAPE = [{ col: 6 }, { col: 6 }, { col: 12 }];
 const RAIL_COLLAPSED_STORAGE_KEY = 'mavea-live-rail-collapsed-v1';
 
 // The world view, named against its neighbour so the pair reads as a pair rather than as two words
-// for the same thing: "View as canvas" spreads THIS answer's cards in space; "View as world" opens
-// why the answer is true. The reason is what a reader gets instead of a button that does nothing —
-// worlds are offered for causal questions, so most answers honestly have none.
-const WORLD_VIEW_LABEL = 'View as world';
+// for the same thing: "View as canvas" spreads THIS answer's cards in space; "View as living
+// answer" opens why the answer is true — matching what the view calls itself once it's open (the
+// card marker and the overlay's own kicker both read "Living answer"). The reason is what a reader
+// gets instead of a button that does nothing — worlds are offered for causal questions, so most
+// answers honestly have none.
+const WORLD_VIEW_LABEL = 'View as living answer';
 const WORLD_VIEW_HINT = 'Why this answer is true — the causal web behind it, and its receipts';
 
 // Remembers a Hold pick in MicModePopover (vs. Tap) so it remains a true input mode across visits.

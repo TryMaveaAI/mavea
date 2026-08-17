@@ -1,5 +1,5 @@
 // World preview — the slim marker a living answer leaves in the canvas. The world is a VIEW of the
-// answer now (the header's "View as world", peer to Focus and the spatial canvas), so this card is
+// answer now (the header's "View as living answer", peer to Focus and the spatial canvas), so this card is
 // no longer the way in: it is the way the world TRAVELS. Keeping the `world` block in spec.blocks is
 // what carries the causal web into the library, a replay, a share, an export and the demo baker —
 // and this strip is what that block looks like when the cards are simply being read.
