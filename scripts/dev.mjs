@@ -9,10 +9,11 @@
 // live. Nothing here is required for the app to run: if no container runtime is ready, Vite still
 // comes up and says plainly which local speech capabilities are unavailable.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { credSafeConfigDir } from './docker-cred-safe.mjs';
 
 const VOICE_HEALTH = 'http://localhost:8880/health';
 const VOICE_SPEECH = 'http://localhost:8880/v1/audio/speech';
@@ -41,15 +42,6 @@ const cacheFile = join(
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
 const green = (s) => `\x1b[32m${s}\x1b[0m`;
 const yellow = (s) => `\x1b[33m${s}\x1b[0m`;
-
-/** Docker refuses to run compose when its credential helper is misconfigured (a common macOS
- *  keychain failure). A config dir holding empty auths sidesteps it — we only ever pull a public
- *  image, so there is nothing to authenticate. */
-function credSafeConfigDir() {
-  const dir = mkdtempSync(join(tmpdir(), 'mavea-docker-'));
-  writeFileSync(join(dir, 'config.json'), '{"auths":{}}');
-  return dir;
-}
 
 function commandReady(command, args) {
   return spawnSync(command, args, { stdio: 'ignore' }).status === 0;
