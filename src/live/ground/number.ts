@@ -54,3 +54,32 @@ export function valueInQuote(value: number, quote: string): boolean {
   const quoteNumbers = quote.match(/\d[\d,.]*\d|\d/g)?.map((s) => s.replace(/[^0-9]/g, ''));
   return quoteNumbers?.includes(digits) ?? false;
 }
+
+/**
+ * Whether a SHARE — a 0..1 fraction of some whole — is actually supported by its cited quote.
+ *
+ * A share is the one measured field nobody writes the way it is stored: a source says "72%" or
+ * "72 percent" or "about three-quarters", and the model hands back 0.72. `valueInQuote` compares
+ * digit runs, so it reads 0.72 as "072" and rejects every honestly-quoted share — which is why the
+ * quote check was skipped for edge weights altogether, and why an edge could carry a real sentence
+ * beside a number that sentence never said. The link then drew thicker for it, and a contribution
+ * ribbon sized itself by it.
+ *
+ * So: both readings of the same number, against the quote's own numeric tokens. 0.72 grounds on a
+ * quote saying 72% OR one saying 0.72, and on nothing else. The tolerance is half a percentage
+ * point because that is precisely what a two-decimal share MEANS — 0.72 denotes [71.5%, 72.5%), so
+ * a source printing "71.6%" is stating this share and one printing "71%" is stating a different
+ * one. Wider would start accepting a neighbouring number; narrower would reject honest rounding.
+ */
+export function shareInQuote(share: number, quote: string): boolean {
+  if (!Number.isFinite(share)) return false;
+  const asPercent = share * 100;
+  const tokens = quote.match(/\d+(?:[.,]\d+)?/g) ?? [];
+  for (const token of tokens) {
+    const n = Number(token.replace(/,/g, ''));
+    if (!Number.isFinite(n)) continue;
+    if (Math.abs(n - asPercent) < 0.5) return true; // "71.6%" backing 0.72
+    if (Math.abs(n - share) <= 0.001) return true; // "0.72" backing 0.72
+  }
+  return false;
+}

@@ -189,6 +189,13 @@ function link(
   return { ...e, status: deriveEdgeStatus(e) };
 }
 
+/** The share, written INTO the receipt exactly the way `reading()` writes a value into its own.
+ *  A weight is a measurement — the ribbons size themselves by it — so the coercer keeps one only
+ *  when the cited sentence actually states it, and a hand-authored sentence drifts from its number
+ *  the moment either is edited. Printed at full precision so the stated share IS the stored one. */
+const shareOf = (weight: number): string =>
+  `Accounted for ${+(weight * 100).toFixed(2)}% of the outcome.`;
+
 /** A measured link: weighted, receipted, T2. Only a world where EVERY link is one of these (and
  *  whose outcome carries a grounded figure) may answer a what-if with an exact delta. */
 function weighed(
@@ -201,7 +208,7 @@ function weighed(
   sign: 1 | -1 = 1,
   counterQuote?: string,
 ): WorldEdge {
-  const receipt: Receipt = { quote, host: HOST };
+  const receipt: Receipt = { quote: `${quote} ${shareOf(weight)}`, host: HOST };
   const e = {
     from,
     to,

@@ -3,9 +3,10 @@
 // series, so a wholly qualitative web — most of them — put every card in the held-aside band while
 // the "Over time" chip stayed live and inviting.
 //
-// The rule the gate applies: a date is NOT a measurement. It needs no receipt and no tier, because
-// nobody is claiming a magnitude — but it must READ as a time, or the timeline would shelve a node
-// the gate had just promised was placeable.
+// The rule the gate applies: a date must READ as a time, or the timeline would shelve a node the
+// gate had just promised was placeable — and it must SAY whether anything backs it. A date is not a
+// measurement, but on the timeline the node's POSITION is the claim, so an unbacked one is a claim
+// wearing no receipt exactly like an unbacked number is.
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { worldToMorph } from '../src/canvas/spatial/morph/adapters';
@@ -40,24 +41,83 @@ describe('parseWorldTime', () => {
 });
 
 describe('coerceWorldSpec — a node date', () => {
-  it('keeps a parseable date with no receipt behind it', () => {
-    expect(dateOf(raw('2008'))).toEqual({ t: '2008' });
+  it('keeps a parseable date nothing backs, and marks it as backed by nothing', () => {
+    expect(dateOf(raw('2008'))).toEqual({ t: '2008', tier: 'T0' });
     expect(dateOf(raw({ t: '2008-03', until: '2009-05' }))).toEqual({
       t: '2008-03',
       until: '2009-05',
+      tier: 'T0',
     });
+  });
+
+  it("takes the node's own receipt as the date's, when that sentence states the date", () => {
+    // How a real source reads: one sentence names the cause AND when it happened, so the node's
+    // quote is the date's quote. The model is asked for `date` as a bare string (explode's schema
+    // note), so in practice this is the only route a date has to evidence at all.
+    const corpus = 'Lehman filed for bankruptcy in 2008-09, and the interbank market froze.';
+    const spec = coerceWorldSpec(
+      {
+        title: 'Why did lending freeze?',
+        outcomeId: 'freeze',
+        nodes: [
+          {
+            id: 'lehman',
+            label: 'Lehman failed',
+            role: 'root',
+            depth: 0,
+            tier: 'T2',
+            date: '2008-09',
+            quote: 'Lehman filed for bankruptcy in 2008-09',
+          },
+          { id: 'freeze', label: 'Lending froze', role: 'outcome', depth: 1, tier: 'T0' },
+        ],
+        edges: [{ from: 'lehman', to: 'freeze', sign: 1, tier: 'T0' }],
+      },
+      corpus,
+    )!;
+    expect(spec.nodes[0].date).toMatchObject({ t: '2008-09', tier: 'T2' });
+    expect(spec.nodes[0].date?.receipt?.quote).toContain('2008-09');
+  });
+
+  it('refuses a receipt that grounds but never says the date it is being used to prove', () => {
+    // The failure this closes: a real sentence beside a year no source ever attached to the node,
+    // and the timeline places it there anyway. The date still stands — it is just no longer dressed
+    // as something a source said.
+    const corpus = 'Lehman filed for bankruptcy, and the interbank market froze.';
+    const spec = coerceWorldSpec(
+      {
+        title: 'Why did lending freeze?',
+        outcomeId: 'freeze',
+        nodes: [
+          {
+            id: 'lehman',
+            label: 'Lehman failed',
+            role: 'root',
+            depth: 0,
+            tier: 'T2',
+            date: '2006',
+            quote: 'Lehman filed for bankruptcy',
+          },
+          { id: 'freeze', label: 'Lending froze', role: 'outcome', depth: 1, tier: 'T0' },
+        ],
+        edges: [{ from: 'lehman', to: 'freeze', sign: 1, tier: 'T0' }],
+      },
+      corpus,
+    )!;
+    expect(spec.nodes[0].date).toEqual({ t: '2006', tier: 'T0' });
+    expect(spec.nodes[0].tier).toBe('T2'); // the CAUSE is still grounded; only its date is not
   });
 
   it('drops a date that is prose, and a period that does not run forwards', () => {
     expect(dateOf(raw('the spring of that year'))).toBeUndefined();
     expect(dateOf(raw({ t: 'whenever' }))).toBeUndefined();
-    expect(dateOf(raw({ t: '2009', until: '2008' }))).toEqual({ t: '2009' });
-    expect(dateOf(raw({ t: '2009', until: 'later' }))).toEqual({ t: '2009' });
+    expect(dateOf(raw({ t: '2009', until: '2008' }))).toEqual({ t: '2009', tier: 'T0' });
+    expect(dateOf(raw({ t: '2009', until: 'later' }))).toEqual({ t: '2009', tier: 'T0' });
     expect(dateOf(raw(42))).toBeUndefined();
   });
 
   it('caps the label before parsing it, so a runaway string cannot become a date', () => {
-    expect(dateOf(raw(`2008${' '.repeat(60)}`))).toEqual({ t: '2008' });
+    expect(dateOf(raw(`2008${' '.repeat(60)}`))).toEqual({ t: '2008', tier: 'T0' });
     expect(dateOf(raw('2008-03-01T00:00:00.000000000000Z'))).toBeUndefined();
   });
 });

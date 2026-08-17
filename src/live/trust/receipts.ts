@@ -25,14 +25,25 @@ function str(v: unknown, max: number): string | null {
 
 /** Build a Receipt from a raw receipt object and a quote that has ALREADY been verified against
  *  the corpus. Every field is clamped; the T1 document anchors (`doc`/`page`) ride along when the
- *  payload names them, so a receipt from an attached file can point back into it. */
-export function pickReceipt(rawReceipt: unknown, quote: string): Receipt {
+ *  payload names them, so a receipt from an attached file can point back into it.
+ *
+ *  `source`, when the caller can supply it, is where the quote was actually FOUND, and it wins over
+ *  anything the payload says. A verbatim gate proves the words are real; it cannot stop real words
+ *  being filed under the wrong link, and the model does not get to answer that question about its
+ *  own claim. Callers whose corpus is a flat string pass nothing and keep the old behaviour. */
+export function pickReceipt(
+  rawReceipt: unknown,
+  quote: string,
+  source?: { url?: string; host?: string } | null,
+): Receipt {
   const r = (rawReceipt && typeof rawReceipt === 'object' ? rawReceipt : {}) as Record<
     string,
     unknown
   >;
-  const url = str(r.url, 400);
-  const host = str(r.host, 80) ?? (url ? hostOf(url) : null);
+  const url = source ? (source.url ?? null) : str(r.url, 400);
+  const host = source
+    ? (source.host ?? (source.url ? hostOf(source.url) : null))
+    : (str(r.host, 80) ?? (url ? hostOf(url) : null));
   const date = str(r.date, 40);
   const cell = str(r.cell, 12);
   const doc = typeof r.doc === 'number' && Number.isInteger(r.doc) && r.doc >= 0 ? r.doc : null;
@@ -64,13 +75,14 @@ export function quoteOf(r: Record<string, unknown>): string | null {
 export function collectReceipts(
   r: Record<string, unknown>,
   ground: (quote: string) => boolean,
+  sourceOf?: (quote: string) => { url?: string; host?: string } | null,
 ): Receipt[] {
   const out: Receipt[] = [];
   const seen = new Set<string>();
   const push = (rawReceipt: unknown, quote: string | null): void => {
     if (!quote || out.length >= EDGE_RECEIPT_CAP || seen.has(quote) || !ground(quote)) return;
     seen.add(quote);
-    out.push(pickReceipt(rawReceipt, quote));
+    out.push(pickReceipt(rawReceipt, quote, sourceOf?.(quote)));
   };
   push(r.receipt, quoteOf(r));
   for (const rr of Array.isArray(r.receipts) ? r.receipts : []) {

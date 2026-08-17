@@ -17,10 +17,11 @@ vi.mock('../src/live/ripple/cache', () => ({
 }));
 
 import { expandWorldNode } from '../src/live/world/expand';
+import { textCorpus } from '../src/live/ground/evidence';
 import type { WorldSpec } from '../src/live/world/types';
 
 const cfg = { provider: 'gemini', model: 'gemini-3.1-flash-lite' } as never;
-const CORPUS = 'Subprime loans made up 620 billion of originations in 2006.';
+const CORPUS = textCorpus('Subprime loans made up 620 billion of originations in 2006.');
 
 /** A standing world: one plain cause, one that already carries an authored breakdown. */
 const world = (title: string): WorldSpec => ({
@@ -156,6 +157,6 @@ describe('expandWorldNode', () => {
     const user = generateMock.mock.calls[0][0].user as string;
     expect(user).toContain('Mortgage volume surged');
     expect(user).toContain('Credit crisis'); // named as a sibling to stay out of the breakdown
-    expect(user).toContain(CORPUS);
+    expect(user).toContain(CORPUS.text);
   });
 });

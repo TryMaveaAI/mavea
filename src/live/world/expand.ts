@@ -14,6 +14,7 @@
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers/index';
 import { cacheGet, cachePut, rippleCacheKey } from '../ripple/cache';
+import type { EvidenceCorpus } from '../ground/evidence';
 import { applyExpansion, coerceExpansion } from './validate';
 import { WORLD_DOMAINS } from './types';
 import type { WorldNode, WorldSpec } from './types';
@@ -70,7 +71,7 @@ const EXPAND_FORMAT = {
 
 const SOURCES_EMPTY = '(none — use only general knowledge; mark EVERY child "T0" with no numbers)';
 
-function expandMessage(prior: WorldSpec, node: WorldNode, corpus: string): string {
+function expandMessage(prior: WorldSpec, node: WorldNode, corpus: EvidenceCorpus): string {
   // The sibling roster is here so the model splits the node rather than re-listing the web around
   // it: without it, "Bank losses" reliably comes back broken down into the causes standing next to
   // it on the very same graph.
@@ -86,24 +87,29 @@ ALREADY ON THE WEB as separate causes — never return these as children:
 ${siblings || '(nothing else)'}
 
 SOURCES:
-${corpus.trim() ? corpus.trim().slice(0, 6000) : SOURCES_EMPTY}
+${corpus.text.trim() ? corpus.text.trim().slice(0, 6000) : SOURCES_EMPTY}
 
 Give the parts "${node.label}" is made of (${CHILD_CAP} max). Quote SOURCES verbatim for any number; otherwise T0 with no numbers. Reply as compact JSON on one line.`;
 }
 
 const inFlight = new Map<string, Promise<WorldNode[] | null>>();
 
-function expandKey(prior: WorldSpec, nodeId: string, corpus: string, cfg: ModelConfig): string {
+function expandKey(
+  prior: WorldSpec,
+  nodeId: string,
+  corpus: EvidenceCorpus,
+  cfg: ModelConfig,
+): string {
   // NUL-separated for the same reason explodeWorld's key is: title and corpus are unbounded text,
   // and a space join lets a word drift across the boundary and collide two different requests.
-  return rippleCacheKey(`world-expand:${prior.title}\0${nodeId}\0${corpus}`, cfg.provider);
+  return rippleCacheKey(`world-expand:${prior.title}\0${nodeId}\0${corpus.text}`, cfg.provider);
 }
 
 async function fetchChildren(
   key: string,
   prior: WorldSpec,
   node: WorldNode,
-  corpus: string,
+  corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldNode[] | null> {
@@ -159,7 +165,7 @@ async function fetchChildren(
 export function expandWorldNode(
   prior: WorldSpec,
   nodeId: string,
-  corpus: string,
+  corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {

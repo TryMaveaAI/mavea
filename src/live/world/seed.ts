@@ -32,11 +32,12 @@ function dated(
 // The two multi-receipt edges share their primary receipt by reference — the coerce gate's
 // receipts[0] === receipt invariant, kept literally true here too.
 const PIVOT_RECEIPT = {
-  quote: 'Rising defaults hollowed out the pools behind the bonds.',
+  quote:
+    'Rising defaults hollowed out the pools behind the bonds. Accounted for 65% of the outcome.',
   host: HOST,
 };
 const PANIC_RECEIPT = {
-  quote: 'Each surprise writedown made every rival look suspect.',
+  quote: 'Each surprise writedown made every rival look suspect. Accounted for 70% of the outcome.',
   host: HOST,
 };
 
@@ -295,7 +296,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Cheap financing pulled buyers forward into the boom.', host: HOST },
+      receipt: {
+        quote:
+          'Cheap financing pulled buyers forward into the boom. Accounted for 55% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'cheap-mortgages',
@@ -306,7 +311,10 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Low rates made ever-larger loans serviceable.', host: HOST },
+      receipt: {
+        quote: 'Low rates made ever-larger loans serviceable. Accounted for 35% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'lending-standards',
@@ -317,7 +325,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Looser underwriting admitted borrowers once turned away.', host: HOST },
+      receipt: {
+        quote:
+          'Looser underwriting admitted borrowers once turned away. Accounted for 50% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'housing-boom',
@@ -328,7 +340,10 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Demand outran supply and prices followed.', host: HOST },
+      receipt: {
+        quote: 'Demand outran supply and prices followed. Accounted for 70% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'mortgage-volume',
@@ -339,7 +354,10 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Nearly every new loan was pooled and resold.', host: HOST },
+      receipt: {
+        quote: 'Nearly every new loan was pooled and resold. Accounted for 80% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'home-prices',
@@ -350,7 +368,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: -1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Rising prices let stressed borrowers refinance or sell.', host: HOST },
+      receipt: {
+        quote:
+          'Rising prices let stressed borrowers refinance or sell. Accounted for 40% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'mortgage-volume',
@@ -361,7 +383,10 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'The marginal loan was the first to sour.', host: HOST },
+      receipt: {
+        quote: 'The marginal loan was the first to sour. Accounted for 50% of the outcome.',
+        host: HOST,
+      },
     },
     {
       // Multi-receipt edge: the defaults → asset-values link is the crisis pivot, so it carries
@@ -389,7 +414,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: -1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'While marks held up, balance sheets looked whole.', host: HOST },
+      receipt: {
+        quote:
+          'While marks held up, balance sheets looked whole. Accounted for 60% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'mbs-cdo-exposure',
@@ -401,7 +430,8 @@ export const WORLD_SEED: WorldSpec = {
       tier: 'T2',
       status: 'supported',
       receipt: {
-        quote: 'The bigger the book of structured paper, the bigger the hit.',
+        quote:
+          'The bigger the book of structured paper, the bigger the hit. Accounted for 50% of the outcome.',
         host: HOST,
       },
     },
@@ -430,7 +460,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: -1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Banks hoarded cash rather than lend to each other.', host: HOST },
+      receipt: {
+        quote:
+          'Banks hoarded cash rather than lend to each other. Accounted for 60% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'liquidity',
@@ -441,7 +475,11 @@ export const WORLD_SEED: WorldSpec = {
       sign: -1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'While money still moved, the real economy held on.', host: HOST },
+      receipt: {
+        quote:
+          'While money still moved, the real economy held on. Accounted for 30% of the outcome.',
+        host: HOST,
+      },
     },
     {
       from: 'bank-losses',
@@ -453,7 +491,8 @@ export const WORLD_SEED: WorldSpec = {
       tier: 'T2',
       status: 'supported',
       receipt: {
-        quote: 'Capital-starved banks pulled credit from firms and households.',
+        quote:
+          'Capital-starved banks pulled credit from firms and households. Accounted for 45% of the outcome.',
         host: HOST,
       },
     },
@@ -466,7 +505,10 @@ export const WORLD_SEED: WorldSpec = {
       sign: 1,
       tier: 'T2',
       status: 'supported',
-      receipt: { quote: 'Fear finished what the losses started.', host: HOST },
+      receipt: {
+        quote: 'Fear finished what the losses started. Accounted for 35% of the outcome.',
+        host: HOST,
+      },
     },
   ],
 };

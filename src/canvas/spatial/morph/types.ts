@@ -19,6 +19,9 @@ export interface MorphNodeDatum {
   depth?: number;
   /** ms epoch; absent → shelf in timeline. */
   date?: { start: number; end?: number };
+  /** Whether anything BACKS that date. A timeline states the date as a position, so an unbacked one
+   *  is a claim with no receipt like any other — the surface shows the two differently. */
+  dateGrounded?: boolean;
   /** Absent/empty → shelf in chart. */
   series?: Array<{ t: number; v: number }>;
   value?: number;

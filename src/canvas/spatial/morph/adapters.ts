@@ -5,6 +5,7 @@
 // growing a dependency on the honesty spine. The one thing it takes from
 // the contract is how to READ a time label, which is not an honesty rule — it is the definition of
 // the field, and a gate and a scale that disagreed about it would shelve a node nobody could see.
+import { isReal } from '../../../live/ground/types';
 import { parseWorldTime } from '../../../live/world/types';
 import type { WorldNode, WorldSpec } from '../../../live/world/types';
 import type { MorphEdgeDatum, MorphNodeDatum, WorldData } from './types';
@@ -96,6 +97,9 @@ export function worldToMorph(spec: WorldSpec): WorldData {
       ...(unit !== undefined ? { unit } : {}),
       ...(series.length > 0 ? { series } : {}),
       ...(date ? { date } : {}),
+      // Only a node's OWN date can be backed; a span inferred from series points is dated by those
+      // points' own receipts, which the series already carries.
+      ...(date && n.date && isReal(n.date.tier ?? 'T0') ? { dateGrounded: true } : {}),
       ...(n.domain !== undefined ? { domain: n.domain } : {}),
       ...(parentId !== undefined ? { parentId } : {}),
     });

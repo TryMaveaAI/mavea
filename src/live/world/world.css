@@ -245,6 +245,18 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* A date a source actually states reads as established; one only the model knows stays quiet and
+   italic, the same distinction the trust layer draws everywhere else. The position is the claim
+   here, so this is the receipt — there is nowhere else on a 160×44 entry to wear one. */
+.wo-when {
+  font-style: italic;
+  opacity: 0.72;
+}
+.wo-when[data-said] {
+  font-style: normal;
+  opacity: 1;
+  color: var(--text-secondary);
+}
 
 /* A figure on a card sits under its label, in the insight accent — the trust layer keeps it plain
    text until it is hovered, so this is colour and rhythm, never a badge. */

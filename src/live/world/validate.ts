@@ -11,7 +11,9 @@
 // mapped to trust the merge at all.
 import { parseLooseJson } from '../ground/json';
 import { makeVerbatimGrounder } from '../ground/verbatim';
-import { valueInQuote } from '../ground/number';
+import { EMPTY_CORPUS, makeAttributor, textCorpus } from '../ground/evidence';
+import type { EvidenceCorpus, EvidenceSource } from '../ground/evidence';
+import { shareInQuote, valueInQuote } from '../ground/number';
 import { isReal } from '../ground/types';
 import type { Receipt, Tier } from '../ground/types';
 import { asEdgeRelation } from '../trust/relations';
@@ -85,17 +87,60 @@ function timeLabel(v: unknown): { label: string; at: number } | null {
   return at === null ? null : { label, at };
 }
 
-/** A node's own date. A date is not a measurement — it needs no receipt and no tier — but it must
- *  READ as a time, or the timeline would shelve it while the gate claimed it was placeable. A bare
- *  string is accepted as the instant form (`"2008"`), which is how a model usually writes one; an
- *  `until` that is not strictly after `t` is not a period and is dropped. */
-function coerceDate(raw: unknown): WorldDate | undefined {
+/** How the coercer reads the corpus: whether a quote is really in it, and — when the corpus kept
+ *  its sources apart — which one it was really in. The two travel together everywhere, because a
+ *  receipt is only honest when both questions were answered by Mavéa rather than by the model. */
+interface Evidence {
+  holds: (quote: string) => boolean;
+  sourceOf: (quote: string) => EvidenceSource | null;
+}
+
+/** A node's own date, and the evidence for it. It must READ as a time, or the timeline would shelve
+ *  it while the gate claimed it was placeable. A bare string is accepted as the instant form
+ *  (`"2008"`), which is how a model usually writes one; an `until` that is not strictly after `t` is
+ *  not a period and is dropped. A date that nothing backs still places the node — the model's own
+ *  knowledge of when things happened is usually right — but it says so, because on the timeline the
+ *  node's POSITION is the claim and an unbacked one must not read like a measured one. */
+function coerceDate(
+  raw: unknown,
+  ev: Evidence,
+  /** The node's OWN verified receipt, which is usually what dates it: a source writes "In September
+   *  2008 Lehman filed" once, and that one sentence backs both the cause and its place in time. The
+   *  model is asked for `date` as a bare string (see explode's schema note — it never emits the
+   *  object form), so this is in practice the only way a date is ever backed. */
+  own: { quote: string; tier: Tier } | null,
+): WorldDate | undefined {
   const r = typeof raw === 'string' ? { t: raw } : raw;
   if (!r || typeof r !== 'object' || Array.isArray(r)) return undefined;
-  const start = timeLabel((r as Record<string, unknown>).t);
+  const o = r as Record<string, unknown>;
+  const start = timeLabel(o.t);
   if (!start) return undefined;
-  const end = timeLabel((r as Record<string, unknown>).until);
-  return { t: start.label, ...(end && end.at > start.at ? { until: end.label } : {}) };
+  const end = timeLabel(o.until);
+
+  // Gated like a value's: the quote must be in the corpus AND must actually contain the label being
+  // claimed. A sentence that grounds but never says "2007" dates nothing — it would put the node on
+  // the axis at a year no source ever attached to it, which is the whole failure this closes.
+  const ownTier: Tier = TIERS.includes(o.tier as Tier) ? (o.tier as Tier) : 'T0';
+  const ownQuote = str(o.quote, QUOTE_MAX);
+  const candidate =
+    isReal(ownTier) && ownQuote
+      ? { quote: ownQuote, tier: ownTier, receipt: o.receipt }
+      : own
+        ? { ...own, receipt: undefined }
+        : null;
+  const dated =
+    candidate && candidate.quote.includes(start.label) && ev.holds(candidate.quote)
+      ? {
+          tier: candidate.tier,
+          receipt: pickReceipt(candidate.receipt, candidate.quote, ev.sourceOf(candidate.quote)),
+        }
+      : { tier: 'T0' as Tier };
+
+  return {
+    t: start.label,
+    ...(end && end.at > start.at ? { until: end.label } : {}),
+    ...dated,
+  };
 }
 
 /** The why-node field set + detail, gated exactly like why/validate's node loop: a claimed T1/T2
@@ -104,7 +149,7 @@ function coerceDate(raw: unknown): WorldDate | undefined {
 function coerceNodeCore(
   r: Record<string, unknown>,
   label: string,
-  ground: (quote: string) => boolean,
+  ev: Evidence,
   illustrative: boolean,
 ): Omit<WorldNode, 'id' | 'series' | 'children'> {
   const role: CausalRole = ROLES.has(r.role as CausalRole) ? (r.role as CausalRole) : 'mechanism';
@@ -120,14 +165,13 @@ function coerceNodeCore(
   let value = typeof r.value === 'number' && Number.isFinite(r.value) ? r.value : undefined;
   const unit = str(r.unit, UNIT_MAX) ?? undefined;
   const detail = str(r.detail, DETAIL_MAX) ?? undefined;
-  const date = coerceDate(r.date);
   const domain = asWorldDomain(r.domain);
   const quote = quoteOf(r);
   let receipt: Receipt | undefined;
 
   if (isReal(tier)) {
-    if (quote && ground(quote)) {
-      receipt = pickReceipt(r.receipt, quote);
+    if (quote && ev.holds(quote)) {
+      receipt = pickReceipt(r.receipt, quote, ev.sourceOf(quote));
       if (value !== undefined && !valueInQuote(value, quote)) value = undefined;
     } else {
       tier = 'T0'; // claimed real but ungrounded → demote, strip the number
@@ -141,6 +185,13 @@ function coerceNodeCore(
   } else {
     value = undefined; // T0 carries no number
   }
+
+  // After the node's own receipt is settled, because that receipt is what usually dates it.
+  const date = coerceDate(
+    r.date,
+    ev,
+    receipt && isReal(tier) ? { quote: receipt.quote, tier } : null,
+  );
 
   return {
     label,
@@ -160,11 +211,7 @@ function coerceNodeCore(
  *  the point's digits inside it — and a fabricated point is stripped, never averaged in. A T3
  *  series exists only in an illustrative world; a T0 (or unrecognized) tier can't carry a series at
  *  all. A series with no surviving points is no series. */
-function coerceSeries(
-  raw: unknown,
-  ground: (quote: string) => boolean,
-  illustrative: boolean,
-): WorldSeries | undefined {
+function coerceSeries(raw: unknown, ev: Evidence, illustrative: boolean): WorldSeries | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
   const r = raw as Record<string, unknown>;
   const tier: Tier = TIERS.includes(r.tier as Tier) ? (r.tier as Tier) : 'T0';
@@ -173,7 +220,7 @@ function coerceSeries(
   const unit = str(r.unit, UNIT_MAX) ?? undefined;
   const seriesQuote = quoteOf(r);
   const receipt =
-    isReal(tier) && seriesQuote && ground(seriesQuote)
+    isReal(tier) && seriesQuote && ev.holds(seriesQuote)
       ? pickReceipt(r.receipt, seriesQuote)
       : undefined;
 
@@ -187,8 +234,8 @@ function coerceSeries(
     if (!t || value === undefined) continue;
     if (isReal(tier)) {
       const q = quoteOf(p);
-      if (!q || !ground(q) || !valueInQuote(value, q)) continue;
-      points.push({ t, value, receipt: pickReceipt(p.receipt, q) });
+      if (!q || !ev.holds(q) || !valueInQuote(value, q)) continue;
+      points.push({ t, value, receipt: pickReceipt(p.receipt, q, ev.sourceOf(q)) });
     } else {
       points.push({ t, value }); // T3 — caveated at world level, no receipt to wear
     }
@@ -203,7 +250,7 @@ function coerceSeries(
 function coerceChildren(
   raw: unknown,
   parentId: string,
-  ground: (quote: string) => boolean,
+  ev: Evidence,
   illustrative: boolean,
 ): WorldNode[] {
   const out: WorldNode[] = [];
@@ -223,10 +270,10 @@ function coerceChildren(
     if (seen.has(id)) continue;
     seen.add(id);
     const label = str(r.label, LABEL_MAX) ?? slug;
-    const series = coerceSeries(r.series, ground, illustrative);
+    const series = coerceSeries(r.series, ev, illustrative);
     out.push({
       id,
-      ...coerceNodeCore(r, label, ground, illustrative),
+      ...coerceNodeCore(r, label, ev, illustrative),
       ...(series ? { series } : {}),
     });
   }
@@ -355,12 +402,13 @@ function withStructuralNotes(
 
 /**
  * Parse + ground a WorldSpec from raw model output. Returns null when unsalvageable (no title,
- * <2 nodes). `corpus` is the concatenated grounding text; pass '' for a from-knowledge world,
- * which correctly yields an all-T0 (qualitative) result. Edges may only reference TOP-LEVEL node
+ * <2 nodes). `corpus` is the parked evidence; pass '' or EMPTY_CORPUS for a from-knowledge world,
+ * which correctly yields an all-T0 (qualitative) result. A bare string still works and simply has
+ * no source provenance to attribute a quote to — the receipt then keeps whatever it was given. Edges may only reference TOP-LEVEL node
  * ids — a child is a breakdown, not a causal actor — and anything referencing an unknown id is
  * dropped, never rewired.
  */
-export function coerceWorldSpec(raw: unknown, corpus: string): WorldSpec | null {
+export function coerceWorldSpec(raw: unknown, corpus: EvidenceCorpus | string): WorldSpec | null {
   const parsed = typeof raw === 'string' ? parseLooseJson(raw) : raw;
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
   const o = parsed as Record<string, unknown>;
@@ -373,7 +421,11 @@ export function coerceWorldSpec(raw: unknown, corpus: string): WorldSpec | null 
     unknown
   >;
   const illustrative = prov.illustrative === true;
-  const ground = makeVerbatimGrounder(corpus ?? '');
+  const evidence = typeof corpus === 'string' ? textCorpus(corpus) : (corpus ?? EMPTY_CORPUS);
+  const ev: Evidence = {
+    holds: makeVerbatimGrounder(evidence.text),
+    sourceOf: makeAttributor(evidence),
+  };
 
   const nodes: WorldNode[] = [];
   const seenIds = new Set<string>();
@@ -385,11 +437,11 @@ export function coerceWorldSpec(raw: unknown, corpus: string): WorldSpec | null 
     const label = str(r.label, LABEL_MAX);
     if (!id || !label || seenIds.has(id)) continue; // duplicate — first wins
     seenIds.add(id);
-    const series = coerceSeries(r.series, ground, illustrative);
-    const children = coerceChildren(r.children, id, ground, illustrative);
+    const series = coerceSeries(r.series, ev, illustrative);
+    const children = coerceChildren(r.children, id, ev, illustrative);
     nodes.push({
       id,
-      ...coerceNodeCore(r, label, ground, illustrative),
+      ...coerceNodeCore(r, label, ev, illustrative),
       ...(series ? { series } : {}),
       ...(children.length ? { children } : {}),
     });
@@ -416,8 +468,18 @@ export function coerceWorldSpec(raw: unknown, corpus: string): WorldSpec | null 
     let tier: Tier = TIERS.includes(r.tier as Tier) ? (r.tier as Tier) : 'T0';
     let weight =
       typeof r.weight === 'number' && Number.isFinite(r.weight) ? clampWeight(r.weight) : undefined;
-    const receipts = collectReceipts(r, ground);
+    const receipts = collectReceipts(r, ev.holds, ev.sourceOf);
     let provisional = false;
+
+    // A weight is a MEASUREMENT and needs the same proof a node's value needs: a quote that says
+    // the number. Receipts alone only prove the SENTENCE is real, and "low rates contributed to the
+    // boom" backs no particular share of anything — yet the graph drew the link thicker for it and
+    // the contribution ribbons sized themselves by it, which is an orphan pixel with a citation
+    // stapled to it. A share is checked in both the forms a source writes one (`shareInQuote`).
+    const claimed = weight;
+    if (claimed !== undefined && !receipts.some((rc) => shareInQuote(claimed, rc.quote))) {
+      weight = undefined;
+    }
 
     if (!(isReal(tier) && weight !== undefined && receipts.length > 0)) {
       tier = 'T0'; // ungrounded link → qualitative, faint, no weight — the why rule
@@ -431,7 +493,9 @@ export function coerceWorldSpec(raw: unknown, corpus: string): WorldSpec | null 
       ? str((rawCounter as Record<string, unknown>).quote, QUOTE_MAX)
       : null;
     const counter =
-      counterQuote && ground(counterQuote) ? pickReceipt(rawCounter, counterQuote) : undefined;
+      counterQuote && ev.holds(counterQuote)
+        ? pickReceipt(rawCounter, counterQuote, ev.sourceOf(counterQuote))
+        : undefined;
 
     edges.push({
       from,
@@ -743,13 +807,19 @@ export function mapOntoWorld(existing: WorldSpec, incoming: WorldSpec): WorldSpe
 export function coerceExpansion(
   raw: unknown,
   parentId: string,
-  corpus: string,
+  corpus: EvidenceCorpus | string,
   illustrative: boolean,
 ): WorldNode[] {
   const parsed = typeof raw === 'string' ? parseLooseJson(raw) : raw;
   if (!parsed || typeof parsed !== 'object') return [];
   const children = (parsed as { children?: unknown }).children;
-  return coerceChildren(children, parentId, makeVerbatimGrounder(corpus), illustrative);
+  const evidence = typeof corpus === 'string' ? textCorpus(corpus) : (corpus ?? EMPTY_CORPUS);
+  return coerceChildren(
+    children,
+    parentId,
+    { holds: makeVerbatimGrounder(evidence.text), sourceOf: makeAttributor(evidence) },
+    illustrative,
+  );
 }
 
 /** Attach a breakdown to one TOP-LEVEL node, purely. An authored breakdown is never overwritten:

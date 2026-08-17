@@ -8,6 +8,8 @@
 // which is exactly what an ungrounded world should be.
 import type { WebSource } from '../../data/conversation';
 import type { Attachment } from '../attachments';
+import { buildCorpus, EMPTY_CORPUS, webChunk } from '../ground/evidence';
+import type { EvidenceChunk, EvidenceCorpus } from '../ground/evidence';
 import { attachmentsToText } from '../why/corpus';
 
 /** Two questions' worth, no more. The parked attachments are the user's real files — the same
@@ -40,17 +42,21 @@ export function rememberTurnGrounding(question: string, grounding: TurnGrounding
 }
 
 /** The grounding corpus for `question`, assembled from parked material ONLY — never a new fetch.
- *  Empty when the turn had nothing to give, which the explode degrades to honestly. */
-export async function turnCorpus(question: string): Promise<string> {
+ *  Empty when the turn had nothing to give, which the explode degrades to honestly.
+ *
+ *  Each file and each web source is its own chunk, so a quote is attributed to where it actually
+ *  matched rather than to the URL the model wrote next to it. And a web source contributes its
+ *  EXCERPT: a corpus of bare titles and links holds no sentence anyone can quote, so every figure
+ *  the model proposed failed the verbatim gate and the world came out ungrounded however good the
+ *  evidence behind it was — the sibling path (why/corpus' webSnippets) had always sent the text. */
+export async function turnCorpus(question: string): Promise<EvidenceCorpus> {
   const grounding = parked.get(question);
-  if (!grounding) return '';
-  const fromFiles = await attachmentsToText(grounding.attachments);
-  const fromWeb = grounding.sources
-    .map((s) => (s.url ? `${s.title}. ${s.url}` : s.title))
-    .filter((line) => line.trim())
-    .join('\n');
-  return [fromFiles, fromWeb]
-    .filter((s) => s.trim())
-    .join('\n\n')
-    .slice(0, MAX_CHARS);
+  if (!grounding) return EMPTY_CORPUS;
+  const files = await Promise.all(
+    grounding.attachments.map(async (a): Promise<EvidenceChunk> => ({
+      source: { kind: 'file', title: a.name },
+      text: await attachmentsToText([a]),
+    })),
+  );
+  return buildCorpus([...files, ...grounding.sources.map(webChunk)], MAX_CHARS);
 }

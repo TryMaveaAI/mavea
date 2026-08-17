@@ -11,6 +11,7 @@ import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers/index';
 import { speedTierFor } from '../speed';
 import { cacheGet, cachePut, rippleCacheKey } from '../ripple/cache';
+import type { EvidenceCorpus } from '../ground/evidence';
 import { coerceWorldSpec, mapOntoWorld, mappedFraction } from './validate';
 import { WORLD_DOMAINS } from './types';
 import type { WorldSpec } from './types';
@@ -22,7 +23,7 @@ const HONESTY = `HARD HONESTY RULES:
 - Every point of a "series" needs its OWN verbatim quote containing that point's digits. A series you cannot quote point-by-point must be omitted entirely, never smoothed or estimated.
 - "sign" is 1 (reinforces) or -1 (dampens). "role" is "root" | "mechanism" | "outcome". "depth" grows from roots (0) to the outcome. Edges may only join TOP-LEVEL nodes — "children" are a breakdown of one node, never causal actors.
 - Node "id" is a short stable slug of the label (lowercase, hyphens: "cheap-credit"), because a later turn has to be able to name the same node again.
-- "date" is WHEN a cause happened, as a plain string: a year ("1986"), an ISO date ("1986-01-28"), or an ISO timestamp. This is NOT a measurement and needs NO source — give one for every node you can place in time, even in an all-T0 world with no numbers anywhere, because it is what lets the reader lay the same causes out on a timeline. Omit it only when you would be guessing at the year.
+- "date" is WHEN a cause happened, as a plain string: a year ("1986"), an ISO date ("1986-01-28"), or an ISO timestamp. Give one for every node you can place in time, even in an all-T0 world with no numbers anywhere, because it is what lets the reader lay the same causes out on a timeline. Omit it only when you would be guessing at the year. Where a source sentence states the date, make that the node's "quote" — a date the sources back is shown as established, and one only you know is shown as your own.
 - "domain" is the sphere a node belongs to, one of: economy | policy | technology | science | environment | society | health | conflict. It is a description, not a claim, so it needs no source — but OMIT it when no single sphere fits, and never stretch one to cover a node.`;
 
 const SHAPE = `Shape: {"title":"the question, verbatim","outcomeId":"<id of the outcome node>","nodes":[{"id":"","label":"","role":"","depth":0,"domain":"","date":"1986-01-28","tier":"T0","value":0,"unit":"","quote":"","detail":"","series":{"tier":"T0","unit":"","points":[{"t":"2008","value":0,"quote":""}]},"children":[{"id":"","label":"","tier":"T0"}]}],"edges":[{"from":"","to":"","verb":"","weight":0,"sign":1,"tier":"T0","quote":"","relation":""}],"provenance":{"illustrative":false}}`;
@@ -149,11 +150,11 @@ function budgetFor(model: string): { maxTokens: number; nodeCap: number } {
 const SOURCES_EMPTY =
   '(none — use only general knowledge; mark EVERY node and edge "T0" with no numbers and no series)';
 
-function sourcesBlock(corpus: string): string {
-  return corpus.trim() ? corpus.trim().slice(0, 6000) : SOURCES_EMPTY;
+function sourcesBlock(corpus: EvidenceCorpus): string {
+  return corpus.text.trim() ? corpus.text.trim().slice(0, 6000) : SOURCES_EMPTY;
 }
 
-function explodeMessage(question: string, corpus: string, nodeCap: number): string {
+function explodeMessage(question: string, corpus: EvidenceCorpus, nodeCap: number): string {
   return `QUESTION: ${question.trim()}
 
 SOURCES:
@@ -168,7 +169,12 @@ function rosterOf(prior: WorldSpec): string {
   return prior.nodes.map((n) => `${n.id} = ${n.label}`).join('\n');
 }
 
-function evolveMessage(prior: WorldSpec, ask: string, corpus: string, nodeCap: number): string {
+function evolveMessage(
+  prior: WorldSpec,
+  ask: string,
+  corpus: EvidenceCorpus,
+  nodeCap: number,
+): string {
   return `TITLE (re-state verbatim): ${prior.title}
 
 EXISTING NODES — reuse these ids exactly:
@@ -189,7 +195,7 @@ async function callWorld(
   user: string,
   cfg: ModelConfig,
   maxTokens: number,
-  corpus: string,
+  corpus: EvidenceCorpus,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {
   let raw: string | object;
@@ -228,13 +234,13 @@ export const BUILT_CAP = 16;
  *  NUL-separated (not a space) because `question` and `corpus` are each unbounded text, so a
  *  plain-space join lets a word shift across the boundary between two different (question, corpus)
  *  pairs produce the identical identity string — NUL can't occur in either field, so it can't. */
-function worldKey(question: string, corpus: string, cfg: ModelConfig): string {
-  return rippleCacheKey(`world:${question}\0${corpus}`, cfg.provider);
+function worldKey(question: string, corpus: EvidenceCorpus, cfg: ModelConfig): string {
+  return rippleCacheKey(`world:${question}\0${corpus.text}`, cfg.provider);
 }
 
 /**
  * Explode a causal question into a grounded living world, or null on failure. `corpus` is the
- * grounding text (attachments + whatever sources the turn already had); pass '' for a
+ * parked evidence (attachments + whatever sources the turn already had); pass EMPTY_CORPUS for a
  * from-knowledge world, which correctly comes back all-T0 (qualitative, no numbers).
  *
  * This is THE call a living answer costs, and it runs only when a reader opens one — so it is
@@ -242,7 +248,7 @@ function worldKey(question: string, corpus: string, cfg: ModelConfig): string {
  */
 export function explodeWorld(
   question: string,
-  corpus: string,
+  corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {
@@ -268,7 +274,7 @@ export function explodeWorld(
 async function buildWorld(
   key: string,
   question: string,
-  corpus: string,
+  corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {
@@ -316,7 +322,7 @@ const MIN_MAPPED = 0.5;
 export async function evolveWorld(
   prior: WorldSpec,
   ask: string,
-  corpus: string,
+  corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {

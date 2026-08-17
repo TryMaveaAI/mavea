@@ -678,7 +678,15 @@ function WorldSurface({
         // whose position a reader has to measure against the axis by eye.
         const spans = own?.until !== undefined || (points?.length ?? 0) > 1;
         const at = own?.t ?? points?.[0]?.t;
-        return spans || !at ? null : <span className="wo-when">{at}</span>;
+        // `data-said` when a source actually put the node here. The timeline states a date as a
+        // POSITION, so an unbacked one is a claim wearing no receipt — it still places the node
+        // (the model's sense of when things happened is usually right), but it must not read like
+        // a measured one sitting beside it.
+        return spans || !at ? null : (
+          <span className="wo-when" data-said={node.dateGrounded ? '' : undefined}>
+            {at}
+          </span>
+        );
       }
       // Only the card has room for the rest, and the hypothetical lane has nothing to prove: it is
       // a projection, so its nodes carry structure and never a receipt.

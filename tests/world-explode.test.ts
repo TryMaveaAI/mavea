@@ -17,11 +17,14 @@ vi.mock('../src/live/ripple/cache', () => ({
 }));
 
 import { BUILT_CAP, evolveWorld, explodeWorld } from '../src/live/world/explode';
+import { EMPTY_CORPUS, textCorpus } from '../src/live/ground/evidence';
 import type { WorldSpec } from '../src/live/world/types';
 
 const cfg = { provider: 'gemini', model: 'gemini-3.1-flash-lite' } as never;
-const CORPUS =
-  'Policy rates were held near 1 percent into 2004. Monthly defaults rose 6.2 points in March.';
+const CORPUS = textCorpus(
+  'Policy rates were held near 1 percent into 2004. Monthly defaults rose 6.2 points in March. ' +
+    'Cheap credit explains about 70% of the growth.',
+);
 
 /** One quotable fact, one invented one — the coercion gate must keep the first and strip the
  *  second, on the node AND on the edge that leans on it. */
@@ -59,7 +62,7 @@ const RAW = {
       weight: 0.7,
       tier: 'T2',
       relation: 'causes',
-      quote: 'Policy rates were held near 1 percent into 2004',
+      quote: 'Cheap credit explains about 70% of the growth',
     },
   ],
   provenance: {},
@@ -95,14 +98,14 @@ describe('explodeWorld', () => {
     const invented = world!.nodes.find((n) => n.id === 'blowup')!;
     expect(invented.tier).toBe('T0');
     expect(invented.value).toBeUndefined();
-    // The edge's own quote does ground, so it keeps its weight and its receipt.
+    // The edge's own quote grounds AND states the share, which is what a weight costss receipt.
     expect(world!.edges[0].weight).toBe(0.7);
-    expect(world!.edges[0].receipt?.quote).toContain('1 percent');
+    expect(world!.edges[0].receipt?.quote).toContain('70%');
   });
 
   it('with no corpus, comes back all-T0 — a structure with no numbers at all', async () => {
     generateMock.mockResolvedValue({ raw: JSON.stringify(RAW) });
-    const world = await explodeWorld('Why did lending blow up?', '', cfg);
+    const world = await explodeWorld('Why did lending blow up?', EMPTY_CORPUS, cfg);
     expect(world!.nodes.every((n) => n.tier === 'T0' && n.value === undefined)).toBe(true);
     expect(world!.edges.every((e) => e.weight === undefined)).toBe(true);
   });
@@ -231,7 +234,7 @@ describe('what an ungrounded world is still allowed to carry', () => {
         edges: [],
       }),
     });
-    const world = await explodeWorld('Why did it happen?', '', cfg);
+    const world = await explodeWorld('Why did it happen?', EMPTY_CORPUS, cfg);
 
     const req = generateMock.mock.calls[0][0];
     // Asked for as a PLAIN STRING. As a nested {t, until} object the field was declared, prompted

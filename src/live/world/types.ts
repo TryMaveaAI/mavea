@@ -36,12 +36,21 @@ export function parseWorldTime(t: string): number | null {
 }
 
 /** When a node happened: an instant (`t`) or, with `until`, a period. Both are time labels in the
- *  same vocabulary a series point uses. A date is not a measurement — it carries no receipt and no
- *  tier — but it must parse, or the gate drops it. */
+ *  same vocabulary a series point uses, and both must parse or the gate drops them.
+ *
+ *  A date is not a measurement, and for a long time that was read as "so it needs no receipt". It
+ *  does. "This happened in September 2008" is a factual claim, and on the timeline the node's X
+ *  POSITION is how that claim is stated — no digits on the card, but the pixel says it just as
+ *  loudly. An unbacked date is therefore an orphan pixel like any other, so a date carries its own
+ *  evidence: T1/T2 when a source put it there, T0 when only the model's own knowledge did. */
 export interface WorldDate {
   t: string;
   /** The end of the period, when the node covers one. Later than `t`, or it is dropped. */
   until?: string;
+  /** What put the node here. Absent means the same as T0 — placed, but backed by nothing quoted. */
+  tier?: Tier;
+  /** The sentence that dates it, when one does. Present only with a real tier. */
+  receipt?: Receipt;
 }
 
 /** One dated observation. A point on a real (T1/T2) series carries its own receipt. */

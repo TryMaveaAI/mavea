@@ -12,7 +12,9 @@ const CORPUS =
   'Home prices fell 30% from the 2006 peak. In 2003 originations were 3,800 billion. ' +
   'In 2004 originations were 2,900 billion. Writedowns reached 490 billion in 2008. ' +
   'Prime loans made up 1,900 billion. Losses drove panic across the interbank market. ' +
-  'Regulators later argued the link was overstated.';
+  'Regulators later argued the link was overstated. ' +
+  'Subprime accounted for 45% of the writedowns. ' +
+  'Lehman filed for bankruptcy in 2008-09.';
 
 const RAW = {
   title: 'Why did the 2008 financial crisis happen?',
@@ -90,6 +92,16 @@ const RAW = {
       ],
     },
     {
+      // A share the corpus states outright — the one way a weight survives.
+      from: 'volume',
+      to: 'losses',
+      weight: 0.45,
+      sign: 1,
+      tier: 'T2',
+      relation: 'contributes',
+      quote: 'Subprime accounted for 45% of the writedowns',
+    },
+    {
       from: 'prices',
       to: 'losses',
       weight: 0.5,
@@ -148,11 +160,20 @@ describe('coerceWorldSpec grounding', () => {
     expect(children[0].value).toBe(1900); // a child runs the same grounding gate
   });
 
-  it('derives supported: grounded receipt + real tier + weight', () => {
-    const e = world.edges.find((x) => x.from === 'losses' && x.to === 'crisis')!;
+  it('keeps a weight the quote actually states, in the form a source writes one', () => {
+    const e = world.edges.find((x) => x.from === 'volume' && x.to === 'losses')!;
     expect(e.status).toBe('supported');
     expect(e.tier).toBe('T2');
-    expect(e.weight).toBe(0.6);
+    expect(e.weight).toBe(0.45); // "45% of the writedowns" — the share said out loud
+  });
+
+  it('strips a weight no receipt states, however real the sentence beside it is', () => {
+    // The whole point of the rule. "Losses drove panic across the interbank market" is verbatim in
+    // the corpus and says nothing whatever about 60% — but the graph drew the link thicker for that
+    // number and the contribution ribbons sized themselves by it.
+    const e = world.edges.find((x) => x.from === 'losses' && x.to === 'crisis')!;
+    expect(e.weight).toBeUndefined();
+    expect(e.status).toBe('provisional');
     expect(e.relation).toBe('causes');
   });
 
