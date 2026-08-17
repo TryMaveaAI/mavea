@@ -80,6 +80,10 @@ function rollBack(id: string, before: BoardIds | null): void {
 // cheaply — refreshDashboardNow answers 'busy' without spending anything while the slot is held.
 const BUSY_POLL_MS = 1_500;
 const BUSY_WAIT_MS = 45_000;
+/** Bounded patience for a probe that FAILED outright — sized for a per-minute rate window that
+ *  outlived the adapter's own retry-after retries; such a window drains within seconds. */
+const FAILED_RETRIES = 2;
+const FAILED_RETRY_MS = 10_000;
 const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Did every search metric this addition brought in actually land a value? A blank-key metric is
@@ -142,26 +146,42 @@ export async function confirmRealData(
   const title = dash.title;
 
   const startedAt = Date.now();
-  let outcome = await refreshDashboardNow(id);
-  for (let waited = 0; outcome === 'busy' && waited < BUSY_WAIT_MS; waited += BUSY_POLL_MS) {
-    await delay(BUSY_POLL_MS);
-    // Creating a board arms its first check, so the automatic loop usually claims this very
-    // dashboard a beat before the gate can — and the pass it is running is the same grounded search
-    // the gate wants. Waiting it out only to fire an identical second search cost the user two web
-    // searches per addition and left them staring at "Confirming live data…" for both. Take the
-    // result that just landed instead: judged by exactly the same rule as the gate's own pass.
-    if ((getDashboard(id)?.lastRefreshedAt ?? 0) >= startedAt) {
-      return addedMetricsGrounded(id, before)
-        ? 'confirmed'
-        : rollBackAndLog(id, before, title, 'unverified');
+  // One probe attempt, waiting out a busy slot. 'landed' means a CONCURRENT pass finished while we
+  // waited: creating a board arms its first check, so the automatic loop usually claims this very
+  // dashboard a beat before the gate can — and the pass it is running is the same grounded search
+  // the gate wants. Waiting it out only to fire an identical second search cost the user two web
+  // searches per addition; take the result that just landed instead, judged by exactly the same
+  // rule as the gate's own pass.
+  const probe = async (): Promise<Awaited<ReturnType<typeof refreshDashboardNow>> | 'landed'> => {
+    let out = await refreshDashboardNow(id);
+    for (let waited = 0; out === 'busy' && waited < BUSY_WAIT_MS; waited += BUSY_POLL_MS) {
+      await delay(BUSY_POLL_MS);
+      if ((getDashboard(id)?.lastRefreshedAt ?? 0) >= startedAt) return 'landed';
+      out = await refreshDashboardNow(id);
     }
-    outcome = await refreshDashboardNow(id);
+    return out;
+  };
+
+  let outcome = await probe();
+  // A failed probe gets the same bounded patience a busy slot does. The adapter already absorbs a
+  // rate limit that names a short retry-after; the failure that reaches here is the window that
+  // OUTLIVED those retries — a per-minute token cap saturated by a burst — which drains on its own
+  // in seconds. Rolling the board back over that read as "adding never works" when nothing was
+  // wrong with the tracker at all. A hard failure (network down, revoked key) fails each retry
+  // fast and spends nothing, so the extra patience costs a genuine error only seconds.
+  for (let retry = 0; retry < FAILED_RETRIES && outcome === 'failed'; retry++) {
+    await delay(FAILED_RETRY_MS);
+    outcome = await probe();
   }
+
   // Pass-level grounding isn't tile-level. 'done' also covers a grounded no-change pass, so an
   // added metric search couldn't answer still shows itself here: its value never filled in.
   // (A blank-key metric is the user's to fill, and an extraction can seed a value from the
   // cited conversation — both count as held data, not an empty promise.)
-  if (outcome === 'done' && addedMetricsGrounded(id, before)) return 'confirmed';
+  if ((outcome === 'done' || outcome === 'landed') && addedMetricsGrounded(id, before)) {
+    return 'confirmed';
+  }
+  if (outcome === 'landed') return rollBackAndLog(id, before, title, 'unverified');
   // 'done' that got here means the pass ran but the added tile never filled — unverified, in the
   // only sense the reader cares about: nothing could stand behind it.
   return rollBackAndLog(
