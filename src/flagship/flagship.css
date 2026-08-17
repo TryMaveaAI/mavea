@@ -4192,6 +4192,31 @@
   background: color-mix(in oklab, var(--presence) 20%, var(--surface-elevated));
   transform: translateY(-1px);
 }
+/* A lighter, outlined pill — a taste of one feature, not the full guided tour "Play the tour"
+   already offers, so it reads as the secondary choice. */
+.fl-tour-invite-world {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 600 13.5px/1 var(--font);
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast),
+    color var(--m-fast);
+}
+.fl-tour-invite-world svg {
+  width: 15px;
+  height: 15px;
+}
+.fl-tour-invite-world:hover {
+  border-color: var(--presence);
+  color: var(--text-primary);
+}
 .fl-tour-invite-skip {
   appearance: none;
   background: none;

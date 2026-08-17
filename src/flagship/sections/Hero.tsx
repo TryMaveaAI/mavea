@@ -3,7 +3,7 @@
 // and sending, or tapping the mic, both open Live seeded with the text. While it sits empty it
 // rotates example prompts at a calm cadence (frozen on focus, in lite mode, and in background tabs).
 import { useEffect, useRef, useState } from 'react';
-import { MicIcon, SendIcon } from '../../icons/coreIcons';
+import { GlobeIcon, MicIcon, SendIcon } from '../../icons/coreIcons';
 import { stashTourMode } from '../../tour/tourEntry';
 
 const EXAMPLES = [
@@ -80,12 +80,17 @@ export function Hero({
   showTourInvite,
   onPlayTour,
   onDismissTourInvite,
+  onViewWorld,
 }: {
   onEnterLive: (seed?: string) => void;
   onWarm?: () => void;
   showTourInvite?: boolean;
   onPlayTour?: () => void;
   onDismissTourInvite?: () => void;
+  /** Jump straight to an example living answer (a seeded, illustrative causal web) instead of
+   *  the full guided tour — for a visitor who wants a taste of the one thing the tour would
+   *  otherwise take several chapters to reach. */
+  onViewWorld?: () => void;
 }) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -169,6 +174,17 @@ export function Hero({
               </span>
               Play the tour
             </button>
+            {onViewWorld && (
+              <button
+                type="button"
+                className="fl-tour-invite-world"
+                onClick={onViewWorld}
+                title="See an example causal web — why an answer is true, and its receipts"
+              >
+                <GlobeIcon aria-hidden="true" />
+                View as living answer
+              </button>
+            )}
             <button type="button" className="fl-tour-invite-skip" onClick={onDismissTourInvite}>
               I'll explore on my own
             </button>

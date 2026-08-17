@@ -172,6 +172,7 @@ export function FlagshipHost(): ReactElement {
           showTourInvite={!tourInviteSeen}
           onPlayTour={startTour}
           onDismissTourInvite={retireTourInvite}
+          onViewWorld={watchInLive('living-answer')}
         />
       </div>
 

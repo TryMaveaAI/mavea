@@ -77,6 +77,7 @@ interface Props {
   showTourInvite?: boolean;
   onPlayTour?: () => void;
   onDismissTourInvite?: () => void;
+  onViewWorld?: () => void;
 }
 
 export function FlagshipLanding({
@@ -87,6 +88,7 @@ export function FlagshipLanding({
   showTourInvite,
   onPlayTour,
   onDismissTourInvite,
+  onViewWorld,
 }: Props) {
   return (
     <div className="fl-landing">
@@ -97,6 +99,7 @@ export function FlagshipLanding({
           showTourInvite={showTourInvite}
           onPlayTour={onPlayTour}
           onDismissTourInvite={onDismissTourInvite}
+          onViewWorld={onViewWorld}
         />
       </Reveal>
 

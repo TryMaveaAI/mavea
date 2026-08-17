@@ -107,4 +107,31 @@ describe('FlagshipLanding', () => {
     fireEvent.click(getByText(/I'll explore on my own/i));
     expect(onDismissTourInvite).toHaveBeenCalledTimes(1);
   });
+
+  it('omits the "View as living answer" shortcut unless a handler is passed, and fires it when clicked', () => {
+    const { queryByText, rerender } = render(
+      <FlagshipLanding
+        onPlay={vi.fn()}
+        onEnterLive={vi.fn()}
+        showTourInvite
+        onPlayTour={vi.fn()}
+        onDismissTourInvite={vi.fn()}
+      />,
+    );
+    expect(queryByText('View as living answer')).toBeNull();
+
+    const onViewWorld = vi.fn();
+    rerender(
+      <FlagshipLanding
+        onPlay={vi.fn()}
+        onEnterLive={vi.fn()}
+        showTourInvite
+        onPlayTour={vi.fn()}
+        onDismissTourInvite={vi.fn()}
+        onViewWorld={onViewWorld}
+      />,
+    );
+    fireEvent.click(queryByText('View as living answer')!);
+    expect(onViewWorld).toHaveBeenCalledTimes(1);
+  });
 });
