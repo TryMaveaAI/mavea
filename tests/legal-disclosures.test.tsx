@@ -138,7 +138,7 @@ describe('app-wide important information', () => {
   it('keeps the canonical disclaimer current about costs, patents, and asset rights', () => {
     const disclaimer = readFileSync(join(__dirname, '../DISCLAIMER.md'), 'utf8');
 
-    expect(disclaimer).toContain('Effective: August 11, 2026');
+    expect(disclaimer).toContain('Effective: August 17, 2026');
     expect(disclaimer).toMatch(/container engines.*possible commercial subscription charges/is);
     expect(disclaimer).toMatch(/not a guarantee that no third party will assert patent rights/i);
     expect(disclaimer).toMatch(/do not necessarily clear privacy, publicity, trademark/i);

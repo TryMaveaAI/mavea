@@ -1,4 +1,9 @@
-export const LEGAL_ACCEPTANCE_VERSION = '2026-08-11-speech-consent-v6';
+/* Bump this string whenever TERMS/PRIVACY/DISCLAIMER change materially — §10 of the Terms says
+   updates ship as a new effective date plus a new acceptance version, so a stale-version
+   acceptance stops counting and every existing user is shown the changed documents once.
+   v7: tracked readings stored in IndexedDB; tracked/"live" values declared best-effort and
+   model-dependent. */
+export const LEGAL_ACCEPTANCE_VERSION = '2026-08-17-tracked-data-v7';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

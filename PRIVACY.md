@@ -1,6 +1,6 @@
 # Mavéa Privacy Notice
 
-Effective: August 11, 2026
+Effective: August 17, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
@@ -20,6 +20,7 @@ Depending on the features you use, browser storage may contain:
 
 - conversations, saved canvases, bookmarks, memory items, and session history;
 - courses, lessons, flashcards, quiz progress, Ripple analyses, and dashboards;
+- the readings a dashboard has fetched over time, kept per tracked item as its own record so a value's history and the sites it came from survive between checks;
 - preferences such as theme, performance, visual richness, voice, and setup state;
 - drafts, tracked items, presentation settings, and recent feature state;
 - provider and model configuration;
@@ -27,9 +28,9 @@ Depending on the features you use, browser storage may contain:
 - temporary in-progress and finished video-export files in origin-private browser storage until the export is consumed or discarded; and
 - short-lived demo, tour, route, and in-progress session data.
 
-Saved content is encrypted in browser storage only where the relevant feature and browser support it. Course data, mastery and progress, some Ripple data and analysis caches, preferences, metadata, and fallback content can be stored in ordinary local storage or IndexedDB. Anyone who can use your unlocked device or browser profile, and malicious extensions or same-origin code, may be able to access browser data.
+Saved content is encrypted in browser storage only where the relevant feature and browser support it. Dashboards and the readings they fetch are encrypted with the same device key, the readings in IndexedDB with only their routing details — which tracked item, and when — left readable so they can be looked up. Course data, mastery and progress, some Ripple data and analysis caches, preferences, metadata, and fallback content can be stored in ordinary local storage or IndexedDB. Anyone who can use your unlocked device or browser profile, and malicious extensions or same-origin code, may be able to access browser data.
 
-Because this browser data is encrypted to this specific browser, it does not carry over to a different browser, an incognito window, or another device. You can export a backup file of your dashboards, memory, flashcards, saved canvases, map, and courses, and import it elsewhere to move that data. The backup is plain, unencrypted JSON under your control, so store and share it carefully; it deliberately excludes your provider and search keys. Importing a backup merges into existing data and never deletes it, and importing a file you did not create can add content from that file — import only backups you trust.
+Because this browser data is encrypted to this specific browser, it does not carry over to a different browser, an incognito window, or another device. You can export a backup file of your dashboards, memory, flashcards, saved canvases, map, and courses, and import it elsewhere to move that data. A backup carries a dashboard's definition and its latest values, not its fetched reading history, so moving to another browser starts that history fresh. The backup is plain, unencrypted JSON under your control, so store and share it carefully; it deliberately excludes your provider and search keys. Importing a backup merges into existing data and never deletes it, and importing a file you did not create can add content from that file — import only backups you trust.
 
 Browser and operating-system caches may retain application assets and optional voice models. The actions gateway may store connected-service credentials and configuration on the deployment operator's machine.
 
@@ -88,7 +89,7 @@ The unmodified project does not sell personal information or use it for cross-co
 
 ## 8. Retention and deletion
 
-Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. Clearing all browser site data is the broadest local deletion control. Removing browser data does not delete copies already sent elsewhere.
+Memory-only values disappear on reload. Session storage generally remains until the tab or browser session ends. Local storage and IndexedDB remain until a feature removes the item, you use an available clear, forget, or reset control, you clear site data, or the browser evicts it. Some session history is capped and expires, but many course, progress, dashboard, memory, and Ripple records have no automatic expiration. A dashboard's fetched reading history is capped per tracked item, and deleting a dashboard deletes its readings and its record of recent checks with it. Clearing all browser site data is the broadest local deletion control. Removing browser data does not delete copies already sent elsewhere.
 
 Gateway tokens remain until disconnected or removed by the gateway operator. Server, proxy, infrastructure, and provider retention depends on the relevant operator, logs, backups, account settings, and third-party policy. Contact those parties for deletion of data they control and revoke credentials at the issuing service.
 

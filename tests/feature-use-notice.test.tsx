@@ -12,7 +12,7 @@ describe('FeatureUseNotice', () => {
     const first = render(<FeatureUseNotice kind="monitoring" />);
 
     expect(screen.getByText(/you provide the API keys or connected accounts/i)).toBeInTheDocument();
-    expect(screen.getByText(/frequent cadence can use more of your quotas/i)).toBeInTheDocument();
+    expect(screen.getByText(/cadence you set is a spending decision/i)).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole('button', { name: 'Dismiss Not an alerting or monitoring service notice' }),
     );
