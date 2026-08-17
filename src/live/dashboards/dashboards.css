@@ -3,9 +3,12 @@
    home surface's own topbar + tile grid live in dash-home.css. Tokens only — it rides the chosen
    theme in light and dark. */
 
-/* .mavea-app is height:100% + overflow:hidden, so the surface must be its OWN scroll container
-   (like glance) — otherwise tall content below the fold is unreachable. */
-.dash-app {
+/* .mavea-app is a fixed, overflow-clipped frame (live-transcript.css), so this surface must be
+   its OWN scroll container — otherwise tall content below the fold is simply unreachable. The
+   compound selector is load-bearing: a bare `.dash-app` ties `.mavea-app { overflow: clip }` on
+   specificity and loses or wins on stylesheet ORDER, which the bundler does not promise — that
+   coin-flip is exactly how the detail page shipped unscrollable. Two classes beat one, always. */
+.mavea-app.dash-app {
   display: flex;
   flex-direction: column;
   height: 100%;
