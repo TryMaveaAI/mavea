@@ -476,12 +476,6 @@ export function useTourDriver(opts: {
       // rises over the lesson's baked canvas. The reveal is silent (the op strips narration) so the
       // chapter's coach line stays the only voice — the same treatment canvas/focusWalk give a seed.
       after(500, () => o.openTourCourse());
-    } else if (a.kind === 'dashboard') {
-      // Show the board first, then flip to its Settings panel — the real refresh-cadence control
-      // that backs up the coach line's claim ("keeps itself up to date") with an actual setting,
-      // not just the passive dashboard view.
-      after(500, () => o.openDashboards());
-      after(2600, () => o.dashboardShowSettings());
     } else if (a.kind === 'connect') {
       // Show the real connection UI without selecting a provider or typing into the key field.
       // A walkthrough must teach the path without mutating or fabricating the visitor's config.

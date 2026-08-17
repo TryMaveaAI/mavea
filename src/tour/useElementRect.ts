@@ -15,6 +15,35 @@ function onScreen(r: DOMRect): boolean {
   return visX > r.width * 0.5 && visY > r.height * 0.5;
 }
 
+const CLIPS = /^(hidden|auto|scroll|clip)$/;
+
+/** Intersect a target's rect with every ancestor that actually clips it, so a control that's
+ * only partly visible inside its own scrolled panel (e.g. a settings section taller than the
+ * modal body scrolling it) is never rung larger than what's actually on screen — the ring
+ * would otherwise stretch down to the target's full, unscrolled content height. */
+export function clampToClippingAncestors(rect: DOMRect, el: HTMLElement): DOMRect {
+  let top = rect.top;
+  let left = rect.left;
+  let right = rect.right;
+  let bottom = rect.bottom;
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    const clipsY = CLIPS.test(style.overflowY);
+    const clipsX = CLIPS.test(style.overflowX);
+    if (!clipsY && !clipsX) continue;
+    const ar = node.getBoundingClientRect();
+    if (clipsY) {
+      top = Math.max(top, ar.top);
+      bottom = Math.min(bottom, ar.bottom);
+    }
+    if (clipsX) {
+      left = Math.max(left, ar.left);
+      right = Math.min(right, ar.right);
+    }
+  }
+  return new DOMRect(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
+}
+
 export function useElementRect(selector: string | undefined, active: boolean): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);
 
@@ -62,8 +91,14 @@ export function useElementRect(selector: string | undefined, active: boolean): D
         const hits = Array.from(document.querySelectorAll<HTMLElement>(c));
         const visible = hits
           .filter((hit) => !hit.checkVisibility || hit.checkVisibility({ checkOpacity: true }))
-          .map((hit) => ({ hit, rect: hit.getBoundingClientRect() }))
-          .filter(({ rect: r }) => r.width > 0 && r.height > 0);
+          .map((hit) => {
+            const raw = hit.getBoundingClientRect();
+            return { hit, raw, rect: clampToClippingAncestors(raw, hit) };
+          })
+          // Sized by the RAW rect — a target scrolled fully out of its own clipped ancestor
+          // still counts as a candidate (it just isn't on screen yet, see below), whereas a
+          // genuinely display:none/collapsed element has zero raw size and is skipped outright.
+          .filter(({ raw }) => raw.width > 0 && raw.height > 0);
         const best = visible.find(({ rect: r }) => onScreen(r)) ?? visible[0];
         if (best) {
           el = best.hit;
