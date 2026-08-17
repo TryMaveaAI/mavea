@@ -6,6 +6,21 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-17
+
+### Fixed
+
+- **The legal acknowledgement could not be scrolled, so on a short window there was no way past
+  it.** The gate is a document, but the app shell it appears over locks the viewport
+  (`html, body { overflow: hidden }`) and a hash route change never unloads that lock — so a card
+  taller than the window was clipped at the fold with the two consent checkboxes and Continue
+  underneath it, unreachable by wheel, keys or scrollbar. The gate now re-asserts document
+  scrolling the way the Terms and Privacy pages already did.
+- `pnpm dev` recovers from a broken Docker credential helper again. The retry handed Docker a
+  replacement config directory holding only empty auths, which also discarded the directory Docker
+  Desktop keeps `compose` in — so the rescue attempt failed with `unknown command: docker compose`
+  and local speech never started. It now keeps the real plugin directory in view.
+
 ## [1.2.0] - 2026-08-17
 
 ### Added
