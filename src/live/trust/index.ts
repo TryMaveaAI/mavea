@@ -14,6 +14,7 @@ export type {
   WorldValue,
 } from './types';
 export { statusOf } from './types';
+export { numberOf, rawOf, STATUS_LABEL } from './display';
 export type { CalcResult } from './calc';
 export { computeCalc, selfConsistent, SELF_CONSISTENCY_TOL } from './calc';
 export type { CoercedWorld, RawWorldValue } from './coerce';

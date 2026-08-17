@@ -153,15 +153,30 @@ async function fetchChildren(
 }
 
 /**
- * Break one top-level node into its parts and return the world with that breakdown attached, or
- * null when there is nothing honest to attach.
+ * Break one node into its parts and return the world with that breakdown attached, or null when
+ * there is nothing honest to attach.
  *
- * Null covers every "nothing happened" case deliberately — an unknown node, a child rather than a
- * top-level cause, a node whose breakdown the world already carries, a failed or aborted call, and
- * a payload where no child survived the grounding gate. The caller's job in all of them is the
- * same: put the affordance back and say nothing, because a cause that cannot be honestly divided
- * is a fact about the world, not an error to report.
+ * At ANY depth. A part is a thing with parts of its own — cell → cathode → material is an ordinary
+ * question, and refusing it because the node happened to already be someone's child made "how far
+ * can I go" a property of the schema rather than of the answer. The depth a reader can DRAW is a
+ * separate, renderer-side limit (`MAX_DRAWN_DEPTH`); what the world knows is not capped here.
+ *
+ * Null covers every "nothing happened" case deliberately — an unknown node, a node whose breakdown
+ * the world already carries, a failed or aborted call, and a payload where no child survived the
+ * grounding gate. The caller's job in all of them is the same: put the affordance back and say
+ * nothing, because a cause that cannot be honestly divided is a fact about the world, not an error
+ * to report.
  */
+/** The node with this id, at any depth. */
+function findNode(nodes: readonly WorldNode[], id: string): WorldNode | undefined {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const hit = n.children === undefined ? undefined : findNode(n.children, id);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
 export function expandWorldNode(
   prior: WorldSpec,
   nodeId: string,
@@ -169,7 +184,7 @@ export function expandWorldNode(
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {
-  const node = prior.nodes.find((n) => n.id === nodeId);
+  const node = findNode(prior.nodes, nodeId);
   if (!node || (node.children?.length ?? 0) > 0) return Promise.resolve(null);
 
   const key = expandKey(prior, nodeId, corpus, cfg);

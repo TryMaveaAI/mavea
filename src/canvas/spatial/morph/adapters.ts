@@ -24,6 +24,11 @@ function seriesPoints(series: WorldNode['series']): Point[] {
   return points.sort((a, b) => a.t - b.t);
 }
 
+/** How many levels of BREAKDOWN reach the stage. 1 = a top-level cause and its parts, which is what
+ *  the layouts can place: `graphLayout` positions a child against its parent's block, and only a
+ *  top-level node has one. Raising this means teaching those layouts about deeper nesting first. */
+export const MAX_DRAWN_DEPTH = 1;
+
 /** Where a node sits in time. Its OWN date wins — someone wrote it about the node itself, and it is
  *  the only route onto the timeline for a wholly qualitative cause. A measured series is the
  *  fallback: its points are dated observations, so the span they cover is the node's honest extent.
@@ -83,7 +88,14 @@ function toEdges(edges: readonly AnyEdge[]): MorphEdgeDatum[] {
  *  and the node's own date — or, failing that, its series' span — places it in time. */
 export function worldToMorph(spec: WorldSpec): WorldData {
   const nodes: MorphNodeDatum[] = [];
-  const push = (n: WorldNode, parentId?: string): void => {
+  const push = (n: WorldNode, parentId?: string, depth = 0): void => {
+    // The LEVEL-OF-DETAIL boundary, and the only one the layouts need. A breakdown is placed relative
+    // to its parent's block (graphLayout), which exists only for a TOP-LEVEL node — so a grandchild
+    // has no block to be placed against and would land wherever the arithmetic fell. The data is
+    // unbounded on purpose (a reader can break a part into parts), and this is where the renderer
+    // says how much of that depth it can draw honestly. Anything deeper is still in the spec and is
+    // read through a lens instead (content/lens), which draws a whole tree natively.
+    if (depth > MAX_DRAWN_DEPTH) return;
     const series = seriesPoints(n.series);
     const unit = n.unit ?? n.series?.unit;
     const date = dateOf(n, series);
@@ -103,7 +115,7 @@ export function worldToMorph(spec: WorldSpec): WorldData {
       ...(n.domain !== undefined ? { domain: n.domain } : {}),
       ...(parentId !== undefined ? { parentId } : {}),
     });
-    for (const child of n.children ?? []) push(child, n.id);
+    for (const child of n.children ?? []) push(child, n.id, depth + 1);
   };
   for (const node of spec.nodes) push(node);
   return { nodes, edges: toEdges(spec.edges), outcomeId: spec.outcomeId };

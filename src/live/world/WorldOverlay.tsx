@@ -31,7 +31,6 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { withUnit } from '../../canvas/lib/format';
 import { drawableEdges, worldToMorph } from '../../canvas/spatial/morph/adapters';
 import { MorphStage } from '../../canvas/spatial/morph/MorphStage';
 import { representationHolds, useMorphStage } from '../../canvas/spatial/morph/useMorphStage';
@@ -41,17 +40,19 @@ import type {
   Representation,
   WorldData,
 } from '../../canvas/spatial/morph/types';
-import { isReal, type Receipt, type Tier } from '../ground/types';
 import { EdgeEvidencePanel } from '../trust/EdgeEvidencePanel';
 import { FULL_PCT, LeverRail, type Lever } from '../trust/LeverRail';
 import { ProvValue } from '../trust/ProvValue';
 import { TrustProvider, type TrustHandle } from '../trust/TrustProvider';
 import { WhatIfFrame, type WhatIfReadout } from '../trust/WhatIfFrame';
-import { asEdgeRelation, buildRegistry, shiftChip } from '../trust';
-import type { TrustRegistry, UsedInRef, UsedInSource, WorldValue } from '../trust';
+import { asEdgeRelation, shiftChip } from '../trust';
+import type { UsedInRef } from '../trust';
 import { cascade } from '../why/engine';
 import type { CascadeResult, Intervention } from '../why/types';
 import { asWhyDag } from './asWhyDag';
+import { worldToContent } from '../content/fromWorld';
+import { hierarchyLens } from '../content/lens';
+import { extendedRender, familiesFor, loadFamilies } from '../../canvas/blocks/loader';
 import { groundedOnly, weakestLink } from './stress';
 import { applyExpansion, deriveEdgeStatus } from './validate';
 import type { SpokenLine } from '../../voice/tts';
@@ -83,125 +84,9 @@ const REP_LEGEND: Record<Representation, string> = {
   flow: 'Ribbon thickness is how much of the outcome that link was MEASURED to explain. A cause whose links carry no measured share is held aside rather than drawn thin, which would read as a finding nobody made.',
 };
 
-const ILLUSTRATIVE_CAVEAT = 'Shows the shape, not your numbers.';
 /** Why an illustrative world's observed column is a dash: not a gap in the evidence — there is no
  *  evidence to have a gap in. The frame's own wording would blame the grounding instead. */
 const ILLUSTRATIVE_BASE_NOTE = 'an illustrative world measures nothing, so there is no baseline';
-
-/**
- * One figure, typed by what actually backs it. An illustrative world outranks whatever tier the
- * author wrote on the node — the whole web is a textbook explanation, so nothing on it may wear a
- * GROUNDED badge; the node's own quote rides along as the caveat so the source wording survives.
- * A real figure with no receipt returns null and is never rendered: on this surface an unbacked
- * number is not a weaker number, it is no number.
- */
-function trustValue(
-  id: string,
-  label: string,
-  num: number,
-  tier: Tier,
-  unit: string | undefined,
-  receipt: Receipt | undefined,
-  illustrative: boolean,
-  period?: string,
-): WorldValue | null {
-  if (!Number.isFinite(num)) return null;
-  const raw = withUnit(num, unit);
-  const scope = { ...(unit ? { unit } : {}), ...(period ? { period } : {}) };
-  const base = { id, label, ...(unit || period ? { scope } : {}) };
-  if (illustrative || tier === 'T3') {
-    return {
-      ...base,
-      kind: 'illustrative',
-      resolution: {
-        ok: true,
-        tier: 'T3',
-        value: num,
-        raw,
-        illustrative: receipt?.quote ?? ILLUSTRATIVE_CAVEAT,
-        surface: 'model',
-      },
-    };
-  }
-  if (!receipt || !isReal(tier)) return null;
-  return tier === 'T1'
-    ? {
-        ...base,
-        kind: 'grounded',
-        resolution: { ok: true, tier: 'T1', value: num, raw, receipt, surface: 'user' },
-      }
-    : {
-        ...base,
-        kind: 'grounded',
-        resolution: { ok: true, tier: 'T2', value: num, raw, receipt, surface: 'web' },
-      };
-}
-
-/** The world's figures, indexed with where each one is used. Edge ids come from the adapted morph
- *  world rather than a second copy of the id formula, so a click on a path and a "used in" row can
- *  never disagree about which edge they mean. */
-function buildWorldRegistry(spec: WorldSpec, morph: WorldData): TrustRegistry {
-  const illustrative = spec.provenance.illustrative === true;
-  const values = new Map<string, WorldValue>();
-  const refs: UsedInSource[] = [];
-  const labelOf = new Map<string, string>();
-
-  const keep = (v: WorldValue | null, ref: UsedInSource): void => {
-    if (!v || values.has(v.id)) return;
-    values.set(v.id, v);
-    refs.push(ref);
-  };
-
-  const visit = (n: WorldNode): void => {
-    labelOf.set(n.id, n.label);
-    const series = n.series;
-    const unit = n.unit ?? series?.unit;
-    const onNode = (valueId: string): UsedInSource => ({
-      valueId,
-      surface: 'node',
-      id: n.id,
-      label: n.label,
-    });
-    if (n.value !== undefined) {
-      const id = nodeValueId(n.id);
-      keep(trustValue(id, n.label, n.value, n.tier, unit, n.receipt, illustrative), onNode(id));
-    }
-    if (series) {
-      for (const p of series.points) {
-        const id = pointValueId(n.id, p.t);
-        const label = `${n.label} · ${p.t}`;
-        const receipt = p.receipt ?? series.receipt;
-        const point = trustValue(
-          id,
-          label,
-          p.value,
-          series.tier,
-          series.unit,
-          receipt,
-          illustrative,
-          p.t,
-        );
-        keep(point, onNode(id));
-      }
-    }
-    for (const child of n.children ?? []) visit(child);
-  };
-  for (const node of spec.nodes) visit(node);
-
-  // A link prints its endpoints' figures too, so it is a use of them — "what breaks if this number
-  // changes?" has to name the arrows, not only the cards. Paired against the DRAWN links, since a
-  // link the projection refuses has no path on screen to be a use of anything.
-  drawableEdges(spec.edges).forEach((e, i) => {
-    const label = `${labelOf.get(e.from) ?? e.from} ${e.verb ?? '→'} ${labelOf.get(e.to) ?? e.to}`;
-    const id = morph.edges[i]?.id;
-    if (id === undefined) return;
-    for (const end of [e.from, e.to]) {
-      refs.push({ valueId: nodeValueId(end), surface: 'edge', id, label });
-    }
-  });
-
-  return buildRegistry(values, refs);
-}
 
 /** The stage prints a node's own `value` as plain text; this surface prints every figure through
  *  ProvValue instead, so the datum handed to the renderer carries none. */
@@ -411,7 +296,11 @@ function WorldSurface({
 
   const illustrative = spec.provenance.illustrative === true;
   const morphWorld = useMemo(() => worldToMorph(spec), [spec]);
-  const registry = useMemo(() => buildWorldRegistry(spec, morphWorld), [spec, morphWorld]);
+  // The world's own semantic layer, and the only place its figures come from. The world is ONE
+  // producer of a ContentGraph rather than the only surface that can prove a number — see
+  // content/fromWorld, which is where the registry walk moved to.
+  const content = useMemo(() => worldToContent(spec, morphWorld), [spec, morphWorld]);
+  const registry = content.trust;
   const dag = useMemo(() => asWhyDag(spec), [spec]);
 
   const [levers, setLevers] = useState<ReadonlyMap<string, number>>(() => new Map());
@@ -710,10 +599,12 @@ function WorldSurface({
       if (face !== 'card') return null;
       const open = expandedIds.has(node.id);
       const authored = expandable.has(node.id);
-      // A cause with no authored breakdown can still be opened — but only where a host can pay for
-      // one, and only at the top level (a child is already the breakdown). Offering it in the
-      // key-free lab would be an affordance that answers with nothing.
-      const buyable = !authored && onExpandNode !== undefined && node.parentId === undefined;
+      // A cause with no authored breakdown can still be opened, wherever it sits — a part is a thing
+      // with parts, and cell → cathode → material is an ordinary question. Only where a host can pay
+      // for one: offering it in the key-free lab would be an affordance that answers with nothing.
+      // What the STAGE can draw stops at MAX_DRAWN_DEPTH; deeper structure is read through the lens
+      // below, which is why going deeper is worth offering at all.
+      const buyable = !authored && onExpandNode !== undefined;
       const waiting = pendingExpand === node.id;
       return (
         <>
@@ -787,6 +678,35 @@ function WorldSurface({
   );
 
   const selectedNode = selection?.kind === 'node' ? nodeById.get(selection.id) : undefined;
+  // What the selected cause is MADE OF, drawn by the catalog's own choice. Compiled from the content
+  // graph, so every part is sized by a figure the registry resolved — a part with none is left out
+  // rather than drawn at zero, and a subject with fewer than two sizeable parts offers nothing.
+  const partsPlan = useMemo(
+    () => (selectedNode === undefined ? null : hierarchyLens.compile(content, selectedNode.id)),
+    [content, selectedNode],
+  );
+  // Fetched through the per-family LOADER, never the merged registry: importing that here would pull
+  // every extended family into the world's own chunk, which has a budget. The renderer is held as
+  // STATE rather than derived, because `extendedRender` reads module state the loader mutates — a
+  // memo over it would be correct only by accident, and would need a dependency on a counter that
+  // says nothing. Null until the chunk lands, and the panel has one less section until it does.
+  const [partsRender, setPartsRender] = useState<
+    ((props: unknown, common: { delay?: number }) => ReactNode) | null
+  >(null);
+  useEffect(() => {
+    if (!partsPlan) {
+      setPartsRender(null);
+      return;
+    }
+    let live = true;
+    void loadFamilies(familiesFor([partsPlan.block])).then(() => {
+      // Wrapped: a function passed to a setter is otherwise taken for an updater.
+      if (live) setPartsRender(() => extendedRender(partsPlan.block.type));
+    });
+    return () => {
+      live = false;
+    };
+  }, [partsPlan]);
   const selectedEdge = selection?.kind === 'edge' ? edgeById.get(selection.id) : undefined;
   const leverRail: Lever[] = useMemo(
     () =>
@@ -968,6 +888,18 @@ function WorldSurface({
                           </li>
                         ))}
                       </ul>
+                    )}
+                    {/* WHAT IS THIS MADE OF — a question none of the causal views answers: they say
+                        what led to what, and a cause's own composition is a different axis. Drawn by
+                        whichever component the catalog picks for a hierarchy of this shape
+                        (content/lens), so the world reads the parts through the library rather than
+                        through more of its own geometry — and a component that draws a whole tree
+                        natively is how depth past MAX_DRAWN_DEPTH becomes readable at all. */}
+                    {partsPlan && partsRender && (
+                      <div className="wo-parts">
+                        <span className="wo-rail-kicker">{partsPlan.answers.toUpperCase()}</span>
+                        {partsRender(partsPlan.block.props, { delay: 0 })}
+                      </div>
                     )}
                   </>
                 )}

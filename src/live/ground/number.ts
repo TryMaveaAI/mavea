@@ -47,12 +47,39 @@ export function digitsOf(value: number): string {
  *  quote, not the whole quote's digits concatenated — a raw substring check would let a fabricated
  *  value pass by splicing digits from two unrelated numbers in the same sentence ("grew from 12 to
  *  34" ≠ 1234), or by matching as a sub-run of one larger, different number. A value with no digits
- *  to check passes vacuously. */
+ *  to check passes vacuously.
+ *
+ *  Use this where the value and its source are written the SAME way — a causal web's figures are
+ *  coerced out of the sentence that grounds them. Where a formatter sits in between (an ordinary
+ *  answer's blocks), `figureInQuote` compares the numbers instead. */
 export function valueInQuote(value: number, quote: string): boolean {
   const digits = digitsOf(value);
   if (!digits) return true;
   const quoteNumbers = quote.match(/\d[\d,.]*\d|\d/g)?.map((s) => s.replace(/[^0-9]/g, ''));
   return quoteNumbers?.includes(digits) ?? false;
+}
+
+/**
+ * Whether a quote states this FIGURE, compared as numbers rather than as digit runs.
+ *
+ * `valueInQuote` matches the digits of a value against the digit runs in its quote, which is exactly
+ * right where the value and the source are written the same way — a world's node value is coerced
+ * from the very sentence that grounds it. It is wrong the moment FORMATTING intervenes: a chart
+ * stores 30 and its source prints "$30.0 billion", whose token reduces to the digit run "300", so a
+ * perfectly good receipt is refused. That case is the norm on an ordinary answer, where the figure
+ * reaching the screen has been through a formatter.
+ *
+ * So: parse each numeric token and compare. Equality is exact after parsing (30.0 === 30, "1,234" ===
+ * 1234) — no tolerance, because "31" is a different number and a near-miss is a wrong receipt rather
+ * than a rounded one. Splicing is impossible for the same reason it is in valueInQuote: tokens are
+ * compared whole, so "grew from 12 to 34" never states 1234.
+ */
+export function figureInQuote(value: number, quote: string): boolean {
+  if (!Number.isFinite(value)) return false;
+  for (const token of quote.match(/\d[\d,]*(?:\.\d+)?/g) ?? []) {
+    if (Number(token.replace(/,/g, '')) === value) return true;
+  }
+  return false;
 }
 
 /**

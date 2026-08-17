@@ -231,6 +231,40 @@
   min-height: 24px;
 }
 
+/* WHAT IS THIS MADE OF — the catalog's own drawing of a cause's parts, in the evidence rail. Sized
+   to the rail rather than the stage: this is a reading of one selected cause, not a view of the
+   world, and it sits under that cause's figure where the reader is already looking. */
+.wo-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--s-md);
+  padding-top: var(--s-md);
+  border-top: 1px solid var(--line-soft);
+}
+.wo-parts .card {
+  margin: 0;
+}
+/* The two card rules the component needs and this surface does not otherwise have.
+   The world overlay brings its own chrome and deliberately does NOT import the canvas's shared
+   sheet (visualizations-extra.css), which is where `.card-eyebrow` is made a flex row and `.ic` is
+   given a size. Without them the eyebrow is a block and its icon is an SVG with a viewBox and no
+   intrinsic width — so it stretched to the full width of the rail and squared itself, 316px of
+   decorative glyph above a 162px chart. Stated here rather than by importing that sheet: the
+   component library's chrome is not this surface's to inherit wholesale. */
+.wo-parts .card-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.wo-parts .card-eyebrow .ic {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
 /* The stress toggle is a BUTTON, not a view chip: it reads whichever view is open, so it sits with
    Reset and Close rather than inside the view group — a chip in that pill would promise a different
    geometry. Pressed, it takes the warning accent, which is the surface's one colour for "this is

@@ -18,6 +18,20 @@ export function rawOf(v: WorldValue): string {
   return v.kind === 'calculated' ? v.raw : v.resolution.raw;
 }
 
+/**
+ * The figure as a NUMBER, or null when the value has none.
+ *
+ * Every arm of the union is covered here so a consumer never reaches into one: a calculated value
+ * holds a branded `value`, a grounded/illustrative one holds its resolution's, and a T0 structure
+ * value holds no number at all — that last case is the reason this returns null rather than 0. A
+ * caller that wants to SIZE something by a figure has to handle "there is no figure", which on this
+ * surface is a real and common answer.
+ */
+export function numberOf(v: WorldValue): number | null {
+  if (v.kind === 'calculated') return v.value;
+  return v.resolution.ok && v.resolution.tier !== 'T0' ? v.resolution.value : null;
+}
+
 /** Where a T1 figure lives in the user's own files, e.g. "Your file · doc 2, p. 7, cell B14".
  *  `doc` is 0-indexed in the contract and 1-based for a reader. */
 export function userFileLine(r: Receipt): string {

@@ -643,6 +643,28 @@ form a source writes it); and a **date** needs one naming it, because on the tim
 position is how that claim gets made. A verified quote is attributed to the source whose text
 actually contains it — the model never authors the provenance of its own claim.
 
+**One semantic layer, two producers.** `live/content` is what an answer is ABOUT, apart from how it is
+drawn: entities (with unbounded `parentId` nesting), relations, and facts that hold no number — only
+the id the trust registry knows a figure under, so a value with nothing behind it still cannot reach
+the screen. A living world produces one (`content/fromWorld`, which is where the world's registry walk
+now lives); an ordinary turn's blocks produce one (`content/fromAnswer`, grounding a chart's or a
+KPI's figures against the turn's own sources). The world is one producer rather than the only surface
+that can prove a number.
+
+**A lens is how the 608 join in.** `content/lens` reads a subgraph, names its `DataShape`, asks the
+CATALOG which components accept that shape and speak a prop contract it can fill, and compiles props
+for the winner — so "break apart" on a cause draws through whichever component the library offers for
+a hierarchy of that shape, not through more of the world's own geometry. The catalog's `domains`
+metadata does the semantic work: a phylotree is not a drawing of a revenue split, and on a clade it
+outranks the general components. The honest limit is that `requires` names prop KEYS, not their inner
+types — `RecursionNode` is `{call, result}` and takes a `root` too — so the verified set is enumerated
+in both directions and a test fails on any catalog component that is in neither list.
+
+**Depth is the renderer's limit, never the schema's.** A part is a thing with parts, so an expansion
+attaches at any depth. What the STAGE draws stops at `MAX_DRAWN_DEPTH` (adapters), because
+`graphLayout` places a breakdown against its parent's block and only a top-level node has one —
+anything deeper is read through the lens, which draws a whole tree natively.
+
 **The reader can stress-test the answer.** "Only what is sourced" walks backward from the outcome
 through supported links alone; every cause it cannot reach RECEDES in place rather than leaving, so
 the gap is visible instead of being closed by a re-fit. Beside it the rail names the weakest link —

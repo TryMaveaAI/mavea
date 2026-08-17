@@ -105,12 +105,23 @@ describe('expandWorldNode', () => {
     expect(generateMock).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['a node that is not on this world', 'nowhere'],
-    ['a child, which IS the breakdown', 'already.one'],
-  ])('refuses %s without a call', async (_why, nodeId) => {
-    expect(await expandWorldNode(world('w-unknown'), nodeId, CORPUS, cfg)).toBeNull();
+  it('refuses a node that is not on this world, without a call', async () => {
+    expect(await expandWorldNode(world('w-unknown'), 'nowhere', CORPUS, cfg)).toBeNull();
     expect(generateMock).not.toHaveBeenCalled();
+  });
+
+  it('breaks a CHILD down too — a part is a thing with parts', async () => {
+    // This used to be refused on the grounds that a child "IS the breakdown", which made how far a
+    // reader can go a property of the schema rather than of the answer: cell → cathode → material is
+    // an ordinary question. How much of that depth the STAGE draws is a separate, renderer-side limit
+    // (MAX_DRAWN_DEPTH); what the world knows is not capped.
+    reply([{ id: 'deeper', label: 'A part of a part' }]);
+    const out = await expandWorldNode(world('w-deep'), 'already.one', CORPUS, cfg);
+    expect(out).not.toBeNull();
+    const child = out!.nodes
+      .find((n) => n.id === 'already')!
+      .children!.find((c) => c.id === 'already.one')!;
+    expect(child.children?.map((c) => c.label)).toEqual(['A part of a part']);
   });
 
   it('says nothing rather than inventing parts for an atomic cause', async () => {

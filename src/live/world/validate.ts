@@ -832,10 +832,30 @@ export function applyExpansion(
   children: readonly WorldNode[],
 ): WorldSpec {
   if (children.length === 0) return prior;
-  const target = prior.nodes.find((n) => n.id === nodeId);
-  if (!target || (target.children?.length ?? 0) > 0) return prior;
-  return {
-    ...prior,
-    nodes: prior.nodes.map((n) => (n.id === nodeId ? { ...n, children: [...children] } : n)),
-  };
+  const attached = attach(prior.nodes, nodeId, children);
+  return attached === prior.nodes ? prior : { ...prior, nodes: [...attached] };
+}
+
+/** Attach `children` to `nodeId` wherever it sits, returning the SAME array when nothing applied so
+ *  a caller can compare by identity. Recursive because a part has parts: the depth a reader can go
+ *  is a property of the answer, not of this function. An authored breakdown is never overwritten. */
+function attach(
+  nodes: readonly WorldNode[],
+  nodeId: string,
+  children: readonly WorldNode[],
+): readonly WorldNode[] {
+  let changed = false;
+  const next = nodes.map((n) => {
+    if (n.id === nodeId) {
+      if ((n.children?.length ?? 0) > 0) return n;
+      changed = true;
+      return { ...n, children: [...children] };
+    }
+    if (n.children === undefined) return n;
+    const deeper = attach(n.children, nodeId, children);
+    if (deeper === n.children) return n;
+    changed = true;
+    return { ...n, children: [...deeper] };
+  });
+  return changed ? next : nodes;
 }
