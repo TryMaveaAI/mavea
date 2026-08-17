@@ -377,3 +377,46 @@ describe('refreshDashboard — a composite widget can actually refresh', () => {
     expect(regions.map((r) => r.block.type)).toEqual(['kpi', 'list']);
   });
 });
+
+// The list's two-item floor is a canvas COMPOSITION rule — beside other cards, one bullet reads
+// thin. A dashboard tile stands alone, and its one item can be the entire honest answer: an FDA
+// calendar whose next section currently holds a single upcoming meeting, fetched and sourced.
+// Dropping it read as "checked — no new data" while the model had returned exactly the data.
+describe('refreshDashboard — a single-item list is a complete refresh for a standalone tile', () => {
+  it('accepts the one real item instead of discarding the grounded fetch', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            blocks: [
+              {
+                type: 'list',
+                props: {
+                  title: 'Upcoming FDA advisory committee meetings',
+                  items: ['Pediatric Advisory Committee — September 16, 2026 — upcoming'],
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      sources: [{ title: 'FDA', url: 'https://www.fda.gov/advisory-committees' }],
+    });
+
+    const w = widget({
+      block: {
+        type: 'list',
+        id: 'b1',
+        col: 6,
+        props: { title: 'FDA calendar', items: [] },
+      } as never,
+      refreshQuery: 'FDA advisory committee calendar',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    const items = (out.widgets.w1 as { props: { items: string[] } }).props.items;
+    expect(items).toEqual(['Pediatric Advisory Committee — September 16, 2026 — upcoming']);
+  });
+});

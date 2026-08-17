@@ -677,6 +677,9 @@ export async function refreshDashboards(
             new Set(allowedTypesFor(target)),
             1,
             grounded,
+            // A standalone tile, not a canvas: composition-only floors (a list's two-item
+            // minimum) don't apply — one sourced calendar entry is a complete, honest refresh.
+            true,
           );
           const b = single?.blocks[0];
           // Never accept a type swap — a mismatched block is worse than leaving the old one.

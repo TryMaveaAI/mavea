@@ -971,7 +971,7 @@ function buildBreakdown(p: Record<string, Json>, grounded: boolean): BreakdownPr
  *  buildCompare (options) and buildDiagramFlow (nodes) already hold their own structures to. */
 const MIN_LIST_ITEMS = 2;
 
-function buildList(p: Record<string, Json>): ListProps | null {
+function buildList(p: Record<string, Json>, standalone = false): ListProps | null {
   const title = alias(p, 'title', 'heading', 'header');
   const items = aliasArr(p, 'items', 'points', 'tips', 'list', 'steps', 'bullets')
     .map((i) => {
@@ -991,7 +991,11 @@ function buildList(p: Record<string, Json>): ListProps | null {
         .join(' — ');
     })
     .filter((i) => i !== '');
-  if (!title || items.length < MIN_LIST_ITEMS) return null;
+  // The two-item floor is a CANVAS COMPOSITION rule — one bullet reads thin beside composed
+  // cards. A standalone tile (a dashboards refresh) is not a composition, and its one item can be
+  // the entire honest answer: a calendar whose next section currently holds a single upcoming
+  // meeting, fetched and sourced. Dropping that discards data someone paid a search for.
+  if (!title || items.length < (standalone ? 1 : MIN_LIST_ITEMS)) return null;
   return { title, items };
 }
 
@@ -2145,6 +2149,7 @@ function buildBlock(
   insightSeq: number,
   allowed: ReadonlySet<string>,
   grounded: boolean,
+  standalone = false,
 ): Block | null {
   const ro = asObj(raw);
   const type = asStr(ro.type).toLowerCase().trim();
@@ -2189,7 +2194,7 @@ function buildBlock(
       return bp ? { type: 'breakdown', col, delay, props: bp } : null;
     }
     case 'list': {
-      const lp = cleanBuilt(buildList(props));
+      const lp = cleanBuilt(buildList(props, standalone));
       return lp ? { type: 'list', col, delay, props: lp } : null;
     }
     case 'timeline': {
@@ -2380,6 +2385,9 @@ export function validateLiveResponse(
   allowed: ReadonlySet<string> = ALLOWED_BLOCK_TYPES,
   maxBlocks = 6,
   grounded = false,
+  // The caller is validating ONE block as a standalone tile (a dashboards refresh), not a canvas
+  // — composition-only floors (a list's two-item minimum) don't apply.
+  standaloneTile = false,
 ): LiveResponse | null {
   let parsed: Json = raw;
   if (typeof raw === 'string') {
@@ -2462,7 +2470,7 @@ export function validateLiveResponse(
     const col = COL_BY_TYPE[type] ?? 6;
     // A smooth, staggered reveal at any block count (the old fixed table capped at six).
     const delay = Math.min(idx * 70, 560);
-    const block = buildBlock(rawBlock, col, delay, insightSeq, allowed, grounded);
+    const block = buildBlock(rawBlock, col, delay, insightSeq, allowed, grounded, standaloneTile);
     if (!block) continue;
     // Prompt limits reduce over-generation; this runtime boundary makes the same contract
     // non-optional for malformed, older, local, or adversarial model output.
