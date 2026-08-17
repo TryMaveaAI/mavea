@@ -1,0 +1,85 @@
+/* CheckRunPanel — the per-check flight recorder on the detail page. Quiet by default: this is a
+   diagnostic someone opens when a tracker misbehaves, never a thing to read on every visit.
+   Tokens only, so it rides the chosen theme in light and dark like the rest of the surface. */
+.crp {
+  width: min(calc(100% - 40px), var(--canvas-col-max));
+  margin: 0 auto 12px;
+}
+
+.crp-toggle {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.crp-toggle:hover {
+  color: var(--text-secondary);
+}
+
+.crp-steps {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  list-style: none;
+}
+
+.crp-step {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 7rem) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.crp-step.is-bad {
+  color: var(--text-primary);
+}
+.crp-step-mark {
+  color: var(--insight);
+  font-family: var(--font-data);
+}
+.crp-step.is-bad .crp-step-mark {
+  color: var(--warning);
+}
+.crp-step-name {
+  font-family: var(--font-data);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.crp-step-count {
+  color: var(--text-muted);
+  font-family: var(--font-data);
+}
+.crp-step-detail {
+  grid-column: 3;
+  color: var(--text-muted);
+}
+
+.crp-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.crp-foot-time {
+  color: var(--text-muted);
+  font-family: var(--font-data);
+}
+
+.crp-fix {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

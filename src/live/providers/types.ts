@@ -27,6 +27,22 @@ export interface LiveRequestTools {
   webSearch?: boolean;
   /** Let the model read URLs found in the user's text (provider-native URL reading). */
   urlContext?: boolean;
+  /** REQUIRE the search tool rather than merely offering it. Attaching a tool leaves the choice to
+   *  the model (`tool_choice` defaults to auto), and a small model routinely declines: observed on
+   *  gpt-5.4-nano, which answered "Bitcoin price in USD" from training memory with zero citations
+   *  across two attempts at medium and then high reasoning effort, while the prompt insisted on
+   *  searching. Set this only where an ungrounded answer is worthless by definition — a dashboard
+   *  check, whose whole contract is "no source, no number" — never on a general turn, where forcing
+   *  a search for a question that needs none would spend a call to learn nothing.
+   *
+   *  BEST-EFFORT BY PROVIDER, necessarily: only OpenAI's Responses API documents a force value
+   *  (`tool_choice: {type:'web_search'}`), so only that adapter hard-requires. Anthropic pins
+   *  tool_choice to auto BECAUSE forcing a specific tool stops Claude's web_search loop outright
+   *  (see anthropic.ts's header), Gemini's google_search is a built-in with no force lever, and
+   *  Grok/OpenRouter have documented none. Everywhere the flag can't bind, the existing defenses
+   *  still hold: the prompt demands search, the grounding gate discards uncited values, and the
+   *  in-pass retry re-asks with a sharpened demand. */
+  requireSearch?: boolean;
 }
 
 /** Everything an adapter needs to produce one Live turn. */

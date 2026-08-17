@@ -88,11 +88,25 @@ export interface OpenAIResponsesOptions {
   /** The hosted web-search tool entry to inject into `tools[]` when the turn requests
    *  webSearch. Omit → no native search offered. */
   webSearchTool?: () => Record<string, unknown>;
+  /** The `tool_choice` value that FORCES the search tool, for a turn whose caller set
+   *  `requireSearch`. Provided only where the provider's API documents it (OpenAI's Responses API
+   *  accepts `{type:'web_search'}`); omitted, the flag degrades to offering the tool — a provider
+   *  that rejected an undocumented force value would 400 every dashboard check, which is strictly
+   *  worse than a model that occasionally declines to search. */
+  forceSearchToolChoice?: () => Record<string, unknown>;
 }
 
 /** Build an OpenAI-Responses-compatible ProviderAdapter from a small config. */
 export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): ProviderAdapter {
-  const { id, proxyBase, apiBase = '', capabilities, extraHeaders, webSearchTool } = opts;
+  const {
+    id,
+    proxyBase,
+    apiBase = '',
+    capabilities,
+    extraHeaders,
+    webSearchTool,
+    forceSearchToolChoice,
+  } = opts;
   const RESPONSES = `${apiBase}/v1/responses`;
   const MODELS = `${apiBase}/v1/models`;
 
@@ -248,6 +262,13 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // zero answer. A cap only bounds spend; the raised floor costs nothing unless the
           // reasoning genuinely needs the room, and an errored call that delivered nothing is the
           // one outcome more expensive than answering.
+          // A reasoning model meters hidden thinking tokens out of THIS budget, so a small cap can
+          // be spent entirely on reasoning, ending the turn `incomplete` with no answer. A FLOOR,
+          // deliberately, not an allowance added on top: adding headroom to a caller that already
+          // sized itself generously only inflates what the provider reserves against its
+          // per-minute quota (measured: a four-board batch went 11.9k → 15.9k that way). This
+          // lifts the small callers that need it and leaves a large, self-sized request alone —
+          // sizing THAT request down belongs where it is computed, not here.
           max_output_tokens: reasoning
             ? Math.max(
                 req.maxTokens ?? 1024,
@@ -272,6 +293,13 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           ...(reasoning ? { reasoning: { effort } } : { temperature: req.temperature ?? 0.3 }),
           stream: true,
           ...(searchTool ? { tools: [searchTool] } : {}),
+          // Offering the tool is not asking for it: tool_choice defaults to auto, so the model may
+          // skip the search and answer from memory — which a dashboard check then correctly throws
+          // away, having billed for it. Where the caller says the answer is worthless ungrounded
+          // AND this provider documents a force value, require the tool instead of hoping.
+          ...(searchTool && req.tools?.requireSearch && forceSearchToolChoice
+            ? { tool_choice: forceSearchToolChoice() }
+            : {}),
         }),
       };
       // A 429 (rate limit) is transient — a burst of dashboard refreshes, or a bumped-effort search

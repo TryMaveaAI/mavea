@@ -19,6 +19,9 @@ export const openaiAdapter = openaiResponsesCompatible({
   id: 'openai',
   proxyBase: '/llm/openai',
   webSearchTool: () => ({ type: 'web_search' }),
+  // Documented on the Responses API; verified live (gpt-5.4-nano answered a live-price check from
+  // training memory under tool_choice:auto, and searched with citations once forced).
+  forceSearchToolChoice: () => ({ type: 'web_search' }),
   capabilities: {
     constrainedDecoding: true, // json_object mode (structure guaranteed; props via validator)
     streaming: true,

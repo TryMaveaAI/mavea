@@ -135,3 +135,13 @@ export function displayTitle(title: string): string {
   );
   return `${clamped}…`;
 }
+
+/** The bare hostname of a source URL ("finance.yahoo.com"), or '' when it isn't a URL. Shared by
+ *  the check log's footer and the per-observation receipts, so both name a source the same way. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}

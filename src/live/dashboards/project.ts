@@ -57,6 +57,21 @@ const DASHBOARD_WIDGET_TYPES = new Set([
   'sourceslineage',
 ]);
 
+/** Is this widget's content DERIVED from dashboard state at render time rather than stored on the
+ *  block? Two kinds are: the bespoke chrome (thesis, gauge, alerts, lineage), and a metric card,
+ *  whose stat comes from its MetricSpec — the single source of truth a refresh actually writes.
+ *
+ *  This is the seam that decides what a refresh may ask a model to regenerate. A projected widget
+ *  must never be a refresh target: whatever the model returned for it would be overwritten by the
+ *  projection a moment later, so the tokens buy nothing and every extra block in the reply is
+ *  another chance for the whole response to fail validation. The value it displays still updates
+ *  every check — through its metric, which the same call fetches as a plain number. */
+export function isProjectedWidget(w: Widget): boolean {
+  const type = w.block.type;
+  if (DASHBOARD_WIDGET_TYPES.has(type)) return true;
+  return !!w.metricId && type === 'insight';
+}
+
 /** The block to actually render for a widget: bespoke chrome gets fresh props projected from `d`;
  *  everything else passes through unchanged (its values were refreshed in place on the widget). */
 export function projectWidgetBlock(d: Dashboard, w: Widget): Block {

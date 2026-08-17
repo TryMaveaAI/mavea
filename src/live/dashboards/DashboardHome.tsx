@@ -106,11 +106,22 @@ export function DashboardHome(): ReactElement {
   // eagerly mounted with DashboardsApp, and that module's refresh/provider chain must stay out
   // of its chunk (tests/eager-bundle.test.ts) until a check is actually requested.
   const [checkingAll, setCheckingAll] = useState(false);
+  const [checkAllNote, setCheckAllNote] = useState<string | null>(null);
   const handleCheckAll = async (): Promise<void> => {
     setCheckingAll(true);
+    setCheckAllNote(null);
     try {
       const { checkAllDashboardsNow } = await import('./useDashboardLoop');
-      await checkAllDashboardsNow();
+      const outcome = await checkAllDashboardsNow();
+      // 'failed' means a whole round died at the provider — typically a saturated per-minute quota,
+      // which a board count high enough to need several rounds is exactly what causes. It stops
+      // rather than spending the rest of the quota collecting the same error, and says so, because
+      // a button that goes quiet after checking nothing is indistinguishable from one that worked.
+      if (outcome === 'failed') {
+        setCheckAllNote(
+          'Your model provider stopped the run — usually its per-minute limit. Nothing was changed; try again in a minute.',
+        );
+      }
     } finally {
       setCheckingAll(false);
     }
@@ -187,6 +198,11 @@ export function DashboardHome(): ReactElement {
                   )}
                 </div>
               </div>
+              {checkAllNote && (
+                <p className="dash-quota-note" role="status">
+                  {checkAllNote}
+                </p>
+              )}
               <div className="dash-track-grid">
                 {isEmpty ? (
                   <>

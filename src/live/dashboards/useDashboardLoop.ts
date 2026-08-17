@@ -14,12 +14,17 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ModelConfig } from '../../types/mavea';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
 import { setDataPending } from './dataPending';
+import { withSchedulerLease } from './schedulerLease';
+import { type CheckRun, endCheckRun, recordStep, startCheckRun } from './checkRun';
+import { failureLine } from './trackerState';
+import type { TrackerFailure } from './types';
 import {
   applyRefreshResult,
   getDashboard,
   getDashboards,
   markAiRefreshed,
   markDataRetry,
+  markTrackerFailure,
   markVerdictFailed,
   setVerdict,
   updateTripwireStates,
@@ -36,7 +41,7 @@ import type { BatchRefreshResult, DashboardRefreshResult, RefreshBatchMember } f
 import type { Dashboard, Tripwire, Verdict } from './types';
 import { analyzeMove } from './analyze';
 import { notifyTriggered } from './notify';
-import { hasLiveContent } from './format';
+import { hasLiveContent, hostOf } from './format';
 import { appendLedger, checksThisWeek, getLedger } from './ledger';
 import type { LedgerEntry } from './ledger';
 import { budgetState, getDashSettings } from './budget';
@@ -51,6 +56,25 @@ const TICK_MS = 15_000;
 // that a transient blip doesn't park an hourly dashboard stale, long enough not to hammer a
 // rate-limited key every tick.
 const RETRY_MS = 5 * 60_000;
+
+/** When to try again after a call died, by WHY it died. One flat delay treated a five-second rate
+ *  window and a revoked key identically: the window wasted four minutes of staleness, and the key
+ *  burned a doomed call every five minutes forever. A provider that TOLD us when to come back is
+ *  believed (bounded), because it knows and we are guessing. */
+function retryDelayFor(failure: TrackerFailure | undefined, now: number): number {
+  switch (failure?.kind) {
+    case 'rate-limit':
+      return failure.retryAt ? Math.max(15_000, failure.retryAt - now) : 60_000;
+    case 'provider-unavailable':
+      return 2 * 60_000;
+    case 'auth':
+      // Nothing here retries itself out of a rejected key. Park it on the normal cadence and let
+      // the tracker card ask for a reconnect, rather than spending a doomed call every 5 minutes.
+      return 6 * 60 * 60_000;
+    default:
+      return RETRY_MS;
+  }
+}
 
 // Module-scope, not per-hook: the surface router (routes.ts) fully unmounts DashboardsApp on any
 // hash change, so navigating away and back while a refresh/analyze is still in flight mounts a FRESH
@@ -105,14 +129,6 @@ export function useVerdictPending(id: string): boolean {
 // home grid's tiles) can subscribe via useDataPending without reaching this module's heavy
 // refresh/provider chain. Re-exported here for callers that already import from this module.
 export { useDataPending } from './dataPending';
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
 
 /** A deterministic, human-readable summary of what a batched check found — built ONLY from real
  *  fetched values (never the model's own prose), so the check-log rail is trustworthy even when a
@@ -311,6 +327,13 @@ export async function runRefreshBatch(
   }
   if (members.length === 0) return outcomes;
 
+  // One flight recorder per member: a batched call is one provider request, but each tracker gets
+  // its own readable story of what that request did FOR IT.
+  const recorders = new Map(members.map((m) => [m.d.id, startCheckRun(m.d.id, now)]));
+  const eachRun = (fn: (run: CheckRun) => void): void => {
+    for (const run of recorders.values()) fn(run);
+  };
+
   if (!ready) {
     // No model connected — leave every live-content member fully DUE: no fetch attempted, so no
     // clock/one-shot/lastRefreshedAt is touched. The old behavior ran a fetch-free "no-change"
@@ -336,8 +359,17 @@ export async function runRefreshBatch(
       // The CALL died (network/quota/auth). Don't stamp lastRefreshedAt — no member was checked —
       // and retry soon instead of parking a full cadence on a transient failure. The briefing gate
       // stays open too (markBriefingShown only ever fires from recordBriefing, on success).
+      const failure = batchResult.failure ?? { kind: 'network' as const };
+      const retryIn = retryDelayFor(batchResult.failure, now);
+      eachRun((run) => {
+        recordStep(run, 'search', false, { detail: failureLine(failure) });
+        endCheckRun(run, { outcome: 'failed', failure, attempts: batchResult.attempts });
+      });
       for (const m of members) {
-        markDataRetry(m.d.id, now + RETRY_MS);
+        markDataRetry(m.d.id, now + retryIn);
+        // Say WHICH way it died on the tracker itself, so the card can offer the matching next
+        // step instead of a generic "couldn't verify" the reader can do nothing with.
+        markTrackerFailure(m.d.id, failure, now);
         outcomes[m.d.id] = 'failed';
       }
       return outcomes;
@@ -345,6 +377,29 @@ export async function runRefreshBatch(
 
     for (const m of members) {
       const result = batchResult.perDashboard[m.d.id] ?? { values: {}, widgets: {} };
+      const run = recorders.get(m.d.id) ?? null;
+      // The steps that actually explain a check, in the order they happened: the call returned, it
+      // did (or did not) bring sources, and this much of THIS tracker's content came out of it.
+      recordStep(run, 'search', true, { count: batchResult.attempts });
+      recordStep(run, 'sources', batchResult.sources.length > 0, {
+        count: batchResult.sources.length,
+        ...(batchResult.sources.length === 0
+          ? { detail: 'The model answered without citing a live source.' }
+          : {}),
+      });
+      const extracted = Object.keys(result.values).length + Object.keys(result.widgets).length;
+      recordStep(run, 'extraction', extracted > 0, {
+        count: extracted,
+        ...(extracted === 0
+          ? { detail: 'Nothing in the reply matched this tracker’s metrics or cards.' }
+          : {}),
+      });
+      recordStep(run, 'grounding', batchResult.grounded, {
+        ...(batchResult.grounded
+          ? {}
+          : { detail: 'Ungrounded — every value from it was discarded.' }),
+      });
+
       outcomes[m.d.id] = await applyMemberResult(
         m,
         result,
@@ -354,6 +409,15 @@ export async function runRefreshBatch(
         now,
         !batchResult.grounded,
       );
+
+      const outcome = outcomes[m.d.id];
+      recordStep(run, 'saved', outcome === 'updated' || outcome === 'no-change');
+      recordStep(run, 'tripwires', true);
+      endCheckRun(run, {
+        outcome: outcome === 'failed' ? 'failed' : outcome,
+        attempts: batchResult.attempts,
+        ...(outcome === 'unverified' ? { failure: { kind: 'ungrounded' as const } } : {}),
+      });
     }
 
     if (opts.briefing && batchResult.briefing) {
@@ -465,7 +529,7 @@ export async function refreshDashboardNow(
  *  simply didn't fit this call's token ceiling. Pre-chunking here means every round's `due` list
  *  is exactly what that round's batch covers, so nothing gets marked "checked" without a real
  *  attempt. Budget-exempt like every other manual action. */
-export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'busy'> {
+export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'busy' | 'failed'> {
   const cfg = toModelConfig(getLiveConfigV2());
   if (!cfg.apiKey) return 'no-model';
   const liveContent = getDashboards().filter(hasLiveContent);
@@ -478,8 +542,9 @@ export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'bu
     if (batch.length === 0) break;
     const ids = batch.map((m) => m.d.id);
     ids.forEach((id) => inFlight.add(id));
+    let outcomes: Record<string, string> = {};
     try {
-      await runRefreshBatch(
+      outcomes = await runRefreshBatch(
         batch.map((m) => m.d),
         cfg,
         true,
@@ -488,6 +553,12 @@ export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'bu
     } finally {
       ids.forEach((id) => inFlight.delete(id));
     }
+    // A round where EVERY member died is a provider-level wall, not bad luck on one board — a
+    // saturated per-minute token quota being the ordinary case, since a board count high enough to
+    // need several rounds is exactly what saturates it. Firing the remaining rounds into that same
+    // window spends the user's quota to collect identical failures (observed: three rounds, three
+    // identical 429s, nothing checked). Stop and let them retry once the window clears.
+    if (ids.length > 0 && ids.every((id) => outcomes[id] === 'failed')) return 'failed';
     remaining = remaining.filter((d) => !ids.includes(d.id));
   }
   return 'done';
@@ -668,12 +739,23 @@ export function useDashboardLoop(): void {
       }
     };
 
-    const interval = window.setInterval(() => void tick(), TICK_MS);
+    // Every AUTOMATIC entry point goes through the lease, so exactly one tab spends no matter how
+    // many are open. Manual actions (Check now, Check all) deliberately bypass it — see
+    // schedulerLease.ts.
+    // The catch is load-bearing, not defensive noise: this is fire-and-forget, so a throw escaping
+    // here is an unhandled rejection — and the interval keeps firing into the same broken state
+    // with nothing on screen or in the console to say why.
+    const leasedTick = (): void => {
+      void withSchedulerLease(tick).catch((err) => {
+        console.error('[dashboards] scheduled tick failed', err);
+      });
+    };
+    const interval = window.setInterval(leasedTick, TICK_MS);
     const onVisible = (): void => {
-      if (document.visibilityState === 'visible') void tick();
+      if (document.visibilityState === 'visible') leasedTick();
     };
     document.addEventListener('visibilitychange', onVisible);
-    void tick(); // catch anything already due on open
+    leasedTick(); // catch anything already due on open
 
     return () => {
       alive = false;

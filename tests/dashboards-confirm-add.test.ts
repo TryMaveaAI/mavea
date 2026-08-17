@@ -7,6 +7,10 @@
 // (metrics, widgets, tripwires, the "Added: …" source row) and nothing that was already there;
 // static boards (nothing to ground) confirm without spending a call; a busy refresh slot is
 // waited out, never counted as confirmation.
+//
+// A CREATE that cannot confirm is KEPT and marked pending — deleting a board the user just made
+// over a provider hiccup was honest about the data and brutal about the work. Nothing unverified
+// is ever displayed either way: values only persist from a grounded pass.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Dashboard } from '../src/live/dashboards/types';
 
@@ -24,6 +28,7 @@ import {
   updateDashboard,
 } from '../src/live/dashboards/store';
 import { clearLedger, getLedger } from '../src/live/dashboards/ledger';
+import { trackerState } from '../src/live/dashboards/trackerState';
 
 const dash = (over: Partial<Dashboard> = {}): Dashboard => ({
   id: 'd1',
@@ -88,27 +93,37 @@ describe('confirmRealData — create (whole board is the addition)', () => {
     expect(getDashboard('d1')).not.toBeNull();
   });
 
-  it("removes a board whose pass 'landed' but never filled the tile — pass-level grounding is not tile-level", async () => {
+  it("keeps a board whose pass 'landed' but never filled the tile, marked pending", async () => {
     // The engine can answer 'done' off a grounded no-change pass; a metric search cannot answer
-    // stays empty forever. That tile must not survive the gate.
+    // stays empty forever. The tile is not CONFIRMED — but the board is not destroyed either.
     addDashboard(dash({ metrics: [metric()] }));
     probe.mockResolvedValue('done');
     await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
-    expect(getDashboard('d1')).toBeNull();
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    expect(trackerState(kept!).status).toBe('pending');
+    expect(kept!.metrics[0].lastValue).toBeNull(); // nothing unverified is ever shown
   });
 
-  it('removes a board whose probe could not verify with sources', async () => {
+  it('keeps a board whose probe could not verify with sources, and says what it waits on', async () => {
     addDashboard(dash({ metrics: [metric()] }));
     probe.mockResolvedValue('unverified');
     await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
-    expect(getDashboard('d1')).toBeNull();
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    const st = trackerState(kept!);
+    expect(st.status).toBe('pending');
+    expect(st.status === 'pending' && st.failure?.kind).toBe('ungrounded');
   });
 
-  it('removes a board when there is no model to confirm with', async () => {
+  it('keeps a board when there is no model to confirm with — the work is not the failure', async () => {
     addDashboard(dash({ metrics: [metric()] }));
     probe.mockResolvedValue('no-model');
     await expect(confirmRealData('d1', null)).resolves.toBe('no-model');
-    expect(getDashboard('d1')).toBeNull();
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    const st = trackerState(kept!);
+    expect(st.status === 'pending' && st.failure?.kind).toBe('no-model');
   });
 
   it('confirms a STATIC board immediately — nothing to ground, no call spent', async () => {
@@ -131,14 +146,16 @@ describe('confirmRealData — the busy slot is waited out, never trusted', () =>
     expect(probe.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('a slot that never frees rolls the addition back instead of confirming blind', async () => {
+  it('a slot that never frees refuses to confirm blind, and keeps the board pending', async () => {
     vi.useFakeTimers();
     addDashboard(dash({ metrics: [metric()] }));
     probe.mockResolvedValue('busy');
     const result = confirmRealData('d1', null);
     await vi.advanceTimersByTimeAsync(60_000);
     await expect(result).resolves.toBe('unverified');
-    expect(getDashboard('d1')).toBeNull();
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    expect(trackerState(kept!).status).toBe('pending');
   });
 });
 
@@ -223,15 +240,16 @@ describe('confirmRealData — fold (everything the fold added rolls back, nothin
 // up-to-45s it can run, and its caller drops the inline error when the user has moved on. So the
 // board simply vanished, with nothing anywhere to say why. The check log is the durable record.
 describe('confirmRealData — a rollback is never silent', () => {
-  it('logs the rolled-back create where check outcomes already live', async () => {
+  it('logs an unconfirmed create where check outcomes already live, without deleting it', async () => {
     addDashboard(dash({ title: 'Yankees', metrics: [metric()] }));
     probe.mockResolvedValue('unverified');
 
     await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
 
-    expect(getDashboard('d1')).toBeNull();
+    expect(getDashboard('d1')).not.toBeNull();
     const entry = getLedger().find((e) => e.text.includes('Yankees'));
     expect(entry?.kind).toBe('alert');
+    expect(entry?.text).toContain('waiting on its first check');
     expect(entry?.searches).toBe(0);
   });
 
@@ -286,7 +304,7 @@ describe('confirmRealData — a concurrent pass is used, not duplicated', () => 
     expect(getDashboard('d1')).not.toBeNull();
   });
 
-  it('still rolls back when that concurrent pass grounded nothing for the added tile', async () => {
+  it('still refuses when that concurrent pass grounded nothing for the added tile', async () => {
     addDashboard(dash({ title: 'Ungrounded', metrics: [metric()] }));
     // The pass completes (lastRefreshedAt moves) but the added metric never fills in.
     probe.mockImplementation(async (id) => {
@@ -295,7 +313,12 @@ describe('confirmRealData — a concurrent pass is used, not duplicated', () => 
     });
 
     await expect(confirmRealData('d1', null)).resolves.toBe('unverified');
-    expect(getDashboard('d1')).toBeNull();
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    // A pass DID complete for this board (that is what we were waiting on), it just grounded
+    // nothing for the added tile — so the tracker is not active, and the tile stays empty.
+    expect(trackerState(kept!).status).not.toBe('active');
+    expect(kept!.metrics[0].lastValue).toBeNull();
     expect(getLedger().some((e) => e.text.includes('Ungrounded'))).toBe(true);
   });
 });

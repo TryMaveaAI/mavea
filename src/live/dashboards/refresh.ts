@@ -21,6 +21,7 @@ import type {
   Dashboard,
   MetricSpec,
   PredictionGrade,
+  TrackerFailure,
   Tripwire,
   TripwireState,
   Widget,
@@ -31,11 +32,36 @@ import { parseLooseJson } from '../ground/json';
 import { currentDateTimeLine } from '../ground/now';
 import { normLabel } from '../ground/tokens';
 import { coerceExpects, coerceGrade } from './predictions';
-import { valueWithUnit } from './format';
+import { hostOf, valueWithUnit } from './format';
+import { isProjectedWidget } from './project';
+import { coerceObservation, observationKindFor, OBSERVATION_SHAPE } from './observation';
+import { projectObservation } from './projectObservation';
+import { saveObservation } from './observationStore';
 // validateLiveResponse is dynamic-imported inside refreshDashboard (below), not statically — a
 // static import pulls liveSchema → the ~580-entry catalog into the eager Dashboards-mount chunk.
 // The refresh path is already async (post-fetch), so the import adds no perceptible latency.
 import { arr, obj } from '../providers/http';
+
+/** Read the provider's thrown error and name the failure it actually is. The adapters throw
+ *  `Error("<id> <status><detail>")`, so the status is in the message — crude to match on, but the
+ *  alternative is a typed error class threaded through five adapters for one consumer. What matters
+ *  is that the loop stops treating every death as the same five-minute retry: a rate window drains
+ *  in seconds, a rejected key never drains without the user. */
+function classifyProviderError(err: unknown): TrackerFailure {
+  const text = err instanceof Error ? err.message : String(err);
+  if (/\b429\b|rate.?limit/i.test(text)) {
+    // Providers state the wait in the message ("try again in 5.146s") far more often than they
+    // send a machine-readable header the adapter kept — read it when it is there.
+    const secs = Number(/(?:in|after)\s+([\d.]+)\s*s/i.exec(text)?.[1]);
+    return Number.isFinite(secs) && secs > 0
+      ? { kind: 'rate-limit', retryAt: Date.now() + Math.min(secs * 1000, 120_000) }
+      : { kind: 'rate-limit' };
+  }
+  if (/\b401\b|\b403\b|api key|unauthor/i.test(text)) return { kind: 'auth' };
+  if (/\b5\d\d\b|overloaded|unavailable|capacity/i.test(text))
+    return { kind: 'provider-unavailable' };
+  return { kind: 'network' };
+}
 
 /** Whether the tripwire's condition is met given the metric's current + previous numeric value.
  *  Transition/percent comparators need `prev`; level comparators ignore it. */
@@ -227,14 +253,24 @@ function metricLine(m: MetricSpec): string {
   return `- VALUE "${m.label}" — ${m.query}`;
 }
 function widgetLine(w: RefreshableWidget, i: number, hint: string | null): string {
-  // The CURRENT props ride along as a concrete example of the expected detail level AND as the
-  // thing the model must check for a state change — without a concrete "was this live?" example,
-  // a model asked to "refresh the answer" tends to just restate the same status(observed live: a
-  // widget still shown as "live now" long after the real match had already finished, because the
-  // model searched but never framed the search as "check whether this has concluded since").
-  // The shape line is load-bearing for a board that has NEVER filled: its current props are an
-  // empty skeleton, which teaches nothing, and a model left to guess item field names produces
-  // data the validator must reject.
+  const kind = observationKindFor(w.block.type);
+  // A target whose view has a canonical DATA shape asks for that data, never for a rendered block.
+  // The schema is a single flat line, and this app builds the component from it — so a drift in
+  // the model's prop names can no longer throw away a search the user paid for.
+  if (kind) {
+    return (
+      `- DATA #${i} [${kind}] ${w.refreshQuery}\n` + `  return EXACTLY: ${OBSERVATION_SHAPE[kind]}`
+    );
+  }
+  // The long tail with no canonical shape (scoreboards, forecasts, diagrams) still comes back as a
+  // built block. The CURRENT props ride along as a concrete example of the expected detail level
+  // AND as the thing the model must check for a state change — without a concrete "was this live?"
+  // example, a model asked to "refresh the answer" tends to just restate the same status (observed
+  // live: a widget still shown as "live now" long after the real match had finished, because the
+  // model searched but never framed the search as "check whether this has concluded since"). The
+  // shape line is load-bearing for a board that has NEVER filled: its current props are an empty
+  // skeleton, which teaches nothing, and a model left to guess item field names produces data the
+  // validator must reject.
   return (
     `- BLOCK #${i} [${w.block.type}] ${w.refreshQuery}\n` +
     (hint ? `  expected props (use EXACTLY these field names): ${hint}\n` : '') +
@@ -264,6 +300,11 @@ export interface BatchRefreshResult {
   sources: GroundingSource[];
   /** Present only when a briefing was requested AND the call grounded successfully. */
   briefing?: string;
+  /** Why the CALL died, when `ok` is false — classified HERE, where the provider error is still in
+   *  hand, because the loop can only see a boolean by the time it decides what to do next. The
+   *  kinds differ in the answer they need: a rate window drains itself in seconds, a rejected key
+   *  needs the user, an unreachable host needs the network back. */
+  failure?: TrackerFailure;
   /** How many provider calls this pass actually spent (1, or 2 when the first came back
    *  ungrounded and refreshDashboards retried once with a sharpened search demand). NOT what the
    *  ledger's `searches` counts — that stays 1 per user-facing check regardless (see
@@ -282,7 +323,14 @@ function emptyDashboardResult(): DashboardRefreshResult {
 function liveTargets(d: Dashboard): { metrics: MetricSpec[]; targets: RefreshableWidget[] } {
   return {
     metrics: d.metrics.filter((m) => m.query.trim() !== '' && !m.blankKey),
-    targets: d.widgets.filter((w): w is RefreshableWidget => !!w.refreshQuery?.trim()),
+    // A PROJECTED widget is never a target, even when something gave it a refreshQuery: its
+    // content is derived from dashboard state at render time (project.ts), so a regenerated block
+    // would be overwritten moments later. Asking for it spent tokens for nothing and put another
+    // block in the reply that validation could choke on — while the number it shows kept updating
+    // anyway, through its metric, which this same call already fetches as a plain value.
+    targets: d.widgets.filter(
+      (w): w is RefreshableWidget => !!w.refreshQuery?.trim() && !isProjectedWidget(w),
+    ),
   };
 }
 
@@ -312,8 +360,21 @@ function allowedTypesFor(target: RefreshableWidget): string[] {
 
 /** Rough per-dashboard token cost — enough to decide how many dashboards fit one call before the
  *  rest spill to the next 15s tick, not exact accounting. */
+/** Roughly how many output tokens one dashboard's slice of a batch needs. The per-target figure is
+ *  the one that matters: a BLOCK target returns a whole rebuilt component (nested props, item
+ *  arrays, colors) and genuinely needs ~1200, but a DATA target returns a flat observation — a few
+ *  strings, or label/value pairs — which fits in a fraction of that.
+ *
+ *  This is not a nicety. Providers reserve `input + max_output_tokens` against a per-minute token
+ *  quota, so an oversized estimate does not merely waste headroom, it decides how many checks fit
+ *  in a minute at all: with the old flat figure a four-board batch reserved ~57k of a 200k/min
+ *  limit, so a handful of boards could exhaust the quota and every further check 429'd. */
 function estimateCost(d: Dashboard, metrics: MetricSpec[], targets: RefreshableWidget[]): number {
-  return 400 + metrics.length * 120 + targets.length * 1200 + (d.prediction ? 150 : 0);
+  const targetCost = targets.reduce(
+    (sum, w) => sum + (observationKindFor(w.block.type) ? 300 : 1200),
+    0,
+  );
+  return 400 + metrics.length * 120 + targetCost + (d.prediction ? 150 : 0);
 }
 
 const BATCH_TOKEN_CEIL = 12_000;
@@ -461,7 +522,17 @@ export async function refreshDashboards(
   if (members.length === 0 && !opts.briefingContext) return empty;
   try {
     const adapter = getAdapter(cfg.provider);
-    const allowedTypes = new Set(members.flatMap((m) => m.targets.flatMap(allowedTypesFor)));
+    // ONLY block-path targets contribute here. A canonical target is answered as data and built
+    // locally, so it needs no canvas schema — and declaring one has a consequence far beyond a few
+    // wasted tokens: a non-empty `blockTypes` marks the request a CANVAS turn, which pins the
+    // provider's reasoning effort to 'low', and web search does not engage reliably below 'medium'
+    // (see openaiResponsesCompatible). A board whose targets were all canonical therefore asked for
+    // live data and got an answer from training memory with an empty `sources` array — every value
+    // correctly discarded by the grounding gate, one search billed, nothing shown.
+    const blockTargets = members.flatMap((m) =>
+      m.targets.filter((w) => !observationKindFor(w.block.type)),
+    );
+    const allowedTypes = new Set(blockTargets.flatMap(allowedTypesFor));
     const anyTargets = allowedTypes.size > 0;
     // The schema module both validates the answer AND teaches the question: each BLOCK line below
     // carries its type's exact prop shape from blockShapeHint. Without that, the model saw only the
@@ -489,6 +560,12 @@ export async function refreshDashboards(
               values: {
                 type: 'object',
                 description: 'Map of VALUE label -> current numeric value, or null.',
+              },
+              observations: {
+                type: 'array',
+                description:
+                  'Exactly one object per DATA item for this dashboard, in the same order, each in the exact shape that DATA line specifies.',
+                items: { type: 'object' },
               },
               blocks: {
                 type: 'array',
@@ -553,10 +630,17 @@ export async function refreshDashboards(
       },
       required: ['dashboards'],
     };
+    // What we RESERVE, which is not the same as what we spend — providers bill
+    // `input + max_output_tokens` against a per-minute quota, so an oversized reservation decides
+    // how many checks fit in a minute even when the replies are tiny. Measured on a real four-board
+    // batch: ~2.5k tokens of input, ~12k reserved, and a few hundred tokens actually returned. The
+    // ceiling therefore drops sharply once every target answers with DATA rather than a rebuilt
+    // component; a batch that still has to rebuild a component keeps the original headroom.
+    const dataOnly = anyTargets === false;
     const maxTokens = Math.min(
-      14_000,
+      dataOnly ? 4_000 : 14_000,
       Math.max(
-        3000,
+        dataOnly ? 1_500 : 3000,
         1200 +
           members.reduce((sum, m) => sum + estimateCost(m.d, m.metrics, m.targets), 0) +
           (opts.briefingContext ? 700 : 0),
@@ -565,12 +649,15 @@ export async function refreshDashboards(
     const system =
       currentDateTimeLine() +
       ' You are checking several standing trackers at once. Return ONLY JSON: {"dashboards": ' +
-      '[{"id": string, "values": {...}, "blocks": [...], "expects"?: string, "grade"?: {...}, ' +
+      '[{"id": string, "values": {...}, "observations": [...], "blocks": [...], "expects"?: string, "grade"?: {...}, ' +
       '"disagreement"?: {...}, "liveWindow"?: {...}}, ...], ' +
       (opts.briefingContext ? '"briefing": string, ' : '') +
       '"sources": [...]}. Use web search for every DASHBOARD section below — never invent a ' +
       'value or detail. ECHO each dashboard\'s exact "id" so results map back correctly. For a ' +
       'VALUE item, give its CURRENT real number (no units) or null if unverifiable. For a BLOCK ' +
+      'For a DATA item, return ONE object in "observations" (same order as the DATA lines) in the ' +
+      'exact shape that line prints — plain data, no component or prop names, and omit the entry ' +
+      'entirely rather than inventing a value you did not find. For a BLOCK ' +
       'item, produce exactly one block whose "type" is the EXACT bracketed type given — never ' +
       'substitute a different one — matching its current content for detail level (real names, ' +
       'numbers, dates). Where a BLOCK lists "expected props", copy that shape EXACTLY: the same ' +
@@ -623,7 +710,10 @@ export async function refreshDashboards(
             // (and searching) harder.
             temperature: 0.15,
             thinkingLevel: sharpen ? 'high' : 'low',
-            tools: { webSearch: true },
+            // A dashboard check is the definition of a turn that is worthless ungrounded — the
+            // engine discards every value from a call that did not cite a source. Require the
+            // search rather than leaving it to the model's discretion.
+            tools: { webSearch: true, requireSearch: true },
             format,
             ...(anyTargets ? { blockTypes: [...allowedTypes], complexity: 'brief' as const } : {}),
           },
@@ -644,6 +734,11 @@ export async function refreshDashboards(
     const parsedObj = obj(parseLooseJson(rr.raw));
     const grounded = isGrounded(rr, parsedObj);
     const sectionsById = extractSections(parsedObj, members);
+    // Declared before the per-member loop: an observation's receipts name the same sources the
+    // pass reports, and reading them from one binding keeps those two from ever disagreeing.
+    const sources = rr.sources && rr.sources.length ? rr.sources : selfReportedSources(parsedObj);
+    // Deduped: three citations from fda.gov are one receipt saying fda.gov, not three.
+    const receiptHosts = [...new Set(sources.map((src) => hostOf(src.url)).filter(Boolean))];
     const validateLiveResponse = schema ? schema.validateLiveResponse : null;
 
     const perDashboard: Record<string, DashboardRefreshResult> = {};
@@ -663,9 +758,36 @@ export async function refreshDashboards(
           }
         }
       }
+      if (m.targets.length > 0 && grounded) {
+        // Canonical targets come back as DATA and are projected here — the model never named a
+        // prop. Indexed by the same position the prompt used, so a reply that echoes the order (the
+        // only thing it was asked to do) maps back without needing an id to survive the round trip.
+        const rawObs = arr(section.observations ?? section.data);
+        m.targets.forEach((target, i) => {
+          const kind = observationKindFor(target.block.type);
+          if (!kind) return;
+          const data = coerceObservation(kind, rawObs[i]);
+          if (!data) return;
+          const prev = (target.block as unknown as { props?: Record<string, unknown> }).props ?? {};
+          const metric = target.metricId
+            ? m.d.metrics.find((x) => x.id === target.metricId)
+            : undefined;
+          const props = projectObservation(target.block.type, data, prev, metric?.unit);
+          if (props) {
+            result.widgets[target.id] = { ...target.block, props } as Block;
+            // History goes to its own record, keyed by tracker — never into the whole-dashboard
+            // blob this store rewrites on every write. Detached: a card renders from the value
+            // already in memory, so nothing on screen waits on this landing.
+            void saveObservation(m.d.id, target.id, data, now, receiptHosts);
+          }
+        });
+      }
       if (m.targets.length > 0 && validateLiveResponse) {
         const rawBlocks = arr(section.blocks);
         m.targets.forEach((target, i) => {
+          // A canonical target was already filled from its observation above — never ask the
+          // block path to second-guess it.
+          if (observationKindFor(target.block.type)) return;
           const rawBlock = rawBlocks[i];
           if (!rawBlock) return;
           // Validate each block in ISOLATION (a one-block envelope) — validateLiveResponse
@@ -723,7 +845,6 @@ export async function refreshDashboards(
       parsedObj.briefing.trim()
         ? parsedObj.briefing.trim()
         : undefined;
-    const sources = rr.sources && rr.sources.length ? rr.sources : selfReportedSources(parsedObj);
 
     return {
       ok: true,
@@ -739,7 +860,14 @@ export async function refreshDashboards(
     // "ran fine, found nothing new" — so it can retry soon instead of parking a full cadence.
     const perDashboard: Record<string, DashboardRefreshResult> = {};
     for (const m of members) perDashboard[m.d.id] = emptyDashboardResult();
-    return { ok: false, grounded: false, perDashboard, sources: [], attempts: 0 };
+    return {
+      ok: false,
+      grounded: false,
+      perDashboard,
+      sources: [],
+      attempts: 0,
+      failure: classifyProviderError(err),
+    };
   }
 }
 

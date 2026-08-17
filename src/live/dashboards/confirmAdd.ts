@@ -14,10 +14,21 @@
 //
 // Static content (no search-tracked metric, no refreshable widget) confirms immediately — there
 // is nothing to ground, and a hand-typed board must never be blocked by a search hiccup.
-import { getDashboard, removeDashboard, updateDashboard } from './store';
+//
+// WHAT A FAILED PROBE DOES, AND DOES NOT, DO. A CREATE is never deleted: the board the user just
+// made stays, marked `pending`, saying what it is waiting on and offering a retry. Deleting it was
+// honest about the DATA and brutal about the WORK — a provider rate limit made a tracker someone
+// had just described vanish in front of them, which reads as "adding never works" no matter how
+// correct the reasoning. The honesty invariant is untouched, because it never depended on the
+// rollback: values are only ever persisted from a grounded pass, so a pending board shows empty
+// cards, never invented ones. A FOLD still rolls back — those widgets joined a board that IS
+// proven, and leaving unproven tiles among proven ones is the one case where keeping the work
+// would blur what has been verified.
+import { getDashboard, markTrackerFailure, updateDashboard } from './store';
 import { hasLiveContent } from './format';
 import { appendLedger } from './ledger';
 import { refreshDashboardNow } from './useDashboardLoop';
+import { failureFromOutcome } from './trackerState';
 import type { Dashboard } from './types';
 
 export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'failed';
@@ -29,11 +40,17 @@ export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'failed';
 export const CONFIRM_WAIT_NOTE =
   'Checking a live source before this joins your board — a search can take up to a minute. You can close this; the result lands in your check log either way.';
 
-/** The one honest line every blocked add shows. */
-export function confirmFailureMessage(outcome: ConfirmOutcome): string {
+/** The one honest line a blocked add shows. `kept` distinguishes the two shapes: a created board
+ *  is still there (waiting on its first check), while an addition to an existing board was rolled
+ *  back off it. Saying "it wasn't added" about a board sitting on screen is its own small lie. */
+export function confirmFailureMessage(outcome: ConfirmOutcome, kept = false): string {
   if (outcome === 'no-model')
-    return 'Connect a model with an API key first — a tile only joins the board once a real search has confirmed it returns real data.';
-  return "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";
+    return kept
+      ? 'Saved, but nothing can be checked until a model is connected — connect one in Live and this starts filling in.'
+      : 'Connect a model with an API key first — a tile only joins the board once a real search has confirmed it returns real data.';
+  return kept
+    ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. It keeps trying; you can also reword what to track.'
+    : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";
 }
 
 /** Snapshot of what a board held BEFORE a fold, so an unconfirmed addition can be rolled back
@@ -58,14 +75,10 @@ export function boardIds(d: Dashboard): BoardIds {
   };
 }
 
-/** `before === null` means the whole dashboard is the addition (a fresh create — removed
- *  outright); otherwise everything that wasn't in `before` is stripped, so a failed fold leaves
- *  no orphaned alert rows or phantom "Added: …" lineage behind. */
-function rollBack(id: string, before: BoardIds | null): void {
-  if (before === null) {
-    removeDashboard(id);
-    return;
-  }
+/** Strip everything a FOLD added, leaving what was already there untouched — no orphaned alert
+ *  rows, no phantom "Added: …" lineage. Never called for a create (`before === null`): a board the
+ *  user just made is kept and marked pending instead of deleted. */
+function rollBackFold(id: string, before: BoardIds): void {
   const cur = getDashboard(id);
   if (!cur) return;
   updateDashboard(id, {
@@ -99,32 +112,39 @@ function addedMetricsGrounded(id: string, before: BoardIds | null): boolean {
  *  differently to someone deciding what to do next: an ungrounded search means reword or retry,
  *  while an unreachable model means fix the key — and logging both as "no live source" sent the
  *  reader to the wrong fix. */
-const ROLLBACK_REASON: Record<Exclude<ConfirmOutcome, 'confirmed'>, string> = {
+const REFUSAL_REASON: Record<Exclude<ConfirmOutcome, 'confirmed'>, string> = {
   unverified: 'no live source could confirm it returns real data',
   'no-model': 'no model was connected to check it with',
   failed: 'the model could not be reached to check it',
 };
 
-/** Undo the addition and say so where check outcomes already live. The sheet that started this may
- *  already be gone — it stays dismissible through a probe that can run for the better part of a
- *  minute, and its caller drops the inline error when the user has moved on — so a board that
- *  vanishes leaving no trace anywhere reads as lost data rather than as honesty. The probe's own
- *  pass ledgered whatever search it spent; this entry adds none. */
-function rollBackAndLog<T extends Exclude<ConfirmOutcome, 'confirmed'>>(
+/** Record an unconfirmed addition. A CREATE keeps its board and goes `pending` — the card then
+ *  says what it is waiting on and offers a retry; a FOLD is stripped back off the proven board it
+ *  joined. Either way the outcome is written where check outcomes already live: the sheet that
+ *  started this may be long gone (it stays dismissible through a probe that can run the better
+ *  part of a minute), and something that changes on a board with no trace anywhere reads as a bug.
+ *  The probe's own pass ledgered whatever search it spent; this entry adds none. */
+function refuseAndLog<T extends Exclude<ConfirmOutcome, 'confirmed'>>(
   id: string,
   before: BoardIds | null,
   title: string,
   outcome: T,
+  now = Date.now(),
 ): T {
-  rollBack(id, before);
-  const reason = ROLLBACK_REASON[outcome];
+  const failure = failureFromOutcome(outcome);
+  if (before === null) {
+    if (failure) markTrackerFailure(id, failure, now);
+  } else {
+    rollBackFold(id, before);
+  }
+  const reason = REFUSAL_REASON[outcome];
   appendLedger({
     kind: 'alert',
     text:
       before === null
-        ? `“${title}” wasn’t added — ${reason}.`
+        ? `“${title}” is waiting on its first check — ${reason}.`
         : `The addition to “${title}” was rolled back — ${reason}.`,
-    dashboardIds: before === null ? [] : [id],
+    dashboardIds: [id],
     searches: 0,
   });
   return outcome;
@@ -181,10 +201,10 @@ export async function confirmRealData(
   if ((outcome === 'done' || outcome === 'landed') && addedMetricsGrounded(id, before)) {
     return 'confirmed';
   }
-  if (outcome === 'landed') return rollBackAndLog(id, before, title, 'unverified');
+  if (outcome === 'landed') return refuseAndLog(id, before, title, 'unverified');
   // 'done' that got here means the pass ran but the added tile never filled — unverified, in the
   // only sense the reader cares about: nothing could stand behind it.
-  return rollBackAndLog(
+  return refuseAndLog(
     id,
     before,
     title,

@@ -90,16 +90,15 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
     dash.title = title;
     dash.question = ask.trim();
     addDashboard(dash);
-    setConfirming(true);
-    setConfirmErr(null);
-    const outcome = await confirmRealData(dash.id, null);
-    if (!alive.current) return;
-    setConfirming(false);
-    if (outcome !== 'confirmed') {
-      setConfirmErr(confirmFailureMessage(outcome));
-      return;
-    }
+    // Hand the board over IMMEDIATELY and let the probe run behind it. The gate used to hold this
+    // sheet open for the length of a real web search — routinely 30-60s, and longer once the
+    // failed-probe retries were added — while the thing the user had just described sat finished
+    // and invisible underneath. Creation is now instant because it no longer needs the probe's
+    // answer to be honest: the board opens `pending`, showing that nothing is verified yet, and
+    // the check fills it in or says why. The probe still runs, still refuses to confirm on
+    // nothing, and still writes its outcome to the check log — it just does not block the door.
     onDone(dash.id);
+    void confirmRealData(dash.id, null);
   };
 
   const fold = async (target: Dashboard): Promise<void> => {
@@ -115,7 +114,7 @@ export function PlanReview({ plan, ask, existing, onDone }: PlanReviewProps): Re
     if (!alive.current) return;
     setConfirming(false);
     if (outcome !== 'confirmed') {
-      setConfirmErr(confirmFailureMessage(outcome));
+      setConfirmErr(confirmFailureMessage(outcome, false));
       return;
     }
     onDone(target.id);

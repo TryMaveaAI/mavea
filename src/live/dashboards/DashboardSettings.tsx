@@ -11,6 +11,8 @@ import { USAGE_LABEL, usageEstimate } from './cost';
 import { refreshableWidgetCount, searchMetricCount } from './format';
 import { dashHref } from './route';
 import { notifyTriggered, pushSupported, requestPush } from './notify';
+import { CadenceCard } from './CadenceCard';
+import { MAX_DAILY_BUDGET, MIN_DAILY_BUDGET, setDashSettings, useDashSettings } from './budget';
 import type { AiCadenceMode, Tripwire } from './types';
 
 // The AI read has ONE honest control: when Mavéa reads the numbers. It folds the old cadence
@@ -36,6 +38,10 @@ export function DashboardSettings({ id }: { id: string }): ReactElement {
   const dashboards = useDashboards();
   const d = useMemo(() => dashboards.find((x) => x.id === id) ?? null, [dashboards, id]);
   // Recompute the usage band live as the controls change (pure, no async, no figures).
+  const settings = useDashSettings();
+  // CadenceCard shows "next check in …" against the wall clock; a mount-time read is enough here
+  // (Settings is a short-lived surface — the detail page owns the live-ticking copy of this card).
+  const [now] = useState(() => Date.now());
   const usage = useMemo(
     () =>
       d
@@ -132,6 +138,12 @@ export function DashboardSettings({ id }: { id: string }): ReactElement {
 
       <div className="dash-settings-grid">
         <div className="dash-settings-cols">
+          {/* The SAME component the detail page renders — one store field behind both controls, so
+              they cannot drift. Its absence here was the page's one per-board hole: every other
+              per-board setting lived on this page while the data cadence lived only on the board,
+              and a sentence below had to explain the split instead of the page just having it. */}
+          <CadenceCard dashboard={d} now={now} />
+
           <section className="card dash-set-card">
             <div className="card-eyebrow">AI analysis</div>
             <p className="dash-set-blurb">
@@ -150,10 +162,9 @@ export function DashboardSettings({ id }: { id: string }): ReactElement {
               }}
             />
             <p className="dash-set-blurb">
-              Refreshing the numbers themselves — the web searches — is a separate setting on the
-              dashboard. Checking whether a line crossed is a free comparison. This read is the one
-              model call, and you can trigger it anytime from the dashboard with “Read the numbers
-              now.”
+              Refreshing the numbers themselves — the web searches — is the Check cadence above.
+              Checking whether a line crossed is a free comparison. This read is the one model call,
+              and you can trigger it anytime from the dashboard with “Read the numbers now.”
             </p>
           </section>
 
@@ -189,6 +200,10 @@ export function DashboardSettings({ id }: { id: string }): ReactElement {
                 </p>
               )}
             </div>
+            <p className="dash-set-blurb">
+              Alerts are best-effort: a check that doesn’t run, a closed Mavéa, or blocked
+              notifications means no alert. Don’t rely on one arriving for anything important.
+            </p>
           </section>
 
           <section className="card dash-set-card dash-set-danger">
@@ -244,9 +259,29 @@ export function DashboardSettings({ id }: { id: string }): ReactElement {
             regardless of what cadence you've set.
           </p>
           <p className="dash-usage-warning">
-            Automatic checks pause for the day once your daily search budget is reached (adjustable
-            in your dashboards settings) — manual actions like Refresh now always work.
+            Automatic checks pause for the day once your daily search budget is reached — manual
+            actions like Refresh now always work.
           </p>
+          {/* The control the sentence above used to only PROMISE — the copy said "adjustable in
+              your dashboards settings" while no surface anywhere wrote the value. Global across
+              every dashboard, since the budget is one shared daily pool — and under its own
+              heading, because everything else on this page belongs to ONE board and a global knob
+              hiding among per-board ones is how it gets changed by accident. */}
+          <div className="card-eyebrow dash-usage-global">Every dashboard</div>
+          <div className="dash-usage-budget">
+            <label htmlFor="dash-budget-input">Daily search budget (all dashboards)</label>
+            <input
+              id="dash-budget-input"
+              type="number"
+              min={MIN_DAILY_BUDGET}
+              max={MAX_DAILY_BUDGET}
+              value={settings.dailySearchBudget}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n)) setDashSettings({ dailySearchBudget: n });
+              }}
+            />
+          </div>
           <a className="dash-usage-done" href={dashHref.detail(d.id)}>
             Done
           </a>

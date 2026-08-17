@@ -243,7 +243,7 @@ export function ExtractionPreview({
     if (!alive.current) return;
     setConfirming(false);
     if (outcome !== 'confirmed') {
-      setConfirmErr(confirmFailureMessage(outcome));
+      setConfirmErr(confirmFailureMessage(outcome, true));
       return;
     }
     onClose();
@@ -264,7 +264,7 @@ export function ExtractionPreview({
     if (!alive.current) return;
     setConfirming(false);
     if (outcome !== 'confirmed') {
-      setConfirmErr(confirmFailureMessage(outcome));
+      setConfirmErr(confirmFailureMessage(outcome, false));
       return;
     }
     onClose();

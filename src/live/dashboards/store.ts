@@ -18,6 +18,8 @@
 // that same hydrate.
 import { AI_CADENCE_MIN, nextDue, nextDataDue } from './cadence';
 import { pruneDeadOpens } from './opens';
+import { clearCheckRuns } from './checkRun';
+import { clearObservations } from './observationStore';
 import { encryptContent, decryptContent } from '../contentVault';
 import type {
   Cadence,
@@ -27,6 +29,8 @@ import type {
   MetricSpec,
   Prediction,
   PredictionGrade,
+  TrackerFailure,
+  TrackerState,
   TripwireState,
   Tripwire,
   ValueOrigin,
@@ -35,6 +39,7 @@ import type {
   WidgetSpan,
 } from './types';
 import type { Block } from '../../data/conversation';
+import { stateAfterFailure, stateAfterSuccess, trackerState } from './trackerState';
 import { friendlyAsk } from '../friendlyAsk';
 
 const STORAGE_KEY = 'mavea-dashboards-v1';
@@ -119,6 +124,58 @@ function coerceHistoryPoint(v: unknown): { at: number; value: number } | null {
 /** Metrics otherwise pass through un-typechecked (today's permissive behaviour, unchanged) — the
  *  one thing worth sanitizing on read is `history`, since a corrupt or missing ring must never
  *  grow past the cap or crash a sparkline on a bad point. */
+const FAILURE_KINDS = new Set([
+  'auth',
+  'rate-limit',
+  'network',
+  'no-model',
+  'ungrounded',
+  'provider-unavailable',
+]);
+
+/** A persisted tracker state, or undefined when it's absent//malformed — `trackerState()` derives
+ *  an honest equivalent from the older fields in that case, so a bad value degrades to the legacy
+ *  reading rather than inventing a status. */
+function coerceTrackerState(v: unknown): TrackerState | undefined {
+  if (!isObj(v)) return undefined;
+  const failure =
+    isObj(v.failure) && FAILURE_KINDS.has(str(v.failure.kind))
+      ? ({
+          kind: str(v.failure.kind),
+          ...(typeof v.failure.retryAt === 'number' && Number.isFinite(v.failure.retryAt)
+            ? { retryAt: v.failure.retryAt }
+            : {}),
+        } as TrackerFailure)
+      : undefined;
+  const lastAttemptAt =
+    typeof v.lastAttemptAt === 'number' && Number.isFinite(v.lastAttemptAt)
+      ? v.lastAttemptAt
+      : undefined;
+  const lastSuccessAt =
+    typeof v.lastSuccessAt === 'number' && Number.isFinite(v.lastSuccessAt)
+      ? v.lastSuccessAt
+      : undefined;
+  if (v.status === 'pending') {
+    return {
+      status: 'pending',
+      ...(failure ? { failure } : {}),
+      ...(lastAttemptAt !== undefined ? { lastAttemptAt } : {}),
+    };
+  }
+  if (v.status === 'active' && lastSuccessAt !== undefined) {
+    return { status: 'active', lastSuccessAt };
+  }
+  if (v.status === 'degraded' && failure && lastAttemptAt !== undefined) {
+    return {
+      status: 'degraded',
+      failure,
+      lastAttemptAt,
+      ...(lastSuccessAt !== undefined ? { lastSuccessAt } : {}),
+    };
+  }
+  return undefined;
+}
+
 function coerceMetric(v: unknown): MetricSpec | null {
   if (!isObj(v)) return null;
   const rawHistory = Array.isArray(v.history) ? v.history : [];
@@ -258,6 +315,7 @@ function coerceDashboard(v: unknown): Dashboard | null {
     v.lastDataOutcome === 'unverified'
       ? { lastDataOutcome: v.lastDataOutcome }
       : {}),
+    ...(coerceTrackerState(v.state) ? { state: coerceTrackerState(v.state)! } : {}),
     ...(verdict ? { lastVerdict: verdict } : {}),
     ...(typeof v.lastVerdictAttemptAt === 'number' && Number.isFinite(v.lastVerdictAttemptAt)
       ? { lastVerdictAttemptAt: v.lastVerdictAttemptAt }
@@ -611,6 +669,10 @@ export function removeDashboard(id: string): void {
   // Open-history is keyed by dashboard id and outlives the dashboard otherwise — a deleted board's
   // visits kept feeding the cadence optimizer, which reasons about how often boards are looked at.
   pruneDeadOpens(new Set(rest.map((d) => d.id)));
+  // Same rule for its flight recorder and its reading history: neither may outlive the tracker
+  // they describe.
+  clearCheckRuns(id);
+  void clearObservations(id);
 }
 
 export function clearDashboards(): void {
@@ -849,8 +911,17 @@ export function markDataRefreshed(
       nextDataAt: nextDataDue(cadence, now),
       lastRefreshedAt: now,
       lastDataOutcome: outcome,
+      // A completed check is a success even when it found nothing new: the tracker demonstrably
+      // works. 'unverified' does NOT come through here (it routes to markDataUnverified).
+      state: stateAfterSuccess(now),
     };
   });
+}
+
+/** Record the tracker's state after a check that could not complete — the ONE writer of a failure
+ *  state. Keeps whatever real data the board already holds; never deletes, never invents. */
+export function markTrackerFailure(id: string, failure: TrackerFailure, now = Date.now()): void {
+  patchOne(id, (d) => ({ ...d, state: stateAfterFailure(trackerState(d), failure, now) }));
 }
 
 /** A data refresh ATTEMPT died (network, quota, auth) — schedule a soon retry WITHOUT touching
@@ -1007,6 +1078,12 @@ export function applyRefreshResult(id: string, patch: RefreshResultPatch, now = 
         nextDataAt,
         lastRefreshedAt: now,
         lastDataOutcome: patch.outcome,
+        // A grounded pass — updated or no-change — proves the tracker works. 'unverified' ran but
+        // could stand behind nothing, which is a failure of the check, not of the connection.
+        state:
+          patch.outcome === 'unverified'
+            ? stateAfterFailure(trackerState(d), { kind: 'ungrounded' }, now)
+            : stateAfterSuccess(now),
         prediction,
         predictionHistory,
       };

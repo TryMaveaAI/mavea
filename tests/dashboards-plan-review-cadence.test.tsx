@@ -131,25 +131,23 @@ describe('PlanReview cadence picker', () => {
 // The reality probe runs a real web search, which routinely takes tens of seconds. A button frozen
 // at "Confirming live data…" for that long, with nothing else on screen, is indistinguishable from
 // a hang — so the sheet says what it is waiting on, that it can be left, and where the answer lands.
-describe('PlanReview — the wait is explained while the probe runs', () => {
-  it('shows what it is waiting on, and only while it waits', async () => {
-    let release: (v: 'done') => void = () => {};
-    refreshDashboardNow.mockReturnValue(
-      new Promise<'done'>((resolve) => {
-        release = resolve;
-      }),
-    );
+// Creating a tracker does not wait for its first check. The gate used to hold the sheet open for
+// the length of a real web search — routinely 30-60s — while the board the user had just described
+// sat finished and invisible underneath. It can hand over immediately because it no longer needs
+// the probe's answer to be honest: the board opens `pending`, showing nothing is verified yet.
+describe('PlanReview — creating is instant, the check runs behind it', () => {
+  it('hands the board over without waiting for the probe to resolve', async () => {
+    // A probe that never settles: if creation awaited it, onDone could never fire.
+    refreshDashboardNow.mockReturnValue(new Promise(() => {}));
     render(<NewFromTemplate onClose={() => {}} />);
     await planIt('AAPL stock price');
 
-    expect(screen.queryByText(/can take up to a minute/)).toBeNull();
-
     fireEvent.click(screen.getByText(/Create dashboard/));
-    const note = await screen.findByText(/can take up to a minute/);
-    expect(note.textContent).toContain('lands in your check log');
 
-    await act(async () => {
-      release('done');
-    });
+    // The board was persisted and handed over even though the check is still in flight — the
+    // sheet never enters the blocking "Confirming live data…" state on the create path.
+    await vi.waitFor(() => expect(addDashboard).toHaveBeenCalled());
+    expect(screen.queryByText(/Confirming live data/)).toBeNull();
+    expect(screen.queryByText(/can take up to a minute/)).toBeNull();
   });
 });

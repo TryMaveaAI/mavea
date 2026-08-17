@@ -4,6 +4,7 @@
 // TrackerTile stays a thin presentational consumer of one plain object.
 import type { Block } from '../../../data/conversation';
 import { agoLine, headlineMetric, refreshableWidgetCount } from '../format';
+import { failureLine, trackerState } from '../trackerState';
 import type { CadenceWindow, Dashboard, DataCadenceMode, MetricSpec } from '../types';
 
 export type TileKind =
@@ -228,6 +229,7 @@ export function buildTileModel(d: Dashboard, now: number): TileModel {
   const liveCardCount = refreshableWidgetCount(d);
   const unverified = d.lastDataOutcome === 'unverified';
 
+  const state = trackerState(d);
   let value: string;
   let context: string;
   if (headline) {
@@ -238,9 +240,16 @@ export function buildTileModel(d: Dashboard, now: number): TileModel {
     context = liveCardCount === 1 ? 'live card' : 'live cards';
   } else {
     value = '—';
-    // An attempt genuinely ran but never earned real sources — say so, rather than the flatly
-    // wrong "Not yet checked" (which implies nothing has been tried at all).
-    context = unverified ? "Couldn't verify with sources — check again" : 'Not yet checked';
+    // Nothing real to show. If the tracker is pending BECAUSE a check failed, its own failure line
+    // is the most useful thing this tile can say — it names what would move it forward, where
+    // "Not yet checked" implies nothing has been tried. An attempt that ran but never earned
+    // sources keeps its own wording.
+    context =
+      state.status === 'pending' && state.failure
+        ? failureLine(state.failure)
+        : unverified
+          ? "Couldn't verify with sources — check again"
+          : 'Not yet checked';
   }
 
   const history = headline ? (headlineM?.history ?? null) : null;

@@ -1997,3 +1997,35 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* The global daily-search-budget control in the settings usage aside — one shared pool, so it is
+   labeled as all-dashboards. Sized like the usage rows around it; no decoration, it is a number. */
+.dash-usage-budget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.dash-usage-budget input {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-default);
+  color: var(--text-primary);
+  font-family: var(--font-data);
+  text-align: right;
+}
+
+/* The one global section on the per-board settings page — spaced apart so the boundary between
+   "this board" and "every board" is a visible seam, not a caption. */
+.dash-usage-global {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}

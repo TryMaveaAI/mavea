@@ -22,6 +22,7 @@ import { LastCheckCard } from './LastCheckCard';
 import { CadenceCard } from './CadenceCard';
 import { AlertCard } from './AlertCard';
 import { CheckLogRail } from './CheckLogRail';
+import { CheckRunPanel } from './CheckRunPanel';
 import { recordOpen } from './opens';
 import { dataStatusLine, hasLiveContent } from './format';
 import { dashHref } from './route';
@@ -288,6 +289,7 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
               </div>
             )}
             <CheckLogRail dashboardId={dashboard.id} now={now} />
+            <CheckRunPanel dashboardId={dashboard.id} />
           </div>
           <div className="dash-detail-side">
             <CadenceCard dashboard={dashboard} now={now} />

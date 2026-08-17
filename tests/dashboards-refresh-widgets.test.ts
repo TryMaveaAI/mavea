@@ -66,7 +66,7 @@ describe('refreshDashboard — widget grounding (no metrics in play)', () => {
 
     // The call actually asked for search + the SAME block type back, not a free-form ask.
     const req = generateMock.mock.calls[0][0];
-    expect(req.tools).toEqual({ webSearch: true });
+    expect(req.tools).toEqual({ webSearch: true, requireSearch: true });
     expect(req.blockTypes).toEqual(['insight']);
     expect(req.user).toContain("today's world cup scores");
   });
@@ -215,18 +215,53 @@ describe('refreshDashboard — combined metrics + widgets in one call', () => {
 // and the validator then rejects the very data the search just paid for. The board read "no new
 // data" forever while every check grounded. Two defenses, both pinned here: the prompt teaches
 // each BLOCK's exact shape, and the list coercer salvages an alien-but-real item.
-describe('refreshDashboard — the prompt teaches each block its shape', () => {
-  it('a list target is taught plain-string items, and a taught reply lands', async () => {
+describe('refreshDashboard — a data-shaped target asks for DATA, not a rendered block', () => {
+  it('asks a list target for the canonical list shape, and projects the reply locally', async () => {
     generateMock.mockResolvedValue({
       raw: JSON.stringify({
         dashboards: [
           {
             id: 'd1',
             values: {},
-            blocks: [
+            observations: [{ kind: 'list', items: ['NVDA — $225.16', 'TSM — $426.35'] }],
+          },
+        ],
+      }),
+      sources: [{ title: 's', url: 'https://example.com' }],
+    });
+
+    const w = widget({
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'Top prices', items: [] } } as never,
+      refreshQuery: 'top semiconductor stock prices',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    const req = generateMock.mock.calls[0][0];
+    // The prompt names DATA and the flat schema — never a component or a prop name.
+    expect(req.user).toContain('DATA #0 [list]');
+    expect(req.user).toContain('"kind":"list","items":[string]');
+    expect(req.user).not.toContain('BLOCK #0');
+
+    const props = (out.widgets.w1 as { props: { items: string[]; title: string } }).props;
+    expect(props.items).toEqual(['NVDA — $225.16', 'TSM — $426.35']);
+    // The tile keeps its own identity — a refresh fetches values, it does not rename the card.
+    expect(props.title).toBe('Top prices');
+  });
+
+  it('salvages items that came back as invented objects carrying real data', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            observations: [
               {
-                type: 'list',
-                props: { title: 'Top prices', items: ['NVDA — $225.16', 'TSM — $426.35'] },
+                kind: 'list',
+                items: [
+                  { ticker: 'NVDA', companyName: 'NVIDIA Corporation', currentPrice: 225.16 },
+                  { ticker: 'TSM', companyName: 'Taiwan Semiconductor', currentPrice: 426.35 },
+                ],
               },
             ],
           },
@@ -241,13 +276,119 @@ describe('refreshDashboard — the prompt teaches each block its shape', () => {
     });
     const out = await refreshDashboard(dash([w]), cfg);
 
-    const req = generateMock.mock.calls[0][0];
-    expect(req.user).toContain('expected props');
-    expect(req.user).toContain('"items": string[]');
-    expect((out.widgets.w1 as { props: { items: string[] } }).props.items).toHaveLength(2);
+    expect((out.widgets.w1 as { props: { items: string[] } }).props.items).toEqual([
+      'NVDA — NVIDIA Corporation — 225.16',
+      'TSM — Taiwan Semiconductor — 426.35',
+    ]);
   });
 
-  it('a generic-coerced target (scoreboard) is taught from its structural reference', async () => {
+  it('keeps a single real item — one row can be the entire honest answer', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'd1',
+            values: {},
+            observations: [
+              { kind: 'list', items: ['Pediatric Advisory Committee — September 16, 2026'] },
+            ],
+          },
+        ],
+      }),
+      sources: [{ title: 'FDA', url: 'https://www.fda.gov/advisory-committees' }],
+    });
+
+    const w = widget({
+      block: {
+        type: 'list',
+        id: 'b1',
+        col: 6,
+        props: { title: 'FDA calendar', items: [] },
+      } as never,
+      refreshQuery: 'FDA advisory committee calendar',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+
+    expect((out.widgets.w1 as { props: { items: string[] } }).props.items).toHaveLength(1);
+  });
+
+  it('an ungrounded call still yields nothing, data path or not', async () => {
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          { id: 'd1', values: {}, observations: [{ kind: 'list', items: ['made up'] }] },
+        ],
+      }),
+      // no sources ⇒ ungrounded ⇒ every fetched value is discarded, exactly as for blocks
+    });
+    const w = widget({
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'T', items: [] } } as never,
+      refreshQuery: 'q',
+    });
+    const out = await refreshDashboard(dash([w]), cfg);
+    expect(out.widgets.w1).toBeUndefined();
+  });
+
+  it('declares NO blockTypes when every target is canonical — so the call is not a canvas turn', async () => {
+    // Consequence, not cosmetics: a non-empty blockTypes marks the request a canvas turn, which
+    // pins provider reasoning to 'low', and web search does not engage reliably below 'medium'.
+    // Declaring a schema the data path never needed made a live-data check answer from training
+    // memory with an empty sources array — one search billed, every value correctly discarded.
+    generateMock.mockResolvedValue({ raw: '{}' });
+    const w = widget({
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'T', items: [] } } as never,
+      refreshQuery: 'q',
+    });
+    await refreshDashboard(dash([w]), cfg);
+
+    const req = generateMock.mock.calls[0][0];
+    expect(req.blockTypes).toBeUndefined();
+    expect(req.tools).toEqual({ webSearch: true, requireSearch: true });
+  });
+
+  it('still declares blockTypes for a mixed board, for the block-path target only', async () => {
+    generateMock.mockResolvedValue({ raw: '{}' });
+    const canonical = widget({
+      id: 'w-list',
+      block: { type: 'list', id: 'b1', col: 6, props: { title: 'T', items: [] } } as never,
+      refreshQuery: 'q1',
+    } as never);
+    const bespoke = widget({
+      id: 'w-score',
+      block: { type: 'scoreboard', id: 'b2', col: 8, props: { games: [] } } as never,
+      refreshQuery: 'q2',
+    } as never);
+    await refreshDashboard(dash([canonical, bespoke]), cfg);
+
+    const req = generateMock.mock.calls[0][0];
+    expect(req.blockTypes).toEqual(['scoreboard']);
+  });
+
+  it('reserves far fewer tokens for a data target than for a rebuilt block', async () => {
+    // Providers reserve input + max_output_tokens against a per-minute quota, so this number
+    // decides how many checks fit in a minute. A four-board batch once reserved ~57k of a 200k/min
+    // limit, and a handful of boards then 429'd everything behind them.
+    generateMock.mockResolvedValue({ raw: '{}' });
+    const four = (type: string, props: object) =>
+      [0, 1, 2, 3].map((i) =>
+        widget({
+          id: `w${i}`,
+          block: { type, id: `b${i}`, col: 6, props } as never,
+          refreshQuery: `q${i}`,
+        } as never),
+      );
+
+    await refreshDashboard(dash(four('list', { title: 'T', items: [] })), cfg);
+    const dataTokens = generateMock.mock.calls[0][0].maxTokens;
+
+    generateMock.mockClear();
+    await refreshDashboard(dash(four('scoreboard', { games: [] })), cfg);
+    const blockTokens = generateMock.mock.calls[0][0].maxTokens;
+
+    expect(dataTokens).toBeLessThan(blockTokens);
+  });
+
+  it('a target with no canonical shape still gets the block path and its prop hint', async () => {
     generateMock.mockResolvedValue({ raw: '{}' });
     const w = widget({
       block: { type: 'scoreboard', id: 'b1', col: 8, props: { games: [] } } as never,
@@ -256,54 +397,12 @@ describe('refreshDashboard — the prompt teaches each block its shape', () => {
     await refreshDashboard(dash([w]), cfg);
 
     const req = generateMock.mock.calls[0][0];
+    expect(req.user).toContain('BLOCK #0 [scoreboard]');
     expect(req.user).toContain('expected props');
     expect(req.user).toContain('"games"');
   });
-
-  it('salvages a list whose items came back as invented objects carrying real data', async () => {
-    generateMock.mockResolvedValue({
-      raw: JSON.stringify({
-        dashboards: [
-          {
-            id: 'd1',
-            values: {},
-            blocks: [
-              {
-                type: 'list',
-                props: {
-                  title: 'Top semiconductor prices',
-                  items: [
-                    { ticker: 'NVDA', companyName: 'NVIDIA Corporation', currentPrice: 225.16 },
-                    { ticker: 'TSM', companyName: 'Taiwan Semiconductor', currentPrice: 426.35 },
-                  ],
-                },
-              },
-            ],
-          },
-        ],
-      }),
-      sources: [{ title: 's', url: 'https://example.com' }],
-    });
-
-    const w = widget({
-      block: { type: 'list', id: 'b1', col: 6, props: { title: 'Top prices', items: [] } } as never,
-      refreshQuery: 'top semiconductor stock prices',
-    });
-    const out = await refreshDashboard(dash([w]), cfg);
-
-    const items = (out.widgets.w1 as { props: { items: string[] } }).props.items;
-    expect(items).toEqual([
-      'NVDA — NVIDIA Corporation — 225.16',
-      'TSM — Taiwan Semiconductor — 426.35',
-    ]);
-  });
 });
 
-// Coverage is the point: a paid product can't teach some topics and shrug at others. Every type
-// the validator will actually accept has a shape hint; the only untaught types are the four
-// demo-fixture-only renderers the validator itself refuses from a model (custom coercer, no
-// builder), which therefore can never appear in a Live answer, never be pinned, and never become
-// a refresh target. A new type joining this list is a regression, not a footnote.
 describe('blockShapeHint — every reachable type is taught', () => {
   it('teaches all catalog types except the demo-only renderers', async () => {
     const { blockShapeHint } = await import('../src/engine/liveSchema');
@@ -382,8 +481,35 @@ describe('refreshDashboard — a composite widget can actually refresh', () => {
 // thin. A dashboard tile stands alone, and its one item can be the entire honest answer: an FDA
 // calendar whose next section currently holds a single upcoming meeting, fetched and sourced.
 // Dropping it read as "checked — no new data" while the model had returned exactly the data.
-describe('refreshDashboard — a single-item list is a complete refresh for a standalone tile', () => {
-  it('accepts the one real item instead of discarding the grounded fetch', async () => {
+// The list block's two-item floor is a canvas COMPOSITION rule. It still applies to a standalone
+// BLOCK-path tile (validateLiveResponse's standaloneTile flag), which is why that flag stays — but
+// a list target no longer travels that path at all: its single row arrives as data and is projected
+// here, so the floor cannot reach it. Both routes now keep one real, sourced row.
+describe('refreshDashboard — a projected widget is never regenerated', () => {
+  it('skips a metric card even when something gave it a refreshQuery', async () => {
+    const metricCard = widget({
+      id: 'w-metric',
+      block: { type: 'insight', id: 'b1', col: 4, props: { title: 'Price', stat: '—' } } as never,
+      metricId: 'm1',
+      refreshQuery: 'current price',
+    } as never);
+    const out = await refreshDashboard(dash([metricCard]), cfg);
+    // Nothing to regenerate ⇒ no model call at all for this board.
+    expect(generateMock).not.toHaveBeenCalled();
+    expect(out.widgets).toEqual({});
+  });
+
+  it('skips the board chrome, which is always projected', async () => {
+    const chrome = widget({
+      id: 'w-thesis',
+      block: { type: 'thesis', id: 'b1', col: 12, props: {} } as never,
+      refreshQuery: 'restate the thesis',
+    } as never);
+    await refreshDashboard(dash([chrome]), cfg);
+    expect(generateMock).not.toHaveBeenCalled();
+  });
+
+  it('still regenerates a real rich widget alongside a skipped metric card', async () => {
     generateMock.mockResolvedValue({
       raw: JSON.stringify({
         dashboards: [
@@ -391,32 +517,30 @@ describe('refreshDashboard — a single-item list is a complete refresh for a st
             id: 'd1',
             values: {},
             blocks: [
-              {
-                type: 'list',
-                props: {
-                  title: 'Upcoming FDA advisory committee meetings',
-                  items: ['Pediatric Advisory Committee — September 16, 2026 — upcoming'],
-                },
-              },
+              { type: 'scoreboard', props: { games: [{ as: 'NYY', hs: 'BOS', at: 3, ht: 2 }] } },
             ],
           },
         ],
       }),
-      sources: [{ title: 'FDA', url: 'https://www.fda.gov/advisory-committees' }],
+      sources: [{ title: 's', url: 'https://example.com' }],
     });
+    const metricCard = widget({
+      id: 'w-metric',
+      block: { type: 'insight', id: 'b1', col: 4, props: { title: 'Price' } } as never,
+      metricId: 'm1',
+      refreshQuery: 'current price',
+    } as never);
+    const rich = widget({
+      id: 'w-list',
+      block: { type: 'scoreboard', id: 'b2', col: 8, props: { games: [] } } as never,
+      refreshQuery: 'biggest movers',
+    } as never);
 
-    const w = widget({
-      block: {
-        type: 'list',
-        id: 'b1',
-        col: 6,
-        props: { title: 'FDA calendar', items: [] },
-      } as never,
-      refreshQuery: 'FDA advisory committee calendar',
-    });
-    const out = await refreshDashboard(dash([w]), cfg);
-
-    const items = (out.widgets.w1 as { props: { items: string[] } }).props.items;
-    expect(items).toEqual(['Pediatric Advisory Committee — September 16, 2026 — upcoming']);
+    const out = await refreshDashboard(dash([metricCard, rich]), cfg);
+    // Exactly ONE block was asked for — the list — and the metric card got nothing.
+    const req = generateMock.mock.calls[0][0];
+    expect((req.user.match(/- BLOCK #/g) ?? []).length).toBe(1);
+    expect(out.widgets['w-list']).toBeDefined();
+    expect(out.widgets['w-metric']).toBeUndefined();
   });
 });

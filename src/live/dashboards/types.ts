@@ -233,7 +233,33 @@ export interface Dashboard {
   lastVerdictAttemptAt?: number;
   /** Set when that last attempt failed to produce a verdict; cleared the moment one succeeds. */
   lastVerdictError?: string;
+  /** Where this tracker stands, as ONE explicit value rather than a state the UI has to deduce by
+   *  combining lastRefreshedAt + lastDataOutcome + nextDataAt + oneShotAt. Absent on a record
+   *  written before this field existed — `trackerState()` derives it from those fields instead, so
+   *  nothing has to be migrated on read. */
+  state?: TrackerState;
 }
+
+/** Why a tracker could not complete its check. The kinds are distinguished because the ANSWER
+ *  differs: a rate limit clears itself, a bad key needs the user, an ungrounded search needs a
+ *  reworded query. Collapsing them into one "couldn't verify" is what made every failure look
+ *  like the same dead end. */
+export type TrackerFailure =
+  | { kind: 'auth' }
+  | { kind: 'rate-limit'; retryAt?: number }
+  | { kind: 'network' }
+  | { kind: 'no-model' }
+  | { kind: 'ungrounded' }
+  | { kind: 'provider-unavailable' };
+
+/** A tracker's lifecycle, explicit. `pending` is a tracker that has never completed a successful
+ *  check — it KEEPS the user's work on the board instead of deleting it, and shows what it is
+ *  waiting on. `degraded` had a good check once and a bad one since, so it still has real data to
+ *  show alongside an honest note about the last attempt. */
+export type TrackerState =
+  | { status: 'pending'; failure?: TrackerFailure; lastAttemptAt?: number }
+  | { status: 'active'; lastSuccessAt: number }
+  | { status: 'degraded'; lastSuccessAt?: number; failure: TrackerFailure; lastAttemptAt: number };
 
 /** The gallery status badge, derived purely from tripwire states (see status.ts). */
 export type DashboardStatus = 'tracking' | 'at-risk' | 'needs-attention';

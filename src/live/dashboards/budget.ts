@@ -11,7 +11,13 @@ export const DASH_SETTINGS_EVENT = STORAGE_KEY;
 
 export const MIN_DAILY_BUDGET = 5;
 export const MAX_DAILY_BUDGET = 200;
-export const DEFAULT_DAILY_BUDGET = 40;
+/** Sized from the product's own cadence math, not round-number vibes: hourly ≈ up to ~24
+ *  searches/day while Mavéa is open (CadenceCard's line), so 25 fully covers ONE always-on hourly
+ *  board with a little slack — and manual actions are budget-exempt anyway, so the cap only ever
+ *  binds on standing automation. Anyone running several hourly boards is making a deliberate
+ *  spend choice, which is exactly when raising a visible knob (Settings → Every dashboard) is the
+ *  right ask. The old 40 pre-dated that knob: with no way to lower it, the default WAS the cap. */
+export const DEFAULT_DAILY_BUDGET = 25;
 
 export interface DashSettings {
   dailySearchBudget: number;

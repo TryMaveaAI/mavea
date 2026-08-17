@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AMBER_RATIO,
+  DEFAULT_DAILY_BUDGET,
   MAX_DAILY_BUDGET,
   MIN_DAILY_BUDGET,
   budgetState,
@@ -93,5 +94,16 @@ describe('dash settings', () => {
     setDashSettings({ briefingSpoken: true });
     expect(getDashSettings().briefingEnabled).toBe(false);
     expect(getDashSettings().briefingSpoken).toBe(true);
+  });
+});
+
+// The default is derived, not decorative: hourly ≈ up to ~24 searches/day while the app is open,
+// so the out-of-box cap covers exactly one always-on hourly board with slack — anything past that
+// is a deliberate spend the user raises the visible knob for. Pinned so a future "round it up to
+// 50" edit has to argue with the cadence math first.
+describe('the default budget', () => {
+  it('covers one all-day hourly board, and no more than that by accident', () => {
+    expect(DEFAULT_DAILY_BUDGET).toBeGreaterThanOrEqual(24);
+    expect(DEFAULT_DAILY_BUDGET).toBeLessThan(2 * 24);
   });
 });

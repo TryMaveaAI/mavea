@@ -39,12 +39,14 @@ const getDashboard = vi.fn();
 const applyRefreshResult = vi.fn();
 const markDataRefreshed = vi.fn();
 const markDataRetry = vi.fn();
+const markTrackerFailure = vi.fn();
 vi.mock('../src/live/dashboards/store', () => ({
   getDashboard: (id: string) => getDashboard(id),
   getDashboards: () => [],
   applyRefreshResult: (...args: unknown[]) => applyRefreshResult(...args),
   markDataRefreshed: (...args: unknown[]) => markDataRefreshed(...args),
   markDataRetry: (...args: unknown[]) => markDataRetry(...args),
+  markTrackerFailure: (...args: unknown[]) => markTrackerFailure(...args),
   markAiRefreshed: vi.fn(),
   setVerdict: vi.fn(),
   markVerdictFailed: vi.fn(),
@@ -149,6 +151,8 @@ describe('refreshDashboardNow', () => {
     // near-future retry.
     expect(applyRefreshResult).not.toHaveBeenCalled();
     expect(markDataRetry).toHaveBeenCalledWith('d1', expect.any(Number));
+    // …and the tracker records WHICH way it died, so the card can offer the matching next step.
+    expect(markTrackerFailure).toHaveBeenCalledWith('d1', { kind: 'network' }, expect.any(Number));
     expect(appendLedger).not.toHaveBeenCalled(); // a dead call never happened — nothing to log
   });
 
