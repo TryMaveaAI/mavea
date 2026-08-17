@@ -7,7 +7,9 @@ import { withUnit } from '../../canvas/lib/format';
 import { isReal, type Receipt, type Tier } from '../ground/types';
 import type { WorldValue } from '../trust';
 
-const ILLUSTRATIVE_CAVEAT = 'Shows the shape, not your numbers.';
+/** The caveat an illustrative figure wears when its source said nothing more specific. Exported so a
+ *  panel can tell "the generic one" from a real quote and not print the same sentence on every row. */
+export const ILLUSTRATIVE_CAVEAT = 'Shows the shape, not your numbers.';
 
 /**
  * One figure, typed by what actually backs it. An illustrative graph outranks whatever tier the

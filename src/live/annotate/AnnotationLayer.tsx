@@ -177,6 +177,34 @@ function findTarget(
   return null;
 }
 
+/** The class the layer's own portal mount carries. Not styled anywhere but here. */
+const INK_MOUNT = 'ink-mount';
+
+/**
+ * A node inside `container` that the annotation layer OWNS, to portal into.
+ *
+ * React removes a portal's child from its container on unmount. Aim a portal at the card and that
+ * container is whatever the canvas is holding — replace the grid and the card's subtree is discarded,
+ * so React asks a node that no longer holds the child to remove it and removeChildFromContainer
+ * throws. Aim it at a node the layer created and never mutates, and the mount is discarded WITH the
+ * svg still inside it: React's removal is then a node removing its own child, which cannot fail.
+ *
+ * `display: contents` so the mount generates no box at all — the ink goes on positioning against the
+ * container, which is what every offset in `measure()` is computed against.
+ *
+ * Created lazily and reused. Nothing removes it: it belongs to the container's own lifetime, costs
+ * one empty element, and removing it is what would reintroduce the race.
+ */
+function mountIn(container: HTMLElement): HTMLElement | null {
+  const existing = container.querySelector<HTMLElement>(`:scope > .${INK_MOUNT}`);
+  if (existing) return existing;
+  const mount = document.createElement('div');
+  mount.className = INK_MOUNT;
+  mount.style.display = 'contents';
+  container.appendChild(mount);
+  return mount;
+}
+
 /** The innermost ancestor of `el` (up to but excluding `card`) that actually scrolls — a many-items
  *  list inside a card (`.cf-scroll`), or any overflow:auto/scroll region. Null when the target sits
  *  directly in the card. The ink portals INTO this so it rides the list's scroll and clips at its
@@ -202,8 +230,11 @@ function scrollerOf(el: HTMLElement, card: HTMLElement): HTMLElement | null {
  *  number and is skipped — there's no honest way to order against it. */
 function priorInkRects(container: HTMLElement, stepNumber: number): DOMRect[] {
   const out: DOMRect[] = [];
+  // `:scope > .ink-mount > .ink-layer`, not `:scope > .ink-layer`: every layer portals into the
+  // layer-owned mount now (see mountIn), so an ink layer is a grandchild of the container. Kept
+  // structural rather than a loose descendant search — a nested card's ink is not this card's.
   for (const layer of Array.from(
-    container.querySelectorAll<SVGSVGElement>(':scope > .ink-layer'),
+    container.querySelectorAll<SVGSVGElement>(`:scope > .${INK_MOUNT} > .ink-layer`),
   )) {
     const n = Number(layer.querySelector('.ink-step-num')?.textContent);
     if (!Number.isFinite(n) || n >= stepNumber) continue;
@@ -452,13 +483,24 @@ function SpotInk({
   // Never portal into a host that's no longer in the document. When a canvas restore/replace swaps
   // the whole grid, the card this ink was placed on unmounts; the effect above deliberately keeps
   // the old `placed` until a fresh measurement resolves (right for a viewMode re-layout where the
-  // card persists). But a portal aimed at a DETACHED node makes React's eventual
-  // removeChildFromContainer throw "node to be removed is not a child" — which the RootBoundary turns
-  // into a blanked canvas (and, because the commit aborts before TopicCanvas's block-family effect
-  // runs, a resumed answer renders empty). Bailing out until measure() finds a live host is the safe
-  // path — the mark simply re-draws on the new card.
+  // card persists). Bailing out until measure() finds a live host is the safe path — the mark simply
+  // re-draws on the new card.
+  //
+  // The check alone is not enough, and this is the race it cannot see: the container is connected
+  // when this renders and detached by the time React unmounts the portal, which is every canvas
+  // replace. React then asks the container to remove a child it no longer holds,
+  // removeChildFromContainer throws "node to be removed is not a child", and the RootBoundary blanks
+  // the canvas — the commit aborts before TopicCanvas's block-family effect runs, so a resumed answer
+  // renders empty and the turn's own provider call is aborted with it. Seen twice on live turns.
+  //
+  // So the portal aims at a MOUNT the layer owns (see `mountIn`), never at the card. When the card's
+  // subtree is discarded the mount goes with it still holding the svg, so React's removal is a node
+  // removing its own child and cannot fail. The mount generates no box (`display: contents`), so the
+  // ink still positions against the container exactly as before.
   if (!placed || !placed.container.isConnected) return null;
   const { host, container, stroke, view, chip } = placed;
+  const mount = mountIn(container);
+  if (!mount) return null;
   const colorAttr = mark?.color && mark.color !== 'warm' ? mark.color : undefined;
   // `.ink-layer` fills the card (inset:0). When the ink instead lives in a scroll container, it must
   // cover the FULL scroll content from its top-left so a mark anywhere in the list lands right and
@@ -564,7 +606,7 @@ function SpotInk({
         </g>
       )}
     </svg>,
-    container,
+    mount,
   );
 }
 
@@ -638,10 +680,13 @@ function ConnectInk({
     onPlaced?.();
   }, [placed, onPlaced]);
 
-  // Same detached-host guard as SpotInk: a connect stroke portals into the shared grid, so if that
-  // grid was unmounted by a canvas swap, drop out rather than leave React a stale portal to remove.
+  // Same detached-host guard as SpotInk, and the same mount for the same reason: a connect stroke
+  // portals into the shared grid, which a canvas swap discards wholesale. Dropping out covers the
+  // case where the grid is already gone; the mount covers the one where it goes AFTER this render.
   if (!placed || !placed.grid.isConnected) return null;
   const { grid, stroke } = placed;
+  const mount = mountIn(grid);
+  if (!mount) return null;
   const colorAttr = mark.color && mark.color !== 'warm' ? mark.color : undefined;
   const inkDelay = delayMs ? ({ '--ink-delay': `${delayMs}ms` } as React.CSSProperties) : undefined;
   return createPortal(
@@ -667,7 +712,7 @@ function ConnectInk({
         />
       )}
     </svg>,
-    grid,
+    mount,
   );
 }
 

@@ -2521,6 +2521,20 @@ export function LiveApp(): ReactElement {
     },
     [turn],
   );
+  // A NEW TURN replaces the canvas exactly the way a restore does, and needed the same guard.
+  //
+  // restoreCanvas has torn the ink down in its own commit since the "UIs are gone on resume" bug; a
+  // live turn had nothing. So the previous answer's marks were still portaled into its cards when the
+  // new answer's grid replaced them in one commit, removeChildFromContainer threw, and the
+  // RootBoundary blanked the answer — taking the turn's own provider call down with it. Seen three
+  // times on live turns while testing.
+  //
+  // Keyed on `busy` rather than wrapped around all six turn.run call sites: the swap happens when the
+  // new spec lands, long after busy goes true, so the ink is already gone by then — and one effect
+  // cannot be forgotten at a seventh call site.
+  useEffect(() => {
+    if (turn.busy) setInkSuppressed(true);
+  }, [turn.busy]);
   // Re-arm the ink once the new canvas has mounted (turn.turn bumped): the restored answer sits at
   // rest with no marks, so this just releases the guard so the next live walk can draw again.
   useEffect(() => {

@@ -6,13 +6,14 @@
 // real link the user can open. It only appears when the turn was genuinely grounded (the
 // lead insight is marked `prove` in generateLive only when sources exist), so the affordance
 // never promises evidence we don't have. Reuses the demo's drawer chrome so it feels native.
-import { useMemo, type ReactElement } from 'react';
+import { useEffect, useMemo, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
 import { CONF_TITLE_UNVERIFIED } from '../canvas/trust';
 import { EvidencePill } from '../canvas/provenance';
 import { hostOf, safeHttpUrl } from '../lib/sourceHost';
 import type { Block, Conf, WebSource } from '../data/conversation';
 import { answerToContent } from './content/fromAnswer';
+import { ILLUSTRATIVE_CAVEAT } from './content/value';
 import { numberOf, rawOf, STATUS_LABEL } from './trust';
 
 interface LiveEvidenceProps {
@@ -40,6 +41,19 @@ export function LiveEvidence({
   hadFiles = false,
   blocks,
 }: LiveEvidenceProps): ReactElement {
+  // Escape closes it, the way it closes every other overlay on this surface. Owned here rather than
+  // by the host: the drawer is the thing that knows whether it is open, and a panel a reader cannot
+  // dismiss from the keyboard is a trap for anyone not using a mouse. Bound only while open, so it
+  // never swallows an Escape meant for the walkthrough or a running spotlight.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   // The figures this answer prints, each typed by what actually backs it.
   //
   // The living world has always refused to render a number with nothing behind it. Every other answer
@@ -174,7 +188,11 @@ export function LiveEvidence({
                         the smallest possible lie about where a number came from. */}
                     {v.kind === 'grounded' ? (
                       <div className="evidence-quote">{v.resolution.receipt.quote}</div>
-                    ) : v.kind === 'illustrative' ? (
+                    ) : v.kind === 'illustrative' &&
+                      v.resolution.illustrative !== ILLUSTRATIVE_CAVEAT ? (
+                      // Only a caveat that SAYS something. Where the figure carries the generic one,
+                      // the summary line above has already said it once, and repeating it on every row
+                      // is four copies of a sentence that adds nothing after the first.
                       <div className="evidence-caveat">{v.resolution.illustrative}</div>
                     ) : null}
                   </li>

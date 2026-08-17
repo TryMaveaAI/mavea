@@ -70,9 +70,11 @@ describe('the figures in an answer', () => {
     );
     for (const row of container.querySelectorAll('.evidence-figure')) {
       expect(row.textContent).toContain('ILLUSTRATIVE');
-      // A model's own caveat is NOT a quotation, and must not be shown in quotation marks.
+      // A model's own caveat is NOT a quotation, and must never be shown in quotation marks.
       expect(row.querySelector('.evidence-quote')).toBeNull();
-      expect(row.querySelector('.evidence-caveat')).not.toBeNull();
+      // Nor is the GENERIC caveat repeated per row: the summary line above has already said it, and
+      // four copies of one sentence add nothing after the first.
+      expect(row.querySelector('.evidence-caveat')).toBeNull();
     }
   });
 
