@@ -77,7 +77,7 @@ A few specific things worth trying:
   surface from what you actually said — never fixed buckets — with the tensions between them.
 - **The Blank Space.** When an answer needs a number only you have, Mavéa leaves a hole to fill —
   by voice, type, or a dragged card — instead of quietly guessing.
-- **View any "why" as a world.** The answer opens into the causal web behind it: press
+- **View any "why" as a living answer.** The answer opens into the causal web behind it: press
   _Walk me through it_ and the camera flies cause to cause while Mavéa narrates, or read the same
   web as contribution ribbons, a timeline, or a chart. Break a cause open and its parts are drawn by
   whichever component the library has for that shape — or simply named, where nothing measured them.
@@ -90,7 +90,7 @@ is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
 ## What it looks like
 
-Ten moments from the walkthrough and the recorded sessions. Every one replays with no key via
+Twelve moments from the walkthrough and the recorded sessions. Every one replays with no key via
 `npx @mavea/mavea` — except the thought map, whose threads need a live model to draw.
 
 <!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these against the current build
@@ -100,18 +100,22 @@ Ten moments from the walkthrough and the recorded sessions. Every one replays wi
      it is the only markup GitHub and npm both keep on one row. -->
 <table>
   <tr>
-    <td width="20%" valign="top"><img width="168" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Laid out in space, with the relationships drawn between them.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/trip-plan.jpg" alt="A day trip drawn as a route map with numbered stops beside an hour-by-hour plan" /><br /><sub><b>It picks the right form.</b> A route becomes a map; a day becomes an hour-by-hour plan.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into themes and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes — and it names the tension you missed.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/voice-scrub.jpg" alt="A settled answer with its spoken track drawn as a waveform, above the card being narrated" /><br /><sub><b>Scrub the voice.</b> Drag the spoken track and the canvas un-builds to what had been said.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Laid out in space, with the relationships drawn between them.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into themes and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes — and it names the tension you missed.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/voice-scrub.jpg" alt="A settled answer with its spoken track drawn as a waveform, above the card being narrated" /><br /><sub><b>Scrub the voice.</b> Drag the spoken track and the canvas un-builds to what had been said.</sub></td>
   </tr>
   <tr>
-    <td width="20%" valign="top"><img width="168" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/deep-zoom.jpg" alt="Deep Zoom descending through a leaf, from the whole plant down toward a photon" /><br /><sub><b>A topic, in powers of ten.</b> Telescope from the big picture to the finest mechanism.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/deck-export.jpg" alt="The export studio previewing a generated slide, with PDF and PPTX downloads" /><br /><sub><b>Out as a deck.</b> Ten skins, a live preview, PDF or PowerPoint.</sub></td>
-    <td width="20%" valign="top"><img width="168" src="docs/media/doc-export.jpg" alt="The export studio previewing a generated document page in an editorial template" /><br /><sub><b>Or as a document.</b> The same answer set as a paper, ready to print or send.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/living-answer.jpg" alt="A causal web explaining why the 2008 financial crisis happened, nodes connected by weighted arrows showing what led to what" /><br /><sub><b>Walk the why.</b> A "why" answer opens into the causal web behind it — every cause traceable to a real quote.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/course-lesson.jpg" alt="A course lesson titled 'The learning loop', showing lesson 1 of 5 with learning objectives, a checkpoint, and a diagram of a neural network's training cycle" /><br /><sub><b>It builds you a course.</b> Ask to master something and get real lessons — objectives, a checkpoint, next steps.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/deep-zoom.jpg" alt="Deep Zoom descending through a leaf, from the whole plant down toward a photon" /><br /><sub><b>A topic, in powers of ten.</b> Telescope from the big picture to the finest mechanism.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top"><img width="168" src="docs/media/trip-plan.jpg" alt="A day trip drawn as a route map with numbered stops beside an hour-by-hour plan" /><br /><sub><b>It picks the right form.</b> A route becomes a map; a day becomes an hour-by-hour plan.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/deck-export.jpg" alt="The export studio previewing a generated slide, with PDF and PPTX downloads" /><br /><sub><b>Out as a deck.</b> Ten skins, a live preview, PDF or PowerPoint.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/doc-export.jpg" alt="The export studio previewing a generated document page in an editorial template" /><br /><sub><b>Or as a document.</b> The same answer set as a paper, ready to print or send.</sub></td>
   </tr>
 </table>
 

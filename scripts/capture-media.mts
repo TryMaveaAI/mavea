@@ -120,6 +120,10 @@ const SHOTS: Shot[] = [
     click: ['Zoom into The leaves', 'Zoom into The inner tissue'],
     settleMs: 4000,
   },
+  // Row 3 — reasoning made visible, and made to stick: a real-world "why" laid open, and a
+  // question that grows into a taught course.
+  { name: 'living-answer', from: 'tour', chapter: 'living-answer', settleMs: 6000 },
+  { name: 'course-lesson', from: 'tour', chapter: 'course', settleMs: 6000 },
 ];
 
 /** The README shows one look, not two: the paper template in light, which is what the product is
