@@ -1,3 +1,15 @@
+/* The gate is a document, not an app shell: five points, five links, two consent boxes and the
+   actions row outgrow a short window easily. But Live's stylesheet locks the viewport
+   (`html, body { height: 100%; overflow: hidden }`, live-transcript.css) and hash routing never
+   unloads it, so a returning reader re-acknowledging updated terms met the card clipped at the fold
+   with the checkboxes and Continue button unreachable — no wheel, no keys, no scrollbar. Re-assert
+   document scrolling, exactly as the legal documents do (legal.css). */
+html:has(.legal-gate),
+html:has(.legal-gate) body {
+  height: auto;
+  overflow: visible;
+}
+
 .legal-gate {
   min-height: 100dvh;
   display: grid;

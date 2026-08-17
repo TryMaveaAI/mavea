@@ -2,10 +2,12 @@ import { cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TermsApp } from '../src/legal/TermsApp';
 import { PrivacyApp } from '../src/legal/PrivacyApp';
+import { LegalGate } from '../src/legal/LegalGate';
 import { readFileSync } from 'node:fs';
 
 // Vitest stubs CSS imports, so the stylesheets are read from disk (the suite runs at the root).
 const legalCss = readFileSync('src/legal/legal.css', 'utf8');
+const gateCss = readFileSync('src/legal/legal-gate.css', 'utf8');
 const shellCss = readFileSync('src/styles/live-transcript.css', 'utf8');
 
 // jsdom has no layout, so the scroll call is the only observable signal that a document opened
@@ -100,6 +102,27 @@ describe('legal documents scroll the window whatever else is loaded', () => {
 
     render(<TermsApp />);
 
+    expect(getComputedStyle(document.body).overflow).toBe('visible');
+    expect(getComputedStyle(document.documentElement).overflow).toBe('visible');
+    expect(getComputedStyle(document.body).height).toBe('auto');
+  });
+
+  it('lifts it for the acknowledgement gate too — the one document you cannot skip', () => {
+    // The gate outgrows a short window (five points, five links, two consent boxes, the actions
+    // row) and it is shown to RETURNING readers, whose session already loaded the shell's lock. So
+    // the card was clipped at the fold with the two checkboxes and Continue below it, and nothing
+    // could reach them: the only way past the gate sat under an edge the window would not scroll.
+    localStorage.clear();
+    applyStylesheets(gateCss, shellCss);
+    expect(getComputedStyle(document.body).overflow).toBe('hidden');
+
+    render(
+      <LegalGate>
+        <p>the product</p>
+      </LegalGate>,
+    );
+
+    expect(document.querySelector('.legal-gate')).not.toBeNull();
     expect(getComputedStyle(document.body).overflow).toBe('visible');
     expect(getComputedStyle(document.documentElement).overflow).toBe('visible');
     expect(getComputedStyle(document.body).height).toBe('auto');
