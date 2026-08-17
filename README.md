@@ -79,9 +79,10 @@ A few specific things worth trying:
   by voice, type, or a dragged card — instead of quietly guessing.
 - **View any "why" as a world.** The answer opens into the causal web behind it: press
   _Walk me through it_ and the camera flies cause to cause while Mavéa narrates, or read the same
-  web as contribution ribbons, a timeline, or a chart. Every figure on it can prove itself, every
-  arrow says what it does _not_ claim, and pulling a what-if lever re-weights the world in words —
-  never in invented numbers.
+  web as contribution ribbons, a timeline, or a chart. Break a cause open and its parts are drawn by
+  whichever component the library has for that shape — or simply named, where nothing measured them.
+  Every figure on it can prove itself, every arrow says what it does _not_ claim, and pulling a
+  what-if lever re-weights the world in words — never in invented numbers.
 
 The full tour — Atlas, the Rehearsal, living dashboards, Ripple, selective Conversation video,
 Mavéa Reels, and ~30 more —

@@ -79,7 +79,10 @@ index, or open the **Explore** menu in the top bar.
   time. A view is only offered when the world can actually fill it. Every figure on the surface can
   prove itself (tap it for the quote, the source, and what breaks if it changes), and every arrow
   states what it does **not** claim. Pull a what-if lever and the world re-weights in place —
-  described in words, never in numbers nobody measured.
+  described in words, never in numbers nobody measured. Break a cause open and its parts are drawn by
+  whichever component the library already has for a shape like that, chosen from the catalog rather
+  than hand-picked — and named in a plain list where nothing measured them, because a chart of
+  invented proportions is a finding nobody made.
 - ◌ **The Blank Space** — when an answer turns on something only you can know (a real deadline, your
   budget, a dealbreaker), Mavéa is designed to leave a glowing
   hole right in the answer. Fill it by typing, speaking, or dragging a card in, hit **Complete**, and

@@ -51,6 +51,13 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
   // The narrated walkthrough speaks the same surface and adds no claim to it: its lines are
   // composed from fields already on screen, and a FIGURE is spoken only where the trust registry
   // can back it (world/worldStory) — an illustrative magnitude is hedged aloud as illustrative.
+  //
+  // Reading a cause's PARTS adds one claim and refuses another. Drawn through the component library
+  // (content/lens), a hierarchy figure implies measured proportions — so a part is placed only where
+  // the trust registry resolves its figure, a container is sized off its children rather than an empty
+  // field of its own, and a subject whose parts nothing measured is NAMED in a list instead of drawn
+  // as a chart. Breaking a part into parts is unbounded in the data and bounded in the drawing
+  // (MAX_DRAWN_DEPTH), so nothing is placed where the layout cannot place it honestly.
   'living-answer': {
     notice: 'simulation',
     reviewed: [
@@ -58,17 +65,30 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
       'counterfactual is not a forecast',
       'counterfactual shown in place, worded without figures',
       'spoken narration asserts nothing the surface does not show',
+      'parts drawn only where a figure resolves, named where none does',
       'consequential topics',
     ],
   },
   review: { notice: 'learning', reviewed: ['AI-authored study material', 'retention claims'] },
   flashcards: { notice: 'learning', reviewed: ['AI-authored study material', 'local persistence'] },
   courses: { notice: 'learning', reviewed: ['AI-authored lessons', 'professional topics'] },
-  dashboards: { notice: 'monitoring', reviewed: ['stale data', 'missed refreshes'] },
+  dashboards: {
+    notice: 'monitoring',
+    reviewed: [
+      'stale data',
+      'missed refreshes',
+      'model-dependent grounding',
+      'alert delivery',
+      'third-party charges',
+    ],
+  },
   recap: { notice: 'generated', reviewed: ['AI omissions', 'session summary'] },
   'zoom-deck': { notice: 'generated', reviewed: ['AI grouping', 'session summary'] },
   present: { notice: 'publishing', reviewed: ['audience disclosure', 'confidential content'] },
-  track: { notice: 'monitoring', reviewed: ['stale data', 'not an alerting service'] },
+  track: {
+    notice: 'monitoring',
+    reviewed: ['stale data', 'not an alerting service', 'model-dependent grounding'],
+  },
   share: { notice: 'publishing', reviewed: ['public distribution', 'rights and accuracy'] },
   export: { notice: 'publishing', reviewed: ['document distribution', 'rights and accuracy'] },
   board: { notice: 'generated', reviewed: ['AI output presentation'] },
@@ -136,7 +156,7 @@ export const FEATURE_NOTICE_COPY: Record<
   },
   monitoring: {
     title: 'Not an alerting or monitoring service',
-    body: 'Refreshes can be delayed, stale, incomplete, or missed and may run only while Mavéa is open. Because you provide the API keys or connected accounts and pay those providers directly, every refresh can trigger new model, web-search, or connected-provider requests. A frequent cadence can use more of your quotas and increase third-party charges. Do not rely on this for emergencies, security, finance, operations, or other time-critical decisions.',
+    body: 'Tracking is a best-effort convenience — a head start on checking something yourself, never a thing to rely on. Checks can be delayed, incomplete, or missed entirely, and most run only while Mavéa is open. Whether a check truly searches the live web depends on the model you pick: models differ in whether they search, whether they can be required to, and whether they say what they used, so a smaller or cheaper model may answer from memory instead. Even a completed search can return outdated or wrong figures — a value on a card is what a source claimed at check time, not a live feed — and an empty card means unverified, never zero or unchanged. Alerts are best-effort too: a check that does not run, a closed app, or blocked notifications means no alert, so never depend on one arriving. Because you provide the API keys or connected accounts and pay those providers directly, every check can trigger billed model, web-search, or connected-provider requests — the cadence you set is a spending decision, and a frequent cadence raises your third-party charges. Do not use this for emergencies, security, health, finance, operations, or any time-critical decision.',
   },
   publishing: {
     title: 'Review before sharing',
