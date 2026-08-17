@@ -1078,7 +1078,7 @@ export function LiveSettings({
                 label="Living answers"
                 on={cfg.worldEnabled}
                 onToggle={() => setLiveConfigV2({ worldEnabled: !cfg.worldEnabled })}
-                note="When you ask why something happened, Mavéa offers a causal world you can explore — every arrow shows its source, and follow-ups reshape the same world instead of starting over. Offering one is free: a world is generated only when you open it, once, and then it's kept."
+                note="When you ask why something happened, Mavéa offers the causal web behind the answer — every arrow shows its source, and follow-ups reshape the same web instead of starting over. Offering one is free: it is generated only when you open it, once, and then it's kept."
               />
               <ToggleRow
                 label="Keep a library"

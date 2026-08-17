@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react';
 import { richInnerHtml } from '../../../lib/richText';
-import { fitText } from '../../lib/fitText';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type {
@@ -28,6 +28,23 @@ const MIN_COL_SPACING = NODE_RX * 2 + 28;
 // The stage renders at ≤ STAGE_BASE_W px (its CSS max-width); a wider viewBox scales down
 // uniformly, so a many-column figure is let out to more of this width to stay readable.
 const STAGE_BASE_W = 640;
+
+// An edge label lives in the clear air BETWEEN two rims, so that air has to be sized from the
+// label — not the label squeezed into whatever a node-sized constant happens to leave. A chain of
+// bankruptcy stages left MIN_COL_SPACING's 28 units of gap and fitted its labels to a flat 220,
+// which drew every verb across both neighbouring ellipses for the nodes to then paint over: the
+// reader saw "wid", "ven", "cont". The label buys ROOM rather than shrinking, because shrinking
+// only relocates the illegibility (a user unit renders at STAGE_BASE_W / VIEW_W px).
+const EDGE_LABEL_FS = 15;
+const EDGE_LABEL_MIN_FS = 13;
+const EDGE_LABEL_LINES = 2;
+/** Clear air between a label and each rim it sits between. */
+const EDGE_LABEL_MARGIN = 12;
+/** The widest gap one label may buy. Past this it wraps and shrinks instead of pushing the figure
+ *  wider than the card can show — a cap on growth, not on the text, which always renders in full. */
+const EDGE_LABEL_MAX_W = 168;
+/** …and the least it is ever fitted into, so a short edge wraps rather than shattering mid-word. */
+const EDGE_LABEL_MIN_W = 56;
 
 const NODE_FILL: Record<DiagramNodeKind, string> = {
   default: 'var(--surface-elevated-2)',
@@ -109,6 +126,18 @@ function computeVbH(nodes: DiagramNode[], edges: DiagramEdge[], layout: DiagramL
   return Math.max(MIN_VBH, contentH + PAD * 2);
 }
 
+/** The clear width one edge label needs between two rims, measured at the size it wants to render
+ *  at. A label may use EDGE_LABEL_LINES lines, so the requirement is whichever is wider: its
+ *  longest unbreakable word, or an even split of the whole string across those lines — the standard
+ *  lower bound for wrapping text into a box, and MEASURED, never a character count. */
+function edgeLabelGap(label: string): number {
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 0;
+  const width = (s: string) => estimateTextWidth(s, EDGE_LABEL_FS, true);
+  const needed = Math.max(...words.map(width), width(label) / EDGE_LABEL_LINES);
+  return Math.min(EDGE_LABEL_MAX_W, needed) + EDGE_LABEL_MARGIN * 2;
+}
+
 /** The horizontal twin of computeVbH: the viewBox WIDTH has to grow with the column count, or
  *  fixed-radius nodes packed into a fixed width collide and paint over each other's labels (the
  *  seven-era "history of X" chain that surfaced this). Each column is guaranteed at least
@@ -128,7 +157,11 @@ function computeVbW(nodes: DiagramNode[], edges: DiagramEdge[], layout: DiagramL
   // layered spreads columns edge-to-edge at ci/(cols-1) → needs `cols-1` spacings; free centres
   // them at (c+0.5)/cols → needs `cols`. Size the inner width for whichever is denser.
   const spacings = layout === 'layered' ? Math.max(1, cols - 1) : cols;
-  return Math.max(VIEW_W, spacings * MIN_COL_SPACING + PAD * 2);
+  // A column is a node diameter plus room for the widest label that has to sit beside it, so the
+  // chain widens for long verbs instead of hiding them under its own nodes.
+  const labelGap = edges.reduce((w, e) => (e.label ? Math.max(w, edgeLabelGap(e.label)) : w), 0);
+  const colSpacing = Math.max(MIN_COL_SPACING, NODE_RX * 2 + labelGap);
+  return Math.max(VIEW_W, spacings * colSpacing + PAD * 2);
 }
 
 /** Place nodes that lack explicit coordinates. Honors any node's own x/y (unit 0..1)
@@ -323,6 +356,17 @@ export function DiagramFlow({
           {placed.map((n) => (
             <Node key={n.id} node={n} />
           ))}
+
+          {/* …and the labels last of all. A label is the one part of a connection that must never
+              be covered, and both layouts can put one over a node: a chain's label sits in the gap
+              between two rims, and on a dense figure an arc's midpoint can land on a node outright.
+              Its halo (styles.css `paint-order: stroke`) is what keeps it readable over either. */}
+          {edges.map((e, i) => {
+            const a = byId.get(e.from);
+            const b = byId.get(e.to);
+            if (!a || !b || !e.label) return null;
+            return <EdgeLabel key={i} label={e.label} a={a} b={b} />;
+          })}
         </svg>
       </div>
 
@@ -331,9 +375,11 @@ export function DiagramFlow({
   );
 }
 
-function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; uid: string }) {
-  const kind = edge.kind ?? 'default';
-  const stroke = EDGE_STROKE[kind];
+/** The arc a connection draws, the point its label sits on, and the clear room it has there. The
+ *  path paints UNDER the nodes and the label OVER them, so the two layers read one formula instead
+ *  of each keeping a copy that can drift apart. `rim` is the rim-to-rim distance — on a chain that
+ *  IS the gap the label has to fit inside. */
+function edgeArc(a: Placed, b: Placed) {
   const s = rimStart(a, b);
   const t = rimPoint(a, b);
   // a gentle arc keeps reciprocal edges (A→B and B→A) from overlapping and reads softer
@@ -341,10 +387,14 @@ function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; ui
   const my = (s.y + t.y) / 2;
   const dx = t.x - s.x;
   const dy = t.y - s.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const bow = Math.min(60, len * 0.12);
-  const cx = mx - (dy / len) * bow;
-  const cy = my + (dx / len) * bow;
+  const rim = Math.hypot(dx, dy) || 1;
+  const bow = Math.min(60, rim * 0.12);
+  return { s, t, rim, cx: mx - (dy / rim) * bow, cy: my + (dx / rim) * bow };
+}
+
+function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; uid: string }) {
+  const kind = edge.kind ?? 'default';
+  const { s, t, cx, cy } = edgeArc(a, b);
   const arrow = `url(#dg-arrow-${uid}-${kind})`;
 
   return (
@@ -352,26 +402,27 @@ function Edge({ a, b, edge, uid }: { a: Placed; b: Placed; edge: DiagramEdge; ui
       <path
         d={`M ${s.x} ${s.y} Q ${cx} ${cy} ${t.x} ${t.y}`}
         fill="none"
-        stroke={stroke}
+        stroke={EDGE_STROKE[kind]}
         strokeWidth={2.2}
         strokeDasharray={edge.dashed ? '7 7' : undefined}
         markerEnd={arrow}
         markerStart={edge.bidirectional ? arrow : undefined}
         opacity={0.85}
       />
-      {edge.label && <EdgeLabel label={edge.label} cx={cx} cy={cy} />}
     </g>
   );
 }
 
-function EdgeLabel({ label, cx, cy }: { label: string; cx: number; cy: number }) {
-  // Shrink-to-fit rather than "…"-truncating: an edge label the reader can only half-see is a
-  // bug. Bounded to a couple of lines so a runaway label wraps instead of running off the arc.
+function EdgeLabel({ label, a, b }: { label: string; a: Placed; b: Placed }) {
+  const { cx, cy, rim } = edgeArc(a, b);
+  // Fitted to the room this edge actually has, never to a constant: the same label between two
+  // ellipses 28 units apart and across a long diagonal are different fits. Shrink-to-fit rather
+  // than "…"-truncating, because an edge label the reader can only half-see is a bug.
   const fit = fitText(label, {
-    maxWidth: 220,
-    fontSize: 15,
-    minFontSize: 11,
-    maxLines: 2,
+    maxWidth: Math.max(EDGE_LABEL_MIN_W, rim - EDGE_LABEL_MARGIN * 2),
+    fontSize: EDGE_LABEL_FS,
+    minFontSize: EDGE_LABEL_MIN_FS,
+    maxLines: EDGE_LABEL_LINES,
     lineHeight: 1.15,
     bold: true,
   });

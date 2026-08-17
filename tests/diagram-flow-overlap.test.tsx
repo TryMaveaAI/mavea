@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { DiagramFlow } from '../src/canvas/blocks/diagrams/DiagramFlow';
 import { DataPipeline } from '../src/canvas/blocks/diagrams/DataPipeline';
 import { SysArchDiagram } from '../src/canvas/blocks/diagrams/SysArchDiagram';
+import { estimateTextWidth } from '../src/canvas/lib/fitText';
 
 // The real-world case that surfaced the bug: a seven-era history of gaming as a left-to-right
 // chain. With a fixed viewBox width, the fixed-size nodes were packed closer than their own
@@ -65,5 +66,80 @@ describe('diagram families never overlap nodes in a dense chain', () => {
       <SysArchDiagram title="Architecture" nodes={nodes} edges={chain} />,
     );
     assertNoOverlap(centres(container, 'sa-label'), 186, 'SysArchDiagram');
+  });
+});
+
+// The node-vs-node check above passed throughout the bug below, which is exactly why it shipped: a
+// chain whose NODES clear each other perfectly still hid every EDGE label. The labels were fitted to
+// a flat 220 units while a layered column left 28 units of clear air between rims, and they were
+// drawn before the nodes — so each verb spilled under both neighbouring ellipses and was painted
+// over, leaving the reader a sliver ("wid", "ven", "cont") of a label that promises never to clip.
+describe('an edge label in a dense chain is never hidden by the nodes it connects', () => {
+  const VERBS = ['cash strain widens', 'cannot refinance', 'triggers', 'forces', 'ends in'];
+  const labelledChain = chain.map((e, i) => ({ ...e, label: VERBS[i % VERBS.length] }));
+  const nodes = IDS.map((id, i) => ({ id, label: LABELS[i], sub: 'detail' }));
+
+  const render7 = () =>
+    render(
+      <DiagramFlow
+        title="How a retailer fails"
+        layout="layered"
+        nodes={nodes}
+        edges={labelledChain}
+      />,
+    );
+
+  /** Widest rendered line of a fitted label, in the same user units as the geometry. */
+  function labelWidths(container: HTMLElement): number[] {
+    return [...container.querySelectorAll('text.dg-edge-label')].map((el) => {
+      const fontSize = parseFloat(el.getAttribute('font-size') || '0');
+      const lines = [...el.querySelectorAll('tspan')].map((t) => t.textContent ?? '');
+      return Math.max(...lines.map((ln) => estimateTextWidth(ln, fontSize, true)));
+    });
+  }
+
+  it('fits every label inside the clear air between the two rims it sits between', () => {
+    const { container } = render7();
+    const rx = parseFloat(container.querySelector('ellipse')?.getAttribute('rx') || '0');
+    const cs = centres(container, 'dg-node-label');
+    const gaps = cs.slice(1).map((x, i) => x - cs[i] - rx * 2);
+    const narrowest = Math.min(...gaps);
+    const widths = labelWidths(container);
+
+    expect(widths, 'expected one label per edge').toHaveLength(labelledChain.length);
+    for (const [i, w] of widths.entries()) {
+      expect(
+        w,
+        `label ${i} ("${VERBS[i % VERBS.length]}") is ${w.toFixed(1)} wide in a ${narrowest.toFixed(1)} gap`,
+      ).toBeLessThanOrEqual(narrowest);
+    }
+  });
+
+  it('widens the figure for a long verb instead of hiding it', () => {
+    const wide = render7().container.querySelector('svg.dg-svg')!.getAttribute('viewBox');
+    const bare = render(
+      <DiagramFlow title="How a retailer fails" layout="layered" nodes={nodes} edges={chain} />,
+    )
+      .container.querySelector('svg.dg-svg')!
+      .getAttribute('viewBox');
+    const w = (vb: string | null) => parseFloat((vb ?? '0 0 0 0').split(' ')[2]);
+    expect(
+      w(wide),
+      'labelled chain should buy room the unlabelled one does not need',
+    ).toBeGreaterThan(w(bare));
+  });
+
+  it('paints the labels after the nodes, so an overlap can never bury one', () => {
+    const { container } = render7();
+    const marks = [...container.querySelectorAll('ellipse, text.dg-edge-label')].map(
+      (el) => el.tagName,
+    );
+    const lastNode = marks.lastIndexOf('ellipse');
+    const firstLabel = marks.indexOf('text');
+    expect(firstLabel, 'no edge labels rendered').toBeGreaterThanOrEqual(0);
+    expect(
+      firstLabel,
+      'an edge label is painted before a node and can be covered by it',
+    ).toBeGreaterThan(lastNode);
   });
 });
