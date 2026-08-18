@@ -5,6 +5,11 @@ import type { ConversationScene, ConversationTurnAudio, ConversationVideoOptions
 export const CONVERSATION_VIDEO_MAX_MS = 180_000;
 const QUESTION_LEAD_MS = 650;
 const TURN_TAIL_MS = 350;
+/** The closing beat plays WIDE. A cut that ends mid-spotlight leaves the reader looking at one lit
+ *  card with the rest of the answer dimmed out behind it, which is the last thing a viewer should
+ *  be left with. The finale is carved out of the last scene rather than appended, so handing the
+ *  canvas back costs the export no extra time and never runs the picture past the narration. */
+const FINALE_WIDE_MS = 700;
 
 export function estimateTurnDurationMs(frame: TurnFrame): number {
   const lines = [
@@ -117,6 +122,34 @@ export function buildConversationTimeline(
       });
     }
     globalAt += turnAudio.durationMs;
+  });
+  return releaseClosingSpotlight(scenes);
+}
+
+/**
+ * Hand the canvas back for the last beat of the cut. Mid-video the spotlight already clears itself
+ * — the next turn opens on its question, which carries no cue — so only the very end can strand a
+ * viewer inside a spotlight. A final scene with room to spare keeps its spotlight for all but the
+ * closing FINALE_WIDE_MS; a short one simply plays wide throughout, since splitting it would flash
+ * two scenes where the eye reads one. Timings are preserved exactly: no scene moves, none is
+ * dropped, and the total is untouched.
+ */
+function releaseClosingSpotlight(scenes: ConversationScene[]): ConversationScene[] {
+  const last = scenes[scenes.length - 1];
+  if (!last?.spot) return scenes;
+  if (last.durationMs <= FINALE_WIDE_MS * 2) {
+    scenes[scenes.length - 1] = { ...last, spot: null };
+    return scenes;
+  }
+  const heldMs = last.durationMs - FINALE_WIDE_MS;
+  scenes[scenes.length - 1] = { ...last, durationMs: heldMs };
+  // The caption and ink ride along: only the CAMERA lets go, so the closing line still reads and
+  // the pen marks stay on the cards they were drawn against.
+  scenes.push({
+    ...last,
+    startMs: last.startMs + heldMs,
+    durationMs: FINALE_WIDE_MS,
+    spot: null,
   });
   return scenes;
 }

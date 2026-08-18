@@ -116,6 +116,54 @@ describe('conversation video model', () => {
     ]);
   });
 
+  it('never ends the cut inside a spotlight, and buys the wide finish with no extra runtime', () => {
+    const marked = frame({ tour: [{ index: 1, say: 'This is the important result.' }] });
+    const scenes = buildConversationTimeline(
+      [marked],
+      [
+        {
+          durationMs: 4_000,
+          spans: [
+            { text: marked.narration, startMs: 650, endMs: 2_000 },
+            { text: marked.tour[0].say!, startMs: 2_000, endMs: 3_650 },
+          ],
+        },
+      ],
+      options,
+    );
+    const finale = scenes[scenes.length - 1];
+    expect(finale.spot).toBeNull();
+    // The closing line still reads over the wide shot — only the camera lets go.
+    expect(finale.caption).toBe('This is the important result.');
+    // The spotlight is held right up to the finish rather than dropped early.
+    expect(scenes[scenes.length - 2].spot).toBe('live-2');
+    // Carved, not appended: the cut still ends exactly where the narration does.
+    expect(finale.startMs + finale.durationMs).toBe(4_000);
+    expect(scenes[scenes.length - 2].startMs + scenes[scenes.length - 2].durationMs).toBe(
+      finale.startMs,
+    );
+  });
+
+  it('plays a short closing beat wide throughout rather than flashing two scenes', () => {
+    const marked = frame({ tour: [{ index: 1, say: 'Short close.' }] });
+    const scenes = buildConversationTimeline(
+      [marked],
+      [
+        {
+          durationMs: 3_000,
+          spans: [
+            { text: marked.narration, startMs: 650, endMs: 2_000 },
+            { text: marked.tour[0].say!, startMs: 2_000, endMs: 2_650 },
+          ],
+        },
+      ],
+      options,
+    );
+    expect(scenes.some((scene) => scene.spot !== null)).toBe(false);
+    expect(scenes[scenes.length - 1].durationMs).toBe(1_000);
+    expect(scenes[scenes.length - 1].startMs + scenes[scenes.length - 1].durationMs).toBe(3_000);
+  });
+
   it('removes optional visuals while the audio choice never warps the visual timeline', () => {
     const marked = frame({ tour: [{ index: 0, mark: { kind: 'underline', at: 'Sunlight' } }] });
     const layout = [{ durationMs: 2_500, spans: [] }];
