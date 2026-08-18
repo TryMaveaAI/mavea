@@ -11,7 +11,7 @@
 
 .demox-intro {
   background: color-mix(in srgb, var(--surface-default) 72%, transparent);
-  backdrop-filter: blur(14px);
+  backdrop-filter: var(--glass-blur, blur(14px));
   pointer-events: auto;
 }
 

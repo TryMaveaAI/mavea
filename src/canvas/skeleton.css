@@ -39,34 +39,42 @@
 .skel-eyebrow:empty {
   height: 10px;
   width: 38%;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--surface-glass) 25%,
-    var(--surface-glass-strong) 50%,
-    var(--surface-glass) 75%
-  );
-  background-size: 300px 100%;
-  animation: skel-shimmer 1.4s linear infinite;
 }
 .skel-line {
   height: 13px;
+}
+/* The shimmer is a TRANSLATED overlay, never an animated background-position: moving a
+   painted gradient repaints every line at 60fps during the busiest moment of a turn, while
+   a transform stays on the compositor. The overlay repeats the same 300px wave and slides
+   exactly two periods per cycle, so the loop is seamless — and at rest (reduced motion) it
+   sits at the same phase the old gradient showed. */
+.skel-eyebrow:empty,
+.skel-line {
+  position: relative;
+  overflow: hidden;
   border-radius: 4px;
+  background: var(--surface-glass);
+}
+.skel-eyebrow:empty::after,
+.skel-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -600px;
+  right: 0;
   background: linear-gradient(
     90deg,
-    var(--surface-glass) 25%,
+    transparent 25%,
     var(--surface-glass-strong) 50%,
-    var(--surface-glass) 75%
+    transparent 75%
   );
   background-size: 300px 100%;
   animation: skel-shimmer 1.4s linear infinite;
 }
 @keyframes skel-shimmer {
-  0% {
-    background-position: -300px 0;
-  }
-  100% {
-    background-position: 300px 0;
+  to {
+    transform: translateX(600px);
   }
 }
 
@@ -86,8 +94,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skel-eyebrow:empty,
-  .skel-line,
+  .skel-eyebrow:empty::after,
+  .skel-line::after,
   /* without the animation the `both` fill is gone too — the skeleton is simply visible */
   .skel-fade {
     animation: none;

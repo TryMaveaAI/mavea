@@ -231,8 +231,8 @@
   background: color-mix(in oklab, var(--surface-elevated) 88%, var(--presence) 12%);
   border: 1px solid color-mix(in oklab, var(--presence) 32%, transparent);
   box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
+  -webkit-backdrop-filter: var(--glass-blur-faint);
   animation: blank-bar-rise var(--m-normal) var(--ease-out) both;
 }
 @keyframes blank-bar-rise {

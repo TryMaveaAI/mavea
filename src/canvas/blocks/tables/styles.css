@@ -2594,9 +2594,14 @@ table.tbl-cj-table {
   margin: 0 -4px;
   padding: 0 4px 2px;
 }
+/* The grid fills the card. `min-content` here is the sum of the component's column floors, so the
+   scroll wrapper engages only on a card too narrow for those — NOT, as `max-content` did, every
+   time a cell held a sentence: with nowrap text the two are the same number, and one long value
+   used to blow the table out to twice the card's width (fr tracks scale with it, so the attribute
+   column inherited a few hundred px of dead space) and hide the rest behind a scrollbar. */
 .tbl-cmx-grid {
   display: grid;
-  min-width: max-content;
+  min-width: min-content;
   width: 100%;
 }
 /* corner + all header/body cells share baseline geometry */
@@ -2623,21 +2628,20 @@ table.tbl-cj-table {
   border-bottom: 2px solid var(--line);
   padding-bottom: 9px;
 }
-/* row label — left-aligned, slightly bolder. Fills its whole grid track (no width cap):
-   capping the CELL used to shear its bottom border off mid-row and ellipsize labels that had
-   plenty of column left. min-width: 0 lets a genuinely tight track ellipsize instead of
-   blowing out the grid; overall width discipline is the grid's own max-width (component). */
+/* row label — left-aligned, slightly bolder. Fills its whole grid track (no width cap): capping
+   the CELL used to shear its bottom border off mid-row and ellipsize labels that had plenty of
+   column left. A long label wraps onto a second line rather than ellipsizing — the track's own
+   floor is what keeps it readable, and an attribute name that has been cut short is exactly the
+   half of the comparison the reader cannot reconstruct. */
 .tbl-cmx-rowh {
   font-weight: 600;
   color: var(--text-primary);
   padding-right: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
-/* body cell — centred by default */
+/* body cell — centred by default, and a column so a cell's qualifier note stacks UNDER its value
+   instead of being squeezed in beside it. */
 .tbl-cmx-cell {
+  flex-direction: column;
   justify-content: center;
   color: var(--text-secondary);
   background: transparent;
@@ -2651,12 +2655,11 @@ table.tbl-cj-table {
 .tbl-cmx-colh:has(+ .tbl-cmx-colh) + .tbl-cmx-cell.best {
   box-shadow: inset 0 2px 0 var(--presence);
 }
-/* plain text in a cell — ellipsizes only when its own track is genuinely tight */
+/* plain text in a cell — wraps within its own column (the card's own break-word backstop handles
+   an unbreakable token), following the cell's centring onto every line */
 .tbl-cmx-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 100%;
+  text-align: center;
 }
 /* small qualifier note below a cell value */
 .tbl-cmx-note {

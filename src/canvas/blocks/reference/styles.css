@@ -1042,7 +1042,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-full, 999px);
   padding: 3px 10px;
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -25,6 +25,7 @@ Depending on the features you use, browser storage may contain:
 - drafts, tracked items, presentation settings, and recent feature state;
 - provider and model configuration;
 - remembered provider, search, or optional GitHub credentials;
+- a short-lived cache of recent questions and the answers to them, kept on the device so that asking the same thing again does not bill your key a second time; it expires within a day, and it deliberately excludes any answer that drew on attachments, ink, filled-in blanks, cited sources, or your remembered facts;
 - temporary in-progress and finished video-export files in origin-private browser storage until the export is consumed or discarded; and
 - short-lived demo, tour, route, and in-progress session data.
 

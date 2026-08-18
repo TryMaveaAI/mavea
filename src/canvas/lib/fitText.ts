@@ -118,12 +118,31 @@ export function fitText(text: string, opts: FitTextOptions): FitTextResult {
   if (!words.length) return { lines: [''], fontSize, lineHeightPx: fontSize * lineHeight };
 
   const floor = Math.min(minFontSize, fontSize);
-  for (let size = fontSize; size >= floor; size--) {
+  const fitAt = (size: number): FitTextResult | null => {
     const lines = wrapByWidth(words, maxWidth, size, bold);
     const heightOk = maxHeight == null || lines.length * size * lineHeight <= maxHeight;
     const linesOk = maxLines == null || lines.length <= maxLines;
-    if (heightOk && linesOk) return { lines, fontSize: size, lineHeightPx: size * lineHeight };
+    return heightOk && linesOk ? { lines, fontSize: size, lineHeightPx: size * lineHeight } : null;
+  };
+  // Fitting is monotone in the size (width scales linearly with the font, so shrinking only ever
+  // frees room: fewer lines, less height), which makes the largest fitting size binary-searchable
+  // the same way hardBreak finds its cut — ~4 wraps instead of one per candidate size. Searched
+  // over the whole-point steps the descending scan used to visit, so a fractional `fontSize`
+  // lands on exactly the same chosen size as before.
+  let best: FitTextResult | null = null;
+  let lo = 0;
+  let hi = Math.floor(fontSize - floor); // steps down from fontSize; the last is still ≥ floor
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const fit = fitAt(fontSize - mid);
+    if (fit) {
+      best = fit;
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
   }
+  if (best) return best;
   // At the floor the text still doesn't fit the box: wrap to fit WIDTH (keeps it readable and
   // out of its neighbours) and let the block run tall. Never ellipsize.
   const lines = wrapByWidth(words, maxWidth, floor, bold);

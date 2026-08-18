@@ -9,7 +9,7 @@ function normalized(value: string | null | undefined): string {
 
 const HAS_INK = /\S/u;
 
-/** Painted text for every element beneath `host`, keyed by element and left un-normalized.
+/** Painted text for every element beneath `scope`, keyed by element and left un-normalized.
  *
  * textContent includes SVG <title>, even though that title is not painted. Exclude it when
  * deciding whether the visible label itself ends in an ellipsis.
@@ -18,7 +18,7 @@ const HAS_INK = /\S/u;
  * against its own subtree re-reads every text node once per ancestor — quadratic across a card,
  * and the grid holds hundreds of them. Collecting bottom-up reads each node exactly once and
  * hands every ancestor the answer its children already computed. */
-function paintedTextIndex(host: Element): Map<Element, string> {
+function paintedTextIndex(scope: Element): Map<Element, string> {
   const index = new Map<Element, string>();
   const collect = (el: Element): string => {
     if (el.tagName.toLowerCase() === 'title') {
@@ -33,7 +33,7 @@ function paintedTextIndex(host: Element): Map<Element, string> {
     index.set(el, text);
     return text;
   };
-  collect(host);
+  collect(scope);
   return index;
 }
 
@@ -142,6 +142,9 @@ export function useTruncatedTextDisclosures(
 
     const cleanups = new Map<Element, () => void>();
     const markedSources = new Set<Element>();
+    const pending = new Set<HTMLElement>();
+    let fullScan = false;
+    let sawRemovals = false;
     let active: Element | null = null;
     let frame = 0;
     let hideTimer = 0;
@@ -234,21 +237,61 @@ export function useTruncatedTextDisclosures(
       });
     };
 
+    /** A mutation can newly truncate an ANCESTOR too (streamed text overfilling a clamped block),
+     * so the incremental unit is the nearest child of `host` the mutation landed in — a card's
+     * column div, or one section when the grid is sectioned; never the whole grid. Distinct
+     * roots are disjoint subtrees, so one pass never visits an element twice. */
+    const scanRootOf = (node: Node): HTMLElement | null => {
+      let el: HTMLElement | null = node instanceof HTMLElement ? node : node.parentElement;
+      while (el && el.parentElement !== host) el = el.parentElement;
+      return el;
+    };
+
     const scan = (): void => {
       frame = 0;
-      const painted = paintedTextIndex(host);
+      if (sawRemovals) {
+        sawRemovals = false;
+        // Release unmounted targets now, not at effect teardown — otherwise every disclosed
+        // element of a long answer stays strongly referenced (six listeners each) after React
+        // removes it. Undoing attributes on a detached element is invisible; an element that
+        // returns re-enters through the insertion scan.
+        for (const [target, cleanup] of cleanups)
+          if (!target.isConnected) {
+            cleanup();
+            cleanups.delete(target);
+          }
+        for (const source of markedSources)
+          if (!source.isConnected) {
+            source.removeAttribute('data-text-disclosure');
+            markedSources.delete(source);
+          }
+      }
+      const scopes = fullScan ? [host] : [...pending].filter((el) => host.contains(el));
+      fullScan = false;
+      pending.clear();
       // Decide first, write second. `[data-text-disclosure]` is a live selector, so a write between
-      // two style reads invalidates style and makes the next getComputedStyle force a recalc — the
-      // grid holds every block on screen, and this scan reruns on every insertion during a turn.
+      // two style reads invalidates style and makes the next getComputedStyle force a recalc — a
+      // scope holds every inked element of a card, and a full scan the whole grid.
       const found: Disclosure[] = [];
-      for (const el of host.querySelectorAll('*')) {
-        const disclosure = inspect(el, painted);
-        if (disclosure) found.push(disclosure);
+      for (const scope of scopes) {
+        const painted = paintedTextIndex(scope);
+        if (scope !== host) {
+          const disclosure = inspect(scope, painted);
+          if (disclosure) found.push(disclosure);
+        }
+        for (const el of scope.querySelectorAll('*')) {
+          const disclosure = inspect(el, painted);
+          if (disclosure) found.push(disclosure);
+        }
       }
       for (const disclosure of found) apply(disclosure);
     };
     const schedule = (): void => {
       if (!frame) frame = requestAnimationFrame(scan);
+    };
+    const scheduleFull = (): void => {
+      fullScan = true;
+      schedule();
     };
     const onOutsidePointer = (event: PointerEvent): void => {
       if (active && !active.contains(event.target as Node)) hide();
@@ -257,13 +300,41 @@ export function useTruncatedTextDisclosures(
       if (active && !popover.hidden) position(active);
     };
 
-    schedule();
-    const afterAsyncPaint = window.setTimeout(schedule, 700);
+    scheduleFull();
+    const afterAsyncPaint = window.setTimeout(scheduleFull, 700);
+    // Streaming inserts one block at a time; re-walking the whole grid for each would be O(N²)
+    // across a turn. The records already name what changed — rescan just those cards.
     const observer =
-      typeof MutationObserver === 'undefined' ? null : new MutationObserver(schedule);
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver((records) => {
+            for (const record of records) {
+              if (record.removedNodes.length) {
+                sawRemovals = true;
+                const scope = scanRootOf(record.target);
+                if (scope) pending.add(scope);
+              }
+              for (const node of record.addedNodes) {
+                const scope = scanRootOf(node);
+                if (scope) pending.add(scope);
+              }
+            }
+            if (pending.size || sawRemovals) schedule();
+          });
     observer?.observe(host, { childList: true, subtree: true });
+    // The host grows taller with every streamed block, but truncation is a function of an
+    // element's own box, which follows from its content (the mutation scan's job) and the
+    // available WIDTH — only a width change owes a full rescan.
+    let hostWidth = -1;
     const resizeObserver =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver((entries) => {
+            const width = entries.at(-1)?.contentRect.width ?? hostWidth;
+            if (width === hostWidth) return;
+            hostWidth = width;
+            scheduleFull();
+          });
     resizeObserver?.observe(host);
     document.addEventListener('pointerdown', onOutsidePointer, true);
     window.addEventListener('resize', reposition, { passive: true });

@@ -1223,6 +1223,9 @@
 @media (prefers-reduced-motion: no-preference) {
   .sp-ring {
     animation: sp-spin 0.75s linear infinite;
+    /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play:
+       paused). The longhand MUST follow the shorthand, which resets play-state to running. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes sp-spin {
@@ -1245,6 +1248,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .sp-dots i {
     animation: sp-bounce 1.05s var(--ease-in-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
   .sp-dots i:nth-child(2) {
     animation-delay: 0.15s;
@@ -1273,6 +1278,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .sp-pulse {
     animation: sp-pulse 1.3s var(--ease-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes sp-pulse {
@@ -1320,6 +1327,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .sp-bar-fill {
     animation: sp-indet 1.4s var(--ease-in-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes sp-indet {
@@ -1382,6 +1391,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .sp-btn-spin {
     animation: sp-spin 0.7s linear infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 .sp-caption {
@@ -1487,6 +1498,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .nf-unread-dot[data-mark='point'] {
     animation: nf-dot-pulse 1.8s var(--ease-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes nf-dot-pulse {

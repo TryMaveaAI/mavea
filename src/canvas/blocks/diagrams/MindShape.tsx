@@ -7,6 +7,7 @@
 // pixel-identical to the moment of capture.
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Presence } from '../../../presence/Presence';
+import { useVoiceEnergySink } from '../../../voice/voiceEnergy';
 import { useSpatialCanvas } from '../../spatial/useSpatialCanvas';
 // Both sheets ride with the COMPONENT, never with the diagrams registry: the live Watch Me
 // Think overlay and the read-only viewer mount MindShape directly, without the answer-block
@@ -351,6 +352,7 @@ export function MindShape({
   // (append-stable — see computeLayout's `prev`). Reset the seed whenever the grouping changes, so a
   // theme forming is still free to reorganise the map instead of freezing cards in their old places.
   const prevPositionsRef = useRef<Map<string, MindShapePoint>>(new Map());
+  const voiceSinkRef = useVoiceEnergySink();
   const docked = phase === 'settled';
   // The dock frees the middle of the stage, so the seed has to be dropped when it flips — otherwise
   // every card keeps the spot it was given while the centre was still reserved, and the map settles
@@ -694,7 +696,7 @@ export function MindShape({
             topbar's brand slot (.face-homed), so drawing another here would put two Mavéas on
             screen a few pixels apart. The heading stays; the face is upstairs. */}
         {!docked && (
-          <div className="ms-center-pip-wrap">
+          <div className="ms-center-pip-wrap" ref={voiceSinkRef}>
             <Presence state={presenceState} emotion="neutral" gaze="center" />
           </div>
         )}

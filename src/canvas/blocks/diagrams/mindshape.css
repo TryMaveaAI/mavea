@@ -537,14 +537,6 @@
   color: var(--text-primary);
 }
 
-/* The transform-origin-centered zoom layer wraps atoms + SVG */
-.ms-zoom-layer {
-  position: absolute;
-  inset: 0;
-  transform-origin: center center;
-  will-change: transform;
-}
-
 /* ── Emergent theme labels ─────────────────────────────────────────────────────
    Named from the speaker's own words and placed at the heart of each theme's atoms.
    None exist until a theme is named, so the empty canvas carries no prescriptive scaffold.

@@ -361,7 +361,7 @@ reproduction is the fastest way to a fix.
 ## Troubleshooting
 
 **`pnpm install` fails — Node version mismatch**
-Mavéa requires Node ≥ 24.11 (the published `npx @mavea/mavea` CLI runs on Node ≥ 20.19). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
+Mavéa requires Node ≥ 24.11 (the published `npx @mavea/mavea` CLI runs on Node ≥ 22.12). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
 
 **TypeScript errors after adding a block**
 Check that (a) the `Block` union or extended-block union includes the new type, (b) the canvas renderer handles the new `type` key, and (c) `canvas/blocks/index.ts` imports the new family.

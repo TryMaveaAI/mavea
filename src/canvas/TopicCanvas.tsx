@@ -65,7 +65,7 @@ import './layout/mobileText.css';
 import './layout/textDisclosure.css';
 import { BlockBoundary } from './BlockBoundary';
 import { FallbackCard } from './FallbackCard';
-import { CanvasSkeleton } from './CanvasSkeleton';
+import { skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
 import { SectionGroup } from './depth/SectionGroup';
@@ -387,7 +387,7 @@ export function TopicCanvas({
   // Per-family chunk gate: hold the cards back until every family this answer uses has
   // loaded, then mount the whole grid in one pass (preloading at the stream/intent stage
   // means this is almost always already true — see blocks/loader.ts).
-  const familiesLoaded = useBlockFamilies(data.blocks);
+  const familiesLoaded = useBlockFamilies(data.blocks, data.id);
   const contentRevision = `${data.id}:${familiesLoaded}:${budget}`;
   useAccessibleScrollRegions(gridRef, contentRevision);
   useTruncatedTextDisclosures(gridRef, contentRevision);
@@ -482,7 +482,15 @@ export function TopicCanvas({
       })),
     [displayBlocks, budget],
   );
-  const useSections = hasSections(displayBlocks);
+  // Whether this answer renders as concept sections. The raw hasSections() answer can change
+  // mid-stream — the first section-tagged block may land several blocks in, and a tagged block
+  // can drop out later (unrenderable) — and every flip re-parents each mounted card between
+  // SectionGroup and the plain grid: a full remount that replays every entrance. Latch
+  // sticky-true per answer instead: once an answer has shown sections it stays sectioned until
+  // a new data.id re-decides. Guarded render-phase set, so the latch lands in the same pass.
+  const [sectionedAnswer, setSectionedAnswer] = useState<string | null>(null);
+  if (sectionedAnswer !== data.id && hasSections(displayBlocks)) setSectionedAnswer(data.id);
+  const useSections = sectionedAnswer === data.id;
   // The "Expand/Collapse sections" toggle only does anything when a section actually has a "Go
   // deeper" drawer to open — otherwise it's a no-op that confuses. Show it only then.
   const hasDeeper = sections.some((s) => s.deeper.length > 0);
@@ -679,24 +687,7 @@ export function TopicCanvas({
           ))}
         </div>
       )}
-      {!familiesLoaded ? (
-        // A needed family chunk is still in flight (a cold mount that skipped the preload —
-        // e.g. a restored session). Keep the grid mounted so useResponsiveGrid's observer
-        // stays live, but hold the cards: skeletons occupy the tracks the real cards will
-        // fill, then everything reveals together when the loads settle.
-        // The note gutter rides the placeholder too, so the width never jumps when cards land.
-        <div
-          className={
-            'card-grid' + (bloomOn ? ' bloom-on' : '') + (noteGutter ? ' note-gutter' : '')
-          }
-          ref={gridRef}
-          role="status"
-          aria-busy="true"
-          aria-label="Loading visuals"
-        >
-          <CanvasSkeleton blocks={displayBlocks} budget={budget} />
-        </div>
-      ) : canvasView ? (
+      {familiesLoaded && canvasView ? (
         // The board takes the whole screen (a portal, so no column can clip it); closing lands
         // back in the conversation. Nothing renders in-flow — the takeover covers the page.
         <CanvasTakeover
@@ -708,7 +699,7 @@ export function TopicCanvas({
           selectedBlockIds={selectedBlockIds}
           onExit={() => onViewMode?.('everything')}
         />
-      ) : focused ? (
+      ) : familiesLoaded && focused ? (
         <FocusStage
           data={data}
           blocks={displayBlocks}
@@ -723,36 +714,69 @@ export function TopicCanvas({
           presenting={presenting}
         />
       ) : (
+        // ONE grid element for both the loading and the loaded state: two sibling .card-grid
+        // divs made React tear one subtree down and rebuild the other on the swap — every card
+        // re-inserted (replaying its entrance, a visible flicker) and useResponsiveGrid's
+        // observer left watching the destroyed node. The element (and gridRef) survive the
+        // families gate opening; only the children change. While a needed family chunk is
+        // still in flight (a cold mount that skipped the preload — e.g. a restored session),
+        // skeletons occupy the very tracks the real cards will fill, then everything reveals
+        // together when the loads settle. The note gutter rides the placeholder too, so the
+        // width never jumps when cards land.
         <div
           className={
             'card-grid' + (bloomOn ? ' bloom-on' : '') + (noteGutter ? ' note-gutter' : '')
           }
           ref={gridRef}
+          role={familiesLoaded ? undefined : 'status'}
+          aria-busy={familiesLoaded ? undefined : true}
+          aria-label={familiesLoaded ? undefined : 'Loading visuals'}
         >
-          {useSections
-            ? sections.map((sec, si) => (
-                <SectionGroup
-                  key={sec.label || si}
-                  section={sec}
-                  renderCard={renderCard}
-                  readingMode={readingMode}
-                />
-              ))
-            : displayBlocks.map((b, i) => renderCard(b, i))}
-          {Object.keys(built)
-            .filter((k) => built[k] && data.extras && data.extras[k as keyof typeof data.extras])
-            .map((k) => {
-              const ex = data.extras[k as keyof typeof data.extras] as Extra;
-              // Extras carry CSS-12 col values. At tablet/mobile budgets go full-width;
-              // at desktop/laptop keep the authored col so pairs share a row cleanly.
-              const rawCol = Math.min(12, Math.max(1, ex.col || 6));
-              const scaledCol = budget < 9 ? 12 : rawCol;
-              return (
-                <div className={'col-' + scaledCol} key={k}>
-                  {renderExtra(ex)}
-                </div>
-              );
-            })}
+          {!familiesLoaded && useSections ? (
+            // A sectioned answer nests its cards under section shells, so there is no cell-for-cell
+            // mapping to hold onto — it keeps the whole-subtree swap.
+            displayBlocks.map((b, i) => skeletonCell(b, i, budget))
+          ) : (
+            <>
+              {useSections
+                ? sections.map((sec, si) => (
+                    <SectionGroup
+                      key={sec.label || si}
+                      section={sec}
+                      renderCard={renderCard}
+                      readingMode={readingMode}
+                    />
+                  ))
+                : // ONE map for both states: each block renders as its skeleton until its family
+                  // chunk lands and as its card after, under the same key, so the grid cell is
+                  // reconciled rather than torn down and re-inserted.
+                  displayBlocks.map((b, i) =>
+                    familiesLoaded ? renderCard(b, i) : skeletonCell(b, i, budget),
+                  )}
+              {/* Extras join only once the chunks are in: they render through the same family
+                  registry the cards do, and the skeleton state has no placeholder for them. */}
+              {Object.keys(built)
+                .filter(
+                  (k) =>
+                    familiesLoaded &&
+                    built[k] &&
+                    data.extras &&
+                    data.extras[k as keyof typeof data.extras],
+                )
+                .map((k) => {
+                  const ex = data.extras[k as keyof typeof data.extras] as Extra;
+                  // Extras carry CSS-12 col values. At tablet/mobile budgets go full-width;
+                  // at desktop/laptop keep the authored col so pairs share a row cleanly.
+                  const rawCol = Math.min(12, Math.max(1, ex.col || 6));
+                  const scaledCol = budget < 9 ? 12 : rawCol;
+                  return (
+                    <div className={'col-' + scaledCol} key={k}>
+                      {renderExtra(ex)}
+                    </div>
+                  );
+                })}
+            </>
+          )}
         </div>
       )}
 

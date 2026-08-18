@@ -15,7 +15,7 @@
   z-index: 1200;
   min-height: 0;
   background: color-mix(in srgb, var(--bg, #111) 72%, transparent);
-  backdrop-filter: blur(5px);
+  backdrop-filter: var(--glass-blur, blur(5px));
 }
 
 .async-pending-spinner {

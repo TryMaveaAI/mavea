@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { CounterProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useCountUp } from '../../lib/motion';
+import { useInView } from '../../../hooks/useInView';
 
 type Props = CounterProps & { delay?: number };
 
@@ -22,35 +23,16 @@ export function Counter({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark;
-  const [shown, setShown] = useState(0);
-  const raf = useRef<number>(0);
-
-  // count-up on reveal; respects reduced-motion by snapping to the value
-  useEffect(() => {
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      setShown(value);
-      return;
-    }
-    const dur = 1100;
-    const start = performance.now() + (delay || 0);
-    const tick = (now: number) => {
-      const t = Math.max(0, Math.min(1, (now - start) / dur));
-      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      setShown(value * eased);
-      if (t < 1) raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
-  }, [value, delay]);
-
-  const txt = shown.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  // Count up only once the card is actually on screen — a counter below the fold used to run its
+  // whole RAF loop (a setState per frame) for nobody. The shared hook handles reduced-motion and
+  // RAF cleanup; holding the target at 0 until reveal means the figure reads 0 exactly as it did
+  // pre-animation, then plays the same count-up the moment it scrolls into view.
+  const [cardRef, inView] = useInView<HTMLDivElement>();
+  const txt = useCountUp(inView ? value : 0, { delay: delay || 0, decimals });
 
   return (
     <div
+      ref={cardRef}
       className="card reveal stats-card"
       style={{ ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties}
     >

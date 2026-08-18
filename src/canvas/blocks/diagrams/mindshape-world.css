@@ -17,13 +17,20 @@
   transform-origin: 0 0;
   /* The "one breath" ease — flying between fits as the map grows. */
   transition: transform 1100ms cubic-bezier(0.22, 0.9, 0.3, 1);
-  will-change: transform;
   /* Shared counter-scale: holds on-screen text size roughly constant as the camera zooms the world
    * out for a busy map. Defined once here (not per-element) so every descendant that needs to stay
    * readable — cards AND theme labels — reads the same value; a label is a sibling of the cards it
    * names, so it can't see a --ms-counter defined only on .ms-card. Capped at ~1.6 to match the
    * world-space headroom the layout already reserves per card (CARD_HW/CARD_HH in MindShape.tsx). */
   --ms-counter: clamp(1, calc(1 / var(--ms-cam-scale, 1)), 1.6);
+}
+
+/* A compositor layer is rented, not owned (the morph stage's rule): a permanent will-change here
+   kept a 1000×700 world texture resident for the block's whole life for a transform that only
+   changes during a camera flight. Promotion is asked for per flight — MindShape.tsx sets
+   data-flying from useSpatialCanvas's `flying` while a fit/fly-to is in motion. */
+.ms-world[data-flying='true'] {
+  will-change: transform;
 }
 
 /* The camera centers the world's orbit point in the viewport, so the face sits at the centre and

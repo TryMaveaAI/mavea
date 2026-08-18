@@ -14,10 +14,23 @@
 //
 // A staleness test recomputes this file at test time and fails if it differs, so editing a family
 // without regenerating cannot reach CI.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { RAW_CATALOG } from '../src/canvas/blocks/catalog/catalog.data';
 import type { ComponentMeta } from '../src/canvas/blocks/catalog/meta';
-import { referencePropsFor } from '../src/live/select/examples';
+
+// Read the compact reference-example JSON directly rather than through live/select/examples.ts:
+// that module lazy-loads its data in shards for the browser (pnpm gen:examples), and this script
+// needs every generic component's example synchronously, in one pass, to derive the structural
+// references below. `pnpm gen:reference-examples` keeps this JSON current against the real topics.
+const REFERENCE_EXAMPLES: Record<string, unknown> = JSON.parse(
+  readFileSync('src/live/select/referenceExamples.generated.json', 'utf8'),
+);
+function referencePropsFor(type: string): Record<string, unknown> | null {
+  const props = REFERENCE_EXAMPLES[type];
+  return props && typeof props === 'object' && !Array.isArray(props)
+    ? (props as Record<string, unknown>)
+    : null;
+}
 
 // The staleness test regenerates into a scratch directory and diffs, so it must never clobber the
 // committed files out from under the workers importing them.

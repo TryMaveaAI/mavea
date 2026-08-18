@@ -59,7 +59,7 @@ try {
     'dist/legal/SECURITY.md',
     'dist/legal/THIRD-PARTY.txt',
     'dist/demo-assets/CREDITS.md',
-    'dist/demo-assets/video/azores-film.webm',
+    'dist/demo-assets/video/island-coast.webm',
     'dist/fonts/OFL-1.1.txt',
     'dist/fonts/PROVENANCE.md',
     'dist/ort-wasm-simd-threaded.mjs',
@@ -104,8 +104,8 @@ try {
   if (productionDependencies.length) {
     errors.push(`published CLI must stay dependency-free: ${productionDependencies.join(', ')}`);
   }
-  if (PACKAGE.publishConfig?.engines?.node !== '>=20.19') {
-    errors.push('published CLI Node engine must stay explicitly pinned to >=20.19');
+  if (PACKAGE.publishConfig?.engines?.node !== '>=22.12') {
+    errors.push('published CLI Node engine must stay explicitly pinned to >=22.12');
   }
   if (PACKAGE.publishConfig?.access !== 'public' || PACKAGE.publishConfig?.provenance !== true) {
     errors.push('source publishConfig must require public access and npm provenance');
@@ -119,7 +119,7 @@ try {
   if (packedPackage.license !== 'PolyForm-Noncommercial-1.0.0') {
     errors.push(`packed package license changed to ${String(packedPackage.license)}`);
   }
-  if (packedPackage.engines?.node !== '>=20.19') {
+  if (packedPackage.engines?.node !== '>=22.12') {
     errors.push(`packed package Node engine changed to ${String(packedPackage.engines?.node)}`);
   }
   if (packedPackage.bin?.mavea !== './bin/mavea.mjs') {

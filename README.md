@@ -21,7 +21,7 @@ and evidence you can check, marking the exact figure each line is about.
 </p>
 
 ```sh
-npx @mavea/mavea
+npx @mavea/mavea@latest
 ```
 
 Opens `http://localhost:4173` — no install, no account, no model key required.
@@ -32,9 +32,13 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 ## Get started
 
-All you need is **Node 20.19+**. That command above opens the tour and demo replays immediately
+All you need is **Node 22.12+**. That command above opens the tour and demo replays immediately
 — nothing else to set up. Demo replays are fictional, curated prerecorded examples with scripted
 feature choreography; playback does not call a model provider.
+
+The `@latest` tag matters: for a bare package name `npx` can reuse a previously cached copy rather
+than fetching a newer one, so asking for `latest` is what reliably gets you the current release.
+Prefer a pinned local copy? `npm install -g @mavea/mavea`, then run `mavea`.
 
 **To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
 Gemini / Grok / OpenRouter key. It stays in memory unless you opt into encrypted local
@@ -91,7 +95,7 @@ is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 ## What it looks like
 
 Twelve moments from the walkthrough and the recorded sessions. Every one replays with no key via
-`npx @mavea/mavea` — except the thought map, whose threads need a live model to draw.
+`npx @mavea/mavea@latest` — except the thought map, whose threads need a live model to draw.
 
 <!-- Generated, never hand-captured: `pnpm gen:media` re-shoots these against the current build
      (scripts/capture-media.mts), so a UI change can't quietly leave the README a version behind.
@@ -128,7 +132,7 @@ Mavéa runs on your machine, not in a cloud.
 | **CPU**  | 4 cores | 8 cores     |
 | **RAM**  | 8 GB    | 16 GB       |
 | **Disk** | 3 GB    | 10 GB       |
-| **Node** | 20.19+  | 20.19+      |
+| **Node** | 22.12+  | 24.11+      |
 
 Any browser in [Baseline Widely Available](https://web.dev/baseline) — current Chrome, Edge,
 Safari, or Firefox — on macOS, Windows, or Linux. **Minimum** covers the app with voice off,

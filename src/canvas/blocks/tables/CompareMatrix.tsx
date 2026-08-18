@@ -8,6 +8,14 @@ type Props = CompareMatrixProps & { delay?: number };
 
 const RATING_MAX = 5;
 
+// Column floors, in px. Above them the tracks share the card evenly; below them they stop
+// shrinking and `.tbl-cmx-scroll` scrolls instead. 96px is about the narrowest a comparison column
+// can be and still hold an ordinary word at the smallest step of the cell type scale (and the
+// rating row's five dots) without breaking it mid-word; the attribute column needs a little more
+// for a two-word label.
+const COL_MIN_W = 96;
+const ATTR_MIN_W = 120;
+
 /** Parse a rating score from a loose value: a number, a numeric string, or "4/5". Clamped to
  *  0..RATING_MAX so an out-of-range score never paints more dots than the scale has. */
 function toScore(value: CompareCell['value']): number {
@@ -85,9 +93,11 @@ export function CompareMatrix({
   const ncols = cols.length;
   // The attribute column gets a touch more room; every comparison column shares the rest evenly.
   // The grid fills the card width (each cell is its own even track) so a wide card reads as a full,
-  // balanced table rather than a narrow block stranded against the left edge. On a card too narrow
-  // for the columns' min-content, `.tbl-cmx-scroll` scrolls instead of crushing them.
-  const gridCols = `minmax(0, 1.3fr) repeat(${ncols}, minmax(0, 1fr))`;
+  // balanced table rather than a narrow block stranded against the left edge. Values wrap inside
+  // their own column, so a sentence-length cell makes its row taller rather than demanding one
+  // long line; only on a card narrower than the floors does `.tbl-cmx-scroll` scroll instead of
+  // crushing the columns.
+  const gridCols = `minmax(${ATTR_MIN_W}px, 1.3fr) repeat(${ncols}, minmax(${COL_MIN_W}px, 1fr))`;
   const legendKinds = usedKinds(rows);
 
   return (

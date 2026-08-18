@@ -18,3 +18,7 @@ src/gallery/fixtures/
 src/canvas/blocks/catalog/facts.generated.ts
 src/canvas/blocks/catalog/structures.generated.ts
 src/canvas/blocks/catalog/details/
+
+# The same split for the selector's reference examples — machine-written (pnpm gen:examples).
+# Only the generated directory: examples.ts beside it is hand-written and stays formatted.
+src/live/select/examples/

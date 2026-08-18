@@ -55,6 +55,21 @@ low-cost tier — the model field accepts any id, so stronger models are always 
 Each provider tile in the Connect step links to where you get a key, and the readiness strip
 verifies the key + model before you commit.
 
+**Not every model can drive the canvas.** Mavéa's answers are structured output — a typed
+`blocks` array — so a model that ignores a request for JSON cannot render one, at any budget or
+timeout. Some preview and reasoning models do exactly that: they reply with a planning monologue in
+plain prose, or spend their whole completion budget thinking and emit nothing at all. When that
+happens Mavéa says so on the card rather than blaming the moment, because retrying the same model
+gets the same result. Pick one that supports JSON mode.
+
+**A note on OpenRouter's `:free` routes.** A `:free` variant is a separate, heavily rate-limited
+pool that queues behind every other free user — it is not the paid model of the same name at a
+lower price. Mavéa recognises the suffix and adapts rather than pretending otherwise: it asks for a
+smaller canvas and a shorter menu so the answer fits in the time the route actually has, waits
+longer before giving up, and if the stream is still cut off it keeps the blocks that arrived and
+labels the answer as cut short instead of discarding it. Expect a slower turn and fewer blocks than
+the same question on a paid route; the model picker says so when you type one.
+
 ---
 
 ## The voice (optional)

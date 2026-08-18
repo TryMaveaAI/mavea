@@ -52,7 +52,11 @@ const LAZY_BUDGETS = [
     brotli: 215,
   },
   {
-    label: 'first-turn engine + examples',
+    // The reference-example props (the shape the menu shows a hero component to copy) used to be
+    // a 384 KB static import landing whole in this chunk; they're sharded now (pnpm gen:examples)
+    // and fetched a few KB at a time behind ensureExamples, so the budget below is untouched
+    // headroom rather than a measured ceiling — safe to tighten once re-measured after a build.
+    label: 'first-turn engine',
     match: /^generateLive-.*\.js$/,
     raw: 430,
     gzip: 165,
@@ -198,7 +202,12 @@ const ROUTE_BUDGETS = [
   // gained a peek that does NOT touch the LRU, so a graded quiz answer stops rewriting the whole
   // cache to localStorage per cached lesson. Both are correctness, and the second is a net win at
   // runtime; neither can move to a lazy chunk because the route's own shell needs them.
-  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 25 },
+  // 26 (was 25): the local stores now write through the shared quota ledger (lib/localBudget.ts),
+  // because their individual caps sum past the one ~5MB origin quota and whichever store wrote last
+  // simply lost its data. The course frame cache is one of the three that volunteers an eviction, so
+  // the route's shell carries the ledger; it cannot be lazy — a store has to register its shedder
+  // before its first write, which happens on the route's own first save.
+  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 26 },
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],

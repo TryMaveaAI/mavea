@@ -444,6 +444,9 @@
 @media (prefers-reduced-motion: no-preference) {
   .stl-pulse {
     animation: stl-pulse 1.6s var(--ease-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play:
+       paused). The longhand MUST follow the shorthand, which resets play-state to running. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes stl-pulse {
@@ -654,6 +657,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .es-art {
     animation: es-float 4.5s var(--ease-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes es-float {
@@ -863,6 +868,8 @@
     background: linear-gradient(100deg, transparent 20%, var(--grid-strong) 50%, transparent 80%);
     transform: translateX(-100%);
     animation: sk-shimmer 1.5s var(--ease-out) infinite;
+    /* AMBIENT loop — pausable by the lite perf tier. */
+    animation-play-state: var(--ambient-play, running);
   }
 }
 @keyframes sk-shimmer {

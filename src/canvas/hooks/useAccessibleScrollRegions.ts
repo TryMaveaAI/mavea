@@ -27,6 +27,9 @@ export function useAccessibleScrollRegions(
     const host = root.current;
     if (!host) return;
     const cleanups = new Map<HTMLElement, () => void>();
+    const pending = new Set<HTMLElement>();
+    let fullScan = false;
+    let sawRemovals = false;
     let frame = 0;
 
     /** Whether `el` is a real overflow region. Reads only — never writes — so a whole scan's reads
@@ -40,6 +43,9 @@ export function useAccessibleScrollRegions(
     };
 
     const enhance = (el: HTMLElement): void => {
+      // A card re-parented between observer batches can land under two pending scan roots;
+      // enhancing twice would stack scroll listeners.
+      if (cleanups.has(el)) return;
       const authoredTabIndex = el.hasAttribute('tabindex');
       const authoredRole = el.hasAttribute('role');
       const authoredLabel = el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
@@ -63,29 +69,87 @@ export function useAccessibleScrollRegions(
       });
     };
 
+    /** A mutation can flip an ANCESTOR into overflow too (streamed text widening a code line), so
+     * the incremental unit is the nearest child of `host` the mutation landed in — a card's
+     * column div, or one section when the grid is sectioned; never the whole grid. Distinct
+     * roots are disjoint subtrees, so one pass never visits an element twice. */
+    const scanRootOf = (node: Node): HTMLElement | null => {
+      let el: HTMLElement | null = node instanceof HTMLElement ? node : node.parentElement;
+      while (el && el.parentElement !== host) el = el.parentElement;
+      return el;
+    };
+
     const scan = () => {
       frame = 0;
+      if (sawRemovals) {
+        sawRemovals = false;
+        // Undo unmounted regions now, not at effect teardown — otherwise every card ever
+        // enhanced during a long answer stays strongly referenced (listener included) after
+        // React removes it. Undoing attributes on a detached element is invisible; a region
+        // that returns re-enters through the insertion scan.
+        for (const [el, cleanup] of cleanups)
+          if (!el.isConnected) {
+            cleanup();
+            cleanups.delete(el);
+          }
+      }
+      const scopes = fullScan ? [host] : [...pending].filter((el) => host.contains(el));
+      fullScan = false;
+      pending.clear();
       // Find every region before enhancing any of them. enhance() writes tabindex, role and a
       // class; interleaving those with the next element's style read invalidates style and forces
-      // a fresh recalc per element across the whole grid — and this scan reruns on every block
-      // insertion during a turn.
+      // a fresh recalc per element across the whole scope.
       const found: HTMLElement[] = [];
-      for (const el of host.querySelectorAll<HTMLElement>('*'))
-        if (isScrollRegion(el)) found.push(el);
+      for (const scope of scopes) {
+        if (scope !== host && isScrollRegion(scope)) found.push(scope);
+        for (const el of scope.querySelectorAll<HTMLElement>('*'))
+          if (isScrollRegion(el)) found.push(el);
+      }
       for (const el of found) enhance(el);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(scan);
     };
+    const scheduleFull = () => {
+      fullScan = true;
+      schedule();
+    };
 
-    schedule();
+    scheduleFull();
     // Syntax highlighting and lazily-loaded family chunks can change intrinsic width after mount.
-    const afterAsyncPaint = window.setTimeout(schedule, 700);
+    const afterAsyncPaint = window.setTimeout(scheduleFull, 700);
+    // Streaming inserts one block at a time; re-walking the whole grid for each would be O(N²)
+    // across a turn. The records already name what changed — rescan just those cards.
     const observer =
-      typeof MutationObserver === 'undefined' ? null : new MutationObserver(schedule);
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver((records) => {
+            for (const record of records) {
+              if (record.removedNodes.length) {
+                sawRemovals = true;
+                const scope = scanRootOf(record.target);
+                if (scope) pending.add(scope);
+              }
+              for (const node of record.addedNodes) {
+                const scope = scanRootOf(node);
+                if (scope) pending.add(scope);
+              }
+            }
+            if (pending.size || sawRemovals) schedule();
+          });
     observer?.observe(host, { childList: true, subtree: true });
+    // The host grows taller with every streamed block, but horizontal overflow is a function of
+    // WIDTH — only a width change (window resize, a scrollbar appearing) owes a full rescan.
+    let hostWidth = -1;
     const resizeObserver =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver((entries) => {
+            const width = entries.at(-1)?.contentRect.width ?? hostWidth;
+            if (width === hostWidth) return;
+            hostWidth = width;
+            scheduleFull();
+          });
     resizeObserver?.observe(host);
 
     return () => {

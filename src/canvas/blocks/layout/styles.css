@@ -1926,6 +1926,7 @@
   );
 }
 .bp-orb {
+  position: relative;
   width: 58px;
   height: 58px;
   border-radius: var(--r-full, 999px);
@@ -1934,39 +1935,73 @@
     color-mix(in oklab, var(--bp-accent) 78%, #fff 22%),
     color-mix(in oklab, var(--bp-accent) 88%, transparent)
   );
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--bp-accent) 22%, transparent),
-    0 8px 28px color-mix(in oklab, var(--bp-accent) 26%, transparent);
   transform: scale(0.62);
-  will-change: transform, box-shadow;
   animation: bp-breathe var(--bp-cycle, 14s) ease-in-out infinite;
+}
+/* The glow rides on two stacked pseudos whose static shadows CROSS-FADE (opacity is composited)
+   instead of animating box-shadow on the orb itself — a 14s infinite box-shadow tween is a forced
+   repaint every frame, forever. Both scale with the orb, so the halo still swells with the breath. */
+.bp-orb::before,
+.bp-orb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+/* exhaled halo */
+.bp-orb::before {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--bp-accent) 18%, transparent),
+    0 4px 14px color-mix(in oklab, var(--bp-accent) 18%, transparent);
+  animation: bp-glow-out var(--bp-cycle, 14s) ease-in-out infinite;
+}
+/* inhaled halo */
+.bp-orb::after {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--bp-accent) 30%, transparent),
+    0 10px 34px color-mix(in oklab, var(--bp-accent) 34%, transparent);
+  opacity: 0;
+  animation: bp-glow-in var(--bp-cycle, 14s) ease-in-out infinite;
 }
 @keyframes bp-breathe {
   0% {
     transform: scale(0.62);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--bp-accent) 18%, transparent),
-      0 4px 14px color-mix(in oklab, var(--bp-accent) 18%, transparent);
   }
   /* end of inhale → fully expanded (fixed offsets: CSS keyframe selectors can't use var/calc) */
   44% {
     transform: scale(1);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--bp-accent) 30%, transparent),
-      0 10px 34px color-mix(in oklab, var(--bp-accent) 34%, transparent);
   }
   /* hold → stay expanded */
   56% {
     transform: scale(1);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--bp-accent) 30%, transparent),
-      0 10px 34px color-mix(in oklab, var(--bp-accent) 34%, transparent);
   }
   100% {
     transform: scale(0.62);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--bp-accent) 18%, transparent),
-      0 4px 14px color-mix(in oklab, var(--bp-accent) 18%, transparent);
+  }
+}
+/* same phase edges as bp-breathe, so the halo and the size always agree */
+@keyframes bp-glow-in {
+  0% {
+    opacity: 0;
+  }
+  44%,
+  56% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes bp-glow-out {
+  0% {
+    opacity: 1;
+  }
+  44%,
+  56% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 .bp-caption {
@@ -2078,6 +2113,14 @@
   .bp-orb {
     animation: none;
     transform: scale(0.92);
+    /* the resting halo the cross-fade pseudos no longer paint (they're removed below) */
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--bp-accent) 22%, transparent),
+      0 8px 28px color-mix(in oklab, var(--bp-accent) 26%, transparent);
+  }
+  .bp-orb::before,
+  .bp-orb::after {
+    content: none;
   }
   .bp-caption {
     display: none;

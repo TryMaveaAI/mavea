@@ -50,7 +50,7 @@
     "access": "public",
     "provenance": true,
     "engines": {
-      "node": ">=20.19"
+      "node": ">=22.12"
     }
   },
   "homepage": "https://github.com/TryMaveaAI/mavea#readme",
@@ -104,6 +104,7 @@
     "gen:gallery-fixtures": "node --import tsx scripts/generate-gallery-fixtures.mjs --write",
     "check:gallery-fixtures": "node --import tsx scripts/generate-gallery-fixtures.mjs",
     "gen:catalog": "node --import tsx scripts/generate-catalog-index.mts",
+    "gen:examples": "node --import tsx scripts/generate-example-shards.mts",
     "audit:reel": "node --import tsx scripts/reel-audit.mts",
     "slides:gate": "node --import tsx scripts/slide-gate.mts",
     "export:gate": "node --import tsx scripts/export-gate.mts",

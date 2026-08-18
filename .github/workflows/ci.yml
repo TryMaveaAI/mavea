@@ -140,10 +140,10 @@ jobs:
       - name: Test (shard ${{ matrix.shard }}/4)
         run: pnpm test -- --shard=${{ matrix.shard }}/4
 
-  # Also carries the Node 20 CLI smoke. Keeping the dependency-free check here avoids another
+  # Also carries the Node 22 CLI smoke. Keeping the dependency-free check here avoids another
   # checkout and runner while preserving the published engine contract.
   security:
-    name: Secret scan · SAST · Published CLI smoke (Node 20)
+    name: Secret scan · SAST · Published CLI smoke (Node 22)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -166,11 +166,11 @@ jobs:
         run: semgrep --config p/ci --error --quiet src gateway bin scripts vite.config.ts
 
       # The source toolchain requires Node 24+, but the packed CLI is dependency-free and supports
-      # Node 20.19+. Exercise that public runtime contract rather than asking modern build
+      # Node 22.12+. Exercise that public runtime contract rather than asking modern build
       # dependencies to pretend they support an older engine.
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 20.19
+          node-version: 22.12
       - name: Exercise the dependency-free CLI entry point
         run: node bin/mavea.mjs --help
 

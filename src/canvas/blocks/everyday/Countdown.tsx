@@ -2,6 +2,8 @@ import { type CSSProperties, useEffect, useState } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { CountdownProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { useInterval } from '../../../hooks/useInterval';
+import { isHidden, onVisibility } from '../../../lib/pageVisibility';
 
 type Props = CountdownProps & { delay?: number };
 
@@ -16,7 +18,9 @@ function breakdown(ms: number): Array<{ v: number; u: string }> {
 }
 
 // A live ticking countdown to a REAL deadline (the date is given, not invented), with what is due and
-// the consequence of missing it. Ticks once a second via an interval that is cleared on unmount.
+// the consequence of missing it. Ticks once a second via an interval that is cleared on unmount —
+// and paused entirely while the tab is hidden (nobody can see a background tick), snapping the
+// display back to the true remaining time the instant the tab returns.
 export function Countdown({
   title,
   icon = 'clock',
@@ -30,10 +34,18 @@ export function Countdown({
 }: Props) {
   const Ic = Icon[icon] || Icon.clock;
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const [hidden, setHidden] = useState(isHidden);
+  useEffect(
+    () =>
+      onVisibility((h) => {
+        setHidden(h);
+        // Catch the display up immediately on return — the paused interval would otherwise show
+        // the stale pre-hide time for up to a second.
+        if (!h) setNow(Date.now());
+      }),
+    [],
+  );
+  useInterval(() => setNow(Date.now()), hidden ? null : 1000);
 
   const tMs = Date.parse(target);
   const valid = !Number.isNaN(tMs);

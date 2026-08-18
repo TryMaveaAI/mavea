@@ -191,6 +191,10 @@
   top: 0;
   left: 0;
   transform-origin: 0 0;
+}
+/* A compositor layer is rented, not owned (the morph stage's rule): promote the board only while
+   a drag is moving it. The 1100ms camera flight below promotes itself when its transition starts. */
+.cv-viewport.is-panning .cv-world {
   will-change: transform;
 }
 @media (prefers-reduced-motion: no-preference) {

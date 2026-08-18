@@ -185,6 +185,14 @@ Two rules keep the halves honest, both enforced by tests. `catalogMeta()` return
 contracts would let the coercer emit a malformed block in silence. And nothing in the app may import
 `catalog.data.ts` or a family file directly; the eager-import graph test fails if it does.
 
+The per-turn menu's demo-sourced prop examples (`live/select/examples.ts`) reuse the same split for
+the same reason. `pnpm gen:examples` turns the ~380 KB `referenceExamples.generated.json` (built
+from the real demo topics by `pnpm gen:reference-examples`) into a tiny always-resident type→shard
+index plus `examples/shard*.ts` — canonical-order chunks fetched only for the handful of hero
+components a turn actually shows an example for (`rank.ts` awaits `ensureExamples` alongside
+`ensureDetails`). Before the split this JSON was a static import, so it sat fully parsed in memory
+for the whole session merely to answer a first turn.
+
 ### Designed PDF export
 
 The **Export** action (Live's Share menu and the demo topbar) opens a modal that renders an answer
@@ -265,8 +273,11 @@ video and Opus audio, and falls back to WebM VP9/VP8 + Opus. It fails closed: it
 never widens to H.264, H.265, AAC, or an unspecified recorder default. Published patent
 commitments inform this engineering policy but are not a universal patent-clearance opinion. Conversation and Reel cuts are both deterministic and
 local; Video Studio has no model-provider interface and cannot spend a configured provider key.
-Audio is mandatory for Conversation exports; retained PCM is preferred and missing narration is
-synthesized through the local Apache-2.0 Kokoro service before rendering. Full and Lite performance
+Audio is one of the Conversation export's include chips, on by default: retained PCM is preferred
+and missing narration is synthesized through the local Apache-2.0 Kokoro service before rendering,
+bounded to two syntheses at a time. Turning it off skips synthesis entirely — the caption pacing
+falls back to the same character-count estimate that already drives the duration meter, which is
+also what makes an audio-off export the cheap path on a weak machine. Full and Lite performance
 tiers change motion cadence and bitrate, never spatial resolution. Meaningful DOM states are
 rasterized once at final size, workers are used where
 available, encoder backpressure is awaited, hidden tabs pause, and the long-file path streams to
@@ -825,6 +836,22 @@ setLiveConfigV2(patch)
   → window.dispatchEvent(new CustomEvent('mavea-live-v2', { detail: next }))
       → useLiveConfig hook re-renders all subscribers
 ```
+
+### One quota, several stores
+
+Every local store caps itself, but `localStorage` is a single origin quota of roughly 5MB and the
+caps sum well past it — worse than they look, since a cap counts UTF-16 code units and a browser
+charges about two bytes for each. Whichever store happened to write last simply failed, and the
+user lost data they could still see on screen.
+
+Writes therefore go through `lib/localBudget.ts`. A store volunteers its OWN eviction
+(`registerStoreShedder`); on a quota refusal the ledger sheds the oldest entry of the LARGEST
+Mavéa-owned cache — the course lesson cache, the library's oldest canvas, the session's oldest turn
+— and retries. A key with no registered shedder is never touched, however large: the key vault, the
+theme, and the legal acknowledgement are not caches and must not be evicted to make room. A write
+that still cannot land says so once per page, naming the key and the measured occupancy, instead of
+failing silently. Encrypted stores re-encrypt through their own path, and a cache that has not
+decrypted yet sheds nothing rather than guessing at what it holds.
 
 ### What leaves the browser
 

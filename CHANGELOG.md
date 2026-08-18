@@ -6,6 +6,85 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **What a session cost is now visible** (Settings → Model): tokens sent, how much of that was
+  billed at the cached rate, tokens written back, and which pass spent them. Mavéa is BYOK, so
+  every one of those calls was billed to your key — tokens only, never a guessed currency figure,
+  and nothing is stored or sent anywhere.
+- The dock's explanation-level chip says what it is. It rendered a bare word ("Standard") beside
+  the voice and model chips, so the one control there that isn't self-evident read as a mystery.
+
+### Changed
+
+- **The gap between speaking and being answered isn't blank any more.** When the mic closed, every
+  "I'm hearing you" indicator vanished at once while the words were still being transcribed —
+  which read as not having been heard. The face now holds a working state through it, the
+  listening card holds with its bars stilled instead of unmounting, and the mic button keeps a
+  slowed pulse rather than just dimming. It starts about 1.3 seconds earlier than it could have:
+  the mic reports that you have plainly stopped before its own hangover window closes the
+  utterance, and takes that back if you were only pausing mid-thought. A transcription that lands
+  inside 300ms changes nothing, so a fast machine never flashes.
+- **A backgrounded tab stops animating.** Every ambient loop in the app — the landing's aurora, a
+  card's glow, a hundred-odd others — kept repainting for nobody while the tab sat behind another
+  window. They now pause while the tab is hidden, and a landing section pauses its own once it has
+  scrolled entirely out of view. Nothing you can see ever changes.
+- The demo images ship as AVIF (2.2MB → 1.6MB), and the component reference examples load per
+  answer instead of arriving as one 390KB block held for the whole session (~19KB now stays
+  resident). Both make the first load smaller and the session lighter.
+- Answers below the drawer are generated when you open it, not on every rich turn. Six blocks were
+  written into every answer whether or not anyone opened the drawer they live behind — the most
+  expensive tokens in a turn, spent on content nobody had asked to see. Opening it now generates
+  them once and caches them permanently.
+
+- **A video export no longer takes exactly as long as the video.** Frames were stamped at real
+  elapsed time, so a machine that rasterised slowly stretched them into a slideshow and a fast one
+  gained nothing. The export now runs on its own clock — frame `n` belongs at `n/fps` whenever it
+  finishes — so a weak machine produces the same sharp file, just later, and a strong one finishes
+  ahead of real time. The face is drawn as its own small layer over a cached background, the
+  preview stops rendering a second full-size copy while a render is in flight, and a rasterizer
+  that fails now says so instead of quietly writing a blank video.
+- **Audio is a choice in the export sheet**, on by default. Turning it off skips speech synthesis
+  entirely — captions still pace themselves from the same estimate that drives the duration meter
+  — which is also the cheapest path on a weak machine. Narration that does need synthesising is
+  now made two lines at a time instead of all at once, which is what used to peg the fan.
+- The in-sheet Share button is gone. On desktop it was a share that silently downloaded, then said
+  it had shared; there is now one honest "Download video" action on both tabs.
+- **What a turn costs the model has come down** without changing what it can do: only the leading
+  few components carry a worked example, the per-turn prompt now sits inside the cached prefix on
+  Anthropic instead of after it, a repair pass no longer resends the whole component menu, a
+  speculative glimpse is billed as a glimpse rather than at a reasoning model's floor, and a
+  prefetched suggestion is reused across turns instead of being thrown away and paid for twice.
+
+### Fixed
+
+- **Local storage stops silently losing data.** Every store capped itself, but they share one
+  browser quota and the caps sum past it, so whichever store wrote last simply failed — and said
+  nothing. A refused write now sheds the oldest entry of the largest cache and retries, never
+  touching anything that isn't a cache, and says so once if it still cannot land.
+- **The scrubber's waveform stops repainting itself sixty times a second** while a line plays: the
+  bars are drawn once per track and the playhead is a clip, so playback commits to React about
+  once a second instead of once a frame.
+- Speech no longer wakes up ~470 times to ask whether it can queue the next window, and the audio
+  thread parks itself after 30 seconds of silence rather than idling for the whole session.
+- **A streamed answer stops rebuilding itself as it arrives.** Each closed block used to land in
+  its own render, and a mid-stream flip (a new block family arriving, the first section-tagged
+  block landing) tore the whole grid down and replayed every card's entrance. Blocks now fold into
+  one paint per frame, the loading placeholders hand their grid cell to the real card instead of
+  being replaced wholesale, and the section decision is made once per answer.
+- **A returning dark-mode reader no longer gets a light flash on load.** The boot splash had no
+  way to know the stored choice before the bundle ran; it now takes the system setting as its
+  guess and yields to the real choice the instant it's known.
+- The hero no longer reflows when its display font lands: the fallback is now metric-matched to
+  Newsreader, so the text occupies the same box before and after.
+- **The on-device semantic model (~7MB) is fetched when you reach for the composer**, not on the
+  first keystroke or click anywhere in Live. The behaviour its own comment described was never
+  what the code did — scrolling the page or dismissing a hint counted as "about to ask".
+- Glass blur now goes away where it's supposed to. 29 stylesheets hardcoded their own blur radius
+  and so ignored the performance tier that exists to shed exactly that cost on weak machines.
+- The face's mouth keeps moving on the main conversation surface when another surface is also
+  showing a face. Live was the one mount that never registered as a voice-energy target.
+
 ## [1.2.1] - 2026-08-17
 
 ### Fixed

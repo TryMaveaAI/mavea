@@ -7,7 +7,7 @@
 //   · Blocks scale proportionally at every viewport size
 //   · Block importance hierarchy (compare > chart > insight) is preserved while shrinking
 //   · No layout flash: the budget is seeded from window.innerWidth before first paint
-import { useLayoutEffect, useMemo, useState, type RefObject } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { adaptiveCols, CORE_SPANS, type SpanLookup } from '../../live/layout';
 import type { Block } from '../../data/conversation';
 
@@ -88,37 +88,63 @@ export function useResponsiveGrid(
   // browser paints, so the first visible frame already uses the right column count. With a plain
   // effect the canvas painted once at the window-width budget, then re-flowed to the container
   // budget a frame later — a visible reflow that read as "it loaded wrong, then fixed itself".
+  //
+  // The observer must follow the ELEMENT, not the ref object: the grid div unmounts while an
+  // alternate surface (Focus, the canvas board) is up and remounts as a NEW node afterwards. A
+  // deps list keyed on the stable ref can't see that swap — it left the observer watching the
+  // detached node while the column budget silently froze. So: no deps, re-check the attachment
+  // after every commit (a single identity compare when nothing changed), and move the observer
+  // only when the node is genuinely different.
+  const watched = useRef<Element | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const rafRef = useRef(0);
+  // Deliberately per-commit, no deps: the body is a cheap identity compare that returns at once
+  // unless the observed ELEMENT changed, and every setBudget in it is a functional update that
+  // returns `prev` when the budget is unchanged — neither can feed itself, which is the update
+  // loop this rule guards against. A deps list is what created the real bug here: an observer
+  // left watching a detached node while the column budget silently froze.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = containerRef.current;
+    if (el === watched.current) return;
+    watched.current = el;
+    observerRef.current?.disconnect();
+    cancelAnimationFrame(rafRef.current);
     // ResizeObserver is not available in JSDOM / SSR — skip gracefully and keep
     // the initial window.innerWidth-seeded budget (12 = desktop fallback).
     if (!el || typeof ResizeObserver === 'undefined') return;
 
-    let rafId = 0;
-    const observer = new ResizeObserver((entries) => {
-      // One rAF debounce: skip intermediate frames during smooth resize drags.
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        const width = entries[0]?.contentRect.width ?? (el as HTMLElement).offsetWidth;
-        setBudget((prev) => {
-          const next = widthToBudget(width);
-          return prev === next ? prev : next;
+    if (!observerRef.current) {
+      observerRef.current = new ResizeObserver((entries) => {
+        // One rAF debounce: skip intermediate frames during smooth resize drags.
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+          const entry = entries[0];
+          const width = entry?.contentRect.width ?? (entry?.target as HTMLElement)?.offsetWidth;
+          if (width === undefined) return;
+          setBudget((prev) => {
+            const next = widthToBudget(width);
+            return prev === next ? prev : next;
+          });
         });
       });
-    });
-
-    observer.observe(el);
+    }
+    observerRef.current.observe(el);
 
     // Correct the initial seed if the container is narrower than window.innerWidth
     // (e.g. when a sidebar or padding reduces the canvas area).
     const containerBudget = widthToBudget((el as HTMLElement).offsetWidth);
     setBudget((prev) => (prev === containerBudget ? prev : containerBudget));
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      observer.disconnect();
-    };
-  }, [containerRef]);
+  });
+  // Final teardown on unmount only — attachment moves are handled per-commit above.
+  useLayoutEffect(
+    () => () => {
+      cancelAnimationFrame(rafRef.current);
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    },
+    [],
+  );
 
   // Re-run the layout algorithm only when blocks or budget change.
   // Wrap in try/catch: any unexpected error (e.g. from exotic gallery blocks) falls back
