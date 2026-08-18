@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // streamSpeak to the blob path — exactly the situation both fixes are about.
 vi.mock('../src/voice/voiceEnergy', () => ({
   sharedAudioContext: () => null,
+  leaseAudioContext: () => null, // no WebAudio to lease either
   tapPlaybackNode: () => () => {},
   voiceEnergyTap: () => () => {},
   resetVoiceEnergy: () => {},

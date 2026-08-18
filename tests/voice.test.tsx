@@ -15,10 +15,12 @@ import {
   resetKokoroProbe,
   speakKokoroLine,
   speakKokoroResult,
+  primeKokoroLine,
   cancelKokoro,
   kokoroSpeaking,
   subscribeKokoroSpeaking,
 } from '../src/voice/kokoro';
+import { pronounceForSpeech } from '../src/voice/pronounce';
 import { VoiceOffHint } from '../src/live/VoiceOffHint';
 import { VOICE_OFF_HINT, VOICE_MUTED_HINT } from '../src/live/voiceAvailability';
 import { setOutputMuted } from '../src/voice/streamTts';
@@ -38,6 +40,10 @@ vi.mock('@ricky0123/vad-web', () => ({
     throw new Error('no VAD in test');
   },
 }));
+
+// Real behavior, observable calls — the normalization-memo tests count how often kokoro.ts
+// actually re-runs the sayable+pronounce chain.
+vi.mock('../src/voice/pronounce', { spy: true });
 
 // The voice⇄typing handoff: in always-on mode the mic stays open EXCEPT while the composer holds
 // text. This guards the regression where typing once stranded the mic closed — the gate must flip
@@ -633,6 +639,57 @@ describe('speakKokoroLine', () => {
       vi.fn(() => Promise.reject(new Error('down'))),
     );
     await expect(speakKokoroResult('Hello.', 'mavea')).resolves.toBe(false);
+  });
+});
+
+// Every spoken line runs the sayable+pronounce chain (~20 regex passes) when it is primed for
+// the one-ahead prefetch AND again when it is queued for real. kokoro.ts memoizes the chain in a
+// small LRU so the repeats are free. These pin that the memo (a) returns exactly the chain's own
+// output, (b) never re-runs the chain for a line it just normalized, and (c) stays bounded
+// instead of growing per session.
+describe('kokoro spoken-text normalization memo', () => {
+  beforeEach(() => {
+    resetKokoroProbe();
+  });
+  afterEach(() => {
+    cancelKokoro();
+    resetKokoroProbe();
+    vi.unstubAllGlobals();
+  });
+
+  it('normalizes a line once across prime + queue, with the exact un-memoized output', async () => {
+    // Health probe down: the queued line settles false without any speech request firing.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('ECONNREFUSED'))),
+    );
+    const spy = vi.mocked(pronounceForSpeech);
+    const text = 'Mavéa profiled the CUDA kernel for memo test one.';
+    const expected = pronounceForSpeech(sayable(text)); // the chain, run directly (un-memoized)
+    spy.mockClear();
+
+    primeKokoroLine(text, 'mavea');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.results[0].value).toBe(expected); // the cached value IS the chain's output
+
+    await speakKokoroResult(text, 'mavea'); // the same line, queued for real
+    expect(spy).toHaveBeenCalledTimes(1); // served from the memo, not re-normalized
+  });
+
+  it('is a small LRU: recent lines stay free, old ones age out instead of accumulating', () => {
+    const spy = vi.mocked(pronounceForSpeech);
+    spy.mockClear();
+    primeKokoroLine('memo eviction line zero.', 'mavea');
+    expect(spy).toHaveBeenCalledTimes(1);
+    // 16 fresh lines fill the cache past its cap, evicting the oldest entry…
+    for (let i = 1; i <= 16; i++) primeKokoroLine(`memo eviction line ${i}.`, 'mavea');
+    expect(spy).toHaveBeenCalledTimes(17);
+    // …so the first line re-runs the chain (the map is bounded, not a per-session accumulator)
+    primeKokoroLine('memo eviction line zero.', 'mavea');
+    expect(spy).toHaveBeenCalledTimes(18);
+    // while a still-resident recent line stays free.
+    primeKokoroLine('memo eviction line 16.', 'mavea');
+    expect(spy).toHaveBeenCalledTimes(18);
   });
 });
 

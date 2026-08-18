@@ -41,6 +41,16 @@ export interface VoiceStateEvent {
   /** For "heard" or an optional local interim transcript. */
   transcript?: string;
   error?: VoiceError;
+  /**
+   * Provisional end-of-speech, emitted while the phase is still `listening`: the speech
+   * probability has been below the VAD's own negative threshold long enough that the utterance is
+   * almost certainly over, but the VAD will not CLOSE it (and transcription will not start) until
+   * its full redemption window elapses ~1.3 s later. A surface can flip to its transcribing
+   * treatment on the `true` and unwind on the `false` that follows if the user simply paused
+   * mid-thought. Visual only: nothing about what is captured, when it is sent, or what is
+   * transcribed depends on this.
+   */
+  speechEnding?: boolean;
 }
 
 export interface SpeakOptions {

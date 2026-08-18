@@ -26,8 +26,10 @@ export interface BlockMark {
 
 /** The finished, scrubbable record of one turn's voice. */
 export interface TurnAudio {
-  /** The whole spoken track, lines concatenated (gaps removed). */
-  pcm: Float32Array;
+  /** The whole spoken track, lines concatenated (gaps removed). Held as the source Int16
+   *  samples Kokoro streamed — every float the app ever played is exactly `pcm[i] / 0x8000`,
+   *  so this is lossless at half the bytes of keeping the floats. */
+  pcm: Int16Array;
   sampleRate: number;
   duration: number;
   spans: SpokenSpan[];
@@ -41,11 +43,11 @@ export interface TurnAudio {
 
 interface ClipInProgress {
   text: string;
-  chunks: Float32Array[];
+  chunks: Int16Array[];
   samples: number;
 }
 
-let clips: { text: string; chunks: Float32Array[]; samples: number }[] = [];
+let clips: { text: string; chunks: Int16Array[]; samples: number }[] = [];
 let current: ClipInProgress | null = null;
 let marks: BlockMark[] = [];
 let totalSamples = 0;
@@ -59,8 +61,17 @@ let turnSpeed = 1;
 let version = 0;
 const listeners = new Set<() => void>();
 
+// snapshot() used to re-concatenate the whole growing track on every call — an O(track) copy per
+// spoken line, and again on every settle-effect re-run. Two cache levels instead: the settled
+// track (the expensive concat) is rebuilt only when a clip actually lands, and the full snapshot
+// (track + clamped marks) is dropped whenever anything a reader could observe changes, so the
+// per-line effect, the retain store and the exporter all share one concatenation.
+let settledTrack: { pcm: Int16Array; spans: SpokenSpan[] } | null = null;
+let lastSnapshot: TurnAudio | null = null;
+
 function emit(): void {
   version += 1;
+  lastSnapshot = null;
   for (const listener of listeners) listener();
 }
 
@@ -88,6 +99,7 @@ export function beginTurn(): void {
   totalSamples = 0;
   turnSpeed = getVoiceSpeed();
   recording = true;
+  settledTrack = null;
   emit();
 }
 
@@ -114,6 +126,7 @@ export function markBlocks(blocks: number): void {
   const last = marks[marks.length - 1];
   if (last && last.blocks === blocks) return;
   marks.push({ t: recordedSeconds(), blocks });
+  lastSnapshot = null; // marks land between emits (no version bump), so drop the cache here too
 }
 
 /** The tap streamTts feeds: one clip per spoken line. */
@@ -125,7 +138,14 @@ export const recorderTap: StreamTap = {
   push(samples: Float32Array): void {
     if (!recording || suspended || !current) return;
     if (totalSamples + samples.length > MAX_SAMPLES) return; // cap, don't grow
-    current.chunks.push(samples);
+    // The decoder handed us exactly s / 0x8000 per source int, so multiplying back recovers the
+    // int losslessly; the clamp only guards a hypothetical out-of-range producer.
+    const ints = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      const s = Math.round(samples[i] * 0x8000);
+      ints[i] = s > 0x7fff ? 0x7fff : s < -0x8000 ? -0x8000 : s;
+    }
+    current.chunks.push(ints);
     current.samples += samples.length;
     totalSamples += samples.length;
   },
@@ -139,8 +159,12 @@ export const recorderTap: StreamTap = {
       return;
     }
     // A line that never made a sound contributes nothing to the timeline.
-    if (heard && current.samples > 0) clips.push(current);
-    else totalSamples -= current.samples;
+    if (heard && current.samples > 0) {
+      clips.push(current);
+      settledTrack = null; // a clip landed — the next snapshot re-concatenates
+    } else {
+      totalSamples -= current.samples;
+    }
     current = null;
     emit();
   },
@@ -154,24 +178,36 @@ export const recorderTap: StreamTap = {
  * surface simply offers no scrubber then.
  */
 export function snapshot(): TurnAudio | null {
-  const settled = clips.reduce((a, c) => a + c.samples, 0);
-  if (settled === 0) return null;
-  const pcm = new Float32Array(settled);
-  const spans: SpokenSpan[] = [];
-  let off = 0;
-  for (const clip of clips) {
-    const t0 = off / SAMPLE_RATE;
-    for (const chunk of clip.chunks) {
-      pcm.set(chunk, off);
-      off += chunk.length;
+  if (lastSnapshot) return lastSnapshot;
+  if (!settledTrack) {
+    const settled = clips.reduce((a, c) => a + c.samples, 0);
+    if (settled === 0) return null;
+    const pcm = new Int16Array(settled);
+    const spans: SpokenSpan[] = [];
+    let off = 0;
+    for (const clip of clips) {
+      const t0 = off / SAMPLE_RATE;
+      for (const chunk of clip.chunks) {
+        pcm.set(chunk, off);
+        off += chunk.length;
+      }
+      spans.push({ text: clip.text, t0, t1: off / SAMPLE_RATE });
     }
-    spans.push({ text: clip.text, t0, t1: off / SAMPLE_RATE });
+    settledTrack = { pcm, spans };
   }
-  const duration = settled / SAMPLE_RATE;
+  const duration = settledTrack.pcm.length / SAMPLE_RATE;
   // Marks were stamped against the live clock (which includes a possibly-unheard line in
   // flight); clamp into the settled track so the un-build lookup can't point past the end.
   const clamped = marks.map((m) => ({ t: Math.min(m.t, duration), blocks: m.blocks }));
-  return { pcm, sampleRate: SAMPLE_RATE, duration, spans, marks: clamped, speed: turnSpeed };
+  lastSnapshot = {
+    pcm: settledTrack.pcm,
+    sampleRate: SAMPLE_RATE,
+    duration,
+    spans: settledTrack.spans,
+    marks: clamped,
+    speed: turnSpeed,
+  };
+  return lastSnapshot;
 }
 
 /** How many blocks the canvas held at time `t` — the un-build lookup. Before the first mark

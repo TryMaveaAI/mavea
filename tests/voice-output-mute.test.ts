@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // clobber) the whisper-hours voiceGain.
 const gains: Array<{ gain: { value: number }; connect: () => void; disconnect: () => void }> = [];
 
-vi.mock('../src/voice/voiceEnergy', () => ({
-  sharedAudioContext: () => ({
+vi.mock('../src/voice/voiceEnergy', () => {
+  const sharedAudioContext = () => ({
     currentTime: 0,
     state: 'running',
     resume: async () => {},
@@ -33,9 +33,15 @@ vi.mock('../src/voice/voiceEnergy', () => ({
       stop: vi.fn(),
       onended: null,
     }),
-  }),
-  tapPlaybackNode: () => () => {},
-}));
+  });
+  return {
+    sharedAudioContext,
+    // streamTts takes the context on a LEASE (it must say when a clip is done, so the shared
+    // context can park while nothing is playing) — the same fake, plus a no-op release.
+    leaseAudioContext: () => ({ ctx: sharedAudioContext(), release: () => {} }),
+    tapPlaybackNode: () => () => {},
+  };
+});
 
 import {
   bindOutputGain,

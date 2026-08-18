@@ -12,7 +12,7 @@ import type { TurnAudio } from '../src/live/scrubvoice/recorder';
 afterEach(cleanup);
 
 const audio: TurnAudio = {
-  pcm: new Float32Array(800).fill(0.3),
+  pcm: new Int16Array(800).fill(0.3 * 0x8000),
   sampleRate: 16000,
   duration: 4,
   spans: [],
@@ -80,6 +80,10 @@ describe('VoiceScrubber waveform', () => {
   const ctx = {
     scale: () => {},
     clearRect: () => {},
+    // The visible canvas now blits the two pre-baked bar layers instead of filling bars itself —
+    // stub it so the blit doesn't throw. The bars themselves are still filled once per layer
+    // (see fillRect below), so the assertions below see the same heights either way.
+    drawImage: () => {},
     fillStyle: '',
     fillRect: (_x: number, _y: number, _w: number, h: number) => {
       barHeights.push(h);
@@ -102,7 +106,7 @@ describe('VoiceScrubber waveform', () => {
   });
 
   const track = (amp: number, duration: number): TurnAudio => ({
-    pcm: new Float32Array(800).fill(amp),
+    pcm: new Int16Array(800).fill(amp * 0x8000),
     sampleRate: 16000,
     duration,
     spans: [],

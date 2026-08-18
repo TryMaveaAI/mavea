@@ -11,7 +11,7 @@
 // The first start() call lazy-loads the WASM model (~2 s on first boot, instant
 // after). The always-on lifecycle is controlled by LiveApp (start on toggle/turn-
 // end, stop when Mavéa is responding).
-import { floatToWav } from './encodeWav';
+import { floatToWavChunked } from './encodeWav';
 import type {
   SpeakOptions,
   VoiceCapabilities,
@@ -27,9 +27,30 @@ import type {
 // Lazy type — only resolved after the dynamic import succeeds.
 type MicVAD = import('@ricky0123/vad-web').MicVAD;
 
+/** Silero v5 hands over 512-sample frames of 16kHz mono — 32ms of audio each. */
+const FRAME_SAMPLES = 512;
+const SAMPLE_RATE = 16_000;
+const FRAME_MS = (FRAME_SAMPLES / SAMPLE_RATE) * 1000;
 const PRE_ROLL_FRAMES = 12;
-const MAX_UTTERANCE_FRAMES = Math.ceil((90 * 16_000) / 512);
+const MAX_UTTERANCE_FRAMES = Math.ceil((90 * SAMPLE_RATE) / FRAME_SAMPLES);
 const MAX_PENDING_TRANSCRIPTIONS = 3;
+/** whisper.cpp runs its own thread pool, so a second utterance overlaps usefully with the one
+ *  ahead of it instead of waiting out its whole round-trip; a third only queues inside the
+ *  service, where we can no longer see or cancel it. Results are still DELIVERED in the order
+ *  they were captured (see enqueueTranscription). */
+const MAX_CONCURRENT_TRANSCRIPTIONS = 2;
+
+// The VAD's own speech thresholds, shared with the provisional end-of-speech signal below so the
+// two can never disagree about what counts as speech.
+const POSITIVE_SPEECH_THRESHOLD = 0.5;
+const NEGATIVE_SPEECH_THRESHOLD = 0.35;
+/** How much quiet is enough to SAY the utterance looks finished. The VAD needs `redemptionMs`
+ *  (1600) of it before it closes the utterance and transcription can start — 1.6 s in which the
+ *  old surface showed nothing at all, because every listening indicator is keyed off a phase that
+ *  had not changed yet. This much quiet is already a confident guess, and a cheap one to get
+ *  wrong: the signal is visual, and speech resuming takes it back. */
+const PROVISIONAL_END_MS = 300;
+const PROVISIONAL_END_FRAMES = Math.round(PROVISIONAL_END_MS / FRAME_MS);
 
 function joinFrames(frames: Float32Array[]): Float32Array {
   const length = frames.reduce((sum, frame) => sum + frame.length, 0);
@@ -83,11 +104,23 @@ export class VadVoice implements VoiceController {
   // AudioContext with the OS "mic in use" indicator stuck on. loadVad checks this and tears down.
   private disposed = false;
   private sessionId = 0;
-  private transcriptionAbort: AbortController | null = null;
+  // One controller per in-flight transcription (up to MAX_CONCURRENT_TRANSCRIPTIONS of them), so
+  // stopping the mic still cancels every round-trip and not just the most recent one.
+  private transcriptionAborts = new Set<AbortController>();
   private transcriptionChain: Promise<void> = Promise.resolve();
   private queuedTranscriptions = 0;
+  private activeTranscriptions = 0;
+  private transcriptionSlotWaiters: (() => void)[] = [];
   private preRollFrames: Float32Array[] = [];
   private utteranceFrames: Float32Array[] = [];
+  // Consecutive frames whose speech probability sat below the VAD's negative threshold, counted
+  // exactly the way the VAD counts its own redemption frames (see trackSpeechTail).
+  private quietFrames = 0;
+  private speechEnding = false;
+  // vad-web builds its own AudioContext when none is handed to it, and frees it only in destroy()
+  // — so a paused mic left a second real-time audio thread running for the rest of the session.
+  // We pass ours instead: suspended between listens, closed on dispose.
+  private captureCtx: AudioContext | null = null;
 
   // Echo suppression for always-on: the browser's getUserMedia echoCancellation removes
   // most TTS bleed during active playback. The remaining risk is the reverb tail after Mavéa
@@ -159,14 +192,14 @@ export class VadVoice implements VoiceController {
     this.wantRunning = false;
     this.continuous = false;
     this.sessionId += 1;
-    this.transcriptionAbort?.abort();
-    this.transcriptionAbort = null;
+    this.abortTranscriptions();
     // vad-web's pause() fully releases the hardware, not just its own processing: its default
     // pauseStream() stops every MediaStream track, which is what actually turns off the OS
     // "microphone in use" indicator. start()/resumeStream() re-acquires a fresh stream on
     // return, so muting genuinely frees the mic rather than merely idling in the background.
     this.pauseVad();
     this.clearBargeInTimer();
+    this.clearSpeechEnding();
     this.preRollFrames = [];
     this.utteranceFrames = [];
     if (this.phase !== 'idle') this.emitState({ phase: 'idle' });
@@ -180,12 +213,17 @@ export class VadVoice implements VoiceController {
       this.continuous = false;
       this.wantRunning = false;
       this.pauseVad();
+      // Say so. A send-tap during the transcription gap used to emit NOTHING, so the surface had
+      // no event to react to and the tap read as a dead button; re-stating the phase is the whole
+      // truth of what is happening (still transcribing, mic now closed).
+      this.emitState({ phase: 'transcribing' });
       return;
     }
     const resumeAfter = this.continuous;
     this.wantRunning = resumeAfter;
     this.pauseVad();
     this.clearBargeInTimer();
+    this.clearSpeechEnding();
     // Include the rolling pre-roll so releasing Hold after a very short word still sends it even
     // when that word ended before VAD's sustained-speech callback fired.
     const audio = joinFrames([...this.utteranceFrames, ...this.preRollFrames]);
@@ -244,15 +282,23 @@ export class VadVoice implements VoiceController {
     this.disposed = true;
     this.wantRunning = false;
     this.sessionId += 1;
-    this.transcriptionAbort?.abort();
-    this.transcriptionAbort = null;
+    this.abortTranscriptions();
+    this.releaseWaitingTranscriptions();
     this.clearBargeInTimer();
+    const closeCapture = this.takeCaptureContextCloser();
     if (this.vad) {
       // Swallow the throw: vad-web's destroy() reads its audio instances first and rejects if the
       // instance is still initializing. loadVad's disposed-check below is what actually reclaims a
       // still-loading instance; here we just release the one we already hold.
-      void this.vad.destroy().catch(() => {});
+      // The capture context is ours, so vad-web never closes it — do it after destroy() has let go
+      // of its worklet, or the teardown it runs would be talking to a closed context.
+      void this.vad
+        .destroy()
+        .catch(() => {})
+        .then(closeCapture);
       this.vad = null;
+    } else {
+      closeCapture();
     }
     this.resultSubs.clear();
     this.stateSubs.clear();
@@ -269,11 +315,15 @@ export class VadVoice implements VoiceController {
       // time a user hit the mic, dev-mode Vite pre-bundled it on the spot and hard-reloaded the
       // page out from under the answer in flight. It is pre-bundled up front instead (optimizeDeps).
       const { MicVAD } = await import('@ricky0123/vad-web');
+      const audioContext = this.ensureCaptureContext();
       this.vad = await MicVAD.new({
         model: 'v5',
         startOnLoad: false,
         baseAssetPath: '/',
         onnxWASMBasePath: '/',
+        // Ours, not vad-web's: it only frees a context it created in destroy(), so a session that
+        // toggles the mic off keeps a 48 kHz audio thread alive until the tab closes.
+        ...(audioContext ? { audioContext } : {}),
         // vad-web's default getStream already opens the mic with echoCancellation +
         // noiseSuppression + autoGainControl on (see getDefaultRealTimeVADOptions), so browser
         // AEC removes most of Mavéa's TTS bleed at the source. The per-utterance echo gate
@@ -281,17 +331,20 @@ export class VadVoice implements VoiceController {
         // A conservative onset rejects steady room noise; the separate lower negative threshold
         // adds hysteresis so a real voice does not flicker off mid-word. Short acknowledgements
         // still clear the real-speech gate, and pre-roll preserves their opening consonant.
-        positiveSpeechThreshold: 0.5,
-        negativeSpeechThreshold: 0.35,
+        positiveSpeechThreshold: POSITIVE_SPEECH_THRESHOLD,
+        negativeSpeechThreshold: NEGATIVE_SPEECH_THRESHOLD,
         minSpeechMs: 280,
         preSpeechPadMs: 500,
         redemptionMs: 1600,
-        onFrameProcessed: (_probabilities, frame) => this.captureFrame(frame),
+        onFrameProcessed: (probabilities, frame) => {
+          this.captureFrame(frame);
+          this.trackSpeechTail(probabilities.isSpeech);
+        },
         onSpeechStart: () => this.handleSpeechStart(),
         // Barge-in fires HERE, not on onSpeechStart. onSpeechStart trips on the very first frame
         // above threshold — a single ~32 ms plosive of TTS bleed does it — and the old wall-clock
         // confirm timer never helped because onSpeechEnd (which would cancel it) can't fire until
-        // redemptionMs (2200 ms) of silence, long after the 300 ms timer already cancelled Mavéa.
+        // redemptionMs (1600 ms) of silence, long after the 300 ms timer already cancelled Mavéa.
         // onSpeechRealStart fires only after minSpeechFrames of genuinely sustained speech, so a
         // brief bleed blip never reaches it.
         onSpeechRealStart: () => this.handleSpeechRealStart(),
@@ -303,7 +356,11 @@ export class VadVoice implements VoiceController {
       // dispose() may have run while MicVAD.new() was loading — if so, reclaim the instance now
       // instead of leaking it (and never start it, so no mic is acquired).
       if (this.disposed) {
-        void this.vad.destroy().catch(() => {});
+        const closeCapture = this.takeCaptureContextCloser();
+        void this.vad
+          .destroy()
+          .catch(() => {})
+          .then(closeCapture);
         this.vad = null;
         return;
       }
@@ -324,8 +381,37 @@ export class VadVoice implements VoiceController {
     }
   }
 
+  /** The capture context, created on first use. Never throws: a browser without WebAudio simply
+   *  gets no `audioContext` option and vad-web falls back to owning one, exactly as before. */
+  private ensureCaptureContext(): AudioContext | null {
+    if (this.captureCtx || this.disposed) return this.captureCtx;
+    if (typeof AudioContext !== 'function') return null;
+    try {
+      this.captureCtx = new AudioContext();
+    } catch {
+      this.captureCtx = null;
+    }
+    return this.captureCtx;
+  }
+
+  /** Hand ownership of the capture context to the caller's teardown, so it is closed exactly once
+   *  no matter which disposal path got there first. */
+  private takeCaptureContextCloser(): () => void {
+    const ctx = this.captureCtx;
+    this.captureCtx = null;
+    return () => {
+      // A context closed twice (or closed while still initializing) rejects; that is not a failure
+      // worth surfacing — the resource is gone either way.
+      void ctx?.close().catch(() => {});
+    };
+  }
+
   private startVad(): void {
     if (!this.vad) return;
+    // Resume BEFORE start() rather than awaiting it: the mic stream and worklet connect happily to
+    // a suspended context, so ordering costs nothing, while awaiting would delay the very
+    // hardware acquisition the user just asked for.
+    if (this.captureCtx?.state === 'suspended') void this.captureCtx.resume().catch(() => {});
     void Promise.resolve(this.vad.start()).catch((error: unknown) => {
       if (!this.disposed && this.wantRunning) {
         this.wantRunning = false;
@@ -336,21 +422,72 @@ export class VadVoice implements VoiceController {
 
   private pauseVad(): void {
     if (!this.vad) return;
-    void Promise.resolve(this.vad.pause()).catch(() => {});
+    void Promise.resolve(this.vad.pause())
+      .catch(() => {})
+      .then(() => this.suspendCaptureContext());
+  }
+
+  /** Park the capture context while the mic is closed — a suspended context has no audio thread.
+   *  Kept off the hot path of a re-arm: a start() that raced the pause leaves wantRunning true,
+   *  and suspending under it would silence the mic that is coming back. */
+  private suspendCaptureContext(): void {
+    if (this.wantRunning || this.disposed) return;
+    if (this.captureCtx?.state !== 'running') return;
+    void this.captureCtx.suspend().catch(() => {});
   }
 
   private captureFrame(frame: Float32Array): void {
-    const copy = frame.slice();
+    // Retained WITHOUT a defensive copy: both vad-web capture paths hand over a buffer that is
+    // freshly allocated per frame (the worklet path builds `new Float32Array(data.data)`; the
+    // ScriptProcessor path allocates inside its resampler), so nothing upstream reuses it. The
+    // copy was ~2KB of pure GC churn ~31×/s the whole time the mic is open. Re-verify those two
+    // paths on any vad-web upgrade before trusting this again.
     if (this.phase === 'listening' && !this.utteranceIsEcho) {
-      if (this.utteranceFrames.length < MAX_UTTERANCE_FRAMES) this.utteranceFrames.push(copy);
+      if (this.utteranceFrames.length < MAX_UTTERANCE_FRAMES) this.utteranceFrames.push(frame);
       return;
     }
-    this.preRollFrames.push(copy);
+    this.preRollFrames.push(frame);
     if (this.preRollFrames.length > PRE_ROLL_FRAMES) this.preRollFrames.shift();
+  }
+
+  /**
+   * Watch the tail of a live utterance so the surface can show "transcribing" as soon as the user
+   * has plainly stopped, instead of waiting out the VAD's 1.6 s redemption window with three
+   * indicators unmounted and nothing in their place. Counted exactly the way vad-web's frame
+   * processor counts its own redemption frames — reset by a frame above the POSITIVE threshold,
+   * advanced by one below the NEGATIVE one, held in between — so this signal can never claim the
+   * utterance is ending while the VAD still hears speech.
+   *
+   * Visual only. It never touches the frame buffers, the phase, or when transcription starts.
+   */
+  private trackSpeechTail(isSpeech: number): void {
+    if (this.phase !== 'listening' || this.utteranceIsEcho) return;
+    if (isSpeech >= POSITIVE_SPEECH_THRESHOLD) {
+      this.quietFrames = 0;
+      if (this.speechEnding) {
+        // A mid-thought pause, not the end of the turn — take the guess back.
+        this.speechEnding = false;
+        this.emitState({ phase: 'listening', speechEnding: false });
+      }
+      return;
+    }
+    if (isSpeech >= NEGATIVE_SPEECH_THRESHOLD || this.speechEnding) return;
+    this.quietFrames += 1;
+    if (this.quietFrames < PROVISIONAL_END_FRAMES) return;
+    this.speechEnding = true;
+    this.emitState({ phase: 'listening', speechEnding: true });
+  }
+
+  /** Forget the provisional guess. Silent by design: every caller is about to emit the phase
+   *  change that supersedes it. */
+  private clearSpeechEnding(): void {
+    this.quietFrames = 0;
+    this.speechEnding = false;
   }
 
   private handleSpeechStart(): void {
     if (this.muted) return;
+    this.clearSpeechEnding();
     // Speech in the post-playback echo tail is residual speaker bleed — drop it.
     this.utteranceIsEcho = Date.now() < this.echoTailUntil;
     this.utteranceFrames = this.preRollFrames;
@@ -382,6 +519,7 @@ export class VadVoice implements VoiceController {
    *  the recognizer and settle back to idle so a quick blip doesn't strand the mic in 'listening'. */
   private handleMisfire(): void {
     this.clearBargeInTimer();
+    this.clearSpeechEnding();
     this.utteranceIsEcho = false;
     this.utteranceFrames = [];
     // Tap/Hold own one attempt. A too-short noise must release their stream too; otherwise the UI
@@ -395,6 +533,7 @@ export class VadVoice implements VoiceController {
 
   private handleSpeechEnd(audio: Float32Array): void {
     this.clearBargeInTimer();
+    this.clearSpeechEnding();
     // Drop the whole utterance if it started during Mavéa's playback — it's TTS echo, not the
     // user. We skip transcription entirely (no wasted /stt round-trip) and settle quietly back
     // to listening so the always-on mic keeps running for the user's actual next turn.
@@ -426,39 +565,102 @@ export class VadVoice implements VoiceController {
     }
 
     this.queuedTranscriptions += 1;
+    // Two things are being scheduled here, and they are deliberately different. The round-trip
+    // STARTS now (bounded to MAX_CONCURRENT_TRANSCRIPTIONS by the slot gate), because whisper.cpp
+    // can work on two utterances at once. The RESULT is delivered through the chain, strictly in
+    // the order the utterances were captured — a short second sentence that transcribes faster
+    // than the long first one must not reach the surface first and reorder the user's words.
+    const pending = this.runTranscription(audio, sessionId);
     this.transcriptionChain = this.transcriptionChain
       .catch(() => {})
       .then(async () => {
         try {
-          if (this.disposed || sessionId !== this.sessionId) return;
-          const ctrl = new AbortController();
-          this.transcriptionAbort = ctrl;
-          const transcript = await this.transcribeWhisper(audio, ctrl.signal);
-          if (this.transcriptionAbort === ctrl) this.transcriptionAbort = null;
-          if (this.disposed || ctrl.signal.aborted || sessionId !== this.sessionId) return;
-          const text = transcript.text.trim();
-          if (text) {
-            const lowConfidence =
-              (transcript.confidence !== undefined && transcript.confidence < 0.7) ||
-              (transcript.noSpeechProbability ?? 0) >= 0.6;
-            this.emitState({ phase: 'heard', transcript: text });
-            this.emitResult({
-              transcript: text,
-              confidence: transcript.confidence,
-              noSpeechProbability: transcript.noSpeechProbability,
-              lowConfidence,
-            });
-          } else {
-            this.emitState({ phase: 'idle', error: transcript.error ?? 'no-speech' });
-            if (resumeAfter && this.wantRunning) this.startVad();
-            return;
-          }
-          this.emitState({ phase: 'idle' });
-          if (resumeAfter && this.wantRunning) this.startVad();
+          this.deliverTranscription(await pending, sessionId, resumeAfter);
         } finally {
           this.queuedTranscriptions -= 1;
         }
       });
+  }
+
+  /** Run one transcription, holding a concurrency slot for the whole round-trip. Never rejects;
+   *  null means the result is no longer wanted (disposed, aborted, or a newer session owns the
+   *  mic), which is exactly the case where the surface must hear nothing at all. */
+  private async runTranscription(
+    audio: Float32Array,
+    sessionId: number,
+  ): Promise<WhisperTranscript | null> {
+    await this.acquireTranscriptionSlot();
+    const ctrl = new AbortController();
+    this.transcriptionAborts.add(ctrl);
+    try {
+      if (this.disposed || sessionId !== this.sessionId) return null;
+      const transcript = await this.transcribeWhisper(audio, ctrl.signal);
+      if (this.disposed || ctrl.signal.aborted || sessionId !== this.sessionId) return null;
+      return transcript;
+    } catch {
+      // transcribeWhisperDetailed already swallows its own network failures; anything that still
+      // escapes (a WAV encode that could not run) is "no transcript" as far as the surface goes.
+      return null;
+    } finally {
+      this.transcriptionAborts.delete(ctrl);
+      this.releaseTranscriptionSlot();
+    }
+  }
+
+  private deliverTranscription(
+    transcript: WhisperTranscript | null,
+    sessionId: number,
+    resumeAfter: boolean,
+  ): void {
+    // Re-checked here, not only where the fetch resolved: waiting for the utterance ahead of this
+    // one is time in which the user can stop the mic or start a new session.
+    if (!transcript || this.disposed || sessionId !== this.sessionId) return;
+    const text = transcript.text.trim();
+    if (!text) {
+      this.emitState({ phase: 'idle', error: transcript.error ?? 'no-speech' });
+      if (resumeAfter && this.wantRunning) this.startVad();
+      return;
+    }
+    const lowConfidence =
+      (transcript.confidence !== undefined && transcript.confidence < 0.7) ||
+      (transcript.noSpeechProbability ?? 0) >= 0.6;
+    this.emitState({ phase: 'heard', transcript: text });
+    this.emitResult({
+      transcript: text,
+      confidence: transcript.confidence,
+      noSpeechProbability: transcript.noSpeechProbability,
+      lowConfidence,
+    });
+    this.emitState({ phase: 'idle' });
+    if (resumeAfter && this.wantRunning) this.startVad();
+  }
+
+  private acquireTranscriptionSlot(): Promise<void> {
+    if (this.activeTranscriptions < MAX_CONCURRENT_TRANSCRIPTIONS) {
+      this.activeTranscriptions += 1;
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => this.transcriptionSlotWaiters.push(resolve));
+  }
+
+  private releaseTranscriptionSlot(): void {
+    // Hand the slot straight to whoever is waiting; the count only drops when nobody is.
+    const next = this.transcriptionSlotWaiters.shift();
+    if (next) next();
+    else this.activeTranscriptions -= 1;
+  }
+
+  /** Wake every waiting transcription so it can settle. Without this, disposal would strand its
+   *  promise — and with it the delivery chain and the captured audio it closes over — forever. */
+  private releaseWaitingTranscriptions(): void {
+    const waiters = this.transcriptionSlotWaiters.splice(0);
+    this.activeTranscriptions += waiters.length; // each now holds a slot; its release balances it
+    waiters.forEach((resolve) => resolve());
+  }
+
+  private abortTranscriptions(): void {
+    for (const ctrl of this.transcriptionAborts) ctrl.abort();
+    this.transcriptionAborts.clear();
   }
 
   private async transcribeWhisper(audio: Float32Array): Promise<string>;
@@ -484,7 +686,9 @@ export class VadVoice implements VoiceController {
       return { text: '', error: 'transcription' };
     }
     try {
-      const wav = floatToWav(audio, 16000);
+      // Encoded across frames: this runs at the exact moment the surface flips to "transcribing",
+      // and a long utterance is ~1.5M samples of Float32 → Int16 conversion.
+      const wav = await floatToWavChunked(audio, SAMPLE_RATE);
       const fd = new FormData();
       fd.append('file', new Blob([wav], { type: 'audio/wav' }), 'speech.wav');
       fd.append('language', 'en');

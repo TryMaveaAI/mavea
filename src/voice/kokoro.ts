@@ -49,6 +49,32 @@ export function kokoroVoice(who: Speaker): string {
   return VOICE[who];
 }
 
+// ---- spoken-text normalization (memoized) -----------------------------------
+// sayable() + pronounceForSpeech() is ~20 regex passes over the line, and every spoken line runs
+// the chain 2–3 times on the SAME text (primed ahead, then queued for real). A tiny LRU makes the
+// repeats free. It only caches the composition — the chain itself, including its deliberately
+// idempotent double-forSpeech chokepoint, is untouched.
+
+const NORMALIZE_CACHE_MAX = 16;
+const normalizeCache = new Map<string, string>();
+
+function normalizeForSpeech(text: string): string {
+  const hit = normalizeCache.get(text);
+  if (hit !== undefined) {
+    // Refresh recency (Map iterates in insertion order), so a line the walk keeps re-priming
+    // stays resident while stale ones age out.
+    normalizeCache.delete(text);
+    normalizeCache.set(text, hit);
+    return hit;
+  }
+  const clean = pronounceForSpeech(sayable(text));
+  normalizeCache.set(text, clean);
+  if (normalizeCache.size > NORMALIZE_CACHE_MAX) {
+    normalizeCache.delete(normalizeCache.keys().next().value as string);
+  }
+  return clean;
+}
+
 // ---- sequential playback queue ---------------------------------------------
 // One clip plays at a time. We keep the queued jobs so cancelKokoro() can both stop
 // the in-flight clip AND drop everything still pending, then resolve their promises.
@@ -189,7 +215,7 @@ function prefetchNext(): void {
  * Overwritten by each newer prime; cleared on cancel and when the line becomes a real job.
  */
 export function primeKokoroLine(text: string, who: Speaker): void {
-  const clean = pronounceForSpeech(sayable(text));
+  const clean = normalizeForSpeech(text);
   if (!clean) return;
   primed = { text: clean, voice: VOICE[who] ?? VOICE.mavea };
   if (!synthActive) prefetchNext();
@@ -393,7 +419,7 @@ export interface KokoroLine {
 export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
   // Strip markup first, then respell the word-acronyms the synthesizer would otherwise spell
   // out (CUDA → "Cooda"). Only the spoken audio changes — captions still show the real text.
-  const clean = pronounceForSpeech(sayable(text));
+  const clean = normalizeForSpeech(text);
   if (!clean) return { started: Promise.resolve(false), finished: Promise.resolve(false) };
   let resolveStart!: (heard: boolean) => void;
   const started = new Promise<boolean>((resolve) => {

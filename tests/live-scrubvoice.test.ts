@@ -52,6 +52,35 @@ describe('recorder', () => {
     expect(snapshot()).toBeNull();
   });
 
+  // The track is stored as the SOURCE ints Kokoro streamed: the decoder hands the tap exactly
+  // s / 0x8000 per sample, so quantizing back is lossless — half the bytes, the same audio.
+  it('stores the decoded floats as their exact source ints', () => {
+    const ints = [0, 1, -1, 12345, -12345, 32767, -32768];
+    recorderTap.begin('Round trip.');
+    recorderTap.push(new Float32Array(ints.map((s) => s / 0x8000)));
+    recorderTap.end(true);
+    const audio = snapshot()!;
+    expect(audio.pcm).toBeInstanceOf(Int16Array);
+    expect([...audio.pcm]).toEqual(ints);
+  });
+
+  // snapshot() is cached between changes (the settle effect re-runs more often than lines land),
+  // so anything a reader could observe — a new line, a new mark — must drop the cache.
+  it('a cached snapshot still picks up the next line and the next mark', () => {
+    recorderTap.begin('First.');
+    recorderTap.push(secs(1));
+    recorderTap.end(true);
+    expect(snapshot()).toBe(snapshot()); // unchanged between reads — one shared concatenation
+    markBlocks(2);
+    expect(snapshot()!.marks).toEqual([{ t: 1, blocks: 2 }]);
+    recorderTap.begin('Second.');
+    recorderTap.push(secs(1));
+    recorderTap.end(true);
+    const audio = snapshot()!;
+    expect(audio.duration).toBeCloseTo(2, 5);
+    expect(audio.spans.map((s) => s.text)).toEqual(['First.', 'Second.']);
+  });
+
   it('block marks ride the audio clock and drive the un-build lookup', () => {
     recorderTap.begin('Narration.');
     markBlocks(1);

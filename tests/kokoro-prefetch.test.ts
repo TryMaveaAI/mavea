@@ -27,6 +27,9 @@ const fakeCtx = {
 
 vi.mock('../src/voice/voiceEnergy', () => ({
   sharedAudioContext: () => fakeCtx,
+  // streamTts leases the context instead of grabbing it, so the shared graph can park when
+  // nothing is playing; the release is a no-op here.
+  leaseAudioContext: () => ({ ctx: fakeCtx, release: () => {} }),
   tapPlaybackNode: () => () => {},
   voiceEnergyTap: () => () => {},
   resetVoiceEnergy: (): void => {},

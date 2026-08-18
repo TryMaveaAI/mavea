@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TurnAudio } from '../src/live/scrubvoice/recorder';
 
 vi.mock('../src/voice/voiceEnergy', () => ({
-  sharedAudioContext: () => ({}) as AudioContext, // playback gate: pretend WebAudio exists
+  audioAvailable: () => true, // playback gate: pretend WebAudio exists
   voiceEnergyTap: () => () => {},
 }));
 vi.mock('../src/live/scrubvoice/wav', () => ({
@@ -18,7 +18,7 @@ vi.mock('../src/live/scrubvoice/wav', () => ({
 import { VoiceScrubber } from '../src/live/scrubvoice/VoiceScrubber';
 
 const audio: TurnAudio = {
-  pcm: new Float32Array(800).fill(0.3),
+  pcm: new Int16Array(800).fill(0.3 * 0x8000),
   sampleRate: 16000,
   duration: 4,
   spans: [],

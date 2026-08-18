@@ -14,6 +14,7 @@ import {
   renameSync,
   unlinkSync,
   realpathSync,
+  writeFileSync,
 } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -941,12 +942,146 @@ async function serviceReachable(url) {
   }
 }
 
-function startSpeechServices(runtime) {
+// ---- Kokoro thread tuning ---------------------------------------------------
+//
+// The measured tuner `pnpm dev` runs (scripts/dev.mjs), ported here. Duplicated rather than
+// imported on purpose: the published package ships bin/ and dist/, never the repo's scripts/, and
+// this executable is deliberately dependency-free. Keep the two in step when either changes.
+//
+// There is no thread count that is right for every machine: the same 4 threads that leave a fast
+// box idling at 4x realtime are barely enough on an older one, and the answer depends on per-core
+// speed, which nothing in a compose file can see. Kokoro's throughput is near-linear in threads up
+// to its measured peak (1.12x / 2.47x / 3.38x / 4.23x at 1-4 threads), so one probe at a known
+// thread count yields per-thread speed, and the smallest count clearing the target follows.
+
+/** Speech plays at 1x, so anything above it is only margin — but the margin has to absorb a busy
+ *  machine mid-sentence, and falling behind is audible as a stutter. 2x is the smallest cushion. */
+const VOICE_TARGET_REALTIME = 2;
+/** The measured peak of Kokoro's thread-scaling curve; past this it gets slower AND hungrier. It
+ *  is also the compose default, so a tuned machine only ever comes DOWN from it. */
+const VOICE_MAX_THREADS = 4;
+const VOICE_PROBE_TEXT =
+  'Mavéa is a voice first thinking companion that draws what it means as it speaks.';
+/** Kokoro emits 24kHz mono 16-bit PCM, so byte length converts straight to seconds of audio. */
+const VOICE_PCM_BYTES_PER_SECOND = 24_000 * 2;
+/** Kokoro loads its voice model on first run; a cold pull can take a while, so poll generously. */
+const VOICE_READY_TIMEOUT_MS = 180_000;
+const VOICE_POLL_MS = 1_000;
+
+export function voiceThreadsCacheFile() {
+  return join(lazyCacheDir(), 'voice-threads.json');
+}
+
+/** The thread count this machine settled on last time, or null on a first run (or a cache written
+ *  by a build that measured a different ceiling). */
+export function readCachedVoiceThreads(file = voiceThreadsCacheFile()) {
+  try {
+    const { threads } = JSON.parse(readFileSync(file, 'utf8'));
+    return Number.isInteger(threads) && threads > 0 && threads <= VOICE_MAX_THREADS
+      ? threads
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberVoiceThreads(threads, realtimePerThread, file = voiceThreadsCacheFile()) {
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ threads, realtimePerThread }, null, 2));
+    return true;
+  } catch {
+    // A cache that cannot be written costs one probe per run, which is not worth failing over.
+    return false;
+  }
+}
+
+/** The smallest thread count that clears the realtime target at this machine's measured speed. */
+export function voiceThreadsFor(realtimePerThread) {
+  if (!(realtimePerThread > 0)) return VOICE_MAX_THREADS;
+  return Math.min(
+    VOICE_MAX_THREADS,
+    Math.max(1, Math.ceil(VOICE_TARGET_REALTIME / realtimePerThread)),
+  );
+}
+
+/** The environment a compose spawn runs with: the tuned thread count, or the compose default. */
+export function voiceThreadEnv(threads, env = process.env) {
+  return threads ? { ...env, MAVEA_VOICE_THREADS: String(threads) } : env;
+}
+
+/** Synthesize one clause and return how many seconds of audio came back per second of wall clock. */
+async function measureVoiceRealtime(kokoroUrl) {
+  try {
+    const started = performance.now();
+    const res = await fetch(`${kokoroUrl}/v1/audio/speech`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'kokoro',
+        input: VOICE_PROBE_TEXT,
+        voice: 'af_heart',
+        response_format: 'pcm',
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) return null;
+    const bytes = (await res.arrayBuffer()).byteLength;
+    const seconds = (performance.now() - started) / 1000;
+    if (!bytes || seconds <= 0) return null;
+    return bytes / VOICE_PCM_BYTES_PER_SECOND / seconds;
+  } catch {
+    return null;
+  }
+}
+
+/** Measure this machine and record the answer for next time.
+ *
+ *  Deliberately does NOT restart the container to apply the new number now: a restart drops the
+ *  voice for as long as the model takes to reload, and the app probes speech availability once per
+ *  page session — a browser that asks during that window would go silent for the whole session
+ *  with nothing to show for it. The default is already safe; the tuned value takes effect on the
+ *  next run, so nobody waits and nothing goes quiet. */
+async function settleVoiceThreads(kokoroUrl, ranAt) {
+  // Best of three, not an average: a busy moment can only ever make synthesis look slower, so the
+  // fastest run is the one closest to what this machine can actually do. The first call also pays
+  // for warmup, which the later ones do not.
+  const runs = [];
+  for (let i = 0; i < 3; i++) {
+    const realtime = await measureVoiceRealtime(kokoroUrl);
+    if (realtime !== null) runs.push(realtime);
+  }
+  if (!runs.length) return;
+  const perThread = Math.max(...runs) / ranAt;
+  const want = voiceThreadsFor(perThread);
+  rememberVoiceThreads(want, Number(perThread.toFixed(3)));
+  if (want === ranAt) return;
+  console.log(
+    `  Voice: this machine only needs ${want} core${want === 1 ? '' : 's'} — applied from the next run.`,
+  );
+}
+
+/** Wait for Kokoro to actually answer before probing it — the model load is what takes the time on
+ *  a first run, and a measurement taken through it would over-provision every later session. Runs
+ *  in the background: the app is already being served while this waits. */
+async function tuneVoiceWhenReady(kokoroUrl, ranAt) {
+  const deadline = Date.now() + VOICE_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (await serviceReachable(`${kokoroUrl}/health`)) {
+      await settleVoiceThreads(kokoroUrl, ranAt);
+      return;
+    }
+    await new Promise((resolvePoll) => setTimeout(resolvePoll, VOICE_POLL_MS));
+  }
+}
+
+function startSpeechServices(runtime, threads) {
   console.log(
     '  Starting Kokoro TTS + whisper.cpp STT. The first run builds/downloads pinned models…',
   );
   spawn(runtime.command, [...runtime.prefix, '-f', COMPOSE_FILE, 'up', '-d', '--build'], {
     stdio: 'inherit',
+    env: voiceThreadEnv(threads),
   });
 }
 
@@ -1020,7 +1155,13 @@ async function maybeOfferVoice() {
       return;
     }
   }
-  startSpeechServices(runtime);
+  const tuned = readCachedVoiceThreads();
+  const startedAt = tuned ?? VOICE_MAX_THREADS;
+  startSpeechServices(runtime, startedAt);
+  // First run on this machine, and we are the ones bringing the voice up: measure it once it
+  // answers and remember the answer for next time. A voice that was already running is left alone
+  // — the probe costs real CPU, and nothing about it is urgent.
+  if (tuned === null && !kokoroReady) void tuneVoiceWhenReady(kokoroUrl, startedAt);
 }
 
 async function main() {

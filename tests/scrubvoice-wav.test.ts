@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { pcmToWavBytes } from '../src/live/scrubvoice/wav';
 
 // The scrubber replays through an <audio> element so playback speed can change with the pitch
-// held natural; that needs a real WAV wrapper around the captured Float32 PCM. These assert the
-// RIFF/fmt/data header is well-formed and samples are clamped + scaled into 16-bit range.
+// held natural; that needs a real WAV wrapper around the captured Int16 PCM. These assert the
+// RIFF/fmt/data header is well-formed and the data chunk is the source ints, untouched.
 
 const ascii = (view: DataView, offset: number, len: number): string =>
   Array.from({ length: len }, (_, i) => String.fromCharCode(view.getUint8(offset + i))).join('');
 
 describe('pcmToWavBytes', () => {
   it('writes a valid 16-bit mono PCM WAV header', () => {
-    const pcm = new Float32Array([0, 0.5, -0.5, 1]);
+    const pcm = new Int16Array([0, 16384, -16384, 32767]);
     const view = new DataView(pcmToWavBytes(pcm, 24000));
 
     expect(ascii(view, 0, 4)).toBe('RIFF');
@@ -29,15 +29,11 @@ describe('pcmToWavBytes', () => {
     expect(view.byteLength).toBe(44 + dataSize);
   });
 
-  it('scales and clamps samples into Int16 range', () => {
-    const pcm = new Float32Array([0, 1, -1, 2, -2]); // 2/-2 must clamp to full scale
+  it('writes the source ints verbatim — the data chunk IS what was heard', () => {
+    const pcm = new Int16Array([0, 1, -1, 32767, -32768, 12345]);
     const view = new DataView(pcmToWavBytes(pcm, 16000));
     const sampleAt = (i: number): number => view.getInt16(44 + i * 2, true);
 
-    expect(sampleAt(0)).toBe(0);
-    expect(sampleAt(1)).toBe(32767); // +1 → max positive
-    expect(sampleAt(2)).toBe(-32768); // -1 → max negative
-    expect(sampleAt(3)).toBe(32767); // clamped from 2
-    expect(sampleAt(4)).toBe(-32768); // clamped from -2
+    for (let i = 0; i < pcm.length; i++) expect(sampleAt(i)).toBe(pcm[i]);
   });
 });

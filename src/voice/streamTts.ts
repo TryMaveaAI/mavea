@@ -10,8 +10,9 @@
 //   • Decode is a tight integer loop with no per-sample allocation/closure.
 //   • Network chunks are COALESCED into ~200ms buffers, so a clip is a few dozen audio nodes,
 //     not hundreds of tiny ones (cheap on a weak CPU + the GC).
-//   • Reading BACK-PRESSURES once ~2s is buffered ahead, so peak memory stays ~200KB no matter
-//     how fast the response arrives — it never materializes the whole clip at once.
+//   • Reading BACK-PRESSURES once ~2s is buffered ahead, so playback buffers stay small no
+//     matter how fast the response arrives. (The replay cache does keep one raw copy of the
+//     clip as it streams — dropped past PCM_CACHE_MAX_CLIP_BYTES; see `raw` in streamSpeak.)
 //   • Uses getChannelData().set() (supported wherever WebAudio is) rather than the newer
 //     copyToChannel, and falls back to the blob path → HTMLAudio (the most compatible sink)
 //     whenever streaming can't run. Nothing here throws.
@@ -21,7 +22,7 @@
 // gapless audio and routed through the shared face-energy graph so the mouth-light still tracks
 // the real waveform.
 
-import { sharedAudioContext, tapPlaybackNode } from './voiceEnergy';
+import { leaseAudioContext, tapPlaybackNode } from './voiceEnergy';
 import { PCM_CACHE_MAX_CLIP_BYTES } from './pcmCache';
 
 /** Kokoro's native PCM sample rate. */
@@ -34,6 +35,8 @@ const FLUSH_SECONDS = 0.2;
 /** Stop pulling from the network once this much audio is already scheduled ahead, so a fast
  *  response can't balloon memory on a low-RAM device. Resumes as the cursor drains. */
 const MAX_AHEAD_SECONDS = 2;
+/** Extra on the computed back-pressure sleep so timer skew rarely needs a second wake. */
+const BACK_PRESSURE_MARGIN_MS = 15;
 
 /**
  * Decode a chunk of signed 16-bit little-endian PCM into Float32 samples in [-1, 1), carrying a
@@ -165,11 +168,18 @@ export function bindOutputGain(el: HTMLMediaElement): () => void {
 interface ActiveStream {
   sources: Set<AudioBufferSourceNode>;
   releaseTap: () => void;
+  /** Returns the shared context's lease. Held for the WHOLE clip — taken before the fetch, given
+   *  back only in teardown, once every scheduled source has stopped — so the idle timer can never
+   *  suspend the context under a line that is still playing. */
+  releaseAudio: () => void;
   gain: GainNode;
   abort: AbortController;
   cancelled: boolean;
   /** Resolve the end-of-playback wait early (on cancel), so the queue doesn't idle. */
   finishEarly?: () => void;
+  /** Wake the back-pressure sleep early (fired by teardown), so a cancel lands instantly
+   *  instead of waiting out the window. */
+  wakeBackPressure?: () => void;
 }
 
 let active: ActiveStream | null = null;
@@ -182,6 +192,7 @@ let streamEpoch = 0;
 let pendingAbort: AbortController | null = null;
 
 function teardown(state: ActiveStream): void {
+  state.wakeBackPressure?.();
   for (const src of state.sources) {
     try {
       src.stop();
@@ -197,6 +208,13 @@ function teardown(state: ActiveStream): void {
   state.sources.clear();
   try {
     state.releaseTap();
+  } catch {
+    /* no-op */
+  }
+  // Every source above is stopped by now, so the context is genuinely idle as far as this clip is
+  // concerned and may park 30s from here.
+  try {
+    state.releaseAudio();
   } catch {
     /* no-op */
   }
@@ -227,8 +245,6 @@ export function cancelActiveStream(): void {
   teardown(state);
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
 /**
  * Stream one line as Kokoro PCM and play it the instant the first chunk arrives. Resolves true
  * when audio was produced (or the clip was hard-stopped — never re-speak a cancelled line) and
@@ -255,8 +271,15 @@ export async function streamSpeak(
   onSynthDone?: (pcm: Uint8Array | null) => void,
   speed?: number,
 ): Promise<boolean> {
-  const ctx = sharedAudioContext();
-  if (!ctx) return false; // no WebAudio → caller uses the blob path
+  const lease = leaseAudioContext();
+  if (!lease) return false; // no WebAudio → caller uses the blob path
+  const ctx = lease.ctx;
+  // Every exit from here to the moment this clip is published to `active` has to hand the lease
+  // back; past that point teardown owns it (and a cancel can reach teardown from outside).
+  const bail = (played: boolean): boolean => {
+    lease.release();
+    return played;
+  };
 
   // Only stream when the context can actually play right now; otherwise fall back to the blob
   // path (HTMLAudio), which has its own autoplay handling and reaches the speakers directly.
@@ -267,7 +290,7 @@ export async function streamSpeak(
       /* no-op */
     }
   }
-  if (ctx.state !== 'running') return false;
+  if (ctx.state !== 'running') return bail(false);
 
   const abort = new AbortController();
   // Capture the cancel epoch and publish our aborter BEFORE the fetch, so a cancel during the
@@ -295,7 +318,7 @@ export async function streamSpeak(
     if (pendingAbort === abort) pendingAbort = null;
     // Aborted by a cancel → treat as "played" so the caller never re-speaks it; a real network
     // failure (epoch unchanged) → false, so the caller falls back to the blob path.
-    return myEpoch !== streamEpoch;
+    return bail(myEpoch !== streamEpoch);
   }
   if (pendingAbort === abort) pendingAbort = null;
   // Superseded by a cancel while we were fetching → don't start playing after the interrupt.
@@ -305,16 +328,17 @@ export async function streamSpeak(
     } catch {
       /* no-op */
     }
-    return true; // cancelled, not a failure — caller must not fall back and re-speak it
+    return bail(true); // cancelled, not a failure — caller must not fall back and re-speak it
   }
   // No streaming body (old browser, or a proxy that won't stream) → fall back before any setup.
-  if (!res.ok || !res.body) return false;
+  if (!res.ok || !res.body) return bail(false);
 
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
     sources: new Set(),
     releaseTap: tapPlaybackNode(gain),
+    releaseAudio: lease.release,
     gain,
     abort,
     cancelled: false,
@@ -403,9 +427,25 @@ export async function streamSpeak(
     let carry: number | null = null;
     for (;;) {
       // Back-pressure: while plenty is already queued ahead, let it drain before pulling more —
-      // this caps memory AND throttles Kokoro (it generates only as fast as we play).
+      // this caps memory AND throttles Kokoro (it generates only as fast as we play). One
+      // COMPUTED sleep per window, not a fixed-interval poll (60ms polling cost ~470 timer
+      // wakeups over a 30s line): sleep until the schedule should have drained to the cap and
+      // let the while re-check for clock drift. teardown() wakes the sleep, so a cancel still
+      // lands instantly.
       while (!state.cancelled && nextTime - ctx.currentTime > MAX_AHEAD_SECONDS) {
-        await sleep(60);
+        const wait =
+          (nextTime - ctx.currentTime - MAX_AHEAD_SECONDS) * 1000 + BACK_PRESSURE_MARGIN_MS;
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(() => {
+            state.wakeBackPressure = undefined;
+            resolve();
+          }, wait);
+          state.wakeBackPressure = () => {
+            clearTimeout(timer);
+            state.wakeBackPressure = undefined;
+            resolve();
+          };
+        });
       }
       if (state.cancelled) break;
       const { done, value } = await reader.read();
@@ -499,8 +539,16 @@ export async function playPcmBytes(
   text: string,
   onStart?: () => void,
 ): Promise<boolean> {
-  const ctx = sharedAudioContext();
-  if (!ctx || bytes.length < 2) return false;
+  const lease = leaseAudioContext();
+  if (!lease || bytes.length < 2) {
+    lease?.release();
+    return false;
+  }
+  const ctx = lease.ctx;
+  const bail = (played: boolean): boolean => {
+    lease.release();
+    return played;
+  };
   // Same cancel-during-the-gap guard as streamSpeak: the resume() await below is a window where
   // a hard stop can land before this clip publishes to `active` — without the epoch check the
   // whole cached clip would then schedule and play AFTER the interrupt.
@@ -512,14 +560,15 @@ export async function playPcmBytes(
       /* no-op */
     }
   }
-  if (ctx.state !== 'running') return false;
-  if (myEpoch !== streamEpoch) return true; // superseded by a cancel — never re-speak it
+  if (ctx.state !== 'running') return bail(false);
+  if (myEpoch !== streamEpoch) return bail(true); // superseded by a cancel — never re-speak it
 
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
     sources: new Set(),
     releaseTap: tapPlaybackNode(gain),
+    releaseAudio: lease.release,
     gain,
     abort: new AbortController(),
     cancelled: false,

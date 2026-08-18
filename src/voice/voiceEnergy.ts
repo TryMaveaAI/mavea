@@ -2,9 +2,10 @@
 //
 // When Kokoro plays a line it's an ordinary <audio> element. We tap that element with a
 // WebAudio AnalyserNode and, on each animation frame, publish a smoothed 0..1 loudness as
-// the CSS custom property `--voice-energy` on :root (plus a `data-voice-sync="on"` flag).
-// The face's CSS reads those to drive the mouth-light / aura from the actual waveform
-// instead of a fixed timer, so Mavéa's mouth moves with the words.
+// the CSS custom property `--voice-energy` on the registered sink elements — the wrappers
+// around each mounted face — plus a `data-voice-sync="on"` flag on :root. The face's CSS
+// reads those to drive the mouth-light / aura from the actual waveform instead of a fixed
+// timer, so Mavéa's mouth moves with the words.
 //
 // Guarantees this module must keep:
 //   • It never silences TTS. Routing an element through createMediaElementSource reroutes
@@ -14,6 +15,8 @@
 //     only while at least one clip is tapped and is cancelled (resetting the var) at zero.
 //   • It honors prefers-reduced-motion: when set we don't sync and the CSS keeps its calm
 //     fixed-tempo fallback.
+
+import { useCallback, type RefCallback } from 'react';
 
 /** Loudness (0..1) from a byte time-domain buffer (128 = silence), gained for a lively mouth. */
 export function rmsEnergy(samples: Uint8Array): number {
@@ -115,20 +118,65 @@ function reducedMotion(): boolean {
   }
 }
 
-const domHost: EnergyHost = {
+// Every CSS consumer of --voice-energy lives under a `.presence` subtree, so the per-frame
+// write only needs to reach the elements that WRAP a mounted face — writing it on :root
+// invalidates computed style for the whole document ~60×/s while a full canvas of blocks is
+// mounted, which was the dominant CPU cost of speech. The set falls back to :root while empty
+// so a mount site that never registered still gets a moving mouth (correctness over scoping).
+// data-voice-sync stays on :root: its selectors are :root-based and it flips twice per clip.
+const energySinks = new Set<HTMLElement>();
+
+/**
+ * Register the element that CONTAINS a <Presence/> as a `--voice-energy` write target (the
+ * property inherits, so the face's CSS under it reads the value). Presence itself is DOM-locked —
+ * the wrapper is the seam. Returns the unregister, which also clears the property so an unmounted
+ * wrapper can't hold a stale mouth level.
+ */
+export function registerVoiceEnergySink(el: HTMLElement): () => void {
+  energySinks.add(el);
+  return () => {
+    energySinks.delete(el);
+    el.style.removeProperty('--voice-energy');
+  };
+}
+
+/** Ref callback for the wrapper around a <Presence/> mount. React 19 runs the returned cleanup
+ *  on unmount, so registration tracks the element's exact lifetime; one instance may serve
+ *  several wrappers in the same component (each element registers independently). */
+export function useVoiceEnergySink(): RefCallback<HTMLElement> {
+  return useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    return registerVoiceEnergySink(el);
+  }, []);
+}
+
+/** The real DOM host. Exported so tests can pin the sink routing without a WebAudio graph. */
+export const domEnergyHost: EnergyHost = {
   setVar(v) {
-    document.documentElement.style.setProperty('--voice-energy', String(v));
+    const value = String(v);
+    if (energySinks.size === 0) {
+      document.documentElement.style.setProperty('--voice-energy', value);
+      return;
+    }
+    for (const el of energySinks) el.style.setProperty('--voice-energy', value);
   },
   setSync(on) {
     const root = document.documentElement;
-    if (on) root.setAttribute('data-voice-sync', 'on');
-    else root.removeAttribute('data-voice-sync');
+    if (on) {
+      root.setAttribute('data-voice-sync', 'on');
+      return;
+    }
+    root.removeAttribute('data-voice-sync');
+    // Only the publisher's stop() turns sync off — the moment the face rests. Clear the var
+    // everywhere it may have been written so neither :root nor a sink retains a stale level.
+    root.style.removeProperty('--voice-energy');
+    for (const el of energySinks) el.style.removeProperty('--voice-energy');
   },
   raf: (cb) => requestAnimationFrame(cb),
   cancel: (id) => cancelAnimationFrame(id),
 };
 
-const publisher = makeEnergyPublisher(domHost);
+const publisher = makeEnergyPublisher(domEnergyHost);
 
 let ctx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -154,6 +202,76 @@ function ensureGraph(): boolean {
   }
 }
 
+// ---- idle suspension --------------------------------------------------------
+//
+// A running AudioContext holds a real-time audio thread at the device sample rate for as long as
+// it exists — and this one is created on the first click of the session (main.tsx unlocks it so a
+// turn that fires without a fresh gesture can still be heard), including in sessions that never
+// play a single sound. So park it when it is provably doing nothing: every tap and capture takes
+// a lease, and 30s after the last lease is returned the context suspends. Any access wakes it.
+//
+// "Provably" is doing real work in that sentence. A consumer that takes the context RAW
+// (sharedAudioContext) can schedule playback of a length nothing here can see — the reel's audible
+// preview loops for as long as its sheet is open, and the reel export plays a buffer into a
+// MediaStreamDestination for the whole recording — and suspending under either would silence it
+// mid-flight. A context that has been handed out raw therefore stands the idle timer down for the
+// rest of the session; a raw consumer that takes a lease instead rejoins the scheme.
+
+const IDLE_SUSPEND_MS = 30_000;
+let audioUsers = 0;
+let handedOutRaw = false;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+const suspendSubs = new Set<() => void>();
+
+/**
+ * Notified after the idle timer suspends the shared context. The app re-arms its gesture unlock
+ * on this: Safari only honors `resume()` from inside a user gesture, so the listener that was
+ * removed once the context was confirmed running has to come back when it stops running.
+ */
+export function onAudioSuspended(cb: () => void): () => void {
+  suspendSubs.add(cb);
+  return () => suspendSubs.delete(cb);
+}
+
+function cancelIdleSuspend(): void {
+  if (idleTimer !== null) clearTimeout(idleTimer);
+  idleTimer = null;
+}
+
+function armIdleSuspend(): void {
+  cancelIdleSuspend();
+  if (!ctx || audioUsers > 0 || handedOutRaw) return;
+  idleTimer = setTimeout(() => {
+    idleTimer = null;
+    if (audioUsers > 0 || ctx?.state !== 'running') return;
+    void ctx
+      .suspend()
+      .then(() => suspendSubs.forEach((cb) => cb()))
+      .catch(() => {});
+  }, IDLE_SUSPEND_MS);
+}
+
+/** Wake the context. Best effort and asynchronous — callers must not assume it has landed. */
+function resumeShared(): void {
+  if (ctx?.state === 'suspended') void ctx.resume().catch(() => {});
+}
+
+/** Hold the shared context awake for one use — a tapped clip, a recording, a streamed line — and
+ *  let it park again when the last holder returns its lease. The returned release is idempotent.
+ *  `leaseAudioContext` is the same thing for a caller that needs the context itself. */
+function retainAudio(): () => void {
+  audioUsers += 1;
+  cancelIdleSuspend();
+  resumeShared();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    audioUsers = Math.max(0, audioUsers - 1);
+    if (audioUsers === 0) armIdleSuspend();
+  };
+}
+
 /**
  * Tap a playing audio element so the face tracks its loudness. Returns a release function to
  * call when the clip ends. A no-op (returns an empty release) when WebAudio is unavailable, the
@@ -163,14 +281,21 @@ function ensureGraph(): boolean {
 export function voiceEnergyTap(audio: HTMLAudioElement): () => void {
   const noop = (): void => {};
   if (reducedMotion() || !ensureGraph() || !ctx || !analyser || !buf) return noop;
-  // A suspended context (no prior gesture) would route the audio silently; nudge it awake.
-  if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+  const releaseHold = retainAudio(); // wakes a context the idle timer suspended
+  if (ctx.state !== 'running') {
+    // Routing an element through a context that is not running SILENCES it, and resume() is async
+    // (on Safari it may not land at all outside a gesture). Being heard beats being lip-synced:
+    // leave the element playing straight to the speakers and let the face keep its CSS fallback.
+    releaseHold();
+    return noop;
+  }
   let source: MediaElementAudioSourceNode;
   try {
     source = ctx.createMediaElementSource(audio);
     source.connect(analyser);
   } catch {
     // Already tapped, or the element can't be sourced — leave it playing untouched.
+    releaseHold();
     return noop;
   }
   const a = analyser;
@@ -184,6 +309,7 @@ export function voiceEnergyTap(audio: HTMLAudioElement): () => void {
     if (done) return;
     done = true;
     release();
+    releaseHold();
     try {
       source.disconnect();
     } catch {
@@ -198,7 +324,46 @@ export function voiceEnergyTap(audio: HTMLAudioElement): () => void {
  * reads — one context for the whole app, no duplicate graphs.
  */
 export function sharedAudioContext(): AudioContext | null {
-  return ensureGraph() ? ctx : null;
+  if (!ensureGraph()) return null;
+  // Handed out raw: whatever this consumer schedules, it schedules unobserved. Wake the context
+  // and stand the idle timer down — see the idle-suspension notes above.
+  handedOutRaw = true;
+  cancelIdleSuspend();
+  resumeShared();
+  return ctx;
+}
+
+/**
+ * Whether WebAudio is usable at all — the question a caller is really asking when it reaches for
+ * the context just to find out whether to offer playback. `sharedAudioContext()` answers it too,
+ * but at the price of marking the context as handed out raw, which stands the idle timer down for
+ * the rest of the session: one availability check on a surface nobody used would keep a 48kHz
+ * audio thread alive until the tab closed. Same graph semantics, no side effect on the timer.
+ */
+export function audioAvailable(): boolean {
+  return ensureGraph();
+}
+
+/**
+ * The shared context's sample rate — what an OFFLINE render must match so the result needs no
+ * second resample on the way to the encoder. Asking for the rate is not asking to play anything,
+ * so this deliberately does not mark the context as handed out raw: a reel rendered in an
+ * OfflineAudioContext must not be the reason the shared one can never park.
+ */
+export function sharedSampleRate(): number | null {
+  return ensureGraph() && ctx ? ctx.sampleRate : null;
+}
+
+/**
+ * The shared context, LEASED — the same context `sharedAudioContext()` returns, except that the
+ * caller undertakes to say when it is done, so the idle timer stays in play instead of standing
+ * down for the session. Release it once the last thing scheduled on it has finished or been
+ * cancelled: releasing early is what would let the 30s timer suspend the context under a still-
+ * playing source and cut the tail off a spoken line.
+ */
+export function leaseAudioContext(): { ctx: AudioContext; release: () => void } | null {
+  if (!ensureGraph() || !ctx) return null;
+  return { ctx, release: retainAudio() };
 }
 
 /**
@@ -214,7 +379,10 @@ export function sharedAudioContext(): AudioContext | null {
  */
 export function unlockAudio(): boolean {
   if (!ensureGraph() || !ctx) return false;
-  if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+  // Unlocking is not using: wake it, then start the idle window, so a session that clicks once and
+  // never speaks does not keep an audio thread alive for the rest of its life.
+  resumeShared();
+  armIdleSuspend();
   return ctx.state === 'running';
 }
 
@@ -229,6 +397,7 @@ export function unlockAudio(): boolean {
 export function tapPlaybackNode(node: AudioNode): () => void {
   const noop = (): void => {};
   if (!ensureGraph() || !ctx || !analyser || !buf) return noop;
+  const releaseHold = retainAudio(); // this clip is playing on the context — keep it awake
   if (reducedMotion()) {
     node.connect(ctx.destination); // heard, but not synced
     const dest = ctx.destination;
@@ -236,6 +405,7 @@ export function tapPlaybackNode(node: AudioNode): () => void {
     return () => {
       if (done) return;
       done = true;
+      releaseHold();
       try {
         node.disconnect(dest);
       } catch {
@@ -255,6 +425,7 @@ export function tapPlaybackNode(node: AudioNode): () => void {
     if (done) return;
     done = true;
     release();
+    releaseHold();
     try {
       node.disconnect(a);
     } catch {
@@ -281,12 +452,13 @@ export function resetVoiceEnergy(): void {
  */
 export function captureAudioStream(): { stream: MediaStream; stop: () => void } | null {
   if (!ensureGraph() || !ctx || !analyser) return null;
-  if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+  const releaseHold = retainAudio(); // resumes a suspended context and holds it for the recording
   let dest: MediaStreamAudioDestinationNode;
   try {
     dest = ctx.createMediaStreamDestination();
     analyser.connect(dest);
   } catch {
+    releaseHold();
     return null;
   }
   const a = analyser;
@@ -296,6 +468,7 @@ export function captureAudioStream(): { stream: MediaStream; stop: () => void } 
     stop() {
       if (stopped) return;
       stopped = true;
+      releaseHold();
       try {
         a.disconnect(dest);
       } catch {

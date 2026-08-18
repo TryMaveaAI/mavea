@@ -6,7 +6,7 @@ import type { TurnAudio } from './recorder';
 // session can't grow memory without limit. When the budget is exceeded the OLDEST tracks fall off
 // first, but the track just stored is always kept.
 const SAMPLE_RATE = 24000;
-/** ~5 minutes of voice held across all retained turns (~28 MB of Float32 PCM at most). */
+/** ~5 minutes of voice held across all retained turns (~14 MB of Int16 PCM at most). */
 const SAMPLE_BUDGET = SAMPLE_RATE * 300;
 
 export class TurnAudioStore {

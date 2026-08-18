@@ -1,9 +1,10 @@
-// Encode the captured spoken track (mono Float32 PCM) into a WAV blob the scrubber can replay
+// Encode the captured spoken track (mono Int16 PCM) into a WAV blob the scrubber can replay
 // through an <audio> element. An <audio> element gives us `preservesPitch`, which an
 // AudioBufferSourceNode lacks — so playback speed can change without chipmunking the voice.
 
-/** Bytes of a 16-bit PCM mono WAV for `pcm` at `sampleRate`. Samples are clamped to [-1, 1]. */
-export function pcmToWavBytes(pcm: Float32Array, sampleRate: number): ArrayBuffer {
+/** Bytes of a 16-bit PCM mono WAV for `pcm` at `sampleRate`. The samples ARE the data chunk —
+ *  the recorder keeps the source ints, so the replay WAV is byte-for-byte what was heard. */
+export function pcmToWavBytes(pcm: Int16Array, sampleRate: number): ArrayBuffer {
   const bytesPerSample = 2; // 16-bit
   const dataSize = pcm.length * bytesPerSample;
   const buffer = new ArrayBuffer(44 + dataSize);
@@ -31,21 +32,13 @@ export function pcmToWavBytes(pcm: Float32Array, sampleRate: number): ArrayBuffe
   // data chunk
   writeAscii(36, 'data');
   view.setUint32(40, dataSize, true);
-  for (let i = 0; i < pcm.length; i++) {
-    const clamped = Math.max(-1, Math.min(1, pcm[i]));
-    // Asymmetric Int16 range: -1 maps to -32768, +1 to 32767.
-    view.setInt16(
-      44 + i * bytesPerSample,
-      Math.round(clamped * (clamped < 0 ? 0x8000 : 0x7fff)),
-      true,
-    );
-  }
+  for (let i = 0; i < pcm.length; i++) view.setInt16(44 + i * bytesPerSample, pcm[i], true);
 
   return buffer;
 }
 
 /** A blob: URL for the WAV of `pcm`. Caller owns it — revoke with URL.revokeObjectURL when done. */
-export function pcmToWavBlobUrl(pcm: Float32Array, sampleRate: number): string {
+export function pcmToWavBlobUrl(pcm: Int16Array, sampleRate: number): string {
   const blob = new Blob([pcmToWavBytes(pcm, sampleRate)], { type: 'audio/wav' });
   return URL.createObjectURL(blob);
 }
