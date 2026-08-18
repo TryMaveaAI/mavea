@@ -19,6 +19,9 @@ All notable changes to Mavéa are documented here. The format is based on
 - **First run: the speech questions come before the browser opens.** The window used to open
   over the terminal mid-prompt, so the voice and transcription setup was easy to never see and
   the first impression was silently captions-only. `npx @mavea/mavea` now asks first, then opens.
+- **`npx @mavea/mavea` no longer reports a running voice as missing.** The reachability probe
+  hit the service roots, and Kokoro's root answers 404 — so every start offered to set up
+  speech services that were already up. It probes the health endpoints now.
 - **Repeat starts stop rebuilding speech images the machine already has.** Compose builds only a
   missing image now (the whisper tag carries its version, so a version bump still builds), on
   Docker and Podman alike.

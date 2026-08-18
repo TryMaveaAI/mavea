@@ -22,6 +22,7 @@ const {
   voiceThreadEnv,
   composeUpArgs,
   settleStartup,
+  speechHealthUrl,
 } = cli as {
   readCachedVoiceThreads: (file?: string) => number | null;
   rememberVoiceThreads: (threads: number, realtimePerThread: number, file?: string) => boolean;
@@ -35,6 +36,7 @@ const {
     args: { voice: boolean; open: boolean },
     steps: { offerVoice: () => Promise<void> | void; openApp: () => void },
   ) => Promise<void>;
+  speechHealthUrl: (base: string) => string;
 };
 
 const dirs: string[] = [];
@@ -102,6 +104,17 @@ describe('first-run startup', () => {
         '-d',
       ]);
     }
+  });
+
+  it('probes the health endpoint, not the root, which Kokoro answers with a 404', () => {
+    // A root probe reported a RUNNING voice as missing on every start — so the CLI offered to
+    // set up services that were already up, and (now that questions precede the browser) would
+    // ask a pointless question on every single run.
+    expect(speechHealthUrl('http://localhost:8880')).toBe('http://localhost:8880/health');
+    expect(speechHealthUrl('http://localhost:8100/')).toBe('http://localhost:8100/health');
+    expect(speechHealthUrl('https://stt.example.com/base//')).toBe(
+      'https://stt.example.com/base/health',
+    );
   });
 
   it('asks the speech questions before opening the browser over them', async () => {

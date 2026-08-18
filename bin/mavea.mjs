@@ -1113,12 +1113,19 @@ const VOICE_INTRO =
   '\n◌ Configured speech — Kokoro reads replies and whisper.cpp transcribes your mic.\n' +
   '  The defaults are loopback-only. A custom WHISPER_URL receives microphone audio at that endpoint.\n';
 
+/** A speech service's health endpoint. Probed instead of the root because the roots differ —
+ *  Kokoro's answers 404 (FastAPI routes /health, not /) — so a root probe reported a running
+ *  voice as missing on every start and offered to set up services that were already up. */
+export function speechHealthUrl(base) {
+  return base.replace(/\/+$/, '') + '/health';
+}
+
 async function maybeOfferVoice() {
   const kokoroUrl = process.env.KOKORO_URL || 'http://localhost:8880';
   const whisperUrl = process.env.WHISPER_URL || 'http://localhost:8100';
   const [kokoroReady, whisperReady] = await Promise.all([
-    serviceReachable(kokoroUrl),
-    serviceReachable(whisperUrl),
+    serviceReachable(speechHealthUrl(kokoroUrl)),
+    serviceReachable(speechHealthUrl(whisperUrl)),
   ]);
   if (kokoroReady && whisperReady) return;
   if (!existsSync(COMPOSE_FILE) || !process.stdin.isTTY) {
