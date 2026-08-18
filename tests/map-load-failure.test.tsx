@@ -47,6 +47,26 @@ describe('map cards when MapLibre cannot load', () => {
     expect(container.textContent).toContain('Both sit on the river.');
   });
 
+  it('GeoMap explains the missing map but keeps the named places', async () => {
+    const { container } = render(
+      <GeoMap
+        title="East Village bars"
+        markers={[
+          { name: 'McSorley’s Old Ale House', detail: '15 E 7th St', lat: 40.7286, lng: -73.9897 },
+          { name: 'Death & Co', detail: '433 E 6th St', lat: 40.7255, lng: -73.9843 },
+        ]}
+      />,
+    );
+    await flushMapLibre();
+
+    // The places are the card's CONTENT, not a description of the map, so a tile layer that never
+    // arrived costs the reader the picture and nothing else — the same contract MapRoute keeps.
+    expect(container.textContent).toContain('Map couldn’t load.');
+    expect(container.querySelectorAll('.geo-row')).toHaveLength(2);
+    expect(container.textContent).toContain('McSorley’s Old Ale House');
+    expect(container.textContent).toContain('433 E 6th St');
+  });
+
   it('MapRoute explains the missing map but keeps the itinerary', async () => {
     const { container } = render(<MapRoute title="Ridge walk" waypoints={waypoints} />);
     await flushMapLibre();

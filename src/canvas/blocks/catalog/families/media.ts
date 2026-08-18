@@ -100,7 +100,7 @@ export const CATALOG_MEDIA: ComponentCatalog = [
     coercer: 'generic',
     itemShapes: [{ prop: 'zones', text: 'label', textAliases: ['name', 'title'] }],
     blurb:
-      'A REAL interactive map (OpenStreetMap tiles) for actual places. Give each marker real {lat, lng} coordinates (decimal degrees), a name, and an optional detail. When the answer spans several places or segments (a multi-day trip, a multi-stop route), emit ONE map PER segment — each plotting that segment’s own stops — not a single overview, unless an overview is what was asked. This is the only map type — always use it for any real-world location. For a zoning/land-use ask specifically, prefer zoningmap, which teaches the zone-polygon shape more directly.',
+      'A REAL interactive map (OpenStreetMap tiles) for actual places. Give each marker real {lat, lng} coordinates (decimal degrees), a name, and an optional detail. When the answer spans several places or segments (a multi-day trip, a multi-stop route), emit ONE map PER segment — each plotting that segment’s own stops — not a single overview, unless an overview is what was asked. The card lists every marker by name beside the map, numbered to its pin, so `detail` is where a street address or a one-line note belongs — it is rendered, not hidden. This is the only map type — always use it for any real-world location. For a zoning/land-use ask specifically, prefer zoningmap, which teaches the zone-polygon shape more directly.',
     propHints: {
       'zones[].coords':
         'the zone boundary as real [lat, lng] pairs (decimal degrees), at least 3 points',

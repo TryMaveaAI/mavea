@@ -272,3 +272,86 @@ describe('GeoMap tile veil', () => {
     expect(mocks.maps[0].removed).toBe(true);
   });
 });
+
+// A pin paints its NUMBER and nothing else; the name is a click away inside a popup. Without a list
+// beside the map, "five bars in the East Village" renders as five anonymous circles and the reader
+// has to ask for the names again in words.
+describe('GeoMap names its places', () => {
+  const rows = (container: HTMLElement) =>
+    [...container.querySelectorAll('.geo-row')].map((row) => ({
+      n: row.querySelector('.geo-row-n')?.textContent,
+      label: row.querySelector('.geo-row-label')?.textContent,
+      detail: row.querySelector('.geo-row-detail')?.textContent ?? null,
+    }));
+
+  it('names every pin, and numbers each row to the circle it belongs to', async () => {
+    const { container } = render(
+      <GeoMap
+        title="East Village bars"
+        markers={[
+          { name: 'McSorley’s Old Ale House', detail: '15 E 7th St', lat: 40.7286, lng: -73.9897 },
+          { name: 'Death & Co', detail: '433 E 6th St', lat: 40.7255, lng: -73.9843 },
+        ]}
+      />,
+    );
+    await flushMapLibre();
+
+    expect(rows(container)).toEqual([
+      { n: '1', label: 'McSorley’s Old Ale House', detail: '15 E 7th St' },
+      { n: '2', label: 'Death & Co', detail: '433 E 6th St' },
+    ]);
+    // The row's number is the SAME number the reader sees on the map, not a coincidence of order.
+    expect(mocks.markers.map((m) => m.element.textContent)).toEqual(['1', '2']);
+    expect(mocks.markers.map((m) => m.element.getAttribute('aria-label'))).toEqual([
+      'McSorley’s Old Ale House',
+      'Death & Co',
+    ]);
+  });
+
+  it('keeps the numbering in step when a marker is dropped for bad coordinates', async () => {
+    const { container } = render(
+      <GeoMap
+        title="Partly plottable"
+        markers={[
+          { name: 'Real place', lat: 40.7286, lng: -73.9897 },
+          { name: 'Off the globe', lat: 999, lng: -73.98 },
+          { name: 'Also real', lat: 40.7255, lng: -73.9843 },
+        ]}
+      />,
+    );
+    await flushMapLibre();
+
+    // Numbering runs over the PLOTTED pins, so the list can never describe a circle that is not
+    // on the map — or number a real one wrongly because an unplottable marker came before it.
+    expect(rows(container).map((row) => [row.n, row.label])).toEqual([
+      ['1', 'Real place'],
+      ['2', 'Also real'],
+    ]);
+    expect(mocks.markers.map((m) => m.element.textContent)).toEqual(['1', '2']);
+  });
+
+  it('identifies a row whose name would paint nothing at all', async () => {
+    const { container } = render(
+      <GeoMap
+        title="Thin names"
+        markers={[
+          { name: '\u200b\u200b', lat: 40.7286, lng: -73.9897 },
+          { name: '   ', detail: '\u200b', lat: 40.7255, lng: -73.9843 },
+        ]}
+      />,
+    );
+    await flushMapLibre();
+
+    // A zero-width name survives every trim and then renders nothing: a numbered row with a pin on
+    // the map and no way to tell what it is. Same for a detail that is only zero-width characters.
+    expect(rows(container)).toEqual([
+      { n: '1', label: 'Unnamed place', detail: null },
+      { n: '2', label: 'Unnamed place', detail: null },
+    ]);
+  });
+
+  it('renders no list when there is nothing plottable to name', () => {
+    const { container } = render(<GeoMap title="Nowhere" markers={[]} />);
+    expect(container.querySelector('.geo-list')).toBeNull();
+  });
+});

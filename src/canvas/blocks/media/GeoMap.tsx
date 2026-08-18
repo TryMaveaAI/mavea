@@ -78,6 +78,18 @@ function resolvedColor(el: HTMLElement, value: string): string {
   return token ? getComputedStyle(el).getPropertyValue(token).trim() || 'transparent' : value;
 }
 
+/**
+ * Whether a string will actually PAINT. `name` is required by GeoMarker, but a model fills it, and
+ * a blank — or a run of zero-width/format characters, which survives every trim — would render a
+ * numbered row with nothing beside it: a pin the reader can see and cannot identify.
+ *
+ * The stripped copy is only the TEST. What renders is the original, because U+200D joins the parts
+ * of an emoji and removing it would corrupt a name that was fine.
+ */
+function paints(text: string | undefined): text is string {
+  return !!text && text.replace(/[\p{Cf}\p{Cc}]/gu, '').trim().length > 0;
+}
+
 function popupContent(title: string, detail?: string): HTMLDivElement {
   const root = document.createElement('div');
   root.className = 'geo-pop';
@@ -306,6 +318,38 @@ export function GeoMap({
             </span>
           ))}
         </div>
+      )}
+      {/* The places, named. A pin paints its NUMBER and nothing else — the name reaches the reader
+          only through a popup that costs a click — so a map of five bars was five anonymous circles
+          and the name had to be asked for again in words. Numbered from `pins`, the same validated
+          array the markers are built from, so a marker dropped for bad coordinates can never slide
+          the list out of step with the map. Gated on the pins rather than on `mapShown`: these are
+          the card's CONTENT, not a description of the map, so they survive a map that never loaded
+          — the same contract MapRoute keeps for its stops. */}
+      {pins.length > 0 && (
+        <ol className="geo-list">
+          {pins.map((marker, index) => (
+            <li className="geo-row" key={index}>
+              <span
+                className="geo-row-n"
+                style={{ ['--geo-c' as string]: safeCssColor(marker.color) } as CSSProperties}
+                // The number is the tie to the circle on the map, which a screen reader cannot see
+                // anyway; the list already conveys position, so announcing it again is noise.
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <div className="geo-row-body">
+                <span className="geo-row-label">
+                  {paints(marker.name) ? marker.name.trim() : 'Unnamed place'}
+                </span>
+                {paints(marker.detail) && (
+                  <span className="geo-row-detail">{marker.detail.trim()}</span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
       )}
       {(footer || mapShown) && (
         <div className="insight-summary" style={{ marginTop: 10 }}>
