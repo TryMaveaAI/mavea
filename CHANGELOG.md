@@ -6,6 +6,8 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-18
+
 ### Added
 
 - **What a session cost is now visible** (Settings → Model): tokens sent, how much of that was
