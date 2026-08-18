@@ -6,6 +6,29 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-08-18
+
+### Fixed
+
+- **A downloaded conversation video no longer ends inside a spotlight.** The closing beat hands
+  the canvas back and plays wide, carved out of the last scene so the cut still ends exactly
+  where the narration does; the closing caption and Pen marks stay.
+- **A map now names its places.** Each pin's name and detail line render in a numbered list
+  beside the map — numbered to the circles themselves — instead of living only in a click-away
+  popup. The list survives a map that fails to load, the same way a route keeps its stops.
+- **First run: the speech questions come before the browser opens.** The window used to open
+  over the terminal mid-prompt, so the voice and transcription setup was easy to never see and
+  the first impression was silently captions-only. `npx @mavea/mavea` now asks first, then opens.
+- **Repeat starts stop rebuilding speech images the machine already has.** Compose builds only a
+  missing image now (the whisper tag carries its version, so a version bump still builds), on
+  Docker and Podman alike.
+
+### Changed
+
+- The README and setup guide say plainly what is free and what is metered: the model call is
+  billed by the provider under your key; the app and both speech services run locally at no
+  per-use cost, and published transcripts or voiced videos owe no fee and no credit line.
+
 ## [2.0.0] - 2026-08-18
 
 ### Added
