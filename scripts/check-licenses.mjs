@@ -85,7 +85,9 @@ whisper.cpp v1.9.1\tMIT\thttps://github.com/ggml-org/whisper.cpp
 Whisper small.en-q5_1\tMIT\thttps://huggingface.co/ggerganov/whisper.cpp
   (local STT model; downloaded into a local volume and verified by SHA-256 before execution)
 Self-hosted fonts\tOFL-1.1\tpublic/fonts/LICENSE.txt carries exact notices; OFL-1.1.txt carries the full license; PROVENANCE.md pins every shipped file
-Demonstration media\tPexels License / NASA public domain\tsee public/demo-assets/CREDITS.md
+Demonstration media\tCC0-1.0 / NASA public domain\tsee public/demo-assets/CREDITS.md
+  (bundled demo photos and the film plate are Wikimedia Commons CC0 dedications, verified per file
+  against the Commons API; the embedded report is a complete work of the US Government)
 Map rendering\tMapLibre GL JS (BSD-3-Clause)\thttps://maplibre.org/maplibre-gl-js/
 Map tiles\tOpenFreeMap public service / MIT server\thttps://openfreemap.org/
   (terms reviewed 2026-08-11 currently permit commercial use without request fees; attribution remains
@@ -96,13 +98,19 @@ PDF image decoders\tBSD-3-Clause / BSD-2-Clause / MIT\thttps://github.com/mozill
   (jbig2.wasm from PDFium, openjpeg.wasm from OpenJPEG, and qcms_bg.wasm from Mozilla's qcms,
   redistributed via pdfjs-dist and served from dist/pdfjs/ so a scanned page renders; each carries
   its upstream notice beside it as dist/pdfjs/LICENSE_*)
-Syntax-highlighting grammars & themes\tMIT and other permissive\thttps://github.com/shikijs/textmate-grammars-themes
-  (TextMate grammars and GitHub themes redistributed via @shikijs/langs / @shikijs/themes; upstream
-  sources and per-grammar licenses are documented in that repository's tm-grammars / tm-themes metadata)
+Syntax-highlighting grammars & themes\tMIT, plus the textmate.org grant for yaml/toml\thttps://github.com/shikijs/textmate-grammars-themes
+  (25 TextMate grammars and the two GitHub themes redistributed via @shikijs/langs / @shikijs/themes.
+  Resolved per grammar against that repository's tm-grammars / tm-themes metadata, 2026-08-17: 23 are
+  MIT — 20 from microsoft/vscode, swift from jtbandes/swift-tmlanguage, kotlin from fwcd/vscode-kotlin,
+  both themes from primer/github-vscode-theme. yaml and toml come from textmate/yaml.tmbundle and
+  textmate/toml.tmbundle, which carry no SPDX tag but state in their bundle README: "Permission to
+  copy, use, modify, sell and distribute this software is granted." That is an unrestricted permissive
+  grant with no attribution clause; it is recorded here because an automated license scan reads it as
+  null, not because anything about it is unresolved)
 Embedded tour documents\tper-document, see below\tsrc/tour/corpus/prism.generated.json
   (byte-for-byte copies embedded for the key-free tour's document-reading chapter; each license
   permits redistribution with this notice)
-  NASA CFD education report excerpt\tUS-government work, public use permitted\thttps://ntrs.nasa.gov/citations/19950004435
+  NASA CFD education report (complete, 14pp)\tUS-government work, public use permitted\thttps://ntrs.nasa.gov/citations/19950004435
   react/README.md\tMIT\thttps://github.com/facebook/react
   cars.json + seattle-weather.csv\tBSD-3-Clause\thttps://github.com/vega/vega-datasets
 `;
