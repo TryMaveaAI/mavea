@@ -41,7 +41,9 @@ than fetching a newer one, so asking for `latest` is what reliably gets you the 
 Prefer a pinned local copy? `npm install -g @mavea/mavea`, then run `mavea`.
 
 **To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
-Gemini / Grok / OpenRouter key. It stays in memory unless you opt into encrypted local
+Gemini / Grok / OpenRouter key. Model usage is billed by that provider under your key, at its
+rates — the model call is the part of a turn that costs money; the app and the speech services
+run on your machine for free. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that
 provider — your key and prompts never pass through Mavéa's own servers, because there aren't
 any. Full options — models, actions, hosting, and the trust boundary — are in
@@ -49,7 +51,9 @@ any. Full options — models, actions, hosting, and the trust boundary — are i
 
 **Local speech:** Mavéa speaks through Apache-2.0
 [Kokoro weights and wrapper](https://github.com/remsky/Kokoro-FastAPI) and transcribes through MIT-licensed
-[whisper.cpp](https://github.com/ggml-org/whisper.cpp). The defaults run on your machine through
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp). Both cost nothing per use, and what they
+produce is yours: publishing a transcript, or a video spoken in Mavéa's voices, owes no fee and no
+credit line — those licenses cover the software, not its output. The defaults run on your machine through
 loopback-only proxies; a deployment that overrides `WHISPER_URL` sends microphone audio to that
 configured endpoint. [Podman](https://podman.io/) is the recommended free/open-source
 container runtime. Docker also works, but Docker Desktop has separate commercial subscription

@@ -18,8 +18,12 @@ provider accounts, usage charges, deployment security, and any action you confir
 **Node >= 24.11** (run `corepack enable` once to activate the pinned pnpm). That's enough for the app
 and its local development proxies; Live requests still go onward to the provider you select.
 
-**Optional: Docker**, only if you want the natural voice (Kokoro TTS is the one containerized
-service). Mavéa's visual and text flows work without it — spoken lines appear as captions instead.
+**Optional: a container runtime**, only if you want local speech — Kokoro TTS (the voice) and
+whisper.cpp STT (mic transcription) are the two containerized services, both running on your
+machine at no per-use cost. Without them Mavéa's visual and text flows still work — spoken lines
+appear as captions, and mic transcription stays off rather than falling back to a cloud service.
+[Podman](https://podman.io/) is the recommended free/open-source runtime; Docker also works under
+its separate terms.
 
 ---
 
