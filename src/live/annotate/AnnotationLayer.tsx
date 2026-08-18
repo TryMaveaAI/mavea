@@ -25,10 +25,11 @@ import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
 import {
   saidTokens,
   findSaidMatch,
-  findEchoedLabel,
+  readSaidText,
   saidRect,
   saidRects,
   rowOf,
+  type SaidText,
 } from './saidTarget';
 import { pollUntilSettled, lastVisible } from './settle';
 import { MarginNoteRail } from './MarginNoteRail';
@@ -81,10 +82,10 @@ function isSpan(kind: Gesture): boolean {
  *  the same exacting way as `at`, so the stroke lands on the real element — never a guess) and
  *  the caption a note / bracket carries. A span whose `to` text isn't on screen keeps only its
  *  near anchor — the geometry then degrades to a single precise arrow rather than a vague sweep. */
-function withSpan(rect: DOMRect, mark: TourMark, host: HTMLElement): Target {
+function withSpan(rect: DOMRect, mark: TourMark, said: SaidText): Target {
   const t: Target = { rect, kind: mark.kind };
   if (isSpan(mark.kind) && mark.to) {
-    const mt = findSaidMatch(host, [mark.to]);
+    const mt = said.find([mark.to]);
     const rt = mt && saidRect(mt);
     if (rt) t.toRect = rt;
   }
@@ -105,14 +106,17 @@ function findTarget(
   generous = false,
 ): Target | null {
   if (mark) {
-    const m = findSaidMatch(host, [mark.at]);
+    // One read of the card's text for this whole resolution: the model's named text and a span's
+    // far anchor come off the same walk.
+    const said = readSaidText(host);
+    const m = said.find([mark.at]);
     // `saidRect` first, and not only for its box: it is what refuses a target the reader cannot
     // SEE. A collapsed accordion keeps its text laid out and clips it to no height, so the words are
     // findable and their box sits at the closed section's own position — the row path below would
     // happily loop that blank space beside the header. Asked once, up front, so both paths inherit
     // the answer.
-    const said = m && saidRect(m);
-    if (m && said) {
+    const saidBox = m && saidRect(m);
+    if (m && saidBox) {
       // Circling a LABEL should loop its whole row (the bar and the value), the way a
       // hand would — but only when the row is genuinely loopable. A full-width strip
       // makes a degenerate flattened lasso, so those fall back to the word-box itself.
@@ -130,7 +134,7 @@ function findTarget(
           return { rect: rr, kind: 'circle', el: m.node.parentElement ?? undefined };
         }
       }
-      const t = withSpan(said, mark, host);
+      const t = withSpan(saidBox, mark, said);
       t.el = m.node.parentElement ?? undefined;
       // A highlight over a phrase that wraps re-touches each rendered line — collect every
       // line box so the marker never smears one fat band across the whole wrap.
@@ -149,9 +153,14 @@ function findTarget(
     return null;
   }
   if (!generous) return null;
+  // Same again for the three passes below — the line's figures, then its names, then the labels
+  // the card itself renders — which each asked the same unchanged card in its own walk. Lazy,
+  // because a stamped `[data-mark]` can carry the pen without any of them reading text at all.
+  let text: SaidText | null = null;
+  const said = (): SaidText => (text ??= readSaidText(host));
   const tokens = line ? saidTokens(line) : null;
   if (tokens?.figures.length) {
-    const m = findSaidMatch(host, tokens.figures);
+    const m = said().find(tokens.figures);
     const r = m && saidRect(m);
     if (r) return { rect: r, kind: 'underline', el: m?.node.parentElement ?? undefined };
   }
@@ -162,7 +171,7 @@ function findTarget(
     if (r.width > 0) return { rect: r, kind, el: stamped };
   }
   if (tokens?.labels.length) {
-    const m = findSaidMatch(host, tokens.labels);
+    const m = said().find(tokens.labels);
     const r = m && saidRect(m);
     if (r) return { rect: r, kind: 'underline', el: m?.node.parentElement ?? undefined };
   }
@@ -170,7 +179,7 @@ function findTarget(
   // prose. Everything above needs the line to carry a figure or a capitalized name, which a
   // conceptual walk over a diagram ("liquidity flows into the book") simply doesn't.
   if (line) {
-    const echo = findEchoedLabel(host, line);
+    const echo = said().echoed(line);
     const r = echo && saidRect(echo);
     if (r) return { rect: r, kind: 'underline', el: echo?.node.parentElement ?? undefined };
   }

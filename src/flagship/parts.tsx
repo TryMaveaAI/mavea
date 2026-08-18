@@ -1,7 +1,7 @@
 // Small building blocks shared across the landing sections: a scroll-reveal wrapper and a
 // centered section header. Keeping these here keeps each section file focused on its own content.
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { useInView } from '../hooks/useInView';
+import { useAmbientPause, useInView } from '../hooks/useInView';
 
 /** A landing section that fades/rises in the first time it scrolls into view. `onIntent` (optional)
  *  fires the first time the user reaches toward this section — hover, focus, or touch — used to warm
@@ -47,6 +47,11 @@ export function Reveal({
     ...shared,
   });
   const [revealRef, inView] = useInView<HTMLElement>(shared);
+  // The entrance is a one-way door (`useInView` defaults to once), so `inView` above can't answer
+  // "is this section on screen RIGHT NOW" — which is the question the section's ambient loops need.
+  // A scrolled-past section keeps animating otherwise: sixteen infinite loops live in the landing's
+  // lower sections alone, and nobody is looking at any of them.
+  const ambientRef = useAmbientPause<HTMLElement>();
   const active = !defer || nearView || intent;
   const signalIntent = () => {
     if (defer) setIntent(true);
@@ -57,6 +62,7 @@ export function Reveal({
       ref={(el) => {
         mountRef.current = el;
         revealRef.current = el;
+        ambientRef.current = el;
       }}
       id={id}
       className={

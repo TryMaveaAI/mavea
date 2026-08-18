@@ -247,8 +247,8 @@
   padding: clamp(24px, 6vh, 72px) 24px;
   overflow-y: auto;
   background: color-mix(in oklab, var(--surface-default) 68%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.05);
-  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px)) saturate(1.05);
+  backdrop-filter: var(--glass-blur, blur(18px)) saturate(1.05);
 }
 
 .ovw-panel {

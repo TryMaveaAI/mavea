@@ -50,6 +50,10 @@
   border-radius: 2px;
   background: var(--presence);
   animation: listen-eq 1s ease-in-out infinite;
+  /* REACTIVE loop — live turn feedback, so the lite tier never pauses it; only the visibility
+     layer may (--reactive-play: paused while the page is hidden or the section is off-screen).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--reactive-play, running);
   transform-origin: center;
 }
 .live-voice .listen-eq i:nth-child(2) {
@@ -65,6 +69,18 @@
 .live-voice .listen-eq i:nth-child(5) {
   animation-delay: 0.48s;
   background: var(--presence-soft);
+}
+/* Transcribing: the mic has closed, so the bars have nothing left to move to — they still, the
+   same way the voice strip's orb holds while speech is being synthesized. The card itself stays
+   put; only its treatment changes, so the beat reads as one continuous state, not a new card. */
+.live-voice .listen-card.is-transcribing .listen-eq i {
+  animation: none;
+  height: 7px;
+  opacity: 0.75;
+}
+.live-voice .listen-card.is-transcribing .listen-caret {
+  animation: none;
+  opacity: 0.4;
 }
 @keyframes listen-eq {
   0%,
@@ -88,6 +104,8 @@
   vertical-align: -2px;
   background: var(--presence);
   animation: listen-caret 0.9s step-end infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 @keyframes listen-caret {
   0%,
@@ -158,6 +176,8 @@
     var(--presence-deep) 100%
   );
   animation: speak-breathe 1.3s ease-in-out infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-voice .composing-dots {
   display: inline-flex;
@@ -169,6 +189,8 @@
   border-radius: 50%;
   background: var(--presence-soft);
   animation: composing-bounce 1.2s ease-in-out infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-voice .composing-dots i:nth-child(2) {
   animation-delay: 0.18s;
@@ -230,6 +252,8 @@
   border-radius: 50%;
   background: var(--warning);
   animation: listen-caret 1.2s ease-in-out infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 
 /* Memory save — the orb in the corner gets a brief aura glow while the fact is being stored.
@@ -327,6 +351,8 @@
     var(--presence-deep) 100%
   );
   animation: speak-breathe 1.3s ease-in-out infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 @keyframes speak-breathe {
   0%,

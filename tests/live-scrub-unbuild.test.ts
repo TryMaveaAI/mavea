@@ -8,7 +8,7 @@ import { sayable } from '../src/voice/tts';
 // track's end the canvas is whole; reveal-time marks remain the floor for slow streams.
 
 const audio: TurnAudio = {
-  pcm: new Float32Array(0),
+  pcm: new Int16Array(0),
   sampleRate: 24000,
   duration: 20,
   spans: [

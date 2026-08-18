@@ -1,0 +1,78 @@
+/* Session token ledger (Settings → Model). Reads as an instrument panel, not a bill: data type,
+   quiet rules, no colour except where a number needs emphasis. */
+.ls-usage-heading {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.usage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.usage-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.usage-totals {
+  display: grid;
+  /* 110px is what makes this land 2×2 in the settings sheet's ~250px column rather than an
+     unbalanced 3+1, and still spread to a single row wherever the panel gets more width. */
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+}
+.usage-totals dt {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.usage-totals dd {
+  margin: 2px 0 0;
+  font-family: var(--font-data);
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.usage-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.usage-sites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.usage-sites li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 3px 2px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 55%, transparent);
+}
+.usage-sites li:last-child {
+  border-bottom: 0;
+}
+.usage-site-name {
+  color: var(--text-secondary);
+}
+.usage-site-tokens {
+  font-family: var(--font-data);
+  color: var(--text-muted);
+}
+.usage-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}

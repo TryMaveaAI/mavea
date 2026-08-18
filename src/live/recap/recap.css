@@ -12,7 +12,7 @@
   justify-content: center;
   padding: 9vh 24px 24px;
   background: rgba(var(--scrim-rgb), 0.62);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   overflow-y: auto;
 }
 .recap-panel {

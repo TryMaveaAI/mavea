@@ -17,6 +17,31 @@ export function onVisibility(cb: (hidden: boolean) => void): () => void {
   return () => document.removeEventListener('visibilitychange', handler);
 }
 
+/**
+ * Freeze the app's ambient CSS loops while the tab is hidden. Every non-face infinite animation
+ * declares `animation-play-state: var(--ambient-play, running)` (the same hook perf-lite.css
+ * pauses through), so one inline `--ambient-play: paused` on the root stops all of them at once —
+ * work no one can see, on a battery someone is paying for. The property is REMOVED (not set to
+ * `running`) when the tab returns, so the stylesheet cascade — including a lite tier's permanent
+ * pause — stays in charge whenever the driver has nothing to say. Install once at boot; the
+ * returned disposer removes both the listener and the inline pause.
+ */
+export function installAmbientPlayDriver(doc: Document = document): () => void {
+  if (typeof doc === 'undefined') return () => {};
+  const root = doc.documentElement;
+  const sync = (hidden: boolean): void => {
+    if (hidden) root.style.setProperty('--ambient-play', 'paused');
+    else root.style.removeProperty('--ambient-play');
+  };
+  sync(doc.visibilityState === 'hidden');
+  const handler = (): void => sync(doc.visibilityState === 'hidden');
+  doc.addEventListener('visibilitychange', handler);
+  return () => {
+    doc.removeEventListener('visibilitychange', handler);
+    root.style.removeProperty('--ambient-play');
+  };
+}
+
 /** Resolves the next time the document becomes visible; resolves immediately if it already is. */
 export function untilVisible(): Promise<void> {
   if (!isHidden()) return Promise.resolve();

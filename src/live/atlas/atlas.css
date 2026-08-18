@@ -13,7 +13,7 @@
   justify-content: center;
   padding: 2.5vh 2.5vw;
   background: rgba(var(--scrim-rgb), 0.72);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 /* Fill most of the viewport so the galaxy has room (no wasted empty space); the expand toggle pushes
    it edge-to-edge. */
@@ -283,6 +283,9 @@
   background: #fff;
   opacity: 0.4;
   animation: atlas-twinkle var(--tw-dur, 3s) ease-in-out var(--tw-delay, 0s) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
 }
 @keyframes atlas-twinkle {
   0%,
@@ -396,6 +399,8 @@
   border-radius: 50%;
   background: var(--warning);
   animation: atlas-loop-pulse 1.4s ease-in-out infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
 }
 @keyframes atlas-loop-pulse {
   0%,
@@ -483,6 +488,8 @@
   stroke-width: 1.5;
   filter: drop-shadow(0 0 7px var(--glow-presence));
   animation: atlas-trail-pulse 2.4s ease-out infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
   transform-origin: center;
   transform-box: fill-box;
 }
@@ -578,7 +585,7 @@
   border-radius: var(--r-sm);
   border: 1px solid #2e3039;
   background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(3px);
+  backdrop-filter: var(--glass-blur, blur(3px));
   text-align: left;
 }
 .atlas-night:hover .atlas-night-card {
@@ -648,7 +655,7 @@
     color-mix(in oklab, var(--hood-color, var(--presence)) 14%, transparent) 0%,
     rgba(14, 15, 19, 0.78) 70%
   );
-  backdrop-filter: blur(2px);
+  backdrop-filter: var(--glass-blur, blur(2px));
   animation: atlas-rehydrate-in 0.4s ease both;
 }
 @keyframes atlas-rehydrate-in {
@@ -695,6 +702,8 @@
   background: var(--hood-color, var(--presence));
   box-shadow: 0 0 10px 2px color-mix(in oklab, var(--hood-color, var(--presence)) 60%, transparent);
   animation: atlas-loop-pulse 1.6s ease-in-out infinite;
+  /* AMBIENT loop — pausable by the lite perf tier. */
+  animation-play-state: var(--ambient-play, running);
 }
 @media (prefers-reduced-motion: reduce) {
   .atlas-rehydrate-tag-dot {
@@ -838,7 +847,7 @@
   width: min(300px, calc(100% - 36px));
   z-index: 8;
   background: rgba(18, 19, 25, 0.88);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   border: 1px solid #2e3039;
   border-radius: 14px;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
@@ -901,7 +910,7 @@
   gap: 8px;
   padding: 8px 13px;
   background: rgba(18, 19, 25, 0.88);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   border: 1px solid #2e3039;
   border-radius: var(--r-full);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
@@ -1016,7 +1025,7 @@
   border-radius: var(--r-full);
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(20, 21, 27, 0.72);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 .atlas-range-label {
   font-family: var(--font-data);

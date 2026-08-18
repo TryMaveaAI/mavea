@@ -445,9 +445,11 @@ describe('generateLive — narration length is specified exactly ONE way per tur
     const system = fake.lastReq!.system;
     expect(system).toContain('SPOKEN LINE');
     expect(system).toMatch(/two or three short sentences/);
-    // the base prompt's own narration bullet no longer states a competing count.
-    expect(system).not.toMatch(/sentence or two/i);
-    expect(system).not.toMatch(/punchy line for a simple ask/i);
+    // the base prompt's own narration bullet no longer states a competing count. Scoped to the
+    // stable base: a catalog prop hint in the per-turn menu may legitimately say "sentence or
+    // two" about a FIELD (longread's standfirst), which is not a narration-length spec.
+    expect(fake.lastReq!.systemBase).not.toMatch(/sentence or two/i);
+    expect(fake.lastReq!.systemBase).not.toMatch(/punchy line for a simple ask/i);
   });
 
   it('gives a lean/trivial ask the "one sentence" spec, not the rich one', async () => {

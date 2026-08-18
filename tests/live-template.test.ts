@@ -208,8 +208,15 @@ describe('template persona and local-font manifest', () => {
           .map((name) => readFileSync(join(familiesDir, name), 'utf8'))
           .join('\n')
       : '';
+    // Only faces that SHIP BYTES need attributing: a face whose src is `local()` alone (the
+    // metric-matched Newsreader fallback, which borrows a system serif so the hero doesn't reflow
+    // when the webfont swaps in) carries no file to license. Scanning per @font-face block rather
+    // than the whole sheet is what keeps that exemption honest — a face with a `url()` is still
+    // caught however it is written.
     const declared = new Set(
-      [...(fontsCss + exportCss).matchAll(/font-family:\s*'([^']+)'/g)].map((match) => match[1]),
+      [...(fontsCss + exportCss).matchAll(/@font-face\s*\{([^}]*)\}/g)]
+        .filter((block) => block[1].includes('url('))
+        .flatMap((block) => [...block[1].matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1])),
     );
     expect(declared.size).toBeGreaterThanOrEqual(11);
     for (const family of declared) expect(license, family).toContain(family);

@@ -838,10 +838,13 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     // SPOKEN LINE section (see the test in live.test.ts that locks that directive).
     expect(base).toMatch(/SPOKEN LINE/);
   });
-  it('gates the spotlight-tour / drawn-gesture teaching to non-brief turns', () => {
+  it('gates the spotlight-tour / drawn-gesture teaching away from BRIEF turns only', () => {
     // A 'brief' turn never wants a walkthrough tour (the base prompt itself says "omit the tour
-    // for a one-glance answer"), so the ~1,400-token teaching section is dropped entirely rather
-    // than sent and then told to ignore it.
+    // for a one-glance answer"), so the ~1,400-token teaching is dropped there rather than sent
+    // and then told to ignore it. It was briefly withheld from 'lean' as well — and that quietly
+    // removed spotlights and pen marks from a large share of real turns, because a lean canvas of
+    // a few focused blocks is still very much worth walking. USER-DIRECTED: the gestures are a
+    // headline behaviour and are not what we save 1.2k tokens on.
     const brief = liveSystemPrompt('frontier', 'brief');
     expect(brief).not.toContain('SPOTLIGHT TOUR');
     expect(brief).not.toContain('DRAWN GESTURE');
@@ -852,10 +855,25 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     expect(rich).toContain('DRAWN GESTURE');
     const lean = liveSystemPrompt('frontier', 'lean');
     expect(lean).toContain('SPOTLIGHT TOUR');
+    expect(lean).toContain('DRAWN GESTURE');
     // default (no complexity passed) matches the common, richer case.
     expect(liveSystemPrompt('frontier')).toContain('SPOTLIGHT TOUR');
     // small tier never gets the frontier addendum at all, tour teaching included.
     expect(liveSystemPrompt('small', 'rich')).not.toContain('SPOTLIGHT TOUR');
+  });
+  // The tour is the ONLY part of the prompt that varies with complexity, and it rides LAST — so
+  // the brief prompt is an exact byte-prefix of the rich one, and a session that flips complexity
+  // extends one provider cache entry instead of paying a cache-write on every flip. Lean carries
+  // the tour (it earns spotlights and pen marks), so it is byte-IDENTICAL to rich — which is the
+  // best case for the cache, not a worse one: those two share a single entry outright.
+  it('brief is an exact byte-prefix of rich, and lean shares rich outright (one cache entry per tier)', () => {
+    for (const tier of ['frontier', 'mid'] as const) {
+      const rich = liveSystemPrompt(tier, 'rich');
+      const brief = liveSystemPrompt(tier, 'brief');
+      expect(rich.startsWith(brief)).toBe(true);
+      expect(brief.length).toBeLessThan(rich.length); // brief really is the shorter prefix
+      expect(liveSystemPrompt(tier, 'lean')).toBe(rich);
+    }
   });
   it('moves safety and honesty rules to the top of the prompt', () => {
     const prompt = liveSystemPrompt('frontier');
@@ -1175,7 +1193,9 @@ describe('hasRenderableImage — the "real image or drop the block" guardrail', 
     // A bundled same-origin /demo-assets image counts too — the same gate the renderers use, so a
     // block the gallery/demos can actually paint isn't dropped.
     expect(
-      hasRenderableImage('carousel', { slides: [{ src: '/demo-assets/images/sete-cidades.jpg' }] }),
+      hasRenderableImage('carousel', {
+        slides: [{ src: '/demo-assets/images/sete-cidades.avif' }],
+      }),
     ).toBe(true);
   });
 

@@ -107,9 +107,22 @@ function heightClash(rowSpecs: SpanSpec[], rowWidth: number, cand: SpanSpec): bo
   return false;
 }
 
+/** Which pass the tiler is running.
+ *  'final' (the default) is the full algorithm — greedy grouping plus the orphan-elimination
+ *  folds — and is what every settled canvas gets.
+ *  'streaming' is for a canvas still growing block-by-block: the greedy grouping is naturally
+ *  append-stable (appending a block can only extend or start the TRAILING row), but the orphan
+ *  folds are not — they reach back into finished rows (`rows[r].unshift(prev.pop())`), so each
+ *  newly closed block could re-span cards the reader is already looking at, an instant snap
+ *  since grid-column is not animatable. The streaming pass therefore skips the folds: rows
+ *  already full at the budget never move again, only the trailing partial row re-packs as it
+ *  grows, and the settle re-tiles once with 'final' — whose output is identical to what a
+ *  one-shot layout of the same blocks always produced. */
+export type LayoutPass = 'final' | 'streaming';
+
 /** Greedily group block indices into rows whose preferred widths fit the column budget,
  *  keeping same-height blocks together and capping a row at maxPerRow cells. */
-function groupRows(specs: SpanSpec[], budget: number): number[][] {
+function groupRows(specs: SpanSpec[], budget: number, pass: LayoutPass): number[][] {
   // At narrower budgets fewer items per row keeps things readable
   const maxPerRow = Math.max(2, Math.round((MAX_PER_ROW * budget) / CSS_GRID));
   const rows: number[][] = [];
@@ -136,6 +149,9 @@ function groupRows(specs: SpanSpec[], budget: number): number[][] {
     rows.push(row);
     i = j;
   }
+  // A streaming canvas stops here: the folds below move blocks between rows, so they run only
+  // on the settle (see LayoutPass).
+  if (pass === 'streaming') return rows;
   // Eliminate LONE blocks ANYWHERE in the grid — a single card that then justifies to full width
   // with its content stranded in a narrow strip (the void the screenshots kept showing). Fold each
   // lone row into a neighbour so the answer tiles into even 2-/3-/4-up rows ("a third or a half"),
@@ -215,13 +231,21 @@ function justifyRow(specs: SpanSpec[], budget: number): number[] {
  * The optional `budget` (1–12, default 12) sets the logical column count for the
  * current viewport. The algorithm works in budget-col space; output `col` values are
  * always mapped back to CSS 12-col space so callers never need to know the budget.
+ *
+ * `pass` selects the full settled layout (default) or the append-stable streaming one —
+ * see LayoutPass.
  */
-export function adaptiveCols(blocks: Block[], lookup?: SpanLookup, budget = CSS_GRID): Block[] {
+export function adaptiveCols(
+  blocks: Block[],
+  lookup?: SpanLookup,
+  budget = CSS_GRID,
+  pass: LayoutPass = 'final',
+): Block[] {
   if (blocks.length === 0) return blocks;
   const effectiveBudget = Math.max(1, Math.min(CSS_GRID, Math.round(budget)));
   const specs = blocks.map((b) => scaleSpec(resolveSpan(b, lookup), effectiveBudget));
   const cols = blocks.map((b) => b.col);
-  for (const row of groupRows(specs, effectiveBudget)) {
+  for (const row of groupRows(specs, effectiveBudget, pass)) {
     const budgetWidths = justifyRow(
       row.map((i) => specs[i]),
       effectiveBudget,

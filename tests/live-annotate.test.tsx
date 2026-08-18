@@ -386,6 +386,51 @@ describe('AnnotationLayer', () => {
     expect(path?.getAttribute('pathLength')).toBe('1');
   });
 
+  // Placement re-runs on every measurement, and a measurement happens whenever the card moves —
+  // which, mid-stream, is constantly. So the generous path's three passes (the line's figures, then
+  // its names, then the labels the card itself renders) have to come off ONE read of the card's
+  // text; they used to be a TreeWalker each, plus one more per echoed candidate.
+  it('resolves a generous target with a single read of the card text per measurement', () => {
+    const restore = mockRangeRects({ 'Order Book': domRect(20, 30, 60, 16) });
+    const walker = vi.spyOn(document, 'createTreeWalker');
+    // Only OUR walks: jsdom's own selector engine builds element walkers for `querySelector`.
+    const textWalks = (): number =>
+      walker.mock.calls.filter((c) => c[1] === NodeFilter.SHOW_TEXT).length;
+    try {
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-spot-id', 'walks');
+      const label = document.createElement('span');
+      label.textContent = 'Order Book';
+      wrap.appendChild(label);
+      document.body.appendChild(wrap);
+      wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+      render(
+        <AnnotationLayer
+          spots={[
+            {
+              spot: 'walks',
+              generous: true,
+              // The figure ("42%") and the name ("Order Flow") are both absent from the card, so
+              // all three passes run before the echoed label finally answers. No stamped
+              // [data-mark] here either — that would short-circuit before the last two.
+              line: 'The 42% share sits under Order Flow in the order book.',
+            },
+          ]}
+        />,
+      );
+      // Two text walks per measurement, and only two: one read of the card's words for all three
+      // said-target passes, one gather of its content boxes for clear space (a different question).
+      act(() => vi.advanceTimersByTime(100)); // the first measurement
+      expect(textWalks()).toBe(2);
+      expect(wrap.querySelector('.ink-stroke')).toBeTruthy(); // it really did resolve the target
+      act(() => vi.advanceTimersByTime(100)); // the read that confirms the geometry
+      expect(textWalks()).toBe(4);
+    } finally {
+      walker.mockRestore();
+      restore();
+    }
+  });
+
   it('a gesture needs a reason: without a model mark or generous mode, no ink', () => {
     const wrap = host('quiet', 'circle');
     render(<AnnotationLayer spots={[{ spot: 'quiet' }]} />);

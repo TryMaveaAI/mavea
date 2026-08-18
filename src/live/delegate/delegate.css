@@ -15,7 +15,7 @@
   /* the fallback triple matters: a scrim that fails to paint is an INVISIBLE click-
      catcher — the app looks frozen with no hint why */
   background: rgb(var(--scrim-rgb, 15 14 18) / 58%);
-  backdrop-filter: blur(7px);
+  backdrop-filter: var(--glass-blur, blur(7px));
   animation: dlgScrimIn var(--m-normal) var(--ease-out);
 }
 
@@ -492,6 +492,9 @@
 @media (prefers-reduced-motion: no-preference) {
   :root[data-voice-sync='on'] .dlg-jelly .presence[data-state='speaking'] .mascot .mouth-open {
     animation: mascot-talk calc(900ms / var(--motion-scale, 1)) var(--ease-in-out) infinite;
+    /* REACTIVE loop — a talk reaction, so the lite tier never pauses it; only the visibility
+       layer may (--reactive-play: paused while the page is hidden or off-screen). */
+    animation-play-state: var(--reactive-play, running);
     opacity: initial;
     transform: initial;
   }
@@ -539,6 +542,9 @@
 .dlg-rounds-track i.now {
   background: color-mix(in oklab, var(--presence) 55%, transparent);
   animation: dlgPulse 1.1s var(--ease-in-out) infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
 }
 
 /* side chip — small attribution inside the exchange log (name + a dot), distinct from the
@@ -755,6 +761,8 @@
   border-radius: var(--r-full);
   background: var(--text-muted);
   animation: dlgBounce 1.2s var(--ease-in-out) infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .dlg-turn.thinking.yours .dlg-typing i {
   background: var(--presence);
@@ -918,6 +926,8 @@
 }
 .dlg-debrief[data-state='loading'] .dlg-debrief-wait {
   animation: dlgPulse 1.4s var(--ease-in-out) infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .dlg-debrief-retry {
   align-self: flex-start;
@@ -1164,7 +1174,7 @@
   .dlg-scrim {
     align-items: flex-end;
     padding: 0;
-    backdrop-filter: blur(5px);
+    backdrop-filter: var(--glass-blur, blur(5px));
   }
   .dlg-panel {
     width: 100%;

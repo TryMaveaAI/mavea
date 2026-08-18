@@ -2,6 +2,16 @@
    MAVÉA · Presence (the aurora jelly) + Canvas components
    ============================================================ */
 
+/* --voice-energy is written ~60×/s while Mavéa speaks (voiceEnergy.ts). Registering it types
+   the value so the engine can scope invalidation to its var() readers — unregistered, every
+   write recomputes style for the writer's entire subtree. It inherits so a write on the wrapper
+   AROUND <Presence/> (the energy sinks) reaches the mouth/aura rules below. */
+@property --voice-energy {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
 /* ---------------------------------------------------------------
    PRESENCE — the aurora jelly (she carries no name on purpose). Mood is hue, state is current:
    the bell's gradient drifts toward one color when something matters
@@ -53,6 +63,12 @@
   transition:
     transform var(--m-expressive) var(--ease-spring),
     filter var(--m-normal) var(--ease-out);
+  /* KEPT deliberately, unlike the seven other will-change sites that were scoped to an interaction
+     attribute: this one is not idle hinting. `.presence[data-state='speaking']` runs the infinite
+     `mascot-talk-body` transform animation (below) for the whole of every spoken line, and the
+     transition above fires on state and dock changes that can arrive at any moment. Promoting a
+     ~150px element is cheap; dropping the hint and re-adding it when the animation starts is too
+     late to help the first frames, on the one element the product is named for. */
   will-change: transform;
 }
 /* Light theme: pastel aurora stops wash out on a bright page — deepen every palette through
@@ -1161,6 +1177,11 @@
 }
 .presence-positioner {
   transition: transform var(--m-cinematic) var(--ease-spring);
+  /* Kept for the same reason as `.presence` above: this is the sanctioned transform lever, and it
+     carries the cinematic dock glide (centre ↔ corner) plus the landing's scroll-driven dock,
+     which updates per animation frame while the reader scrolls. There is no CSS-only signal for
+     "a class is about to change", so scoping this to an interaction attribute would mean dropping
+     the hint for the very transition it exists to keep smooth. */
   will-change: transform;
 }
 .presence-layer .presence {

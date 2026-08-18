@@ -11,8 +11,9 @@
 //
 // Native web search: `{type:'web_search'}` in tools[], only injected when the turn asks
 // for fresh data. OpenAI's own docs caution that search doesn't engage reliably at 'minimal'
-// reasoning effort — the shared transport already clamps 'minimal' to 'low' for every
-// reasoning-model call, so a search turn never lands at the unsupported tier.
+// reasoning effort — the shared transport clamps 'minimal' to 'low' for every reasoning-model
+// call EXCEPT a disposable glimpse (tiny explicit cap, no block types, gpt-5 family), and a
+// search turn is excluded from that exemption by name, so it never lands at the unsupported tier.
 import { openaiResponsesCompatible } from './openaiResponsesCompatible';
 
 export const openaiAdapter = openaiResponsesCompatible({

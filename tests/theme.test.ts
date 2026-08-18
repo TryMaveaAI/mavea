@@ -67,6 +67,13 @@ describe('applyTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('dark');
   });
 
+  it('marks the choice as resolved, which is what overrules the boot splash guess', () => {
+    // index.html's static data-theme="light" is indistinguishable from a chosen light, so the
+    // splash guesses from prefers-color-scheme until this marker says the choice is real.
+    applyTheme('light');
+    expect(document.documentElement.dataset.themeResolved).toBe('');
+  });
+
   it('targets a passed-in document (the Live template paths)', () => {
     const other = document.implementation.createHTMLDocument('other');
     applyTheme('light', other);

@@ -51,12 +51,14 @@
          machine sees Mavéa's pulsing orb instead of a blank white page while the bundle downloads
          and parses. Root() removes #boot on its first commit (src/main.tsx); if the bundle never
          arrives the splash simply stays, which beats a blank page. The CSP above allows inline
-         STYLE but no inline script, so this block is the only boot-time styling possible. Colors
-         are literals because no token CSS has loaded yet; each mirrors its token: #f3f5fb = light
-         --surface-default (light-theme.css — light is the documented startup default, theme.ts, and
-         <html> above carries data-theme="light" so this paints correctly before any script runs),
-         #0a0e15 = dark --surface-default (tokens-base.css), #6e8cff = --presence. The orb copies
-         SurfaceFallback's (rootBoundary.css) exactly, so the splash → React hand-off is invisible. -->
+         STYLE but no inline script, so this block is the only boot-time styling possible — the
+         stored theme choice (localStorage, src/lib/theme.ts) can't be read before that first
+         paint either. Colors are literals because no token CSS has loaded yet; each mirrors its
+         token: #f3f5fb = light --surface-default (light-theme.css — light is the documented
+         startup default, theme.ts, and <html> above carries data-theme="light" so this paints
+         correctly before any script runs), #0a0e15 = dark --surface-default (tokens-base.css),
+         #6e8cff = --presence. The orb copies SurfaceFallback's (rootBoundary.css) exactly, so the
+         splash → React hand-off is invisible. -->
     <style>
       #boot {
         position: fixed;
@@ -67,10 +69,36 @@
         justify-content: center;
         background: var(--surface-default, #f3f5fb);
       }
+      /* Pre-mount guess for a returning dark-mode reader: with no inline script to consult
+         localStorage before this first paint, prefers-color-scheme is the only theme signal CSS
+         has that early, so it stands in for "the stored choice is dark" (the two correlate for
+         the overwhelming majority of readers — this app's toggle doesn't otherwise follow system
+         preference, see theme.ts). The plain #boot selector here is deliberately LESS specific
+         than the :root[data-theme='dark'] rule below, so the instant applyTheme stamps a
+         confirmed dark choice onto <html> (module scope, before React renders) that rule takes
+         over with no discontinuity — same color either side of the handoff. A reader whose
+         *explicit* choice is light while their system sits in dark mode is the one case this
+         guess gets wrong; <html> ships data-theme="light" statically (below) so that value is
+         indistinguishable, pre-boot, from a real confirmed choice — there's no way to tell "not
+         yet known" from "explicitly light" without the inline script the CSP forbids. That
+         reader sees the dark guess for the short module-eval window before Root() removes #boot,
+         never longer. */
+      @media (prefers-color-scheme: dark) {
+        #boot {
+          background: var(--surface-default, #0a0e15);
+        }
+      }
       /* applyTheme stamps data-theme at module scope, before React renders — a returning DARK
          reader is corrected the instant the bundle executes, not at first paint. */
       :root[data-theme='dark'] #boot {
         background: var(--surface-default, #0a0e15);
+      }
+      /* …and it also stamps data-theme-resolved, which is what tells a REAL light choice apart
+         from the static default above. The moment it lands, the guess above is overruled — so the
+         reader who keeps a light app on a dark system sees the guess only until the bundle
+         executes, and never after. */
+      :root[data-theme-resolved][data-theme='light'] #boot {
+        background: var(--surface-default, #f3f5fb);
       }
       .boot-orb {
         width: 28px;

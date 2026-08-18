@@ -16,6 +16,7 @@ import type { DemoCastMember } from '../demo/cast';
 import { stashSeedQuery } from '../live/seedQuery';
 import { useScrollDock } from '../app/useScrollDock';
 import { usePresenceColor } from '../app/usePresenceColor';
+import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import { useCommandPalette } from '../live/features/useCommandPalette';
 import { TopbarSearchButton } from '../live/features/TopbarSearchButton';
 import { ThemeToggle } from '../live/setup/ThemeToggle';
@@ -51,6 +52,7 @@ export function FlagshipHost(): ReactElement {
   // Scroll-dock: the big hero orb glides into the topbar brand slot as you scroll down and
   // grows back as you scroll up. Always "on home" here — this host IS the home.
   const { appRef, brandDotRef, layerRef, homeStageRef } = useScrollDock(false, true);
+  const voiceSinkRef = useVoiceEnergySink();
 
   // First-run walkthrough invite: shown once, never a forced auto-launch (the tour stays
   // reachable from "Take the tour", Explore, ⌘K, and ?tour=1 links). EVERY route into the
@@ -117,7 +119,7 @@ export function FlagshipHost(): ReactElement {
           lazy chunk loads, a same-footprint ghost holds the slot so the face fades in in place
           instead of popping into an empty hero. */}
       <div className="presence-layer idlehome" ref={layerRef}>
-        <div className="presence-positioner">
+        <div className="presence-positioner" ref={voiceSinkRef}>
           <Suspense fallback={<div className="presence-ghost" aria-hidden="true" />}>
             <Presence state="idle" emotion="neutral" gaze="center" muted={false} hidden={false} />
           </Suspense>

@@ -8,6 +8,7 @@ import { ADAPTERS, PROVIDERS, VISIBLE_PROVIDERS } from '../src/live/providers';
 import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
+import { speculate } from '../src/live/ghost/speculate';
 
 // Locks the streaming substrate — the trickiest part of each adapter. We mock
 // fetch with a real ReadableStream body in each provider's wire format and assert
@@ -409,6 +410,113 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
     expect(body.reasoning_effort).toBe('low');
     expect(body.max_completion_tokens).toBe(1500);
     expect(body.temperature).toBeUndefined();
+  });
+});
+
+// The floor above is a reservation for hidden thinking — and a GLIMPSE does none. A caller that
+// declares `minimal` thinking AND sizes its own budget (the ghost speculation off a half-spoken
+// sentence, a node breakdown, a grounding resolve) was paying the 1500-token floor on a reasoning
+// model: the default provider IS one, and up to three glimpses fire per listen, so the "150-token"
+// ghost billed an order of magnitude more than it asked for. Asking for the `minimal` tier removes
+// the hidden pass the floor protects against, which is exactly what makes dropping the floor safe.
+// The two move TOGETHER — a floor removed while the model still thinks is how a small caller pays
+// for reasoning and receives an empty completion.
+describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
+  async function responsesBody(
+    model: string,
+    extra: Partial<LiveRequest> = {},
+  ): Promise<Record<string, unknown>> {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openaiAdapter.generate({ ...req, ...extra }, { provider: 'openai', model, apiKey: 'k' });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    return JSON.parse(init.body as string) as Record<string, unknown>;
+  }
+
+  const glimpse: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
+
+  it('Responses: a gpt-5 glimpse asks for minimal effort and keeps its own 150-token budget', async () => {
+    const body = await responsesBody('gpt-5.4-nano', glimpse);
+    expect(body.reasoning).toEqual({ effort: 'minimal' });
+    expect(body.max_output_tokens).toBe(150);
+  });
+
+  it('Responses: an o-series model has no minimal tier, so it keeps low effort AND the floor', async () => {
+    // The value would be rejected outright there — the saving is never worth a 400.
+    const body = await responsesBody('o4-mini', glimpse);
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect(body.max_output_tokens).toBe(1500);
+  });
+
+  it('Responses: a real canvas turn asking for minimal thinking keeps low effort AND the floor', async () => {
+    // A lean ask legitimately asks for minimal thinking (effort.ts pins it there), so blockTypes
+    // is what separates the turn the reader is waiting on from a disposable glimpse. Without this
+    // the cheapest, most common turn would lose the protection the floor exists for.
+    const body = await responsesBody('gpt-5.4-nano', { ...glimpse, blockTypes: ['insight'] });
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect(body.max_output_tokens).toBe(1500);
+  });
+
+  it('Responses: a glimpse that also wants web search stays at medium — grounding outranks it', async () => {
+    // Search is reasoning-gated: at the lowest tier the tool doesn't engage and the "saving" is an
+    // ungrounded answer.
+    const body = await responsesBody('gpt-5.4-nano', { ...glimpse, tools: { webSearch: true } });
+    expect(body.reasoning).toEqual({ effort: 'medium' });
+    expect(body.max_output_tokens).toBe(8000);
+  });
+
+  it('Responses: a caller that did NOT size its own budget still gets the floor', async () => {
+    // Minimal thinking alone is not the signal — both dials have to be set on purpose.
+    const body = await responsesBody('gpt-5.4-nano', { thinkingLevel: 'minimal' });
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect(body.max_output_tokens).toBe(1500);
+  });
+
+  it('chat-completions: the same rule, gated on the model the gateway routes to', async () => {
+    const bodyFor = async (model: string): Promise<Record<string, unknown>> => {
+      const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
+      vi.stubGlobal('fetch', fetchMock);
+      await openrouterAdapter.generate(
+        { ...req, ...glimpse },
+        { provider: 'openrouter', model, apiKey: 'k' },
+      );
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      vi.unstubAllGlobals();
+      return JSON.parse(init.body as string) as Record<string, unknown>;
+    };
+    const gpt5 = await bodyFor('openai/gpt-5-mini');
+    expect(gpt5.reasoning_effort).toBe('minimal');
+    expect(gpt5.max_completion_tokens).toBe(150);
+    // A gateway can route anywhere, and 'minimal' is not universally accepted — so anything but
+    // the family that documents the tier keeps today's request exactly as it was.
+    const oSeries = await bodyFor('openai/o4-mini');
+    expect(oSeries.reasoning_effort).toBe('low');
+    expect(oSeries.max_completion_tokens).toBe(1500);
+  });
+
+  it('the ghost glimpse itself lands on the wire as one — and still parses its cards', async () => {
+    // End-to-end over the real adapter (no provider mock): speculate's request shape is what has
+    // to trip the exemption, not a hand-copied approximation of it. And it must still WORK —
+    // ghosts are default-on and user-visible.
+    const fetchMock = vi.fn(async () =>
+      streamResponse(
+        [
+          'data: {"type":"response.output_text.delta","delta":"{\\"ghosts\\":[{\\"kind\\":\\"forming\\",\\"title\\":\\"Bloom forecast\\"}]}"}\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const cards = await speculate(
+      'we are thinking Tokyo in',
+      { provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' },
+      new AbortController().signal,
+    );
+    expect(cards).toEqual([{ kind: 'forming', title: 'Bloom forecast' }]);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.reasoning).toEqual({ effort: 'minimal' });
+    expect(body.max_output_tokens).toBe(150);
   });
 });
 
@@ -1041,7 +1149,7 @@ describe('provider registry — every provider is wired + carries picker metadat
 // ships the whole thing as the system message caps the cache at the base and re-buys the replayed
 // history every turn. These pin the split: stable base stays in the system slot, the per-turn delta
 // leads the user turn (so the model still reads every instruction, in order).
-describe('prompt-cache prefix split (OpenAI-family adapters)', () => {
+describe('prompt-cache prefix split', () => {
   const BASE = 'STABLE BASE PROMPT — the part that never changes.';
   const PER_TURN = 'THIS TURN — the component menu and hero picks.';
   const splitReq: LiveRequest = {
@@ -1067,6 +1175,57 @@ describe('prompt-cache prefix split (OpenAI-family adapters)', () => {
     const parts = userTurn.content as { type: string; text: string }[];
     expect(parts[0].text).toBe(PER_TURN);
     expect(parts.some((p) => p.text === 'How should I budget?')).toBe(true);
+  });
+
+  it('Anthropic sends ONE cached system block (1h TTL), delta folded into the user turn, and a second breakpoint on the last history message', async () => {
+    // Anthropic caching is prefix-based, so a second (per-turn) system block sat BEFORE the
+    // history and billed the whole replayed conversation at full price every turn. The split
+    // must match the other adapters: stable base alone in the system slot, per-turn delta at
+    // the head of the user turn — plus a breakpoint on the last history message so
+    // `system + history` caches, both on the 1h TTL (a voice pause > 5 min otherwise repays
+    // the entire cold prompt).
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await anthropicAdapter.generate(splitReq, {
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5',
+      apiKey: 'k',
+    });
+
+    const body = bodyOf(fetchMock);
+    const system = body.system as { text: string; cache_control?: unknown }[];
+    expect(system).toHaveLength(1);
+    expect(system[0].text).toBe(BASE);
+    expect(system[0].cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+    const messages = body.messages as { role: string; content: unknown }[];
+    // Last history message carries the second breakpoint…
+    const lastHistory = messages[messages.length - 2].content as {
+      text: string;
+      cache_control?: unknown;
+    }[];
+    expect(lastHistory[0].text).toBe('earlier question');
+    expect(lastHistory[0].cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+    // …and the user turn leads with the per-turn delta, ahead of the user's own words.
+    const userParts = messages[messages.length - 1].content as { text?: string }[];
+    expect(userParts[0].text).toBe(PER_TURN);
+    expect(userParts.some((p) => p.text === 'How should I budget?')).toBe(true);
+  });
+
+  it('Anthropic leaves a caller without systemBase exactly as it was (plain ephemeral, untouched messages)', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await anthropicAdapter.generate(
+      { system: 'whole prompt', history: [{ role: 'user', content: 'earlier' }], user: 'hi' },
+      { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' },
+    );
+    const body = bodyOf(fetchMock);
+    const system = body.system as { text: string; cache_control?: unknown }[];
+    expect(system).toEqual([
+      { type: 'text', text: 'whole prompt', cache_control: { type: 'ephemeral' } },
+    ]);
+    const messages = body.messages as { role: string; content: unknown }[];
+    expect(messages[0]).toEqual({ role: 'user', content: 'earlier' });
+    expect(messages[1]).toEqual({ role: 'user', content: 'hi' });
   });
 
   it('OpenRouter sends the base as a cache-marked system block, delta folded into the user turn', async () => {

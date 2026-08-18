@@ -55,7 +55,7 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--grid-line);
   background: color-mix(in oklab, var(--surface-default) 72%, transparent);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   z-index: 5;
 }
 

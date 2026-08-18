@@ -35,6 +35,7 @@ import type { TourMark } from '../../engine/liveSchema';
 import { friendlyAsk } from '../friendlyAsk';
 import { validateMindShape } from '../mindshape/validate';
 import { encryptContent, decryptContent } from '../contentVault';
+import { registerStoreShedder, replaceStored, writeLocal } from '../../lib/localBudget';
 
 /** Local Mode guard — main removed lifecycle's isMode as dead code, so the store owns it. */
 function isMode(v: unknown): v is Mode {
@@ -60,7 +61,15 @@ export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** Keep only the last N turns — enough thread to continue, bounded for localStorage. */
 export const SESSION_TURNS_CAP = 10;
 /** Total serialized budget; oldest frames are shed to fit, and a session that still doesn't
- *  fit is skipped rather than risking the whole localStorage quota. */
+ *  fit is skipped rather than risking the whole localStorage quota.
+ *
+ *  This ceiling only bounds THIS store. localStorage is one shared ~5MB quota and the per-store
+ *  ceilings sum past it (course frames 16×150KB + library 12×240KB + this 600KB + a dozen
+ *  smaller stores), which shrinking any single ceiling cannot fix — so the write goes through
+ *  the shared ledger in `lib/localBudget` instead: a quota refusal sheds from the largest
+ *  Mavéa-owned cache and retries, and a write that still can't land says so once in the console
+ *  rather than losing a conversation silently. This store volunteers its own oldest-turn shed
+ *  (see shedOldestTurn) to that ledger. */
 const MAX_SESSION_BYTES = 600_000;
 /** Inline data: URIs (e.g. a generated image) above this are dropped before storage — the
  *  rest of the canvas restores fine and an image is cheap to regenerate (same as the library). */
@@ -232,11 +241,33 @@ async function writeEncrypted(session: SavedSession): Promise<void> {
     if (typeof localStorage === 'undefined') return;
     const enc = await encryptContent(session);
     if (gen !== writeGen) return; // a newer write (or a clear) has since started
-    localStorage.setItem(SESSION_STORAGE_KEY, enc);
+    // Through the shared ledger, which sheds from the largest Mavéa-owned cache on a full quota
+    // and warns once if the write still can't land. Never thrown to the caller (continuity is a
+    // convenience), but never silent either: a dropped session otherwise looks like the app
+    // randomly forgetting a conversation, with nothing anywhere saying why.
+    await writeLocal(SESSION_STORAGE_KEY, enc);
   } catch {
-    /* storage full/unavailable — the session simply won't survive a reload */
+    /* storage unavailable — the session simply won't survive a reload */
   }
 }
+
+/** This store's contribution to the shared budget (lib/localBudget): drop the OLDEST turn and
+ *  rewrite, which is exactly what saveSession does when a session overruns MAX_SESSION_BYTES —
+ *  oldest first, the latest canvas always kept. A single-turn session sheds nothing: that turn
+ *  IS the conversation a reload would come back to. */
+async function shedOldestTurn(): Promise<number> {
+  const session = cache;
+  if (!session || session.frames.length < 2) return 0;
+  const next: SavedSession = { ...session, frames: session.frames.slice(1) };
+  // Claim the write BEFORE encrypting, so a save already in flight can't resolve afterwards and
+  // put the shed turn straight back on disk.
+  const gen = ++writeGen;
+  const enc = await encryptContent(next);
+  if (gen !== writeGen) return 0; // a newer save started mid-encrypt — the blob is its business
+  cache = next;
+  return replaceStored(SESSION_STORAGE_KEY, enc);
+}
+registerStoreShedder(SESSION_STORAGE_KEY, shedOldestTurn);
 
 /** Synchronous read: legacy plaintext (or the crypto-unavailable fallback) parses directly as
  *  JSON — decode and re-encrypt it right away. Real ciphertext isn't valid JSON, so this yields
@@ -372,9 +403,18 @@ export function saveSession(
       .filter((m): m is ChatMessage => m !== null);
     let session: SavedSession = { v: 1, savedAt: now, history: leanHistory, frames: lean };
     let raw = JSON.stringify(session); // sizing probe only — the actual write is encrypted below
-    // Over budget: shed oldest frames until it fits — the latest canvas matters most.
-    while (raw.length > MAX_SESSION_BYTES && lean.length > 1) {
-      lean = lean.slice(1);
+    // Over budget: shed oldest frames until it fits — the latest canvas matters most. Shedding is
+    // decided by arithmetic on per-frame sizes (each dropped frame removes its own bytes plus the
+    // comma that joined it), so an oversized session costs ONE extra serialisation pass instead of
+    // re-stringifying the whole ~600KB session once per dropped frame on the main thread.
+    if (raw.length > MAX_SESSION_BYTES && lean.length > 1) {
+      let size = raw.length;
+      let drop = 0;
+      while (size > MAX_SESSION_BYTES && lean.length - drop > 1) {
+        size -= JSON.stringify(lean[drop]).length + 1;
+        drop++;
+      }
+      lean = lean.slice(drop);
       session = { ...session, frames: lean };
       raw = JSON.stringify(session);
     }

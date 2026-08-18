@@ -30,11 +30,6 @@ const LEAN_PX_PER_CARD = 320_000; // sparser than a rich canvas, but never a sin
  *  viewport-independent — screen size must never inflate an answer the user wanted tight. */
 const BRIEF_BLOCKS = 3;
 
-/** Extra block budget for depth≥2 "Go deeper" drawer content on teaching answers.
- *  These blocks live in collapsible drawers and do NOT appear on the main canvas,
- *  so they don't inflate the visible floor or slow first paint. */
-export const DEEP_BLOCKS = 6;
-
 /** Target block count for an answer of the given complexity. A 'rich' (default) answer
  *  fills the current viewport; a 'lean' one stays small; a 'brief' one is tight regardless of
  *  screen. Falls back to a sensible count off-DOM (e.g. the Node eval runner), so callers never

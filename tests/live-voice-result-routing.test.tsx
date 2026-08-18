@@ -129,6 +129,41 @@ describe('LiveApp — a finished voice result is never silently dropped', () => 
     expect(document.querySelector('.live-listen.heard')).toBeNull();
   });
 
+  // The gap the user reported: the mic closes and every "I'm hearing you" indicator unmounts at
+  // once, so the surface is blank for the length of a transcription — which reads as not having
+  // been heard at all.
+  it('holds the listening card from the provisional end of speech through transcription', async () => {
+    render(<LiveApp />);
+    const card = (): Element | null => document.querySelector('.listen-card');
+    const stilled = (): boolean => !!document.querySelector('.listen-card.is-transcribing');
+
+    await act(async () => voice.state?.({ phase: 'listening' }));
+    await waitFor(() => expect(card()).not.toBeNull());
+    expect(stilled()).toBe(false);
+
+    // The mic's tail-watcher says they have plainly stopped — ~1.3s before the phase changes.
+    await act(async () => voice.state?.({ phase: 'listening', speechEnding: true }));
+    await waitFor(() => expect(stilled()).toBe(true));
+
+    // A mid-thought pause, taken back: the card returns to reading as an open mic.
+    await act(async () => voice.state?.({ phase: 'listening', speechEnding: false }));
+    await waitFor(() => expect(stilled()).toBe(false));
+
+    // A plain listening event carries no opinion about the tail, so it must not flap the cue.
+    await act(async () => voice.state?.({ phase: 'listening', speechEnding: true }));
+    await waitFor(() => expect(stilled()).toBe(true));
+    await act(async () => voice.state?.({ phase: 'listening' }));
+    expect(stilled()).toBe(true);
+
+    // Transcription proper: the mic is closed, and the card is still the thing on screen.
+    await act(async () => voice.state?.({ phase: 'transcribing' }));
+    expect(card()).not.toBeNull();
+
+    // …and it goes when the turn does, not before.
+    await act(async () => voice.state?.({ phase: 'idle' }));
+    await waitFor(() => expect(card()).toBeNull());
+  });
+
   it('tracks the echo gate in TAP mode too, not only always-on', async () => {
     // `speak()` arms the gate in every mic mode, but the disarm used to be gated on always-on —
     // so in Tap/Hold it stayed armed forever and every later utterance took the barge path,

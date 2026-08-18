@@ -97,3 +97,25 @@ describe('automaticPresenceStyle — state/content → personality', () => {
     ).toBe('hybrid');
   });
 });
+
+describe('livePresence — the transcription gap', () => {
+  it('holds a working face while the utterance is being transcribed', () => {
+    // The mic has closed and nothing has been submitted, so the turn machine is idle: without
+    // this branch the face drops to resting mid-thought, which read as "it stopped listening".
+    expect(livePresence('idle', false, false, 'neutral', false, true)).toEqual({
+      state: 'loading',
+      emotion: 'neutral',
+      gaze: 'center',
+    });
+  });
+
+  it('yields to an open mic and to an interjection', () => {
+    expect(livePresence('idle', true, false, 'neutral', false, true).state).toBe('listening');
+    expect(livePresence('idle', false, true, 'neutral', false, true).state).toBe('speaking');
+  });
+
+  it('leaves every existing caller unchanged (it defaults off)', () => {
+    expect(livePresence('idle', false).state).toBe('idle');
+    expect(livePresence('showing', false, false, 'warm', false, false).state).toBe('showing');
+  });
+});

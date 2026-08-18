@@ -1,11 +1,14 @@
 // Shared measure-until-still machinery for everything that anchors to live card geometry —
 // the per-card ink portals (AnnotationLayer) and the margin-note rail (MarginNoteRail). Cards
 // stream in, reveal, scale under the spotlight, and re-tile on resize; anything positioned
-// against them must poll until the layout is genuinely at rest, then stay armed for the next
-// movement, rather than trusting a one-shot delay.
+// against them must measure until the layout is genuinely at rest, then stay armed — on the
+// region's own resize/mutation/transition events — for the next movement, rather than trusting a
+// one-shot delay.
 
-const POLL_MS = 100; // how often a not-yet-settled measurement is retried
-const MAX_POLLS = 18; // ~1.8s ceiling — generous for a reveal transition or a takeover's entrance
+const POLL_MS = 100; // how often a not-yet-settled measurement is retried while it may still be moving
+const SLOW_POLL_MS = 500; // …and once a region has proven it does not come to rest (see `nextDelay`)
+const MAX_FAST_POLLS = 18; // ~1.8s at the fast cadence — generous for a reveal or a takeover's entrance
+const MAX_SLOW_POLLS = 12; // then ~6s of slow follow-up before a moving region is left where it is
 const STABLE_STREAK = 2; // this many identical reads in a row reads as "stopped moving"
 
 /** Chrome the pen itself renders (or the badge state it stamps on the host) — mutations there
@@ -18,16 +21,28 @@ function isInkNode(n: Node): boolean {
   return !!el?.closest(INK_CHROME);
 }
 
-/** Poll `measure` until its result's geometry (per `fingerprint`) stops changing for
- *  `STABLE_STREAK` reads in a row, or `MAX_POLLS` is exhausted — reporting every successful read
- *  along the way via `onResult`, never a null. That's the core of the contract: a caller's placed
- *  result is only ever REPLACED by a fresh, real placement, never cleared just because one attempt
- *  found nothing yet (a card mid-reveal, a host not mounted this tick). Also re-arms on the
- *  resolved host's own resize (a card that grows from streamed content), on a window resize, and
- *  on any real content mutation inside the host (a block sorting its rows, a toggle revealing
- *  more of them — neither changes the host's outer box, so only a mutation observer sees them),
- *  restarting the settle count rather than trusting a blind one-shot re-check. Returns a cleanup
- *  that stops every timer/observer it started. */
+/** Measure until the result's geometry (per `fingerprint`) stops changing for `STABLE_STREAK` reads
+ *  in a row, reporting every successful read along the way via `onResult`, never a null. That's the
+ *  core of the contract: a caller's placed result is only ever REPLACED by a fresh, real placement,
+ *  never cleared just because one attempt found nothing yet (a card mid-reveal, a host not mounted
+ *  this tick).
+ *
+ *  Once settled, further reads are EVENT-DRIVEN: the resolved host's own resize (a card that grows
+ *  from streamed content), a window resize, the host's transitions landing, and any real content
+ *  mutation inside the host (a block sorting its rows, a toggle revealing more of them — neither
+ *  changes the host's outer box, so only a mutation observer sees them). The timer is the bounded
+ *  fallback for the movement none of those can report: geometry that changed because something
+ *  OUTSIDE the host did (the grid re-tiling under it, an ancestor's transform).
+ *
+ *  It is bounded twice over, which is what keeps a mark on a streaming canvas from re-measuring
+ *  forever. An event no longer resets the settle state, so a re-arm whose geometry reproduces what
+ *  is already drawn confirms it in ONE read instead of paying a fresh two-read settle — churn that
+ *  doesn't move the mark (a countdown ticking, a card growing below it) costs a single read. And a
+ *  region that keeps genuinely moving spends its fast budget once, then drops to `SLOW_POLL_MS` and
+ *  finally stops chaining, after which each event buys exactly one read rather than a new burst.
+ *  Settling refills the budget, so a card that comes to rest is back on the fast path.
+ *
+ *  Returns a cleanup that stops every timer/observer it started. */
 export function pollUntilSettled<T>(
   measure: () => T | null,
   fingerprint: (result: T) => string,
@@ -36,6 +51,8 @@ export function pollUntilSettled<T>(
 ): () => void {
   let cancelled = false;
   let timer: number | undefined;
+  /** Reads taken since this region last held still — the budget that decides the cadence and when
+   *  to stop chaining. Only a settled read refills it; events never do. */
   let attempts = 0;
   let lastKey: string | null = null;
   let streak = 0;
@@ -82,9 +99,13 @@ export function pollUntilSettled<T>(
     }
   };
 
+  /** How long before the next read. Fast while the layout is plausibly still settling; slow once
+   *  this region has burned its fast budget without ever holding still, so following a canvas that
+   *  streams for ten seconds costs a fifth as much and coalesces bursts into a wider window. */
+  const nextDelay = (): number => (attempts >= MAX_FAST_POLLS ? SLOW_POLL_MS : POLL_MS);
+
   const tick = (): void => {
     if (cancelled) return;
-    attempts++;
     const result = measure();
     if (result) {
       armHost(hostOf(result));
@@ -92,22 +113,40 @@ export function pollUntilSettled<T>(
       streak = key === lastKey ? streak + 1 : 1;
       lastKey = key;
       onResult(result);
-      if (streak >= STABLE_STREAK) return; // settled — a later resize/mutation re-arms us
+      if (streak >= STABLE_STREAK) {
+        attempts = 0; // at rest: the region earns its fast budget back for the next real move
+        return; // settled — a later resize/mutation re-arms us
+      }
     }
-    if (attempts >= MAX_POLLS) return; // give up cleanly; whatever's already placed stays placed
-    timer = window.setTimeout(tick, POLL_MS);
+    attempts++;
+    // Nothing has ever landed here: the old ceiling stands. A target that hasn't resolved in ~1.8s
+    // isn't going to (the model named text this card doesn't carry), and re-measuring a card that
+    // will never answer is pure cost. Once something IS placed, a still-moving region is followed
+    // at the slow cadence for a while longer before we leave the mark where it is.
+    const ceiling = lastKey === null ? MAX_FAST_POLLS : MAX_FAST_POLLS + MAX_SLOW_POLLS;
+    if (attempts >= ceiling) return; // give up cleanly; whatever's already placed stays placed
+    timer = window.setTimeout(tick, nextDelay());
   };
 
   const restart = (): void => {
     if (cancelled) return;
-    attempts = 0;
-    lastKey = null;
-    streak = 0;
     window.clearTimeout(timer);
+    // A mark that has NEVER placed gets its budget back, because a re-arm means the page just
+    // changed and the text it is looking for may only now exist — spending a budget meant for
+    // following a MOVING mark on one that has never resolved is the wrong trade. (Note: before a
+    // host resolves there are no element observers armed, so the only re-arm here is a window
+    // resize; this hardens the intent rather than changing the common path.)
+    if (lastKey === null) attempts = 0;
+    // For an ALREADY-PLACED mark this is deliberately NOT a reset of `lastKey`/`streak`/`attempts`. The settle state describes the
+    // REGION, not one burst of events: an event whose re-measure reproduces the placed geometry is
+    // the confirming read, so a card mutating its way through a stream settles again in one read
+    // instead of restarting a two-read chain per delta — and a region that never settles can't
+    // buy a fresh fast budget by mutating, which is exactly how the poll used to run at 10Hz for
+    // the whole length of an answer.
     // Deferred, not synchronous: resize events arrive in bursts (a drag fires dozens per
     // second), and a measure can now include the clear-space occupancy walk — one poll-interval
     // of settling coalesces the burst into a single re-measure.
-    timer = window.setTimeout(tick, POLL_MS);
+    timer = window.setTimeout(tick, nextDelay());
   };
 
   timer = window.setTimeout(tick, POLL_MS);

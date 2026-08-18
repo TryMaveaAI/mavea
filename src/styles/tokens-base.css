@@ -93,6 +93,14 @@
   --glass-blur-soft: blur(12px);
   --glass-blur-faint: blur(10px);
 
+  /* Frosts whose strength matches none of the three (a 3px veil on a scrim, an 8px chip frost)
+     keep their own radius as the var() fallback instead of minting a token per pixel value:
+       backdrop-filter: var(--glass-blur, blur(8px));
+     --glass-blur is deliberately NOT defined here — undefined, every site renders its fallback —
+     it exists solely so the lite tier can collapse ALL of them to `none` with one line
+     (see styles/perf-lite.css). Never hardcode `backdrop-filter: blur(...)` directly;
+     tests/perf-lite-css.test.ts scans for it. */
+
   /* --- spacing --- */
   --s-xs: 4px;
   --s-sm: 8px;

@@ -447,9 +447,10 @@ THE BLANK SPACE — when a value is the USER'S to give, leave a glowing hole ins
 VARIETY IN SERVICE OF THE ANSWER — aim for 4-5+ different block types drawn from the per-turn menu and the preferred list above; when a richer component presents the data as clearly as a plain one, choose the richer one. Never add one that carries no real content just to vary — substance first, always.`;
 
 /** The spotlight-tour + drawn-gesture teaching (~1,400 tokens) — genuinely only pays for
- *  itself on a multi-part answer worth walking through. Kept out of a 'brief' turn's prompt
- *  entirely (see liveSystemPrompt below) rather than sent every time and then told to omit
- *  it, since a 'brief' reply is by definition the one-or-few-glance case the tour skips anyway. */
+ *  itself on a multi-part answer worth walking through. Kept out of 'brief' AND 'lean' prompts
+ *  entirely (see liveSystemPrompt below) rather than sent every time and then told to omit it:
+ *  a 'brief' reply is by definition the one-or-few-glance case the tour skips anyway, and a
+ *  'lean' canvas is a couple of focused blocks no walkthrough would ever tour. */
 const TOUR_GESTURE_ADDENDUM = `
 
 SPOTLIGHT TOUR — for any SUBSTANTIVE answer (a recipe, how-to, explanation, plan, comparison, or anything with a few distinct parts), INCLUDE a "tour": an array of {"index": <0-based block index>, "say": <one warm spoken line>} walking 3-5 KEY blocks in order. Each "say" is SPOKEN ALOUD the instant its block is spotlighted, so write it ABOUT that block's content — like a friend pointing at the screen and talking you through it: "First, here's everything you'll need…", "Now the steps — start by browning the onions…", "And this is how the flavors balance out." Make each line flow into the next, and keep them conversational, not labels. Lead with the most important block. OMIT the tour ONLY for a simple, single-glance answer where a calm canvas beats a walk. Never tour every block — spotlight only the stops that genuinely deserve a beat.
@@ -458,8 +459,11 @@ DRAWN GESTURE — while speaking a stop, Mavéa DRAWS on that block like a frien
 /** Directives that go out on EVERY turn with identical wording — the icon vocabulary, the
  *  "what you understood" chips, and the follow-up chips. They used to travel in the per-turn
  *  suffix, which is the one part of the prompt the providers bill at full rate every single turn;
- *  as fixed text they belong in the cached prefix instead. Appended last so each (tier, complexity)
- *  prefix stays byte-stable, which is what the cache actually keys on. */
+ *  as fixed text they belong in the cached prefix instead. Appended BEFORE the tour addendum so
+ *  each (tier, complexity) prefix stays byte-stable, which is what the cache actually keys on —
+ *  and, with the tour as the ONLY trailing difference between complexities, the brief/lean prompt
+ *  is an exact byte-prefix of the rich one, so a session that flips complexity extends the same
+ *  cache entry instead of writing (and re-paying) a second. */
 const STATIC_TURN_ADDENDUM = `
 
 ICONS — the optional "icon" field on any component must be EXACTLY one of these names (anything else draws nothing): ${ICON_KEYS.join(' ')}. Pick the closest fit, or omit "icon" when none matches — never invent a name.
@@ -472,17 +476,23 @@ Also offer "chips": string[] — follow-ups that go DEEPER than what the canvas 
  * The system prompt for a model of the given capability tier. Small/local models
  * get the compact base prompt (the 8 core blocks); stronger models also get the
  * frontier cousins for richer canvases. `complexity` (default 'rich', the common case)
- * drops the spotlight-tour/drawn-gesture teaching for a 'brief' ask, which never wants a
- * tour anyway — real prompt-size savings on the turns that need it least.
+ * drops the spotlight-tour/drawn-gesture teaching for a 'brief' or 'lean' ask — neither
+ * ever wants a tour — and the tour rides LAST so the brief/lean prompt is a byte-prefix
+ * of the rich one (see STATIC_TURN_ADDENDUM above for why that matters to the cache).
  */
 export function liveSystemPrompt(
   tier: 'frontier' | 'mid' | 'small',
   complexity: AskComplexity = 'rich',
 ): string {
   if (tier === 'small') return LIVE_SYSTEM_PROMPT + STATIC_TURN_ADDENDUM;
-  const withBlocks = LIVE_SYSTEM_PROMPT + FRONTIER_BLOCKS_ADDENDUM;
-  const withTour = complexity === 'brief' ? withBlocks : withBlocks + TOUR_GESTURE_ADDENDUM;
-  return withTour + STATIC_TURN_ADDENDUM;
+  const base = LIVE_SYSTEM_PROMPT + FRONTIER_BLOCKS_ADDENDUM + STATIC_TURN_ADDENDUM;
+  // Only a 'brief' ask goes without the tour teaching. It was briefly withheld from 'lean' too,
+  // on the theory that a couple of focused blocks would never be walked — but lean answers DO
+  // earn spotlights and pen marks, and dropping the teaching quietly removed them from a large
+  // share of turns. The gestures are a headline behaviour; ~1.2k tokens is the wrong thing to
+  // save them on. 'brief' still skips it, and the addendum still rides LAST so brief stays a
+  // byte-prefix of the others for prompt caching.
+  return complexity === 'brief' ? base : base + TOUR_GESTURE_ADDENDUM;
 }
 
 /* ------------------------------------------------------------------ *

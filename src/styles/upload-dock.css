@@ -6,7 +6,7 @@
   border: 1.5px dashed var(--line-strong);
   border-radius: var(--r-xl);
   background: var(--surface-glass);
-  backdrop-filter: blur(12px);
+  backdrop-filter: var(--glass-blur-soft);
   padding: 28px;
   text-align: center;
   transition: all var(--m-normal) var(--ease-out);

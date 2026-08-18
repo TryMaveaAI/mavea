@@ -93,4 +93,32 @@ describe('ModelSelect', () => {
     fireEvent.blur(input());
     expect(screen.queryByRole('listbox')).toBeNull();
   });
+
+  // A `:free` route is a different service from the paid model of the same name — queued and rate
+  // limited — and Mavéa answers it with a smaller canvas and a longer patience. Saying so is what
+  // keeps a slower, shorter answer legible as a deliberate trade instead of a malfunction.
+  describe('free-route note', () => {
+    const hint = () => screen.queryByText(/queued and rate-limited/i);
+
+    it('appears once the typed id is a free route', () => {
+      render(<Harness provider="openrouter" initial="nvidia/nemotron-3.5-lightning:free" />);
+      expect(hint()).toBeInTheDocument();
+    });
+
+    it('stays away for the paid variant of the same model', () => {
+      render(<Harness provider="openrouter" initial="nvidia/nemotron-3.5-lightning" />);
+      expect(hint()).toBeNull();
+    });
+
+    it('is not fooled by a model merely named "free"', () => {
+      render(<Harness provider="openrouter" initial="acme/freeform-7b" />);
+      expect(hint()).toBeNull();
+    });
+
+    it('leaves the field itself untouched — the note sits outside the combobox', () => {
+      render(<Harness provider="openrouter" initial="vendor/model:free" />);
+      expect(input().value).toBe('vendor/model:free');
+      expect(input().closest('.drop-select')).not.toContainElement(hint());
+    });
+  });
 });

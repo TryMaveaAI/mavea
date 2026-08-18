@@ -28,6 +28,11 @@ export function livePresence(
   // with the user rather than mouthing words no one can hear. Defaults false (existing callers
   // unchanged). Listening (an open mic) and thinking are unaffected — those aren't Mavéa talking.
   muted = false,
+  // The mic has closed but the utterance is still being transcribed — no turn has been submitted
+  // yet, so the turn machine is idle and the face would otherwise drop straight back to resting
+  // while the person waits, reading as "it stopped paying attention". Defaults false (existing
+  // callers unchanged).
+  transcribing = false,
 ): PresenceLook {
   if (listening) return { state: 'listening', emotion: 'neutral', gaze: 'center' };
   // Stepping in uninvited is a small plot twist — the wide-eyed face says "oh — this
@@ -36,6 +41,10 @@ export function livePresence(
     return muted
       ? { state: 'showing', emotion: 'surprised', gaze: 'center' }
       : { state: 'speaking', emotion: 'surprised', gaze: 'center' };
+  // Blooming rings, no open mic: the documented meaning of `loading` is exactly this beat —
+  // Mavéa has the words and is working on them. It sits BELOW interjecting because an
+  // interjection is audible, and a face that isn't mouthing words during speech reads as broken.
+  if (transcribing) return { state: 'loading', emotion: 'neutral', gaze: 'center' };
   switch (status) {
     case 'thinking':
       // The radiating ring (not the think-ring shimmer) so loading reads as a living, alert

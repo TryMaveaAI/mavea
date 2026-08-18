@@ -17,6 +17,8 @@ const fake = {
   raw: 'not json at all',
   shouldThrow: false,
   throwName: 'Error',
+  /** Chunks the stubbed adapter hands to `onDelta` before resolving — how a reply is chopped up. */
+  deltas: [] as string[],
 };
 
 vi.mock('../src/live/providers', () => ({
@@ -31,11 +33,16 @@ vi.mock('../src/live/providers', () => ({
       nativeWebSearch: false,
     },
     probe: async () => ({ ok: true, model: true }),
-    generate: async () => {
+    generate: async (
+      _req: unknown,
+      _cfg: unknown,
+      onDelta?: (chunk: string, meta?: { reasoning?: boolean }) => void,
+    ) => {
       if (fake.shouldThrow) {
         if (fake.throwName === 'AbortError') throw new DOMException('aborted', 'AbortError');
         throw new Error('no credentials configured');
       }
+      for (const chunk of fake.deltas) onDelta?.(chunk);
       return { raw: fake.raw };
     },
   }),
@@ -250,8 +257,9 @@ describe('ripple GitHub reader (browser-direct)', () => {
 // key, a refusal, malformed JSON) so the overlay can say so honestly, but resolve the unchanged
 // floor when the call was merely superseded (an in-flight run cancelled by a newer one) — that's
 // not a failure worth reporting. Exercises the real function against a stubbed provider adapter;
-// only the network boundary is faked.
-describe('enrichShipModel — honest failure vs. superseded', () => {
+// only the network boundary is faked — including the delta stream, which is where the incremental
+// read of the reply is pinned.
+describe('enrichShipModel — honest failure, superseded, and the streamed read', () => {
   const FLOOR = buildShipFromDiff(
     parseUnifiedDiff(`diff --git a/src/auth/token.ts b/src/auth/token.ts
 --- a/src/auth/token.ts
@@ -268,6 +276,7 @@ describe('enrichShipModel — honest failure vs. superseded', () => {
     fake.raw = 'not json at all';
     fake.shouldThrow = false;
     fake.throwName = 'Error';
+    fake.deltas = [];
   });
 
   it('resolves null when the model replies with an unparseable read', async () => {
@@ -295,6 +304,43 @@ describe('enrichShipModel — honest failure vs. superseded', () => {
     const result = await enrichShipModel(FLOOR, 'diff text', CFG);
     expect(result).not.toBeNull();
     expect(result?.pr.summary).toBe('Threads a VerifyOpts through token validation.');
+  });
+
+  // The overlay sharpens as the reply streams, and the call must hold ONE cursor-holding reader for
+  // the whole reply. It once built a fresh one per delta — invisible in the output, and O(chunks ×
+  // buffer) in cost, since every already-closed element was re-parsed on every chunk. The property
+  // that catches a relapse: chopping the SAME reply finer changes neither the partials nor the work.
+  it('reads the stream incrementally — chopping the reply finer costs no extra parses', async () => {
+    const reply = JSON.stringify({
+      summary: 'Threads a VerifyOpts through token validation.',
+      risks: [
+        { level: 'breaks', text: 'guard.ts still calls the old shape' },
+        { level: 'watch', text: 'rotation is not atomic' },
+      ],
+      changes: [{ id: 'c0', intent: 'adds opts to validateToken', why: 'short-lived tokens' }],
+      gateRationale: 'Hold until guard.ts is updated.',
+    });
+
+    /** Run one enrichment over a given chopping of the reply; report the partials and the parse work. */
+    async function run(deltas: string[]): Promise<{ parses: number; partials: unknown[] }> {
+      fake.raw = reply;
+      fake.deltas = deltas;
+      const partials: unknown[] = [];
+      const parse = vi.spyOn(JSON, 'parse');
+      try {
+        await enrichShipModel(FLOOR, 'diff text', CFG, { onPartial: (e) => partials.push(e) });
+        return { parses: parse.mock.calls.length, partials };
+      } finally {
+        parse.mockRestore();
+      }
+    }
+
+    const whole = await run([reply]);
+    const fine = await run([...reply]); // the same reply, one character at a time
+
+    expect(fine.parses).toBe(whole.parses);
+    expect(fine.partials.at(-1)).toEqual(whole.partials.at(-1));
+    expect(fine.partials.length).toBeGreaterThan(1); // it really did sharpen along the way
   });
 });
 

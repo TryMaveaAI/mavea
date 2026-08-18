@@ -68,3 +68,10 @@ afterEach(() => {
 // import beat, and any test that genuinely exercises the lazy path can assert on `detailsReady`.
 import { ensureAllDetails } from '../src/canvas/blocks/catalog/details';
 await ensureAllDetails();
+
+// The reference-example props (real demo-sourced props per block type) are split the same way, for
+// the same reason: `referencePropsFor`/`exampleFor` deliberately return null until a type's shard
+// is resident, so preload every shard here rather than have every test that touches an example
+// thread an `await ensureExamples(...)` through code that is synchronous in production.
+import { ensureAllExamples } from '../src/live/select/examples';
+await ensureAllExamples();

@@ -300,7 +300,13 @@ export interface MergeResult {
 }
 
 function renumber(blocks: Block[]): Block[] {
-  return blocks.map((b, i) => ({ ...b, id: `live-${i + 1}` }));
+  // Keep identity when a block already carries its slot's id (a streamed replace turn arrives
+  // numbered live-1.. from validation) — cloning it anyway would hand the canvas's memoized
+  // cards a fresh reference at settle for a block that didn't change.
+  return blocks.map((b, i) => {
+    const id = `live-${i + 1}`;
+    return b.id === id ? b : { ...b, id };
+  });
 }
 
 /**

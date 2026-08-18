@@ -184,6 +184,10 @@
   background: var(--warning);
   box-shadow: 0 0 7px var(--glow-warning);
   animation: dotpulse 1.4s var(--ease-in-out) infinite;
+  /* REACTIVE loop — thinking-in-progress feedback, so the lite tier never pauses it; only the
+     visibility layer may (--reactive-play: paused while the page is hidden or off-screen).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--reactive-play, running);
 }
 .status-dot.read {
   background: var(--insight);
@@ -332,6 +336,9 @@
   background: var(--presence);
   box-shadow: 0 0 0 0 var(--glow-presence);
   animation: live-pulse 1.6s ease-out infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
 }
 @keyframes live-pulse {
   0% {
@@ -376,6 +383,8 @@
 .live-notice-dot.probing {
   background: var(--text-tertiary, #888);
   animation: live-pulse 1.6s ease-out infinite;
+  /* REACTIVE loop — probing feedback, pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-notice-dot.warn {
   background: #e6aa3c;

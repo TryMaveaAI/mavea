@@ -10,8 +10,9 @@ import { useResizeQuiet } from './lib/resizeQuiet';
 import { applyStartupTemplate } from './live/templates';
 import { readTheme, applyTheme } from './lib/theme';
 import { applyPerfTier, currentAppliedTier, resolveTierNow } from './lib/perfTier';
-import { unlockAudio } from './voice/voiceEnergy';
+import { onAudioSuspended, unlockAudio } from './voice/voiceEnergy';
 import { installLastResort } from './lib/lastResort';
+import { installAmbientPlayDriver } from './lib/pageVisibility';
 import { RootBoundary, SurfaceFallback } from './RootBoundary';
 import { routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
@@ -108,6 +109,12 @@ applyStartupTemplate(document, typeof window !== 'undefined' ? window.location.h
 // component's render. See lib/lastResort.ts.
 installLastResort();
 
+// Freeze every ambient CSS loop while the tab is backgrounded. The animations keep running
+// otherwise — a landing's aurora, a canvas card's glow, a hundred-odd others — repainting for
+// nobody on a battery someone is paying for. One inline property on the root does all of them,
+// and it is removed (never set to `running`) on return, so the stylesheet stays in charge.
+installAmbientPlayDriver();
+
 // Unlock audio on the first user gesture, app-wide. Browsers only honor AudioContext.resume()
 // from within a gesture; without this, a turn that fires WITHOUT a fresh click in the Live
 // document — e.g. a question typed on the landing that auto-starts a Live session after the hash
@@ -118,12 +125,18 @@ installLastResort();
 // confirmed running.
 if (typeof window !== 'undefined') {
   const events = ['pointerdown', 'keydown'] as const;
+  const opts = { passive: true } as const;
   const unlock = (): void => {
     // resume() is async — the first gesture usually returns false; a later one confirms it.
     if (unlockAudio()) events.forEach((e) => window.removeEventListener(e, unlock));
   };
-  const opts = { passive: true } as const;
-  events.forEach((e) => window.addEventListener(e, unlock, opts));
+  const arm = (): void => events.forEach((e) => window.addEventListener(e, unlock, opts));
+  arm();
+  // The shared context suspends itself after ~30s with nothing playing (an idle tab has no
+  // business holding a real-time audio thread), and Safari only honors resume() from inside a
+  // user gesture — so put the unlock listener back the moment that happens. addEventListener
+  // de-dupes an identical listener, so re-arming an armed one is free.
+  onAudioSuspended(arm);
 }
 
 createRoot(document.getElementById('root')!).render(<Root />);

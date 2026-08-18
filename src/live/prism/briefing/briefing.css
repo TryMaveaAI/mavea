@@ -42,7 +42,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   animation: prism-brief-rise 0.34s ease both;
 }
 @keyframes prism-brief-rise {
@@ -89,7 +89,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 .prism-brief-btn {
   appearance: none;

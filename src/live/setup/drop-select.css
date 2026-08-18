@@ -147,3 +147,13 @@
 .drop-select-foot a:hover {
   text-decoration: underline;
 }
+
+/* The note under the field when the typed id is a free gateway route. Lives here rather than in a
+   caller's stylesheet because ModelSelect renders on standalone routes that never load Live's CSS
+   — the same reason the rest of this sheet is owned by the component. Muted and inline: it states
+   a trade the reader already chose, so it must never read as a warning. */
+.drop-select-hint {
+  color: var(--text-muted);
+  display: block;
+  font: 11.5px/1.4 var(--font);
+}

@@ -6,11 +6,49 @@
 // round-trip once the model is warm. A short timeout backstops a wedged worker. The selector treats a
 // null as "no semantic signal" and falls back to keyword/intent fit, exactly as before this layer.
 import { SEMANTIC_ASSET_BASE, SEMANTIC_MODEL_ID } from './index';
+import { currentAppliedTier } from '../../lib/perfTier';
 
 let worker: Worker | null = null;
 let ready = false;
 let failed = false;
 let seq = 0;
+
+/** How long the model may sit unused before its worker is torn down. The loaded model is the
+ *  largest single item on the heap (~8MB: the int8 matrix, vocab and exemplar vectors), and it is
+ *  only touched while someone is actively asking — so after a quiet stretch it is released and
+ *  re-warmed transparently by the next request (which, like any cold-start request, resolves null
+ *  and lets the keyword/intent path carry that one turn). Five minutes keeps the boost warm across
+ *  an ordinary conversation's pauses while not pinning 8MB for a tab left open all day. */
+const IDLE_TEARDOWN_MS = 5 * 60 * 1000;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** (Re)start the idle clock — called on every sign of life (load finished, request sent or
+ *  answered). Fires only when nothing is in flight; a wedged request re-arms instead, so a
+ *  pending resolve is never yanked to null by the janitor rather than its own timeout. */
+function touchIdle(): void {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (pending.size) touchIdle();
+    else teardown();
+  }, IDLE_TEARDOWN_MS);
+}
+
+/** True when this device shouldn't pay for the ~7MB model at all: the user asked to save data,
+ *  the machine reports little memory (the same low bar perfTier demotes on — a HIGH reading
+ *  proves nothing, so only the low end gates), or the applied perf tier is already lite. Checked
+ *  per call rather than latched, so a mid-session tier change is honoured. */
+function warmUndesirable(): boolean {
+  if (typeof navigator !== 'undefined') {
+    const nav = navigator as Navigator & {
+      connection?: { saveData?: boolean };
+      deviceMemory?: number;
+    };
+    if (nav.connection?.saveData) return true;
+    if (typeof nav.deviceMemory === 'number' && nav.deviceMemory > 0 && nav.deviceMemory <= 4)
+      return true;
+  }
+  return typeof document !== 'undefined' && currentAppliedTier() === 'lite';
+}
 // One in-flight table for both request kinds — a `fit` (component scores) and an `embed` (a raw
 // vector for session threading) — dispatched by kind so each resolves with its own payload. A
 // teardown resolves every pending call with null, which is the "no signal" value for both.
@@ -24,6 +62,7 @@ const pending = new Map<number, Pending>();
  *  later call short-circuits to the keyword/intent path. */
 export function warmSemanticFit(): void {
   if (worker || failed) return;
+  if (warmUndesirable()) return; // not `failed` — a tier change later in the session may re-open it
   if (typeof Worker === 'undefined') {
     failed = true;
     return;
@@ -36,8 +75,10 @@ export function warmSemanticFit(): void {
         | { type: 'error'; message: string }
         | { type: 'result'; id: number; fits: [string, number][] }
         | { type: 'embedded'; id: number; vec: Float32Array };
-      if (d.type === 'ready') ready = true;
-      else if (d.type === 'error') {
+      if (d.type === 'ready') {
+        ready = true;
+        touchIdle();
+      } else if (d.type === 'error') {
         failed = true; // assets missing (e.g. semantic:build not run) → silently stay on the fast path
         teardown();
       } else if (d.type === 'result') {
@@ -62,6 +103,8 @@ export function warmSemanticFit(): void {
 }
 
 function teardown(): void {
+  clearTimeout(idleTimer);
+  idleTimer = undefined;
   for (const p of pending.values()) p.resolve(null);
   pending.clear();
   try {
@@ -95,6 +138,7 @@ export function semanticFit(query: string, timeoutMs = 80): Promise<Map<string, 
       },
     });
     worker!.postMessage({ type: 'fit', id, query });
+    touchIdle();
   });
 }
 
@@ -121,6 +165,7 @@ export function embedText(text: string, timeoutMs = 80): Promise<Float32Array | 
       },
     });
     worker!.postMessage({ type: 'embed', id, text });
+    touchIdle();
   });
 }
 

@@ -23,7 +23,7 @@ import { ensureDetails } from '../../canvas/blocks/catalog/details';
 import type { ChatMessage } from '../providers/types';
 import { detectShapes, detectRequested, type ShapeVector } from './shapes';
 import type { AskComplexity } from './complexity';
-import { exampleFor } from './examples';
+import { ensureExamples, exampleFor } from './examples';
 import {
   ARCHETYPE_BASE,
   BASE_FLOOR,
@@ -440,9 +440,11 @@ function describe(m: ComponentMeta, withExample = false, dense = false): string 
   const needs = m.requires.length ? m.requires.join(', ') : '—';
   // A concrete, demo-sourced example is the most reliable thing an LLM can copy, so when one
   // exists we lead with it (it conveys the exact nested shape + token idioms a name list
-  // can't) and skip the abstract shape clause. We only do this for the turn's hero picks —
-  // the common staples are already fully taught in the base prompt, so we don't pay the tokens.
-  // `dense` (lead heroes only) shows a fuller example so the model fills the block demo-deep.
+  // can't) and skip the abstract shape clause. Only the LEAD heroes pay for one — the canvas is
+  // built around them, so a dense example there earns its tokens, while an example on every hero
+  // line was ~5.4k uncached tokens a turn that the model read once and mostly discarded (it
+  // builds ~9 blocks from a 30-line menu). The rest keep the thin line: item shapes, hints and
+  // optional fields — the parts that actually prevent blank cards.
   const ex = withExample ? exampleFor(m.type, dense) : null;
   if (ex)
     return `- ${m.type} — ${m.blurb} · needs: ${needs}${contentBudgetPromptClause(m)} · example: ${ex}`;
@@ -483,7 +485,8 @@ function buildMenu(chosen: ComponentFacts[], fitOf: ReadonlyMap<string, number>)
     if (fa !== fb) return fb - fa;
     return b.wowWeight - a.wowWeight;
   });
-  const heroLines = cool.map((m, i) => describe(m, true, i < LEAD_DENSE));
+  // Only the leads carry an example (see LEAD_DENSE above); the rest teach shape + hints, thin.
+  const heroLines = cool.map((m, i) => describe(m, i < LEAD_DENSE, true));
   const out: string[] = [];
   if (heroLines.length) {
     out.push(
@@ -784,7 +787,13 @@ export function menuFor(choice: Choice): string {
  */
 export async function selectComponents(input: SelectionInput): Promise<SelectionResult> {
   const choice = chooseComponents(input);
-  await ensureDetails([...choice.types, ...BASE_FLOOR]);
+  // Examples are only ever shown for catalog hero picks (buildMenu's LEAD_DENSE heroes), never the
+  // base floor, so choice.types alone is the exact set worth fetching — run both shard fetches
+  // together rather than back to back.
+  await Promise.all([
+    ensureDetails([...choice.types, ...BASE_FLOOR]),
+    ensureExamples(choice.types),
+  ]);
   return {
     types: choice.types,
     promptSnippet: menuFor(choice),

@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, expect, it } from 'vitest';
 
@@ -18,11 +18,20 @@ const presenceStyles = strip(read('src/styles/presence-styles.css'));
 const perfLite = strip(read('src/styles/perf-lite.css'));
 const flagship = strip(read('src/flagship/flagship.css'));
 const tokens = strip(read('src/styles/tokens-base.css'));
+const displayBlocks = strip(read('src/canvas/blocks/display/styles.css'));
+const statusBlocks = strip(read('src/canvas/blocks/status/styles.css'));
+const atlas = strip(read('src/live/atlas/atlas.css'));
+const rippleCss = strip(read('src/live/ripple/ripple.css'));
+const delegateCss = strip(read('src/live/delegate/delegate.css'));
+const livedock = strip(read('src/live/livedock.css'));
+const turnstate = strip(read('src/live/turnstate/turnstate.css'));
+const stageLayout = strip(read('src/styles/stage-layout.css'));
+const dashboards = strip(read('src/live/dashboards/dashboards.css'));
 
 // The ambient loops that MUST be pausable by lite (idle, always-on GPU cost). Each is keyed by the
 // keyframe name its declaration uses; the declaration must carry the --ambient-play longhand so a
 // single `--ambient-play: paused` freezes it. State/reaction loops (blink, talk, gaze) are
-// deliberately NOT in this list — they stay alive in lite.
+// deliberately NOT in this list — they stay alive in lite (see REACTIVE below).
 const AMBIENT: { name: string; source: string; file: string }[] = [
   { name: 'breathe', source: presenceCanvas, file: 'presence-canvas.css (aura)' },
   { name: 'mascot-bob', source: presenceCanvas, file: 'presence-canvas.css' },
@@ -32,6 +41,42 @@ const AMBIENT: { name: string; source: string; file: string }[] = [
   { name: 'mascot-swell', source: presenceCanvas, file: 'presence-canvas.css' },
   { name: 'idle-perk', source: friendAliveness, file: 'friend-aliveness.css' },
   { name: 'mascot-hueflow', source: presenceStyles, file: 'presence-styles.css' },
+  { name: 'sp-spin', source: displayBlocks, file: 'display/styles.css' },
+  { name: 'sp-bounce', source: displayBlocks, file: 'display/styles.css' },
+  { name: 'sp-pulse', source: displayBlocks, file: 'display/styles.css' },
+  { name: 'sp-indet', source: displayBlocks, file: 'display/styles.css' },
+  { name: 'nf-dot-pulse', source: displayBlocks, file: 'display/styles.css' },
+  { name: 'stl-pulse', source: statusBlocks, file: 'status/styles.css' },
+  { name: 'es-float', source: statusBlocks, file: 'status/styles.css' },
+  { name: 'sk-shimmer', source: statusBlocks, file: 'status/styles.css' },
+  { name: 'atlas-twinkle', source: atlas, file: 'atlas.css' },
+  { name: 'atlas-loop-pulse', source: atlas, file: 'atlas.css' },
+  { name: 'atlas-trail-pulse', source: atlas, file: 'atlas.css' },
+  { name: 'ripple-dash', source: rippleCss, file: 'ripple.css' },
+  { name: 'dlgPulse', source: delegateCss, file: 'delegate.css (rounds dot)' },
+  { name: 'live-pulse', source: stageLayout, file: 'stage-layout.css (live badge)' },
+  { name: 'dashPulse', source: dashboards, file: 'dashboards.css' },
+];
+
+// Reaction loops: feedback for something actually happening (listening bars, composing dots,
+// loading shimmer, the call orb). Lite must NOT pause these — a frozen spinner on a visible page
+// reads as "stuck" — so they carry the --reactive-play longhand instead, which only the
+// visibility layer sets (page hidden / section off-screen, where nothing can be seen anyway).
+const REACTIVE: { name: string; source: string; file: string }[] = [
+  { name: 'listen-eq', source: turnstate, file: 'turnstate.css' },
+  { name: 'listen-caret', source: turnstate, file: 'turnstate.css' },
+  { name: 'speak-breathe', source: turnstate, file: 'turnstate.css' },
+  { name: 'composing-bounce', source: turnstate, file: 'turnstate.css' },
+  { name: 'vc-orb-pulse', source: livedock, file: 'livedock.css' },
+  { name: 'vc-bar1', source: livedock, file: 'livedock.css' },
+  { name: 'ripple-pulse', source: rippleCss, file: 'ripple.css' },
+  { name: 'ripple-build-pulse', source: rippleCss, file: 'ripple.css' },
+  { name: 'ripple-shimmer', source: rippleCss, file: 'ripple.css' },
+  { name: 'ripple-indeterminate', source: rippleCss, file: 'ripple.css' },
+  { name: 'mascot-talk', source: delegateCss, file: 'delegate.css' },
+  { name: 'dlgBounce', source: delegateCss, file: 'delegate.css' },
+  { name: 'dotpulse', source: stageLayout, file: 'stage-layout.css (thinking dot)' },
+  { name: 'dash-refresh-spin', source: dashboards, file: 'dashboards.css' },
 ];
 
 /** Grab the declaration block that contains the first `animation:` shorthand naming `keyframe`. */
@@ -68,6 +113,23 @@ describe('perf-lite — the face stays alive: blink is NOT pausable', () => {
   });
 });
 
+describe('reaction loops — pausable only while unseen, never by lite', () => {
+  for (const { name, source, file } of REACTIVE) {
+    it(`${name} (${file}) carries the --reactive-play longhand after its shorthand`, () => {
+      const block = blockAround(source, name);
+      expect(block, `no animation shorthand naming ${name} found`).toBeTruthy();
+      expect(
+        block!,
+        `${name}'s declaration is missing animation-play-state: var(--reactive-play, running)`,
+      ).toMatch(/animation-play-state:\s*var\(--reactive-play,\s*running\)/);
+    });
+  }
+
+  it('the lite tier never sets --reactive-play (visible feedback keeps running in lite)', () => {
+    expect(perfLite).not.toMatch(/--reactive-play:/);
+  });
+});
+
 describe('perf-lite.css — the lite tier zeroes the ambient + glass knobs', () => {
   it('sets --ambient-play: paused under html[data-perf=lite]', () => {
     expect(perfLite).toMatch(/:root\[data-perf=['"]lite['"]\][\s\S]*--ambient-play:\s*paused/);
@@ -78,6 +140,8 @@ describe('perf-lite.css — the lite tier zeroes the ambient + glass knobs', () 
     expect(perfLite).toMatch(/--glass-blur-strong:\s*none/);
     expect(perfLite).toMatch(/--glass-blur-soft:\s*none/);
     expect(perfLite).toMatch(/--glass-blur-faint:\s*none/);
+    // …and the wildcard for one-off strengths routed as var(--glass-blur, blur(Npx)).
+    expect(perfLite).toMatch(/--glass-blur:\s*none/);
   });
 
   it('turns the aura into a static glow (filter: none)', () => {
@@ -91,6 +155,44 @@ describe('tokens-base.css — the shared glass-blur tokens exist to be zeroed', 
       expect(tokens).toMatch(new RegExp(`${tok}:\\s*blur\\(`));
     });
   }
+});
+
+describe('backdrop-filter — every blur is routed so the lite tier can zero it', () => {
+  // A literal `backdrop-filter: blur(...)` ignores the lite tier entirely: the token zeroing in
+  // perf-lite.css never reaches it, so a weak GPU keeps re-blurring on every scroll/repaint.
+  // Exact strengths route through --glass-blur-strong/-soft/-faint; one-off strengths keep their
+  // radius as the fallback of the wildcard: `backdrop-filter: var(--glass-blur, blur(8px))`.
+  //
+  // Empty — every backdrop-filter in the codebase now routes through the tokens. A RATCHET, not
+  // a static list: a literal blur(...) added anywhere lands in `offenders` below with nothing
+  // here to shield it, so the very next test fails.
+  const BLUR_MIGRATION_PENDING = new Set<string>([]);
+
+  const srcDir = join(__dirname, '..', 'src');
+  const offenders = new Set(
+    readdirSync(srcDir, { recursive: true })
+      .map(String)
+      .filter((f) => f.endsWith('.css'))
+      .filter((f) =>
+        /backdrop-filter:\s*blur\(/.test(strip(readFileSync(join(srcDir, f), 'utf8'))),
+      ),
+  );
+
+  it('no CSS file outside the migration list hardcodes `backdrop-filter: blur(`', () => {
+    const fresh = [...offenders].filter((f) => !BLUR_MIGRATION_PENDING.has(f)).sort();
+    expect(
+      fresh,
+      'these files hardcode backdrop-filter: blur(...) — route it through the glass-blur tokens (see tokens-base.css)',
+    ).toEqual([]);
+  });
+
+  it('the migration list only shrinks — a migrated file must be removed from it', () => {
+    const stale = [...BLUR_MIGRATION_PENDING].filter((f) => !offenders.has(f)).sort();
+    expect(
+      stale,
+      'these files no longer hardcode a blur — delete them from BLUR_MIGRATION_PENDING',
+    ).toEqual([]);
+  });
 });
 
 describe('flagship aurora — routed through vars, and reduced-motion drops the blur (the bug fix)', () => {

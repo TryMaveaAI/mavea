@@ -65,34 +65,63 @@ function gluedToLongerNumber(norm: string, at: number, len: number): boolean {
   return DIGIT_CLASS.test(before) || DIGIT_CLASS.test(after);
 }
 
-/** Find the first text node inside the host whose content carries one of the tokens,
- *  returning the exact character range of the match. Chrome the hand itself added (or
- *  controls like the per-block Ask button) never count as content. A bare-number token
- *  ("5") skips a would-be match that's actually part of a longer number ("$5,000",
- *  "500") and keeps looking, rather than drawing on the wrong value. */
-export function findSaidMatch(host: Element, tokens: string[]): SaidMatch | null {
+/** Chrome the hand itself added, or controls like the per-block Ask button — never content. */
+const NOT_CONTENT = '.ink-layer, .block-ask, .card-eyebrow';
+
+/** One searchable text node: its raw text plus the normalized form and index map, computed ONCE. */
+interface TextRun {
+  node: Text;
+  raw: string;
+  norm: string;
+  map: number[];
+}
+
+/** Every text run inside the host worth searching, in document order.
+ *
+ *  Walked once per lookup, not once per token: a mark offers up to a dozen tokens (the line's
+ *  figures, its names, or every label the card renders), and a walker per token made marking one
+ *  card N walks of its whole subtree — with a fresh `normWithMap` of every node inside each. The
+ *  normalized form doesn't depend on the token, so it is computed here and reused. */
+function textRuns(host: Element): TextRun[] {
+  const runs: TextRun[] = [];
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node as Text;
+    const raw = text.textContent ?? '';
+    if (!raw.trim()) continue;
+    if (text.parentElement?.closest(NOT_CONTENT)) continue;
+    const { norm, map } = normWithMap(raw);
+    runs.push({ node: text, raw, norm, map });
+  }
+  return runs;
+}
+
+/** First token (in the caller's priority order) that any run carries, and where. */
+function matchIn(runs: readonly TextRun[], tokens: string[]): SaidMatch | null {
   for (const tok of tokens) {
     const tokNorm = normWithMap(tok).norm;
     if (tokNorm.length < 2) continue;
     const numeric = isBareNumber(tokNorm);
-    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      const text = node as Text;
-      const raw = text.textContent ?? '';
-      if (!raw.trim()) continue;
-      if (text.parentElement?.closest('.ink-layer, .block-ask, .card-eyebrow')) continue;
-      const { norm, map } = normWithMap(raw);
+    for (const { node, norm, map } of runs) {
       let at = norm.indexOf(tokNorm);
       while (at >= 0) {
         if (!numeric || !gluedToLongerNumber(norm, at, tokNorm.length)) {
-          return { node: text, start: map[at], end: map[at + tokNorm.length - 1] + 1 };
+          return { node, start: map[at], end: map[at + tokNorm.length - 1] + 1 };
         }
         at = norm.indexOf(tokNorm, at + 1);
       }
     }
   }
   return null;
+}
+
+/** Find the first text node inside the host whose content carries one of the tokens,
+ *  returning the exact character range of the match. Chrome the hand itself added (or
+ *  controls like the per-block Ask button) never count as content. A bare-number token
+ *  ("5") skips a would-be match that's actually part of a longer number ("$5,000",
+ *  "500") and keeps looking, rather than drawing on the wrong value. */
+export function findSaidMatch(host: Element, tokens: string[]): SaidMatch | null {
+  return matchIn(textRuns(host), tokens);
 }
 
 /** Shortest/longest card label worth echoing. Under 4 chars matches noise ("of", "km"); over 40 is
@@ -130,16 +159,19 @@ const ECHO_STOPWORDS = new Set([
  *  actually renders and find the longest one the line mentions. That is still the model's own
  *  words, just lowercase, so it never invents a target the line wasn't talking about. */
 export function findEchoedLabel(host: Element, line: string): SaidMatch | null {
+  return echoedIn(textRuns(host), line);
+}
+
+function echoedIn(runs: readonly TextRun[], line: string): SaidMatch | null {
   const spoken = normWithMap(line).norm;
   if (spoken.length < ECHO_MIN_CHARS) return null;
   const seen = new Set<string>();
   const candidates: string[] = [];
-  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const raw = (node.textContent ?? '').trim();
+  for (const run of runs) {
+    // `normWithMap` drops whitespace, so the run's normalized form is the trimmed label's too.
+    const raw = run.raw.trim();
     if (raw.length < ECHO_MIN_CHARS || raw.length > ECHO_MAX_CHARS) continue;
-    if ((node as Text).parentElement?.closest('.ink-layer, .block-ask, .card-eyebrow')) continue;
-    const norm = normWithMap(raw).norm;
+    const norm = run.norm;
     if (norm.length < ECHO_MIN_CHARS || ECHO_STOPWORDS.has(norm) || seen.has(norm)) continue;
     if (!spoken.includes(norm)) continue;
     seen.add(norm);
@@ -147,7 +179,31 @@ export function findEchoedLabel(host: Element, line: string): SaidMatch | null {
   }
   // Longest first: "order book" is the thing being talked about, "order" is a fragment of it.
   candidates.sort((a, b) => b.length - a.length);
-  return candidates.length ? findSaidMatch(host, candidates) : null;
+  // The SAME walk answers the lookup — going back through `findSaidMatch` re-walked the card once
+  // per candidate, and a label-rich card offers plenty.
+  return candidates.length ? matchIn(runs, candidates) : null;
+}
+
+/** One read of a card's text, shared by every lookup a single placement makes.
+ *
+ *  Placing one mark asks the same card up to four questions — the model's named text and a span's
+ *  far anchor, or (generously) the line's figures, then its names, then the labels the card itself
+ *  renders. Each was its own walk, on a path that re-runs per measurement while the canvas streams.
+ *  One `SaidText` answers them all off a single walk; a fresh one per measurement is what keeps a
+ *  card that has since re-rendered from being matched against stale text nodes. */
+export interface SaidText {
+  /** First of `tokens` (in the caller's priority order) that the card carries, and where. */
+  find(tokens: string[]): SaidMatch | null;
+  /** The longest label the card renders that this line names in plain prose. */
+  echoed(line: string): SaidMatch | null;
+}
+
+export function readSaidText(host: Element): SaidText {
+  const runs = textRuns(host);
+  return {
+    find: (tokens) => matchIn(runs, tokens),
+    echoed: (line) => echoedIn(runs, line),
+  };
 }
 
 /** The row-like container around a matched label — so "circle Seattle" loops the Seattle

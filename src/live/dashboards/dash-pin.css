@@ -11,7 +11,7 @@
   place-items: center;
   padding: 24px;
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
-  backdrop-filter: blur(2px);
+  backdrop-filter: var(--glass-blur, blur(2px));
 }
 .pin-sheet {
   width: min(400px, 100%);

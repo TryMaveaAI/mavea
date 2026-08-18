@@ -361,7 +361,7 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   border-radius: var(--r-full);
-  backdrop-filter: blur(12px);
+  backdrop-filter: var(--glass-blur-soft);
   opacity: 0.35;
   transition: opacity 200ms ease;
 }

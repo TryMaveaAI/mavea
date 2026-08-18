@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { Presence } from '../../presence/Presence';
+import { useVoiceEnergySink } from '../../voice/voiceEnergy';
 import { cancelSpeech } from '../../voice/tts';
 import { forDisplay } from '../../lib/spokenText';
 import type { ModelConfig } from '../providers/types';
@@ -36,6 +37,7 @@ export function TakeSeatStage({
   onDebrief?: (ask: string) => void;
   onAdjustBrief: () => void;
 }): ReactElement {
+  const voiceSinkRef = useVoiceEnergySink();
   const [take, setTake] = useState(1);
   const [lines, setLines] = useState<TakeLine[]>([]);
   const [draft, setDraft] = useState('');
@@ -167,7 +169,7 @@ export function TakeSeatStage({
           <span className="dlg-take-badge">Take {take}</span>
         </div>
         <div className="dlg-seat theirs">
-          <span className="dlg-jelly ghost" aria-hidden="true">
+          <span className="dlg-jelly ghost" aria-hidden="true" ref={voiceSinkRef}>
             <Presence {...look.theirs} />
           </span>
           <span className="dlg-seat-name">{themLabel}</span>

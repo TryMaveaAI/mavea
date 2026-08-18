@@ -79,6 +79,7 @@ import {
   type SpokenLine,
 } from '../voice/tts';
 import { setKokoroVoice, kokoroKnownAvailable } from '../voice/kokoro';
+import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import {
   awaitWalkReady,
   waitLineStart,
@@ -260,6 +261,7 @@ import {
   ComposingStatus,
   TurnActivityChips,
   useSpeaking,
+  useSpeakingHeld,
   useVoicePreparing,
   skeletonPlan,
 } from './turnstate';
@@ -589,6 +591,17 @@ export function LiveApp(): ReactElement {
   const { askHintSeen, dismissAskHint } = useAskHint();
   const [listening, setListening] = useState(false);
   const [voicePhase, setVoicePhase] = useState<VoicePhase>('idle');
+  // The mic has closed but the words aren't text yet. Nothing has been submitted, so every
+  // indicator that said "I'm hearing you" unmounts at once and the surface goes blank for the
+  // length of a transcription — the gap that read as "it missed that". The face and the listening
+  // card both hold through it.
+  //
+  // It starts EARLIER than the phase does: VadVoice reports a provisional end of speech as soon as
+  // the person has plainly stopped, about 1.3s before its redemption window closes the utterance
+  // for real, and takes the guess back if they were only pausing mid-thought. That whole window
+  // was previously spent looking like an open mic.
+  const [speechEnding, setSpeechEnding] = useState(false);
+  const transcribing = voicePhase === 'transcribing' || speechEnding;
   const [heard, setHeard] = useState<string | null>(null);
   // The ask that produced the canvas on screen — the answer hero's "YOU — …" label. Null for a
   // files-only turn (there's no sentence to quote) and before the first ask.
@@ -660,14 +673,23 @@ export function LiveApp(): ReactElement {
     // or reaching for the mic. There are seconds between that and a finished question, which is far
     // more than the warm needs, so nothing is slower in practice and a visitor who never asks pays
     // nothing at all.
-    const start = (): void => void warmSemanticFit();
-    const opts = { once: true, passive: true } as const;
-    window.addEventListener('keydown', start, opts);
-    window.addEventListener('pointerdown', start, opts);
-    return () => {
-      window.removeEventListener('keydown', start);
+    // The sign has to be the COMPOSER, not any key or click: a bare keydown/pointerdown listener
+    // treats scrolling the page, dismissing a hint or opening a menu as "about to ask", which is
+    // most of what a visitor who never asks anything does. Focus reaches the field before the
+    // first keystroke does, so typing arms it just as early as it used to.
+    const stop = (): void => {
+      window.removeEventListener('focusin', start);
       window.removeEventListener('pointerdown', start);
     };
+    function start(e: Event): void {
+      const el = e.target instanceof Element ? e.target : null;
+      if (!el?.closest('.composer, .mic-btn')) return;
+      stop();
+      warmSemanticFit();
+    }
+    window.addEventListener('focusin', start);
+    window.addEventListener('pointerdown', start, { passive: true });
+    return stop;
   }, []);
 
   // Quiz-graded mastery tracking: any quiz block anywhere can grade an answer (Quiz.tsx broadcasts
@@ -1238,6 +1260,9 @@ export function LiveApp(): ReactElement {
   // layout changes and across viewport widths.
   const brandDotRef = useRef<HTMLSpanElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
+  // The positioner around the face is where `--voice-energy` is written each frame: the property
+  // inherits down to the mouth, so the write never has to invalidate the whole document's style.
+  const voiceSinkRef = useVoiceEnergySink();
   // Lets a user cut the guided spotlight short (click the dimmed area or press Esc): the
   // tour loop checks this flag each beat, so dismissing stops the walk AND clears the spot
   // instead of the next scheduled beat re-lighting a block. Reset at the start of each turn.
@@ -1336,25 +1361,6 @@ export function LiveApp(): ReactElement {
   );
   // The reference epoch for elapsed-time display in the gesture track (reset each turn).
   const turnStartMsRef = useRef<number>(Date.now());
-  // Interim speech results arrive several times a second; each `setHeard` re-renders this large
-  // component (and re-runs the [heard] effect). Coalesce a burst into one update per frame: stash
-  // the latest transcript and flush it on a single rAF. Cancelled on unmount so it can't leak.
-  const heardRafRef = useRef<number | null>(null);
-  const pendingHeardRef = useRef<string | null>(null);
-  const flushHeard = useCallback((transcript: string) => {
-    pendingHeardRef.current = transcript;
-    if (heardRafRef.current != null) return;
-    heardRafRef.current = requestAnimationFrame(() => {
-      heardRafRef.current = null;
-      if (pendingHeardRef.current != null) setHeard(pendingHeardRef.current);
-    });
-  }, []);
-  useEffect(
-    () => () => {
-      if (heardRafRef.current != null) cancelAnimationFrame(heardRafRef.current);
-    },
-    [],
-  );
   useEffect(() => {
     setInked([]);
     setDrawnInk(new Set());
@@ -2639,14 +2645,15 @@ export function LiveApp(): ReactElement {
   const scriptedMarkStroke = (stage: HTMLElement, target: HTMLElement): void => {
     const svg = stage.querySelector('.ink-user-overlay') as SVGElement | null;
     if (!svg) return;
-    const value = Array.from(target.querySelectorAll<HTMLElement>('*'))
+    // Size every candidate ONCE, then sort on the recorded number: reading getComputedStyle from
+    // inside the comparator flushes style O(n log n) times on a card the walkthrough is about to
+    // animate over.
+    const sized = Array.from(target.querySelectorAll<HTMLElement>('*'))
       .filter(
         (el) => el.children.length === 0 && el.offsetHeight > 0 && /\d/.test(el.textContent ?? ''),
       )
-      .sort(
-        (a, b) =>
-          parseFloat(getComputedStyle(b).fontSize) - parseFloat(getComputedStyle(a).fontSize),
-      )[0];
+      .map((el) => ({ el, size: parseFloat(getComputedStyle(el).fontSize) }));
+    const value = sized.sort((a, b) => b.size - a.size)[0]?.el;
     const rect = (value ?? target).getBoundingClientRect();
     const svgRect = svg.getBoundingClientRect();
     const pts = markCircleLoop(rect, svgRect);
@@ -3224,6 +3231,11 @@ export function LiveApp(): ReactElement {
       voicePhaseRef.current = e.phase;
       setVoicePhase(e.phase);
       setListening(e.phase === 'listening');
+      // Only an event that CARRIES the provisional flag may change it: the mic emits plain
+      // `listening` events for other reasons mid-utterance, and treating those as "speech
+      // resumed" would flap the cue. Any other phase ends the guess outright.
+      if (e.phase !== 'listening') setSpeechEnding(false);
+      else if (e.speechEnding !== undefined) setSpeechEnding(e.speechEnding);
       // A barge-in whose utterance transcribed to nothing never reaches onResult (VadVoice drops an
       // empty result), which would leave bargedInRef stuck true and mis-route the NEXT real utterance
       // through the barge path (re-speaking stale narration or force-submitting). Clear it on idle —
@@ -3232,7 +3244,6 @@ export function LiveApp(): ReactElement {
       if (e.phase === 'listening') {
         // The mic is genuinely open — any earlier failure notice is stale.
         setVoiceNotice(null);
-        if (e.transcript) flushHeard(e.transcript);
         // The user is talking again — cancel a pending settle so a mid-thought pause never resolves
         // the map out from under them.
         if (settleTimerRef.current !== null) {
@@ -3599,8 +3610,8 @@ export function LiveApp(): ReactElement {
       celebratedRef.current = turn.spec;
       emotion = 'celebrate';
     }
-    return livePresence(turn.status, listening, interjecting, emotion, muted);
-  }, [turn.status, listening, interjecting, turn.spec, muted]);
+    return livePresence(turn.status, listening, interjecting, emotion, muted, transcribing);
+  }, [turn.status, listening, interjecting, turn.spec, muted, transcribing]);
   const presenceStyle = useMemo(
     () =>
       automaticPresenceStyle({
@@ -3880,20 +3891,16 @@ export function LiveApp(): ReactElement {
   const [spokenNow, setSpokenNow] = useState<string | null>(null);
   useEffect(() => setSpokenNow(null), [turn.turn]);
   useEffect(() => setNoteGutterTurn(false), [turn.turn]);
-  // The voice-strip's status pill switches orb/label between "Speaking" and idle. useSpeaking()
-  // polls every 200ms and a tour's stop-to-stop gap can briefly read as not-speaking — this
-  // sticky flag keeps the "Speaking" state through a short gap so the orb doesn't flicker to idle
-  // and back between lines. (Same 600ms linger the old floating SpeakingDock used.)
-  const speaking = speakingNow && !muted;
-  const [speakingSticky, setSpeakingSticky] = useState(false);
-  useEffect(() => {
-    if (speaking) {
-      setSpeakingSticky(true);
-      return;
-    }
-    const t = window.setTimeout(() => setSpeakingSticky(false), 600);
-    return () => window.clearTimeout(t);
-  }, [speaking]);
+  // The voice-strip's status pill switches orb/label between "Speaking" and idle. The signal is
+  // event-driven (the speech queue publishes it), but it genuinely drops between lines — a tour's
+  // stop-to-stop gap reads as not-speaking — so this sticky flag holds the "Speaking" state
+  // through a short gap and the orb doesn't flicker to idle and back between lines. (Same 600ms
+  // linger the old floating SpeakingDock used.)
+  // The linger lives OUTSIDE React (turnstate/useSpeaking), like the preparing hold beside it: the
+  // raw signal flips twice per spoken line, and holding it in component state re-rendered this
+  // file — the largest in the app — on every flip the held value never reflected. Muting drops the
+  // pill at once rather than lingering, because muted means there is no voice to hold on for.
+  const speakingSticky = useSpeakingHeld() && !muted;
   // Mute ENDS a running walk: the reader asked for the written answer instead of a paced one, so
   // the spotlight releases and the remaining pen marks land at once (flushWalkRef is set by the
   // walk effect while it runs). Outside a walk this does nothing — mute stays a pure output-gain
@@ -4906,7 +4913,7 @@ export function LiveApp(): ReactElement {
         }
         ref={layerRef}
       >
-        <div className="presence-positioner">
+        <div className="presence-positioner" ref={voiceSinkRef}>
           {/* The answer "seed": a soft ripple releases from the orb as each turn's answer arrives —
               the seed the canvas blooms out of. It rides the positioner (the sanctioned transform
               lever), so it emanates from wherever the face is — centre while thinking, corner once
@@ -5453,10 +5460,11 @@ export function LiveApp(): ReactElement {
 
       {/* turn states: the live transcript while the mic is open, and the speak ribbon whose
           phrases light up as the docked face talks (centered moments keep the caption). */}
-      {listening && !watchThinking && (
+      {(listening || transcribing) && !watchThinking && (
         <ListeningCard
           transcript={heard}
           mode={micMode}
+          transcribing={transcribing}
           note={
             justListen
               ? `Just listening · ${Math.max(1, Math.round((Date.now() - rambleStartRef.current) / 60_000))}m — say "thoughts?" when you want me`

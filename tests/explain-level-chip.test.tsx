@@ -31,6 +31,16 @@ describe('ExplainLevelChip', () => {
     expect(getLiveConfigV2().explainLevel).toBe('standard');
   });
 
+  it('names the setting on its face, not only in the aria-label', () => {
+    // The chip sits in the dock beside the voice-speed and model chips, and used to render the
+    // bare value ("Standard") — the one control there whose subject a sighted reader could not
+    // work out without hovering for the title.
+    render(<ExplainLevelChip />);
+    const tag = document.querySelector('.explain-chip-tag');
+    expect(tag?.textContent).toBe('Explain');
+    expect(screen.getByRole('button').textContent).toBe('ExplainStandard');
+  });
+
   it('announces where the next tap goes, not just where it is', () => {
     render(<ExplainLevelChip />);
     expect(

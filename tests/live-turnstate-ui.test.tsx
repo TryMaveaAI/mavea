@@ -30,6 +30,45 @@ describe('ListeningCard', () => {
     expect(live).toHaveClass('listen-note');
     expect(container.querySelector('.listen-line')?.closest('[aria-live]')).toBeNull();
   });
+
+  // The gap this closes: the mic closes, every "I'm hearing you" indicator unmounts at once, and
+  // the surface is blank for the length of a transcription — which read as "it missed that".
+  describe('while the utterance is being transcribed', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('holds the card immediately, and stills it only after the anti-flash beat', () => {
+      const { container, rerender } = render(<ListeningCard transcript={null} mode="tap" />);
+      rerender(<ListeningCard transcript={null} mode="tap" transcribing />);
+      // Immediately: the card is still here (continuity), still reading as an open mic.
+      expect(container.querySelector('.listen-card')).not.toHaveClass('is-transcribing');
+      act(() => void vi.advanceTimersByTime(300));
+      const card = container.querySelector('.listen-card');
+      expect(card).toHaveClass('is-transcribing');
+      expect(container.querySelector('.listen-note')?.textContent).toBe('Got that — one moment…');
+      expect(container.querySelector('.listen-line')?.textContent).toContain('Heard you');
+    });
+
+    it('never stills for a transcription that finished inside the beat', () => {
+      const { container, rerender } = render(
+        <ListeningCard transcript={null} mode="tap" transcribing />,
+      );
+      act(() => void vi.advanceTimersByTime(200));
+      rerender(<ListeningCard transcript={null} mode="tap" />);
+      act(() => void vi.advanceTimersByTime(400));
+      expect(container.querySelector('.listen-card')).not.toHaveClass('is-transcribing');
+    });
+
+    it('keeps a transcript it already has, rather than replacing it with the state', () => {
+      const { container } = render(
+        <ListeningCard transcript="should I flex Nabers" mode="tap" transcribing />,
+      );
+      act(() => void vi.advanceTimersByTime(300));
+      expect(container.querySelector('.listen-line')?.textContent).toContain(
+        'should I flex Nabers',
+      );
+    });
+  });
 });
 
 describe('WorkingSkeletons', () => {

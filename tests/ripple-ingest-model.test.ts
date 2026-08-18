@@ -2,13 +2,13 @@
 // optional model-enrichment parse+merge (batch and streaming), the incident reverse read, CODEOWNERS,
 // the GitHub smart input, the tracked-change store, and model-tier budgeting. Nothing here mocks a
 // module, so the whole file shares one clean registry.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { parseUnifiedDiff, looksLikeDiff } from '../src/live/ripple/ingest/parseDiff';
 import { buildShipFromDiff } from '../src/live/ripple/ingest/buildShip';
 import { buildShipFromPaths } from '../src/live/ripple/ingest/buildRepo';
 import { parseEnrichment, mergeEnrichment } from '../src/live/ripple/ingest/companionSchema';
 import { completedArrayItems, completedBlocks } from '../src/live/streamParse';
-import { extractEnrichmentSoFar } from '../src/live/ripple/ingest/streamEnrich';
+import { EnrichmentStreamReader } from '../src/live/ripple/ingest/streamEnrich';
 import {
   parseAlert,
   buildIncidentFloor,
@@ -384,13 +384,14 @@ describe('ripple streaming enrichment', () => {
     });
   });
 
-  describe('extractEnrichmentSoFar', () => {
+  describe('EnrichmentStreamReader', () => {
     it('is monotonic across the stream — fields/counts only ever grow', () => {
       let lastSummary = false;
       let lastGate = false;
+      const reader = new EnrichmentStreamReader();
       const counts = { risks: 0, changes: 0, cascades: 0, suggestions: 0 };
       for (let i = 1; i <= FULL.length; i++) {
-        const enr = extractEnrichmentSoFar(FULL.slice(0, i));
+        const enr = reader.read(FULL.slice(0, i));
         // a present string field never disappears
         const hasSummary = !!enr.summary;
         const hasGate = !!enr.gateRationale;
@@ -414,7 +415,7 @@ describe('ripple streaming enrichment', () => {
     });
 
     it('converges to the canonical parseEnrichment on the full buffer', () => {
-      const streamed = extractEnrichmentSoFar(FULL);
+      const streamed = new EnrichmentStreamReader().read(FULL);
       const canonical = parseEnrichment(FULL)!;
       expect(streamed.summary).toBe(canonical.summary);
       expect(streamed.gateRationale).toBe(canonical.gateRationale);
@@ -426,9 +427,34 @@ describe('ripple streaming enrichment', () => {
 
     it('never emits a value before it has fully landed', () => {
       // right after the opening brace, before "summary" closes — nothing yet
-      const early = extractEnrichmentSoFar(FULL.slice(0, FULL.indexOf('Threads') + 4));
+      const early = new EnrichmentStreamReader().read(FULL.slice(0, FULL.indexOf('Threads') + 4));
       expect(early.summary).toBeUndefined();
       expect(early.risks).toBeUndefined();
+    });
+
+    // The reader exists to make a delta cost its own bytes, and the ONLY thing that proves it is
+    // still doing so is that the work doesn't scale with how the stream was chopped up: the same
+    // reply arriving as one chunk or as hundreds must land on the same enrichment for the same
+    // number of parses. A caller that rebuilt a reader per delta (or a scanner that lost its
+    // cursor) re-parses every already-closed element on every chunk, and this count explodes.
+    it('one chunk or five hundred: same result, same parse count — no rescan from zero', () => {
+      const parse = vi.spyOn(JSON, 'parse');
+      try {
+        const oneShot = new EnrichmentStreamReader().read(FULL);
+        const oneShotParses = parse.mock.calls.length;
+
+        parse.mockClear();
+        const reader = new EnrichmentStreamReader();
+        let streamed = {};
+        for (let i = 1; i <= FULL.length; i++) streamed = reader.read(FULL.slice(0, i));
+
+        expect(streamed).toEqual(oneShot);
+        expect(parse.mock.calls.length).toBe(oneShotParses);
+        // …and that count is one parse per element that closed, not per element per delta.
+        expect(oneShotParses).toBe(5); // 2 risks + 1 change + 1 cascade + 1 suggestion
+      } finally {
+        parse.mockRestore();
+      }
     });
   });
 
@@ -446,12 +472,13 @@ describe('ripple streaming enrichment', () => {
     it('streaming partials applied to the floor end exactly at the final merge', () => {
       // Merge each partial onto the IMMUTABLE floor (as the overlay does) — exercising every prefix,
       // and checking structure is never disturbed mid-stream.
+      const reader = new EnrichmentStreamReader();
       for (let i = 1; i <= FULL.length; i += 7) {
-        const step = mergeEnrichment(FLOOR, extractEnrichmentSoFar(FULL.slice(0, i)), 'gemini');
+        const step = mergeEnrichment(FLOOR, reader.read(FULL.slice(0, i)), 'gemini');
         expect(step.changes[0]!.diff).toBe(FLOOR.changes[0]!.diff);
       }
       // The final partial merge equals the canonical final merge.
-      const last = mergeEnrichment(FLOOR, extractEnrichmentSoFar(FULL), 'gemini');
+      const last = mergeEnrichment(FLOOR, reader.read(FULL), 'gemini');
       const canonical = mergeEnrichment(FLOOR, parseEnrichment(FULL)!, 'gemini');
       expect(last.pr.summary).toBe(canonical.pr.summary);
       expect(last.cascades).toEqual(canonical.cascades);

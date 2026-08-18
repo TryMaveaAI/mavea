@@ -1,6 +1,6 @@
 // useElementRect — track a chrome element's on-screen rect by CSS selector, so the walkthrough can
 // ring a real control (the mic, the pen, the Focus toggle…) that may mount/animate in after the
-// chapter starts. Polls (cheap) plus resize/scroll listeners; returns null when the target isn't
+// chapter starts. rAF-coalesced resize/scroll listeners plus a slow fallback poll; returns null when the target isn't
 // present, is hidden, or sits outside the viewport (so the caller never rings an empty patch of
 // screen). A target below the fold — an answer's footer chips, a card's Ask pill — is scrolled
 // into view first, the way a human guide would bring the thing into frame before pointing at it.
@@ -125,14 +125,29 @@ export function useElementRect(selector: string | undefined, active: boolean): D
       put(r);
     };
     measure();
-    const id = window.setInterval(measure, 250);
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    // Scroll/resize are the primary signal, coalesced to one measure per frame: `measure` walks
+    // every clipping ancestor with getComputedStyle + getBoundingClientRect, and running that
+    // synchronously inside each scroll event is a forced style+layout flush per event during
+    // momentum scrolling. Passive + rAF means at most one measure per rendered frame, after the
+    // scroll has been painted. The interval is only the fallback for movement that fires no event
+    // at all — a target that mounts or animates in after the chapter starts.
+    let rafId = 0;
+    const schedule = (): void => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        measure();
+      });
+    };
+    const id = window.setInterval(measure, 750);
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, { passive: true, capture: true });
     return () => {
       alive = false;
       window.clearInterval(id);
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
     };
   }, [selector, active]);
 

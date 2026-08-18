@@ -143,6 +143,10 @@
   justify-content: center;
   gap: 2px;
   animation: vc-orb-pulse 1.8s infinite;
+  /* REACTIVE loop — call-in-progress feedback, so the lite tier never pauses it; only the
+     visibility layer may (--reactive-play: paused while the page is hidden or off-screen).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-voice .vc-orb i {
   width: 2.5px;
@@ -151,12 +155,18 @@
 }
 .live-voice .vc-orb i:nth-child(1) {
   animation: vc-bar1 0.9s infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-voice .vc-orb i:nth-child(2) {
   animation: vc-bar2 0.9s infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 .live-voice .vc-orb i:nth-child(3) {
   animation: vc-bar3 0.9s infinite;
+  /* REACTIVE loop — pausable only while unseen. */
+  animation-play-state: var(--reactive-play, running);
 }
 /* The settings cluster (voice switch + speed chip + model chip) never shrinks — the transcript
    gives way. */

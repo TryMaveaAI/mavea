@@ -74,3 +74,65 @@ export function useVoicePreparing(): boolean {
     () => false,
   );
 }
+
+/** The gap the linger covers: the voice genuinely stops between lines, and a tour's stop-to-stop
+ *  pause is longer still. Matching the 600ms the old floating SpeakingDock used. */
+const SPEAKING_LINGER_MS = 600;
+
+// Same outside-React shape as the preparing hold above, and for the same reason: the raw signal
+// flips twice per spoken line, so a hook subscribed to it re-renders its consumer — LiveApp, the
+// largest component in the app — on flips the debounced value never reflects.
+let heldSpeaking = false;
+let lingerTimer: number | null = null;
+let unsubscribeSpeaking: (() => void) | null = null;
+const speakingListeners = new Set<() => void>();
+
+function onSpeakingChange(): void {
+  if (isSpeaking()) {
+    if (lingerTimer !== null) {
+      window.clearTimeout(lingerTimer);
+      lingerTimer = null;
+    }
+    if (!heldSpeaking) {
+      heldSpeaking = true;
+      for (const l of speakingListeners) l();
+    }
+    return;
+  }
+  if (lingerTimer !== null || !heldSpeaking) return;
+  lingerTimer = window.setTimeout(() => {
+    lingerTimer = null;
+    heldSpeaking = false;
+    for (const l of speakingListeners) l();
+  }, SPEAKING_LINGER_MS);
+}
+
+function subscribeSpeakingHeld(listener: () => void): () => void {
+  speakingListeners.add(listener);
+  unsubscribeSpeaking ??= subscribeSpeaking(onSpeakingChange);
+  return () => {
+    speakingListeners.delete(listener);
+    if (speakingListeners.size === 0) {
+      unsubscribeSpeaking?.();
+      unsubscribeSpeaking = null;
+      if (lingerTimer !== null) {
+        window.clearTimeout(lingerTimer);
+        lingerTimer = null;
+      }
+      heldSpeaking = false;
+    }
+  };
+}
+
+/**
+ * True while the voice is audibly playing, and for a short linger after it stops — so the voice
+ * strip's orb holds "Speaking" through the silence between two lines instead of flickering to
+ * idle and back. Clears once the voice has been quiet for the full linger.
+ */
+export function useSpeakingHeld(): boolean {
+  return useSyncExternalStore(
+    subscribeSpeakingHeld,
+    () => heldSpeaking,
+    () => false,
+  );
+}

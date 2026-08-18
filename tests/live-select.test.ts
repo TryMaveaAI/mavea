@@ -598,6 +598,38 @@ describe('lead heroes carry a DENSE example in the menu (Phase 2c)', () => {
     });
     expect(densened).toBeGreaterThan(0);
   });
+
+  it('only the LEAD_DENSE leads carry an example — the other heroes stay thin (shape + hints)', () => {
+    // An example on every hero line was ~5.4k uncached prompt tokens a turn, read once and
+    // mostly discarded (the model builds ~9 blocks from a 30-line menu). Exactly the leads pay
+    // for one; the rest keep the thin teaching that prevents blank cards.
+    ASKS.forEach((ask, i) => {
+      const snippet = selectComponents({
+        userText: ask,
+        tier: 'frontier',
+        rotation: i,
+      }).promptSnippet;
+      const heroPart = snippet.split('ALWAYS AVAILABLE')[0];
+      const heroLines = heroPart.split('\n').filter((l) => /^- \w+ — /.test(l));
+      expect(heroLines.length).toBeGreaterThan(3); // the cap is actually exercised
+      heroLines.forEach((line, idx) => {
+        const type = /^- (\w+) — /.exec(line)![1];
+        if (idx < 3) {
+          // A lead carries its dense example exactly when the corpus has one for it.
+          expect(line.includes('· example: '), `lead hero '${type}'`).toBe(
+            !!exampleFor(type, true),
+          );
+        } else {
+          expect(
+            line.includes('· example: '),
+            `thin hero '${type}' must not pay for an example`,
+          ).toBe(false);
+        }
+      });
+      // The thin lines still teach the enrichment fields — that is what stops bare cards.
+      expect(heroPart).toContain('richer with:');
+    });
+  });
 });
 
 describe('domain credibility / sanity gate', () => {

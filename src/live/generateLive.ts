@@ -9,6 +9,7 @@
 import type {
   ConversationSpec,
   Block,
+  Blank,
   InsightProps,
   WebSource,
   SuggestSpec,
@@ -32,7 +33,7 @@ import { getAdapter } from './providers';
 import { isReasoningModel } from './providers/openaiCompatible';
 import { currentDateTimeLine } from './ground/now';
 import { semanticFit } from './semantic';
-import { speedTierFor, recordTurnSpeed, type SpeedTier } from './speed';
+import { speedTierFor, recordTurnSpeed, recordTurnStall, type SpeedTier } from './speed';
 import {
   selectComponents,
   catalogSpan,
@@ -63,11 +64,12 @@ import { memoryRelevant } from './memory/relevance';
 import { adaptiveCols } from './layout';
 import { actionsMenu } from './actions/catalog';
 import { getConnectedMcps } from './actions/connected';
-import { targetBlockCount, countDirective, DEEP_BLOCKS } from './screen';
+import { targetBlockCount, countDirective } from './screen';
+import { rememberDeepenTurn } from './depth/deepenStore';
 import type { ChatMessage, LiveRequest, ThinkingLevel } from './providers/types';
 import { attachmentKind, type Attachment } from './attachments';
 import type { InkIntent } from './annotate/inkIntent';
-import { extractNarration, extractStringField, ArrayStreamScanner } from './streamParse';
+import { ArrayStreamScanner, StringFieldScanner } from './streamParse';
 import {
   getSearchProvider,
   needsFreshInfo,
@@ -87,6 +89,7 @@ import {
   type QualityPref,
 } from './effort';
 import { buildSendHistory, KEEP_RECENT_TURNS } from './history';
+import { recordUsage } from './usage/ledger';
 import { safePdfUrl, pdfProxyUrl } from './doc/safeUrl';
 import { followUpPlan } from './world/detect';
 import { worldFitness } from './world/fitness';
@@ -99,7 +102,6 @@ import type { Representation } from '../canvas/spatial/morph/types';
 import {
   autoFix,
   checkConsistency,
-  hasHardIssue,
   HARD_ISSUE_CODES,
   repairInstruction,
   recoverInstruction,
@@ -408,12 +410,23 @@ function outputBudget(
   // This is free to give: max_output_tokens is a CEILING, not a purchase. Unused tokens cost nothing,
   // and the tokens actually spent are the same either way — the only thing a tight cap buys is a
   // failed turn the user still pays for.
-  const reasoningModel = isReasoningModel(model);
+  //
+  // A GATEWAY route needs the same reservation, and cannot be recognised by name. isReasoningModel
+  // enumerates the families it knows (o-series, gpt-5), but OpenRouter fronts every vendor and
+  // reasoning models arrive there under names no pattern can predict. Measured on
+  // dots-studio/dots-3-note-preview:free: 2,806 reasoning tokens spent against a 2,680 budget,
+  // finish_reason 'length', and ZERO content tokens emitted — precisely the "incomplete with
+  // nothing written" collapse described above, on a model nothing in the id marks as reasoning.
+  // So a gateway reserves thinking room unconditionally. A route that doesn't reason never spends
+  // it, which is exactly the ceiling-not-a-purchase argument in the paragraph above; this only
+  // sizes the BUDGET, and never changes the wire format (isReasoningModel still decides that, so
+  // gateway routes keep sending max_tokens + temperature as they always have).
+  const reservesThinking = isReasoningModel(model) || provider === 'openrouter';
   const reasonHeadroom = thinkingLevel === 'high' ? 6000 : thinkingLevel === 'medium' ? 4000 : 2500;
   const needsThinkHeadroom =
     provider === 'gemini' ||
     (provider === 'anthropic' && (thinkingLevel === 'medium' || thinkingLevel === 'high'));
-  const total = json + (reasoningModel ? reasonHeadroom : needsThinkHeadroom ? thinkHeadroom : 0);
+  const total = json + (reservesThinking ? reasonHeadroom : needsThinkHeadroom ? thinkHeadroom : 0);
   // Ceiling raised to 7200 so a genuinely large answer (an explicit "give me 10 …", or a full
   // 18-block canvas with thinking headroom) can complete its JSON instead of being clipped. A depth
   // request ("go deeper", "more detail") lifts the ceiling + adds headroom so a fuller answer fits.
@@ -422,7 +435,7 @@ function outputBudget(
   // A reasoning model's ceiling has to clear its own thinking too, or the clamp re-imposes exactly
   // the starvation the headroom above exists to prevent.
   const base = deep ? 9600 : 7200;
-  const ceiling = (reasoningModel ? base + reasonHeadroom : base) + itemHeadroom;
+  const ceiling = (reservesThinking ? base + reasonHeadroom : base) + itemHeadroom;
   return Math.min(ceiling, Math.max(1200, Math.round(total + (deep ? 600 : 0))));
 }
 
@@ -509,6 +522,42 @@ function salvageNarration(raw: string | object): string {
     return looksLikeJson(n) ? '' : n;
   }
 }
+
+/** Subtitle for a turn the stream cut off mid-answer. The blocks that arrived are real and stay
+ *  on the canvas; this says plainly that more was coming, so an unusually short answer reads as
+ *  what it is rather than as the model's considered reply. One quiet line under the title — no
+ *  banner, no modal: the reader already has an answer, and the retry lives where it always does. */
+const CUT_SHORT_SUB = 'Cut short — the model ran out of time partway through.';
+
+/** Shortest reply worth diagnosing. Below this the model said essentially nothing, and "it
+ *  answered in prose" would be a guess dressed as a finding. */
+const PROSE_MIN_CHARS = 400;
+
+/**
+ * Whether the model answered in PROSE where the canvas needs structure — it wrote at length and
+ * never opened the object, so there is no `blocks` array anywhere in the reply.
+ *
+ * This is a real, distinct failure and it used to be indistinguishable from every other collapse.
+ * Measured on OpenRouter's nvidia/nemotron-3.5-lightning:free: 25,092 characters of planning notes
+ * ("Here's a thinking process: 1. Analyze User Input…", "Block 4: maybe"), `response_format:
+ * json_object` ignored outright, the completion budget spent, no JSON at any point. The reader was
+ * told "I couldn't put that into a clean view just now — try asking again", so they retried the
+ * same model and waited two more minutes for the same nothing. Naming the cause is the difference
+ * between a mystery and a one-line fix (pick a model that honors JSON mode).
+ *
+ * Deliberately narrow: a reply that OPENS with the object is a truncation or a schema miss, not
+ * this, and a parsed-object reply (Gemini's JSON mode) can never be prose at all.
+ */
+function answeredInProse(raw: string | object): boolean {
+  if (typeof raw !== 'string') return false;
+  const t = raw.trim();
+  return t.length >= PROSE_MIN_CHARS && !/^[{[]/.test(t) && !/"blocks"\s*:/.test(t);
+}
+
+/** Said to the reader when answeredInProse is true. Names the cause and the fix, in their terms —
+ *  no wire vocabulary, because the only useful action is "choose a different model". */
+const PROSE_COLLAPSE_MSG =
+  'This model replied in plain prose instead of the structured answer Mavéa builds the canvas from. Some models — preview and reasoning ones especially — ignore the request for structured output. Try one that supports it.';
 
 /** The graceful fallback: one honest insight carrying whatever we can show. */
 function fallbackSpec(summary: string): ConversationSpec {
@@ -1143,14 +1192,15 @@ export async function generateLive(
   // Small local models also skip it: they won't reliably emit the extra fields and the
   // prompt length hurts their JSON fidelity. Untagged answers fall back to today's
   // plain canvas with no chrome (the depthLens fallback path — zero regression).
+  // The drawers themselves are NOT requested here: depth≥2 content is authored on the first
+  // open (see depth/deepen), so the eager turn no longer pays output tokens for drawers
+  // nobody opens — this asks only for the grouping tags.
   const sectionLine =
     complexity === 'rich' && tier !== 'small'
-      ? `CONCEPT SECTIONS — tag EVERY block with these three fields so the canvas can group it and surface a "Go deeper" drawer for each concept:
+      ? `CONCEPT SECTIONS — tag EVERY block with these two fields so the canvas can group it into concept sections:
 - "section": a short concept label, shared by all blocks in that concept (e.g. "What it is", "The TCP handshake", "Flow control"). ≤ 5 words. Every block in the same concept uses the EXACT same string.
 - "order": 1-based integer — the display order of this section (all blocks in the same section share the same order number). First concept = 1, second = 2, and so on.
-- "depth": 1 for a standard canvas block (the learner sees it first); 2 for a detailed worked example or derivation (goes in the "Go deeper" drawer, depth-first); 3 for advanced edge-case or expert content (also drawer). Omit "depth" on depth-1 blocks if you prefer — absent is treated as 1.
-- "facet": the role of a depth≥2 block only: "example" (a concrete worked case) | "derivation" (the mechanism / why it works) | "edge" (an edge case or gotcha) | "analogy" (an intuition pump) | "history" (background context) | "check" (a self-test recall card). Omit on depth-1 blocks.
-Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or "derivation" per key concept. These are REAL authored explanations that extend the standard lesson; never fabricate filler. The standard (depth-1) blocks already form the complete lesson; deeper ones let the learner drill where they want to go further.`
+Emit ONLY the standard lesson — every block here is one the learner sees first, and together they must already form the complete answer. Each section's "Go deeper" drawer is authored later, on demand, when a learner actually opens it — do not write drawer content now.`
       : '';
 
   const system = [
@@ -1199,14 +1249,11 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     .filter(Boolean)
     .join('\n\n');
   // Cap to the screen target; a small local model stays a touch lighter so it doesn't stall.
-  // A depth request earns headroom so there's room to actually go deeper.
-  // Rich asks on capable models also get a separate DEEP_BLOCKS allowance for the depth≥2
-  // drawer content — those blocks don't appear on the main canvas, so they don't inflate what
-  // the learner sees at first paint.
+  // A depth request earns headroom so there's room to actually go deeper. (Drawer content no
+  // longer rides here: depth≥2 blocks are authored on first open — see depth/deepen — so the
+  // eager turn's block and token budgets stop paying for drawers nobody opens.)
   const maxBlocks =
-    (tier === 'small' ? Math.min(9, target) : target) +
-    (deepen ? (tier === 'small' ? 1 : 3) : 0) +
-    (complexity === 'rich' && tier !== 'small' ? DEEP_BLOCKS : 0);
+    (tier === 'small' ? Math.min(9, target) : target) + (deepen ? (tier === 'small' ? 1 : 3) : 0);
   // Reasoning effort: cheapest level that fits the ask, nudged by the user's quality dial.
   // Most turns are visual composition → minimal; a hard ask → a notch up. Providers
   // without the knob (everything but Gemini today) simply ignore it.
@@ -1320,17 +1367,20 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   }
 
   // Build + emit a renderable spec from a (partial or final) response, applying the
-  // same layout + image fill the final canvas gets. Shared by the streaming reveal and
-  // the pre-repair full emit so progressive blocks never jump when the turn settles.
-  // Each emit re-validates the blocks-so-far into entirely fresh objects, so without care
-  // every partial hands React a canvas of unfamiliar references and every settled card
-  // re-renders for each block that completes after it — O(blocks²) renders per turn. The
-  // `lastEmitted` pass restores identity: a block whose content is unchanged from the
-  // previous emit is re-sent as the SAME object, so the canvas's memoized cards skip it.
+  // same layout + image fill the final canvas gets — the streaming pass, so a block once
+  // placed never re-spans while later ones close (the settle runs the full pass once).
+  // The `lastEmitted` map restores identity where the tiler had to clone for a col: a block
+  // whose content is unchanged from the previous emit is re-sent as the SAME object, so the
+  // canvas's memoized cards skip it.
   let lastEmitted: Block[] = [];
   const emitSpec = (resp: LiveResponse): void => {
     if (!opts.onPartial) return;
-    const tiled = adaptiveCols(resp.blocks, (b) => catalogSpan((b as { type: string }).type));
+    const tiled = adaptiveCols(
+      resp.blocks,
+      (b) => catalogSpan((b as { type: string }).type),
+      undefined,
+      'streaming',
+    );
     fillDocEmbeds(tiled);
     const blocks = tiled.map((b, i) =>
       i < lastEmitted.length && sameJson(b, lastEmitted[i]) ? lastEmitted[i] : b,
@@ -1340,12 +1390,47 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     opts.onPartial({ spec: toSpec(composedNow, sources), narration: resp.narration });
   };
 
-  // Progressive reveal: as each block finishes streaming, validate the blocks-so-far
-  // and emit a partial spec so the canvas grows WITH the spoken narration.
+  // Progressive reveal: as each block finishes streaming, validate ONLY the newly closed
+  // blocks and emit a partial spec so the canvas grows WITH the spoken narration.
+  //
+  // Re-validating the cumulative list on every closed block re-coerced blocks 1..k through
+  // the whole schema for each k — O(blocks²) schema work per turn — and rebuilt every block
+  // object from scratch, so each partial handed the canvas a page of unfamiliar references
+  // and every settled card re-rendered for each block that completed after it. Validating
+  // just the tail keeps the parse linear and keeps a settled block's identity stable from
+  // one partial to the next. The state below carries what validateLiveResponse tracks
+  // internally within one call, so the tail path yields byte-identical blocks and ids to a
+  // one-shot validation of the same reply.
   let buf = '';
   let blockStream = new ArrayStreamScanner('blocks');
+  let narrationField = new StringFieldScanner('narration');
+  let titleField = new StringFieldScanner('title');
   let lastCount = 0;
   let lastPending: string | null = null;
+  // The blocks validated so far (same objects across partials), whether the single allowed
+  // insight has landed (the one-insight rule spans the whole canvas), the holes gathered so
+  // far (spec-level blanks derive from each block's slots), and the last successful
+  // validation's top-level coercions (title/narration), reused when a tail closes no block.
+  let streamedBlocks: Block[] = [];
+  let streamedInsight = false;
+  let streamedBlanks: Blank[] = [];
+  let streamedTop: LiveResponse | null = null;
+  /** The canvas exactly as the progressive parse holds it right now: every block validated, in
+   *  order, with the holes gathered so far. Streamed to the surface on each partial — and kept as
+   *  the answer if the stream then dies (see the catch below). A function, not an expression at
+   *  each site, because the state it reads is written from inside streamDelta: a read out here
+   *  would follow the initializers and narrow to null, while a read INSIDE a nested function
+   *  correctly sees the declared type. */
+  const streamedSoFar = (): LiveResponse | null =>
+    streamedTop && streamedBlocks.length
+      ? {
+          ...streamedTop,
+          blocks: streamedBlocks,
+          ...(streamedBlanks.length ? { blanks: streamedBlanks, awaiting: true } : {}),
+        }
+      : null;
+  /** What the parse had already validated when a dead stream ended the turn — see the catch. */
+  let streamSalvage: LiveResponse | null = null;
   let thinking = false;
   // Wraps the raw delta stream: reasoning tokens drive the "Thinking…" cue and are NEVER buffered
   // (they'd corrupt the answer JSON); content tokens end the thinking phase and feed the
@@ -1381,21 +1466,54 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
         opts.onPending(pending ? (catalogFacts(pending)?.dataShapes?.[0] ?? null) : null);
       }
     }
+    narrationField.scan(buf);
+    titleField.scan(buf);
     const rawBlocks = blockStream.items;
     if (rawBlocks.length <= lastCount) return;
+    let tail = rawBlocks.slice(lastCount);
     lastCount = rawBlocks.length;
+    // The one-insight rule spans the whole canvas: once the opener has landed, a later raw
+    // insight is dropped BEFORE validation — consuming no block slot, exactly like the skip
+    // inside a one-shot pass (which the tail validator, seeing only this tail, couldn't know).
+    if (streamedInsight)
+      tail = tail.filter((rb) => {
+        const t = (rb as { type?: unknown } | null)?.type;
+        return !(typeof t === 'string' && t.toLowerCase().trim() === 'insight');
+      });
+    // Only the room the running canvas has left; a full canvas still re-validates the top-level
+    // fields (the title may complete after the last kept block) so every emit stays fresh.
+    const remaining = Math.max(0, maxBlocks - streamedBlocks.length);
     const partial = validateLiveResponse(
       {
-        narration: extractNarration(buf) ?? '',
-        title: extractStringField(buf, 'title') ?? '',
+        narration: narrationField.value() ?? '',
+        title: titleField.value() ?? '',
         sub: '',
-        blocks: [...rawBlocks],
+        blocks: remaining > 0 ? tail : [],
       },
       allowed,
-      maxBlocks,
+      remaining,
       sources.length > 0,
     );
-    if (partial?.blocks.length) emitSpec(partial);
+    if (partial) {
+      streamedTop = partial;
+      for (const b of partial.blocks) {
+        if (b.type === 'insight') streamedInsight = true;
+        // Continue the one-shot pass's positional sequence: ids and reveal delays index across
+        // the whole canvas, not within this tail.
+        const at = streamedBlocks.length;
+        b.id = `live-${at + 1}`;
+        b.delay = Math.min(at * 70, 560);
+        streamedBlocks.push(b);
+      }
+      // Merge this tail's holes the way one cumulative pass gathers them (liveSchema's
+      // dedupeBlanks): first occurrence of a key wins, capped at 4.
+      for (const blank of partial.blanks ?? []) {
+        if (streamedBlanks.length >= 4) break;
+        if (!streamedBlanks.some((x) => x.key === blank.key)) streamedBlanks.push(blank);
+      }
+    }
+    const running = streamedSoFar();
+    if (running) emitSpec(running);
   };
 
   // The request the adapter sends. History is the compacted send-history; thinkingLevel and
@@ -1435,10 +1553,12 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
       : null;
 
   let raw: string | object;
+  // Outside the try so the failure path below can measure how long we waited for nothing.
+  const genStart = performance.now();
   try {
-    const genStart = performance.now();
     const out = await adapter.generate({ ...baseReq, user: userForModel }, cfg, streamDelta);
     raw = out.raw;
+    recordUsage('canvas', out.usage);
     // Learn this model's throughput from the turn we just ran, so a repeatedly-slow model earns the
     // leaner menu/budget above on the NEXT turn. Best-effort + storage-backed; a no-op off-DOM.
     recordTurnSpeed(
@@ -1452,6 +1572,18 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
       opts.onSources?.(sources);
     }
   } catch (err) {
+    // A turn that waited a long time and produced no answer is the clearest speed signal there is,
+    // and it used to be discarded: recordTurnSpeed above runs only on success, so a model that timed
+    // out every turn was never measured and kept being handed the full-size ask that timed it out.
+    // Skip a turn the USER cancelled — that measures the reader, not the model.
+    if (!opts.signal?.aborted) recordTurnStall(cfg.model, buf.length, performance.now() - genStart);
+    // A dead stream is not always a dead turn. When the adapter's total-stream cap (or a stall)
+    // kills a slow route mid-answer, the progressive parse has usually already validated real
+    // blocks — the reader watched them arrive — and replacing them with an error card discards an
+    // answer that exists. Keep what streamed, marked honestly as cut short. A turn the USER
+    // cancelled is not salvaged: it was superseded, and rendering it would fight the turn after it.
+    const kept = opts.signal?.aborted ? null : streamedSoFar();
+    if (kept) streamSalvage = { ...kept, sub: CUT_SHORT_SUB };
     // When native grounding hits a rate-limit (429) — the norm on a free-tier key, where
     // Google Search grounding is throttled separately from ordinary generation — we recover
     // WITHOUT surfacing an error. How we recover depends on what the question needs:
@@ -1489,28 +1621,42 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
         // parse (and the narration actually spoken, via onDelta) for a turn that never happened.
         buf = '';
         blockStream = new ArrayStreamScanner('blocks');
+        narrationField = new StringFieldScanner('narration');
+        titleField = new StringFieldScanner('title');
         lastCount = 0;
         lastPending = null;
+        streamedBlocks = [];
+        streamedInsight = false;
+        streamedBlanks = [];
+        streamedTop = null;
         const out2 = await adapter.generate(
           { ...baseReq, tools: undefined, user: userForModel },
           cfg,
           streamDelta,
         );
         raw = out2.raw;
+        recordUsage('ungrounded-retry', out2.usage);
       } catch (err2) {
         // The friendly LiveError below deliberately hides provider wire detail from the user —
         // log the real cause so a rejected request (a malformed field, an unsupported tool on
         // this model) is diagnosable from devtools instead of just "couldn't answer".
         console.error('[live] provider call failed', err2);
-        const error = describeLiveError(err2, cfg.provider);
-        return { spec: errorSpec(error), narration: '', tier, error };
+        if (!streamSalvage) {
+          const error = describeLiveError(err2, cfg.provider);
+          return { spec: errorSpec(error), narration: '', tier, error };
+        }
+        raw = buf; // the partial answer; streamSalvage is what actually renders
       }
     } else {
-      // The provider call failed — there is NO answer. Surface a typed error (mapped to plain
-      // language) so the UI renders an honest, recoverable error state, never a fake finding.
+      // The provider call failed. With nothing salvaged there is NO answer — surface a typed error
+      // (mapped to plain language) so the UI renders an honest, recoverable error state, never a
+      // fake finding.
       console.error('[live] provider call failed', err);
-      const error = describeLiveError(err, cfg.provider);
-      return { spec: errorSpec(error), narration: '', tier, error };
+      if (!streamSalvage) {
+        const error = describeLiveError(err, cfg.provider);
+        return { spec: errorSpec(error), narration: '', tier, error };
+      }
+      raw = buf; // the partial answer; streamSalvage is what actually renders
     }
   } finally {
     // Native search ran inside the call; clear the consent indicator now it's done. This is the
@@ -1519,7 +1665,11 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     if (useNativeSearch) opts.onActivity?.(null);
   }
 
-  let validated = validateLiveResponse(raw, allowed, maxBlocks, sources.length > 0);
+  // A salvaged turn is ALREADY validated — the progressive parse validated every block it kept —
+  // and re-parsing its truncated JSON would only fail. It also skips the collapse recovery below:
+  // re-asking bills a second full call to the very route that just ran out of time.
+  let validated =
+    streamSalvage ?? validateLiveResponse(raw, allowed, maxBlocks, sources.length > 0);
 
   // RECOVERY — a turn must never COLLAPSE to the lone "Here's what I can say" card. That happens when
   // the first pass returns null (unparseable/truncated, or no title + no valid blocks), an empty
@@ -1530,9 +1680,10 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   // non-answer.
   const RECOVERY_MIN_BLOCKS = 6;
   const wouldCollapse =
-    !validated ||
-    validated.blocks.length === 0 ||
-    (complexity !== 'brief' && validated.blocks.length < 3);
+    !streamSalvage &&
+    (!validated ||
+      validated.blocks.length === 0 ||
+      (complexity !== 'brief' && validated.blocks.length < 3));
   let didRecover = false;
   if (opts.repair !== false && wouldCollapse) {
     didRecover = true;
@@ -1559,6 +1710,7 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
         },
         cfg,
       );
+      recordUsage('collapse-recovery', out2.usage);
       const second = validateLiveResponse(out2.raw, allowed, recoverCap, sources.length > 0);
       // Keep whichever pass produced the richer canvas — never regress if the retry did worse.
       // The recovery instruction asks for blocks, not a fresh causal judgement, so carry the first
@@ -1577,7 +1729,11 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
     // present + speak that, so a collapsed turn degrades to the spoken answer, not a wall of braces.
     const salvaged = salvageNarration(raw) || validated?.narration || '';
     logWorldGate(caps, { causal: validated?.causal, arm: null, collapsed: true });
-    return { spec: fallbackSpec(salvaged), narration: salvaged, tier };
+    // Nothing to salvage AND the reply was prose: say which of those two it was. The narration
+    // stays whatever we could actually rescue — the diagnosis is written, not spoken, because it
+    // is about the tool rather than the question.
+    const summary = salvaged || (answeredInProse(raw) ? PROSE_COLLAPSE_MSG : '');
+    return { spec: fallbackSpec(summary), narration: salvaged, tier };
   }
 
   // Accuracy guardrail, COST-AWARE — two tiers so we spend model calls sparingly:
@@ -1592,7 +1748,18 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
   // Skip the consistency repair when recovery already fired a second call — bounds a collapsed turn
   // to at most TWO model calls (initial + recovery), never three. autoFix still ran, so the common
   // structural issues are already fixed deterministically.
-  if (!didRecover && opts.repair !== false && hasHardIssue(issues)) {
+  // A lone 'low-variety' doesn't buy the round trip either: it is the dominant repair trigger and
+  // the most stylistic of the hard issues — a canvas of staples is a worse LOOK, not a wrong
+  // answer — and its repair routinely failed the hardAfter gate below, so the call bought nothing.
+  // It still rides along in the instruction (and still counts in the accept gate) whenever a
+  // genuinely wrong answer is being repaired anyway. What counts as HARD is unchanged (verify.ts);
+  // this only gates what we PAY to fix.
+  const repairWorthy = issues.some((i) => HARD_ISSUE_CODES.has(i.code) && i.code !== 'low-variety');
+  // A salvaged turn is skipped for the same reason recovery is: its issues ARE the truncation
+  // (a canvas cut off before its charts landed reads as all-prose and too sparse), so the repair
+  // would bill a second full call to the route that just ran out of time, to fix something the
+  // answer already admits to in its own subtitle.
+  if (!didRecover && !streamSalvage && opts.repair !== false && repairWorthy) {
     try {
       const priorJson = typeof raw === 'string' ? raw : JSON.stringify(raw);
       // Reuse the compacted send-history (cheap), then append THIS turn + the answer being
@@ -1610,16 +1777,25 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
         .filter((t) => !FRONTIER_BLOCK_TYPES.has(t) && !usedTypes.has(t))
         .slice(0, 8);
       // No tools on the repair pass — it fixes block structure, it doesn't re-search (so a
-      // grounded turn is never billed a second search query just to correct a chart).
+      // grounded turn is never billed a second search query just to correct a chart). The system
+      // also collapses to the stable cached base: the repair corrects the blocks it is shown, it
+      // never composes from the menu, so resending the ~6,700-token per-turn component menu (plus
+      // the directive suffix) paid full input price for text the fix cannot use. blockTypes stays
+      // — constrained-decoding adapters still need the full enum, or a rebuilt specialized block
+      // would be schema-rejected on arrival. Attachments stay home too: the prior JSON already
+      // carries the answer being corrected.
       const out2 = await adapter.generate(
         {
           ...baseReq,
+          system: baseReq.systemBase ?? baseReq.system,
           history: repairHistory,
           user: repairInstruction(issues, unusedHeroes),
           tools: undefined,
+          attachments: undefined,
         },
         cfg,
       );
+      recordUsage('consistency-repair', out2.usage);
       const repaired = validateLiveResponse(out2.raw, allowed, maxBlocks, sources.length > 0);
       if (repaired) {
         const fixed2 = autoFix(repaired);
@@ -1645,6 +1821,14 @@ Add depth≥2 blocks GENEROUSLY for major concepts — at least one "example" or
       /* repair is best-effort — keep the deterministically-fixed answer */
     }
   }
+
+  // "Go deeper" drawers are authored ON OPEN (see depth/deepen) — a drawer nobody opens costs
+  // nothing — so park what that later call needs: the ask, this turn's config, and the sections
+  // this answer actually produced. Only a section whose cards match this parked turn may request
+  // a drawer, which is what keeps baked demos, the tour, and restored sessions from ever firing
+  // a call. Gated like sectionLine above; a no-op when the model tagged no sections.
+  if (complexity === 'rich' && tier !== 'small')
+    rememberDeepenTurn({ ask: userText, cfg, tier, blocks: result.blocks });
 
   // Final layout pass: tile the blocks into full, balanced, sliver-free rows so the
   // canvas reads like a composed dashboard even when the answer is short.

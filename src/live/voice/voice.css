@@ -590,6 +590,16 @@
     border-color var(--m-fast) var(--ease-out),
     background var(--m-fast) var(--ease-out);
 }
+/* The tag is quieter than the value it labels: it names the control once, and the eye should
+   land on the level the chip is currently set to. */
+.live-voice .explain-chip-tag {
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+.live-voice .explain-chip:hover .explain-chip-tag {
+  color: inherit;
+  opacity: 0.75;
+}
 .live-voice .explain-chip:hover {
   color: var(--presence);
   border-color: color-mix(in oklab, var(--presence) 45%, var(--line));

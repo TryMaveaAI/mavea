@@ -3,7 +3,7 @@ import { TurnAudioStore } from '../src/live/scrubvoice/retain';
 import type { TurnAudio } from '../src/live/scrubvoice/recorder';
 
 const track = (samples: number): TurnAudio => ({
-  pcm: new Float32Array(samples),
+  pcm: new Int16Array(samples),
   sampleRate: 24000,
   duration: samples / 24000,
   spans: [],

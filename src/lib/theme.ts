@@ -40,4 +40,10 @@ export function writeTheme(theme: Theme): void {
  *  Defaults to the document the app runs in; takes one explicitly for the Live template paths. */
 export function applyTheme(theme: Theme, doc: Document = document): void {
   doc.documentElement.dataset.theme = theme;
+  // index.html ships data-theme="light" statically, so that value alone cannot tell "not known
+  // yet" from "chosen light" — which is why the boot splash's pre-mount guess reads
+  // prefers-color-scheme instead. This marker is the difference: once it is present the choice is
+  // real, and the splash stops guessing (see the #boot rules in index.html). Set here rather than
+  // at the call site so every surface that applies a theme reports it the same way.
+  doc.documentElement.dataset.themeResolved = '';
 }

@@ -14,10 +14,16 @@
      - .presence.is-hidden pauses EVERYTHING with !important — also wins, as it should.
    ========================================================================================== */
 
-/* 1 — Ambient face loops. Every ambient animation carries `animation-play-state:
-   var(--ambient-play, running)` at its declaration site (grep the AMBIENT-loop comments in
-   presence-canvas.css / friend-aliveness.css / presence-styles.css). One line pauses them all;
-   blink / talk / gaze / state animations don't read this var, so they keep running. */
+/* 1 — Ambient loops, face and canvas alike. Every ambient animation carries
+   `animation-play-state: var(--ambient-play, running)` at its declaration site (grep the
+   AMBIENT-loop comments). One line pauses them all; blink / talk / gaze / state animations don't
+   read this var, so they keep running.
+
+   A second longhand exists that lite deliberately does NOT set: `var(--reactive-play, running)`
+   marks the REACTIVE loops — feedback for something actually happening (listening bars, composing
+   dots, loading shimmer, the call orb). Pausing those on a visible page would read as "stuck", so
+   only the visibility layer may set --reactive-play: paused — alongside --ambient-play — when the
+   page is hidden or the animating section has scrolled out of view, where nothing can be seen. */
 :root[data-perf='lite'] {
   --ambient-play: paused;
 
@@ -30,6 +36,9 @@
   --glass-blur-strong: none;
   --glass-blur-soft: none;
   --glass-blur-faint: none;
+  /* …and the wildcard for every one-off strength routed as `var(--glass-blur, blur(Npx))`
+     (see tokens-base.css) — undefined by default so each site renders its own fallback. */
+  --glass-blur: none;
 }
 
 /* 3 — The aura becomes a cheap static glow: the radial-gradient halo is already soft, so dropping

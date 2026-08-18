@@ -18,7 +18,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   overflow: hidden;
   animation: prism-ask-in 0.32s ease both;
 }

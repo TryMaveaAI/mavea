@@ -8,6 +8,7 @@
 // proportional to attention. Pure + unit-tested; imports no adapters.
 import type { ModelConfig } from '../../../types/mavea';
 import type { ThinkingLevel } from '../../providers/types';
+import { isFreeRoute } from '../../providers/route';
 
 export type RippleTier = 'frontier-fast' | 'frontier-deep' | 'slow-cheap';
 
@@ -76,7 +77,7 @@ export function classifyTier(cfg: ModelConfig): RippleTier {
   const id = cfg.model.toLowerCase();
   // Slow/cheap: anything on a local/self-hosted base URL, or an OpenRouter "free" route
   // (rate-limited + slow).
-  if (isLocalUrl(cfg.baseUrl) || /:free\b/.test(id)) {
+  if (isLocalUrl(cfg.baseUrl) || isFreeRoute(id)) {
     return 'slow-cheap';
   }
   // Deep reasoning: the big, slower, pricier models — full read, but courses stay lazy.

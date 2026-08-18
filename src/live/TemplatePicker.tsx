@@ -227,6 +227,12 @@ function AppearancePanel({
             className={`appearance-option${template.id === active ? ' is-active' : ''}`}
             onClick={() => onPickTemplate(template.id)}
             onKeyDown={(event) => moveFocus(event, index)}
+            // Warm only the faces of the template being considered — opening the picker used to
+            // load EVERY template's faces (~600KB) up front. Hover covers the pointer, focus
+            // covers arrow-key browsing, and a straight click still prewarms inside
+            // onPickTemplate itself; FontFaceSet.load resolves instantly for already-loaded faces.
+            onPointerEnter={() => prewarmTemplateFonts(document, template.id)}
+            onFocus={() => prewarmTemplateFonts(document, template.id)}
           >
             <Preview templateId={template.id} />
             <span className="appearance-option-copy">
@@ -268,7 +274,6 @@ export function TemplatePicker({
 
   useEffect(() => {
     if (!open) return;
-    prewarmTemplateFonts(document);
     const selected = TEMPLATES.findIndex((template) => template.id === active);
     requestAnimationFrame(() => {
       const mobile = window.matchMedia?.('(max-width: 720px)').matches ?? false;

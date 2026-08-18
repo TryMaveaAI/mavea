@@ -15,7 +15,7 @@
   padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
     max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   background: color-mix(in srgb, var(--surface-default) 72%, transparent);
-  backdrop-filter: blur(14px);
+  backdrop-filter: var(--glass-blur, blur(14px));
   pointer-events: auto;
 }
 
@@ -444,7 +444,7 @@ body[data-tour-chapter='highlight'] .block-actions {
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
     max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: color-mix(in srgb, var(--surface-default) 82%, transparent);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   animation: tour-end-bloom 500ms ease both;
 }
 
@@ -643,11 +643,12 @@ body[data-tour-chapter='highlight'] .block-actions {
 @keyframes tour-end-bloom {
   from {
     opacity: 0;
-    backdrop-filter: blur(0px);
+    /* `none` interpolates as a zero-radius blur, and stays a no-op when lite zeroes the token */
+    backdrop-filter: none;
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(10px);
+    backdrop-filter: var(--glass-blur-faint);
   }
 }
 .tour-end-line {

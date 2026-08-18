@@ -7,9 +7,12 @@
 // response instead, so tool_choice stays at its default 'auto' and Claude is free to
 // run a web_search loop (server-side; results arrive as server_tool_use /
 // web_search_tool_result blocks) before emitting the schema-shaped answer.
-// The system is split into two blocks: the stable tier base (cache_control:ephemeral
-// → ~90% cheaper on turns 2+) and the per-turn section (hero picks, count, freshness —
-// changes every turn, so it can't cache). Extended thinking fires for medium/high-effort
+// Caching is prefix-based, so the request is shaped so the whole system + history prefix
+// caches: the stable tier base is the lone system block (cache_control → ~90% cheaper on
+// turns 2+), the per-turn section (hero picks, count, freshness — changes every turn) rides
+// at the head of the USER turn, and a second breakpoint on the last history message caches
+// the replayed conversation too — both on a 1h TTL, since a voice session pauses longer
+// than the 5-min default all the time. Extended thinking fires for medium/high-effort
 // turns (hard questions with balanced/thorough quality): adaptive mode lets Claude
 // decide whether to think, display:summarized keeps thinking output lean — thinking only
 // composes with 'auto' tool_choice, which this adapter always uses now, so thinking +
@@ -118,17 +121,44 @@ export const anthropicAdapter: ProviderAdapter = {
   async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
     const base = cfg.baseUrl ?? PROXY_BASE;
 
-    // Split system into a stable cached block + per-turn uncached block.
-    // The stable base (liveSystemPrompt) is several thousand tokens that never change within a
-    // (tier, complexity) — every turn after the first hits the 5-min ephemeral cache at ~10% cost.
-    // The per-turn suffix (hero picks, count directive, freshness line, etc.) varies
-    // and travels uncached so the cache checkpoint stays intact.
+    // Prompt caching is PREFIX-based: any uncached bytes poison everything behind them. The
+    // stable base (liveSystemPrompt) is several thousand tokens that never change within a
+    // (tier, complexity), so it rides alone in the system slot under a cache breakpoint. The
+    // per-turn suffix (hero picks, count directive, freshness line, etc.) varies every turn —
+    // as a second system block it sat BEFORE the history, billing the entire replayed
+    // conversation at full price on every turn. It folds into the user turn instead, ahead of
+    // the user's own words (the same split gemini.ts and the Responses adapters ship): the
+    // model reads every instruction in the same order, but now `system + history` caches, with
+    // a second breakpoint on the last history message so a long session re-buys only its delta.
+    // Both breakpoints use the 1h TTL — a voice conversation pauses longer than the 5-minute
+    // default all the time, and each such pause was repaying the full cold prompt.
     const stableBase = req.systemBase ?? req.system;
     const perTurn = req.systemBase ? req.system.slice(stableBase.length).trimStart() : '';
+    const cacheHour = { type: 'ephemeral', ttl: '1h' };
+    // A caller without a systemBase split (Prism, mindshape, dashboards…) keeps the exact
+    // wire shape it always had: one plain-ephemeral system block, untouched messages.
     const systemBlocks = [
-      { type: 'text', text: stableBase, cache_control: { type: 'ephemeral' } },
-      ...(perTurn ? [{ type: 'text', text: perTurn }] : []),
+      {
+        type: 'text',
+        text: stableBase,
+        cache_control: req.systemBase ? cacheHour : { type: 'ephemeral' },
+      },
     ];
+    const lastTurn = req.history.length - 1;
+    const history = req.history.map((h, i) =>
+      req.systemBase && i === lastTurn
+        ? { role: h.role, content: [{ type: 'text', text: h.content, cache_control: cacheHour }] }
+        : h,
+    );
+    const baseUserContent = anthropicUserContent(req.user, req.attachments);
+    const userContent = perTurn
+      ? [
+          { type: 'text', text: perTurn },
+          ...(typeof baseUserContent === 'string'
+            ? [{ type: 'text', text: baseUserContent }]
+            : baseUserContent),
+        ]
+      : baseUserContent;
 
     // Adaptive thinking: let Claude decide whether to reason on medium/high-effort
     // turns (hard questions with Balanced/Thorough quality). Requires temperature:1
@@ -164,10 +194,7 @@ export const anthropicAdapter: ProviderAdapter = {
           temperature: useThinking ? 1 : (req.temperature ?? 0.3),
           ...(useThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
           system: systemBlocks,
-          messages: [
-            ...req.history,
-            { role: 'user', content: anthropicUserContent(req.user, req.attachments) },
-          ],
+          messages: [...history, { role: 'user', content: userContent }],
           // Structured Outputs validates the FINAL text response against the schema —
           // tool_choice is left at its default 'auto' (never forced), which is what lets
           // Claude call web_search first when it's offered below.

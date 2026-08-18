@@ -341,10 +341,13 @@
   border-radius: 18px;
   border: 1px solid var(--line);
   /* Frosted glass over the hero flow, biased to the solid surface so the bar stays crisp
-     and high-contrast in light mode (a pure glass tint washes out on the pale page). */
+     and high-contrast in light mode (a pure glass tint washes out on the pale page). The
+     blur+saturate pair lives in one local var — a compound can't read the shared blur tokens
+     (`none saturate(...)` is invalid), and perf-lite already kills this property wholesale. */
+  --fl-composer-frost: blur(20px) saturate(1.1);
   background: color-mix(in oklab, var(--surface-elevated) 86%, transparent);
-  backdrop-filter: blur(20px) saturate(1.1);
-  -webkit-backdrop-filter: blur(20px) saturate(1.1);
+  backdrop-filter: var(--fl-composer-frost);
+  -webkit-backdrop-filter: var(--fl-composer-frost);
   box-shadow: var(--shadow-floating);
 }
 /* the input itself has no border to hang a ring on, so the whole pill takes it — the input's

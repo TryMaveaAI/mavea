@@ -12,8 +12,8 @@
   justify-content: center;
   padding: 2.5vh 2vw;
   background: rgba(var(--scrim-rgb), 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(8px));
   animation: ripple-fade var(--m-fast, 160ms) var(--ease-out);
 }
 .ripple-scrim[data-expanded='true'] {
@@ -574,6 +574,9 @@
 }
 .ripple-edge-break {
   animation: ripple-dash 0.8s linear infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
 }
 @keyframes ripple-dash {
   to {
@@ -693,7 +696,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   padding: 6px 10px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: var(--glass-blur, blur(4px));
 }
 .ripple-map-legend-item {
   display: inline-flex;
@@ -890,8 +893,8 @@
   justify-content: center;
   padding: var(--s-lg);
   background: color-mix(in oklab, var(--surface-deep) 60%, transparent);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: var(--glass-blur, blur(3px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(3px));
 }
 .ripple-paste-card {
   width: min(720px, 100%);
@@ -992,6 +995,9 @@
   border-radius: 50%;
   background: var(--presence);
   animation: ripple-pulse 1.1s ease-in-out infinite;
+  /* REACTIVE loop — enrichment-in-flight feedback, so the lite tier never pauses it; only the
+     visibility layer may (--reactive-play: paused while the page is hidden or off-screen). */
+  animation-play-state: var(--reactive-play, running);
 }
 @keyframes ripple-pulse {
   0%,
@@ -1105,6 +1111,8 @@
   .ripple-sharpening-dot,
   .ripple-rail-spark {
     animation: ripple-build-pulse 1.4s ease-in-out infinite;
+    /* REACTIVE loop — pausable only while unseen. */
+    animation-play-state: var(--reactive-play, running);
   }
 }
 
@@ -1171,9 +1179,13 @@
 @media (prefers-reduced-motion: no-preference) {
   .ripple-skel-bar {
     animation: ripple-shimmer 1.6s linear infinite;
+    /* REACTIVE loop — pausable only while unseen. */
+    animation-play-state: var(--reactive-play, running);
   }
   .ripple-progress::after {
     animation: ripple-indeterminate 1.15s ease-in-out infinite;
+    /* REACTIVE loop — pausable only while unseen. */
+    animation-play-state: var(--reactive-play, running);
   }
 }
 

@@ -24,7 +24,7 @@
   padding: 12px 24px;
   border-bottom: 1px solid var(--line-soft);
   background: linear-gradient(var(--app-bg) 78%, transparent);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 .fc-nav-back {
   display: inline-flex;
@@ -525,7 +525,7 @@
   display: grid;
   place-items: center;
   background: rgba(var(--scrim-rgb), 0.72);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
   padding: 24px;
 }
 .fc-ed-shell {

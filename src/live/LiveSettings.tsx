@@ -18,6 +18,7 @@ import { useFocusTrap } from './useFocusTrap';
 import { DropSelect } from './setup/DropSelect';
 import { ModelSelect } from './setup/ModelSelect';
 import { ProviderResponsibilityNotice } from './setup/ProviderResponsibilityNotice';
+import { UsagePanel } from './usage/UsagePanel';
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
 import { VISIBLE_PROVIDERS, providerInfo, getAdapter } from './providers';
 import {
@@ -928,6 +929,14 @@ export function LiveSettings({
               </label>
             )}
             <ProviderResponsibilityNotice />
+            {/* What this session actually spent on the reader's own key. It sits under the key
+                field on purpose — the cost signal belongs beside the thing paying it. */}
+            <section aria-labelledby="ls-usage-heading">
+              <h4 id="ls-usage-heading" className="ls-usage-heading">
+                This session&rsquo;s tokens
+              </h4>
+              <UsagePanel />
+            </section>
             <div className="settings-transfer-row" aria-busy={importBusy}>
               <button type="button" className="settings-transfer-btn" onClick={handleExport}>
                 Export settings

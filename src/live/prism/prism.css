@@ -13,7 +13,7 @@
   justify-content: center;
   padding: 2.5vh 2.5vw;
   background: rgba(var(--scrim-rgb), 0.72);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 /* Fill most of the viewport so the map + source page both have room (no wasted empty space). The
    "expand" toggle pushes it edge-to-edge. */
@@ -720,7 +720,7 @@
   background: color-mix(in oklab, var(--surface-deep) 88%, transparent);
   border: 1px solid var(--line);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   animation: prism-mark-in 0.4s ease both;
 }
 .prism-pen-caption-text {
@@ -1112,6 +1112,10 @@
   top: 0;
   transform-origin: 0 0;
   animation: prism-world-in 0.6s ease both;
+}
+/* A compositor layer is rented, not owned (the morph stage's rule): promote the world-sized
+   texture only while a drag is actually moving it, never for the whole time the panel is open. */
+.prism-stage.is-panning .prism-world {
   will-change: transform;
 }
 @keyframes prism-world-in {
@@ -1155,7 +1159,7 @@
   overflow: hidden;
   border: 1px solid var(--line-strong);
   background: color-mix(in oklab, var(--surface-elevated) 90%, transparent);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
 }
 .prism-zoom button {
   width: 32px;

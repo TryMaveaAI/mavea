@@ -27,6 +27,7 @@ vi.mock('../src/live/generateLive', () => ({
 }));
 
 import { useLiveTurn, hydrateFromSession } from '../src/live/useLiveTurn';
+import { clearRippleCache } from '../src/live/ripple/cache';
 import type { SavedSession } from '../src/live/session/store';
 
 const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-x', apiKey: 'k' };
@@ -87,10 +88,14 @@ const settledMind: MindShapeSpec = {
 // The label + map are what the LiveApp handler passes as the synthetic prompt's display + fromMind.
 const MIND_PROMPT = 'Make sense of this thinking map: walkability, transit, EV transition…';
 
-beforeEach(() => {
+beforeEach(async () => {
   gen.calls = [];
   gen.result = answer('A walkable city');
   vi.clearAllMocks();
+  // A fresh standalone start has no conversation behind it, which is exactly the answer
+  // useLiveTurn persists to the device — so without this, the second test replays the first
+  // test's answer for the same prompt and never reaches the model.
+  await clearRippleCache();
 });
 
 describe('Watch Me Think — fresh standalone start on a restored session', () => {

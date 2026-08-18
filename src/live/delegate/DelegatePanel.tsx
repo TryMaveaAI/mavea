@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
 import type { MemoryNode } from '../memory/store';
 import { Presence } from '../../presence/Presence';
+import { useVoiceEnergySink } from '../../voice/voiceEnergy';
 import { isHidden } from '../../lib/pageVisibility';
 import { getAdapter } from '../providers';
 import { useFocusTrap } from '../useFocusTrap';
@@ -391,6 +392,8 @@ export function DelegatePanel({
 }): ReactElement {
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef);
+  // One sink ref serves all three jelly wrappers — each element registers independently.
+  const voiceSinkRef = useVoiceEnergySink();
   const logRef = useRef<HTMLOListElement>(null);
   const [stage, setStage] = useState<Stage>('brief');
   const [seat, setSeat] = useState<Seat>('mavea');
@@ -634,7 +637,7 @@ export function DelegatePanel({
         <header className="dlg-head">
           <div className="dlg-head-id">
             {stage === 'brief' && (
-              <span className="dlg-jelly brief" aria-hidden="true">
+              <span className="dlg-jelly brief" aria-hidden="true" ref={voiceSinkRef}>
                 <Presence state={ready ? 'thinking' : 'reading'} gaze={ready ? 'center' : 'down'} />
               </span>
             )}
@@ -834,7 +837,7 @@ export function DelegatePanel({
           <div className="dlg-table">
             <div className="dlg-tablescape">
               <div className="dlg-seat yours">
-                <span className="dlg-jelly" aria-hidden="true">
+                <span className="dlg-jelly" aria-hidden="true" ref={voiceSinkRef}>
                   <Presence {...look.yours} />
                 </span>
                 <span className="dlg-seat-name">Your Mavéa</span>
@@ -846,7 +849,7 @@ export function DelegatePanel({
                 </span>
               </div>
               <div className="dlg-seat theirs">
-                <span className="dlg-jelly ghost" aria-hidden="true">
+                <span className="dlg-jelly ghost" aria-hidden="true" ref={voiceSinkRef}>
                   <Presence {...look.theirs} />
                 </span>
                 <span className="dlg-seat-name">{counterpart}</span>

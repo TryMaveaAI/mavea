@@ -57,8 +57,18 @@ export async function speculate(
 ): Promise<GhostCard[]> {
   try {
     const adapter = getAdapter(cfg.provider);
+    // 'minimal' thinking, explicitly: a six-word title list needs no reasoning, and a glimpse
+    // fires up to three times per listen — on providers with a thinking dial (Gemini) the
+    // default level would spend more on deliberation than on the entire disposable answer.
     const out = await adapter.generate(
-      { system: SYSTEM, history: [], user: partial, maxTokens: MAX_TOKENS, signal },
+      {
+        system: SYSTEM,
+        history: [],
+        user: partial,
+        maxTokens: MAX_TOKENS,
+        thinkingLevel: 'minimal',
+        signal,
+      },
       cfg,
     );
     if (signal.aborted) return [];

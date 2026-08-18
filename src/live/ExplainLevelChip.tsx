@@ -31,6 +31,10 @@ export function ExplainLevelChip(): ReactElement {
       aria-label={`Explanation level: ${LABEL[level]}. Tap for ${LABEL[CYCLE[level]]}.`}
       title="How plain or rigorous the words and visuals are — or just say 'explain it simpler' / 'go deeper'"
     >
+      {/* The value alone ("Standard") named no setting, so the one control in the dock that is
+          not self-evident from its icon read as a mystery word. The tag says which knob this is;
+          the aria-label already did. */}
+      <span className="explain-chip-tag">Explain</span>
       {LABEL[level]}
     </button>
   );

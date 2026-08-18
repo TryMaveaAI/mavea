@@ -151,6 +151,9 @@
   border-radius: 50%;
   background: var(--presence);
   animation: dashPulse 1.6s ease-in-out infinite;
+  /* AMBIENT loop — pausable by the lite perf tier (data-perf='lite' sets --ambient-play: paused).
+     The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation-play-state: var(--ambient-play, running);
 }
 @keyframes dashPulse {
   0%,
@@ -783,7 +786,7 @@
   justify-content: center;
   padding: 28px;
   background: color-mix(in oklab, var(--surface-deep, #000) 64%, transparent);
-  backdrop-filter: blur(3px);
+  backdrop-filter: var(--glass-blur, blur(3px));
 }
 .xt-modal {
   width: min(100%, 920px);
@@ -1288,6 +1291,9 @@
 }
 .dash-refresh-spin {
   animation: dash-refresh-spin 0.8s linear infinite;
+  /* REACTIVE loop — refresh-in-flight feedback, so the lite tier never pauses it; only the
+     visibility layer may (--reactive-play: paused while the page is hidden or off-screen). */
+  animation-play-state: var(--reactive-play, running);
 }
 @keyframes dash-refresh-spin {
   to {

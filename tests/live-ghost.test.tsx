@@ -40,6 +40,16 @@ describe('speculate', () => {
     expect((generate.mock.calls[0][0] as { signal?: AbortSignal }).signal).toBe(ctrl.signal);
   });
 
+  // A glimpse is disposable — a tiny cap plus an explicit minimal-thinking hint is what keeps
+  // three-per-listen speculation from billing reasoning-model deliberation for six-word titles.
+  it('asks for a tiny budget and minimal thinking (a glimpse must stay cheap)', async () => {
+    generate.mockResolvedValue({ raw: { ghosts: [] } });
+    await speculate('half a question', cfg, new AbortController().signal);
+    const req = generate.mock.calls[0][0] as { maxTokens?: number; thinkingLevel?: string };
+    expect(req.maxTokens).toBe(150);
+    expect(req.thinkingLevel).toBe('minimal');
+  });
+
   it('resolves [] on unparseable output or an aborted glimpse', async () => {
     generate.mockResolvedValue({ raw: 'I would build you three lovely cards!' });
     const out = await speculate('half a question', cfg, new AbortController().signal);

@@ -27,7 +27,7 @@ import type {
 } from './types';
 import { fetchWithTimeout, readSSE, obj, str, arr, num } from './http';
 import { openaiResponsesUserContent } from './parts';
-import { isReasoningModel, inBandErrorMessage } from './openaiCompatible';
+import { isReasoningModel, isMinimalGlimpse, inBandErrorMessage } from './openaiCompatible';
 import { liveJsonSchema } from './schema';
 
 const GEN_TIMEOUT_MS = 60_000;
@@ -236,9 +236,21 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
       // dashboard refresh, an on-demand grounded metric — is small (a short prompt and a few JSON
       // values), so the runaway doesn't apply: give it enough effort to actually search. Default
       // 'medium'; a caller (the grounding retry) can push 'high' via thinkingLevel. Everything else
-      // stays 'low'.
-      const effort: 'low' | 'medium' | 'high' =
-        searchTool && !isCanvasTurn ? (req.thinkingLevel === 'high' ? 'high' : 'medium') : 'low';
+      // stays 'low' — except a GLIMPSE (see isMinimalGlimpse): a disposable, self-sized ask that
+      // declared it needs no deliberation at all. The ghost speculation fires up to three of those
+      // per listen off a half-spoken sentence, and paying for a hidden thinking pass to produce
+      // three six-word titles is the clearest waste on the turn path. Never a search turn (the tool
+      // doesn't engage reliably at the lowest tier) and never a canvas turn (blockTypes excludes it,
+      // so a lean ask — which also asks for minimal thinking — keeps today's floor and effort).
+      const glimpse = !searchTool && isMinimalGlimpse(req, cfg.model);
+      const effort: 'minimal' | 'low' | 'medium' | 'high' =
+        searchTool && !isCanvasTurn
+          ? req.thinkingLevel === 'high'
+            ? 'high'
+            : 'medium'
+          : glimpse
+            ? 'minimal'
+            : 'low';
 
       const requestInit = {
         method: 'POST',
@@ -259,26 +271,29 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // routinely burns thousands of reasoning tokens before its first output token, and the
           // old flat 1500 floor left a dashboard refresh (caller cap ~3000) failing with "used its
           // entire output budget on reasoning" on every check — billed reasoning + billed search,
-          // zero answer. A cap only bounds spend; the raised floor costs nothing unless the
-          // reasoning genuinely needs the room, and an errored call that delivered nothing is the
-          // one outcome more expensive than answering.
-          // A reasoning model meters hidden thinking tokens out of THIS budget, so a small cap can
-          // be spent entirely on reasoning, ending the turn `incomplete` with no answer. A FLOOR,
-          // deliberately, not an allowance added on top: adding headroom to a caller that already
-          // sized itself generously only inflates what the provider reserves against its
-          // per-minute quota (measured: a four-board batch went 11.9k → 15.9k that way). This
-          // lifts the small callers that need it and leaves a large, self-sized request alone —
-          // sizing THAT request down belongs where it is computed, not here.
+          // zero answer. A FLOOR, deliberately, not an allowance added on top: adding headroom to a
+          // caller that already sized itself generously only inflates what the provider reserves
+          // against its per-minute quota (measured: a four-board batch went 11.9k → 15.9k that
+          // way). And it lifts only the small callers that need it — sizing a large, self-sized
+          // request DOWN belongs where that request is computed, not here.
+          //
+          // The `minimal` rung is the bottom of that same ladder and it reserves nothing: the tier
+          // means no hidden pass, so there is no thinking to leave room for and the caller's own
+          // cap is the honest number. That is the whole reason the floor may be dropped there and
+          // nowhere else — a floor removed while the model is still asked to think is how a small
+          // caller pays for reasoning and receives an empty completion.
           max_output_tokens: reasoning
-            ? Math.max(
-                req.maxTokens ?? 1024,
-                effort === 'high' ? 12_000 : effort === 'medium' ? 8_000 : 1500,
-              )
+            ? effort === 'minimal'
+              ? (req.maxTokens ?? 1024)
+              : Math.max(
+                  req.maxTokens ?? 1024,
+                  effort === 'high' ? 12_000 : effort === 'medium' ? 8_000 : 1500,
+                )
             : (req.maxTokens ?? 1024),
           // Reasoning models (gpt-5.x) reject a custom temperature (fixed at 1) and use
           // `reasoning.effort` instead; classic models keep `temperature`. `effort` (computed above)
-          // is 'low' for a canvas turn and lifted for a search-metric turn — the two forces that shape
-          // it are both measured:
+          // is 'low' for a canvas turn, lifted for a search-metric turn, and dropped to 'minimal'
+          // for a glimpse — the two forces that shape the default are both measured:
           //  · Canvas turns MUST stay 'low'. Letting the API default ('medium') apply destroys them:
           //    a canvas turn hands the model a very large instruction prompt and asks for structured
           //    JSON, and at medium the reasoning ran away and consumed the whole output budget before

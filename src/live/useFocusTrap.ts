@@ -17,7 +17,8 @@ interface Options {
   active?: boolean;
   /** Element to focus on open instead of the first focusable one — for overlays whose primary
    *  surface isn't first in DOM order (e.g. a modal whose keyboard-driven preview sits in the right
-   *  pane, after the left-hand controls). Falls back to the first focusable if it's absent/null. */
+   *  pane, after the left-hand controls). Falls back to the first focusable if it's absent/null or
+   *  refuses focus. */
   initialFocus?: RefObject<HTMLElement | null>;
 }
 
@@ -40,6 +41,11 @@ export function useFocusTrap<T extends HTMLElement>(
   // tabbed to inside the trap.
   const onEscapeRef = useRef(onEscape);
   onEscapeRef.current = onEscape;
+  // Same indirection for initialFocus: it only matters at the moment the trap activates, and a
+  // caller may pass a different target per mode/render — letting that identity re-run the effect
+  // would restore focus to the opener and re-trap mid-session.
+  const initialFocusRef = useRef(initialFocus);
+  initialFocusRef.current = initialFocus;
   useEffect(() => {
     if (!active) return;
     const node = ref.current;
@@ -54,9 +60,15 @@ export function useFocusTrap<T extends HTMLElement>(
       );
 
     // Move focus into the overlay so the first Tab stays inside it. A caller can name the element
-    // to land on (initialFocus) when the meaningful surface isn't first in DOM order; if it isn't
-    // present yet (e.g. an async-composed preview), fall back to the first focusable control.
-    (initialFocus?.current ?? focusable()[0] ?? node).focus({ preventScroll: true });
+    // to land on (initialFocus) when the meaningful surface isn't first in DOM order — but that
+    // target can be missing (an async-composed preview) or a plain element that silently refuses
+    // focus, which would leave the keyboard OUTSIDE the trap where the Escape listener below never
+    // hears the key. Verify focus actually landed inside and fall back: first focusable, then the
+    // node itself.
+    initialFocusRef.current?.current?.focus({ preventScroll: true });
+    if (!node.contains(document.activeElement)) {
+      (focusable()[0] ?? node).focus({ preventScroll: true });
+    }
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && onEscapeRef.current) {
@@ -89,5 +101,5 @@ export function useFocusTrap<T extends HTMLElement>(
         previouslyFocused.focus({ preventScroll: true });
       }
     };
-  }, [ref, active, initialFocus]);
+  }, [ref, active]);
 }

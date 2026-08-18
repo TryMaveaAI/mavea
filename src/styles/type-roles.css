@@ -7,7 +7,9 @@
 
 :root {
   --app-bg: var(--surface-deep);
-  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  /* 'Newsreader Fallback' (fonts.css) carries Newsreader's own metrics on local Georgia, so the
+     font-display: swap handoff — the hero's first FOUT — doesn't reflow it. */
+  --font-display: 'Newsreader', 'Newsreader Fallback', Georgia, 'Times New Roman', serif;
   --font-body:
     'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   --font-ui: var(--font-body);

@@ -21,6 +21,7 @@ import { pruneDeadOpens } from './opens';
 import { clearCheckRuns } from './checkRun';
 import { clearObservations } from './observationStore';
 import { encryptContent, decryptContent } from '../contentVault';
+import { writeLocal } from '../../lib/localBudget';
 import type {
   Cadence,
   CadenceWindow,
@@ -358,36 +359,34 @@ function decode(parsed: unknown): Dashboard[] {
  *  slow migrate-write (or an earlier save) could resolve after a fresher one and clobber it. */
 async function writeEncrypted(dashboards: Dashboard[]): Promise<void> {
   const gen = ++writeGen;
+  let landed = false;
   try {
     if (typeof localStorage === 'undefined') return;
     const enc = await encryptContent(dashboards);
     if (gen !== writeGen) return; // a newer write has since started — don't overwrite it
-    localStorage.setItem(STORAGE_KEY, enc);
-  } catch (err) {
-    // Quota / private mode: the app keeps running off the in-memory cache, but a dropped write is
-    // worth telling someone about rather than pretending it landed — see DASHBOARDS_QUOTA_EVENT.
-    // Do not rely on `instanceof DOMException`: Firefox uses
-    // NS_ERROR_DOM_QUOTA_REACHED/code 1014, and errors crossing an iframe/realm fail the
-    // instanceof check even when they are genuine storage quota failures.
-    const storageError = err as { name?: unknown; code?: unknown } | null;
-    const isQuotaError =
-      !!storageError &&
-      (storageError.name === 'QuotaExceededError' ||
-        storageError.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-        storageError.code === 22 ||
-        storageError.code === 1014);
-    if (isQuotaError) {
-      // Latched, not just announced: a write dropped while the dashboards surface was closed (a pin
-      // made from Live, say) still has to be tellable when the user next opens it.
-      quotaDropped = true;
-      try {
-        if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-          window.dispatchEvent(new CustomEvent(DASHBOARDS_QUOTA_EVENT));
-        }
-      } catch {
-        /* non-browser env */
-      }
+    // Through the shared quota ledger (lib/localBudget): the stores share one ~5MB origin quota,
+    // so a refusal here is usually someone ELSE's cache being large rather than this blob being
+    // unreasonable, and the ledger sheds the oldest entries of the regenerable caches and retries.
+    // Dashboards deliberately do NOT register a shedder of their own — a board is the user's work,
+    // not a cache to be evicted to make room for something else.
+    landed = await writeLocal(STORAGE_KEY, enc);
+  } catch {
+    /* encryption unavailable, or storage walled off entirely — announced below like any other
+       dropped write; the in-memory cache keeps the surface working either way. */
+  }
+  if (landed) return;
+  // The write did not land even after the ledger shed what it could. The app keeps running off the
+  // in-memory cache, but a dropped write is worth telling someone about rather than pretending it
+  // landed — see DASHBOARDS_QUOTA_EVENT. Latched, not just announced: a write dropped while the
+  // dashboards surface was closed (a pin made from Live, say) still has to be tellable when the
+  // user next opens it.
+  quotaDropped = true;
+  try {
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(DASHBOARDS_QUOTA_EVENT));
     }
+  } catch {
+    /* non-browser env */
   }
 }
 

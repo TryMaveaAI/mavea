@@ -1,5 +1,6 @@
 import { useRef, type ReactElement } from 'react';
 import { Presence } from '../presence/Presence';
+import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import { useFocusTrap } from '../live/useFocusTrap';
 import { TOUR_EXTRAS } from './tourPlan';
 
@@ -18,6 +19,7 @@ export function TourEndCard({
   // is what makes it modal, and it never renders in a non-modal state.
   const cardRef = useRef<HTMLDivElement>(null);
   useFocusTrap(cardRef);
+  const voiceSinkRef = useVoiceEnergySink();
 
   return (
     <div
@@ -29,7 +31,7 @@ export function TourEndCard({
     >
       <section className="tour-end-card">
         <header className="tour-end-intro">
-          <div className="tour-end-mascot" aria-hidden="true">
+          <div className="tour-end-mascot" aria-hidden="true" ref={voiceSinkRef}>
             <Presence state="idle" emotion="neutral" gaze="center" />
           </div>
           <h2 id="tour-end-title" className="tour-end-title tour-end-line">

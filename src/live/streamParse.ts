@@ -25,35 +25,106 @@ function unescapeChar(c: string): string {
 }
 
 /**
+ * Cursor-holding scanner for ONE top-level string field of a streaming JSON buffer — the
+ * incremental engine behind `extractStringField`/`extractNarrationProgress`, in the same style as
+ * `ArrayStreamScanner` below. A Live answer arrives as hundreds of small deltas, and re-walking the
+ * whole buffer (rebuilding the value character by character from index 0) on each delta made the
+ * per-turn narration parse O(chunks × buffer). This scanner keeps its phase and cursor across
+ * `scan` calls, so a whole turn costs one pass over the stream and `progress()` is a state read.
+ *
+ * Same tolerances as the pure functions it powers: leading prose before the key, a needle or an
+ * escape split across chunks (the dangling backslash is left for the next scan, so the text so far
+ * is byte-identical to a from-scratch walk of the same buffer), and a first occurrence whose value
+ * is not a string (permanently null, exactly like the from-scratch walk that re-finds it).
+ */
+export class StringFieldScanner {
+  private readonly needle: string;
+  /** Where the next scan resumes: a search floor in 'key'/'colon', the walk cursor after. */
+  private from = 0;
+  /** 'never' = the first occurrence's value is not a string — progress stays null for good. */
+  private phase: 'key' | 'colon' | 'quote' | 'value' | 'done' | 'never' = 'key';
+  private text = '';
+
+  constructor(key: string) {
+    this.needle = `"${key}"`;
+  }
+
+  /** Advance over `buf`'s unseen tail. `buf` must extend the previously scanned buffer. */
+  scan(buf: string): void {
+    if (this.phase === 'done' || this.phase === 'never') return;
+    if (this.phase === 'key') {
+      const k = buf.indexOf(this.needle, this.from);
+      if (k < 0) {
+        // Not here yet. Back the floor up so a needle split across deltas is still found.
+        this.from = Math.max(0, buf.length - this.needle.length + 1);
+        return;
+      }
+      this.phase = 'colon';
+      this.from = k + this.needle.length;
+    }
+    if (this.phase === 'colon') {
+      const c = buf.indexOf(':', this.from);
+      if (c < 0) {
+        this.from = buf.length;
+        return;
+      }
+      this.phase = 'quote';
+      this.from = c + 1;
+    }
+    if (this.phase === 'quote') {
+      while (this.from < buf.length && /\s/.test(buf[this.from])) this.from++;
+      if (this.from >= buf.length) return; // opening quote not here yet
+      if (buf[this.from] !== '"') {
+        this.phase = 'never'; // a number/null/object value — this field will never read as a string
+        return;
+      }
+      this.phase = 'value';
+      this.from++;
+    }
+    while (this.from < buf.length) {
+      const ch = buf[this.from];
+      if (ch === '\\') {
+        const next = buf[this.from + 1];
+        if (next === undefined) return; // escape split across chunks — resume at it next scan
+        this.text += unescapeChar(next);
+        this.from += 2;
+        continue;
+      }
+      if (ch === '"') {
+        this.phase = 'done'; // closing quote → the value is complete
+        return;
+      }
+      this.text += ch;
+      this.from++;
+    }
+  }
+
+  /** The value so far (`done` once its closing quote arrived), or null while the opening quote
+   *  hasn't arrived — the exact contract of `extractNarrationProgress`. */
+  progress(): { text: string; done: boolean } | null {
+    if (this.phase === 'done') return { text: this.text, done: true };
+    if (this.phase === 'value') return { text: this.text, done: false };
+    return null;
+  }
+
+  /** The complete value, or null until its closing quote arrives — the exact contract of
+   *  `extractStringField`. */
+  value(): string | null {
+    return this.phase === 'done' ? this.text : null;
+  }
+}
+
+/**
  * Return the fully-arrived value of a top-level string field from a partial JSON
  * buffer, or null if the key/value hasn't completed yet. Tolerant of leading
  * prose/fences. Used for narration-first speech and the streaming title.
+ * (Pure convenience over StringFieldScanner — callers on a hot per-delta path
+ * hold a scanner instead, so the buffer is only ever walked once.)
  */
 export function extractStringField(buf: string, name: string): string | null {
-  const needle = `"${name}"`;
-  const key = buf.indexOf(needle);
-  if (key < 0) return null;
-  let i = buf.indexOf(':', key + needle.length);
-  if (i < 0) return null;
-  i++;
-  while (i < buf.length && /\s/.test(buf[i])) i++;
-  if (buf[i] !== '"') return null; // opening quote not here yet
-  i++;
-  let out = '';
-  while (i < buf.length) {
-    const ch = buf[i];
-    if (ch === '\\') {
-      const next = buf[i + 1];
-      if (next === undefined) return null; // escape split across chunks — wait
-      out += unescapeChar(next);
-      i += 2;
-      continue;
-    }
-    if (ch === '"') return out; // closing quote → the value is complete
-    out += ch;
-    i++;
-  }
-  return null; // no closing quote yet
+  const s = new StringFieldScanner(name);
+  s.scan(buf);
+  return s.value();
 }
 
 /** Narration-first: the spoken line, the instant it has fully streamed in. */
@@ -67,32 +138,12 @@ export function extractNarration(buf: string): string | null {
  * for the whole spoken line to finish streaming: a caller speaks each completed sentence as it forms.
  * Returns null only when the narration field's opening quote hasn't arrived yet. Tolerant of an escape
  * split across chunks (it stops before the dangling backslash and resumes next chunk).
+ * (Pure convenience over StringFieldScanner — the per-delta caller holds a scanner.)
  */
 export function extractNarrationProgress(buf: string): { text: string; done: boolean } | null {
-  const needle = '"narration"';
-  const key = buf.indexOf(needle);
-  if (key < 0) return null;
-  let i = buf.indexOf(':', key + needle.length);
-  if (i < 0) return null;
-  i++;
-  while (i < buf.length && /\s/.test(buf[i])) i++;
-  if (buf[i] !== '"') return null; // opening quote not here yet
-  i++;
-  let out = '';
-  while (i < buf.length) {
-    const ch = buf[i];
-    if (ch === '\\') {
-      const next = buf[i + 1];
-      if (next === undefined) break; // escape split across chunks — emit what we have, wait for more
-      out += unescapeChar(next);
-      i += 2;
-      continue;
-    }
-    if (ch === '"') return { text: out, done: true }; // closing quote → fully arrived
-    out += ch;
-    i++;
-  }
-  return { text: out, done: false }; // still streaming
+  const s = new StringFieldScanner('narration');
+  s.scan(buf);
+  return s.progress();
 }
 
 /**

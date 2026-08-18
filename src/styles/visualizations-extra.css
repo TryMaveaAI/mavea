@@ -483,7 +483,7 @@
   font-weight: 600;
   color: #fff;
   background: rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   padding: 3px 8px;
   border-radius: var(--r-full);
 }
@@ -1070,6 +1070,14 @@
     transform 520ms var(--ease-out),
     opacity 380ms var(--ease-out),
     filter 380ms var(--ease-out);
+  /* A card's internals cannot change anything outside its own cell, so the browser may stop at the
+     cell when a block re-lays itself out — worth having when a streamed answer inserts a dozen of
+     them. LAYOUT ONLY, deliberately: `contain: style` would scope CSS counters to the cell and
+     break the FIG. n numbering, which counts chart cards ACROSS the grid (see .card-grid's
+     `counter-reset: fig` in live/voice/voice.css). Containment costs nothing else here — the
+     spotlight transform above already makes these cells stacking and containing blocks, and
+     full-screen block overlays already portal out to <body> (blocks/overlays/portal.tsx). */
+  contain: layout;
 }
 .card-grid > div.spotlit {
   transform: scale(1.03);

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { saidTokens, findSaidMatch, findEchoedLabel } from '../src/live/annotate/saidTarget';
 
 describe('saidTokens — what a spoken line points at', () => {
@@ -122,5 +122,47 @@ describe('findEchoedLabel — the card label the line names in plain prose', () 
 
   it('draws nothing when the line names nothing on the card', () => {
     expect(findEchoedLabel(diagram(), 'This loop shows how markets settle overnight.')).toBeNull();
+  });
+});
+
+// Locating a mark is on the streaming path — every re-measure of every mark runs it, so the walk
+// has to be paid once per lookup, not once per token. A walker per token turned "which of these
+// twelve things does the card say?" into twelve full walks of the card's subtree (and a fresh
+// normalization of every text node inside each). The answer must not change; only the work does.
+describe('locating a said target walks the card once', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const card = (html: string): HTMLElement => {
+    const el = document.createElement('div');
+    el.innerHTML = html;
+    document.body.append(el);
+    return el;
+  };
+  const rows = (): HTMLElement =>
+    card(
+      `<div class="cat-row"><span>Seattle</span><span>$1,950</span></div>
+       <div class="cat-row"><span>Austin</span><span>$1,650</span></div>
+       <div class="cat-row"><span>Order Book</span><span>828 m</span></div>`,
+    );
+
+  it('offers a dozen tokens and still walks once — with the same match', () => {
+    const host = rows();
+    const walks = vi.spyOn(document, 'createTreeWalker');
+    const many = ['nope', 'nada', 'zilch', 'none', 'nix', 'nothing', 'never', 'no', 'Austin'];
+    const match = findSaidMatch(host, many);
+    expect(walks).toHaveBeenCalledTimes(1);
+    // Token order still decides: the first token the card actually carries wins, wherever it sits.
+    expect(match?.node.textContent).toBe('Austin');
+    walks.mockClear();
+    expect(findSaidMatch(host, ['Austin'])).toEqual(match);
+    expect(walks).toHaveBeenCalledTimes(1);
+  });
+
+  it('the echoed-label path reuses its own walk instead of one per candidate', () => {
+    const host = rows();
+    const walks = vi.spyOn(document, 'createTreeWalker');
+    const m = findEchoedLabel(host, 'Austin sits under Seattle in the order book.');
+    expect(m?.node.textContent).toBe('Order Book'); // longest mentioned label wins, as before
+    expect(walks).toHaveBeenCalledTimes(1);
   });
 });

@@ -16,6 +16,7 @@ import type { TurnFrame, FrameTourStep } from '../history';
 import type { Mode } from '../lifecycle';
 import type { ConversationSpec } from '../../data/conversation';
 import type { TourMark } from '../../engine/liveSchema';
+import { registerStoreShedder, replaceStored, writeLocal } from '../../lib/localBudget';
 
 export interface CheckpointResult {
   total: number;
@@ -53,7 +54,10 @@ const CHECKPOINTS_STORAGE_KEY = 'mavea-course-checkpoints-v1';
 /** Safety-net ceiling, not a normal-use cap — see the file header. FIFO: the oldest course by
  *  insertion is dropped first, along with its progress and any cached lesson frames. */
 const MAX_COURSES = 60;
-/** LRU cap on cached full lesson canvases — losing a cold one just costs one regeneration call. */
+/** LRU cap on cached full lesson canvases — losing a cold one just costs one regeneration call.
+ *  16 × MAX_FRAME_BYTES is ~2.4MB of a ~5MB origin quota shared with the library and session
+ *  stores, so this cache is the one that volunteers its oldest entry to the shared shed in
+ *  `lib/localBudget` (see shedOldestFrame). */
 const MAX_CACHED_LESSONS = 16;
 /** LRU cap on cached lesson checkpoints. A checkpoint is only two short Q&A, so the ceiling is a
  *  few KB even when full — generous on purpose, since losing a cold one costs one lean regeneration
@@ -234,11 +238,13 @@ function persist(next: CourseStore): void {
   cache = next;
   storeVersion += 1;
   try {
+    // Through the shared ledger (lib/localBudget): a full quota sheds the oldest cached lesson
+    // canvas rather than dropping a syllabus the learner is looking at.
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      void writeLocal(STORAGE_KEY, JSON.stringify(next));
     }
   } catch {
-    /* storage full — still broadcast so in-session views update */
+    /* storage unavailable — still broadcast so in-session views update */
   }
   try {
     if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
@@ -422,12 +428,29 @@ function persistFrames(entries: FrameCacheEntry[]): void {
   frameCache = entries;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(FRAMES_STORAGE_KEY, JSON.stringify({ entries }));
+      void writeLocal(FRAMES_STORAGE_KEY, JSON.stringify({ entries }));
     }
   } catch {
-    /* storage full — a cache miss just costs a regeneration call */
+    /* storage unavailable — a cache miss just costs a regeneration call */
   }
 }
+
+/** This store's contribution to the shared budget (lib/localBudget): drop the OLDEST cached
+ *  lesson canvas — entries are appended newest-last, so slot 0 is exactly what MAX_CACHED_LESSONS
+ *  evicts. Unlike the library and session sheds this one will go all the way to empty: it is
+ *  purely a free-replay cache, so the worst it can cost is one regeneration call per lesson. */
+async function shedOldestFrame(): Promise<number> {
+  try {
+    const entries = getFrames();
+    if (!entries.length) return 0;
+    const next = entries.slice(1);
+    frameCache = next;
+    return replaceStored(FRAMES_STORAGE_KEY, JSON.stringify({ entries: next }));
+  } catch {
+    return 0; // nothing freed — the ledger moves on to the next store
+  }
+}
+registerStoreShedder(FRAMES_STORAGE_KEY, shedOldestFrame);
 
 function pruneFrameCache(keepCourseIds: ReadonlySet<string>): void {
   try {
@@ -499,10 +522,10 @@ function writeCheckpoints(entries: CheckpointCacheEntry[]): void {
   checkpointCache = entries;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(CHECKPOINTS_STORAGE_KEY, JSON.stringify({ entries }));
+      void writeLocal(CHECKPOINTS_STORAGE_KEY, JSON.stringify({ entries }));
     }
   } catch {
-    /* storage full — a cache miss just costs one lean regeneration call */
+    /* storage unavailable — a cache miss just costs one lean regeneration call */
   }
 }
 

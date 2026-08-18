@@ -34,9 +34,10 @@ import type { InkIntent } from './annotate/inkIntent';
 import type { MindShapeSpec } from './mindshape/types';
 import { explodeWorld } from './world/explode';
 import { expandWorldNode } from './world/expand';
+import { cacheGet, cachePut, fnv1a, rippleCacheKey } from './ripple/cache';
 import { turnCorpus } from './world/grounding';
 import type { WorldSpec } from './world/types';
-import { extractNarrationProgress, nextSpeakableChunk } from './streamParse';
+import { StringFieldScanner, nextSpeakableChunk } from './streamParse';
 import { collapseRepeatedValues, forDisplay } from '../lib/spokenText';
 import { classifyAsk } from './select/complexity';
 import { spokenBudget } from './effort';
@@ -138,9 +139,24 @@ const FRAMES_CAP = 40;
  *  consumer — the model send already keeps only the last few turns, and session persistence caps
  *  its own copy — so trimming here changes nothing the user or the model sees. */
 const MESSAGES_CAP = 40;
-/** Max session-answer-cache entries — each holds a full result (tens–hundreds of KB), so cap it
- *  (FIFO eviction) to keep memory flat over a long session. */
+/** Max answer-cache entries — each holds a full result (tens–hundreds of KB), so cap it (LRU
+ *  eviction) to keep memory flat over a long session. */
 const ANSWER_CACHE_MAX = 50;
+/** How long a remembered answer may stand in for a fresh generation, in this session. The key
+ *  already pins the question, the conversation and the config, so this is not about correctness —
+ *  it is about a reader who comes back to a long-running tab hours later and asks again, meaning
+ *  "and now?". Half an hour covers the sitting a speculative prefetch was bought for and expires
+ *  well inside it. */
+const ANSWER_TTL_MS = 30 * 60_000;
+/** How long this device's persisted copy may stand in. Longer than the in-session window (its whole point
+ *  is surviving a reload, a crash, or coming back after lunch) but capped at a day: a stored
+ *  answer is a snapshot of what a model knew, and after that the honest move is to ask again. */
+const ANSWER_DISK_TTL_MS = 24 * 60 * 60_000;
+/** Namespace + shape version for the persisted answers. Bump it when `LiveResult` or the key's
+ *  ingredients change materially, so yesterday's entries miss cleanly instead of replaying a
+ *  shape this build no longer renders. (Separate from the shared store's CACHE_VERSION, which
+ *  belongs to Ripple and must not be churned by an unrelated change here.) */
+const ANSWER_DISK_NS = 'live-answer:v1';
 
 /** How many follow-up chips to answer ahead of the tap. Every prefetch is a full turn billed to the
  *  user's key whether or not they tap it, and taps concentrate hard on the first couple of chips —
@@ -164,6 +180,96 @@ function configSignature(cfg: ModelConfig, caps: LiveCaps | undefined): string {
   const memory = caps?.memoryEnabled ? 1 : 0;
   const world = caps?.worldEnabled ? 1 : 0;
   return `${cfg.provider}::${cfg.model}::${search}::${quality}::${explain}::${generative}::${memory}::${world}`;
+}
+
+/** An answer plus when it was made, so both caches can age it out (see ANSWER_TTL_MS). */
+interface CachedAnswer {
+  at: number;
+  result: LiveResult;
+}
+
+/** The CONVERSATION an answer belongs to, hashed — the second half of a cache key.
+ *
+ *  This used to be `history.length`, which is not an identity: it says how deep the thread is, not
+ *  what is in it. Two consequences, both real. A question re-asked after the running history hit
+ *  its MESSAGES_CAP plateau matched an answer computed under a completely different conversation
+ *  (same text, same length, different words) — a wrong answer, not a slow one. And the same
+ *  question asked at any other depth always MISSED, so the cheapest possible saving, "you already
+ *  asked me this", almost never fired. Hashing the messages themselves fixes both: a hit means the
+ *  model would have been sent the same conversation, and nothing else does.
+ *
+ *  What rides along: the world on the canvas (a follow-up evolves THAT world, so the same words
+ *  against a different world are a different ask) and the course lesson, whose directive shapes the
+ *  answer without appearing in the user's text. Trimmed to MESSAGES_CAP the way the reducer trims
+ *  the stored history, so a key written before the trim still matches the one read after it.
+ *
+ *  Deliberately NOT in here: `rotation` and `recentTypes`, which steer which components get picked
+ *  for variety, not what the answer says. Replaying the same presentation for the same question in
+ *  the same conversation is what a cache IS. */
+function contextSignature(
+  history: readonly ChatMessage[],
+  world: WorldSpec | undefined,
+  lesson: { directive: string; topic: string } | undefined,
+): string {
+  const recent = history.slice(-MESSAGES_CAP);
+  // A cold open — the first ask of a session, or an explicit fresh start with nothing on screen —
+  // has no context at all, and is the one ask that recurs verbatim across sessions.
+  if (recent.length === 0 && !world && !lesson) return 'cold';
+  // NUL-separated for the reason world/expand's key is: these are unbounded free text, and a
+  // space join lets a word drift across the boundary and collide two different conversations.
+  const parts = recent.map((m) => `${m.role}:${m.content}`);
+  if (world) parts.push(`world:${world.title}`);
+  if (lesson) parts.push(`lesson:${lesson.topic}\u0000${lesson.directive}`);
+  return fnv1a(parts.join('\u0000'));
+}
+
+/** The cached answer for this key, or null when there is none or it has aged out. Reading also
+ *  makes the entry most-recently-used, so eviction below drops what nobody has come back to. */
+function readAnswer(cache: Map<string, CachedAnswer>, key: string): LiveResult | null {
+  const hit = cache.get(key);
+  if (!hit) return null;
+  cache.delete(key);
+  if (Date.now() - hit.at > ANSWER_TTL_MS) return null;
+  cache.set(key, hit);
+  return hit.result;
+}
+
+/** Remember an answer, then trim to the cap. Insertion order IS the LRU order (readAnswer
+ *  re-inserts on a hit), so the first key is always the coldest. */
+function writeAnswer(cache: Map<string, CachedAnswer>, key: string, result: LiveResult): void {
+  cache.delete(key);
+  cache.set(key, { at: Date.now(), result });
+  while (cache.size > ANSWER_CACHE_MAX) {
+    const coldest = cache.keys().next().value;
+    if (coldest === undefined) break;
+    cache.delete(coldest);
+  }
+}
+
+/** The device-local key for an answer, in the shared (LRU-capped, never-throwing) store that
+ *  already holds the world breakdowns — see world/expand.ts, the pattern this follows. */
+function answerDiskKey(answerKey: string, cfg: ModelConfig): string {
+  return rippleCacheKey(`${ANSWER_DISK_NS}:${answerKey}`, cfg.provider);
+}
+
+/** This device's persisted answer for a key, or null. Never throws; validates the stored shape
+ *  because a build older than ANSWER_DISK_NS could have written something else here. */
+async function readPersistedAnswer(key: string): Promise<LiveResult | null> {
+  const hit = await cacheGet<CachedAnswer>(key);
+  if (typeof hit?.at !== 'number' || !hit.result?.spec?.blocks?.length) return null;
+  return Date.now() - hit.at > ANSWER_DISK_TTL_MS ? null : hit.result;
+}
+
+/** Whether an answer may outlive this session on disk. Two exclusions, both about inputs the key
+ *  cannot see:
+ *   · a GROUNDED answer quotes the live web, and replaying yesterday's citations as today's
+ *     answer is the one failure mode worse than paying for the turn again;
+ *   · with memory on, the prompt carried the user's remembered facts — the toggle is in the key,
+ *     the facts are not, and they move between sessions.
+ *  Within the session neither applies: `ANSWER_TTL_MS` bounds the first and the memory store can
+ *  only have grown by what this same session wrote. */
+function persistableAnswer(result: LiveResult, caps: LiveCaps | undefined): boolean {
+  return !result.spec.sources?.length && !caps?.memoryEnabled;
 }
 
 /** The living world currently on screen, if the canvas carries a BUILT one. Read straight off the
@@ -196,6 +302,23 @@ function withWorld(
   const blocks = [...spec.blocks];
   blocks[i] = { ...block, props: { ...block.props, world } };
   return { ...spec, blocks };
+}
+
+/** True when every block the stream painted is still the same CONTENT, at the same position, in
+ *  the settled spec — a settle that merely re-tiles columns or appends (the world card) holds, a
+ *  collapse-retry or repair that swapped block content does not. Layout/positional fields (col,
+ *  id, delay) are excluded on purpose: ids are positional on both sides and a column change
+ *  reconciles cleanly, while a content change under the same positional key morphs every card in
+ *  place with no transition — that case must remount for one clean reveal instead. */
+function streamedContentHeld(
+  streamed: ConversationSpec | null,
+  settled: ConversationSpec,
+): boolean {
+  if (!streamed || streamed.blocks.length > settled.blocks.length) return false;
+  return streamed.blocks.every((b, i) => {
+    const s = settled.blocks[i];
+    return b.type === s.type && JSON.stringify(b.props) === JSON.stringify(s.props);
+  });
 }
 
 export const INITIAL: LiveTurnState = {
@@ -644,18 +767,25 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   // The values filled into the current answer's holes, so complete() reads them at click time.
   const filledRef = useRef<Record<string, FillValue>>(state.filled);
   filledRef.current = state.filled;
-  // Prefetch cache: background-generated answers for the chips shown after each turn.
-  // Keyed by chip label (= the text run() would receive). Cleared on every new turn
-  // so stale results from a prior canvas never land on an unrelated question.
-  // Not stored in state — it's a transparent performance optimisation, invisible to the UI.
-  const prefetchCacheRef = useRef<Map<string, LiveResult>>(new Map());
-  // Session answer cache: dedupes identical re-asks within a session (no extra model call).
-  // Keyed by "userText::historyLength" — captures both the question and conversation context.
-  // Only populated on success; cleared on reset so stale sessions never leak.
-  // Skipped when attachments or selected blocks are present (those change the effective input).
-  const answerCacheRef = useRef<Map<string, LiveResult>>(new Map());
-  // Controllers for in-flight prefetch calls so they can be aborted on new turn / reset.
-  const prefetchAbortRef = useRef<AbortController[]>([]);
+  // ONE answer cache, for both the answers this session generated and the chip answers it
+  // prefetched: a prefetched chip IS the answer to that question in that conversation, so keeping
+  // them apart only meant throwing one of them away. Keyed by
+  // "question::conversation::config" (see contextSignature) — bounded by ANSWER_CACHE_MAX
+  // entries and ANSWER_TTL_MS of age, and only ever populated from a successful turn. It
+  // deliberately SURVIVES the next turn: the old cache was wiped at the top of every run(), so on
+  // 'thorough' the two speculative turns bought after each answer were billed and then discarded
+  // unless the user tapped one immediately. The key is what makes surviving safe — an answer can
+  // only be replayed for the same question in the same conversation under the same config.
+  // Not stored in state — a transparent performance optimisation, invisible to the UI.
+  const answerCacheRef = useRef<Map<string, CachedAnswer>>(new Map());
+  // Turns generating RIGHT NOW, by the same key. So a tap on a chip whose prefetch is still in
+  // flight rides that call instead of aborting it and paying for the identical answer twice.
+  // Bounded by construction: only prefetches register, at most CHIP_PREFETCH per turn, and each
+  // removes itself when it settles.
+  const inFlightRef = useRef<Map<string, Promise<LiveResult>>>(new Map());
+  // Controllers for in-flight prefetch calls, with the key each is generating, so a new turn can
+  // abort the ones it cannot use and spare the one it is about to wait on.
+  const prefetchAbortRef = useRef<{ key: string; ctrl: AbortController }[]>([]);
   // Every block type shown SO FAR this conversation. The next turn down-weights these in
   // selection and the prompt tells the model to prefer types it hasn't used yet — so each
   // answer reaches for fresh visuals instead of recycling the same handful. A ref (no re-render).
@@ -715,36 +845,51 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       showFrameCancelRef.current = null;
       const ctrl = new AbortController();
       abortRef.current = ctrl;
-      // Abort all in-flight prefetches — they used the prior turn's history and are now stale.
-      for (const c of prefetchAbortRef.current) c.abort();
-      prefetchAbortRef.current = [];
-      // Pull a cached result if this prompt was prefetched after the last turn. Clear the
-      // cache immediately so the next turn starts fresh regardless of what we find.
-      // An attached file or a pinned on-screen element changes the input the prefetch cache never
-      // saw (it was keyed on text alone), so such a turn always goes to the model fresh.
-      // An attachment, a pinned element, or filled blanks all change the effective input the
-      // prefetch/answer caches never saw — such a turn always goes to the model fresh.
+
+      // A fresh standalone start ignores the restored/prior conversation entirely: no prior
+      // history goes to the model (so a self-contained map answers ITSELF, not a stale topic),
+      // and no prior snapshot feeds the merge decision (it always replaces cleanly). Declared
+      // here, before the cache lookups, since the answer's key is built from this context.
+      const history = opts?.freshStart ? [] : historyRef.current;
+      const prior = opts?.freshStart ? null : priorRef.current;
+      // The living world already on the canvas: read ONCE, so the world this turn is keyed
+      // against is exactly the world it is sent (the send below happens after a lazy import).
+      const priorWorld = currentWorld(specRef.current);
+
+      // An attachment, a pinned element, filled blanks or ink all change the effective input the
+      // caches never see — they key on the question's text — so such a turn always goes to the
+      // model fresh, and never writes back either (or a later plain re-ask of the same words
+      // would replay an answer that was really about a file).
       const uniqueInput = !!(
         attachments?.length ||
         selectedBlocks?.length ||
         (filledBlanks && Object.keys(filledBlanks).length) ||
         inkIntents?.length
       );
-      // The config a cache HIT must match: a prefetch generated under yesterday's provider/model
-      // (or with search off) must never stand in for today's config just because the text matches.
-      const cfgSig = configSignature(getConfig(), getCaps?.());
-      const cached = uniqueInput
-        ? null
-        : (prefetchCacheRef.current.get(`${userText}::${cfgSig}`) ?? null);
-      prefetchCacheRef.current.clear();
-      dispatch({ type: 'start', fresh: opts?.freshStart });
+      // Read the config ONCE for the whole turn, so the signature a cached answer is filed under
+      // is the config the call actually ran with — not whatever the settings say by the time the
+      // lazily-imported engine has loaded. A prefetch generated under yesterday's provider/model
+      // (or with search off) must never stand in for today's just because the text matches.
+      const cfg = getConfig();
+      const caps = getCaps?.();
+      const cfgSig = configSignature(cfg, caps);
+      const answerKey = `${userText}::${contextSignature(history, priorWorld, opts?.lesson)}::${cfgSig}`;
+      const diskKey = answerDiskKey(answerKey, cfg);
 
-      // A fresh standalone start ignores the restored/prior conversation entirely: no prior
-      // history goes to the model (so a self-contained map answers ITSELF, not a stale topic),
-      // and no prior snapshot feeds the merge decision (it always replaces cleanly). Declared
-      // here, before willStream, since the streaming decision below reads `prior`.
-      const history = opts?.freshStart ? [] : historyRef.current;
-      const prior = opts?.freshStart ? null : priorRef.current;
+      // A prefetch generating THIS exact ask is the answer, still arriving: wait on it rather than
+      // aborting it and billing the identical turn a second time. Everything else in flight used a
+      // conversation this turn has already moved past — abort those and forget them.
+      const inFlight = uniqueInput ? null : (inFlightRef.current.get(answerKey) ?? null);
+      for (const p of prefetchAbortRef.current) {
+        if (p.key === answerKey && inFlight) continue;
+        p.ctrl.abort();
+        inFlightRef.current.delete(p.key);
+      }
+      prefetchAbortRef.current = inFlight
+        ? prefetchAbortRef.current.filter((p) => p.key === answerKey)
+        : [];
+      const cached = uniqueInput ? null : readAnswer(answerCacheRef.current, answerKey);
+      dispatch({ type: 'start', fresh: opts?.freshStart });
 
       // Decide UP FRONT whether to reveal progressively. We only stream a turn that
       // will REPLACE the canvas (a new topic, or the very first turn): then blocks can
@@ -756,23 +901,35 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // the canvas it's asking about.
       const willStream = !likelyFollowUp(prior, userText);
 
-      // Session answer cache: dedupes a re-ask of the exact same question at the same
-      // conversation depth (zero extra model calls). Skipped for turns with attachments or
-      // pinned blocks since those make the effective input unique. Folds in cfgSig too — a
-      // provider/model switch (or a search toggle) between two identical re-asks must generate
-      // fresh, not replay whatever the OTHER config answered.
-      const answerKey = `${userText}::${history.length}::${cfgSig}`;
-      const answerCached = uniqueInput ? null : (answerCacheRef.current.get(answerKey) ?? null);
-
       let result: LiveResult;
       // Whether this turn actually revealed progressively via a 'stream' dispatch — only ever
       // true when generateLive ran below; a cache hit jumps straight to the final result, so the
       // canvas never rendered anything under the current epoch and must not claim it did.
       let didStream = false;
+      // The last partial actually dispatched — what the canvas is showing when the turn settles,
+      // so the settle can tell a content change (remount for one clean reveal) from a no-op.
+      let lastStreamed: ConversationSpec | null = null;
 
-      if (cached ?? answerCached) {
-        // Cache hit (prefetch or session dedup): speak immediately, skip the network round-trip.
-        const hit = (cached ?? answerCached)!;
+      // Everything this ask can be answered with before spending a token, cheapest first: what
+      // this session already knows, then a prefetch of this exact ask still arriving, then this
+      // device's persisted copy. All three resolve WHOLE — nothing streams — which is why the
+      // settle below must treat them as un-streamed and give the canvas one clean reveal.
+      let reused = cached;
+      if (!reused && inFlight) {
+        // Never let a prefetch's failure become this turn's failure: an error (or a rejection from
+        // its own abort) just means the real generation below runs, exactly as it would have.
+        const early = await inFlight.catch(() => null);
+        if (ctrl.signal.aborted) return;
+        if (early && !early.error && early.spec.blocks.length > 0) reused = early;
+      }
+      if (!reused && !uniqueInput) {
+        reused = await readPersistedAnswer(diskKey);
+        if (ctrl.signal.aborted) return;
+      }
+
+      if (reused) {
+        // Cache hit: speak immediately, skip the network round-trip.
+        const hit = reused;
         if (hit.narration) {
           dispatch({ type: 'speak', narration: hit.narration });
           // Show the normal narration as the caption; SPEAK the voice-ready twin when present.
@@ -781,6 +938,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         result = hit;
       } else {
         let buf = '';
+        // Cursor-holding narration parse: each SSE delta costs only its own bytes. The pure
+        // extractNarrationProgress rebuilt the narration character-by-character from index 0 on
+        // EVERY delta — O(chunks × narration) per turn, spent exactly while the canvas animates.
+        // Same parse, so the sentence boundaries fed to speak() are byte-identical.
+        const narrationStream = new StringFieldScanner('narration');
         let spokenLen = 0;
         let narrationStreamed = false;
         // The same conversational-length ceiling generateLive enforces on the FINAL narration
@@ -812,10 +974,35 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           return;
         }
         const { generateLive } = engine;
+        // Coalesce the progressive reveals: each closed block otherwise lands in its own
+        // microtask, so React cannot batch them and a rich turn costs a render+paint cycle per
+        // block. The FIRST partial still dispatches the instant it arrives (fast first paint);
+        // later ones fold into one dispatch per animation frame, the stream's end flushes
+        // synchronously below so the last blocks are never lost, and an abort drops whatever
+        // is pending (a superseded turn must not paint over its replacement).
+        let pendingPartial: ConversationSpec | null = null;
+        let partialFrame = 0;
+        const flushPartial = (): void => {
+          partialFrame = 0;
+          if (!pendingPartial || ctrl.signal.aborted) return;
+          const spec = pendingPartial;
+          pendingPartial = null;
+          didStream = true;
+          lastStreamed = spec;
+          dispatch({ type: 'stream', spec });
+        };
+        ctrl.signal.addEventListener(
+          'abort',
+          () => {
+            pendingPartial = null;
+            if (partialFrame) cancelAnimationFrame(partialFrame);
+          },
+          { once: true },
+        );
         result = await generateLive(
           userText,
           history,
-          getConfig(),
+          cfg,
           (chunk) => {
             // Narration-first, SENTENCE by sentence: speak each spoken-line sentence the instant it
             // forms — so the voice starts on the first sentence, not after the whole line (let alone
@@ -824,7 +1011,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             // prior turn can't speak/render over the turn that replaced it.
             if (ctrl.signal.aborted) return;
             buf += chunk;
-            const prog = extractNarrationProgress(buf);
+            narrationStream.scan(buf);
+            const prog = narrationStream.progress();
             if (!prog) return;
             const { chunk: say, consumed } = nextSpeakableChunk(prog.text, spokenLen, prog.done);
             if (!say) return;
@@ -846,7 +1034,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             speak?.(say);
           },
           {
-            caps: getCaps?.(),
+            caps,
             signal: ctrl.signal,
             onActivity: (activity) => {
               if (!ctrl.signal.aborted) dispatch({ type: 'activity', activity });
@@ -872,7 +1060,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             priorTopic: prior?.title || undefined,
             // The living world already on the canvas, so a follow-up ("over time", "what if…")
             // evolves THAT world instead of exploding a second one beside it.
-            priorWorld: currentWorld(specRef.current),
+            priorWorld,
             // Topic Courses: this turn is one lesson in a course — the directive + topic pin
             // ride straight through to generateLive (see GenerateLiveOpts.lesson).
             lesson: opts?.lesson,
@@ -881,11 +1069,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             onPartial: willStream
               ? (partial) => {
                   if (ctrl.signal.aborted) return;
-                  didStream = true;
                   // Fetch the block-family chunks WHILE the answer streams, so the reveal
                   // never waits on the network (see canvas/blocks/loader.ts).
                   preloadBlockFamilies(partial.spec.blocks);
-                  dispatch({ type: 'stream', spec: partial.spec });
+                  pendingPartial = partial.spec;
+                  if (!didStream) flushPartial();
+                  else if (!partialFrame) partialFrame = requestAnimationFrame(flushPartial);
                 }
               : undefined,
             // Name what's being read / built while the turn works (the turn-state chrome).
@@ -905,6 +1094,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           },
         );
 
+        // The stream is over: land any coalesced partial NOW, so nothing a frame was still
+        // waiting on is lost and the settle below compares against what actually painted.
+        if (partialFrame) cancelAnimationFrame(partialFrame);
+        flushPartial();
+
         // A newer turn may have aborted this one while generateLive was in flight. If so, stop
         // here: none of the tail (speak, error, show, history, prefetch) must run, or a slow
         // prior turn would overwrite the canvas the newer turn just put up.
@@ -918,16 +1112,17 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           speak?.(result.spoken || result.narration);
         }
 
-        // Populate the session answer cache for successful turns — a later identical re-ask
-        // (same question at the same conversation depth) returns instantly, zero model calls.
-        // Require real content: never cache an empty/salvaged spec, or a re-ask would replay a
-        // blank answer instead of generating a real one. Cap the cache (FIFO) so a marathon
-        // session can't grow it without limit — each entry is a full result (tens–hundreds of KB).
-        if (!result.error && result.spec.blocks.length > 0) {
-          answerCacheRef.current.set(answerKey, result);
-          if (answerCacheRef.current.size > ANSWER_CACHE_MAX) {
-            const oldest = answerCacheRef.current.keys().next().value;
-            if (oldest !== undefined) answerCacheRef.current.delete(oldest);
+        // Remember this answer — a later identical re-ask, in the same conversation under the same
+        // config, then returns instantly and bills nothing. Require real content: never cache an
+        // empty/salvaged spec, or a re-ask would replay a blank answer instead of generating a
+        // real one. `uniqueInput` turns are skipped on the way IN as well as out, since their real
+        // input (a file, a pinned block) is not in the key.
+        if (!uniqueInput && !result.error && result.spec.blocks.length > 0) {
+          writeAnswer(answerCacheRef.current, answerKey, result);
+          // …and keep it on the device, where a reload or tomorrow's session can still use it.
+          // Best-effort and fire-and-forget: cachePut never throws and nothing waits on it.
+          if (persistableAnswer(result, caps)) {
+            void cachePut(diskKey, { at: Date.now(), result } satisfies CachedAnswer);
           }
         }
       }
@@ -1010,7 +1205,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           // never streamed a partial, however "replace"-shaped the pre-turn heuristic guessed —
           // it must still remount, or a fresh answer that happens to land on the same block
           // types/positions as the old canvas would silently update in place with no reveal.
-          streamed: didStream,
+          // The stream's word only holds while the settled blocks ARE what it painted: when a
+          // collapse-retry or repair pass changed the set, reconciling would morph genuinely
+          // different content under the same positional keys with no transition ("it rebuilt
+          // itself") — claim un-streamed instead, so the user gets one clean reveal.
+          streamed: didStream && streamedContentHeld(lastStreamed, renderedSpec),
           frame,
           understood: result.understood ?? [],
           // A fresh standalone start begins its own timeline (this frame is turn 1), so a
@@ -1108,14 +1307,21 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       if (prefetchCaps?.quality === 'thorough') {
         const chips = renderedSpec.suggests ?? [];
         const recentForPrefetch = [...usedTypesRef.current];
-        // Keyed under the config THIS prefetch actually ran with, matching the lookup above —
-        // if the user switches provider/model (or toggles search) before tapping the chip, the
-        // stale-config entry simply misses and the tap generates fresh instead of replaying it.
+        // Filed under exactly the key the TAP will compute: this turn's config, this turn's
+        // history, and the world now on the canvas — the state a tap moments from now will be in.
+        // If the user switches provider/model, or asks something else first, that key simply
+        // misses and the tap generates fresh instead of replaying an answer to another moment.
         const prefetchSig = configSignature(prefetchCfg, prefetchCaps);
+        const prefetchCtx = contextSignature(nextHistory, currentWorld(renderedSpec), undefined);
         chips.slice(0, CHIP_PREFETCH).forEach((chip, i) => {
+          const key = `${chip.label}::${prefetchCtx}::${prefetchSig}`;
+          // Already answered — the user asked this earlier, or an earlier prefetch got it — or
+          // already generating. Either way a second speculative turn buys nothing and bills in
+          // full. This is the saving the old per-turn cache wipe made impossible.
+          if (readAnswer(answerCacheRef.current, key) || inFlightRef.current.has(key)) return;
           const chipCtrl = new AbortController();
-          prefetchAbortRef.current.push(chipCtrl);
-          turnEngine()
+          prefetchAbortRef.current.push({ key, ctrl: chipCtrl });
+          const pending = turnEngine()
             .then(({ generateLive }) =>
               generateLive(chip.label, nextHistory, prefetchCfg, undefined, {
                 caps: prefetchCaps,
@@ -1128,12 +1334,19 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             )
             .then((r) => {
               // Never cache a FAILED prefetch — a tap must retry for real, not replay an error.
-              if (!chipCtrl.signal.aborted && !r.error)
-                prefetchCacheRef.current.set(`${chip.label}::${prefetchSig}`, r);
-            })
-            .catch(() => {
-              /* prefetch is best-effort — a miss just means a normal generation on tap */
+              if (!chipCtrl.signal.aborted && !r.error && r.spec.blocks.length > 0) {
+                writeAnswer(answerCacheRef.current, key, r);
+              }
+              return r;
             });
+          inFlightRef.current.set(key, pending);
+          // Stop advertising it the moment it settles (and only if it is still the one on file),
+          // so the map holds live calls only. The handler also swallows the rejection — a
+          // prefetch is best-effort; a miss just means a normal generation on tap.
+          const forget = (): void => {
+            if (inFlightRef.current.get(key) === pending) inFlightRef.current.delete(key);
+          };
+          void pending.then(forget, forget);
         });
       }
     },
@@ -1145,9 +1358,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     abortRef.current = null;
     showFrameCancelRef.current?.();
     showFrameCancelRef.current = null;
-    for (const c of prefetchAbortRef.current) c.abort();
+    for (const p of prefetchAbortRef.current) p.ctrl.abort();
     prefetchAbortRef.current = [];
-    prefetchCacheRef.current.clear();
+    inFlightRef.current.clear();
+    // The session's own memory goes; the device's persisted answers deliberately stay — they are
+    // keyed on the conversation, so a new session can only reach the ones it genuinely repeats.
     answerCacheRef.current.clear();
     usedTypesRef.current.clear();
     dispatch({ type: 'reset' });
@@ -1372,7 +1587,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     () => () => {
       abortRef.current?.abort();
       showFrameCancelRef.current?.();
-      for (const c of prefetchAbortRef.current) c.abort();
+      for (const p of prefetchAbortRef.current) p.ctrl.abort();
     },
     [],
   );

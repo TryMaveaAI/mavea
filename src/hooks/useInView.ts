@@ -155,6 +155,39 @@ export function useInView<T extends Element = HTMLDivElement>(
   return [ref, inView];
 }
 
+/**
+ * Freeze a section's ambient CSS loops while it is scrolled out of view. The section's infinite
+ * animations declare `animation-play-state: var(--ambient-play, running)`; this sets the inline
+ * pause on the section element only once it has left the viewport ENTIRELY (threshold 0, no
+ * margin), so nothing visible ever changes — and REMOVES the property when it returns, so the
+ * document-level drivers (the hidden-tab pause in lib/pageVisibility.ts, perf-lite's permanent
+ * one) keep flowing through from the root. Attach the returned ref to the section that owns the
+ * loops (e.g. the flagship hero). Observer and inline property are both cleaned up on unmount.
+ */
+export function useAmbientPause<T extends HTMLElement = HTMLElement>(): React.RefObject<T | null> {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    // No observer (jsdom, very old browsers) → never pause: the loops just keep running, which
+    // is exactly today's behavior.
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) el.style.removeProperty('--ambient-play');
+        else el.style.setProperty('--ambient-play', 'paused');
+      }
+    });
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      el.style.removeProperty('--ambient-play');
+    };
+  }, []);
+
+  return ref;
+}
+
 /** Nearest ancestor that actually scrolls vertically; null for window-scrolled documents. */
 function scrollParent(el: Element): Element | null {
   for (let parent = el.parentElement; parent; parent = parent.parentElement) {

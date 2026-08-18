@@ -630,7 +630,7 @@
   position: fixed;
   inset: 0;
   background: rgba(var(--scrim-rgb), 0.62);
-  backdrop-filter: blur(5px);
+  backdrop-filter: var(--glass-blur, blur(5px));
   z-index: 80;
   display: grid;
   place-items: center;

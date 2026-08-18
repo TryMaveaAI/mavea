@@ -23,7 +23,7 @@ import {
   mergeEnrichment,
   type Enrichment,
 } from './companionSchema';
-import { extractEnrichmentSoFar } from './streamEnrich';
+import { EnrichmentStreamReader } from './streamEnrich';
 import { buildIncidentPrompt, mergeIncident, parseIncidentEnrichment } from './incident';
 import {
   ONBOARD_SYSTEM,
@@ -56,6 +56,34 @@ export interface EnrichOpts {
   thinkingLevel?: ThinkingLevel;
 }
 
+/** The streaming half of an enrichment call: accumulate the raw reply and hand the overlay every
+ *  field that has FULLY landed. ONE reader (and one buffer) for the whole reply, held in this
+ *  closure — the reader's per-field cursors are what make a delta cost its own bytes instead of a
+ *  fresh six-way walk of everything received so far, and each closed element is parsed exactly
+ *  once. Reasoning tokens are skipped (never part of the answer), and nothing is emitted until
+ *  something has actually landed. */
+function enrichmentDeltas(
+  onPartial: (enr: Enrichment) => void,
+): (chunk: string, meta?: { reasoning?: boolean }) => void {
+  const reader = new EnrichmentStreamReader();
+  let buf = '';
+  return (chunk, meta) => {
+    if (meta?.reasoning) return;
+    buf += chunk;
+    const partial = reader.read(buf);
+    if (
+      partial.summary ||
+      partial.gateRationale ||
+      partial.risks ||
+      partial.changes ||
+      partial.cascades ||
+      partial.suggestions
+    ) {
+      onPartial(partial);
+    }
+  };
+}
+
 /** Enriches the floor with the model's read of the diff. Resolves the enriched model on success;
  *  resolves the unchanged floor if the run was aborted (superseded, not a failure); resolves `null`
  *  on a genuine failure (no key, a refusal, malformed JSON) so the caller can surface that honestly
@@ -68,26 +96,8 @@ export async function enrichShipModel(
 ): Promise<ShipModel | null> {
   const { signal, codeContext, onPartial, maxTokens = 2600, thinkingLevel } = opts;
   try {
-    let buf = '';
-    // Stream the verdict in: as JSON arrives, hand the overlay each field the instant it closes. We
-    // skip reasoning tokens (never part of the answer) and only emit once something has actually landed.
-    const onDelta = onPartial
-      ? (chunk: string, meta?: { reasoning?: boolean }): void => {
-          if (meta?.reasoning) return;
-          buf += chunk;
-          const partial = extractEnrichmentSoFar(buf);
-          if (
-            partial.summary ||
-            partial.gateRationale ||
-            partial.risks ||
-            partial.changes ||
-            partial.cascades ||
-            partial.suggestions
-          ) {
-            onPartial(partial);
-          }
-        }
-      : undefined;
+    // Stream the verdict in: as JSON arrives, hand the overlay each field the instant it closes.
+    const onDelta = onPartial ? enrichmentDeltas(onPartial) : undefined;
     const out = await getAdapter(cfg.provider).generate(
       {
         system: ENRICH_SYSTEM,

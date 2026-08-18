@@ -21,6 +21,7 @@ import type { ConversationSpec } from '../../data/conversation';
 import { extractLead, type LeadFace } from './extractLead';
 import { friendlyAsk } from '../friendlyAsk';
 import { encryptContent, decryptContent } from '../contentVault';
+import { registerStoreShedder, replaceStored, writeLocal } from '../../lib/localBudget';
 
 /** One saved canvas the user can resume. */
 export interface LibraryEntry {
@@ -42,7 +43,10 @@ const STORAGE_KEY = 'mavea-live-library-v1';
 export const LIBRARY_EVENT = STORAGE_KEY;
 /** Keep the library bounded — newest canvases win once we hit the cap. */
 const MAX_ENTRIES = 12;
-/** Skip persisting a single monster canvas rather than blow the whole localStorage quota. */
+/** Skip persisting a single monster canvas rather than blow the whole localStorage quota. Note
+ *  this caps ONE entry: twelve of them reserve ~2.9MB of a ~5MB origin quota the session and
+ *  course stores also draw on, which is why writes go through `lib/localBudget` and this store
+ *  volunteers its oldest entry to the shared shed (see shedOldestEntry). */
 const MAX_ENTRY_BYTES = 240_000;
 /** Inline data: URIs (e.g. a generated image) above this are dropped before storage — the rest of
  *  the canvas restores fine and an image is cheap to regenerate. */
@@ -124,11 +128,43 @@ async function writeEncrypted(entries: LibraryEntry[]): Promise<void> {
     if (typeof localStorage === 'undefined') return;
     const enc = await encryptContent(entries);
     if (gen !== writeGen) return; // a newer write has since started — don't overwrite it
-    localStorage.setItem(STORAGE_KEY, enc);
+    // Through the shared ledger: on a full quota it sheds from the largest Mavéa-owned cache and
+    // retries, so a saved canvas isn't lost to whichever store happened to write last.
+    await writeLocal(STORAGE_KEY, enc);
   } catch {
-    /* storage full/unavailable */
+    /* storage unavailable */
   }
 }
+
+/** This store's contribution to the shared budget (lib/localBudget): drop the OLDEST saved
+ *  canvas — the same end MAX_ENTRIES evicts from, newest always kept — and rewrite. It does the
+ *  write itself rather than calling persist(), which would re-enter the ledger mid-shed; the
+ *  broadcast is kept so an open Library view never shows a card that is no longer on disk. */
+async function shedOldestEntry(): Promise<number> {
+  const entries = cache;
+  // Nothing is shed blind: a cache that hasn't hydrated yet (undecryptable blob, a rotated
+  // device key) can't say which entry is oldest, so it offers nothing rather than guessing. And
+  // the last remaining canvas is never dropped — a store gives up its oldest under pressure,
+  // never the user's whole library.
+  if (!entries || entries.length < 2) return 0;
+  const next = entries.slice(0, -1);
+  // Claim the write BEFORE encrypting, so a save already in flight can't resolve afterwards and
+  // put the shed entry straight back on disk.
+  const gen = ++writeGen;
+  const enc = await encryptContent(next);
+  if (gen !== writeGen) return 0; // a newer write started mid-encrypt — the blob is its business
+  cache = next;
+  const freed = replaceStored(STORAGE_KEY, enc);
+  try {
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(LIBRARY_EVENT, { detail: next }));
+    }
+  } catch {
+    /* no window (test/SSR) */
+  }
+  return freed;
+}
+registerStoreShedder(STORAGE_KEY, shedOldestEntry);
 
 function fromStorage(): LibraryEntry[] {
   try {

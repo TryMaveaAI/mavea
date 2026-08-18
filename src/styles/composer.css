@@ -324,6 +324,12 @@
 .mic-btn.processing {
   filter: saturate(0.5);
   cursor: progress;
+  /* The pulse SLOWS, it does not stop: desaturation alone reads as "off", which is exactly the
+     wrong answer during the one beat the user is waiting to find out whether they were heard.
+     REACTIVE loop — live turn feedback, so the lite tier keeps it; only the visibility layer may
+     pause it. The longhand MUST follow the shorthand, which resets play-state to running. */
+  animation: micpulse 2.6s var(--ease-in-out) infinite;
+  animation-play-state: var(--reactive-play, running);
 }
 .mic-btn.mic-off {
   background: var(--surface-elevated-2);

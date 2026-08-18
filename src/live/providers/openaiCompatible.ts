@@ -19,6 +19,7 @@ import type {
 } from './types';
 import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, arr, num } from './http';
 import { openaiUserContent, textOnlyUser } from './parts';
+import { isFreeRoute } from './route';
 
 const GEN_TIMEOUT_MS = 60_000;
 const PROBE_TIMEOUT_MS = 4_000;
@@ -28,6 +29,12 @@ const PROBE_TIMEOUT_MS = 4_000;
  *  timer indefinitely. This cap aborts so the turn always finalizes recoverably instead of
  *  spinning forever. Generous, because the UI shows a live "Thinking…" state meanwhile. */
 const STREAM_TOTAL_MS = 180_000;
+/** The same ceiling for a free gateway route, which is queued behind every other free user and
+ *  streams a fraction as fast. 180s cut real answers off mid-canvas there — and since the turn
+ *  keeps whatever streamed (generateLive salvages the parsed blocks rather than discarding them),
+ *  a longer window buys MORE answer rather than a longer wait for none. The user picked a slow
+ *  model deliberately; this waits with them instead of overruling the choice. */
+const FREE_ROUTE_STREAM_TOTAL_MS = 300_000;
 
 export interface OpenAICompatibleOptions {
   id: ProviderId;
@@ -72,6 +79,42 @@ export interface OpenAICompatibleOptions {
  *  on the Responses API (there under `reasoning.effort` + `max_output_tokens` instead). */
 export function isReasoningModel(model: string): boolean {
   return /(?:^|\/)(?:o[1-9]|gpt-5)/i.test(model);
+}
+
+/** The gpt-5 family adds a `minimal` reasoning tier BELOW `low`: the model answers without a
+ *  hidden thinking pass, so nothing competes with the answer for the completion budget. Matched
+ *  by NAME rather than by "is a reasoning model" — the o-series rejects the value outright, and a
+ *  gateway route can point at any vendor's model — so the tier is only ever requested where it is
+ *  documented. Same name-boundary rule as isReasoningModel, so a gateway id
+ *  ("openai/gpt-5.4-nano") matches while "acme-gpt-5-clone" does not. */
+function supportsMinimalReasoning(model: string): boolean {
+  return /(?:^|\/)gpt-5/i.test(model);
+}
+
+/** A GLIMPSE: a small, self-sized, disposable ask (the ghost speculation off a half-spoken
+ *  sentence, a node breakdown, a grounding resolve). It has to be recognised from the request
+ *  alone, so the bar is deliberately high — the caller must have set BOTH dials on purpose:
+ *
+ *   · `thinkingLevel: 'minimal'` — it declared that this ask needs no deliberation, and
+ *   · `maxTokens` — it sized its own budget rather than taking the adapter's default, and
+ *   · no `blockTypes` — it is not a Live canvas turn (a lean canvas turn also asks for minimal
+ *     thinking, and that one MUST keep the reasoning floor: it hands the model a very large
+ *     prompt whose structured answer is worth reserving room for).
+ *
+ *  A search turn is excluded at the call sites, not here: web search is reasoning-gated and does
+ *  not engage reliably at the lowest tier, so grounding always outranks the saving.
+ *
+ *  Why it matters: a glimpse fires up to three times per listen, and on a reasoning model the
+ *  1500-token floor below is a licence to think — the "150-token" ghost bills an order of
+ *  magnitude more than it asked for. Asking for the minimal tier removes the hidden pass the
+ *  floor exists to protect, which is exactly what makes dropping the floor safe here. */
+export function isMinimalGlimpse(req: LiveRequest, model: string): boolean {
+  return (
+    req.thinkingLevel === 'minimal' &&
+    req.maxTokens !== undefined &&
+    !req.blockTypes?.length &&
+    supportsMinimalReasoning(model)
+  );
 }
 
 /** Some gateways answer with HTTP 200 but report the real failure (an expired key, an
@@ -156,6 +199,10 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
       const base = cfg.baseUrl ?? proxyBase;
       const searchTool = webSearchTool && req.tools?.webSearch ? webSearchTool() : undefined;
       const reasoning = isReasoningModel(cfg.model);
+      // A disposable, self-sized ask (see isMinimalGlimpse) runs at the `minimal` reasoning tier
+      // and keeps its own budget. Never on a search turn: search is reasoning-gated and doesn't
+      // engage reliably at the lowest tier, so an ungrounded answer would be the "saving".
+      const glimpse = !searchTool && isMinimalGlimpse(req, cfg.model);
 
       // Prompt caching keys on the request's leading tokens, so anything that varies turn-to-turn
       // poisons everything behind it. req.system is the stable base (liveSystemPrompt) followed by
@@ -196,7 +243,10 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
 
       // Total-turn ceiling, merged with the caller's abort (a superseded turn). See STREAM_TOTAL_MS.
       const capCtrl = new AbortController();
-      const capTimer = setTimeout(() => capCtrl.abort(), STREAM_TOTAL_MS);
+      const capTimer = setTimeout(
+        () => capCtrl.abort(),
+        isFreeRoute(cfg.model) ? FREE_ROUTE_STREAM_TOTAL_MS : STREAM_TOTAL_MS,
+      );
       const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
       try {
         const res = await fetchWithTimeout(
@@ -219,15 +269,23 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
                     // be spent entirely on thinking → empty answer. Floor to 1500 (the tiny
                     // on-demand callers pass 150–500) so a low-effort think still leaves room to
                     // write; the big canvas turn already passes far more, so max() is a no-op there.
-                    max_completion_tokens: Math.max(req.maxTokens ?? 1024, 1500),
+                    // A glimpse is the one case with nothing to reserve — it runs at the `minimal`
+                    // tier below, where there is no hidden pass to leave room for — so its own
+                    // budget stands. Floor and tier move together, never separately: dropping the
+                    // floor while still asking for a `low` think is how a small caller ends up
+                    // billed for reasoning and handed an empty completion.
+                    max_completion_tokens: glimpse
+                      ? (req.maxTokens ?? 1024)
+                      : Math.max(req.maxTokens ?? 1024, 1500),
                     // reasoning_effort takes low|medium|high across OpenAI-compatible reasoning
-                    // models (o-series, Grok). Pin 'low' ALWAYS — sending nothing lets the API
+                    // models (o-series, Grok). Pin 'low' by default — sending nothing lets the API
                     // default ('medium') apply, and at medium a reasoning model spends its whole
                     // output budget thinking about the large canvas prompt and returns an empty
                     // answer (see the measured note in openaiResponsesCompatible). 'minimal' is
-                    // avoided too: it isn't universally accepted and reasoning-gated features
-                    // (web search) don't reliably engage at the lowest tier.
-                    reasoning_effort: 'low',
+                    // NOT universally accepted, so it goes out only where the model family
+                    // documents it and the caller asked for a glimpse (isMinimalGlimpse) — never
+                    // on a search turn, whose reasoning-gated tool wants the higher tier.
+                    reasoning_effort: glimpse ? 'minimal' : 'low',
                   }
                 : { max_tokens: req.maxTokens ?? 1024, temperature: req.temperature ?? 0.3 }),
               // json_object mode coexists with the search tool — the model still emits JSON;

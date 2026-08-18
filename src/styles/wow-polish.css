@@ -465,7 +465,7 @@
   place-items: center;
   padding: 28px;
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
-  backdrop-filter: blur(2px);
+  backdrop-filter: var(--glass-blur, blur(2px));
 }
 .zoom-sheet {
   position: relative;
@@ -492,7 +492,7 @@
   margin: -32px -32px 12px;
   padding: 12px;
   background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
-  backdrop-filter: blur(4px);
+  backdrop-filter: var(--glass-blur, blur(4px));
   border-bottom: 1px solid var(--line);
 }
 .zoom-sheet-zoom-btn,

@@ -44,7 +44,7 @@ describe('production build and package-manager policy', () => {
     };
     expect(publishConfig.access).toBe('public');
     expect(publishConfig.provenance).toBe(true);
-    expect(publishConfig.engines.node).toBe('>=20.19');
+    expect(publishConfig.engines.node).toBe('>=22.12');
     const files = pkg.files as string[];
     expect(files).toContain('!dist/ort-wasm-simd-threaded.wasm');
     expect(files).toContain('!dist/silero_vad_v5.onnx');
