@@ -15,7 +15,7 @@ import { turnFrameId } from '../../live/history';
 import type { TurnAudio } from '../../live/scrubvoice/recorder';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { toast } from '../../lib/toast';
-import { clipFileName, downloadClip, shareClip, videoFileBase } from '../share';
+import { clipFileName, downloadClip, videoFileBase } from '../share';
 import { qualityHint } from '../capture';
 import type { ClipQuality } from '../types';
 import { prepareConversationAudio, RequiredConversationAudioError } from './audio';
@@ -30,6 +30,7 @@ import {
   CONVERSATION_VIDEO_MAX_MS,
   currentTopicStart,
   estimateConversationDurationMs,
+  estimateTurnAudio,
   estimateTurnDurationMs,
 } from './timeline';
 import type {
@@ -57,6 +58,11 @@ const QUALITIES: { id: ClipQuality; label: string }[] = [
 /** The preview never lingers under this, so short caption beats stay readable while it plays. */
 const PREVIEW_MIN_SCENE_MS = 650;
 
+/** The export monitor's raster. The sheet's 16:9 frame is at most 548 CSS px wide, so this covers
+ *  it without asking the recorder to hand over a second full-size copy of every frame. */
+const MONITOR_WIDTH = 640;
+const MONITOR_HEIGHT = 360;
+
 /**
  * Wait for a commit to have been painted. Two frames is the reliable signal — but rAF stops firing
  * altogether in an occluded or backgrounded window, so every wait races a timeout. A bare
@@ -82,6 +88,7 @@ const OPTION_LABELS: {
   { key: 'spotlights', label: 'Spotlights' },
   { key: 'penMarks', label: 'Pen marks' },
   { key: 'presence', label: 'Mavéa' },
+  { key: 'audio', label: 'Audio' },
 ];
 
 function formatDuration(ms: number): string {
@@ -162,13 +169,11 @@ export function ConversationVideoStudio({
   retainedAudio,
   onShared,
   onBusyChange,
-  frameRef,
 }: {
   frames: TurnFrame[];
   retainedAudio?: (frame: TurnFrame) => TurnAudio | null;
   onShared?: () => void;
   onBusyChange?: (busy: boolean) => void;
-  frameRef?: (element: HTMLDivElement | null) => void;
 }): ReactElement {
   const available = useMemo(
     () =>
@@ -191,6 +196,7 @@ export function ConversationVideoStudio({
     spotlights: true,
     penMarks: true,
     presence: true,
+    audio: true,
   });
   const selectedFrames = useMemo(
     () => frames.filter((frame) => selected.has(turnFrameId(frame))),
@@ -218,7 +224,13 @@ export function ConversationVideoStudio({
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<ConversationExportResult | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const turnsRef = useRef<HTMLDivElement | null>(null);
+  const monitorRef = useRef<HTMLCanvasElement | null>(null);
   const busy = progress !== null && progress.phase !== 'ready';
+  // Once frames are being rendered, the preview stops being a second live 1080p stage and becomes a
+  // monitor fed by the capture itself — one tree rendering during the export instead of two. The
+  // narration phase keeps the real preview: nothing is being captured yet to show.
+  const monitoring = busy && progress?.phase !== 'audio';
   const canCapture = conversationCaptureSupported();
   const reduceMotion = useMemo(() => prefersReducedMotion(), []);
   // Only a preview that actually moves needs a pause affordance (WCAG 2.2.2); a held still doesn't.
@@ -268,10 +280,32 @@ export function ConversationVideoStudio({
     },
     [onBusyChange],
   );
+  // The turn list's bottom fade promises more rows below, so it only belongs on a list that
+  // actually overflows — under one or two turns it read as a clipped render. Written straight to a
+  // data attribute (video-studio.css keys off it) so a window resize never re-renders the sheet.
+  useEffect(() => {
+    const list = turnsRef.current;
+    if (!list) return;
+    const sync = (): void => {
+      list.dataset.overflowing = String(list.scrollHeight > list.clientHeight + 1);
+    };
+    sync();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(sync);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [frames]);
 
   const applyScene = useCallback(async (next: ConversationScene): Promise<void> => {
     setScene(next);
     await settled();
+  }, []);
+
+  const showFrame = useCallback((frame: HTMLCanvasElement) => {
+    const monitor = monitorRef.current;
+    const context = monitor?.getContext('2d');
+    if (!monitor || !context) return;
+    context.drawImage(frame, 0, 0, monitor.width, monitor.height);
   }, []);
 
   const clearResult = useCallback(() => {
@@ -289,19 +323,29 @@ export function ConversationVideoStudio({
     abortRef.current = controller;
     clearResult();
     setError(null);
-    setProgress({ phase: 'audio', completed: 0, total: selectedFrames.length });
+    // An audio-off export never touches the voice service, so its first visible phase is the render.
+    setProgress(
+      options.audio
+        ? { phase: 'audio', completed: 0, total: selectedFrames.length }
+        : { phase: 'render', completed: 1, total: 1 },
+    );
     setCaptureMounted(true);
     try {
       // The offscreen capture host has just been mounted; give it a paint before reading its node.
       await settled();
       const captureStage = stageRef.current;
       if (!captureStage) throw new Error('capture-stage-unavailable');
-      const audio = await prepareConversationAudio(
-        selectedFrames,
-        retainedAudio ?? (() => null),
-        controller.signal,
-      );
-      const scenes = buildConversationTimeline(selectedFrames, audio.turns, options);
+      const audio = options.audio
+        ? await prepareConversationAudio(
+            selectedFrames,
+            retainedAudio ?? (() => null),
+            controller.signal,
+          )
+        : null;
+      // With audio off (the cheap path — zero TTS requests) the character-count estimate that
+      // already drives the meter becomes the clock, laid out per line so captions still pace.
+      const turns = audio ? audio.turns : selectedFrames.map(estimateTurnAudio);
+      const scenes = buildConversationTimeline(selectedFrames, turns, options);
       if (!scenes.length) throw new Error('empty-video');
       // `completed` reads as the ordinal of the scene being rendered (capture.ts reports index + 1
       // once each one lands), so the first, longest wait says "scene 1 of N", never "scene 0".
@@ -309,13 +353,14 @@ export function ConversationVideoStudio({
       const clip = await exportConversationVideo({
         el: captureStage,
         scenes,
-        audioBuffer: audio.buffer,
-        durationMs: audio.durationMs,
+        audioBuffer: audio?.buffer ?? null,
+        durationMs: audio?.durationMs ?? turns.reduce((sum, turn) => sum + turn.durationMs, 0),
         size: options.size,
         quality: options.quality,
         signal: controller.signal,
         applyScene,
         onProgress: setProgress,
+        onFrame: showFrame,
       });
       resultRef.current = clip;
       setResult(clip);
@@ -340,7 +385,7 @@ export function ConversationVideoStudio({
     } finally {
       setCaptureMounted(false);
     }
-  }, [applyScene, clearResult, estimatedMs, options, retainedAudio, selectedFrames]);
+  }, [applyScene, clearResult, estimatedMs, options, retainedAudio, selectedFrames, showFrame]);
 
   const choose = (next: TurnFrame[]) => {
     if (busy) return;
@@ -373,8 +418,8 @@ export function ConversationVideoStudio({
         <div className="shm-eyebrow">▷ CONVERSATION VIDEO</div>
         <div className="cvs-title">Share this conversation.</div>
         <div className="shm-sub">
-          Pick the turns worth sending. Mavéa narrates every one. The video renders locally in this
-          browser and is never uploaded.
+          Pick the turns worth sending. Mavéa narrates every one unless Audio is off. The video
+          renders locally in this browser and is never uploaded.
         </div>
         <FeatureUseNotice kind="publishing" from="live" />
 
@@ -400,7 +445,7 @@ export function ConversationVideoStudio({
           </button>
         </div>
 
-        <div className="cvs-turns" role="group" aria-label="Conversation turns">
+        <div className="cvs-turns" role="group" aria-label="Conversation turns" ref={turnsRef}>
           {frames.map((frame, index) => {
             const id = turnFrameId(frame);
             const hasAudio = availableIds.has(id);
@@ -504,7 +549,6 @@ export function ConversationVideoStudio({
                 {label}
               </button>
             ))}
-            <span className="cvs-audio-lock">● Audio always on</span>
           </div>
         </div>
 
@@ -551,45 +595,21 @@ export function ConversationVideoStudio({
 
         <div className="shm-actions">
           {result ? (
-            <>
-              <button
-                type="button"
-                className="shm-btn shm-btn-primary"
-                onClick={() => {
-                  // Handing the blob over consumes it: downloadClip owns the disposal from here, so
-                  // the card and its buttons must go rather than linger over a file being freed.
-                  resultRef.current = null;
-                  downloadClip(result.blob, downloadName, () => void result.dispose?.());
-                  setResult(null);
-                  toast('Saved to your downloads', 'good');
-                  onShared?.();
-                }}
-              >
-                ↓ Download video
-              </button>
-              {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                <button
-                  type="button"
-                  className="shm-btn"
-                  onClick={() => {
-                    void shareClip(result, {
-                      title: 'Mavéa conversation',
-                      filename: downloadName,
-                    }).then((how) => {
-                      // A dismissed native sheet did not consume the clip. Keep the ready card and
-                      // its backing file so the user can retry or download it instead.
-                      if (how === 'cancelled') return;
-                      resultRef.current = null;
-                      setResult(null);
-                      if (how === 'downloaded') toast('Saved to your downloads', 'good');
-                      onShared?.();
-                    });
-                  }}
-                >
-                  Share
-                </button>
-              )}
-            </>
+            <button
+              type="button"
+              className="shm-btn shm-btn-primary"
+              onClick={() => {
+                // Handing the blob over consumes it: downloadClip owns the disposal from here, so
+                // the card and its buttons must go rather than linger over a file being freed.
+                resultRef.current = null;
+                downloadClip(result.blob, downloadName, () => void result.dispose?.());
+                setResult(null);
+                toast('Saved to your downloads', 'good');
+                onShared?.();
+              }}
+            >
+              ↓ Download video
+            </button>
           ) : busy ? (
             <button type="button" className="shm-btn" onClick={() => abortRef.current?.abort()}>
               Cancel
@@ -609,14 +629,18 @@ export function ConversationVideoStudio({
 
       <div className="shm-stage">
         <div className="shm-frame" data-aspect="16:9">
-          {stageReady ? (
+          {monitoring ? (
+            <canvas
+              ref={monitorRef}
+              className="cvs-monitor"
+              width={MONITOR_WIDTH}
+              height={MONITOR_HEIGHT}
+              role="img"
+              aria-label="The frames being rendered"
+            />
+          ) : stageReady ? (
             <StageScaler width={outputSize.width} height={outputSize.height}>
-              <ConversationStage
-                scene={scene}
-                options={options}
-                frameRef={frameRef}
-                glide={!reduceMotion}
-              />
+              <ConversationStage scene={scene} options={options} glide={!reduceMotion} />
             </StageScaler>
           ) : (
             <div className="cvs-stage" data-aspect="16:9">

@@ -7,6 +7,8 @@ import {
   CONVERSATION_VIDEO_MAX_MS,
   currentTopicStart,
   estimateConversationDurationMs,
+  estimateTurnAudio,
+  estimateTurnDurationMs,
 } from '../src/clip/conversation/timeline';
 import { CONVERSATION_DIMENSIONS, conversationBitrate } from '../src/clip/conversation/capture';
 import { retainedAudioCoversFrame } from '../src/clip/conversation/audio';
@@ -36,6 +38,7 @@ const options: ConversationVideoOptions = {
   spotlights: true,
   penMarks: true,
   presence: true,
+  audio: true,
 };
 
 describe('conversation video model', () => {
@@ -45,7 +48,7 @@ describe('conversation video model', () => {
       tour: [{ index: 1, say: 'Tour line' }],
     });
     const partial = {
-      pcm: new Float32Array(24),
+      pcm: new Int16Array(24),
       sampleRate: 24_000,
       duration: 1,
       spans: [{ text: 'Opening line', t0: 0, t1: 1 }],
@@ -113,15 +116,47 @@ describe('conversation video model', () => {
     ]);
   });
 
-  it('removes optional visuals without ever introducing an audio option', () => {
-    const scenes = buildConversationTimeline(
-      [frame({ tour: [{ index: 0, mark: { kind: 'underline', at: 'Sunlight' } }] })],
-      [{ durationMs: 2_500, spans: [] }],
-      { ...options, captions: false, spotlights: false, penMarks: false, presence: false },
-    );
+  it('removes optional visuals while the audio choice never warps the visual timeline', () => {
+    const marked = frame({ tour: [{ index: 0, mark: { kind: 'underline', at: 'Sunlight' } }] });
+    const layout = [{ durationMs: 2_500, spans: [] }];
+    const stripped = {
+      ...options,
+      captions: false,
+      spotlights: false,
+      penMarks: false,
+      presence: false,
+    };
+    const scenes = buildConversationTimeline([marked], layout, stripped);
     expect(scenes.every((scene) => scene.caption === null && scene.spot === null)).toBe(true);
     expect(scenes.every((scene) => scene.ink.length === 0)).toBe(true);
-    expect('audio' in options).toBe(false);
+    // Audio is an Include option like the rest, but the clock is whatever layout the caller timed
+    // the cut against — toggling audio changes the soundtrack, never the scene geometry.
+    expect(buildConversationTimeline([marked], layout, { ...stripped, audio: false })).toEqual(
+      scenes,
+    );
+  });
+
+  it('paces an audio-off cut from the character estimate, captioning every line', () => {
+    const walked = frame({
+      narration: 'Opening line about scattering.',
+      tour: [{ index: 1, say: 'Blue light bends the most.' }],
+    });
+    const estimated = estimateTurnAudio(walked);
+    // The silent clock is the same estimate the duration meter already shows.
+    expect(estimated.durationMs).toBe(estimateTurnDurationMs(walked));
+    expect(estimated.spans.map((span) => span.text)).toEqual([
+      'Opening line about scattering.',
+      'Blue light bends the most.',
+    ]);
+    // Spans tile the voiced body edge to edge: lead-in, lines proportioned by length, tail.
+    expect(estimated.spans[0].startMs).toBe(650);
+    expect(estimated.spans[1].startMs).toBe(estimated.spans[0].endMs);
+    expect(estimated.spans[1].endMs).toBe(estimated.durationMs - 350);
+
+    const scenes = buildConversationTimeline([walked], [estimated], { ...options, audio: false });
+    const captions = scenes.map((scene) => scene.caption);
+    expect(captions).toContain('Opening line about scattering.');
+    expect(captions).toContain('Blue light bends the most.');
   });
 
   it('estimates long selections against the hard three-minute ceiling', () => {

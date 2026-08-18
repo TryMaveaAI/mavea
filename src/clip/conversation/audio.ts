@@ -1,6 +1,7 @@
+import { mapConcurrent } from '../../lib/taskPool';
 import type { TurnFrame } from '../../live/history';
 import type { TurnAudio } from '../../live/scrubvoice/recorder';
-import { sharedAudioContext } from '../../voice/voiceEnergy';
+import { sharedSampleRate } from '../../voice/voiceEnergy';
 import { synthesizeVoiceLine } from '../reel/audioTrack';
 import { CONVERSATION_VIDEO_MAX_MS } from './timeline';
 import type {
@@ -73,10 +74,12 @@ function retainedTurn(audio: TurnAudio): PcmTurn {
     startMs: Math.round((LEAD_S + span.t0) * 1_000),
     endMs: Math.round((LEAD_S + span.t1) * 1_000),
   }));
+  // The store keeps the track as the source Int16 samples; the offline render wants floats, so
+  // expand here — the same s / 0x8000 the live playback decoded, transient to the export.
+  const pcm = new Float32Array(audio.pcm.length);
+  for (let i = 0; i < audio.pcm.length; i++) pcm[i] = audio.pcm[i] / 0x8000;
   return {
-    lines: [
-      { text: spans.map((span) => span.text).join(' '), pcm: audio.pcm, rate: audio.sampleRate },
-    ],
+    lines: [{ text: spans.map((span) => span.text).join(' '), pcm, rate: audio.sampleRate }],
     durationS: LEAD_S + audio.duration + TAIL_S,
     spans,
   };
@@ -86,6 +89,7 @@ async function synthesizedTurn(
   frame: TurnFrame,
   index: number,
   signal?: AbortSignal,
+  onLine?: (lineSeconds: number) => void,
 ): Promise<PcmTurn> {
   const texts = narrationLines(frame);
   if (!texts.length) throw new RequiredConversationAudioError(index, frame.question);
@@ -96,6 +100,9 @@ async function synthesizedTurn(
     if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     if (!pcm.length) throw new RequiredConversationAudioError(index, frame.question);
     lines.push({ text, pcm, rate: RATE });
+    // Report the line's real cost on the turn's timeline (its audio plus the gap that follows)
+    // so the caller can stop a too-long conversation mid-synthesis. May throw to do exactly that.
+    onLine?.(pcm.length / RATE + LINE_GAP_S);
   }
   const spans: ConversationAudioSpan[] = [];
   let at = LEAD_S;
@@ -116,20 +123,51 @@ export async function prepareConversationAudio(
   frames: readonly TurnFrame[],
   retained: (frame: TurnFrame) => TurnAudio | null,
   signal?: AbortSignal,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<PreparedConversationAudio> {
-  const ctx = sharedAudioContext();
-  if (!ctx || typeof OfflineAudioContext === 'undefined') {
+  // The rate only: the mix is rendered in an OfflineAudioContext, so preparing an export never
+  // plays through the shared context and must not keep it awake for the rest of the session.
+  const rate = sharedSampleRate();
+  if (rate === null || typeof OfflineAudioContext === 'undefined') {
     throw new Error('audio-encoding-unavailable');
   }
-  const turns: PcmTurn[] = [];
-  for (let index = 0; index < frames.length; index++) {
-    const frame = frames[index];
-    const kept = retained(frame);
-    turns.push(
-      kept && retainedAudioCoversFrame(frame, kept)
-        ? retainedTurn(kept)
-        : await synthesizedTurn(frame, index, signal),
-    );
+  const kept = frames.map((frame) => {
+    const audio = retained(frame);
+    return audio && retainedAudioCoversFrame(frame, audio) ? retainedTurn(audio) : null;
+  });
+  // Every turn's lead/tail and the retained turns' full lengths are known before synthesis
+  // starts, so the running total can trip the video cap MID-synthesis instead of paying for
+  // narration the export is about to refuse. (The exact post-render check below is the backstop.)
+  let accumulatedS = kept.reduce((sum, turn) => sum + (turn?.durationS ?? LEAD_S + TAIL_S), 0);
+  const total = frames.reduce(
+    (sum, frame, index) => sum + (kept[index] ? 0 : narrationLines(frame).length),
+    0,
+  );
+  let done = 0;
+  // A tripped cap aborts the synthesis already in flight too, not just the queue behind it.
+  const synth = new AbortController();
+  const forwardAbort = (): void => synth.abort();
+  signal?.addEventListener('abort', forwardAbort, { once: true });
+  if (signal?.aborted) synth.abort();
+  const lineLanded = (lineS: number): void => {
+    accumulatedS += lineS;
+    onProgress?.(++done, total);
+    if (accumulatedS * 1_000 > CONVERSATION_VIDEO_MAX_MS) {
+      synth.abort();
+      throw new Error('conversation-too-long');
+    }
+  };
+  let turns: PcmTurn[];
+  try {
+    // Two syntheses in flight, not one and not all: the TTS container runs a small fixed thread
+    // pool, so a paced pair beats both the old fully-sequential crawl and a fan-heating stampede.
+    // Order is preserved; retained turns pass through untouched.
+    turns = await mapConcurrent(frames, 2, (frame, index) => {
+      const held = kept[index];
+      return held ? Promise.resolve(held) : synthesizedTurn(frame, index, synth.signal, lineLanded);
+    });
+  } finally {
+    signal?.removeEventListener('abort', forwardAbort);
   }
   const totalS = turns.reduce((sum, turn) => sum + turn.durationS, 0);
   if (totalS * 1_000 > CONVERSATION_VIDEO_MAX_MS) throw new Error('conversation-too-long');
@@ -141,7 +179,7 @@ export async function prepareConversationAudio(
     }
   }
   const gain = peak > 0 ? Math.min(MAX_GAIN, TARGET_PEAK / peak) : 1;
-  const offline = new OfflineAudioContext(1, Math.ceil(totalS * ctx.sampleRate), ctx.sampleRate);
+  const offline = new OfflineAudioContext(1, Math.ceil(totalS * rate), rate);
   const master = offline.createGain();
   master.gain.value = gain;
   master.connect(offline.destination);

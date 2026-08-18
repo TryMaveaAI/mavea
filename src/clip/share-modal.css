@@ -8,7 +8,7 @@
   place-items: center;
   box-sizing: border-box;
   background: rgba(2, 4, 8, 0.86);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--glass-blur-faint);
   padding: 24px;
   overflow: auto;
   /* The reel can open inside a page that already owns a vertical scrollbar, then need a scrollbar
@@ -361,7 +361,7 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(8, 7, 15, 0.5);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   color: #fff;
   font: 17px/1 var(--font);
   cursor: pointer;
@@ -415,7 +415,7 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(20, 20, 30, 0.6);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
   color: rgba(236, 242, 248, 0.85);
   font: 600 16px/1 var(--font);
   cursor: pointer;

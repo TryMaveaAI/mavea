@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clipFileName, downloadClip, shareClip, videoFileBase } from '../src/clip/share';
+import { clipFileName, downloadClip, videoFileBase } from '../src/clip/share';
 
 describe('clip download', () => {
   it('names the file by the clip container — .mp4 for approved MP4, .webm otherwise', () => {
@@ -65,32 +65,5 @@ describe('clip download', () => {
     vi.advanceTimersByTime(1);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mavea-video');
     expect(dispose).toHaveBeenCalledOnce();
-  });
-
-  it('reports a dismissed native share as cancelled without consuming the clip', async () => {
-    const dispose = vi.fn(async () => {});
-    const share = vi.fn(async () => {
-      throw new DOMException('The user dismissed the share sheet', 'AbortError');
-    });
-    vi.stubGlobal(
-      'navigator',
-      Object.assign(Object.create(navigator), {
-        canShare: vi.fn(() => true),
-        share,
-      }),
-    );
-
-    const how = await shareClip({
-      blob: new Blob(['video'], { type: 'video/webm' }),
-      type: 'video/webm',
-      poster: new Blob(),
-      hasAudio: true,
-      durationMs: 1_000,
-      dispose,
-    });
-
-    expect(how).toBe('cancelled');
-    expect(share).toHaveBeenCalledOnce();
-    expect(dispose).not.toHaveBeenCalled();
   });
 });

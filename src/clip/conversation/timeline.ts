@@ -19,6 +19,31 @@ export function estimateConversationDurationMs(frames: readonly TurnFrame[]): nu
   return frames.reduce((sum, frame) => sum + estimateTurnDurationMs(frame), 0);
 }
 
+/**
+ * An audio-off export has no narration buffer to time against, so the character-count estimate
+ * that already drives the duration meter becomes the clock: the turn's total is laid out per line
+ * (opener, then tour lines) in proportion to each line's length, so captions still cover every
+ * line at a reading pace.
+ */
+export function estimateTurnAudio(frame: TurnFrame): ConversationTurnAudio {
+  const durationMs = estimateTurnDurationMs(frame);
+  const lines = [
+    frame.spoken ?? frame.narration,
+    ...frame.tour.map((t) => t.saySpoken ?? t.say ?? ''),
+  ]
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const characters = lines.reduce((sum, line) => sum + line.length, 0);
+  const body = durationMs - QUESTION_LEAD_MS - TURN_TAIL_MS;
+  let at = QUESTION_LEAD_MS;
+  const spans = lines.map((text) => {
+    const startMs = Math.round(at);
+    at += characters ? (body * text.length) / characters : 0;
+    return { text, startMs, endMs: Math.round(at) };
+  });
+  return { durationMs, spans };
+}
+
 export function currentTopicStart(frames: readonly TurnFrame[]): number {
   for (let i = frames.length - 1; i >= 0; i--) {
     const frame = frames[i];

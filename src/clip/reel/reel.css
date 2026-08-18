@@ -348,7 +348,7 @@
   border-radius: 50%;
   justify-content: center;
   background: color-mix(in oklab, black 45%, transparent);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
 }
 .reel-pause-glyph span {
   width: calc(var(--ru) * 1.6);
@@ -485,7 +485,7 @@
   box-shadow:
     0 calc(var(--ru) * 6) calc(var(--ru) * 14) calc(var(--ru) * -6) rgba(20, 16, 44, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
   overflow: hidden;
 }
 .reel-eyebrow {

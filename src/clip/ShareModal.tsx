@@ -1,7 +1,7 @@
 // The share experience: a sleek modal with the controls on the left and a live REEL preview in a
 // phone frame on the right. A deterministic local director makes the finished reel from the
 // conversation; you can recolor it (palette), reframe it (format), pick a quality, or ↻ Remix for a
-// fresh cut. Share/Download renders the on-screen reel to an approved open-media file (MP4 with
+// fresh cut. Download renders the on-screen reel to an approved open-media file (MP4 with
 // AV1 + Opus, else WebM) — the whole narration is synthesized
 // up front and muxed as a deterministic track, so the downloaded clip's audio always plays and stays
 // in sync. Direction and encoding stay local; narration uses the local Kokoro service. Styling lives
@@ -14,7 +14,7 @@ import type { TurnFrame } from '../live/history';
 import type { TurnAudio } from '../live/scrubvoice/recorder';
 import type { ClipAspect, ClipQuality, ClipTheme } from './types';
 import { captureSupported, qualityHint, startStoryRecording, type StoryRecorder } from './capture';
-import { downloadClip, shareClip } from './share';
+import { downloadClip } from './share';
 import { toast } from '../lib/toast';
 import { ReelPlayer } from './reel/ReelPlayer';
 import { buildReelFallback, reseedFinishes } from './reel/director';
@@ -128,7 +128,6 @@ export function ShareModal({
   // muxes it deterministically), never replayed through a realtime stream on this path.
   const audioRef = useRef<AudioBuffer | null>(null);
   const recTimingsRef = useRef<number[] | undefined>(undefined);
-  const actionRef = useRef<'share' | 'download'>('share');
   const qualityRef = useRef<ClipQuality>('high');
   qualityRef.current = quality;
   const previewAudioRef = useRef<ReelPreviewAudio | null>(null);
@@ -150,10 +149,16 @@ export function ShareModal({
     if (!busy) onClose();
   }, [busy, onClose]);
   // Trap focus inside the dialog (move it in on open, restore it to the trigger on close) and route
-  // Escape to requestClose — the modal's accessibility contract. Land initial focus on the reel
-  // preview (frameElRef), not the first left-hand control, so its ← → ↑ ↓ / space shortcuts work
-  // the instant the modal opens rather than after a stray click.
-  useFocusTrap(dialogRef, { onEscape: requestClose, initialFocus: frameElRef });
+  // Escape to requestClose — the modal's accessibility contract. On the Reel, land initial focus on
+  // the preview (frameElRef, whose frame is tabIndex=0), not the first left-hand control, so its
+  // ← → ↑ ↓ / space shortcuts work the instant the modal opens rather than after a stray click.
+  // The conversation studio's preview is a plain div that refuses focus, so naming it here left
+  // focus outside the trap on a warm re-open (once the lazy chunk mounts synchronously) — there,
+  // the trap's own first-focusable fallback is the right landing.
+  useFocusTrap(dialogRef, {
+    onEscape: requestClose,
+    initialFocus: mode === 'reel' ? frameElRef : undefined,
+  });
 
   // Rebuild the local cut only when the conversation actually changes. Callers often pass a fresh
   // `frames` array each render, so depend on a stable content signature rather than object identity.
@@ -322,47 +327,41 @@ export function ShareModal({
     };
   }, [recording, frameReady, aspect, failExport]);
 
-  const exportClip = useCallback(
-    (action: 'share' | 'download') => {
-      if (busy || !shown) return;
-      if (!captureSupported()) {
-        toast("This browser can't render a video clip", 'warn');
-        return;
-      }
-      actionRef.current = action;
-      setFailure(null);
-      setPhase('voicing');
-      // Reuse the narration synthesized for the preview when it's still good for this script (the
-      // common "preview with sound, then export" path) instead of re-synthesizing it — otherwise
-      // synthesize the full narration up front. Either way, start a single recorded pass once it's in.
-      const sig = voiceoverSig(shown);
-      const cached = audioCacheRef.current;
-      const audioReady: Promise<ReelAudio> =
-        cached && cached.sig === sig ? Promise.resolve(cached) : renderReelAudio(shown);
-      void audioReady
-        .then((audio) => {
-          audioCacheRef.current = { sig, ...audio };
-          const { buffer, timings, missing, firstMissingLine } = audio;
-          if (!buffer || missing > 0) {
-            const line = firstMissingLine
-              ? ` for “${firstMissingLine.slice(0, 72)}${firstMissingLine.length > 72 ? '…' : ''}”`
-              : '';
-            failExport(
-              `Narration is unavailable${line}. Check the local voice service, then retry.`,
-            );
-            return;
-          }
-          recTimingsRef.current = timings;
-          audioRef.current = buffer;
-          setRecPlaying(false);
-          setFrameReady(false);
-          setPhase('recording');
-          setRecording(true);
-        })
-        .catch(() => failExport('Could not prepare the narration'));
-    },
-    [busy, shown, failExport],
-  );
+  const exportClip = useCallback(() => {
+    if (busy || !shown) return;
+    if (!captureSupported()) {
+      toast("This browser can't render a video clip", 'warn');
+      return;
+    }
+    setFailure(null);
+    setPhase('voicing');
+    // Reuse the narration synthesized for the preview when it's still good for this script (the
+    // common "preview with sound, then export" path) instead of re-synthesizing it — otherwise
+    // synthesize the full narration up front. Either way, start a single recorded pass once it's in.
+    const sig = voiceoverSig(shown);
+    const cached = audioCacheRef.current;
+    const audioReady: Promise<ReelAudio> =
+      cached && cached.sig === sig ? Promise.resolve(cached) : renderReelAudio(shown);
+    void audioReady
+      .then((audio) => {
+        audioCacheRef.current = { sig, ...audio };
+        const { buffer, timings, missing, firstMissingLine } = audio;
+        if (!buffer || missing > 0) {
+          const line = firstMissingLine
+            ? ` for “${firstMissingLine.slice(0, 72)}${firstMissingLine.length > 72 ? '…' : ''}”`
+            : '';
+          failExport(`Narration is unavailable${line}. Check the local voice service, then retry.`);
+          return;
+        }
+        recTimingsRef.current = timings;
+        audioRef.current = buffer;
+        setRecPlaying(false);
+        setFrameReady(false);
+        setPhase('recording');
+        setRecording(true);
+      })
+      .catch(() => failExport('Could not prepare the narration'));
+  }, [busy, shown, failExport]);
 
   const onRecordDone = useCallback(async () => {
     const r = recorderRef.current;
@@ -374,20 +373,8 @@ export function ShareModal({
     setPhase('saving');
     try {
       const result = await r.stop();
-      if (actionRef.current === 'download') {
-        downloadClip(result.blob, undefined, () => void result.dispose?.());
-        toast('Saved to your downloads', 'good');
-      } else {
-        const how = await shareClip(result, { title: 'My Mavéa reel', text: 'Made with Mavéa' });
-        if (how === 'cancelled') {
-          // This recorder has no reusable ready-file state. A dismissed sheet is intentionally
-          // quiet, but its temporary backing file still needs an explicit owner to release it.
-          await result.dispose?.();
-          cleanupExport();
-          return;
-        }
-        if (how === 'downloaded') toast('Saved to your downloads', 'good');
-      }
+      downloadClip(result.blob, undefined, () => void result.dispose?.());
+      toast('Saved to your downloads', 'good');
       onShared?.();
       cleanupExport();
     } catch {
@@ -455,9 +442,6 @@ export function ShareModal({
               retainedAudio={retainedAudio}
               onShared={onShared}
               onBusyChange={setConversationBusy}
-              frameRef={(element) => {
-                frameElRef.current = element;
-              }}
             />
           </Suspense>
         ) : (
@@ -476,8 +460,7 @@ export function ShareModal({
               </div>
               <div className="shm-sub">
                 Auto-cut locally from the conversation and rendered in this browser. Narration uses
-                the local Kokoro voice service; sharing sends only the finished video file to the
-                destination you choose.
+                the local Kokoro voice service; the finished video saves straight to your downloads.
               </div>
               <FeatureUseNotice kind="publishing" from="live" />
 
@@ -565,18 +548,16 @@ export function ShareModal({
                   type="button"
                   className="shm-btn shm-btn-primary"
                   disabled={busy || !shown}
-                  onClick={() => exportClip('share')}
+                  onClick={exportClip}
                 >
-                  {busy ? <span className="shm-spin" aria-hidden="true" /> : '⤴'}
-                  {busy ? phaseLabel : 'Share'}
-                </button>
-                <button
-                  type="button"
-                  className="shm-btn"
-                  disabled={busy || !shown}
-                  onClick={() => exportClip('download')}
-                >
-                  ↓ Download
+                  {busy ? (
+                    <>
+                      <span className="shm-spin" aria-hidden="true" />
+                      {phaseLabel}
+                    </>
+                  ) : (
+                    '↓ Download video'
+                  )}
                 </button>
                 <button
                   type="button"

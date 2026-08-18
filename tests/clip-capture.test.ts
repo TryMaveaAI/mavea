@@ -20,9 +20,23 @@ const enc = vi.hoisted(() => ({ video: vi.fn<(codec: string) => Promise<boolean>
 /** Codecs actually handed to the muxer sources, distinct from capability probes. */
 const mux = vi.hoisted(() => ({ video: [] as string[], audio: [] as string[] }));
 
+/** The persistent rasterizer context: created once per pass, destroyed on stop AND cancel, and
+ *  every frame captured through it. `fail` makes each capture throw — the dead-rasterizer machine. */
+const shot = vi.hoisted(() => ({ contexts: 0, destroyed: 0, fail: false }));
+
 vi.mock('modern-screenshot', () => ({
+  createContext: vi.fn(async () => {
+    shot.contexts++;
+    return { reused: true };
+  }),
+  destroyContext: vi.fn(() => {
+    shot.destroyed++;
+  }),
   // A rasterized snapshot is just a source image to the recorder — a bare {width,height} stands in.
-  domToCanvas: vi.fn(async () => ({ width: 540, height: 960 }) as unknown as HTMLCanvasElement),
+  domToCanvas: vi.fn(async () => {
+    if (shot.fail) throw new Error('boom');
+    return { width: 540, height: 960 } as unknown as HTMLCanvasElement;
+  }),
 }));
 
 vi.mock('mediabunny', () => {
@@ -128,6 +142,9 @@ beforeEach(() => {
   aud.closed = 0;
   mux.video = [];
   mux.audio = [];
+  shot.contexts = 0;
+  shot.destroyed = 0;
+  shot.fail = false;
   enc.video.mockReset();
   enc.video.mockResolvedValue(true);
   toBlob.mockClear();
@@ -218,6 +235,66 @@ describe('startStoryRecording — approved open-media muxed path (WebCodecs + me
     expect(mux.audio).toEqual(['opus']);
     expect(clip.hasAudio).toBe(true);
   }, 10_000);
+
+  it('creates ONE rasterizer context per pass and destroys it on stop and on cancel', async () => {
+    // Passing domToCanvas an options object makes modern-screenshot rebuild its sandbox iframe
+    // every frame; the whole point of the persistent context is that this count stays at one.
+    const stopped = await startStoryRecording({
+      el: stage(),
+      audioBuffer: null,
+      aspect: '9:16',
+      maxDurationMs: 120,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    await stopped.stop();
+    expect(shot.contexts).toBe(1);
+    expect(shot.destroyed).toBe(1);
+
+    const cancelled = await startStoryRecording({ el: stage(), audioBuffer: null, aspect: '9:16' });
+    await new Promise((r) => setTimeout(r, 60));
+    cancelled.cancel();
+    expect(shot.contexts).toBe(2);
+    expect(shot.destroyed).toBe(2); // cancel releases it too — no sandbox iframe left behind
+  }, 10_000);
+
+  it('rejects stop() when the rasterizer never painted, instead of shipping a blank video', async () => {
+    shot.fail = true;
+    const rec = await startStoryRecording({
+      el: stage(),
+      audioBuffer: null,
+      aspect: '9:16',
+      maxDurationMs: 5_000,
+    });
+    // Long enough for the consecutive-failure threshold to trip and stop the loop on its own.
+    await new Promise((r) => setTimeout(r, 900));
+    await expect(rec.stop()).rejects.toThrow('rasterizer-failed');
+    expect(webm.finalized).toBe(0); // the background-coloured video was never finalized
+    expect(shot.destroyed).toBe(1); // and failure still released the context
+  }, 10_000);
+
+  it('holds the frame across a provably-static stretch — one add with an extended duration', async () => {
+    const el = stage();
+    // jsdom has no Web Animations API; an empty animation list means "nothing is animating", and
+    // with no mutations after start the stage becomes provably static once the settle window ends.
+    el.getAnimations = () => [];
+    const rec = await startStoryRecording({
+      el,
+      audioBuffer: null,
+      aspect: '9:16',
+      maxDurationMs: 1_500,
+    });
+    await new Promise((r) => setTimeout(r, 1_300));
+    const clip = await rec.stop();
+    expect(clip.blob.size).toBeGreaterThan(0);
+    // Painted normally through the settle window, then held: far fewer adds than 24fps × 1.3s,
+    // and the held frame lands as a single add whose duration covers the whole static stretch.
+    expect(webm.added.length).toBeGreaterThanOrEqual(2);
+    expect(webm.added.length).toBeLessThan(20);
+    expect(webm.added[0][0]).toBe(0);
+    const stamps = webm.added.map(([t]) => t);
+    expect([...stamps].sort((a, b) => a - b)).toEqual(stamps);
+    expect(webm.added[webm.added.length - 1][1]).toBeGreaterThan(0.35);
+  }, 10_000);
 });
 
 describe('startStoryRecording — MediaRecorder fallback (no WebCodecs)', () => {
@@ -242,7 +319,21 @@ describe('startStoryRecording — MediaRecorder fallback (no WebCodecs)', () => 
     const rec = await startStoryRecording({ el: stage(), audioBuffer: null, aspect: '1:1' });
     await new Promise((r) => setTimeout(r, 60));
     expect(() => rec.cancel()).not.toThrow();
+    expect(shot.destroyed).toBe(1); // the rasterizer context goes with it on this path too
   });
+
+  it('rejects stop() when nothing was ever painted', async () => {
+    shot.fail = true;
+    const rec = await startStoryRecording({
+      el: stage(),
+      audioBuffer: null,
+      aspect: '1:1',
+      maxDurationMs: 5_000,
+    });
+    await new Promise((r) => setTimeout(r, 900));
+    await expect(rec.stop()).rejects.toThrow('rasterizer-failed');
+    expect(shot.destroyed).toBe(1);
+  }, 10_000);
 });
 
 describe('quality tiers', () => {
@@ -256,5 +347,15 @@ describe('quality tiers', () => {
     }
     expect(qualityHint('high')).toBe('up to 24 fps · 7 Mbps');
     expect(captureProfile('ultra', 'lite')).toEqual({ fps: 12, bitrate: 6_000_000 });
+  });
+
+  it('makes Balanced genuinely cheaper on CPU, not just lower bitrate', () => {
+    // Rasterization cost scales with frame rate, so the tiers must differ where it counts:
+    // Balanced 15 fps, High/Ultra the full 24 — and the perf-lite 12 fps ceiling still bites.
+    expect(QUALITY.balanced.fps).toBe(15);
+    expect(QUALITY.high.fps).toBe(24);
+    expect(QUALITY.ultra.fps).toBe(24);
+    expect(captureProfile('balanced', 'full').fps).toBe(15);
+    expect(captureProfile('balanced', 'lite').fps).toBe(12);
   });
 });

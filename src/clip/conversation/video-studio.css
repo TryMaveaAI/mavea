@@ -14,7 +14,7 @@
   padding: 12px 0 4px;
   border-top: 1px solid rgb(255 255 255 / 0.08);
   background: rgb(9 11 18 / 0.96);
-  backdrop-filter: blur(6px);
+  backdrop-filter: var(--glass-blur, blur(6px));
 }
 .cvs-title {
   color: #f3f6fc;
@@ -52,15 +52,21 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  max-height: 190px;
+  /* Grow with the window: a fixed 190px on a tall screen forced a second scrollbar inside the
+     already-scrolling panel over a handful of turns. */
+  max-height: clamp(190px, 24vh, 320px);
   overflow: auto;
   padding: 2px;
-  /* Fade the last row out instead of guillotining it: a card cut exactly in half reads as a
-     rendering fault, where a fade reads as "there is more, keep scrolling". */
-  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
   /* A scroll container is the one flex child the column will crush to nothing on a short
      window — hold its height so the PANEL scrolls and the turn cards stay visible. */
   flex-shrink: 0;
+}
+/* Fade the last row out instead of guillotining it: a card cut exactly in half reads as a
+   rendering fault, where a fade reads as "there is more, keep scrolling". Only while the list
+   actually overflows (the studio sets this from a ResizeObserver) — a permanent fade made a
+   one-or-two-turn list look clipped. */
+.cvs-turns[data-overflowing='true'] {
+  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
 }
 .cvs-turn-card {
   display: grid;
@@ -127,11 +133,6 @@
   /* 0.48 landed just under AA at this size; 0.56 matches .cvs-result's quiet tier and clears it. */
   color: rgba(236, 242, 248, 0.56);
   font: 500 10px/1 var(--font-data);
-}
-.cvs-audio-lock {
-  align-self: center;
-  color: color-mix(in oklab, var(--insight) 72%, white 20%);
-  font: 600 11px/1 var(--font);
 }
 .cvs-meter {
   position: relative;
@@ -278,7 +279,6 @@
   position: absolute;
   inset: 18cqh 3.8cqw 12cqh;
   overflow: hidden;
-  scroll-behavior: auto;
 }
 /* Captions are a RESERVED band, not an overlay: the canvas stops above them. Floating the caption
    over a scrolling answer is how a two-line narration ended up sitting on top of the very card it
@@ -289,6 +289,14 @@
 .cvs-canvas .topic-wrap {
   width: 100%;
   min-height: 100%;
+  /* The spotlight rides this transform, not the container's scrollTop: the capture clone keeps
+     computed transforms but drops scroll positions, so a scrolled canvas exported from the top
+     and every below-the-fold cue was missing from the file. */
+  transform: translateY(var(--cvs-shift, 0px));
+}
+.cvs-canvas .topic-wrap[data-glide='true'] {
+  /* Matches the stage's 420ms ink-settle re-measure; cut instantly when the preview holds still. */
+  transition: transform 0.42s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 /* The ask beat — a stated question, not a dimmed answer. */
@@ -340,7 +348,7 @@
   color: var(--text);
   font: 600 clamp(9px, 1.62cqw, 23px) / 1.32 var(--font);
   text-align: center;
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--glass-blur, blur(8px));
   /* Three lines is the honest ceiling for the reserved band above. */
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -380,8 +388,25 @@ html[data-perf='lite'] .cvs-presence .presence {
   font: 600 14px/1.3 var(--font);
 }
 
+/* What the sheet shows WHILE the export runs: the frames actually being encoded, blitted here a
+   couple of times a second. The live preview tree is unmounted for the duration — rendering a
+   second full 1080p stage (canvas, face and all) beside the one being captured doubled the cost of
+   the most expensive moment in the app to show the user the same picture twice. */
+.cvs-monitor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-deep);
+}
+
+/* One scroll container per breakpoint: the panel scrolls on a desktop window, the scrim scrolls
+   here. Sticky inside the now non-scrolling panel would re-anchor against that scrim and float
+   the action bar mid-list, so it goes back into the flow. */
 @media (max-width: 820px) {
   .cvs-panel {
     max-height: none;
+  }
+  .cvs-panel .shm-actions {
+    position: static;
   }
 }

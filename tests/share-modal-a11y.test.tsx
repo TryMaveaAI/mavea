@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import type { TurnFrame } from '../src/live/history';
 
-const { renderReelAudioSpy, shareClipSpy, startStoryRecordingSpy, toastSpy } = vi.hoisted(() => ({
-  renderReelAudioSpy: vi.fn(),
-  shareClipSpy: vi.fn(),
-  startStoryRecordingSpy: vi.fn(),
-  toastSpy: vi.fn(),
-}));
+const { renderReelAudioSpy, downloadClipSpy, startStoryRecordingSpy, toastSpy } = vi.hoisted(
+  () => ({
+    renderReelAudioSpy: vi.fn(),
+    downloadClipSpy: vi.fn(),
+    startStoryRecordingSpy: vi.fn(),
+    toastSpy: vi.fn(),
+  }),
+);
 
 // ShareModal pulls in the whole reel pipeline (recorder, audio synthesis, the live player). None of
 // that is what we're testing — focus management + the responsive stack — so stub the heavy modules
@@ -40,8 +42,7 @@ vi.mock('../src/clip/capture', () => ({
   qualityHint: () => 'up to 30 fps · 10 Mbps',
 }));
 vi.mock('../src/clip/share', () => ({
-  downloadClip: vi.fn(),
-  shareClip: shareClipSpy,
+  downloadClip: downloadClipSpy,
 }));
 vi.mock('../src/clip/reel/audioTrack', () => ({
   renderReelAudio: renderReelAudioSpy,
@@ -106,7 +107,7 @@ describe('ShareModal accessibility', () => {
     mockMatchMedia(false);
     renderReelAudioSpy.mockReset();
     renderReelAudioSpy.mockResolvedValue({ buffer: null, timings: [], missing: 0 });
-    shareClipSpy.mockReset();
+    downloadClipSpy.mockReset();
     startStoryRecordingSpy.mockReset();
     toastSpy.mockReset();
   });
@@ -214,8 +215,8 @@ describe('ShareModal accessibility', () => {
     expect(view.getByRole('status')).toHaveTextContent('Narration is unavailable');
   });
 
-  it('quietly releases a reel when the native share sheet is dismissed', async () => {
-    const dispose = vi.fn(async () => {});
+  it('downloads the finished reel from the single primary action', async () => {
+    const blob = new Blob(['video'], { type: 'video/webm' });
     const onShared = vi.fn();
     renderReelAudioSpy.mockResolvedValue({
       buffer: {} as AudioBuffer,
@@ -225,25 +226,61 @@ describe('ShareModal accessibility', () => {
     startStoryRecordingSpy.mockResolvedValue({
       cancel: vi.fn(),
       stop: vi.fn(async () => ({
-        blob: new Blob(['video'], { type: 'video/webm' }),
+        blob,
         type: 'video/webm',
         poster: new Blob(),
         hasAudio: true,
         durationMs: 8_000,
-        dispose,
+        dispose: vi.fn(async () => {}),
       })),
     });
-    shareClipSpy.mockResolvedValue('cancelled');
 
     const view = render(<ShareModal frames={[frame()]} onClose={() => {}} onShared={onShared} />);
     fireEvent.click(view.getByRole('button', { name: 'Reel' }));
-    fireEvent.click(view.getByRole('button', { name: /Share$/ }));
+    // Download is the one exit — the Share button was removed (desktop browsers expose
+    // navigator.share but refuse file payloads, so it only ever pretended).
+    expect(view.queryByRole('button', { name: /Share/ })).not.toBeInTheDocument();
+    fireEvent.click(view.getByRole('button', { name: /Download/ }));
     await waitFor(() => expect(startStoryRecordingSpy).toHaveBeenCalledOnce());
     fireEvent.click(await view.findByRole('button', { name: 'Finish reel recording' }));
-    await waitFor(() => expect(shareClipSpy).toHaveBeenCalledOnce());
+    await waitFor(() => expect(downloadClipSpy).toHaveBeenCalledOnce());
 
-    expect(onShared).not.toHaveBeenCalled();
-    expect(toastSpy).not.toHaveBeenCalled();
-    expect(dispose).toHaveBeenCalledOnce();
+    expect(downloadClipSpy).toHaveBeenCalledWith(blob, undefined, expect.any(Function));
+    expect(toastSpy).toHaveBeenCalledWith('Saved to your downloads', 'good');
+    expect(onShared).toHaveBeenCalledOnce();
+  });
+
+  it('lands focus inside on a warm re-open so Escape still closes', async () => {
+    // Second open: the lazy studio chunk is cached, so it mounts synchronously and any initial
+    // focus target it exposes exists before the trap runs — the shape that once left focus on the
+    // trigger outside the dialog, where the Escape listener could never hear the key.
+    const first = render(<ShareModal frames={[frame()]} onClose={() => {}} />);
+    await first.findByTestId('conversation-studio');
+    first.unmount();
+
+    const onClose = vi.fn();
+    const second = render(<ShareModal frames={[frame()]} onClose={onClose} />);
+    await second.findByTestId('conversation-studio');
+    const dialog = second.getByRole('dialog');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to a real control when the named initial focus target refuses focus', () => {
+    // Reel-only mode names the preview frame as initial focus; the stubbed player renders it as a
+    // plain (non-focusable) div, exercising the trap's verify-and-fall-back path directly.
+    const script = {
+      palette: 'aurora',
+      seed: 0,
+      slides: [{ content: 'title' }],
+      durationMs: 8_000,
+    } as never;
+    const onClose = vi.fn();
+    const { getByRole } = render(<ShareModal script={script} onClose={onClose} />);
+    const dialog = getByRole('dialog');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

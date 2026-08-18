@@ -14,6 +14,9 @@ export interface ConversationVideoOptions {
   spotlights: boolean;
   penMarks: boolean;
   presence: boolean;
+  /** Off skips narration synthesis entirely — the cheap export path; timing falls back to the
+   *  character-count estimate (see `estimateTurnAudio`). */
+  audio: boolean;
 }
 
 export interface ConversationAudioSpan {

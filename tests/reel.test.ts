@@ -51,8 +51,19 @@ const fakeResume = vi.fn(async () => {
   fakeState = 'running';
 });
 
+/** Handed back by every leased playback path — a test can assert the context is released. */
+const releaseSpy = vi.fn();
+
+// Playback paths LEASE the context (so the idle timer can park it again once the reel stops);
+// the offline render only needs the rate. Both are served from the same fake below.
 vi.mock('../src/voice/voiceEnergy', () => ({
-  sharedAudioContext: () => ({
+  sharedSampleRate: () => 48_000,
+  leaseAudioContext: () => ({ ctx: fakeCtx(), release: releaseSpy }),
+  sharedAudioContext: () => fakeCtx(),
+}));
+
+function fakeCtx() {
+  return {
     get currentTime() {
       return fakeNow;
     },
@@ -73,8 +84,8 @@ vi.mock('../src/voice/voiceEnergy', () => ({
       fakeSources.push(node);
       return node;
     },
-  }),
-}));
+  };
+}
 
 import { ReelPlayer } from '../src/clip/reel/ReelPlayer';
 import { elapsedOffset, clampResumeOffset, makePreviewAudio } from '../src/clip/reel/audioTrack';

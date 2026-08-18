@@ -5,7 +5,8 @@
 // voiceover to PCM UP FRONT, lay the lines onto the reel's timeline, and hand back one mono buffer
 // plus the co-timed per-slide durations. The buffer is deterministic and complete before recording
 // starts, so muxing it produces narration that is always present and perfectly in sync.
-import { sharedAudioContext } from '../../voice/voiceEnergy';
+import { mapConcurrent } from '../../lib/taskPool';
+import { leaseAudioContext, sharedSampleRate } from '../../voice/voiceEnergy';
 import { decodePcm16 } from '../../voice/streamTts';
 import { kokoroVoice } from '../../voice/kokoro';
 import { pronounceForSpeech } from '../../voice/pronounce';
@@ -74,13 +75,16 @@ export async function synthesizeVoiceLine(
 export async function renderReelAudio(
   script: ReelScript,
   signal?: AbortSignal,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<ReelAudio> {
   const slides = script.slides;
   const floors = slides.map((s) => Math.max(800, Math.round(s.durationMs)));
-  const ctx = sharedAudioContext();
+  // The rate, not the context: this renders into an OfflineAudioContext, so it never plays a
+  // sample through the shared one and must not stop it parking when idle.
+  const rate = sharedSampleRate();
   const voiceovers = slides.map((slide) => slide.voiceover.trim());
   const firstAuthoredLine = voiceovers.find(Boolean);
-  if (!ctx || typeof OfflineAudioContext === 'undefined') {
+  if (rate === null || typeof OfflineAudioContext === 'undefined') {
     return {
       buffer: null,
       timings: floors,
@@ -89,7 +93,15 @@ export async function renderReelAudio(
     };
   }
 
-  const segs = await Promise.all(slides.map((s) => synthesizeVoiceLine(s.voiceover, signal)));
+  // Two syntheses in flight, never the whole reel at once: the TTS container runs a small fixed
+  // thread pool, so a stampede of simultaneous requests maxes the fans AND finishes slower than a
+  // paced pair. Results keep slide order; progress counts each line as it lands.
+  let done = 0;
+  const segs = await mapConcurrent(slides, 2, async (s) => {
+    const seg = await synthesizeVoiceLine(s.voiceover, signal);
+    onProgress?.(++done, slides.length);
+    return seg;
+  });
   const voiced = voiceovers.filter(Boolean).length;
   const got = segs.filter((s) => s.length > 0).length;
   const missing = Math.max(0, voiced - got);
@@ -115,7 +127,8 @@ export async function renderReelAudio(
     for (let j = 0; j < seg.length; j++) peak = Math.max(peak, Math.abs(seg[j]));
   const gain = peak > 0 ? Math.min(MAX_GAIN, TARGET_PEAK / peak) : 1;
 
-  const rate = ctx.sampleRate; // render at the rate we'll stream/encode at — no second resample later
+  // `rate` (read above) is the shared context's — render at the rate we'll stream/encode at, so
+  // there is no second resample later.
   const totalS = LEAD_S + TAIL_S + timings.reduce((a, ms) => a + ms / 1000, 0);
   const offline = new OfflineAudioContext(1, Math.ceil(totalS * rate), rate);
   const master = offline.createGain();
@@ -158,8 +171,15 @@ export interface ReelAudioStream {
 
 /** Wrap a rendered buffer as a MediaStream the encoder can mux as a deterministic Opus track. */
 export function bufferToStream(buffer: AudioBuffer): ReelAudioStream | null {
-  const ctx = sharedAudioContext();
-  if (!ctx || typeof ctx.createMediaStreamDestination !== 'function') return null;
+  // Leased, not taken raw: this plays in real time for the length of the reel, so the idle timer
+  // must stay stood down until stop() — and must be free to park again afterwards.
+  const lease = leaseAudioContext();
+  if (!lease) return null;
+  const { ctx, release } = lease;
+  if (typeof ctx.createMediaStreamDestination !== 'function') {
+    release();
+    return null;
+  }
   const dest = ctx.createMediaStreamDestination();
   const src = ctx.createBufferSource();
   src.buffer = buffer;
@@ -184,6 +204,7 @@ export function bufferToStream(buffer: AudioBuffer): ReelAudioStream | null {
       } catch {
         /* no-op */
       }
+      release();
     },
   };
 }
@@ -222,8 +243,11 @@ export interface ReelPreviewAudio {
  *  restarted on each visual loop for rough sync, and pausable in lockstep with the reel's own freeze.
  *  Created on the user's gesture (the sound toggle), so the AudioContext is allowed to resume. */
 export function makePreviewAudio(buffer: AudioBuffer): ReelPreviewAudio | null {
-  const ctx = sharedAudioContext();
-  if (!ctx) return null;
+  // Same reasoning as bufferToStream: a preview loop can run for minutes, so it leases the
+  // context and hands it back on stop() rather than retiring the idle timer for the session.
+  const lease = leaseAudioContext();
+  if (!lease) return null;
+  const { ctx, release } = lease;
   const gain = ctx.createGain();
   gain.connect(ctx.destination);
   let src: AudioBufferSourceNode | null = null;
@@ -286,6 +310,7 @@ export function makePreviewAudio(buffer: AudioBuffer): ReelPreviewAudio | null {
       } catch {
         /* no-op */
       }
+      release();
     },
   };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { TopicCanvas } from '../../canvas';
 import { Presence } from '../../presence/Presence';
+import { useVoiceEnergySink } from '../../voice/voiceEnergy';
 import { AnnotationLayer } from '../../live/annotate/AnnotationLayer';
 import type { ConversationScene, ConversationVideoOptions } from './types';
 
@@ -20,6 +21,9 @@ export function ConversationStage({
 }): ReactElement {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const voiceSinkRef = useVoiceEnergySink();
+  const shownTurnRef = useRef<number | null>(null);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
@@ -27,30 +31,49 @@ export function ConversationStage({
     return () => frameRef?.(null);
   }, [frameRef]);
 
+  // The spotlight travels by TRANSFORM (`--cvs-shift` on the wrap), never by scrollTop: the
+  // capture clone drops a container's scroll position, so a scrolled spotlight reached the
+  // preview but rendered from the top of the exported file.
   useEffect(() => {
     const scroll = scrollRef.current;
-    if (!scroll) return;
-    let top = 0;
+    const wrap = wrapRef.current;
+    if (!scroll || !wrap) return;
+    const turnChanged = shownTurnRef.current !== scene?.turnIndex;
+    shownTurnRef.current = scene?.turnIndex ?? null;
+    // A fresh turn's canvas starts at the top; a beat with no cue HOLDS where the last one
+    // settled — gliding home between cues is what read as random scrolling.
+    let shift: number | null = turnChanged ? 0 : null;
     if (scene?.spot) {
       const target = [...scroll.querySelectorAll<HTMLElement>('[data-spot-id]')].find(
         (element) => element.dataset.spotId === scene.spot,
       );
-      if (!target) return;
-      const host = scroll.getBoundingClientRect();
-      const item = target.getBoundingClientRect();
-      top = Math.max(
-        0,
-        scroll.scrollTop + item.top - host.top - (scroll.clientHeight - item.height) / 2,
-      );
+      if (target) {
+        // Accumulate layout offsets rather than reading getBoundingClientRect: the keyed remount
+        // replays `.reveal`'s translate/scale entrance, so a client rect measured mid-animation
+        // is off by whatever frame the cards happen to be on. offsetTop never is.
+        let top = 0;
+        for (
+          let node: HTMLElement | null = target;
+          node && node !== scroll;
+          node = node.offsetParent as HTMLElement | null
+        )
+          top += node.offsetTop;
+        shift = Math.max(
+          0,
+          Math.min(
+            top - (scroll.clientHeight - target.offsetHeight) / 2,
+            wrap.offsetHeight - scroll.clientHeight,
+          ),
+        );
+      }
     }
-    // Glide the spotlight the way Live's walk does — the recorder captures the motion. Re-measure
-    // the ink anchors only once the glide has settled, so pen marks land on resting positions.
-    if (typeof scroll.scrollTo === 'function')
-      scroll.scrollTo({ top, behavior: glide ? 'smooth' : 'auto' });
-    else scroll.scrollTop = top;
+    if (shift === null) return;
+    wrap.style.setProperty('--cvs-shift', `${-shift}px`);
+    // The recorder captures the glide as motion. Re-measure the ink anchors only once it has
+    // settled, so pen marks land on resting positions.
     const settle = window.setTimeout(() => setRevision((value) => value + 1), 420);
     return () => window.clearTimeout(settle);
-  }, [scene?.spot, scene?.turnIndex, glide]);
+  }, [scene?.spot, scene?.turnIndex]);
 
   const asking = scene?.questionOnly ?? false;
   const heading = scene ? scene.frame.question || scene.frame.spec.title : '';
@@ -87,7 +110,7 @@ export function ConversationStage({
               {/* Keyed by turn so every answer's cards MOUNT here and play the same staggered
                   `.reveal` entrance Live gives them, instead of being present from frame one.
                   The recorder rasterizes the animating DOM, so that bloom lands in the file. */}
-              <div className="topic-wrap" key={scene.turnIndex}>
+              <div className="topic-wrap" key={scene.turnIndex} ref={wrapRef} data-glide={glide}>
                 <TopicCanvas
                   data={scene.frame.spec}
                   spot={scene.spot}
@@ -102,7 +125,7 @@ export function ConversationStage({
           )}
           {options.captions && scene.caption && <div className="cvs-caption">{scene.caption}</div>}
           {options.presence && (
-            <div className="cvs-presence">
+            <div className="cvs-presence" ref={voiceSinkRef}>
               <Presence state={asking ? 'thinking' : 'speaking'} />
             </div>
           )}

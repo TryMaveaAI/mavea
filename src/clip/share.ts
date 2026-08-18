@@ -1,8 +1,8 @@
-// Get the finished clip out of the browser. This feature has no upload service, so "share" uses the Web Share API
-// with a file (the native sheet on iOS/Android — the prime surface for a vertical clip) and
-// "download" is an <a download> fallback for desktop. Object URLs stay alive long enough for the
-// browser's download service to take ownership, then are revoked on a bounded timer.
-import type { ClipResult } from './types';
+// Get the finished clip out of the browser. This feature has no upload service — the clip lands
+// as a plain <a download>. (A Web Share button was tried and cut: desktop Chrome/Edge expose
+// navigator.share but refuse file payloads, so it silently fell through to this same download
+// while pretending to share.) Object URLs stay alive long enough for the browser's download
+// service to take ownership, then are revoked on a bounded timer.
 
 /** The download extension follows the clip's actual approved container (MP4 or WebM). */
 export function clipFileName(base: string, type: string): string {
@@ -53,31 +53,4 @@ export function downloadClip(blob: Blob, filename?: string, dispose?: () => void
   };
   window.addEventListener('pagehide', cleanup, { once: true });
   const timer = setTimeout(cleanup, 60_000);
-}
-
-/** Share the clip via the native sheet where supported, else fall back to a download. */
-export async function shareClip(
-  result: ClipResult,
-  opts?: { title?: string; text?: string; filename?: string },
-): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const name = opts?.filename || clipFileName('mavea-replay', result.type);
-  const file = new File([result.blob], name, {
-    type: result.type,
-  });
-  const data: ShareData = { files: [file], title: opts?.title, text: opts?.text };
-  if (typeof navigator !== 'undefined' && navigator.canShare?.(data) && navigator.share) {
-    try {
-      await navigator.share(data);
-      await result.dispose?.();
-      return 'shared';
-    } catch (err) {
-      // Dismissing the native sheet did not hand the file to anyone. Keep ownership with the caller
-      // so a ready-file UI can offer it again (or explicitly dispose it if that UI cannot reuse it).
-      if ((err as DOMException)?.name === 'AbortError') {
-        return 'cancelled';
-      }
-    }
-  }
-  downloadClip(result.blob, name, () => void result.dispose?.());
-  return 'downloaded';
 }

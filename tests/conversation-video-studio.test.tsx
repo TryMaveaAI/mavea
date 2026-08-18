@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
   prepare: vi.fn(),
   exportVideo: vi.fn(),
   download: vi.fn(),
-  share: vi.fn(),
 }));
 
 vi.mock('../src/clip/conversation/ConversationStage', () => ({
@@ -38,12 +37,11 @@ vi.mock('../src/clip/conversation/capture', () => ({
     '720p': { width: 1280, height: 720 },
   },
 }));
-// Only the two side-effecting exits are spied; the naming helpers stay real so the file name a
+// Only the side-effecting exit is spied; the naming helpers stay real so the file name a
 // user actually gets is covered here rather than asserted against a stub of itself.
 vi.mock('../src/clip/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../src/clip/share')>()),
   downloadClip: mocks.download,
-  shareClip: mocks.share,
 }));
 
 import { ConversationVideoStudio } from '../src/clip/conversation/ConversationVideoStudio';
@@ -104,11 +102,12 @@ afterEach(() => {
 });
 
 describe('ConversationVideoStudio', () => {
-  it('opens on the current turn with mandatory audio and 1080p creation', () => {
+  it('opens on the current turn with audio on by default and 1080p creation', () => {
     render(<ConversationVideoStudio frames={frames} />);
     const checks = screen.getAllByRole('checkbox') as HTMLInputElement[];
     expect(checks.map((input) => input.checked)).toEqual([false, false, true]);
-    expect(screen.getByText('● Audio always on')).toBeInTheDocument();
+    // Audio is an ordinary Include chip now — on by default, off is the cheap silent export.
+    expect(screen.getByRole('button', { name: 'Audio' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Create 1080p video' })).toBeEnabled();
     expect(screen.getByTestId('conversation-preview')).toHaveTextContent('Question 2');
   });
@@ -188,6 +187,47 @@ describe('ConversationVideoStudio', () => {
     expect(screen.queryByText('Ready · 1920×1080')).not.toBeInTheDocument();
   });
 
+  it('watches the render on a monitor instead of a second live 1080p stage', async () => {
+    // Two full stages used to render during an export — the one being captured offscreen and the
+    // preview mirroring it — so the most expensive moment in the app paid for the same picture
+    // twice. While frames are being rendered the preview IS those frames, blitted a couple of
+    // times a second.
+    const drawImage = vi.fn();
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    try {
+      mocks.prepare.mockResolvedValue({
+        buffer: {} as AudioBuffer,
+        turns: [{ durationMs: 2_000, spans: [] }],
+        durationMs: 2_000,
+      });
+      const monitors: ((frame: HTMLCanvasElement) => void)[] = [];
+      mocks.exportVideo.mockImplementation((opts: { onFrame?: (typeof monitors)[number] }) => {
+        if (opts.onFrame) monitors.push(opts.onFrame);
+        return new Promise(() => {});
+      });
+
+      render(<ConversationVideoStudio frames={frames} retainedAudio={() => null} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Create 1080p video' }));
+
+      const monitor = (await screen.findByRole('img', {
+        name: 'The frames being rendered',
+      })) as HTMLCanvasElement;
+      // Exactly one stage in the document, and it is the offscreen capture host.
+      expect(screen.getAllByTestId('conversation-preview')).toHaveLength(1);
+      expect(
+        screen.getByTestId('conversation-preview').closest('.cvs-capture-host'),
+      ).not.toBeNull();
+
+      const frame = document.createElement('canvas');
+      act(() => monitors[0](frame));
+      expect(drawImage).toHaveBeenCalledWith(frame, 0, 0, monitor.width, monitor.height);
+    } finally {
+      getContext.mockRestore();
+    }
+  });
+
   it('starts the export even when the window is occluded and rAF never fires', async () => {
     // An occluded tab stops servicing requestAnimationFrame entirely. The export used to await two
     // bare frames before anything watched the abort signal, so it hung on "Preparing required
@@ -260,23 +300,40 @@ describe('ConversationVideoStudio', () => {
     expect(screen.getByRole('button', { name: 'Create 720p video' })).toBeEnabled();
   });
 
-  it('keeps a finished video available when the native share sheet is dismissed', async () => {
-    const onShared = vi.fn();
-    mocks.share.mockResolvedValue('cancelled');
+  it('skips narration entirely when Audio is off and exports without a soundtrack', async () => {
+    mocks.exportVideo.mockResolvedValue({
+      blob: new Blob(['video'], { type: 'video/webm' }),
+      type: 'video/webm',
+      poster: new Blob(),
+      hasAudio: false,
+      durationMs: 2_000,
+      width: 1920,
+      height: 1080,
+    });
+    render(<ConversationVideoStudio frames={frames} retainedAudio={() => null} />);
+
+    const audio = screen.getByRole('button', { name: 'Audio' });
+    fireEvent.click(audio);
+    expect(audio).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Create 1080p video' }));
+    await screen.findByRole('button', { name: '↓ Download video' });
+
+    // The cheap path: not one TTS request — timing comes from the character-count estimate.
+    expect(mocks.prepare).not.toHaveBeenCalled();
+    expect(mocks.exportVideo).toHaveBeenCalledWith(expect.objectContaining({ audioBuffer: null }));
+  });
+
+  it('offers a single download exit — no Share button even where navigator.share exists', async () => {
+    // Desktop Chrome/Edge expose navigator.share but refuse file payloads, so a Share button here
+    // could only ever pretend — it fell through to the same download. It was removed outright.
     vi.stubGlobal(
       'navigator',
       Object.assign(Object.create(navigator), { share: vi.fn(async () => {}) }),
     );
-    render(
-      <ConversationVideoStudio frames={frames} retainedAudio={() => null} onShared={onShared} />,
-    );
+    render(<ConversationVideoStudio frames={frames} retainedAudio={() => null} />);
     await exportedClip();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-    await waitFor(() => expect(mocks.share).toHaveBeenCalledOnce());
-
-    expect(onShared).not.toHaveBeenCalled();
-    expect(screen.getByText('Ready · 1920×1080')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '↓ Download video' })).toBeEnabled();
   });
 

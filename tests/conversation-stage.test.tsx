@@ -1,14 +1,18 @@
 import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import type { TurnFrame } from '../src/live/history';
 import type { ConversationScene, ConversationVideoOptions } from '../src/clip/conversation/types';
 
 // The stage is judged here on what it composes, not on how the canvas paints — a real TopicCanvas
-// would drag every block family into this test for no added signal.
+// would drag every block family into this test for no added signal. The bare [data-spot-id]
+// children stand in for the cards the spotlight centres on.
 vi.mock('../src/canvas', () => ({
   TopicCanvas: ({ data, spot }: { data: ConversationSpec; spot: string | null }) => (
-    <div data-testid="topic-canvas" data-title={data.title} data-spot={spot ?? ''} />
+    <div data-testid="topic-canvas" data-title={data.title} data-spot={spot ?? ''}>
+      <div data-spot-id="live-1" />
+      <div data-spot-id="live-2" />
+    </div>
   ),
 }));
 vi.mock('../src/presence/Presence', () => ({
@@ -36,6 +40,7 @@ const frame = (question: string, title: string): TurnFrame => ({
 const options: ConversationVideoOptions = {
   size: '1080p',
   quality: 'high',
+  audio: true,
   captions: true,
   spotlights: true,
   penMarks: true,
@@ -52,6 +57,38 @@ const scene = (over: Partial<ConversationScene> = {}): ConversationScene => ({
   ink: [],
   questionOnly: false,
   ...over,
+});
+
+// jsdom lays nothing out, so give the spotlight math a real geometry: a 400px-tall canvas whose
+// cards sit at fixed layout offsets. The stage reads offsetTop/offsetHeight (never client rects —
+// those move with the entrance animation), so these stubs are exactly the numbers it consumes.
+const SPOT_TOP: Record<string, number> = { 'live-1': 300, 'live-2': 900 };
+
+beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return SPOT_TOP[this.dataset.spotId ?? ''] ?? 0;
+  });
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    if (this.dataset.spotId) return 80;
+    return this.classList.contains('topic-wrap') ? 2000 : 0;
+  });
+  vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    if (this.dataset.spotId) return this.closest('.topic-wrap');
+    return this.classList.contains('topic-wrap') ? this.closest('.cvs-canvas') : null;
+  });
+  vi.spyOn(Element.prototype, 'clientHeight', 'get').mockImplementation(function (this: Element) {
+    return this.classList.contains('cvs-canvas') ? 400 : 0;
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('ConversationStage', () => {
@@ -142,5 +179,57 @@ describe('ConversationStage', () => {
     );
     expect(queryByTestId('presence')).toBeNull();
     expect(queryByTestId('ink')).toBeNull();
+  });
+
+  it('centres a cued card by transform, from layout offsets the entrance cannot skew', () => {
+    const { container, rerender } = render(
+      <ConversationStage scene={scene({ spot: 'live-1' })} options={options} />,
+    );
+    const wrap = container.querySelector<HTMLElement>('.topic-wrap')!;
+    // live-1: an 80px card 300px down a 400px window → 300 - (400 - 80) / 2, shifted up.
+    expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-140px');
+    // live-2 sits below the fold — the whole point of the transform is that this offset reaches
+    // the exported raster, which never reproduced a scroll position.
+    rerender(<ConversationStage scene={scene({ spot: 'live-2' })} options={options} />);
+    expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-740px');
+  });
+
+  it('holds the current offset on a beat with no cue instead of gliding home', () => {
+    const { container, rerender } = render(
+      <ConversationStage scene={scene({ spot: 'live-2' })} options={options} />,
+    );
+    const wrap = container.querySelector<HTMLElement>('.topic-wrap')!;
+    expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-740px');
+    // The body beat after a question carries no spot — it used to smooth-scroll back to the top,
+    // which is the "random scrolls" the export showed between every cue.
+    rerender(<ConversationStage scene={scene({ spot: null })} options={options} />);
+    expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-740px');
+    // A cue whose card is not on this canvas holds the frame too, rather than jumping anywhere.
+    rerender(<ConversationStage scene={scene({ spot: 'absent' })} options={options} />);
+    expect(wrap.style.getPropertyValue('--cvs-shift')).toBe('-740px');
+  });
+
+  it('starts a new turn back at the top', () => {
+    const { container, rerender } = render(
+      <ConversationStage scene={scene({ spot: 'live-2' })} options={options} />,
+    );
+    rerender(
+      <ConversationStage
+        scene={scene({ turnIndex: 1, frame: frame('And sunsets?', 'Longer path') })}
+        options={options}
+      />,
+    );
+    expect(
+      container.querySelector<HTMLElement>('.topic-wrap')!.style.getPropertyValue('--cvs-shift'),
+    ).toBe('0px');
+  });
+
+  it('keys the glide transition off the glide prop so a cut stays a cut', () => {
+    // jsdom applies no stylesheets, so the contract under test is the attribute the CSS keys on:
+    // only [data-glide='true'] carries the 420ms transform transition.
+    const { container, rerender } = render(<ConversationStage scene={scene()} options={options} />);
+    expect(container.querySelector('.topic-wrap')?.getAttribute('data-glide')).toBe('true');
+    rerender(<ConversationStage scene={scene()} options={options} glide={false} />);
+    expect(container.querySelector('.topic-wrap')?.getAttribute('data-glide')).toBe('false');
   });
 });
