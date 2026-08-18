@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { CompareMatrix } from '../src/canvas/blocks/tables/CompareMatrix';
 import { Matrix } from '../src/canvas/blocks/tables/Matrix';
 import { TreeTable } from '../src/canvas/blocks/tables/TreeTable';
@@ -70,6 +72,58 @@ describe('CompareMatrix', () => {
     expect(container.querySelectorAll('.tbl-cmx-cell')).toHaveLength(8);
     const rowh = container.querySelector<HTMLElement>('.tbl-cmx-rowh');
     expect(rowh!.textContent).toBe(LONG_LABEL);
+  });
+
+  it('floors every column instead of letting it shrink to nothing', () => {
+    // Live answers put sentences in these cells, and the tracks used to be `minmax(0, …)` under a
+    // `max-content` grid: one such value stretched the table to twice the card's width, the fr
+    // tracks scaled with it (so the attribute column inherited a few hundred px of dead space),
+    // and everything past the card's edge hid behind a horizontal scrollbar. Values wrap now, and
+    // a px floor per track is what decides when scrolling beats crushing.
+    const { container } = render(
+      <CompareMatrix title="Plans" cols={['Basic', 'Pro']} rows={rows(1)} />,
+    );
+    const grid = container.querySelector<HTMLElement>('.tbl-cmx-grid');
+    expect(grid!.style.gridTemplateColumns).toMatch(
+      /^minmax\(\d+px, 1\.3fr\) repeat\(2, minmax\(\d+px, 1fr\)\)$/,
+    );
+  });
+});
+
+// jsdom does no layout, so the wrapping this rests on is pinned against the stylesheet itself: a
+// single `white-space: nowrap` anywhere in the value path makes a column's max-content its whole
+// sentence, which is what blew the table out in the first place.
+describe('CompareMatrix styles', () => {
+  const sheet = readFileSync(join(__dirname, '../src/canvas/blocks/tables/styles.css'), 'utf8');
+  // Only the block's own section, so a `.tbl-cmx-*` rule that went missing can't be satisfied by
+  // an unrelated rule elsewhere in the family sheet. Comments go too — they discuss the very
+  // declarations these tests assert are gone.
+  const start = sheet.indexOf('/* ── comparematrix:');
+  const next = sheet.indexOf('/* ── ', start + 1);
+  const section = sheet
+    .slice(start, next === -1 ? undefined : next)
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  /** Every declaration block in that section whose selector list names `selector` — the grouped
+   *  geometry rule and the element's own rule both apply to it. */
+  function declarationsFor(selector: string): string {
+    const blocks = [...section.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(',').some((s) => s.trim() === selector))
+      .map(([, , body]) => body);
+    expect(blocks.length, `${selector} missing from styles.css`).toBeGreaterThan(0);
+    return blocks.join('\n');
+  }
+
+  it.each(['.tbl-cmx-text', '.tbl-cmx-rowh'])('lets %s wrap rather than demand one line', (sel) => {
+    expect(declarationsFor(sel)).not.toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('scrolls only below the columns own floors, not below their full text', () => {
+    expect(declarationsFor('.tbl-cmx-grid')).toContain('min-width: min-content');
+  });
+
+  it('stacks a cell note under its value', () => {
+    expect(declarationsFor('.tbl-cmx-cell')).toContain('flex-direction: column');
   });
 });
 

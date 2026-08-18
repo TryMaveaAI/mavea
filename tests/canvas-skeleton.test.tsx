@@ -1,15 +1,16 @@
 import { render } from '@testing-library/react';
 import { CanvasSkeleton } from '../src/canvas/CanvasSkeleton';
 
-// The family-gate placeholder: one shimmer card per incoming block (capped), spanning the
-// same col-* track the real card will land in so the grid never reflows when the answer
-// mounts. The span math must mirror TopicCanvas's extras clamp — narrow budgets go
-// full-width, desktop keeps the authored col clamped to the 12-track grid.
+// The family-gate placeholder: one shimmer card per incoming block, spanning the same
+// col-* track the real card will land in so the grid never reflows when the answer
+// mounts. No cap — fewer placeholders than cards would make the grid GROW at the swap,
+// jumping everything below it. The span math must mirror TopicCanvas's extras clamp —
+// narrow budgets go full-width, desktop keeps the authored col clamped to the 12-track grid.
 describe('CanvasSkeleton', () => {
-  it('renders one skeleton per block, capped at eight', () => {
+  it('renders one skeleton per block, uncapped, so track occupancy matches the cards', () => {
     const many = Array.from({ length: 12 }, () => ({ col: 6 }));
     const { container } = render(<CanvasSkeleton blocks={many} budget={12} />);
-    expect(container.querySelectorAll('.skel-card')).toHaveLength(8);
+    expect(container.querySelectorAll('.skel-card')).toHaveLength(12);
 
     const { container: few } = render(<CanvasSkeleton blocks={many.slice(0, 3)} budget={12} />);
     expect(few.querySelectorAll('.skel-card')).toHaveLength(3);

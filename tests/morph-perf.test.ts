@@ -189,6 +189,17 @@ describe('separateRects at scale', () => {
     for (const r of rects) expect(Number.isFinite(r.x) && Number.isFinite(r.y)).toBe(true);
   });
 
+  it('stays inside the budget with one unfolded card among the lattice', () => {
+    // One rect ~8× the others — an unfolded breakdown card. A hash cell sized from the GLOBAL max
+    // let this single rect collapse the whole lattice into a handful of cells, making every 3×3
+    // neighbourhood the entire set: O(n²) per iteration, for up to 200 iterations. Sized from the
+    // ordinary rects (the outlier is swept against everyone directly instead), it stays linear.
+    const rects = lattice(RECTS);
+    rects.splice(RECTS / 2, 0, { x: 400, y: 120, w: 480, h: 512 });
+    within('separate mixed', BUDGET_MS, () => separateRects(rects));
+    for (const r of rects) expect(Number.isFinite(r.x) && Number.isFinite(r.y)).toBe(true);
+  });
+
   it('settles a mixed-size fixture on exactly the same numbers as ever', () => {
     // The broad phase must never change WHERE things land, only how fast they get there — so this
     // pins the settled positions, coincident pairs and all, to the millipixel.

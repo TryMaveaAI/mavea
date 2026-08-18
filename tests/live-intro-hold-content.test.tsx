@@ -11,6 +11,11 @@ let resolveTurn: ((r: unknown) => void) | null = null;
 let onDeltaRef: ((c: string) => void) | null = null;
 let onPartialRef: ((p: { spec: ConversationSpec }) => void) | null = null;
 
+/** One animation frame — the beat the streamed-partial dispatch coalesces onto. */
+function frame(): Promise<void> {
+  return new Promise((r) => requestAnimationFrame(() => r()));
+}
+
 function block(id: string, title: string): Block {
   return {
     type: 'insight',
@@ -110,8 +115,11 @@ it('never dims or drops streamed cards once the canvas has content', async () =>
   expect(scrimShown()).toBe(false);
   expect(cardCount()).toBe(1);
 
+  // Every partial after the first is coalesced into one dispatch per animation frame, so the
+  // canvas paints once per frame however many blocks close inside it — let that frame run.
   await act(async () => {
     onPartialRef?.({ spec: spec([block('b1', 'Timeline'), block('b2', 'Details')]) });
+    await frame();
   });
   expect(cardCount()).toBe(2);
   expect(scrimShown()).toBe(false);

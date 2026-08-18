@@ -24,7 +24,7 @@ const HOSTILE_SRCS = [
 
 const SAFE_REMOTE =
   'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Shibuya_crossing_at_night.jpg/960px-Shibuya_crossing_at_night.jpg';
-const SAFE_LOCAL = '/demo-assets/images/sete-cidades.jpg';
+const SAFE_LOCAL = '/demo-assets/images/sete-cidades.avif';
 
 describe('safeBlockImageSrc — what a canvas block may put in an <img src>', () => {
   it('passes individually cleared remote URLs and bundled same-origin asset paths', () => {
@@ -52,8 +52,8 @@ describe('safeBlockImageSrc — what a canvas block may put in an <img src>', ()
 
 describe('safeSameOriginMediaSrc — video fetch boundary', () => {
   it('allows bundled and exact same-origin media, but rejects remote and active schemes', () => {
-    expect(safeSameOriginMediaSrc('/demo-assets/video/azores-film.webm')).toBe(
-      '/demo-assets/video/azores-film.webm',
+    expect(safeSameOriginMediaSrc('/demo-assets/video/island-coast.webm')).toBe(
+      '/demo-assets/video/island-coast.webm',
     );
     expect(safeSameOriginMediaSrc(`${location.origin}/media/clip.mp4`)).toBe('/media/clip.mp4');
     for (const src of HOSTILE_SRCS) expect(safeSameOriginMediaSrc(src), src).toBeUndefined();
@@ -78,12 +78,12 @@ describe('safeSameOriginMediaSrc — video fetch boundary', () => {
         title="Tutorial"
         thumb={{ from: 'var(--presence)', to: 'var(--insight)' }}
         chapters={[]}
-        video="/demo-assets/video/azores-film.webm"
+        video="/demo-assets/video/island-coast.webm"
       />,
     );
     expect(container.querySelector('video')).toHaveAttribute(
       'src',
-      '/demo-assets/video/azores-film.webm',
+      '/demo-assets/video/island-coast.webm',
     );
   });
 });
