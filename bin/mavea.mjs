@@ -1075,11 +1075,24 @@ async function tuneVoiceWhenReady(kokoroUrl, ranAt) {
   }
 }
 
+/**
+ * The compose invocation that starts speech, for whichever runtime is present — Docker, Podman and
+ * podman-compose all take the same verbs, so the caching behaviour below is identical on each.
+ *
+ * `--build` is deliberately absent. It forces a build pass on EVERY run, which re-resolves the
+ * whisper image on a machine that already has it; without it compose builds only when the image is
+ * missing and reuses what is already there. That is safe because the tag carries the version
+ * (`mavea-whisper-cpp:1.9.1` in docker-compose.yml), so a version bump is a new tag and does build,
+ * while a repeat run on the same version costs nothing. Kokoro is pinned by digest and compose's
+ * default `--pull missing` never re-pulls a digest it already holds.
+ */
+export function composeUpArgs(runtime, composeFile = COMPOSE_FILE) {
+  return [...runtime.prefix, '-f', composeFile, 'up', '-d'];
+}
+
 function startSpeechServices(runtime, threads) {
-  console.log(
-    '  Starting Kokoro TTS + whisper.cpp STT. The first run builds/downloads pinned models…',
-  );
-  spawn(runtime.command, [...runtime.prefix, '-f', COMPOSE_FILE, 'up', '-d', '--build'], {
+  console.log('  Starting Kokoro TTS + whisper.cpp STT. The first run downloads pinned models…');
+  spawn(runtime.command, composeUpArgs(runtime), {
     stdio: 'inherit',
     env: voiceThreadEnv(threads),
   });
@@ -1164,6 +1177,19 @@ async function maybeOfferVoice() {
   if (tuned === null && !kokoroReady) void tuneVoiceWhenReady(kokoroUrl, startedAt);
 }
 
+/**
+ * Speech is settled BEFORE the browser opens, and the order is the whole point: the setup questions
+ * live in this terminal, so a window opening over them is how a first run ends up permanently
+ * without voice or transcription — the reader never sees the prompt, the answer falls to a default
+ * nobody chose, and the experience they judge Mavéa on is the degraded one. Nothing here waits on
+ * containers (the compose spawn is detached), so the cost is one reachability probe plus however
+ * long the answers take.
+ */
+export async function settleStartup(args, { offerVoice, openApp }) {
+  if (args.voice) await offerVoice();
+  if (args.open) openApp();
+}
+
 async function main() {
   let args;
   try {
@@ -1228,8 +1254,7 @@ Podman is the recommended free/open-source container runtime. Docker Desktop has
   console.log(`Terms:   ${base}/legal/TERMS.md`);
   console.log(`Privacy: ${base}/legal/PRIVACY.md`);
   console.log(`License: ${base}/legal/LICENSE.txt (PolyForm Noncommercial 1.0.0)`);
-  if (args.open) openBrowser(base);
-  if (args.voice) await maybeOfferVoice();
+  await settleStartup(args, { offerVoice: maybeOfferVoice, openApp: () => openBrowser(base) });
 }
 
 // npm/npx installs `bin` entries as a symlink (node_modules/.bin/mavea -> ../@mavea/mavea/bin/

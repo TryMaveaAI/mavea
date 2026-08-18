@@ -9,7 +9,20 @@ import { tmpdir } from 'node:os';
 // @ts-expect-error — the published CLI is intentionally a dependency-free ESM module.
 import * as cli from '../bin/mavea.mjs';
 
-const { readCachedVoiceThreads, rememberVoiceThreads, voiceThreadsFor, voiceThreadEnv } = cli as {
+interface ComposeRuntime {
+  command: string;
+  prefix: string[];
+  label: string;
+}
+
+const {
+  readCachedVoiceThreads,
+  rememberVoiceThreads,
+  voiceThreadsFor,
+  voiceThreadEnv,
+  composeUpArgs,
+  settleStartup,
+} = cli as {
   readCachedVoiceThreads: (file?: string) => number | null;
   rememberVoiceThreads: (threads: number, realtimePerThread: number, file?: string) => boolean;
   voiceThreadsFor: (realtimePerThread: number) => number;
@@ -17,6 +30,11 @@ const { readCachedVoiceThreads, rememberVoiceThreads, voiceThreadsFor, voiceThre
     threads: number | null | undefined,
     env?: NodeJS.ProcessEnv,
   ) => NodeJS.ProcessEnv;
+  composeUpArgs: (runtime: ComposeRuntime, composeFile?: string) => string[];
+  settleStartup: (
+    args: { voice: boolean; open: boolean },
+    steps: { offerVoice: () => Promise<void> | void; openApp: () => void },
+  ) => Promise<void>;
 };
 
 const dirs: string[] = [];
@@ -63,5 +81,69 @@ describe('CLI voice thread tuning', () => {
     // Nothing measured yet: the variable stays unset so docker-compose.yml's own default (4) wins.
     expect(voiceThreadEnv(null, base)).toBe(base);
     expect(voiceThreadEnv(undefined, base).MAVEA_VOICE_THREADS).toBeUndefined();
+  });
+});
+
+describe('first-run startup', () => {
+  const docker: ComposeRuntime = { command: 'docker', prefix: ['compose'], label: 'Docker' };
+  const podman: ComposeRuntime = { command: 'podman', prefix: ['compose'], label: 'Podman' };
+  const composeless: ComposeRuntime = { command: 'podman-compose', prefix: [], label: 'Podman' };
+
+  it('never forces a rebuild of images the machine already has, on either runtime', () => {
+    // `--build` re-resolves an image that is already present on every single run. Compose builds a
+    // missing image on its own, and the whisper tag carries its version, so a bump still builds.
+    for (const runtime of [docker, podman, composeless]) {
+      expect(composeUpArgs(runtime, '/tmp/compose.yml')).not.toContain('--build');
+      expect(composeUpArgs(runtime, '/tmp/compose.yml')).toEqual([
+        ...runtime.prefix,
+        '-f',
+        '/tmp/compose.yml',
+        'up',
+        '-d',
+      ]);
+    }
+  });
+
+  it('asks the speech questions before opening the browser over them', async () => {
+    const order: string[] = [];
+    await settleStartup(
+      { voice: true, open: true },
+      {
+        offerVoice: async () => {
+          // A slow answer must still land first — the prompt lives in the terminal the browser is
+          // about to cover. Anything else configures speech by a default nobody chose.
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          order.push('voice');
+        },
+        openApp: () => order.push('open'),
+      },
+    );
+    expect(order).toEqual(['voice', 'open']);
+  });
+
+  it('honours --no-voice and --no-open without reordering the other', async () => {
+    const opened: string[] = [];
+    await settleStartup(
+      { voice: false, open: true },
+      {
+        offerVoice: () => {
+          opened.push('voice');
+        },
+        openApp: () => opened.push('open'),
+      },
+    );
+    expect(opened).toEqual(['open']);
+
+    const quiet: string[] = [];
+    await settleStartup(
+      { voice: true, open: false },
+      {
+        offerVoice: () => {
+          quiet.push('voice');
+        },
+        openApp: () => quiet.push('open'),
+      },
+    );
+    expect(quiet).toEqual(['voice']);
   });
 });

@@ -30,11 +30,12 @@ Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok).
 Local speech uses [Kokoro](https://github.com/remsky/Kokoro-FastAPI) for narration and whisper.cpp
 for microphone transcription; `pnpm dev` starts both automatically. Podman is the recommended
 free/open-source runtime, while Docker also works under its separate terms. To run or stop the
-services on their own:
+services on their own (compose builds the whisper image only when it is missing — its tag carries
+the version, so there is nothing to rebuild on a machine that already has it):
 
 ```sh
-podman compose up -d --build # Kokoro TTS on :8880 and whisper.cpp STT on :8100
-podman compose down           # stop them (they otherwise stay up between dev sessions)
+podman compose up -d   # Kokoro TTS on :8880 and whisper.cpp STT on :8100
+podman compose down    # stop them (they otherwise stay up between dev sessions)
 ```
 
 ## Before a maintainer opens a PR

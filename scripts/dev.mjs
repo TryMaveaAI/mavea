@@ -73,14 +73,18 @@ function installedRuntimeHint() {
 }
 
 /** Start both local speech services. Docker gets one credential-helper-safe retry because every
- *  image is public; Podman has no equivalent credential helper failure on this path. */
+ *  image is public; Podman has no equivalent credential helper failure on this path.
+ *
+ *  No `--build`: it forces a build pass on every `pnpm dev`, re-resolving an image the machine
+ *  already has. Compose builds when the image is MISSING and reuses it otherwise, and the whisper
+ *  tag carries its version, so a bump still builds. Same verbs on Docker and Podman alike. */
 function startVoice(runtime, threads) {
   const env = threads ? { ...process.env, MAVEA_VOICE_THREADS: String(threads) } : process.env;
-  const args = [...runtime.prefix, 'up', '-d', '--build'];
+  const args = [...runtime.prefix, 'up', '-d'];
   if (spawnSync(runtime.command, args, { stdio: 'inherit', env }).status === 0) return true;
   if (runtime.command !== 'docker') return false;
   return (
-    spawnSync('docker', ['--config', credSafeConfigDir(), 'compose', 'up', '-d', '--build'], {
+    spawnSync('docker', ['--config', credSafeConfigDir(), 'compose', 'up', '-d'], {
       stdio: 'inherit',
       env,
     }).status === 0
