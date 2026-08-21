@@ -2,8 +2,12 @@
    updates ship as a new effective date plus a new acceptance version, so a stale-version
    acceptance stops counting and every existing user is shown the changed documents once.
    v7: tracked readings stored in IndexedDB; tracked/"live" values declared best-effort and
-   model-dependent. */
-export const LEGAL_ACCEPTANCE_VERSION = '2026-08-17-tracked-data-v7';
+   model-dependent.
+   v8: a Prism/Synthesis map — a document's claims and the page text they are quoted against — is
+   kept on the device, with no timer expiry, so re-opening a file does not re-bill the reader's key.
+   `tests/legal-version-guard` pins the documents' digests, so the next material edit cannot ship
+   without this decision being made again. */
+export const LEGAL_ACCEPTANCE_VERSION = '2026-08-21-document-maps-v8';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

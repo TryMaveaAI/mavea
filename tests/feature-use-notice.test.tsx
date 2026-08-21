@@ -48,6 +48,9 @@ describe('FeatureUseNotice', () => {
     render(<FeatureUseNotice kind="upload" from="live" />);
 
     expect(screen.getByText(/Files are staged and extracted locally/)).toBeInTheDocument();
+    // A document's map is kept on the device now, so the surface that makes one says so — the
+    // Privacy Notice covers it, but a reader on a shared machine is standing here, not there.
+    expect(screen.getByText(/stays on this device/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Dismiss/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Details' })).toHaveAttribute(
       'href',

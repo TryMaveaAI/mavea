@@ -1,6 +1,6 @@
 # Mavéa Privacy Notice
 
-Effective: August 17, 2026
+Effective: August 21, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
@@ -25,7 +25,8 @@ Depending on the features you use, browser storage may contain:
 - drafts, tracked items, presentation settings, and recent feature state;
 - provider and model configuration;
 - remembered provider, search, or optional GitHub credentials;
-- a short-lived cache of recent questions and the answers to them, kept on the device so that asking the same thing again does not bill your key a second time; it expires within a day, and it deliberately excludes any answer that drew on attachments, ink, filled-in blanks, cited sources, or your remembered facts;
+- a short-lived cache of recent questions and the answers to them, kept on the device so that asking the same thing again does not bill your key a second time; it expires within a day, and it deliberately excludes any answer that drew on attachments, ink, filled-in blanks, cited sources, or your remembered facts (document text attached to a Prism or Synthesis map is kept separately — see the next entry);
+- the map of a document you exploded with Prism or Synthesis — its claims and the extracted page text they are quoted against — kept on the device so re-opening the same file does not bill your key to read it again. It is filed under that file's identity and the model that read it, so it is only ever reused for the same document; it does not expire on a timer, because the mapping cannot go stale and re-running it would charge you for an identical result. It is bounded instead: the least recently opened entries are dropped once the store passes a fixed number of entries or a fixed total size. Clearing site data removes it;
 - temporary in-progress and finished video-export files in origin-private browser storage until the export is consumed or discarded; and
 - short-lived demo, tour, route, and in-progress session data.
 

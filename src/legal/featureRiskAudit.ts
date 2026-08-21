@@ -1,3 +1,5 @@
+import { VOICE_DATA_NOTICE } from './voiceNotice';
+
 /** The reviewed, primary disclosure pattern for every public feature registry entry. A feature can
  * be low-risk (`global`) while still inheriting the app-wide AI/provider notice. Tests compare this
  * object with FEATURES so adding a feature without a liability/privacy review fails CI. */
@@ -144,7 +146,7 @@ export const FEATURE_NOTICE_COPY: Record<
   },
   upload: {
     title: 'Files may be sent to your providers',
-    body: 'Files are staged and extracted locally, but relevant content may be sent through this deployment to the model, search, or connected provider you select. Upload only material you are authorized to share.',
+    body: 'Files are staged and extracted locally, but relevant content may be sent through this deployment to the model, search, or connected provider you select. Upload only material you are authorized to share. A map Mavéa builds from a document stays on this device — its claims and the page text they quote — so re-opening the same file does not bill your key again; anyone who can use this browser profile may be able to read it, and clearing site data removes it.',
   },
   code: {
     title: 'Review and test before shipping',
@@ -162,10 +164,7 @@ export const FEATURE_NOTICE_COPY: Record<
     title: 'Review before sharing',
     body: 'Check facts, citations, confidential information, permissions, copyright, and accessibility before presenting, publishing, or sending an export.',
   },
-  'voice-data': {
-    title: 'Speech can become provider data',
-    body: 'Microphone audio is sent to the speech-transcription endpoint configured by this deployment, and the resulting transcript may be sent to your selected model provider. Endpoint operators may log or retain data under their own terms. Avoid sensitive conversations and get any consent required from nearby people before listening starts.',
-  },
+  'voice-data': VOICE_DATA_NOTICE,
   credentials: {
     title: 'Remembering a key is a convenience',
     body: 'Remember stores an encrypted copy in this browser; it is not a security guarantee. Use restricted, revocable keys on a trusted device and revoke them at the provider if exposure is possible.',

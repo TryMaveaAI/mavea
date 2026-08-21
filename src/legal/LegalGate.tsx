@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore, type ReactElement, type ReactNode } from 'react';
 import { acceptLegalTerms, hasLegalAcceptance, subscribeLegalAcceptance } from './acceptance';
 import { legalDocumentHref } from './links';
-import { FEATURE_NOTICE_COPY } from './featureRiskAudit';
+import { VOICE_DATA_NOTICE } from './voiceNotice';
 import './legal-gate.css';
 
 export function LegalGate({
@@ -56,8 +56,7 @@ export function LegalGate({
             emergency help.
           </li>
           <li>
-            <strong>{FEATURE_NOTICE_COPY['voice-data'].title}.</strong>{' '}
-            {FEATURE_NOTICE_COPY['voice-data'].body}
+            <strong>{VOICE_DATA_NOTICE.title}.</strong> {VOICE_DATA_NOTICE.body}
           </li>
           <li>
             Prompts, files, code, and context may also pass through this deployment to the providers
