@@ -30,7 +30,20 @@ describe('detectWorldFollowUp', () => {
   });
 });
 
-/** The standing world, with and without the measured series a time view is drawn from. */
+/** The standing world, with and without the measured series a time view is drawn from.
+ *
+ *  BOTH causes carry one when `withSeries`, and that is the point rather than padding: a chart of a
+ *  single line has nothing to be read against, so the surface does not offer one — and this module's
+ *  job is to promise only what the surface will keep. A fixture with one series would be a world the
+ *  reader is told they can see as a chart and then cannot. */
+const measured = (a: number, b: number) => ({
+  tier: 'T2' as const,
+  points: [
+    { t: '2004', value: a },
+    { t: '2006', value: b },
+  ],
+});
+
 const standing = (withSeries: boolean): WorldSpec => ({
   title: 'Why did lending blow up?',
   outcomeId: 'blowup',
@@ -41,19 +54,16 @@ const standing = (withSeries: boolean): WorldSpec => ({
       role: 'root',
       depth: 0,
       tier: 'T0',
-      ...(withSeries
-        ? {
-            series: {
-              tier: 'T2' as const,
-              points: [
-                { t: '2004', value: 1 },
-                { t: '2006', value: 5 },
-              ],
-            },
-          }
-        : {}),
+      ...(withSeries ? { series: measured(1, 5) } : {}),
     },
-    { id: 'blowup', label: 'Lending blew up', role: 'outcome', depth: 1, tier: 'T0' },
+    {
+      id: 'blowup',
+      label: 'Lending blew up',
+      role: 'outcome',
+      depth: 1,
+      tier: 'T0',
+      ...(withSeries ? { series: measured(2, 9) } : {}),
+    },
   ],
   edges: [],
   provenance: {},

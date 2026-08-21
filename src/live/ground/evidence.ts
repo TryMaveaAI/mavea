@@ -29,14 +29,33 @@ export interface EvidenceCorpus {
   text: string;
   /** The same material, still divided by source, so a verified quote can be attributed. */
   chunks: readonly EvidenceChunk[];
+  /**
+   * Is there a SENTENCE in here to quote?
+   *
+   * A corpus is rarely empty and often unquotable, and the difference matters more than the
+   * emptiness does. A model's native grounding returns a bare URL and a title, so the corpus comes
+   * out non-empty — a list of headlines — and every figure proposed against it fails the verbatim
+   * gate no matter how good the evidence behind it was. The caller cannot tell those two situations
+   * apart from `text` alone, and the one that looks fine is the one that silently strips everything.
+   *
+   * Measured on what the sources CONTRIBUTED, not on the rendered block, because the rendered block
+   * always carries the title and the URL.
+   */
+  quotable: boolean;
 }
 
-export const EMPTY_CORPUS: EvidenceCorpus = { text: '', chunks: [] };
+export const EMPTY_CORPUS: EvidenceCorpus = { text: '', chunks: [], quotable: false };
 
 /** A corpus with no source provenance: a flat body of text, which is what a caller has when its
  *  evidence arrived already concatenated. Quotes still ground against it; nothing can be attributed
  *  to a source, so a receipt built from one keeps whatever it was handed. */
-export const textCorpus = (text: string): EvidenceCorpus => ({ text, chunks: [] });
+export const textCorpus = (text: string): EvidenceCorpus => ({
+  text,
+  chunks: [],
+  // A flat body of prose IS the excerpt — the caller handed the words themselves, not a list of
+  // names — so anything in it can be quoted.
+  quotable: text.trim() !== '',
+});
 
 /** How a source is rendered for the model. The EXCERPT is the whole point: a corpus of titles and
  *  URLs carries no sentence to quote, so every figure a model proposes fails the verbatim gate and
@@ -56,6 +75,9 @@ export function buildCorpus(chunks: readonly EvidenceChunk[], maxChars: number):
   const kept: EvidenceChunk[] = [];
   const blocks: string[] = [];
   let used = 0;
+  // Did any source contribute EXCERPT text, as opposed to only its name? Read off the input, before
+  // `render` folds the title and the URL in.
+  let quotable = false;
   for (const chunk of chunks) {
     const block = render(chunk);
     // A source with no excerpt still belongs here — a model's native grounding returns a bare URL,
@@ -65,10 +87,11 @@ export function buildCorpus(chunks: readonly EvidenceChunk[], maxChars: number):
     const cost = block.length + (blocks.length ? 2 : 0);
     if (used + cost > maxChars) continue;
     used += cost;
+    if (chunk.text.trim() !== '') quotable = true;
     blocks.push(block);
     kept.push({ source: chunk.source, text: block });
   }
-  return { text: blocks.join('\n\n'), chunks: kept };
+  return { text: blocks.join('\n\n'), chunks: kept, quotable };
 }
 
 /** A web result as a chunk. `host` is derived here so a receipt never wears a host the model chose. */

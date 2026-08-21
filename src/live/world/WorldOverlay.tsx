@@ -28,12 +28,18 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from 'react';
 import { drawableEdges, worldToMorph } from '../../canvas/spatial/morph/adapters';
 import { MorphStage } from '../../canvas/spatial/morph/MorphStage';
-import { representationHolds, useMorphStage } from '../../canvas/spatial/morph/useMorphStage';
+import {
+  firstRead,
+  readingsOf,
+  representationHolds,
+  useMorphStage,
+} from '../../canvas/spatial/morph/useMorphStage';
 import type {
   MorphNodeDatum,
   NodeFace,
@@ -57,37 +63,66 @@ import type { ViewPlan } from '../content/lens';
 import { readableLabel } from './labels';
 import { applyExpansion, deriveEdgeStatus } from './validate';
 import type { SpokenLine } from '../../voice/tts';
+import { parseWorldTime } from './types';
 import type { WorldNode, WorldSpec } from './types';
 import { useWorldWalk } from './useWorldWalk';
 import { nodeValueId, pointValueId } from './valueIds';
 import { TRANSPORT_BAND, TRANSPORT_IDLE, WorldTransport } from './WorldTransport';
 import { worldStory, type WorldBeat } from './worldStory';
+import { atmosphereOf } from './atmosphere';
+import { recallExpansions, rememberExpansions } from './openWorld';
+import { sentenceCase } from '../../lib/sentenceCase';
 import './world.css';
-
-const REP_CHIPS: ReadonlyArray<{ rep: Representation; label: string }> = [
-  { rep: 'graph', label: 'Graph' },
-  { rep: 'flow', label: 'Contribution' },
-  { rep: 'timeline', label: 'Over time' },
-  { rep: 'chart', label: 'As a chart' },
-];
-
-/** What each view's GEOMETRY means, in one line. A morphing surface asks the reader to re-read the
- *  same objects several ways, and only the causal web is self-evident: on the timeline, position is
- *  a claim (when) while height is only packing, and a reader with no way to know that reasonably
- *  assumes both mean something. Stated once, under the chips that switched the view. */
-const REP_LEGEND: Record<Representation, string> = {
-  graph:
-    'Left to right is what led to what. Colour is the direction of the push; thickness is how much of the outcome the link explains.',
-  timeline:
-    'Left to right is WHEN, read against the axis below; a bar is how long a cause lasted. Height only keeps entries from overlapping — it means nothing.',
-  chart:
-    'Each mark is a cause plotted against its own measured history. Causes with nothing measured are held aside rather than drawn at zero.',
-  flow: 'Ribbon thickness is how much of the outcome that link was MEASURED to explain. A cause whose links carry no measured share is held aside rather than drawn thin, which would read as a finding nobody made.',
-};
+import { REP_TEXT } from '../../canvas/spatial/morph/vocabulary';
 
 /** Why an illustrative world's observed column is a dash: not a gap in the evidence — there is no
  *  evidence to have a gap in. The frame's own wording would blame the grounding instead. */
-const ILLUSTRATIVE_BASE_NOTE = 'an illustrative world measures nothing, so there is no baseline';
+/** A ceiling on the chip row, not a filter on it.
+ *
+ *  It is the number of representations that exist, deliberately: a view this world genuinely holds
+ *  is a view worth reaching, and quietly dropping the least-filled one would hide a working picture
+ *  behind nothing at all. Ranking decides the ORDER; this only stops the row growing without anyone
+ *  noticing. `.wo-head-actions` wraps, so a sixth representation puts the header on a second row and
+ *  takes that height off the stage — at which point this needs re-deciding rather than raising. */
+const CHIP_CAP = 5;
+
+/** The stage's id, so the view tabs can name the panel they control. */
+const STAGE_ID = 'wo-stage';
+
+const ILLUSTRATIVE_BASE_NOTE =
+  'an illustrative living answer measures nothing, so there is no baseline';
+
+/** A cause's own history as one path, in a fixed 100×20 box.
+ *
+ *  Not a chart and not trying to be: no axis, no ticks, no numbers, no scale a reader could read a
+ *  value off. It replaces an abstract three-bar "this one has a history" glyph with the actual
+ *  shape of that history, which is strictly more for the same pixels — and it is the one mark on a
+ *  card that differs per NODE rather than per world.
+ *
+ *  Computed here, outside the JSX, which is what the no-orphan-pixels gate asks for: a figure may
+ *  never be interpolated into the markup, and this emits geometry rather than a number.
+ *
+ *  A flat series draws a flat line rather than dividing by a zero range. */
+function tracePath(points: ReadonlyArray<{ t: number; v: number }>): string | null {
+  if (points.length < 2) return null;
+  const lo = points.reduce((m, p) => Math.min(m, p.v), Infinity);
+  const hi = points.reduce((m, p) => Math.max(m, p.v), -Infinity);
+  const span = hi - lo;
+  const last = points.length - 1;
+  return points
+    .map((p, i) => {
+      const x = (i / last) * 100;
+      const y = span === 0 ? 10 : 18 - ((p.v - lo) / span) * 16;
+      return `${i === 0 ? 'M' : 'L'} ${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}`;
+    })
+    .join(' ');
+}
+
+/** How many parts a cause has, wherever it sits in the tree. A count is a fact about the cause; it
+ *  is what the card says where this view cannot draw the parts themselves. */
+function childCount(nodes: readonly WorldNode[], id: string): number {
+  return findChildren(nodes, id)?.length ?? 0;
+}
 
 /** The children of `id`, wherever it sits in the tree. */
 function findChildren(nodes: readonly WorldNode[], id: string): readonly WorldNode[] | undefined {
@@ -213,7 +248,7 @@ export function WorldOverlay({
     );
   return (
     <WorldShell
-      title={question ?? ''}
+      title={question ? sentenceCase(question) : ''}
       failed={failed === true}
       onRetry={onRetry}
       onClose={onClose}
@@ -249,9 +284,9 @@ function WorldShell({
                 type="button"
                 className="wo-btn wo-btn-close"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label="Back to the answer"
               >
-                ✕
+                ← Back to the answer
               </button>
             </div>
           )}
@@ -259,7 +294,7 @@ function WorldShell({
         <div className="wo-shell" role="status" aria-live="polite">
           {failed ? (
             <>
-              <p className="wo-shell-line">This world didn’t come back.</p>
+              <p className="wo-shell-line">This living answer didn’t come back.</p>
               <p className="wo-shell-note">
                 Nothing was built, and Mavéa won’t stand in a causal web it can’t source. The answer
                 behind this card is untouched.
@@ -272,8 +307,13 @@ function WorldShell({
             </>
           ) : (
             <>
+              {/* The horizon, not a spinner and not ghost CARDS: three ghosts would be a claim about
+                  how many causes are coming, which the build is free to contradict. A strip promises
+                  only what every world keeps — that this reads left to right — and it is the same
+                  ground the built stage stands on. */}
+              <div className="wo-shell-ground" aria-hidden="true" />
               <span className="wo-shell-pulse" aria-hidden="true" />
-              <p className="wo-shell-line">Building this world…</p>
+              <p className="wo-shell-line">Building your living answer…</p>
               <p className="wo-shell-note">
                 One model call, grounded in what this answer already found. Once it is built it is
                 kept — re-opening it, and replaying this turn, costs nothing.
@@ -308,9 +348,14 @@ function WorldSurface({
   // world on the card is the record of what was asked and answered, and looking closer at one of
   // its causes does not change that. Derived rather than forked, so a follow-up that evolves the
   // standing world replaces `given` and the expansions still apply to whatever survived.
-  const [expansions, setExpansions] = useState<ReadonlyMap<string, readonly WorldNode[]>>(
-    () => new Map(),
+  // Seeded from what this reader has already bought for this world — see `recallExpansions`. Closing
+  // the surface used to discard every purchased breakdown, so re-opening charged for it again.
+  const [expansions, setExpansions] = useState<ReadonlyMap<string, readonly WorldNode[]>>(() =>
+    recallExpansions(given.title),
   );
+  useEffect(() => {
+    rememberExpansions(given.title, expansions);
+  }, [given.title, expansions]);
   const [pendingExpand, setPendingExpand] = useState<string | null>(null);
   const spec = useMemo(() => {
     if (expansions.size === 0) return given;
@@ -368,6 +413,17 @@ function WorldSurface({
     (candidate: Representation): boolean => representationHolds(candidate, morphWorld),
     [morphWorld],
   );
+  // Every reading this world holds, best-filled first — the chip row's order, computed once.
+  const readings = useMemo(() => readingsOf(morphWorld), [morphWorld]);
+  // Every cause at the same evidence level? Then the tier chip is a badge repeated on every card
+  // saying one thing, and the banner above the stage says it once instead.
+  const uniformTier = useMemo(() => {
+    const first = spec.nodes[0]?.tier;
+    return first !== undefined && spec.nodes.every((n) => n.tier === first) ? '' : undefined;
+  }, [spec]);
+
+  // What this world is MADE OF, as light in the room — its two commonest spheres.
+  const air = useMemo(() => atmosphereOf(morphWorld), [morphWorld]);
   const opening = view && offered(view) ? view : undefined;
   const stage = useMorphStage({
     world: morphWorld,
@@ -376,9 +432,13 @@ function WorldSurface({
     // Only the caption's height is conditional: at rest the bar is its own controls and reserving
     // the full band cost every view a third of the stage.
     insetBottom: walkOpen ? TRANSPORT_BAND : TRANSPORT_IDLE,
-    ...(opening ? { initialRep: opening } : {}),
+    // A named follow-up wins; otherwise the world says how it is best met. `firstRead` reaches the
+    // stage ONLY here, as the initial rep — never through the effect below. It is derived from the
+    // world, so it changes when the reader buys a breakdown, and assigning it after mount would
+    // snap them off the view they were reading.
+    initialRep: opening ?? firstRead(morphWorld),
   });
-  const { rep, setRep, expandedIds, toggleExpand } = stage;
+  const { rep, setRep, expandedIds, toggleExpand, unfoldsOnStage } = stage;
   // A follow-up that named a view lands here too, so the world morphs while the reader is watching
   // it rather than only on the next open. Keyed on the view CHANGING — their own chips still win.
   useEffect(() => {
@@ -391,17 +451,41 @@ function WorldSurface({
   // What the stage renders: the measured world with its figures withheld (ProvValue prints them),
   // each node carrying what the reader's what-if did to it. A breakdown moves with the cause it
   // breaks down — its own strength is its parent's.
+  /** Every node's TOP-LEVEL ancestor — the id a what-if actually re-weights.
+   *
+   *  The cascade runs on the top-level web (`asWhyDag` flattens breakdowns out), so a part's strength
+   *  is its cause's, and a part of a part's is still its cause's. One step up was enough only while
+   *  the stage drew a single level: at depth two a node's `parentId` is an id the cascade has never
+   *  heard of, so a lever visibly re-weighted a cause and its parts and left the grandchildren
+   *  untouched. Guarded against a parent cycle in model output. */
+  const topAncestorOf = useMemo(() => {
+    const parentOf = new Map(morphWorld.nodes.map((n) => [n.id, n.parentId]));
+    const top = new Map<string, string>();
+    for (const n of morphWorld.nodes) {
+      let cur = n.id;
+      const seen = new Set<string>([cur]);
+      let up = parentOf.get(cur);
+      while (up !== undefined && !seen.has(up)) {
+        seen.add(up);
+        cur = up;
+        up = parentOf.get(cur);
+      }
+      top.set(n.id, cur);
+    }
+    return top;
+  }, [morphWorld]);
+
   const stageWorld = useMemo<WorldData>(() => {
     const nodes = morphWorld.nodes.map((n) => {
       const bare = withoutFigure(n);
-      const shift = stagedShifts?.get(n.parentId ?? n.id);
+      const shift = stagedShifts?.get(topAncestorOf.get(n.id) ?? n.id);
       // A label that paints nothing is a card with no name. Sanitised here, at the world's own edge,
       // rather than in the spatial renderer — "an unnamed cause" is this surface's wording.
       const label = readableLabel(n.label);
       return { ...bare, label, ...(shift === undefined ? {} : { shift }) };
     });
     return { ...morphWorld, nodes };
-  }, [morphWorld, stagedShifts]);
+  }, [morphWorld, stagedShifts, topAncestorOf]);
 
   const nodeById = useMemo(() => {
     const byId = new Map<string, WorldNode>();
@@ -416,13 +500,6 @@ function WorldSurface({
     const drawn = drawableEdges(spec.edges);
     return new Map(morphWorld.edges.map((e, i) => [e.id, drawn[i]]));
   }, [morphWorld, spec]);
-  const expandable = useMemo(
-    () =>
-      new Set(
-        morphWorld.nodes.map((n) => n.parentId).filter((id): id is string => id !== undefined),
-      ),
-    [morphWorld],
-  );
 
   const trust = useRef<TrustHandle>(null);
   // The card is anchored to a rectangle measured before the camera moved, so a pan or a zoom would
@@ -436,10 +513,15 @@ function WorldSurface({
   }, []);
   // ── The walk ──────────────────────────────────────────────────────────────────────────────────
   // The world, told. Composed from what the world already carries — no model call, so a reader on
-  // their own key can replay it as often as they like. It ends on the timeline when this world has
-  // one, which is the surface's question to answer, not the story's.
+  // their own key can replay it as often as they like. It ends by re-reading the same causes another
+  // way, and WHICH way is the world's answer rather than this file's: the best-filled reading that
+  // is neither the causal web nor the view already showing. Hard-coding the timeline made every walk
+  // in the corpus end identically — the same-every-time complaint, inside the one feature built to
+  // make a world feel told.
   const [litEdgeId, setLitEdgeId] = useState<string | undefined>(undefined);
-  const closeOn: Representation | undefined = offered('timeline') ? 'timeline' : undefined;
+  // Keyed on the WORLD, not on the view showing: the script is rebuilt whenever this changes, and
+  // that rebuild is the heaviest thing on the surface — it must not run on every chip press.
+  const closeOn: Representation | undefined = readings.find((r) => r !== 'graph');
   // Derived AFTER the first paint, not during it. The script is opt-in chrome — nothing on screen
   // needs it until the reader presses play — while the mount it would sit inside is the surface's
   // single heaviest moment: the registry, both cascades, the layout and every card's provenance all
@@ -498,13 +580,25 @@ function WorldSurface({
   // the transport uses, so their next press pauses rather than fighting a second player.
   const walkStarted = useRef(false);
   useEffect(() => {
-    if (!autoWalk || walkStarted.current || beats.length === 0) return;
+    // Not on a reader who asked for less motion. Under `reduce` the world has no transition, so
+    // each beat's camera flight lands as a hard cut — and a surface that starts cutting on its own,
+    // unasked, is the thing that preference exists to prevent. The transport still offers play, and
+    // a reader who presses it has consented.
+    const still =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still || !autoWalk || walkStarted.current || beats.length === 0) return;
     walkStarted.current = true;
     toggle();
   }, [autoWalk, beats.length, toggle]);
   // The reader's own hand always wins. Any direct manipulation ends the walk where it stands rather
   // than fighting it for the camera — and the lit link goes with it, since nothing is being said
   // about it any more.
+  // Has the reader done anything at all yet? While nothing has been touched the walk leads, because
+  // it is the best first move on this surface and was its quietest control. Any interaction settles
+  // it for good — an invitation that keeps re-appearing is nagging, not helping.
+  const [untouched, setUntouched] = useState(true);
+  const settleInvite = useCallback(() => setUntouched(false), []);
+
   const takeOver = useCallback(() => {
     leaveWalk();
     setLitEdgeId(undefined);
@@ -564,14 +658,6 @@ function WorldSurface({
     setLevers(new Map());
   }, [takeOver]);
 
-  // Can this cause's parts be drawn on the STAGE? Only down to MAX_DRAWN_DEPTH — graphLayout places
-  // a breakdown against its parent's block, and only a top-level cause has one. Asked in one place so
-  // the chip and the press can never disagree about where a breakdown will show up.
-  const onStage = useCallback(
-    (nodeId: string) => morphWorld.nodes.find((n) => n.id === nodeId)?.parentId === undefined,
-    [morphWorld],
-  );
-
   // Buy a breakdown for a cause that has none. One press, one call, and an honest no-op when the
   // cause turns out to have no parts worth naming — the chip comes back and nothing is said, because
   // "this cause is atomic" is an answer, not an error to interrupt someone with.
@@ -595,13 +681,13 @@ function WorldSurface({
           // a part go to a depth the stage cannot place, so the reader is taken to where they ARE
           // drawn — selecting the cause puts them in the rail, through the lens. Before this, buying
           // a breakdown on a part flipped the chip and changed nothing anyone could see.
-          if (onStage(nodeId)) toggleExpand(nodeId);
+          if (unfoldsOnStage(nodeId)) toggleExpand(nodeId);
           else setSelection({ kind: 'node', id: nodeId });
         },
         () => setPendingExpand(null),
       );
     },
-    [onExpandNode, onStage, pendingExpand, spec, toggleExpand],
+    [onExpandNode, unfoldsOnStage, pendingExpand, spec, toggleExpand],
   );
 
   const renderFace = useCallback(
@@ -643,20 +729,56 @@ function WorldSurface({
       // a projection, so its nodes carry structure and never a receipt.
       if (face !== 'card') return null;
       const open = expandedIds.has(node.id);
-      const authored = expandable.has(node.id);
-      // Can this cause's parts be drawn ON THE STAGE? Only down to MAX_DRAWN_DEPTH: graphLayout
-      // places a breakdown against its parent's block, and only a top-level cause has one.
-      const partsOnStage = node.parentId === undefined;
-      // A cause with no breakdown yet can still be opened, WHEREVER it sits — a part is a thing with
-      // parts, and cell → cathode → material is an ordinary question. Only where a host can pay for
-      // one: offering it in the key-free lab would be an affordance that answers with nothing.
+      // Asked of the SPEC, not of what is drawn. Whether a cause has parts is a fact about the
+      // world; the stage's own set only knows the nodes it adapted, so a cause whose parts sit past
+      // the drawable depth looked partless — and was offered a break-down it had already bought.
+      const parts = childCount(spec.nodes, node.id);
+      const authored = parts > 0;
+      // WHEN it happened, on the card too — not only on the timeline. It is the highest-variance
+      // thing a qualitative cause carries after its name, and every world the builder can date has
+      // one. Verbatim, in the author's own wording: re-formatting an instant is how a year becomes
+      // a wrong month. It reuses `.wo-when` including its honesty split, so a reader who learns the
+      // register on one view can trust it on the other — upright where a source put the node there,
+      // italic and quieter where only the model's own sense of it did.
+      //
+      // A period prints as its range; an instant as itself. At 11.5px it clears the foot's 24px hit
+      // floor, so the measured CARD_H_MAX of 86 is untouched — anything taller here, or a second
+      // foot line, needs re-measuring in a browser rather than re-deriving on paper.
+      const trace = tracePath(node.series ?? []);
+      // Only where the label is actually a TIME. `parseWorldTime` is the one definition of that the
+      // gate and the layouts share, and the card has to share it too: a label it cannot read is a
+      // label the timeline refuses to place, and printed here — in the slot a figure occupies — a
+      // raw "-100000" reads as a broken number rather than as a year.
+      const source = nodeById.get(node.id);
+      // …but only where the card is not already carrying a FIGURE. The foot is one row inside a
+      // 200-unit card and it already holds a sphere dot, whatever the host adds, and the tier chip;
+      // a figure AND a date together overflowed it, pushing the tier badge clean outside the card.
+      // The figure wins where there is one — it is the more load-bearing of the two — and a cause
+      // with no number says when it happened instead. One fact, one slot, always inside the card.
+      const when = source?.value === undefined ? source?.date : undefined;
+      const whenText =
+        when === undefined || parseWorldTime(when.t) === null
+          ? null
+          : when.until !== undefined && parseWorldTime(when.until) !== null
+            ? `${when.t}–${when.until}`
+            : when.t;
+      // Will the press MOVE THE MAP? The one question, asked once, of the layout — never of the
+      // node's own shape. This used to be asked three different ways in three places, which is how
+      // a broken-down part came to wear a chip that toggled a state nothing drew.
+      const foldable = authored && unfoldsOnStage(node.id);
+      // A cause with no breakdown yet can be opened WHEREVER it sits — a part is a thing with parts,
+      // and cell → cathode → material is an ordinary question. Only where a host can pay for one:
+      // offering it in the key-free lab would be an affordance that answers with nothing. And never
+      // twice: a cause that already HAS parts is not buyable again, wherever those parts are drawn.
+      // Without that, a part whose breakdown this view could not show wore "break down" for ever and
+      // every press after the first was a dead end — the host refuses to re-expand a cause that has
+      // children, and the caller bailed on the null without so much as selecting it.
       const buyable = !authored && onExpandNode !== undefined;
-      // FOLD UP is offered only where something is actually folded away on the stage. Without this a
-      // part that had been broken down wore a fold-up chip that toggled a state nothing draws: the
-      // parts had gone to a depth the stage does not place, so the press did nothing a reader could
-      // see. Its parts are read in the rail instead, which is where buying one now takes them.
-      const foldable = authored && partsOnStage;
       const waiting = pendingExpand === node.id;
+      // The parts exist and this view cannot draw them. Say so as a COUNT — a fact about the cause,
+      // which is information — rather than as a second control in the same register as "break down".
+      // Pressing the card already opens them in the rail.
+      const partCount = authored && !foldable ? parts : 0;
       return (
         <>
           <ProvValue id={nodeValueId(node.id)} className="wo-num" />
@@ -669,34 +791,57 @@ function WorldSurface({
               {shiftChip(node.shift)}
             </span>
           )}
+          {trace !== null && (
+            <svg
+              className="wo-trace"
+              viewBox="0 0 100 20"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path d={trace} fill="none" />
+            </svg>
+          )}
+          {whenText !== null && (
+            <span className="wo-when" data-said={node.dateGrounded ? '' : undefined}>
+              {whenText}
+            </span>
+          )}
+          {partCount > 0 && (
+            <span className="wo-parts-count">{`${partCount} part${partCount === 1 ? '' : 's'}`}</span>
+          )}
           {(foldable || buyable) && (
             <button
               type="button"
               className="wo-expand"
-              aria-expanded={open}
+              /* A disclosure only where something actually discloses. `aria-expanded={false}` on a
+                 control that can never become expanded is a lie to a screen reader. */
+              aria-expanded={foldable ? open : undefined}
               aria-busy={waiting || undefined}
               disabled={waiting || (buyable && pendingExpand !== null)}
-              aria-label={`${foldable && open ? 'Fold up' : 'Break down'} ${node.label}`}
+              aria-label={`${foldable && open ? 'Close' : 'Break down'} ${node.label}`}
               onClick={(e) => {
                 e.stopPropagation(); // the card itself selects; the affordance only zooms
                 if (foldable) toggleExpand(node.id);
                 else buyExpansion(node.id);
               }}
             >
-              {waiting ? 'breaking down…' : foldable && open ? 'fold up' : 'break down'}
+              {/* "close", not "fold up": folding is the system's word for it, and the reader was
+                  never told the parts were folded — they were simply not there. */}
+              {waiting ? 'breaking down…' : foldable && open ? 'close' : 'break down'}
             </button>
           )}
         </>
       );
     },
     [
-      expandable,
+      unfoldsOnStage,
+      spec,
+      nodeById,
       expandedIds,
       toggleExpand,
       onExpandNode,
       pendingExpand,
       buyExpansion,
-      nodeById,
       rep,
     ],
   );
@@ -789,34 +934,68 @@ function WorldSurface({
     <TrustProvider registry={registry} onNavigate={onNavigate} ref={trust}>
       {/* Not a dialog: the provenance card is, and it renders as this section's SIBLING — declaring
           the surface aria-modal would hide the one thing a reader opened from assistive tech. */}
-      <section className="wo-scrim" aria-label={`Living answer: ${spec.title}`}>
+      <section
+        className="wo-scrim"
+        aria-label={`Living answer: ${sentenceCase(spec.title)}`}
+        onPointerDownCapture={settleInvite}
+        onKeyDownCapture={settleInvite}
+      >
         <div className="wo-panel">
           <header className="wo-head">
             <div className="wo-title">
               <span className="wo-kicker">THE LIVING ANSWER</span>
-              <h2>{spec.title}</h2>
+              <h2>{sentenceCase(spec.title)}</h2>
             </div>
             <div className="wo-head-actions">
-              <div className="wo-views" role="group" aria-label="View">
-                {/* A representation this world cannot fill is not offered at all. Showing "Over
-                    time" greyed on a world with nothing dated advertises a view whose entire
-                    content would be the held-aside shelf — the chip's presence should promise
-                    something to see. */}
-                {REP_CHIPS.filter((chip) => offered(chip.rep)).map((chip) => (
-                  <button
-                    key={chip.rep}
-                    type="button"
-                    className="wo-chip"
-                    aria-pressed={rep === chip.rep}
-                    onClick={() => {
-                      takeOver();
-                      setRep(chip.rep);
-                    }}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
+              {/* Ranked, not merely filtered. A view that holds most of this world is the one worth
+                  offering first, and it is also the one least likely to disappoint — the shelf
+                  band's own count, read from the other end. The causal web sorts first without being
+                  pinned there, being the only view that places everything.
+
+                  A representation this world cannot fill is not offered at all: showing "Over time"
+                  greyed on a world with nothing dated advertises a view whose entire content would
+                  be the held-aside shelf. The chip's presence is a promise there is something to
+                  see, so it is also refused where the picture would be empty — a timeline whose
+                  causes all fall on one afternoon places every node and still says nothing. */}
+              {readings.length === 1 ? (
+                /* One reading is not a choice. A lone chip carrying a selected state is a control
+                   that cannot do anything, which teaches the reader the whole row is decoration —
+                   so the surface names the view instead of pretending to offer a switch. */
+                <span className="wo-chip wo-chip-sole">{REP_TEXT[readings[0]].chip}</span>
+              ) : (
+                // A TABLIST, not a row of switches: exactly one of these can be on, and a group of
+                // four independent pressed-states said the opposite while also making the row four
+                // tab stops. One stop, arrows to change view, and the stage below is its panel.
+                <div className="wo-views" role="tablist" aria-label="View">
+                  {readings.slice(0, CHIP_CAP).map((candidate, i, shown) => (
+                    <button
+                      key={candidate}
+                      type="button"
+                      id={`wo-tab-${candidate}`}
+                      className="wo-chip"
+                      role="tab"
+                      aria-selected={rep === candidate}
+                      aria-controls={STAGE_ID}
+                      tabIndex={rep === candidate ? 0 : -1}
+                      onKeyDown={(e) => {
+                        const delta = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+                        if (delta === 0) return;
+                        e.preventDefault();
+                        const next = shown[(i + delta + shown.length) % shown.length];
+                        takeOver();
+                        setRep(next);
+                        document.getElementById(`wo-tab-${next}`)?.focus();
+                      }}
+                      onClick={() => {
+                        takeOver();
+                        setRep(candidate);
+                      }}
+                    >
+                      {REP_TEXT[candidate].chip}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button type="button" className="wo-btn" onClick={reset} disabled={!active}>
                 Reset
               </button>
@@ -825,9 +1004,9 @@ function WorldSurface({
                   type="button"
                   className="wo-btn wo-btn-close"
                   onClick={onClose}
-                  aria-label="Close"
+                  aria-label="Back to the answer"
                 >
-                  ✕
+                  ← Back to the answer
                 </button>
               )}
             </div>
@@ -839,13 +1018,29 @@ function WorldSurface({
             </div>
           )}
 
-          <p className="wo-legend">{REP_LEGEND[rep]}</p>
+          {/* Announced, not merely printed. Pressing a chip rearranged the entire stage in complete
+              silence for a screen-reader user — the largest orientation gap on this surface, and one
+              attribute wide. The view's NAME leads, so the announcement says what happened before it
+              explains what the geometry means. */}
+          <p className="wo-legend" aria-live="polite">
+            <span className="wo-legend-view">{REP_TEXT[rep].caption}.</span> {REP_TEXT[rep].legend}
+          </p>
 
           <div className="wo-body">
             <div
               className="wo-stage"
+              id={STAGE_ID}
+              role={readings.length > 1 ? 'tabpanel' : undefined}
+              aria-labelledby={readings.length > 1 ? `wo-tab-${rep}` : undefined}
+              data-uniform-tier={uniformTier}
+              data-illustrative={illustrative ? '' : undefined}
               onWheelCapture={dismissCard}
               onPointerDownCapture={dismissCard}
+              style={
+                air === null
+                  ? undefined
+                  : ({ '--wo-air-1': air.air1, '--wo-air-2': air.air2 } as CSSProperties)
+              }
             >
               <MorphStage
                 stage={stage}
@@ -864,6 +1059,7 @@ function WorldSurface({
                 expanded={walkOpen}
                 onToggle={toggle}
                 onSeek={seek}
+                inviting={untouched}
               />
             </div>
 
@@ -886,6 +1082,17 @@ function WorldSurface({
                   // many causes it holds, how much of it is actually evidenced, and where it ends.
                   // (Counts, not claims — a magnitude still only reaches the screen via ProvValue.)
                   <div className="wo-standing">
+                    {/* What to DO leads; the counts follow. They used to be reversed, which put the
+                        only sentence telling a reader what this surface is for at the bottom of the
+                        rail in the faintest ink on screen — under three numbers that are orientation
+                        rather than an invitation. */}
+                    <p className="wo-invite">
+                      Press <strong>Walk me through it</strong> and Mavéa takes you cause by cause —
+                      free, and as often as you like.
+                    </p>
+                    <p className="wo-hint">
+                      Or tap any cause or link to see what stands behind it.
+                    </p>
                     <dl className="wo-facts">
                       <div>
                         <dt>Causes</dt>
@@ -908,12 +1115,15 @@ function WorldSurface({
                         ) : null}
                       </p>
                     )}
-                    {/* The finding, not the legend. A dozen unsourced links matter differently:
-                        one is decoration on a cause the outcome reaches three other ways, another
-                        is the only thing joining half the web to the thing being explained. Naming
-                        the second — in PROSE, with a count of causes rather than any magnitude — is
-                        what turns "some arrows are fainter" into something a reader can act on. */}
-                    <p className="wo-hint">Tap a cause or a link to see what stands behind it.</p>
+                    {/* What the levers are for. They rendered as a row of unexplained sliders,
+                        and the frame below them only said anything once one had been pulled — so
+                        the surface's most interesting control was also its most mysterious. Prose,
+                        and digit-free: the shift is computed from the world's own structure with
+                        nothing measuring it. */}
+                    <p className="wo-hint">
+                      Turn a root cause down and the rest of the web re-weights — nothing is
+                      re-computed by a model, and no projected number is invented.
+                    </p>
                   </div>
                 )}
                 {selectedNode && (

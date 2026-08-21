@@ -163,11 +163,9 @@ describe('a world you already have is free to use', () => {
 
       // Every representation, both ways — the same nodes re-laid out.
       for (const label of ['Over time', 'As a chart', 'Graph']) {
-        fireEvent.click(screen.getByRole('button', { name: label }));
+        fireEvent.click(screen.getByRole('tab', { name: label }));
       }
-      expect(screen.getByRole('button', { name: 'Graph' }).getAttribute('aria-pressed')).toBe(
-        'true',
-      );
+      expect(screen.getByRole('tab', { name: 'Graph' }).getAttribute('aria-selected')).toBe('true');
       // A lever: the counterfactual is a local cascade, not a question for the model.
       fireEvent.change(screen.getAllByRole('slider')[0], { target: { value: '30' } });
       expect(screen.getAllByText(/hypothetical/i).length).toBeGreaterThan(0);
@@ -178,7 +176,7 @@ describe('a world you already have is free to use', () => {
       // A breakdown that is already in the payload — unfolding it reads no new data.
       const expand = container.querySelector<HTMLButtonElement>('.wo-expand')!;
       fireEvent.click(expand);
-      expect(expand.textContent).toMatch(/fold up/i);
+      expect(expand.textContent).toMatch(/close/i);
 
       expect(generateMock).not.toHaveBeenCalled();
       expect(fetchSpy).not.toHaveBeenCalled();

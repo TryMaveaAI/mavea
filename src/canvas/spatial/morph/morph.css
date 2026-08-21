@@ -202,10 +202,14 @@
   box-shadow: var(--shadow-floating);
 }
 /* The open card wears a ring, not a shadow: hover already owns the shadow, and a reader hovering
-   the very card they opened must still be able to see which one is open. */
+   the very card they opened must still be able to see which one is open.
+   ONE ring, though. Tinting the border AND drawing an outline two units outside it put two
+   concentric lines around every open card — barely noticeable on a card someone clicked, and
+   distinctly odd during the narrated walk, where each beat opens a card in turn and the double ring
+   pulses down the web. The outline is the ring (it costs no layout, so nothing shifts by a pixel);
+   the border stays whatever the card's ROLE made it. */
 .mv-node[data-selected] .mv-face-card {
-  border-color: color-mix(in oklab, var(--presence) 72%, transparent);
-  outline: 2px solid color-mix(in oklab, var(--presence) 48%, transparent);
+  outline: 2px solid color-mix(in oklab, var(--presence) 55%, transparent);
   outline-offset: 2px;
 }
 /* ── What-if, shown in place ───────────────────────────────────────────────────────────────────
@@ -314,6 +318,10 @@
   gap: 8px;
   min-width: 0;
   min-height: 18px;
+  /* Nothing in the foot may leave the card. It is one row in a 200-unit box and the host adds to it
+     — a figure, a date, an affordance — so this is the backstop that keeps a badge from ending up
+     outside the border when a world carries more than usual. */
+  overflow: hidden;
 }
 .mv-card-foot:empty {
   display: none;
@@ -422,25 +430,31 @@
 .mv-node[data-domain='conflict'] {
   --mv-domain: var(--domain-conflict);
 }
+/* …and on the card, as light along its top edge rather than only as a dot in the foot. This is the
+   channel with the most subject-variance the surface carries — a photosynthesis world and a bailout
+   world differ here and almost nowhere else — and it reached exactly six pixels.
+
+   A pseudo-element, so it costs the card's flex column no height and CARD_H_MAX (measured, 86) is
+   untouched; `.mv-face` is already positioned, so it anchors correctly. It stays clear of every
+   channel that is spoken for: ROLE owns the ground and the inset accent, TIER owns the border. A hue
+   here answers "which sphere", which is a description the model is told to omit rather than stretch
+   — never "how strong" or "how well-backed". */
+.mv-node[data-domain] .mv-face-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--mv-domain);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* The mark face is a bare dot on the chart and the timeline: colouring it by domain is what stops
    those two representations from reading as one undifferentiated constellation. */
 .mv-node[data-domain] .mv-face-mark::after {
   background: var(--mv-domain);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--mv-domain) 22%, transparent);
-}
-
-/* "This one has a history." Three rising bars, drawn in the same ink as a measured value, so the
-   cards worth putting on a chart announce themselves while still in the graph. */
-.mv-node[data-series] .mv-card-foot::before {
-  content: '';
-  flex: none;
-  width: 9px;
-  height: 8px;
-  background:
-    linear-gradient(var(--insight), var(--insight)) 0 100% / 2px 3px no-repeat,
-    linear-gradient(var(--insight), var(--insight)) 3.5px 100% / 2px 6px no-repeat,
-    linear-gradient(var(--insight), var(--insight)) 7px 100% / 2px 8px no-repeat;
-  opacity: 0.55;
 }
 
 /* Far from the world, the secondary lines are below the legibility floor even counter-scaled —
@@ -511,6 +525,54 @@
 }
 /* One strip per reading band, so a wrapped chain reads as rows of a paragraph before the reader
    has traced a single arrow. Barely there on purpose — it is a hint, not a container. */
+/* The ground the whole web stands on. Present on every world, including the small ones that never
+   wrap into reading bands and used to have their cards floating on a flat panel. Its ink is the
+   world's own second sphere, so the floor and the air agree about what this answer is about. */
+/* A sphere's lane. Tinted by the sphere itself — this is the one view whose whole subject is which
+   kind of force a cause belongs to, so a hue here answers exactly the question the geometry asks. */
+.mv-band.morph-sphere {
+  fill: color-mix(in srgb, var(--mv-lane, var(--text-faint)) 7%, transparent);
+  stroke: none;
+  rx: 14px;
+}
+.mv-band.morph-sphere-economy {
+  --mv-lane: var(--domain-economy);
+}
+.mv-band.morph-sphere-policy {
+  --mv-lane: var(--domain-policy);
+}
+.mv-band.morph-sphere-technology {
+  --mv-lane: var(--domain-technology);
+}
+.mv-band.morph-sphere-science {
+  --mv-lane: var(--domain-science);
+}
+.mv-band.morph-sphere-environment {
+  --mv-lane: var(--domain-environment);
+}
+.mv-band.morph-sphere-society {
+  --mv-lane: var(--domain-society);
+}
+.mv-band.morph-sphere-health {
+  --mv-lane: var(--domain-health);
+}
+.mv-band.morph-sphere-conflict {
+  --mv-lane: var(--domain-conflict);
+}
+
+/* The content of the spheres view: a link that LEAVES one sphere for another. Drawn at full weight
+   against the faint intra-lane links, because the handoff is the finding — a world whose links all
+   stay home is the causal web with its rows re-sorted, and is not offered this view at all. */
+.morph-crossing {
+  stroke-opacity: 0.9;
+}
+
+.mv-band.morph-causal-ground.mv-band.morph-causal-ground {
+  fill: color-mix(in srgb, var(--wo-air-2, var(--insight)) 4%, transparent);
+  stroke: none;
+  rx: 18px;
+}
+
 .mv-band.morph-reading-band {
   fill: color-mix(in oklab, var(--presence) 4%, transparent);
   stroke: none;
@@ -527,8 +589,10 @@
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
+/* One indirection so an illustrative world can re-ink its own history: a textbook series drawn in
+   the confident presence blue is the loudest over-claim this surface can make. */
 .morph-series {
-  stroke: var(--presence);
+  stroke: var(--mv-series-ink, var(--presence));
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
@@ -571,11 +635,59 @@
   stroke: var(--warning);
   marker-end: url(#mv-arrow-damp);
 }
-/* Asserted with nothing behind it — faint and broken, and it never grows a solid head. */
+/* Asserted with nothing behind it.
+   The DASH and the weight of the ink say so — the head does NOT, because a head states DIRECTION
+   and RELATION, and the gate stripped neither of those. It stripped the WEIGHT, for want of a quote
+   stating the share. Removing the head as well said the same fact a third time, in a channel that
+   carries an independent one: on a world big enough to wrap, an edge leaves the right of one band
+   and re-enters at the LEFT of the next, so a reader applying "left is cause" reads a headless link
+   backwards. It also collided with `correlates`, the one relation whose headlessness is the point.
+
+   So the head stays and only its INK softens — see `.mv-marker-soft`. Written per relation rather
+   than as one blanket rule, because this block sits later in the sheet at equal specificity: a
+   single `marker-end` here would have put an arrowhead on every correlation, asserting a direction
+   nobody measured, and stripped the crossbar off every dampening link.
+
+   The dash was `3 7` at 0.4 opacity — a 30% duty cycle at 40% ink, which is 12% average coverage and
+   reads as a line failing to render rather than as one drawn deliberately. `2.5 4.5` at 0.55 is 20%,
+   about 1.7× more present, and still unmistakably not a solid link. */
 .morph-edge--provisional {
-  stroke-dasharray: 3 7;
-  stroke-opacity: 0.4;
-  marker-end: none;
+  stroke-dasharray: 2.5 4.5;
+  stroke-opacity: 0.55;
+}
+.morph-edge--provisional,
+.morph-edge--provisional.morph-edge--rel-causes {
+  marker-end: url(#mv-arrow-soft);
+}
+.morph-edge--provisional.morph-edge--rel-contributes {
+  marker-end: url(#mv-arrow-open-soft);
+}
+.morph-edge--provisional.morph-edge--rel-enables {
+  marker-end: url(#mv-arrow-ring-soft);
+}
+/* Both ends, and no head — unchanged in kind, only lighter. */
+.morph-edge--provisional.morph-edge--rel-correlates {
+  marker-start: url(#mv-dot-soft);
+  marker-end: url(#mv-dot-soft);
+}
+/* A dampening link keeps its crossbar at every evidence level: the sign is not in question. */
+.morph-edge--provisional.morph-edge--damp {
+  marker-end: url(#mv-arrow-damp-soft);
+}
+
+/* The lighter ink an unbacked head is drawn in: hollow, thinner, and short of full opacity, so it
+   reads as a direction stated rather than as a link established. */
+/* Two class names, not one: the per-shape ink rules below (`.mv-marker-up path` and friends) match
+   at the same specificity and sit later in the sheet, so a single-class selector here lost the
+   `fill` and the head came out solid — lighter, but not hollow. */
+.mv-marker.mv-marker-soft :is(path, circle) {
+  fill: none;
+  stroke: var(--insight);
+  stroke-width: 1.4;
+  opacity: 0.66;
+}
+.mv-marker.mv-marker-down.mv-marker-soft path {
+  stroke: var(--warning);
 }
 .mv-marker-up path {
   fill: var(--insight);

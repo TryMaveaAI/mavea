@@ -235,20 +235,48 @@ describe('coerceWorldSpec opt-ins and fail-closed floors', () => {
     expect(a.tier).toBe('T3');
     expect(a.value).toBe(7);
     expect(a.series?.points).toHaveLength(2);
-    // without the opt-in, the same payload keeps neither the value nor the series
-    const closed = coerceWorldSpec({ ...raw, provenance: {} }, '')!;
+    // Without the opt-in — AND against a corpus that could have grounded something — the same
+    // payload keeps neither the value nor the series. The corpus matters: a world with nothing
+    // quotable in it is illustrative by definition, so an empty one would opt itself in.
+    const closed = coerceWorldSpec(
+      { ...raw, provenance: {} },
+      'A sourced sentence the world could have quoted.',
+    )!;
     const aClosed = closed.nodes.find((n) => n.id === 'a')!;
     expect(aClosed.tier).toBe('T0');
     expect(aClosed.value).toBeUndefined();
     expect(aClosed.series).toBeUndefined();
   });
 
-  it('with NO corpus nothing grounds: all T0, no weights, no series survives a real-tier claim', () => {
+  it('with NO corpus no REAL-tier claim grounds: T0, no weights, no measured series', () => {
     const world = coerceWorldSpec(RAW, '')!;
-    expect(world.nodes.every((n) => n.tier === 'T0' && n.value === undefined)).toBe(true);
+    // Every T1/T2 claim demotes — there was nothing to check it against, and a figure nobody can
+    // check is a figure this surface does not print.
+    const real = world.nodes.filter((n) => n.tier === 'T1' || n.tier === 'T2');
+    expect(real).toEqual([]);
     expect(world.edges.every((e) => e.tier === 'T0' && e.weight === undefined)).toBe(true);
     expect(world.edges.every((e) => e.status === 'provisional')).toBe(true);
     expect(world.nodes.some((n) => n.series)).toBe(false);
+  });
+
+  it('a world with nothing quotable IS illustrative, and says so', () => {
+    // The other half of the same rule. A corpus of headlines — or of nothing at all — cannot ground
+    // a sentence, so the world is an explanation from general knowledge. Marking it illustrative is
+    // what lets a well-known textbook magnitude survive behind the banner rather than being stripped
+    // to a bare label with no statement anywhere that a number had been removed.
+    const world = coerceWorldSpec(RAW, '')!;
+    expect(world.provenance.illustrative).toBe(true);
+    const guess = world.nodes.find((n) => n.id === 'guess')!;
+    expect(guess.tier).toBe('T3');
+    expect(guess.value).toBe(7);
+  });
+
+  it('leaves a world alone where the sources CAN be quoted', () => {
+    // The distinction that matters: not empty versus non-empty, but quotable versus not. A corpus
+    // with real sentences in it is held to the verbatim gate exactly as before.
+    const world = coerceWorldSpec(RAW, 'A sourced sentence the world could have quoted.')!;
+    expect(world.provenance.illustrative).toBeUndefined();
+    expect(world.nodes.find((n) => n.id === 'guess')!.tier).toBe('T0');
   });
 
   it('a T0-tier series never exists — a series is numbers, T0 is the no-number tier', () => {

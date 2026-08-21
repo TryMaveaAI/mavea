@@ -19,7 +19,7 @@ import type { WorldSpec } from './types';
 const HONESTY = `HARD HONESTY RULES:
 - A node "value", a series point, or an edge "weight" (a 0..1 share of the outcome it explains) may ONLY be given when you can quote it VERBATIM from SOURCES — put that exact sentence in "quote" and set "tier":"T2" (or "T1" if it came from the user's own attached data). The weights of the edges INTO the outcome should sum to ≤ 1.
 - If a cause, link, or figure comes from general knowledge with NO source sentence, set "tier":"T0" and OMIT value/weight/series/quote. Never invent a number, a percentage, or a citation.
-- If SOURCES is empty, EVERY node and edge is "T0" with no numbers — a qualitative structure only.
+- If SOURCES carries no quotable sentence, this world is an ILLUSTRATIVE explanation from general knowledge. Say so with "provenance":{"illustrative":true}, and give a node a "value"/"unit" or a "series" ONLY where the figure is genuinely well known — textbook, round, the kind a specialist would recognise — and mark those "tier":"T3" with NO "quote". Never a citation, never a made-up precision, and never a "weight": how much of an outcome one link explains is a measurement, and there is nothing here to measure it.
 - Every point of a "series" needs its OWN verbatim quote containing that point's digits. A series you cannot quote point-by-point must be omitted entirely, never smoothed or estimated.
 - "sign" is 1 (reinforces) or -1 (dampens). "role" is "root" | "mechanism" | "outcome". "depth" grows from roots (0) to the outcome. Edges may only join TOP-LEVEL nodes — "children" are a breakdown of one node, never causal actors.
 - Node "id" is a short stable slug of the label (lowercase, hyphens: "cheap-credit"), because a later turn has to be able to name the same node again.
@@ -141,17 +141,62 @@ const WORLD_FORMAT = {
  *  roughly double a bare why node) so a full world never truncates mid-JSON, which would lose the
  *  whole structure AND leave nothing cached, making a retry re-pay. Caps stay under validate's
  *  NODE_CAP of 16 — asking for more than the gate keeps is spending tokens on dropped nodes. */
-function budgetFor(model: string): { maxTokens: number; nodeCap: number } {
+/** What a node costs to write, by whether its figures need receipts.
+ *
+ *  A GROUNDED node carries its quote, an optional receipted series and up to CHILD_CAP children, so
+ *  it runs roughly double a bare why node — and `QUOTE_MAX` is 240 characters, so a node with a
+ *  value quote plus a four-point series is carrying five quotes. The quotes ARE the budget.
+ *
+ *  An illustrative node carries none of them: same fields, same detail, no verbatim sentences. It
+ *  cannot cost what a five-quote node costs, and this is the whole reason a sourceless world can be
+ *  bigger for the same money rather than more expensive. */
+const TOKENS_PER_GROUNDED_NODE = 300;
+const TOKENS_PER_ILLUSTRATIVE_NODE = 140;
+
+/** How much of a world this model is asked for, and the token ceiling that fits it.
+ *
+ *  `nodeCap` is the real size control; the budget is DERIVED from it so a full world never truncates
+ *  mid-JSON, which would lose the whole structure AND leave nothing cached, making a retry re-pay.
+ *  Caps stay under validate's NODE_CAP of 16 — asking for more than the gate keeps is spending
+ *  tokens on dropped nodes — and never above 12, which is the size the layouts are art-directed for.
+ *
+ *  Where nothing can be quoted, the CEILING is held and the cap is raised to fill it instead. A slow
+ *  tier went from five nodes to ten inside the same 1,900 tokens, which is the difference between
+ *  three cards in a row and something worth opening. Nobody pays more; the words that used to go on
+ *  fabricated citations go on causes. */
+function budgetFor(model: string, quotable: boolean): { maxTokens: number; nodeCap: number } {
   const capByTier: Record<string, number> = { slow: 5, standard: 8 }; // 'fast' → the 12 default
-  const nodeCap = capByTier[speedTierFor(model)] ?? 12;
-  return { maxTokens: 400 + nodeCap * 300, nodeCap };
+  const grounded = capByTier[speedTierFor(model)] ?? 12;
+  const ceiling = 400 + grounded * TOKENS_PER_GROUNDED_NODE;
+  if (quotable) return { maxTokens: ceiling, nodeCap: grounded };
+  const nodeCap = Math.min(12, Math.floor((ceiling - 400) / TOKENS_PER_ILLUSTRATIVE_NODE));
+  return { maxTokens: ceiling, nodeCap: Math.max(grounded, nodeCap) };
 }
 
 const SOURCES_EMPTY =
-  '(none — use only general knowledge; mark EVERY node and edge "T0" with no numbers and no series)';
+  '(none — build this from general knowledge, as an ILLUSTRATIVE world: set provenance.illustrative, and give a figure only where it is genuinely well known, at "tier":"T3" with no quote)';
 
 function sourcesBlock(corpus: EvidenceCorpus): string {
   return corpus.text.trim() ? corpus.text.trim().slice(0, 6000) : SOURCES_EMPTY;
+}
+
+/** The closing instruction, branched on whether anything in SOURCES can actually be quoted.
+ *
+ *  The distinction is not empty-versus-not. A model's native grounding returns a bare URL and a
+ *  title, so the corpus arrives NON-empty — a list of headlines — and every figure proposed against
+ *  it fails the verbatim gate. Asking for quotes there spends output tokens on citations the gate
+ *  then deletes, and leaves the reader a shape with the numbers silently removed. Where nothing can
+ *  be quoted, the honest register is illustrative: well-known figures, marked as such, behind the
+ *  banner the surface already draws.
+ *
+ *  It lives in the USER message, which is per-call anyway — the system prompt is implicitly cached
+ *  and branching it would create a second entry. (Its honesty rules did have to change once, to
+ *  admit the illustrative register at all.) */
+function closingAsk(corpus: EvidenceCorpus, nodeCap: number): string {
+  const figures = corpus.quotable
+    ? 'Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers.'
+    : 'Nothing here can be quoted, so this is an ILLUSTRATIVE world: set "provenance":{"illustrative":true}, and give a "value" or a "series" only where the figure is genuinely well known, at "tier":"T3" with no quote. No weights.';
+  return `Build the causal world (${nodeCap} nodes max). ${figures} DATE every cause you can place in time — a year is enough, and this is not a number needing a source. Give every cause a "domain" from the list where one sphere really fits, a "relation" on every edge, and a one-line "detail" saying what it did. Reply as compact JSON on one line.`;
 }
 
 function explodeMessage(question: string, corpus: EvidenceCorpus, nodeCap: number): string {
@@ -160,7 +205,7 @@ function explodeMessage(question: string, corpus: EvidenceCorpus, nodeCap: numbe
 SOURCES:
 ${sourcesBlock(corpus)}
 
-Build the causal world (${nodeCap} nodes max). Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. DATE every cause you can place in time — a year is enough, and this is not a number needing a source. Reply as compact JSON on one line.`;
+${closingAsk(corpus, nodeCap)}`;
 }
 
 /** The roster the follow-up call has to echo: every top-level node's id and label, so the model
@@ -285,7 +330,7 @@ async function buildWorld(
     /* cache miss / no IDB — proceed */
   }
 
-  const { maxTokens, nodeCap } = budgetFor(cfg.model ?? cfg.provider);
+  const { maxTokens, nodeCap } = budgetFor(cfg.model ?? cfg.provider, corpus.quotable);
   const world = await callWorld(
     WORLD_SYSTEM,
     explodeMessage(question, corpus, nodeCap),
@@ -326,7 +371,7 @@ export async function evolveWorld(
   cfg: ModelConfig,
   signal?: AbortSignal,
 ): Promise<WorldSpec | null> {
-  const { maxTokens, nodeCap } = budgetFor(cfg.model ?? cfg.provider);
+  const { maxTokens, nodeCap } = budgetFor(cfg.model ?? cfg.provider, corpus.quotable);
   const incoming = await callWorld(
     EVOLVE_SYSTEM,
     evolveMessage(prior, ask, corpus, nodeCap),
@@ -339,3 +384,6 @@ export async function evolveWorld(
   if (mappedFraction(prior, incoming) < MIN_MAPPED) return null;
   return mapOntoWorld(prior, incoming);
 }
+
+/** Exposed for the budget test: the arithmetic is the argument, so it is worth pinning. */
+export const __budgetForTest = budgetFor;

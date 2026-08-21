@@ -67,6 +67,7 @@ const CLOSE_LINE: Record<Representation, string> = {
   timeline: 'And here are the same causes, in time.',
   chart: 'And here is what each one actually measured.',
   flow: 'And here is how much each one contributed.',
+  spheres: 'And here are the kinds of force it is made of.',
 };
 
 export interface WorldBeat {
@@ -215,6 +216,11 @@ export function worldStory(
     causeCount === 1
       ? 'One cause, one outcome. Here is how it connects.'
       : `${causeCount} causes, one outcome. Here is how they connect.`;
+  // The establishing shot is the causal web even on a world that OPENED somewhere else, and that is
+  // deliberate rather than an oversight: the line says "here is how they connect", which is a
+  // sentence about structure, and over a timeline it would be describing something the reader is not
+  // looking at. The walk takes the stage over on purpose, and its closing beat hands the world back
+  // in whichever reading it fills best.
   beats.push({
     nodeId: spec.outcomeId,
     wide: true,

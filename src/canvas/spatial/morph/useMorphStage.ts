@@ -15,11 +15,13 @@ import { register } from '../../focus/stepDriver';
 import { isAtFitFloor, type Bbox } from '../camera';
 import { useSpatialCanvas, type SpatialCanvas } from '../useSpatialCanvas';
 import { FIT_FLOOR } from './layouts/lanes';
-import { layoutChart, placeableOnChart } from './layouts/chartLayout';
-import { layoutFlow, placeableOnFlow } from './layouts/flowLayout';
+import { MAX_DRAWN_DEPTH } from './adapters';
+import { layoutChart } from './layouts/chartLayout';
+import { layoutFlow } from './layouts/flowLayout';
 import { layoutGraph } from './layouts/graphLayout';
-import { layoutTimeline, placeableOnTimeline } from './layouts/timelineLayout';
-import type { LayoutFn, MorphLayout, MorphNodeDatum, Representation, WorldData } from './types';
+import { layoutSpheres } from './layouts/spheresLayout';
+import { layoutTimeline } from './layouts/timelineLayout';
+import type { LayoutFn, MorphLayout, Representation, WorldData } from './types';
 
 /** The camera's range. The floor is DERIVED (lanes.FIT_FLOOR): it is the scale below which the
  *  counter-scale can no longer hold the surface's smallest persistent type above the legibility
@@ -49,65 +51,21 @@ const FAMILY_PAD = 120;
  *  visible arrival. */
 const FOCUS_PAD = 120;
 
-/** Every representation, in the order a narration driver steps them. Each answers a question none
- *  of the others does — what led to what, how much each mattered, when, and what each measured. A
- *  view that only re-arranges another's answer does not belong here however good it looks: three
- *  were built and cut for exactly that. Exported because a driver stepping this list has to know
- *  what it is stepping. */
-export const REPRESENTATIONS: readonly Representation[] = ['graph', 'flow', 'timeline', 'chart'];
+// Which readings a world is offered, and in what order, live in `offers.ts` — pure, so the turn path
+// and the headless audit can ask the same question without importing a hook. Re-exported here
+// because this module was their address first.
+import { REPRESENTATIONS, fillOf, firstRead, readingsOf, representationHolds } from './offers';
+import { REP_TEXT } from './vocabulary';
+
+export { REPRESENTATIONS, fillOf, firstRead, readingsOf, representationHolds };
+
 const LAYOUTS: Record<Representation, LayoutFn> = {
   graph: layoutGraph,
   timeline: layoutTimeline,
   chart: layoutChart,
   flow: layoutFlow,
+  spheres: layoutSpheres,
 };
-const REP_CAPTION: Record<Representation, string> = {
-  graph: 'What caused what',
-  timeline: 'The same causes, in time',
-  chart: 'How much each one moved',
-  flow: 'How much each one contributed',
-};
-/** Which nodes each representation can PLACE, taken from the layouts' own shelving tests. The
- *  causal web has no such test: it places every node it is given. The world comes through because
- *  the structural views answer per-WEB, not per-node — whether a cause has a link at all, or a
- *  measured share of the outcome, is not a property of the card. */
-const PLACES: Record<Representation, (node: MorphNodeDatum, world: WorldData) => boolean> = {
-  graph: () => true,
-  timeline: placeableOnTimeline,
-  chart: placeableOnChart,
-  flow: placeableOnFlow,
-};
-
-/** A view has to place at least this many causes to BE that view. One dated cause on a time axis is
- *  not a timeline — it is a single card floating over an invented range, with everything the reader
- *  asked about sitting in the band underneath it. Two is the floor because relative position is the
- *  only thing these views say, and one mark has nothing to be relative to. */
-const MIN_PLACED = 2;
-/** …and it has to place a fair SHARE of them. Two of twelve clears the floor above and still renders
- *  as a mostly-empty stage over a ten-card shelf of excuses. */
-const MIN_PLACED_FRACTION = 1 / 3;
-
-/**
- * Has this representation anything to show a reader about this world? A layout never DROPS a node it
- * cannot place honestly — it parks it in the held-aside band — so a representation that can place
- * none of them renders as an empty stage with a band of excuses under it. A surface that offers that
- * view promises something to see and delivers nothing, so it asks first.
- *
- * It asks about COUNT and SHARE, not mere possibility. Asking only "can it place any?" is how a
- * world with one dated cause out of nine came to offer a timeline: the chip was present, the reader
- * pressed it, and got a lone card over a fourteen-month axis with eight causes held aside. The chip
- * is a promise that there is something to see.
- *
- * Children are excluded from both sides of the ratio — they are semantic zoom, folded onto their
- * parents until opened, so counting them would let four breakdown parts vouch for a view of a world
- * whose actual causes cannot fill it.
- */
-export function representationHolds(rep: Representation, world: WorldData): boolean {
-  const top = world.nodes.filter((n) => n.parentId === undefined);
-  if (top.length === 0) return false;
-  const placed = top.filter((n) => PLACES[rep](n, world)).length;
-  return placed >= Math.min(MIN_PLACED, top.length) && placed / top.length >= MIN_PLACED_FRACTION;
-}
 
 /**
  * The camera's frame, and the one thing every camera call here has to get right.
@@ -162,6 +120,17 @@ export interface MorphStageApi {
   settleExit: (token: number) => void;
   expandedIds: ReadonlySet<string>;
   toggleExpand: (id: string) => void;
+  /** Every cause that HAS a breakdown, at any depth. Published so a host never derives a second
+   *  copy: the set this hook lays the world out from is the one a chip has to read, or the two
+   *  disagree about whether a cause has been broken down at all. */
+  expandable: ReadonlySet<string>;
+  /** Will unfolding `id` put its parts ON THE MAP? Asked of the CURRENT layout — of what it can
+   *  nest and of where it actually put the node — never of the node's own shape. The same cause
+   *  unfolds on the causal web and cannot on the contribution view, and a datum knows none of that.
+   *  An id the layout has never heard of answers false, which the predicate this replaces did not:
+   *  `nodes.find(...)?.parentId === undefined` is `undefined === undefined` on a miss, so it said
+   *  YES for every node the adapter had dropped. */
+  unfoldsOnStage: (id: string) => boolean;
   cam: SpatialCanvas;
   /** True while the world is on its way somewhere — a layout the view has not reported settled, or
    *  a camera flight. The view gates its transitions and its compositor layer on it. */
@@ -308,7 +277,10 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
     const next = new Set(expandedRef.current);
     if (!next.delete(id)) {
       next.add(id);
-      pendingFocus.current = id;
+      // Only where the parts will actually BE a family. On a view that folds a breakdown there is no
+      // family box to fly to, and fitting the parent's own card reads as a random zoom — which is
+      // what pressing break-down on the contribution view has always done.
+      if (unfoldsRef.current(id)) pendingFocus.current = id;
     }
     setExpandedIds(next);
   }, []);
@@ -370,11 +342,36 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
     [parentOf],
   );
 
+  /** Which representations draw a breakdown as a FAMILY. Only the causal web has a plane to draw
+   *  "inside" in; the other three place a node by a property it owns — a measured share of the
+   *  outcome, a date, a series — which a part does not have on its own, so they fold it instead. */
+  const nests = rep === 'graph';
+  const unfoldsOnStage = useCallback(
+    (id: string): boolean => {
+      if (!nests) return false;
+      const placed = layout.positions.get(id);
+      // A cause inside a closed family cannot show its own parts, and neither can one on the shelf.
+      if (placed === undefined || placed.folded === true || placed.shelved === true) return false;
+      // Its parts land one level below it, and that is the level that has to be drawable.
+      return chainLength(id) + 1 <= MAX_DRAWN_DEPTH;
+    },
+    [nests, layout, chainLength],
+  );
+  // Read through a ref so `toggleExpand` keeps its empty dep array — it is held in a ref by a
+  // non-passive wheel listener and must not change identity on every layout.
+  const unfoldsRef = useRef(unfoldsOnStage);
+  unfoldsRef.current = unfoldsOnStage;
+
   const { zoomAtClient } = cam;
   const pinch = useCallback(
     (factor: number, clientX: number, clientY: number, nodeId?: string): PinchOutcome => {
       if (factor >= 1) {
-        if (nodeId !== undefined && expandable.has(nodeId) && !expandedRef.current.has(nodeId)) {
+        if (
+          nodeId !== undefined &&
+          expandable.has(nodeId) &&
+          !expandedRef.current.has(nodeId) &&
+          unfoldsRef.current(nodeId)
+        ) {
           toggleExpand(nodeId);
           return 'expand';
         }
@@ -443,7 +440,7 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
       spokenFor: () => undefined,
       captionFor: (i) => {
         const target = REPRESENTATIONS[i];
-        return target ? REP_CAPTION[target] : undefined;
+        return target ? REP_TEXT[target].caption : undefined;
       },
     });
   }, [driverId, setRep]);
@@ -467,6 +464,8 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
     settleExit,
     expandedIds,
     toggleExpand,
+    expandable,
+    unfoldsOnStage,
     cam,
     morphing,
     settle,

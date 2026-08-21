@@ -66,78 +66,70 @@ function shiftDirection(shift: number | undefined): 'weaker' | 'stronger' | unde
 /** Arrowheads. A reinforcing link ends in a head, a dampening one in a crossbar (the inhibition
  *  idiom), so the sign reads before the colour does — and the marker box is in user units, which
  *  keeps a head the same size whatever stroke weight the layout gave the path. */
+/** Every head this surface draws, as data. Each is rendered TWICE — once solid, once `-soft` — and
+ *  the pair is why an unbacked link can keep its head without pretending to be an established one.
+ *
+ *  A marker cannot inherit from the path that references it (SVG properties inherit into `<marker>`
+ *  from its own ancestors, never from the referencing element), so a second id is the only way to
+ *  give the same shape a lighter ink. That is the reason for the duplication — please do not
+ *  "simplify" it back to one set. */
+const HEADS = [
+  {
+    id: 'mv-arrow',
+    cls: 'mv-marker-up',
+    refX: 9,
+    size: 13,
+    shape: <path d="M0.5 1 L9.5 5 L0.5 9 Z" />,
+  },
+  {
+    id: 'mv-arrow-damp',
+    cls: 'mv-marker-down',
+    refX: 8,
+    size: 17,
+    shape: <path d="M8 0.6 L8 9.4" />,
+  },
+  // The relation vocabulary. Sign owns the COLOUR of a link, so what a link CLAIMS is drawn at its
+  // tip instead: a full cause arrives closed, a contribution arrives open, an enabling condition
+  // arrives as a ring. A correlation gets a dot at BOTH ends and no head at all — drawing "moves
+  // with" as an arrow would assert a direction nobody measured.
+  {
+    id: 'mv-arrow-open',
+    cls: 'mv-marker-open',
+    refX: 9,
+    size: 13,
+    shape: <path d="M1 1.4 L9 5 L1 8.6 Z" />,
+  },
+  {
+    id: 'mv-arrow-ring',
+    cls: 'mv-marker-ring',
+    refX: 7.4,
+    size: 13,
+    shape: <circle cx="5" cy="5" r="3" />,
+  },
+  { id: 'mv-dot', cls: 'mv-marker-dot', refX: 5, size: 9, shape: <circle cx="5" cy="5" r="2.6" /> },
+] as const;
+
 function EdgeMarkers(): ReactNode {
   return (
     <defs>
-      <marker
-        id="mv-arrow"
-        className="mv-marker mv-marker-up"
-        viewBox="0 0 10 10"
-        refX="9"
-        refY="5"
-        markerUnits="userSpaceOnUse"
-        markerWidth={13}
-        markerHeight={13}
-        orient="auto"
-      >
-        <path d="M0.5 1 L9.5 5 L0.5 9 Z" />
-      </marker>
-      <marker
-        id="mv-arrow-damp"
-        className="mv-marker mv-marker-down"
-        viewBox="0 0 10 10"
-        refX="8"
-        refY="5"
-        markerUnits="userSpaceOnUse"
-        markerWidth={17}
-        markerHeight={17}
-        orient="auto"
-      >
-        <path d="M8 0.6 L8 9.4" />
-      </marker>
-      {/* The relation vocabulary. Sign owns the COLOUR of a link, so what a link CLAIMS is drawn
-          at its tip instead: a full cause arrives closed, a contribution arrives open, an enabling
-          condition arrives as a ring. A correlation gets a dot at BOTH ends and no head at all —
-          drawing "moves with" as an arrow would assert a direction nobody measured. */}
-      <marker
-        id="mv-arrow-open"
-        className="mv-marker mv-marker-open"
-        viewBox="0 0 10 10"
-        refX="9"
-        refY="5"
-        markerUnits="userSpaceOnUse"
-        markerWidth={13}
-        markerHeight={13}
-        orient="auto"
-      >
-        <path d="M1 1.4 L9 5 L1 8.6 Z" />
-      </marker>
-      <marker
-        id="mv-arrow-ring"
-        className="mv-marker mv-marker-ring"
-        viewBox="0 0 10 10"
-        refX="7.4"
-        refY="5"
-        markerUnits="userSpaceOnUse"
-        markerWidth={13}
-        markerHeight={13}
-        orient="auto"
-      >
-        <circle cx="5" cy="5" r="3" />
-      </marker>
-      <marker
-        id="mv-dot"
-        className="mv-marker mv-marker-dot"
-        viewBox="0 0 10 10"
-        refX="5"
-        refY="5"
-        markerUnits="userSpaceOnUse"
-        markerWidth={9}
-        markerHeight={9}
-        orient="auto"
-      >
-        <circle cx="5" cy="5" r="2.6" />
-      </marker>
+      {HEADS.flatMap((h) =>
+        [false, true].map((soft) => (
+          <marker
+            key={soft ? `${h.id}-soft` : h.id}
+            id={soft ? `${h.id}-soft` : h.id}
+            className={`mv-marker ${h.cls}${soft ? ' mv-marker-soft' : ''}`}
+            viewBox="0 0 10 10"
+            refX={h.refX}
+            refY="5"
+            markerUnits="userSpaceOnUse"
+            markerWidth={h.size}
+            markerHeight={h.size}
+            orient="auto"
+          >
+            {h.shape}
+          </marker>
+        )),
+      )}
     </defs>
   );
 }
@@ -305,6 +297,35 @@ interface WorldContentProps {
  * The price is that every prop below must be stable across a camera move — none of them may be
  * derived from `cam`.
  */
+/** How far apart two placed nodes have to be vertically to count as different rows. Generous on
+ *  purpose: within a reading band the entries are not pixel-aligned, and a row that splits on a few
+ *  units of drift would send arrow-key focus zig-zagging. */
+const ROW_BUCKET = 60;
+
+/**
+ * The order a reader moves through this world.
+ *
+ * Derived from the GEOMETRY rather than from the node list, because the node list is spec order and
+ * every view rearranges it — on the timeline that is causal order while the picture is chronological,
+ * so a keyboard reader was traversing the view in an order the view denies. Rows first, then left to
+ * right within a row, which is the order each of these compositions is read in; held-aside nodes come
+ * last, after everything the view could actually place.
+ *
+ * Folded nodes are not in it at all: they paint nothing and are hidden from assistive tech.
+ */
+function readingOrder(layout: MorphLayout): string[] {
+  return [...layout.positions.entries()]
+    .filter(([, p]) => p.folded !== true)
+    .sort(([aId, a], [bId, b]) => {
+      const shelf = Number(a.shelved === true) - Number(b.shelved === true);
+      if (shelf !== 0) return shelf;
+      const row = Math.round(a.y / ROW_BUCKET) - Math.round(b.y / ROW_BUCKET);
+      if (row !== 0) return row;
+      return a.x - b.x || aId.localeCompare(bId);
+    })
+    .map(([id]) => id);
+}
+
 const WorldContent = memo(function WorldContent({
   nodes,
   edges,
@@ -321,6 +342,41 @@ const WorldContent = memo(function WorldContent({
 }: WorldContentProps): ReactNode {
   const edgesRef = useRef<SVGSVGElement | null>(null);
   useDrawIn(edgesRef, layout.edgePaths);
+
+  // ── The keyboard path ─────────────────────────────────────────────────────────────────────────
+  // ONE tab stop for the whole stage, and the arrows walk it. Every node used to be `tabIndex={0}`,
+  // so a world was twenty-odd tab stops in spec order — an order the view contradicts the moment it
+  // is not the causal web. A roving index is the standard treatment for a composite widget, and it
+  // is also what lets Home/End mean something.
+  const order = useMemo(() => readingOrder(layout), [layout]);
+  const [focused, setFocused] = useState<string | null>(null);
+  // The node the single tab stop lands on: wherever the reader last was, if it is still placed.
+  const roving = focused !== null && order.includes(focused) ? focused : (order[0] ?? null);
+  const moveFocus = useCallback(
+    (delta: number | 'first' | 'last') => {
+      if (order.length === 0) return;
+      const from = roving === null ? 0 : order.indexOf(roving);
+      const to =
+        delta === 'first'
+          ? 0
+          : delta === 'last'
+            ? order.length - 1
+            : Math.min(order.length - 1, Math.max(0, from + delta));
+      const id = order[to];
+      setFocused(id);
+      const el = document.querySelector<HTMLElement>(`.mv-node[data-id="${CSS.escape(id)}"]`);
+      el?.focus();
+    },
+    [order, roving],
+  );
+  // What each link DOES, in the author's own word, for the hover title. Not drawn into the
+  // composition: at full counter-scale a card is 280 world units and the gutter between columns is
+  // 20, so a drawn label would sit across two cards exactly when the camera is pulled back.
+  const edgeLabel = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const e of edges) if (e.label !== undefined) byId.set(e.id, e.label);
+    return byId;
+  }, [edges]);
   const { bbox } = layout;
   // A link is only as strong as the cause feeding it, so a what-if that weakens a cause has to
   // thin every arrow leaving it — otherwise the cards recede while the web between them keeps
@@ -370,6 +426,7 @@ const WorldContent = memo(function WorldContent({
             }
             onClick={onEdgeClick ? () => onEdgeClick(edge.id) : undefined}
           >
+            {edgeLabel.has(edge.id) && <title>{edgeLabel.get(edge.id)}</title>}
             {/* A 2px line is a 2px target. The hit path is the same curve, drawn fat and
                 invisible, so an arrow can be hovered and opened without pixel-hunting. */}
             {onEdgeClick && <path className="mv-edge-hit" d={edge.d} fill="none" />}
@@ -397,13 +454,28 @@ const WorldContent = memo(function WorldContent({
         const style = {
           '--nx': `${placed.x + placed.w / 2 - bbox.x}px`,
           '--ny': `${placed.y + placed.h / 2 - bbox.y}px`,
-          '--mv-i': i,
+          // The entrance stagger, by CAUSAL DEPTH rather than by array index: the world then assembles
+          // causes first and the outcome last, in a handful of waves, instead of enumerating the node
+          // list. A part has no depth of its own and falls back to its position, arriving after the
+          // wave its cause is in.
+          '--mv-i': node.depth ?? i,
           ...(node.shift === undefined ? {} : { '--mv-shift': node.shift }),
         } as CSSProperties;
         // A folded breakdown is parked on its parent's card and paints nothing. It keeps its
         // place in the layout, but it must not be clickable or tabbable — an invisible node that
         // answers for the card underneath it is worse than one that is not there at all.
         const live = onNodeClick !== undefined && !placed.folded;
+        // A folded card paints nothing and is aria-hidden — so it must carry no CONTROL either.
+        // `opacity: 0` does not remove a button from the tab order, and the host's chrome is real
+        // buttons (a figure that opens its receipt, a break-down chip), so every folded card was a
+        // tab stop into a hidden subtree. Drawing depth-2 breakdowns multiplies those by the whole
+        // subtree, which is why this is fixed here rather than left to each host.
+        const chrome = placed.folded ? undefined : renderFace;
+        // All three faces render at once — that is what lets a node MOVE between representations
+        // instead of being swapped out — and the two that are not showing are hidden with `opacity`,
+        // which removes nothing from the accessibility tree. Every card's label was therefore
+        // announced twice, and on the timeline three times. Only the face the layout chose is real
+        // to assistive tech.
         // What the host prints ahead of the compact label — a timeline entry's date, today. It
         // leads the label's own text flow, so it needs a real space after it: `margin` separates
         // the paint, not the words, and without one every screen reader and every text scrape read
@@ -434,7 +506,8 @@ const WorldContent = memo(function WorldContent({
             style={style}
             aria-hidden={placed.folded ? true : undefined}
             role={live ? 'button' : undefined}
-            tabIndex={live ? 0 : undefined}
+            tabIndex={live ? (node.id === roving ? 0 : -1) : undefined}
+            onFocus={live ? () => setFocused(node.id) : undefined}
             onClick={live ? () => activate(node) : undefined}
             onKeyDown={
               live
@@ -442,12 +515,28 @@ const WorldContent = memo(function WorldContent({
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       onNodeClick?.(node);
+                      return;
                     }
+                    // The arrows walk the composition in the order it READS — rows, then left to
+                    // right — so a keyboard reader moves through the picture rather than through the
+                    // node list, which on every view but the causal web is a different order.
+                    const step: Record<string, number | 'first' | 'last'> = {
+                      ArrowRight: 1,
+                      ArrowDown: 1,
+                      ArrowLeft: -1,
+                      ArrowUp: -1,
+                      Home: 'first',
+                      End: 'last',
+                    };
+                    const delta = step[e.key];
+                    if (delta === undefined) return;
+                    e.preventDefault();
+                    moveFocus(delta);
                   }
                 : undefined
             }
           >
-            <div className="mv-face mv-face-card">
+            <div className="mv-face mv-face-card" aria-hidden={placed.face !== 'card' || undefined}>
               <span className="mv-label">{node.label}</span>
               {/* One footer line for everything a card says ABOUT its label — the figure, the
                   host's provenance chrome, and last, hard right, what backs it. */}
@@ -461,7 +550,7 @@ const WorldContent = memo(function WorldContent({
                     {node.unit ?? ''}
                   </span>
                 )}
-                {renderFace?.(node, 'card')}
+                {chrome?.(node, 'card')}
                 {node.tier !== undefined && <span className="mv-tier">{node.tier}</span>}
               </span>
             </div>
@@ -470,14 +559,19 @@ const WorldContent = memo(function WorldContent({
                 took one of them, so every dated entry showed half its name. Inline, the date is an
                 eyebrow the label wraps around — it costs a few characters of the first line rather
                 than the whole second one, and the row pitch never has to grow. */}
-            <div className="mv-face mv-face-entry">
+            <div
+              className="mv-face mv-face-entry"
+              aria-hidden={placed.face !== 'entry' || undefined}
+            >
               <span className="mv-label">
                 {lead}
                 {lead ? ' ' : null}
                 {node.label}
               </span>
             </div>
-            <div className="mv-face mv-face-mark">{renderFace?.(node, 'mark')}</div>
+            <div className="mv-face mv-face-mark" aria-hidden={placed.face !== 'mark' || undefined}>
+              {chrome?.(node, 'mark')}
+            </div>
           </div>
         );
       })}

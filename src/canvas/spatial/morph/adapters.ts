@@ -24,10 +24,27 @@ function seriesPoints(series: WorldNode['series']): Point[] {
   return points.sort((a, b) => a.t - b.t);
 }
 
-/** How many levels of BREAKDOWN reach the stage. 1 = a top-level cause and its parts, which is what
- *  the layouts can place: `graphLayout` positions a child against its parent's block, and only a
- *  top-level node has one. Raising this means teaching those layouts about deeper nesting first. */
-export const MAX_DRAWN_DEPTH = 1;
+/**
+ * How many levels of BREAKDOWN reach the stage.
+ *
+ * It is a CAMERA limit, not a data or a geometry one. The data is unbounded on purpose (a reader can
+ * break a part into parts) and `graphLayout` has been depth-generic for a while: `chainDepths` walks
+ * any chain with a cycle guard, unfolding requires the whole ancestor chain, blocks roll up from the
+ * leaves, and a child is placed against its parent's CENTRE — not against a "block" only a top-level
+ * node has, which is what the previous comment here claimed.
+ *
+ * Two, because of what a reader can be shown in one frame. Each opened level costs a family three
+ * more row slots (+373px) and 204px more reach. On the short window the geometry audit sweeps
+ * (1366×620) the camera can frame roughly 527 world-px of height at the fit floor — so a one-level
+ * family (437) fits whole, a two-level family (810) lands about two thirds visible and pannable, and
+ * a three-level family (1184) arrives mid-column with the parent off screen above it. Past two,
+ * "press it and the map shows you the family" stops being true, which is the entire reason the
+ * affordance exists.
+ *
+ * Deeper structure is still in the spec and is read through the rail's lens (content/lens), which
+ * draws a whole tree natively and answers a question the stage cannot: measured proportion.
+ */
+export const MAX_DRAWN_DEPTH = 2;
 
 /** Where a node sits in time. Its OWN date wins — someone wrote it about the node itself, and it is
  *  the only route onto the timeline for a wholly qualitative cause. A measured series is the
@@ -51,6 +68,7 @@ type AnyEdge = {
   from: string;
   to: string;
   sign: 1 | -1;
+  verb?: string;
   relation?: string;
   weight?: number;
   provisional?: boolean;
@@ -76,6 +94,9 @@ function toEdges(edges: readonly AnyEdge[]): MorphEdgeDatum[] {
     to: e.to,
     sign: e.sign,
     ...(e.relation !== undefined ? { kind: e.relation } : {}),
+    // The author's own word for the link. Carried, never drawn — the renderer states it as the
+    // link's name so hover and assistive tech both reach it.
+    ...(e.verb !== undefined && e.verb.trim() !== '' ? { label: e.verb } : {}),
     // A weight is REAL by contract — both edge types drop it on a T0 (qualitative) link — so its
     // mere presence is the licence to draw the link more heavily.
     ...(typeof e.weight === 'number' ? { weight: e.weight } : {}),
@@ -89,12 +110,9 @@ function toEdges(edges: readonly AnyEdge[]): MorphEdgeDatum[] {
 export function worldToMorph(spec: WorldSpec): WorldData {
   const nodes: MorphNodeDatum[] = [];
   const push = (n: WorldNode, parentId?: string, depth = 0): void => {
-    // The LEVEL-OF-DETAIL boundary, and the only one the layouts need. A breakdown is placed relative
-    // to its parent's block (graphLayout), which exists only for a TOP-LEVEL node — so a grandchild
-    // has no block to be placed against and would land wherever the arithmetic fell. The data is
-    // unbounded on purpose (a reader can break a part into parts), and this is where the renderer
-    // says how much of that depth it can draw honestly. Anything deeper is still in the spec and is
-    // read through a lens instead (content/lens), which draws a whole tree natively.
+    // The LEVEL-OF-DETAIL boundary — see MAX_DRAWN_DEPTH for why it is a camera question. A node past
+    // it is not adapted at all, so no layout has to decide what to do with something it could never
+    // frame; what the spec knows is unaffected, and the rail still reads it.
     if (depth > MAX_DRAWN_DEPTH) return;
     const series = seriesPoints(n.series);
     const unit = n.unit ?? n.series?.unit;

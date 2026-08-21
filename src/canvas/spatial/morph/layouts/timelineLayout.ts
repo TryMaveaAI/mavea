@@ -26,6 +26,7 @@ import {
   yearOf,
   type TimeAxis,
 } from './lanes';
+import { foldOnto, splitByFold } from './nesting';
 import { placeShelf } from './shelf';
 
 const AXIS_W = 920;
@@ -58,6 +59,47 @@ function datedOf(node: MorphNodeDatum): DatedNode | null {
  *  so a surface deciding whether to OFFER the timeline asks the same question the lane below asks
  *  before shelving — a second copy of the test is a copy that drifts. */
 export const placeableOnTimeline = (node: MorphNodeDatum): boolean => datedOf(node) !== null;
+
+/**
+ * Has this world a CHRONOLOGY, or merely dates?
+ *
+ * `placeableOnTimeline` answers "is this node shelved?". This answers "is the picture worth the
+ * click?" — and they are not the same question, which is how a world whose causes all fall on one
+ * afternoon came to offer a timeline: every node placed, a hundred percent of the world, and an axis
+ * `timeAxis` invented to give a lone instant a width (it opens ±0.5 years around it). Position is
+ * the only thing this view claims, and there it is constant.
+ *
+ * So the offer asks for SPREAD, and asks in the axis's own units: the same `timeAxis` the lane below
+ * draws decides what one step is, so the picture and the promise can never disagree about whether
+ * the axis moved. ONE step, not two — at one step the extreme entries sit a whole labelled tick
+ * apart, which is the smallest gap on which position reads AS a position. The step test is not
+ * belt-and-braces either: `SUB_YEAR_STEPS` bottoms out at a minute, so two events three seconds
+ * apart round onto the same tick and paint the same pixel. Zero spread and sub-step spread are one
+ * picture, and both are refused.
+ *
+ * Children are excluded on both sides for the same reason `representationHolds` excludes them: a
+ * breakdown is semantic zoom, not the world's shape.
+ */
+export function worthOnTimeline(world: WorldData): boolean {
+  let lo = Infinity;
+  let hi = -Infinity;
+  let marks = 0;
+  for (const node of world.nodes) {
+    if (node.parentId !== undefined) continue;
+    const dated = datedOf(node);
+    if (!dated) continue;
+    marks += 1;
+    lo = Math.min(lo, dated.startYear);
+    hi = Math.max(hi, dated.endYear ?? dated.startYear);
+  }
+  if (marks < 2 || !(hi > lo)) return false;
+  const axis = timeAxis(lo, hi, 6);
+  const step =
+    axis.ticks.length > 1
+      ? axis.ticks[1].year - axis.ticks[0].year
+      : axis.domain[1] - axis.domain[0];
+  return step > 0 && hi - lo >= step;
+}
 
 /** One axis over every dated node. The domain and its ticks come off the same step (`timeAxis`),
  *  which is what keeps the last event under a label. */
@@ -107,10 +149,16 @@ function place(
   world: WorldData,
   axis: TimeAxis | null,
   viewport: { w: number; h: number },
+  expanded: ReadonlySet<string> | undefined,
 ): Omit<MorphLayout, 'rep'> {
+  // A part the reader has not opened folds onto its cause, exactly as it does on the causal web. It
+  // is not a peer of the outcome and must not be read as one — and putting it in the held-aside band
+  // instead would inflate the very count that band exists to make honest, with nodes nobody asked to
+  // see. Chain-gated, so a part of a part stays folded until BOTH levels are open.
+  const { drawn, folded } = splitByFold(world, expanded);
   const dated: DatedNode[] = [];
   const shelved: MorphNodeDatum[] = [];
-  for (const node of world.nodes) {
+  for (const node of drawn) {
     const d = datedOf(node);
     if (d && axis) dated.push(d);
     else shelved.push(node);
@@ -225,10 +273,20 @@ function place(
   );
   if (shelf.band) chrome.bands.push(shelf.band);
   for (const [id, placed] of shelf.positions) positions.set(id, placed);
+  // Folded parts park ON whatever carries them — placed, never dropped, and never painted. Done
+  // AFTER the shelf merge, because a folded part's cause may itself be sitting in the held-aside
+  // band and only has a position once that band is laid out.
+  foldOnto(positions, folded, {
+    x: shelf.bbox.x + PAD,
+    y: shelf.bbox.y + PAD,
+    w: ENTRY_W,
+    h: ENTRY_H,
+    face: 'entry',
+  });
   return { positions, edgePaths, chrome, bbox: shelf.bbox };
 }
 
 export const layoutTimeline: LayoutFn = (world, opts) => ({
   rep: 'timeline',
-  ...place(world, datedAxis([world]), opts?.viewport ?? DEFAULT_VIEWPORT),
+  ...place(world, datedAxis([world]), opts?.viewport ?? DEFAULT_VIEWPORT, opts?.expandedIds),
 });

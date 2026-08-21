@@ -294,7 +294,12 @@ describe('chart — every mark stays reachable', () => {
   it('never puts two marks inside the legibility floor of each other', () => {
     const bad: string[] = [];
     for (const p of PASSES) {
-      const marks = [...p.chart.positions.entries()].filter(([, n]) => n.face === 'mark');
+      // Painted marks only. A part the reader has not opened folds onto its cause — same position,
+      // deliberately, because that is what it animates out of — and it paints nothing and takes no
+      // hit target, so it cannot crowd anything.
+      const marks = [...p.chart.positions.entries()].filter(
+        ([, n]) => n.face === 'mark' && n.folded !== true,
+      );
       for (let i = 0; i < marks.length; i++) {
         for (let j = i + 1; j < marks.length; j++) {
           const [aId, a] = marks[i];
@@ -405,7 +410,8 @@ describe('both time representations label the span they actually cover', () => {
     for (const p of PASSES) {
       const ticks = p.chart.chrome.labels.filter((l) => l.id.startsWith('xtick:')).map((l) => l.x);
       const marks = [...p.chart.positions.values()]
-        .filter((n) => n.face === 'mark')
+        // Painted marks only — a folded part sits on its cause and states no time of its own.
+        .filter((n) => n.face === 'mark' && n.folded !== true)
         .map((n) => n.x + n.w / 2);
       if (ticks.length === 0 || marks.length === 0) continue;
       if (Math.max(...marks) > Math.max(...ticks) + 0.5) {

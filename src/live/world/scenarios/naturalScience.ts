@@ -44,8 +44,14 @@ function reading(subject: string, value: number, unit?: string, when?: string): 
 
 /** The optional world-only enrichment a node may carry, whatever tier it is. `date` is what puts a
  *  node on the time axis when it has no history of its own — a qualitative cause is undatable by a
- *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards. */
-type Extras = Pick<Partial<WorldNode>, 'unit' | 'detail' | 'date' | 'series' | 'children'>;
+ *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards.
+ *  `domain` is the sphere the surface colours by, and it is absent far more often than it is
+ *  wrong: a cause that sits in two spheres gets none, because a stretched category asserts a
+ *  reading nobody made. */
+type Extras = Pick<
+  Partial<WorldNode>,
+  'unit' | 'detail' | 'date' | 'domain' | 'series' | 'children'
+>;
 
 /** A node's own date: an instant, or a period when `until` is given. Written out rather than
  *  computed so a fixture stays readable. */
@@ -569,17 +575,25 @@ const OZONE_HOLE: WorldSpec = {
       540,
       'ppt',
       'The CFC-12 burden',
+      { domain: 'environment' },
     ),
-    bare('montreal', 'The phase-out cut new emissions', 'root', 0),
+    bare('montreal', 'The phase-out cut new emissions', 'root', 0, { domain: 'policy' }),
     bare(
       'troposphere',
       'The molecules are unreactive and survive the lower atmosphere',
       'mechanism',
       1,
+      { domain: 'science' },
     ),
-    bare('stratosphere', 'Slow overturning lifts them above the ozone layer', 'mechanism', 2),
-    bare('photolysis', 'Short-wave sunlight splits a chlorine atom off', 'mechanism', 3),
-    bare('reservoirs', 'Most of that chlorine is parked as HCl and ClONO₂', 'mechanism', 4),
+    bare('stratosphere', 'Slow overturning lifts them above the ozone layer', 'mechanism', 2, {
+      domain: 'science',
+    }),
+    bare('photolysis', 'Short-wave sunlight splits a chlorine atom off', 'mechanism', 3, {
+      domain: 'science',
+    }),
+    bare('reservoirs', 'Most of that chlorine is parked as HCl and ClONO₂', 'mechanism', 4, {
+      domain: 'science',
+    }),
     measured(
       'psc',
       'Polar stratospheric clouds form in the winter vortex',
@@ -588,16 +602,23 @@ const OZONE_HOLE: WorldSpec = {
       195,
       'K',
       'The cloud formation threshold',
+      { domain: 'science' },
     ),
     bare(
       'activation',
       'Reservoir species react on the cloud particles to release Cl₂',
       'mechanism',
       6,
+      { domain: 'science' },
     ),
-    bare('vortex', 'The vortex keeps the processed air walled off until spring', 'mechanism', 7),
-    bare('sunrise', 'The first sunlight photolyses Cl₂ into free radicals', 'mechanism', 8),
+    bare('vortex', 'The vortex keeps the processed air walled off until spring', 'mechanism', 7, {
+      domain: 'science',
+    }),
+    bare('sunrise', 'The first sunlight photolyses Cl₂ into free radicals', 'mechanism', 8, {
+      domain: 'science',
+    }),
     bare('catalytic', 'Catalytic cycles run over and over on the same atom', 'mechanism', 9, {
+      domain: 'science',
       detail:
         'One chlorine atom passes through the cycle many times before it is parked again. How many is not a number this answer holds.',
     }),
@@ -610,6 +631,7 @@ const OZONE_HOLE: WorldSpec = {
       'DU',
       'October column ozone',
       {
+        domain: 'environment',
         series: measuredSeries('October column ozone', 'DU', [
           ['1979', 300],
           ['1987', 180],
@@ -1865,7 +1887,11 @@ const ANTIBIOTIC_RESISTANCE: WorldSpec = {
       620,
       'per 1,000',
       'Community prescribing',
+      { domain: 'health' },
     ),
+    // The farm and the returning traveller each stand in two spheres at once — veterinary sales
+    // are husbandry and human medicine together, an imported strain is travel and infection — and
+    // picking one would state a reading the surveillance never made. Both go unmarked.
     measured(
       'agriculture',
       'Antimicrobials sold for food-producing animals',
@@ -1884,9 +1910,15 @@ const ANTIBIOTIC_RESISTANCE: WorldSpec = {
       },
     ),
     bare('travel', 'Returning travellers bring resistant strains home', 'root', 0),
-    bare('stewardship', 'A stewardship programme started on the wards', 'root', 0),
-    bare('selection', 'Every course selects for whatever survives it', 'mechanism', 1),
-    bare('plasmid', 'Resistance genes move between species on plasmids', 'mechanism', 1),
+    bare('stewardship', 'A stewardship programme started on the wards', 'root', 0, {
+      domain: 'policy',
+    }),
+    bare('selection', 'Every course selects for whatever survives it', 'mechanism', 1, {
+      domain: 'science',
+    }),
+    bare('plasmid', 'Resistance genes move between species on plasmids', 'mechanism', 1, {
+      domain: 'science',
+    }),
     measured(
       'carriage',
       'Carriage of resistant E. coli in the community',
@@ -1896,6 +1928,7 @@ const ANTIBIOTIC_RESISTANCE: WorldSpec = {
       '%',
       'Community carriage',
       {
+        domain: 'health',
         series: measuredSeries('Community carriage', '%', [
           ['2016', 15],
           ['2018', 18],
@@ -1912,9 +1945,13 @@ const ANTIBIOTIC_RESISTANCE: WorldSpec = {
       71,
       '%',
       'Hand hygiene compliance',
+      { domain: 'health' },
     ),
-    bare('transmission', 'Strains pass between patients on shared wards', 'mechanism', 3),
+    bare('transmission', 'Strains pass between patients on shared wards', 'mechanism', 3, {
+      domain: 'health',
+    }),
     measured('bsi', 'Resistant bloodstream isolates', 'outcome', 4, 17, '%', 'Resistant isolates', {
+      domain: 'health',
       series: measuredSeries('Resistant isolates', '%', [
         ['2016', 11],
         ['2018', 13],

@@ -2,8 +2,9 @@
 // and DATA rather than on subject matter. Every other batch varies the domain; this one varies the
 // shape until it hurts: an outcome with no causes, one node, an unrolled ring, a 28-deep ribbon, a 30-way
 // fan in each direction, a graph where every pair is linked, ten nodes that share one label, values
-// that are all identical / all zero / all negative / at the integer limit, a 400-point history, and
-// labels that are invisible, single-glyph, unbreakable, right-to-left or emoji.
+// that are all identical / all zero / all negative / at the integer limit, a 400-point history, all
+// eight spheres of the domain vocabulary at once, and labels that are invisible, single-glyph,
+// unbreakable, right-to-left or emoji.
 //
 // The honesty discipline is the corpus's, unchanged:
 //
@@ -47,8 +48,14 @@ function reading(subject: string, value: number, unit?: string, when?: string): 
 
 /** The optional world-only enrichment a node may carry, whatever tier it is. `date` is what puts a
  *  node on the time axis when it has no history of its own — a qualitative cause is undatable by a
- *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards. */
-type Extras = Pick<Partial<WorldNode>, 'unit' | 'detail' | 'date' | 'series' | 'children'>;
+ *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards.
+ *  `domain` is the sphere the surface colours by, and it is absent far more often than it is
+ *  wrong: a cause that sits in two spheres gets none, because a stretched category asserts a
+ *  reading nobody made. */
+type Extras = Pick<
+  Partial<WorldNode>,
+  'unit' | 'detail' | 'date' | 'domain' | 'series' | 'children'
+>;
 
 /** A day, as a node's own date. Written out rather than computed so a fixture stays readable. */
 const on = (t: string): Pick<WorldNode, 'date'> => ({ date: { t } });
@@ -1166,11 +1173,172 @@ const CHILDREN_EVERYWHERE: WorldSpec = {
 };
 
 /* ------------------------------------------------------------------ *
+ * Degenerate categories — every sphere at once
+ * ------------------------------------------------------------------ */
+
+/** Every member of the domain vocabulary on one web, with one sphere holding more than half of it
+ *  and one cause holding none at all. A district vaccine stockout is where the eight genuinely
+ *  meet: a licence, a tender, a compressor, a stability window, a flooded road, a rumour and a
+ *  checkpoint all land on the same clinic, and everything between them is health. Seventeen nodes
+ *  rather than sixteen because the arithmetic forces it — eight spheres plus one unmarked cause
+ *  leave the largest sphere at exactly half inside NODE_CAP, and half is not a majority. */
+const EIGHT_SPHERES: WorldSpec = {
+  title: 'Why did the clinic run out of the vaccine?',
+  outcomeId: 'stockout',
+  provenance: {
+    notes: ['All eight spheres, nine of the seventeen nodes in one of them, and one in none.'],
+  },
+  nodes: [
+    bare('outbreak-alert', 'A measles alert raised demand across the district', 'root', 0, {
+      ...on('2026-03-02'),
+      domain: 'health',
+    }),
+    bare('catch-up', 'A catch-up campaign was booked for the same month', 'root', 0, {
+      ...on('2026-03-09'),
+      domain: 'health',
+    }),
+    bare('forecast', 'The district forecast still used last year’s birth cohort', 'root', 0, {
+      ...on('2026-01-15'),
+      domain: 'health',
+    }),
+    bare('import-licence', 'The import licence was renewed three weeks late', 'root', 0, {
+      ...on('2026-02-11'),
+      domain: 'policy',
+    }),
+    bare('tender-price', 'The tender came in above the budget line and was re-run', 'root', 0, {
+      ...on('2026-01-28'),
+      domain: 'economy',
+    }),
+    bare('fridge-failure', 'The vaccine fridge lost its compressor', 'root', 0, {
+      ...on('2026-03-18'),
+      domain: 'technology',
+    }),
+    bare('stability-study', 'A stability study set the out-of-fridge window', 'root', 0, {
+      ...on('2025-11-06'),
+      domain: 'science',
+    }),
+    bare('flooded-road', 'The river cut the only sealed road for a week', 'root', 0, {
+      ...on('2026-03-21'),
+      domain: 'environment',
+    }),
+    bare('rumour', 'A rumour about the injection went round the market', 'root', 0, {
+      ...on('2026-03-12'),
+      domain: 'society',
+    }),
+    bare('checkpoint', 'A checkpoint on the border route turned the consignment back', 'root', 0, {
+      ...on('2026-03-16'),
+      domain: 'conflict',
+    }),
+    // Mains power off for part of most days is the grid, the weather and the electricity bill at
+    // once. It is the cause the eight-way vocabulary has no answer for, so it goes on unmarked.
+    bare('power-cuts', 'Mains power was off for part of most days', 'root', 0, on('2026-03-01')),
+    measured(
+      'delivery',
+      'Doses received at the district store',
+      'mechanism',
+      1,
+      1200,
+      'doses',
+      'Doses received',
+      { ...on('2026-03-25'), domain: 'health' },
+    ),
+    measured(
+      'wastage',
+      'Opened vials discarded at session end',
+      'mechanism',
+      1,
+      18,
+      '%',
+      'Vial wastage',
+      { ...on('2026-03-26'), domain: 'health' },
+    ),
+    bare('demand-surge', 'Sessions were booked past the plan', 'mechanism', 1, {
+      ...on('2026-03-20'),
+      domain: 'health',
+    }),
+    measured(
+      'stock-on-hand',
+      'Doses on hand at the district store',
+      'mechanism',
+      2,
+      140,
+      'doses',
+      'Doses on hand',
+      { ...on('2026-04-02'), domain: 'health' },
+    ),
+    measured(
+      'stockout',
+      'Days with no dose in the clinic',
+      'outcome',
+      3,
+      11,
+      'days',
+      'Days without a dose',
+      { ...on('2026-04-06'), domain: 'health' },
+    ),
+    // Seventeenth on purpose: the node NODE_CAP takes off the end. A knock-on effect is what this
+    // world can afford to lose, because losing it costs no sphere and not the unmarked cause.
+    bare('referrals', 'Families were sent on to the regional hospital', 'mechanism', 3, {
+      ...on('2026-04-08'),
+      domain: 'health',
+    }),
+  ],
+  edges: [
+    weighed(
+      'import-licence',
+      'delivery',
+      'held up',
+      'dampens',
+      0.3,
+      'Nothing shipped until the licence was reissued.',
+      -1,
+    ),
+    link('tender-price', 'delivery', 'shrank', 'dampens', -1),
+    link('checkpoint', 'delivery', 'turned back', 'dampens', -1),
+    link('flooded-road', 'delivery', 'cut', 'dampens', -1),
+    link('forecast', 'delivery', 'sized', 'causes'),
+    link('power-cuts', 'fridge-failure', 'wore out', 'causes'),
+    weighed(
+      'fridge-failure',
+      'wastage',
+      'spoiled',
+      'causes',
+      0.5,
+      'Every vial in the failed fridge was discarded.',
+    ),
+    link('stability-study', 'wastage', 'sets the window for', 'enables'),
+    link('outbreak-alert', 'demand-surge', 'raised', 'causes'),
+    link('catch-up', 'demand-surge', 'added to', 'contributes'),
+    link('rumour', 'demand-surge', 'held back', 'dampens', -1),
+    weighed(
+      'delivery',
+      'stock-on-hand',
+      'replenished',
+      'causes',
+      0.6,
+      'Cover rose with every consignment received.',
+    ),
+    link('wastage', 'stock-on-hand', 'drained', 'dampens', -1),
+    link('demand-surge', 'stock-on-hand', 'drew down', 'dampens', -1),
+    weighed(
+      'stock-on-hand',
+      'stockout',
+      'ran out',
+      'causes',
+      0.7,
+      'The clinic turned families away the day cover hit zero.',
+      -1,
+    ),
+    link('stock-on-hand', 'referrals', 'sent on', 'causes'),
+  ],
+};
+
+/* ------------------------------------------------------------------ *
  * The batch
  * ------------------------------------------------------------------ */
 
 /**
- * Twenty-one worlds that attack the shape rather than the subject. Ordered smallest-first: a
+ * Twenty-two worlds that attack the shape rather than the subject. Ordered smallest-first: a
  * failure in a world with no nodes is far easier to read than the same failure inside a 31-node
  * fan, and they usually fail together.
  */
@@ -1300,5 +1468,11 @@ export const EDGE_CASE_SCENARIOS: readonly WorldScenario[] = [
     label: 'A breakdown on every node',
     note: 'Every top-level node carries a breakdown, and the oven’s four decks outnumber the three top-level nodes — so the expanded pass lays out more children than parents and the separation relaxation runs on a world that is mostly children. SOFTENED: CHILD_CAP is 4 and grandchildren are dropped at the gate, so "outnumber the top level" is only reachable at three top-level nodes.',
     spec: CHILDREN_EVERYWHERE,
+  },
+  {
+    id: 'edge-eight-spheres',
+    label: 'All eight spheres at once',
+    note: 'Every member of the domain vocabulary on one web, nine of the seventeen nodes in a single sphere, and one cause — mains power off for part of most days — that belongs to none of them. The case the categorical channel degenerates in: half the world is one colour, seven spheres appear exactly once, and the legend still has to hold all eight. SOFTENED — seventeen nodes is one past NODE_CAP, and the arithmetic leaves no choice: with eight spheres present and one cause unmarked, sixteen nodes put the largest sphere at exactly half. The coercer keeps the first 16, which is every sphere and the unmarked cause, so only the strict majority is a render-only case.',
+    spec: EIGHT_SPHERES,
   },
 ];

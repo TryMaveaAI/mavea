@@ -10,7 +10,7 @@
 // React, no DOM; the renderer consumes a MorphLayout as data.
 import type { Bbox } from '../camera';
 
-export type Representation = 'graph' | 'timeline' | 'chart' | 'flow';
+export type Representation = 'graph' | 'timeline' | 'chart' | 'flow' | 'spheres';
 
 export interface MorphNodeDatum {
   id: string;
@@ -56,6 +56,11 @@ export interface MorphEdgeDatum {
   weight?: number;
   /** Asserted with nothing behind it: drawn dashed and faint, never as an established link. */
   provisional?: boolean;
+  /** What this link DOES, in the source's own word ("tightened", "opened"). Shown as the link's
+   *  accessible name and its hover title — never drawn into the composition: at full counter-scale a
+   *  card is 280 units wide and the gutter between columns is 20, so a drawn label would sit on two
+   *  cards at once exactly when the camera is pulled back. The host decides what is worth saying. */
+  label?: string;
 }
 
 export interface WorldData {

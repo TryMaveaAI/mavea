@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { layoutChart } from '../src/canvas/spatial/morph/layouts/chartLayout';
 import { layoutFlow } from '../src/canvas/spatial/morph/layouts/flowLayout';
 import { layoutGraph } from '../src/canvas/spatial/morph/layouts/graphLayout';
+import { layoutSpheres } from '../src/canvas/spatial/morph/layouts/spheresLayout';
 import { layoutTimeline } from '../src/canvas/spatial/morph/layouts/timelineLayout';
 import { COUNTER_MAX, MARK } from '../src/canvas/spatial/morph/layouts/lanes';
 import type {
@@ -67,6 +68,7 @@ const layouts: Array<[string, LayoutFn]> = [
   ['timeline', layoutTimeline],
   ['chart', layoutChart],
   ['flow', layoutFlow],
+  ['spheres', layoutSpheres],
 ];
 
 function expectInsideBbox(layout: MorphLayout): void {
@@ -262,19 +264,36 @@ describe('graph layout', () => {
 });
 
 describe('timeline layout', () => {
-  it('shelves exactly the undated nodes, in a labeled band', () => {
+  it('shelves exactly the undated CAUSES, in a labeled band', () => {
     const layout = layoutTimeline(mixedWorld);
     const shelvedIds = [...layout.positions.entries()]
       .filter(([, p]) => p.shelved)
       .map(([id]) => id)
       .sort();
-    expect(shelvedIds).toEqual(['child-1', 'child-2', 'mech']);
+    // A breakdown the reader has not opened is not on this axis at all — it folds onto its cause,
+    // exactly as on the causal web. Shelving it instead would inflate the count in the band's own
+    // label with parts nobody asked to see, which is the one number that band exists to keep honest.
+    expect(shelvedIds).toEqual(['mech']);
     const band = layout.chrome.bands.find((b) => b.id === 'shelf');
-    expect(band?.label).toBe('3 with no date — the timeline cannot place these');
+    expect(band?.label).toBe('1 with no date — the timeline cannot place these');
+    for (const id of ['child-1', 'child-2']) {
+      const p = layout.positions.get(id)!;
+      expect(p.folded, id).toBe(true);
+      expect(p.shelved, id).toBeUndefined();
+    }
     for (const id of ['root-a', 'root-b', 'outcome']) {
       const p = layout.positions.get(id)!;
       expect(p.face).toBe('entry');
       expect(p.shelved).toBeUndefined();
+    }
+  });
+
+  it('places an OPENED part on the axis, where its date is a real claim', () => {
+    const open = layoutTimeline(mixedWorld, { expandedIds: new Set(['mech']) });
+    for (const id of ['child-1', 'child-2']) {
+      const p = open.positions.get(id)!;
+      // Dated or not, an opened part is drawn — on the axis if it has a date, in the band if not.
+      expect(p.folded, id).toBeUndefined();
     }
   });
 
@@ -305,10 +324,15 @@ describe('chart layout', () => {
       .filter(([, p]) => p.shelved)
       .map(([id]) => id)
       .sort();
-    expect(shelvedIds).toEqual(['child-1', 'child-2', 'mech', 'root-b']);
+    // Unopened parts fold onto their cause rather than padding the band — the count in that label is
+    // a statement about the WORLD, not about how much of a breakdown the reader has bought.
+    expect(shelvedIds).toEqual(['mech', 'root-b']);
     expect(layout.chrome.bands.find((b) => b.id === 'shelf')?.label).toBe(
-      '4 with nothing measured over time — the chart cannot plot these',
+      '2 with nothing measured over time — the chart cannot plot these',
     );
+    for (const id of ['child-1', 'child-2']) {
+      expect(layout.positions.get(id)!.folded, id).toBe(true);
+    }
     const seriesIds = layout.chrome.paths.filter((p) => p.draw).map((p) => p.id);
     expect(seriesIds.sort()).toEqual(['series:outcome', 'series:root-a']);
   });

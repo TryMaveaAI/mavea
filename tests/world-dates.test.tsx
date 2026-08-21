@@ -179,24 +179,91 @@ describe('WorldOverlay — the "Over time" chip', () => {
 
   it('is offered on a world that carries dates', () => {
     render(<WorldOverlay spec={WORLD_SEED} />);
-    expect(screen.getByRole('button', { name: 'Over time' })).toBeEnabled();
+    expect(screen.getByRole('tab', { name: 'Over time' })).toBeEnabled();
   });
 
   it('is absent on a world where nothing is dated', () => {
     // Not dimmed — absent. A chip whose whole content would be the held-aside band promises
     // something to see and delivers a wall of excuses; the views that remain are the real offer.
     render(<WorldOverlay spec={timeless} />);
-    expect(screen.queryByRole('button', { name: 'Over time' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Over time' })).toBeNull();
     // This world carries no series either, so the chart is honestly unofferable too — both
     // time-based views withhold themselves for the same reason. Graph always remains: every world
     // has causal structure, so the reader is never left with no view at all.
-    expect(screen.queryByRole('button', { name: 'As a chart' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Graph' })).toBeEnabled();
+    expect(screen.queryByRole('tab', { name: 'As a chart' })).toBeNull();
+    // …and the causal web remains, so the reader is never left with no view at all. It is NAMED
+    // rather than offered as a button: one reading is not a choice, and a lone chip carrying
+    // aria-pressed is a control that cannot do anything.
+    expect(screen.queryByRole('tab', { name: 'Graph' })).toBeNull();
+    expect(screen.getByText('Graph')).toHaveClass('wo-chip-sole');
   });
 
   it('will not open on a timeline it would not offer, even when a follow-up asks for one', () => {
-    render(<WorldOverlay spec={timeless} view="timeline" />);
-    expect(screen.queryByRole('button', { name: 'Over time' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Graph' }).getAttribute('aria-pressed')).toBe('true');
+    const { container } = render(<WorldOverlay spec={timeless} view="timeline" />);
+    expect(screen.queryByRole('tab', { name: 'Over time' })).toBeNull();
+    // The stage stayed on the causal web — the only reading this world holds.
+    expect(screen.getByText('Graph')).toHaveClass('wo-chip-sole');
+    expect(container.querySelector('.mv-stage, .mv-viewport')).toBeTruthy();
+  });
+});
+
+describe('a cause says WHEN on its card, not only on the timeline', () => {
+  it('prints the date verbatim, and marks whether anything backs it', () => {
+    // The register is the timeline's, deliberately: upright where a source put the node there,
+    // italic and quieter where only the model's own sense of it did. A reader who learns it on one
+    // view has to be able to trust it on the other.
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
+    // Only causes with no FIGURE: the foot is one row in a 200-unit card, and a number and a date
+    // together overflow it. The figure wins where there is one; a cause without a number says when.
+    const dated = WORLD_SEED.nodes.filter((n) => n.date !== undefined && n.value === undefined);
+    expect(dated.length).toBeGreaterThan(0);
+    for (const node of dated) {
+      const card = container.querySelector(`.mv-node[data-id="${node.id}"] .mv-face-card`);
+      const when = card?.querySelector('.wo-when');
+      expect(when, `${node.id} carries a date but its card does not say so`).not.toBeNull();
+      const expected =
+        node.date!.until === undefined ? node.date!.t : `${node.date!.t}–${node.date!.until}`;
+      // Verbatim — re-formatting an instant is how a year becomes a wrong month.
+      expect(when!.textContent, node.id).toBe(expected);
+    }
+  });
+
+  it('says nothing where there is no date, or where a figure has the slot', () => {
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
+    for (const node of WORLD_SEED.nodes.filter(
+      (n) => n.date === undefined || n.value !== undefined,
+    )) {
+      const card = container.querySelector(`.mv-node[data-id="${node.id}"] .mv-face-card`);
+      expect(card?.querySelector('.wo-when'), node.id).toBeNull();
+    }
+  });
+});
+
+describe('a cause with a measured history shows its shape', () => {
+  it('draws one path per series, and nothing a value could be read off', () => {
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
+    const withSeries = WORLD_SEED.nodes.filter((n) => (n.series?.points.length ?? 0) >= 2);
+    expect(withSeries.length).toBeGreaterThan(0);
+    for (const node of withSeries) {
+      const trace = container.querySelector(`.mv-node[data-id="${node.id}"] .wo-trace path`);
+      expect(trace, `${node.id} has a series but no trace`).not.toBeNull();
+      const d = trace!.getAttribute('d') ?? '';
+      expect(d.split('L').length - 1, node.id).toBe(node.series!.points.length - 1);
+    }
+    // Decoration scale, and it says so: no axis, no ticks, no text of any kind inside it.
+    for (const svg of container.querySelectorAll('.wo-trace')) {
+      expect(svg.textContent).toBe('');
+      expect(svg.querySelectorAll('text')).toHaveLength(0);
+    }
+  });
+
+  it('draws none for a cause with nothing measured, and none for a lone observation', () => {
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
+    for (const node of WORLD_SEED.nodes.filter((n) => (n.series?.points.length ?? 0) < 2)) {
+      expect(
+        container.querySelector(`.mv-node[data-id="${node.id}"] .wo-trace`),
+        node.id,
+      ).toBeNull();
+    }
   });
 });

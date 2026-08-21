@@ -51,8 +51,14 @@ function reading(subject: string, value: number, unit?: string, when?: string): 
 
 /** The optional world-only enrichment a node may carry, whatever tier it is. `date` is what puts a
  *  node on the time axis when it has no history of its own — a qualitative cause is undatable by a
- *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards. */
-type Extras = Pick<Partial<WorldNode>, 'unit' | 'detail' | 'date' | 'series' | 'children'>;
+ *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards.
+ *  `domain` is the sphere the surface colours by, and it is absent far more often than it is
+ *  wrong: a cause that sits in two spheres gets none, because a stretched category asserts a
+ *  reading nobody made. */
+type Extras = Pick<
+  Partial<WorldNode>,
+  'unit' | 'detail' | 'date' | 'domain' | 'series' | 'children'
+>;
 
 /** A node's own date: an instant, or a period when `until` is given. Written out rather than
  *  computed so a fixture stays readable. */
@@ -288,61 +294,36 @@ const WIDE_ELECTION: WorldSpec = {
     notes: ['Illustrative shares — the shape of a swing decomposition, not any real result.'],
   },
   nodes: [
-    sketched(
-      'turnout-young',
-      'Turnout rose among first-time voters',
-      'root',
-      0,
-      4.1,
-      'pp',
-      on('2026-05-07'),
-    ),
-    sketched(
-      'turnout-rural',
-      'Turnout fell in rural precincts',
-      'root',
-      0,
-      2.6,
-      'pp',
-      on('2026-05-07'),
-    ),
-    sketched(
-      'cost-living',
-      'Cost of living dominated local coverage',
-      'root',
-      0,
-      31,
-      '%',
-      on('2026-01', '2026-05'),
-    ),
-    sketched(
-      'hospital',
-      'The hospital closure stayed in the news',
-      'root',
-      0,
-      12,
-      '%',
-      on('2025-11', '2026-04'),
-    ),
-    sketched(
-      'boundary',
-      'A boundary review moved two wards in',
-      'root',
-      0,
-      5.4,
-      'pp',
-      on('2025-09'),
-    ),
-    sketched('incumbent', 'The incumbent retired', 'root', 0, 9, '%', on('2025-10')),
-    sketched(
-      'third-party',
-      'A third party stood down locally',
-      'root',
-      0,
-      3.2,
-      'pp',
-      on('2026-03'),
-    ),
+    sketched('turnout-young', 'Turnout rose among first-time voters', 'root', 0, 4.1, 'pp', {
+      ...on('2026-05-07'),
+      domain: 'society',
+    }),
+    sketched('turnout-rural', 'Turnout fell in rural precincts', 'root', 0, 2.6, 'pp', {
+      ...on('2026-05-07'),
+      domain: 'society',
+    }),
+    sketched('cost-living', 'Cost of living dominated local coverage', 'root', 0, 31, '%', {
+      ...on('2026-01', '2026-05'),
+      domain: 'economy',
+    }),
+    sketched('hospital', 'The hospital closure stayed in the news', 'root', 0, 12, '%', {
+      ...on('2025-11', '2026-04'),
+      domain: 'health',
+    }),
+    sketched('boundary', 'A boundary review moved two wards in', 'root', 0, 5.4, 'pp', {
+      ...on('2025-09'),
+      domain: 'policy',
+    }),
+    sketched('incumbent', 'The incumbent retired', 'root', 0, 9, '%', {
+      ...on('2025-10'),
+      domain: 'policy',
+    }),
+    sketched('third-party', 'A third party stood down locally', 'root', 0, 3.2, 'pp', {
+      ...on('2026-03'),
+      domain: 'policy',
+    }),
+    // Doorstep organising is the one root here that belongs to no sphere in particular — it is
+    // how the campaign was run, not what it was about — so it goes onto the web without a mark.
     sketched(
       'ground-game',
       'One campaign out-canvassed the other',
@@ -352,26 +333,22 @@ const WIDE_ELECTION: WorldSpec = {
       '%',
       on('2026-02', '2026-05'),
     ),
-    sketched('postal', 'Postal voting was extended', 'root', 0, 1.9, 'pp', on('2026-01')),
-    sketched(
-      'weather',
-      'Polling day was wet all afternoon',
-      'root',
-      0,
-      0.8,
-      'pp',
-      on('2026-05-07'),
-    ),
-    sketched(
-      'national',
-      'The national swing ran the same way',
-      'root',
-      0,
-      6.5,
-      'pp',
-      on('2026-04', '2026-05'),
-    ),
-    sketched('seat-flipped', 'The seat changed hands', 'outcome', 1, 2.3, 'pp', on('2026-05-08')),
+    sketched('postal', 'Postal voting was extended', 'root', 0, 1.9, 'pp', {
+      ...on('2026-01'),
+      domain: 'policy',
+    }),
+    sketched('weather', 'Polling day was wet all afternoon', 'root', 0, 0.8, 'pp', {
+      ...on('2026-05-07'),
+      domain: 'environment',
+    }),
+    sketched('national', 'The national swing ran the same way', 'root', 0, 6.5, 'pp', {
+      ...on('2026-04', '2026-05'),
+      domain: 'policy',
+    }),
+    sketched('seat-flipped', 'The seat changed hands', 'outcome', 1, 2.3, 'pp', {
+      ...on('2026-05-08'),
+      domain: 'policy',
+    }),
   ],
   edges: [
     link('turnout-young', 'seat-flipped', 'lifted', 'contributes'),
@@ -802,29 +779,21 @@ const CONTESTED_FISHERY: WorldSpec = {
   nodes: [
     measured('trawling', 'Bottom-trawl effort', 'root', 0, 3.4, 'kh', 'Trawl hours', {
       ...on('1985', '1992'),
+      domain: 'economy',
       detail: 'Effort in thousands of vessel-hours over the shelf grounds.',
     }),
-    bare('warming', 'Shelf water warmed through the decade', 'root', 0, on('1983', '1993')),
-    measured(
-      'recruitment',
-      'Juvenile recruitment',
-      'mechanism',
-      1,
-      12,
-      '%',
-      'Recruitment index',
-      on('1991'),
-    ),
-    measured(
-      'stock-collapse',
-      'Spawning stock',
-      'outcome',
-      2,
-      8,
-      '%',
-      'Spawning stock biomass',
-      on('1992'),
-    ),
+    bare('warming', 'Shelf water warmed through the decade', 'root', 0, {
+      ...on('1983', '1993'),
+      domain: 'environment',
+    }),
+    measured('recruitment', 'Juvenile recruitment', 'mechanism', 1, 12, '%', 'Recruitment index', {
+      ...on('1991'),
+      domain: 'environment',
+    }),
+    measured('stock-collapse', 'Spawning stock', 'outcome', 2, 8, '%', 'Spawning stock biomass', {
+      ...on('1992'),
+      domain: 'environment',
+    }),
   ],
   edges: [
     weighed(

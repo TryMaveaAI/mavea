@@ -75,9 +75,11 @@ export const ROOT_CONTRACT: readonly string[] = ['root', 'title'];
  * tests/content-lens.test.tsx. So a new hierarchy component is a test failure naming exactly what to
  * decide — never a card that mounts and draws nothing.
  */
-const SPEAKS_ROOT: ReadonlySet<string> = new Set(['sunburst', 'treemap', 'citationchain']);
+const SPEAKS_ROOT: ReadonlySet<string> = new Set(['sunburst', 'treemap']);
 
 export const ROOT_MEANS_SOMETHING_ELSE: Readonly<Record<string, string>> = {
+  citationchain:
+    'its root is a CLAIM with a support strength, not a labelled quantity — handed a breakdown it draws an evidence tree with every strength undefined, which is provenance repurposed as decoration',
   phylotree: 'PhyloNode is {name, length, support} — a taxon and a branch length, not a magnitude',
   recursiontree: 'RecursionNode is {call, result} — a call signature, not a labelled quantity',
   parsetree: 'a grammar production, not a labelled quantity',
@@ -85,6 +87,49 @@ export const ROOT_MEANS_SOMETHING_ELSE: Readonly<Record<string, string>> = {
 
 /** Two causes and a whole: below that a "breakdown" is a label with a number beside it. */
 const MIN_PARTS = 2;
+
+/**
+ * What each verified component's geometry MEANS — which the catalog genuinely cannot say.
+ *
+ * Sunburst and treemap are the same archetype over the same data shapes: structurally
+ * indistinguishable in the index, and completely different pictures. Rings ARE the levels, so a
+ * one-level sunburst is a donut of three slices; areas ARE the magnitudes, so a treemap of near-equal
+ * parts is a grid of equal boxes saying nothing the labels do not. Enumerated here for the same
+ * reason SPEAKS_ROOT is enumerated: `requires` names prop keys, and a key is not a contract.
+ */
+const DRAWS: Readonly<Record<string, 'depth' | 'spread'>> = {
+  sunburst: 'depth',
+  treemap: 'spread',
+};
+
+/** Two parts is a bracket, not a hierarchy, and a two-slice sunburst is a pie chart of two. The
+ *  NAMED list stays honest at two — it is a list — but a drawn component needs three. */
+const MIN_DRAWN_PARTS = 3;
+/** …and an area layout only beats a list once one part is about as big as all the others together:
+ *  below that a reader cannot rank by eye and has to read the labels anyway, which IS the list. */
+const AREA_CONCENTRATION = 0.5;
+
+/**
+ * Which picture these parts actually want, or null when neither adds anything to their names.
+ *
+ * Returning null is not a failure — it is the common case and the honest one. The rail's list of
+ * names is a complete answer to "what is this made of", and a chart nobody asked for is worse than
+ * no chart. It also means the drawn component becomes a function of what the READER did: going a
+ * second level down is what earns the rings.
+ */
+function wantsDrawing(parts: readonly RootNode[]): 'depth' | 'spread' | null {
+  // Depth first, and before any count: a part that has parts of ITS own is what rings are rings OF,
+  // and two parts one of which is itself divided is a real hierarchy however few the top level has.
+  // Gating on the count first refused exactly the case this is for — the reader who went a second
+  // level down, which is the one moment the drawn picture is a function of what they did.
+  if (parts.some((p) => (p.children?.length ?? 0) > 0)) return 'depth';
+  // A flat breakdown has only its own spread to offer, and needs enough parts to have one.
+  if (parts.length < MIN_DRAWN_PARTS) return null;
+  const total = parts.reduce((sum, p) => sum + p.value, 0);
+  const largest = parts.reduce((m, p) => Math.max(m, p.value), 0);
+  if (parts.length >= 4 && total > 0 && largest / total >= AREA_CONCENTRATION) return 'spread';
+  return null;
+}
 
 const sameContract = (requires: readonly string[], contract: readonly string[]): boolean =>
   requires.length === contract.length && contract.every((key) => requires.includes(key));
@@ -180,8 +225,15 @@ export const hierarchyLens: VisualLens = {
     // The catalog ranks; the verified set decides what is even a candidate. Domain ordering survives
     // inside it, so a domain-specific component that DOES speak the contract still wins in its own
     // domain — the capability is intact, the unverified ones are simply not offered.
-    const chosen = componentsFor('hierarchy', ROOT_CONTRACT, subject?.domain).find((f) =>
-      SPEAKS_ROOT.has(f.type),
+    // WHICH picture this breakdown wants, before asking the catalog which components could draw it.
+    // Without this the ranking fell through to `wowWeight` and returned `sunburst` for every subject
+    // in every domain the lens has ever compiled — the same-every-time complaint reproduced inside
+    // the one mechanism meant to defeat it. Neither candidate declares a catalog domain, so domain
+    // ranking could never separate them; only what their geometry MEANS can.
+    const shape = wantsDrawing(parts);
+    if (shape === null) return null; // the named list is the honest answer, and it already renders
+    const chosen = componentsFor('hierarchy', ROOT_CONTRACT, subject?.domain).find(
+      (f) => SPEAKS_ROOT.has(f.type) && DRAWS[f.type] === shape,
     );
     if (!chosen) return null;
     const total = parts.reduce((sum, p) => sum + p.value, 0);

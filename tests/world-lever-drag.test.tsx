@@ -109,7 +109,7 @@ describe('dragging a what-if lever', () => {
       pull('25');
       expect(container.querySelectorAll('.mv-node[data-shift]').length).toBeGreaterThan(0);
 
-      act(() => screen.getByRole('button', { name: 'Over time' }).click());
+      act(() => screen.getByRole('tab', { name: 'Over time' }).click());
       land(container);
       expect(container.querySelectorAll('.mv-node[data-shift]').length).toBeGreaterThan(0);
     } finally {

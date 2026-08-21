@@ -52,8 +52,14 @@ function reading(subject: string, value: number, unit?: string, when?: string): 
 
 /** The optional world-only enrichment a node may carry, whatever tier it is. `date` is what puts a
  *  node on the time axis when it has no history of its own — a qualitative cause is undatable by a
- *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards. */
-type Extras = Pick<Partial<WorldNode>, 'unit' | 'detail' | 'date' | 'series' | 'children'>;
+ *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards.
+ *  `domain` is the sphere the surface colours by, and it is absent far more often than it is
+ *  wrong: a cause that sits in two spheres gets none, because a stretched category asserts a
+ *  reading nobody made. */
+type Extras = Pick<
+  Partial<WorldNode>,
+  'unit' | 'detail' | 'date' | 'domain' | 'series' | 'children'
+>;
 
 /** A node's own date: an instant, or a period when `until` is given. Written out rather than
  *  computed so a fixture stays readable. */
@@ -517,14 +523,12 @@ const PORT_CLOSURE: WorldSpec = {
     notes: ['Two routes rejoin on a container node whose magnitude is only its parts.'],
   },
   nodes: [
-    bare(
-      'typhoon',
-      'A typhoon closed the transshipment port',
-      'root',
-      0,
-      on('2026-07-14', '2026-07-17'),
-    ),
+    bare('typhoon', 'A typhoon closed the transshipment port', 'root', 0, {
+      ...on('2026-07-14', '2026-07-17'),
+      domain: 'environment',
+    }),
     bare('single-source', 'The connector had one qualified supplier', 'root', 0, {
+      domain: 'economy',
       detail: 'Second-sourcing was approved two years earlier and never funded.',
     }),
     measured(
@@ -535,7 +539,7 @@ const PORT_CLOSURE: WorldSpec = {
       9.4,
       'days',
       'Vessel dwell time',
-      on('2026-07-17', '2026-07-26'),
+      { ...on('2026-07-17', '2026-07-26'), domain: 'economy' },
     ),
     uploaded(
       'air-freight',
@@ -546,7 +550,7 @@ const PORT_CLOSURE: WorldSpec = {
       'USD',
       'Air-freight substitution',
       6,
-      on('2026-07-22', '2026-08-05'),
+      { ...on('2026-07-22', '2026-08-05'), domain: 'economy' },
     ),
     container(
       'buffer',
@@ -556,6 +560,7 @@ const PORT_CLOSURE: WorldSpec = {
       'Buffer stock is counted per part, never as one line total.',
       {
         ...on('2026-07-18', '2026-07-28'),
+        domain: 'economy',
         unit: 'days',
         children: [
           measured('buffer.connector', 'Connector', 'mechanism', 2, 2, 'days', 'Connector cover'),
@@ -564,16 +569,10 @@ const PORT_CLOSURE: WorldSpec = {
         ],
       },
     ),
-    measured(
-      'line-stopped',
-      'Line downtime',
-      'outcome',
-      3,
-      11,
-      'days',
-      'Line downtime',
-      on('2026-07-28', '2026-08-08'),
-    ),
+    measured('line-stopped', 'Line downtime', 'outcome', 3, 11, 'days', 'Line downtime', {
+      ...on('2026-07-28', '2026-08-08'),
+      domain: 'economy',
+    }),
   ],
   edges: [
     weighed(
@@ -805,31 +804,33 @@ const SEGREGATION_TIPPING: WorldSpec = {
     ],
   },
   nodes: [
-    bare('mild-preference', 'Each household wants a few neighbours like itself', 'root', 0),
-    bare(
-      'lending-history',
-      'Older lending maps still shape who can buy where',
-      'root',
-      0,
-      on('1935', '1968'),
-    ),
-    bare('first-movers', 'A few households move at the margin', 'mechanism', 1, on('1972', '1980')),
-    bare(
-      'school-signal',
-      'The school’s intake shifts with the street',
-      'mechanism',
-      2,
-      on('1978', '1990'),
-    ),
-    bare('agent-steering', 'Listings are shown selectively', 'mechanism', 2, on('1975', '1995')),
-    bare('tipping', 'The remaining mixed blocks tip', 'mechanism', 3, on('1985', '1998')),
-    bare(
-      'stayed-separate',
-      'The two neighbourhoods stayed separate',
-      'outcome',
-      4,
-      on('2000', '2024'),
-    ),
+    bare('mild-preference', 'Each household wants a few neighbours like itself', 'root', 0, {
+      domain: 'society',
+    }),
+    bare('lending-history', 'Older lending maps still shape who can buy where', 'root', 0, {
+      ...on('1935', '1968'),
+      domain: 'policy',
+    }),
+    bare('first-movers', 'A few households move at the margin', 'mechanism', 1, {
+      ...on('1972', '1980'),
+      domain: 'society',
+    }),
+    bare('school-signal', 'The school’s intake shifts with the street', 'mechanism', 2, {
+      ...on('1978', '1990'),
+      domain: 'society',
+    }),
+    bare('agent-steering', 'Listings are shown selectively', 'mechanism', 2, {
+      ...on('1975', '1995'),
+      domain: 'society',
+    }),
+    bare('tipping', 'The remaining mixed blocks tip', 'mechanism', 3, {
+      ...on('1985', '1998'),
+      domain: 'society',
+    }),
+    bare('stayed-separate', 'The two neighbourhoods stayed separate', 'outcome', 4, {
+      ...on('2000', '2024'),
+      domain: 'society',
+    }),
   ],
   edges: [
     link('mild-preference', 'first-movers', 'nudges', 'causes'),
@@ -1122,15 +1123,25 @@ const BANK_RUN: WorldSpec = {
     notes: ['The mechanism of a run at day resolution — an illustrative book, not any bank’s.'],
   },
   nodes: [
-    sketched('rate-repricing', 'Unrealised loss on the bond book', 'root', 0, 17, '%'),
+    sketched('rate-repricing', 'Unrealised loss on the bond book', 'root', 0, 17, '%', {
+      domain: 'economy',
+    }),
     sketched('uninsured', 'Deposits above the insured limit', 'root', 0, 88, '%', {
+      domain: 'economy',
       detail:
         'A depositor above the limit has a reason to move first, and knows the others do too.',
     }),
-    bare('first-withdrawals', 'The best-informed depositors move first', 'mechanism', 1),
-    sketched('fire-sale', 'Securities sold below carrying value', 'mechanism', 2, 9, '%'),
-    bare('confidence', 'The sale confirmed the loss to everyone watching', 'mechanism', 3),
+    bare('first-withdrawals', 'The best-informed depositors move first', 'mechanism', 1, {
+      domain: 'economy',
+    }),
+    sketched('fire-sale', 'Securities sold below carrying value', 'mechanism', 2, 9, '%', {
+      domain: 'economy',
+    }),
+    bare('confidence', 'The sale confirmed the loss to everyone watching', 'mechanism', 3, {
+      domain: 'economy',
+    }),
     sketched('second-wave', 'Deposits leaving per day', 'mechanism', 4, 42, '%', {
+      domain: 'economy',
       series: sketchedSeries('%', [
         ['2019-06-10', 1],
         ['2019-06-11', 4],
@@ -1139,7 +1150,7 @@ const BANK_RUN: WorldSpec = {
         ['2019-06-14', 11],
       ]),
     }),
-    bare('receivership', 'The regulator closed the bank', 'outcome', 5),
+    bare('receivership', 'The regulator closed the bank', 'outcome', 5, { domain: 'policy' }),
   ],
   edges: [
     link('rate-repricing', 'fire-sale', 'set up', 'enables'),

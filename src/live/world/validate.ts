@@ -427,8 +427,20 @@ export function coerceWorldSpec(raw: unknown, corpus: EvidenceCorpus | string): 
     string,
     unknown
   >;
-  const illustrative = prov.illustrative === true;
   const evidence = typeof corpus === 'string' ? textCorpus(corpus) : (corpus ?? EMPTY_CORPUS);
+  // Illustrative when the MODEL said so — or when the corpus cannot ground anything, which is the
+  // same fact arrived at from the other side and is Mavéa's to decide rather than the model's.
+  //
+  // A world built where no source carries a quotable sentence IS an explanation from general
+  // knowledge; that is what illustrative means. Saying so lets a well-known textbook figure survive
+  // behind the banner instead of being stripped to a bare label, and every one of them is typed
+  // `illustrative` downstream, drawn in its own ink, and counted as "every cause" rather than as
+  // evidence. The alternative was not honesty — it was a shape with the numbers deleted and no
+  // statement anywhere that they had been.
+  //
+  // This has to be decided HERE, before the node loop: the value is passed into every coercer, and
+  // by the time coercion has finished a T3 figure has already been demoted and its series dropped.
+  const illustrative = prov.illustrative === true || !evidence.quotable;
   const ev: Evidence = {
     holds: makeVerbatimGrounder(evidence.text),
     sourceOf: makeAttributor(evidence),

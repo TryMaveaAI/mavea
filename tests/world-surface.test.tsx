@@ -14,8 +14,9 @@ const PARENT = 'mortgage-volume';
 
 const mount = () => render(<WorldOverlay spec={WORLD_SEED} />);
 
+/** A view chip. They are TABS — exactly one can be on — not a row of independent switches. */
 const chip = (label: string): HTMLButtonElement =>
-  screen.getByRole('button', { name: label }) as HTMLButtonElement;
+  screen.getByRole('tab', { name: label }) as HTMLButtonElement;
 
 const nodeAt = (container: HTMLElement, id: string): HTMLElement =>
   container.querySelector<HTMLElement>(`.mv-node[data-id="${id}"]`)!;
@@ -135,8 +136,10 @@ describe('WorldOverlay what-if', () => {
 });
 
 describe('WorldOverlay semantic zoom', () => {
+  // Explicitly on the causal web: it is the view that DRAWS a breakdown as a family, and the seed
+  // world is dated enough that it now opens on its timeline, where a breakdown stays folded.
   it('unfolds a breakdown off the node that carries it', () => {
-    const { container } = mount();
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
     const children = WORLD_SEED.nodes.find((n) => n.id === PARENT)!.children!;
     expect(children.length).toBeGreaterThan(1);
     for (const child of children) expect(nx(container, child.id)).toBe(nx(container, PARENT));
@@ -191,7 +194,11 @@ describe('WorldOverlay breaking down a cause that has no authored parts', () => 
     const onExpandNode = vi.fn(
       () => new Promise<typeof WORLD_SEED | null>((resolve) => (settle = resolve)),
     );
-    const { container } = render(<WorldOverlay spec={WORLD_SEED} onExpandNode={onExpandNode} />);
+    // On the causal web explicitly: it is the view that DRAWS a breakdown, and the chip is only
+    // offered where pressing it moves the map. Elsewhere the card states a part COUNT instead.
+    const { container } = render(
+      <WorldOverlay spec={WORLD_SEED} view="graph" onExpandNode={onExpandNode} />,
+    );
     const button = chip(container, PLAIN)!;
     expect(button.textContent).toBe('break down');
 
@@ -205,7 +212,7 @@ describe('WorldOverlay breaking down a cause that has no authored parts', () => 
     await act(async () => settle(withParts(PLAIN)));
     // The parts arrived, and the node opened onto them in the same beat.
     expect(container.querySelector(`.mv-node[data-id="${PLAIN}.one"]`)).not.toBeNull();
-    expect(chip(container, PLAIN)!.textContent).toBe('fold up');
+    expect(chip(container, PLAIN)!.textContent).toBe('close');
   });
 
   it('puts the offer back, and says nothing, when the cause has no parts to name', async () => {
@@ -213,7 +220,11 @@ describe('WorldOverlay breaking down a cause that has no authored parts', () => 
     const onExpandNode = vi.fn(
       () => new Promise<typeof WORLD_SEED | null>((resolve) => (settle = resolve)),
     );
-    const { container } = render(<WorldOverlay spec={WORLD_SEED} onExpandNode={onExpandNode} />);
+    // On the causal web: the chip is offered where pressing it would move the map, and this seed
+    // world is rich enough that it now opens on a different reading of its own accord.
+    const { container } = render(
+      <WorldOverlay spec={WORLD_SEED} view="graph" onExpandNode={onExpandNode} />,
+    );
     fireEvent.click(chip(container, PLAIN)!);
     await act(async () => settle(null));
 
@@ -234,7 +245,7 @@ describe('WorldOverlay before there is a world', () => {
   it('waits honestly, showing the reader’s own question and what the build costs', () => {
     const { container } = render(<WorldOverlay spec={null} question={WORLD_SEED.title} />);
     expect(screen.getByText(WORLD_SEED.title)).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toMatch(/building this world/i);
+    expect(screen.getByRole('status').textContent).toMatch(/building your living answer/i);
     // Nothing of a world is on screen — no stage, no levers, no evidence rail.
     expect(container.querySelector('.mv-node')).toBeNull();
     expect(screen.queryAllByRole('slider')).toHaveLength(0);
@@ -253,7 +264,7 @@ describe('WorldOverlay before there is a world', () => {
 
   it('opens on the view a free follow-up asked for', () => {
     render(<WorldOverlay spec={WORLD_SEED} view="timeline" />);
-    expect(screen.getByRole('button', { name: 'Over time' }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('tab', { name: 'Over time' }).getAttribute('aria-selected')).toBe(
       'true',
     );
   });

@@ -42,8 +42,14 @@ function reading(subject: string, value: number, unit?: string, when?: string): 
 
 /** The optional world-only enrichment a node may carry, whatever tier it is. `date` is what puts a
  *  node on the time axis when it has no history of its own — a qualitative cause is undatable by a
- *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards. */
-type Extras = Pick<Partial<WorldNode>, 'unit' | 'detail' | 'date' | 'series' | 'children'>;
+ *  series, and a world where nothing is dated hands the reader a timeline of held-aside cards.
+ *  `domain` is the sphere the surface colours by, and it is absent far more often than it is
+ *  wrong: a cause that sits in two spheres gets none, because a stretched category asserts a
+ *  reading nobody made. */
+type Extras = Pick<
+  Partial<WorldNode>,
+  'unit' | 'detail' | 'date' | 'domain' | 'series' | 'children'
+>;
 
 /** A node's own date: an instant, or a period when `until` is given. Written out rather than
  *  computed so a fixture stays readable. */
@@ -995,42 +1001,50 @@ const JULY_CRISIS: WorldSpec = {
     notes: ['Structure only: no figure anywhere, and every link asserted rather than measured.'],
   },
   nodes: [
-    bare('alliances', 'Two alliance blocs had committed to each other in advance', 'root', 0),
-    bare('war-plans', 'The war plans depended on mobilising first', 'root', 0),
+    bare('alliances', 'Two alliance blocs had committed to each other in advance', 'root', 0, {
+      domain: 'policy',
+    }),
+    bare('war-plans', 'The war plans depended on mobilising first', 'root', 0, {
+      domain: 'conflict',
+    }),
+    // A building race that ran through the newspapers is armament and public feeling at once, and
+    // naming either sphere alone would be picking the half that suits the picture.
     bare('naval-race', 'A naval building race had hardened opinion at home', 'root', 0),
-    bare('balkan-rivalry', 'Two empires were competing over the same Balkan ground', 'root', 0),
-    bare('assassination', 'The heir to one throne was assassinated', 'root', 0, on('1914-06-28')),
-    bare(
-      'backing',
-      'One capital promised another unconditional backing',
-      'mechanism',
-      1,
-      on('1914-07-06'),
-    ),
-    bare('ultimatum', 'An ultimatum was written to be refused', 'mechanism', 2, on('1914-07-23')),
-    bare('local-war', 'A local war was declared', 'mechanism', 3, on('1914-07-28')),
-    bare(
-      'partial-mob',
-      'A partial mobilisation was ordered, then widened',
-      'mechanism',
-      4,
-      on('1914-07-29', '1914-07-31'),
-    ),
-    bare(
-      'timetables',
-      'Mobilisation timetables left no room to wait',
-      'mechanism',
-      5,
-      on('1914-07-31', '1914-08-01'),
-    ),
-    bare(
-      'second-note',
-      'A second ultimatum expired unanswered',
-      'mechanism',
-      5,
-      on('1914-07-31', '1914-08-01'),
-    ),
-    bare('general-war', 'The great powers were at war', 'outcome', 6, on('1914-08-04')),
+    bare('balkan-rivalry', 'Two empires were competing over the same Balkan ground', 'root', 0, {
+      domain: 'conflict',
+    }),
+    bare('assassination', 'The heir to one throne was assassinated', 'root', 0, {
+      ...on('1914-06-28'),
+      domain: 'conflict',
+    }),
+    bare('backing', 'One capital promised another unconditional backing', 'mechanism', 1, {
+      ...on('1914-07-06'),
+      domain: 'policy',
+    }),
+    bare('ultimatum', 'An ultimatum was written to be refused', 'mechanism', 2, {
+      ...on('1914-07-23'),
+      domain: 'policy',
+    }),
+    bare('local-war', 'A local war was declared', 'mechanism', 3, {
+      ...on('1914-07-28'),
+      domain: 'conflict',
+    }),
+    bare('partial-mob', 'A partial mobilisation was ordered, then widened', 'mechanism', 4, {
+      ...on('1914-07-29', '1914-07-31'),
+      domain: 'conflict',
+    }),
+    bare('timetables', 'Mobilisation timetables left no room to wait', 'mechanism', 5, {
+      ...on('1914-07-31', '1914-08-01'),
+      domain: 'conflict',
+    }),
+    bare('second-note', 'A second ultimatum expired unanswered', 'mechanism', 5, {
+      ...on('1914-07-31', '1914-08-01'),
+      domain: 'policy',
+    }),
+    bare('general-war', 'The great powers were at war', 'outcome', 6, {
+      ...on('1914-08-04'),
+      domain: 'conflict',
+    }),
   ],
   edges: [
     link('assassination', 'backing', 'prompted', 'causes'),
@@ -1165,15 +1179,24 @@ const PLAGUE_SPREAD: WorldSpec = {
     notes: ['An illustrative spread mechanism; the index is schematic, the dates are calendar.'],
   },
   nodes: [
-    bare('caravan', 'Grain and furs moved along a continuous caravan route', 'root', 0),
-    bare('ports', 'Ports handled ships without any quarantine', 'root', 0),
+    bare('caravan', 'Grain and furs moved along a continuous caravan route', 'root', 0, {
+      domain: 'economy',
+    }),
+    bare('ports', 'Ports handled ships without any quarantine', 'root', 0, { domain: 'policy' }),
+    // The two travel rates are how fast the trade moved, not what sphere it belonged to: a voyage
+    // and a day's road are commerce and carriage together, so neither takes a domain.
     sketched('voyage', 'Typical voyage between the main ports', 'mechanism', 1, 30, 'days', {
       detail: 'Long enough for a ship to arrive with the outbreak still aboard.',
     }),
     sketched('overland', 'Overland spread along the roads', 'mechanism', 1, 4, 'km/day'),
-    bare('rats-fleas', 'Ship rats carried infected fleas ashore', 'mechanism', 2),
-    bare('density', 'Dense towns shared water and had nowhere to isolate', 'mechanism', 3),
+    bare('rats-fleas', 'Ship rats carried infected fleas ashore', 'mechanism', 2, {
+      domain: 'health',
+    }),
+    bare('density', 'Dense towns shared water and had nowhere to isolate', 'mechanism', 3, {
+      domain: 'society',
+    }),
     sketched('reach', 'Towns on the network reporting the outbreak', 'outcome', 4, 80, '%', {
+      domain: 'health',
       series: sketchedSeries('%', [
         ['1347', 5],
         ['1348', 35],
@@ -1207,9 +1230,15 @@ const STEAM_POWER: WorldSpec = {
     ],
   },
   nodes: [
-    bare('coal-cost', 'Coal at the pithead was cheap where the engines were built', 'root', 0),
-    bare('mine-water', 'Deep mines flooded faster than horses could lift the water', 'root', 0),
-    bare('boring', 'Cylinder boring became accurate enough to hold steam', 'root', 0),
+    bare('coal-cost', 'Coal at the pithead was cheap where the engines were built', 'root', 0, {
+      domain: 'economy',
+    }),
+    bare('mine-water', 'Deep mines flooded faster than horses could lift the water', 'root', 0, {
+      domain: 'technology',
+    }),
+    bare('boring', 'Cylinder boring became accurate enough to hold steam', 'root', 0, {
+      domain: 'technology',
+    }),
     sketched(
       'condenser',
       'Coal burned per unit of work after the separate condenser',
@@ -1217,10 +1246,22 @@ const STEAM_POWER: WorldSpec = {
       1,
       -70,
       '%',
+      { domain: 'technology' },
     ),
-    bare('rotative', 'Rotative motion let engines drive machinery, not only pumps', 'mechanism', 2),
+    bare(
+      'rotative',
+      'Rotative motion let engines drive machinery, not only pumps',
+      'mechanism',
+      2,
+      {
+        domain: 'technology',
+      },
+    ),
+    // Where a mill could stand is an engineering release and a change in industrial geography in
+    // the same breath; calling it either one alone would be the stretch.
     bare('siting', 'Mills could be sited away from the fast rivers', 'mechanism', 3),
     bare('capacity', 'Installed steam capacity by sector', 'mechanism', 3, {
+      domain: 'economy',
       detail: 'Recorded sector by sector; the total is a modern reconstruction, not a return.',
       children: [
         sketched('capacity.textiles', 'Textiles', 'mechanism', 3, 340, 'khp'),
@@ -1230,6 +1271,7 @@ const STEAM_POWER: WorldSpec = {
       ],
     }),
     sketched('steam-share', 'Share of industrial power from steam', 'outcome', 4, 80, '%', {
+      domain: 'technology',
       series: sketchedSeries('%', [
         ['1760', 5],
         ['1800', 20],

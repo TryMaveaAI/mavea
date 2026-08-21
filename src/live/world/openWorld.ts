@@ -1,3 +1,4 @@
+import type { WorldNode } from './types';
 // world/openWorld.ts — the one seam between a `world` card sitting in the canvas and the surface
 // that can actually take over the screen with it. A plain module-level registry, NOT a React
 // context (canvas/focus/stepDriver.ts's idiom): the card lives inside the block registry, which
@@ -58,4 +59,36 @@ export function subscribeWorldOpener(onChange: () => void): () => void {
     unsubscribed = true;
     listeners.delete(onChange);
   };
+}
+
+/**
+ * Breakdowns the reader has already BOUGHT, kept for as long as the tab lives.
+ *
+ * Each one cost a model call. They live in the overlay's own state, so closing the surface used to
+ * throw them away and re-opening the same living answer started from nothing — the reader paying a
+ * second time for a cause they had already opened. Keyed on the world's title, which is its stable
+ * identity (the blockSignature key, pinned verbatim across augment and refine merges).
+ *
+ * Memory only, deliberately: no storage, no schema, nothing to evict. It is a convenience within one
+ * session, not a record of anything — the answer's stored copy remains the source of truth.
+ */
+const bought = new Map<string, ReadonlyMap<string, readonly WorldNode[]>>();
+
+export function rememberExpansions(
+  title: string,
+  expansions: ReadonlyMap<string, readonly WorldNode[]>,
+): void {
+  if (expansions.size > 0) bought.set(title, expansions);
+}
+
+export function recallExpansions(title: string): ReadonlyMap<string, readonly WorldNode[]> {
+  return bought.get(title) ?? new Map();
+}
+
+/** Drop everything remembered. Module state outlives a render, so without this a test that buys a
+ *  breakdown changes the world every later test in the file sees — an order-dependent flake waiting
+ *  to happen. Real callers never need it: a reader closing the surface is precisely who this is
+ *  for. */
+export function forgetExpansions(): void {
+  bought.clear();
 }

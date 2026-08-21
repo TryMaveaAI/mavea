@@ -98,8 +98,13 @@ export const px = (v: number): string => String(Math.round(v * 100) / 100);
 /** The relation modifier for an edge's class list. The kind reaches the layouts as a free string
  *  (the geometry layer has no view of the live allowlist), so it is checked before it is pasted
  *  into a selector — a class is a contract with the sheet, not a place to echo model text. */
-export const relClass = (kind: string | undefined): string =>
-  kind && /^[a-z-]{1,24}$/.test(kind) ? ` morph-edge--rel-${kind}` : '';
+export const relClass = (kind: string | undefined): string => modClass('morph-edge--rel', kind);
+
+/** A model-authored token as a CSS modifier, or nothing. The guard is the point: a class is a
+ *  contract with the stylesheet, not a place to echo whatever the model wrote — an unrecognised
+ *  token yields no class at all rather than one nothing styles. */
+export const modClass = (base: string, token: string | undefined): string =>
+  token && /^[a-z-]{1,24}$/.test(token) ? ` ${base}-${token}` : '';
 
 /** ms epoch → fractional Gregorian year, timezone-free so layout is identical everywhere. It is a
  *  plain linear map over a mean Gregorian year, which is what lets one scale carry both time reps —

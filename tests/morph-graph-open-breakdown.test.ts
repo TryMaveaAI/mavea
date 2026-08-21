@@ -72,13 +72,18 @@ describe('graph layout — an open breakdown is part of the composition', () => 
     const folded = layoutGraph(world, { viewport: HINT });
     // The folded web fits unbroken — the regime where there is no room left to absorb a breakdown.
     expect(fitScale(folded.bbox, VIEWPORT, FIT_MARGIN)).toBeGreaterThanOrEqual(LEGIBLE_SCALE);
-    expect(folded.chrome.bands).toHaveLength(0);
+    // One band: the causal ground, which every world has. READING bands are what a wrap adds, and
+    // an unwrapped composition has none of those — that is the property this pins.
+    const readingBands = (l: MorphLayout) =>
+      l.chrome.bands.filter((b) => b.className.includes('reading-band'));
+    expect(folded.chrome.bands.map((b) => b.id)).toEqual(['causal-ground']);
+    expect(readingBands(folded)).toHaveLength(0);
 
     const expanded = open(world, 'root');
     expect(fitScale(expanded.bbox, VIEWPORT, FIT_MARGIN)).toBeGreaterThanOrEqual(LEGIBLE_SCALE);
     // It bought that by breaking into reading bands, which is the honest answer — not by leaving
     // the plan alone and letting the relaxation push the web wider than the fit box.
-    expect(expanded.chrome.bands.length).toBeGreaterThan(1);
+    expect(readingBands(expanded).length).toBeGreaterThan(1);
   });
 
   it('leaves the folded composition untouched', () => {

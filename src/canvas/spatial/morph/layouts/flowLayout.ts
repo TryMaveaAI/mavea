@@ -20,6 +20,7 @@ import type {
 } from '../types';
 import { CARD_H, CARD_SLOT_H, CARD_W, DEFAULT_VIEWPORT, PAD, px, relClass } from './lanes';
 import { weightedIds } from './incidence';
+import { foldOnto, splitByFold } from './nesting';
 import { placeShelf } from './shelf';
 
 /** Horizontal pitch between one column of causes and the next. Wider than the graph's, because the
@@ -52,12 +53,37 @@ export function placeableOnFlow(node: MorphNodeDatum, world: WorldData): boolean
   return weightedIds(world).has(node.id);
 }
 
+/**
+ * Is there anything to COMPARE?
+ *
+ * A ribbon says how much of the outcome one link explains, and that is only readable against another
+ * ribbon. One measured link is a single band across an otherwise empty stage with the rest of the
+ * world held aside — the chip promises "how much each one contributed" and there is no "each".
+ *
+ * Counted on the SOURCE side deliberately. `placeableOnFlow` places BOTH ends of a weighted link, so
+ * counting placed nodes scores a one-cause world at two of two, clears every threshold, and draws
+ * nothing comparable. Contributors is the number this view is actually about.
+ */
+export function worthOnFlow(world: WorldData): boolean {
+  const top = new Set(world.nodes.filter((n) => n.parentId === undefined).map((n) => n.id));
+  const contributors = new Set<string>();
+  for (const e of world.edges) {
+    if (e.from === e.to || typeof e.weight !== 'number' || !Number.isFinite(e.weight)) continue;
+    if (!top.has(e.from) || !top.has(e.to)) continue;
+    contributors.add(e.from);
+    if (contributors.size >= 2) return true;
+  }
+  return false;
+}
+
 export const layoutFlow: LayoutFn = (world, opts) => {
   const viewport = opts?.viewport ?? DEFAULT_VIEWPORT;
   const top = world.nodes.filter((n) => n.parentId === undefined);
   const placed = top.filter((n) => placeableOnFlow(n, world));
   const shelved = top.filter((n) => !placeableOnFlow(n, world));
-  const children = world.nodes.filter((n) => n.parentId !== undefined);
+  // Flow folds a breakdown at every depth (see below), so the drawn set is exactly the top level.
+  // Taken from the shared splitter for its ancestors-first ordering, which a fold depends on.
+  const { folded: foldedFirst } = splitByFold(world, undefined);
 
   const positions = new Map<string, PlacedNode>();
   const chrome: ChromeSpec = { bands: [], paths: [], labels: [] };
@@ -135,19 +161,6 @@ export const layoutFlow: LayoutFn = (world, opts) => {
     });
   }
 
-  for (const child of children) {
-    const parent = child.parentId !== undefined ? positions.get(child.parentId) : undefined;
-    const spot = parent ?? { x: PAD, y: PAD };
-    positions.set(child.id, {
-      x: spot.x,
-      y: spot.y,
-      w: CARD_W,
-      h: CARD_H,
-      face: 'card',
-      folded: true,
-    });
-  }
-
   const cols = Math.max(1, ...[...byCol.keys()].map((c) => c + 1));
   const flowBbox: Bbox = {
     x: 0,
@@ -163,6 +176,24 @@ export const layoutFlow: LayoutFn = (world, opts) => {
   );
   for (const [id, p] of shelf.positions) positions.set(id, p);
   if (shelf.band) chrome.bands.push(shelf.band);
+
+  // A part folds onto its cause at EVERY depth — a ribbon is a measured share of the outcome, and a
+  // part of a cause has none by contract (the world's edges join top-level nodes only), so drawing
+  // one thin would read as a finding nobody made. Folding says the true thing: it is inside its
+  // cause, and its cause is right there.
+  //
+  // Two orderings matter here and both were wrong. This runs AFTER the shelf, because a part whose
+  // cause is itself held aside has no position until the band is laid out — it used to land at the
+  // flow's origin instead. And it walks ancestors-first, so a part of a part folds onto a part that
+  // has already been folded; that happened to work only while `world.nodes` arrived in tree order,
+  // which is a property of a different module and not a rule.
+  foldOnto(positions, foldedFirst, {
+    x: shelf.bbox.x + PAD,
+    y: shelf.bbox.y + PAD,
+    w: CARD_W,
+    h: CARD_H,
+    face: 'card',
+  });
 
   return { rep: 'flow', positions, edgePaths, chrome, bbox: shelf.bbox };
 };

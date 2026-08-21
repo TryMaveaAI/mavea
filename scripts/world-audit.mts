@@ -37,6 +37,7 @@ import type { Representation } from '../src/canvas/spatial/morph/types';
 // disagree about where fitting stops. At the floor the world is explicitly pannable, so content
 // past the stage edge is the design rather than a defect.
 import { FIT_FLOOR } from '../src/canvas/spatial/morph/layouts/lanes';
+import { REP_TEXT } from '../src/canvas/spatial/morph/vocabulary';
 
 /** Laptop-shaped, and deliberately above 1024: the world is art-directed for this box, and the
  *  repo's known small-screen SVG-type limit excuses nothing at this width. */
@@ -58,14 +59,12 @@ const LEGIBLE_PX = 9;
 /** The smaller side of a control's hit box, in px. Below it a pointer lands by luck. */
 const MIN_TARGET = 24;
 
-/** The view chips WorldOverlay offers, by the representation they switch to. Mirrors REP_CHIPS in
- *  WorldOverlay.tsx — the chips carry no machine-readable rep, and the audit has to name them. */
-const VIEW_LABEL: Record<Representation, string> = {
-  graph: 'Graph',
-  flow: 'Contribution',
-  timeline: 'Over time',
-  chart: 'As a chart',
-};
+/** The view chips WorldOverlay offers, by the representation they switch to. Imported rather than
+ *  mirrored: this used to be a hand-copied table, and a hand-copied table is one nobody updates —
+ *  `morph/vocabulary` is plain TS with no CSS or React import precisely so this script can read it. */
+const VIEW_LABEL: Record<Representation, string> = Object.fromEntries(
+  Object.entries(REP_TEXT).map(([rep, text]) => [rep, text.chip]),
+) as Record<Representation, string>;
 
 interface Sized {
   text: string;

@@ -86,9 +86,28 @@
 .wo-chip:hover {
   color: var(--text-primary);
 }
-.wo-chip[aria-pressed='true'] {
+.wo-chip[aria-selected='true'] {
   background: var(--presence);
   color: var(--surface-default);
+}
+
+/* The lone reading. Most worlds hold more than one view, but a quarter of them hold exactly one —
+   and rendering that as a pressed chip hands the reader a control that cannot do anything, which
+   teaches them the whole row is decoration. It NAMES the view instead: same type, same rhythm, no
+   pointer, no press state, and it never moves when the reader clicks it. */
+/* "4 parts" — a fact about the cause, on a view that cannot draw them. Deliberately NOT a control:
+   it sits in the same foot row as the break-down chip, so it must not look pressable. */
+.wo-parts-count {
+  font: 500 9.5px/1 var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.wo-chip-sole {
+  cursor: default;
+  color: var(--text-muted);
 }
 
 .wo-btn {
@@ -201,17 +220,25 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  /* Depth, not decoration: a cool wash at the causes' end and a warm one where the outcome lands,
-     so the stage has a horizon even before a single card is placed on it. */
+  /* Depth, not decoration: a wash at the causes' end and another where the outcome lands, so the
+     stage has a horizon before a single card is placed on it.
+
+     Their hues are the WORLD'S — its two commonest spheres (world/atmosphere), falling back to the
+     neutral pair below quorum, so a world about the climate and a world about a bailout are lit
+     differently at a glance. It is ambient light on the room and carries no mark on any card, which
+     is what keeps a description from reading as a claim.
+
+     The warm pole moved from 82% 88% to 84% 52%: the outcome column sits at the right MIDDLE of the
+     stage, so the light was landing below the thing it was meant to fall on. */
   background:
     radial-gradient(
       70% 60% at 22% 18%,
-      color-mix(in srgb, var(--presence) 9%, transparent),
+      color-mix(in srgb, var(--wo-air-1, var(--presence)) 10%, transparent),
       transparent 70%
     ),
     radial-gradient(
-      60% 55% at 82% 88%,
-      color-mix(in srgb, var(--insight) 6%, transparent),
+      62% 58% at 84% 52%,
+      color-mix(in srgb, var(--wo-air-2, var(--insight)) 7%, transparent),
       transparent 70%
     ),
     var(--surface-deep, var(--surface-default));
@@ -312,6 +339,16 @@
 
 /* A figure on a card sits under its label, in the insight accent — the trust layer keeps it plain
    text until it is hovered, so this is colour and rhythm, never a badge. */
+/* An illustrative figure must not wear the ink a MEASURED one wears.
+   `content/value` already types every figure on an illustrative world as illustrative, and
+   `ProvValue` already publishes that as `data-status` — but nothing keyed on it, so a textbook
+   number came out in the same confident insight as one with a receipt behind it. Warning is the
+   token whose documented meaning is inferred-or-uncertain, and the italic is the register
+   `.wo-when` already uses for a date only the model knows.
+
+   The mark is carried in COLOUR and SLANT rather than in a prefix glyph: `.wo-num` is a real button
+   (it opens the receipt), and generated content lands in a button's accessible name — a screen
+   reader would have read "approximately 500, source available" from a decoration. */
 .wo-num {
   font-size: 12.5px;
   font-weight: 600;
@@ -330,20 +367,117 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* An illustrative world re-inks its own history to match its figures. Scoped to the stage, so the
+   indirection in morph.css keeps its measured default everywhere else. */
+.wo-stage[data-illustrative] {
+  --mv-series-ink: var(--warning);
+}
+
+/* The cause's own history, behind its foot row. Absolutely positioned so it costs the card's flex
+   column no height, and at decoration scale on purpose: no axis, no ticks, no numbers, nothing a
+   value could be read off. It says "this one moved, and roughly like this" — which is what the
+   chart view says loudly, and what a bare three-bar glyph said abstractly. */
+/* The invitation, and it LEADS the standing rail. Primary ink, because the one thing telling a
+   reader what this surface is for should not be the faintest text on it. */
+/* Filled while the surface is untouched, outlined once the reader has done anything. Same box in
+   both states, so settling it moves nothing. */
+/* The wait's horizon: the same ground the built stage draws, with nothing on it yet. It fades out
+   at the right so it reads as a world continuing rather than a bar that stops. */
+.wo-shell-ground {
+  width: min(560px, 70%);
+  height: 96px;
+  border-radius: 18px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--insight) 7%, transparent),
+    transparent 88%
+  );
+}
+
+.wo-play[data-inviting] {
+  color: var(--surface-default);
+  background: var(--presence);
+  border-color: transparent;
+}
+.wo-play-aside {
+  font: 400 11.5px/1 var(--font);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The view's own name, leading the legend — read first by a screen reader, and a quiet anchor for
+   the eye when the geometry has just rearranged itself. */
+.wo-legend-view {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.wo-invite {
+  margin: 0 0 6px;
+  font: 400 13px/1.45 var(--font);
+  color: var(--text-primary);
+}
+.wo-invite strong {
+  font-weight: 600;
+}
+
+.wo-trace {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 22px;
+  opacity: 0.16;
+  pointer-events: none;
+}
+.wo-trace path {
+  stroke: var(--mv-series-ink, var(--insight));
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wo-num[data-status='illustrative'] {
+  color: color-mix(in oklab, var(--warning) 78%, var(--text-primary));
+  font-style: italic;
+}
+
+/* A badge that says the same thing on every card carries no information and costs the foot row 28px
+   of width — which is exactly the room a date needs. Where every cause shares a tier, the fact is
+   stated once, in the banner above the stage, instead of repeated under each label. */
+.wo-stage[data-uniform-tier] .mv-tier {
+  display: none;
+}
+/* Quiet at rest, present on approach. A bordered, backgrounded pill on EVERY expandable card is a
+   lot of chrome for an affordance most readers use on one cause — and drawing breakdowns two levels
+   deep multiplies the number of cards wearing it, so this gets louder, not quieter, over time.
+
+   The box is identical at rest and on hover — `1px solid transparent`, never `border: 0` — because
+   a chip that changed size under the pointer would shove the tier badge sitting beside it. The busy
+   and disabled states are untouched: a chip that is WAITING should be loud. */
 .wo-expand {
   flex: none;
   font: 500 9.5px/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
-  background: var(--surface-glass);
-  border: 1px solid var(--line-soft);
+  color: var(--text-faint);
+  background: none;
+  border: 1px solid transparent;
   border-radius: var(--r-full);
   padding: 4px 8px;
   cursor: pointer;
   transition:
     color var(--m-fast, 120ms) var(--ease-out, ease),
     border-color var(--m-fast, 120ms) var(--ease-out, ease);
+}
+
+.mv-node:hover .wo-expand,
+.mv-node:focus-within .wo-expand,
+.mv-node[data-selected] .wo-expand,
+.wo-expand[aria-busy='true'] {
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+  border-color: var(--line-soft);
 }
 .wo-expand:hover:not(:disabled) {
   color: var(--text-primary);

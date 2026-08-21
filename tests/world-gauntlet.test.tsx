@@ -592,18 +592,28 @@ describe('World gauntlet — the surface renders every scenario', () => {
     (id, scenario) => {
       const { container, unmount } = render(<WorldOverlay spec={scenario.spec} />);
       const seen: string[] = [];
-      // A view a world cannot fill is not offered at all, so sweep the chips this world actually
-      // has. Graph is unconditional — every world has causal structure — which keeps this a real
-      // sweep rather than one that could silently degrade to visiting nothing.
-      for (const view of ['Graph', 'As a chart', 'Over time', 'Graph']) {
-        const chip = screen.queryByRole('button', { name: view }) as HTMLButtonElement | null;
-        if (!chip) {
-          expect(view).not.toBe('Graph');
-          continue;
-        }
+      // Sweep the chips this world ACTUALLY renders, not a hard-coded list. The old list named three
+      // views and so never once pressed Contribution — a hole every new representation would have
+      // inherited. Reading the row also means the sweep follows the offer rules instead of
+      // duplicating them: a view is refused when it cannot fill the world, and again when the
+      // picture it would draw says nothing.
+      const chips = () =>
+        Array.from(container.querySelectorAll<HTMLButtonElement>('.wo-views .wo-chip'));
+      const offered = chips().map((c) => c.textContent ?? '');
+      // Every world has causal structure, so the causal web is always among the readings — as a chip
+      // when there is a choice, and as a plain label when it is the only one.
+      const sole = container.querySelector('.wo-chip-sole');
+      expect(offered.length > 0 || sole !== null, `${id}: no reading offered at all`).toBe(true);
+      if (offered.length > 0) expect(offered, id).toContain('Graph');
+      else expect(sole?.textContent, id).toBe('Graph');
+
+      for (let i = 0; i < offered.length; i += 1) {
+        const chip = chips()[i];
         act(() => chip.click());
-        seen.push(...debrisIn(container).map((t) => `${id}/${view}: ${t}`));
+        seen.push(...debrisIn(container).map((t) => `${id}/${offered[i]}: ${t}`));
       }
+      // …and back to where it started, so the morph is exercised in both directions.
+      if (offered.length > 1) act(() => chips()[0].click());
       // Every node of the world reaches the DOM in every view — the morph moves elements, it never
       // swaps them out.
       const nodeCount = allNodes(scenario.spec).length;

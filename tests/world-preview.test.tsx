@@ -10,7 +10,7 @@ import { WorldPreview } from '../src/canvas/blocks/diagrams/WorldPreview';
 import { registerWorldOpener } from '../src/live/world/openWorld';
 import { WORLD_SEED } from '../src/live/world/seed';
 
-const EXPLORE = /open the world/i;
+const EXPLORE = /open the living answer/i;
 
 afterEach(cleanup);
 

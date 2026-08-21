@@ -29,6 +29,7 @@ import { STATUS_LABEL } from '../../../live/trust/display';
 import { isReal } from '../../../live/ground/types';
 import type { WorldSpec } from '../../../live/world/types';
 import type { WorldPreviewProps } from './types';
+import { sentenceCase } from '../../../lib/sentenceCase';
 
 /** How much of this world is actually backed: every verified receipt on a node or an edge. A
  *  count of the evidence, never a figure from it. */
@@ -71,7 +72,7 @@ export function WorldPreview({ title, world, outcome, delay, blockId }: Props) {
         {illustrative && <span className="wp-badge">{STATUS_LABEL.illustrative}</span>}
       </div>
 
-      <h3 className="wp-question">{title}</h3>
+      <h3 className="wp-question">{sentenceCase(title)}</h3>
 
       {explains && <p className="wp-outcome">Explains: {explains}</p>}
 
@@ -83,7 +84,7 @@ export function WorldPreview({ title, world, outcome, delay, blockId }: Props) {
             ? plural(receipts, 'receipt', 'receipts')
             : grounded
               ? 'no receipts yet'
-              : 'structure only, no numbers'}
+              : 'a shape, not a measurement'}
         </p>
       ) : (
         // The cost model, said plainly on the card that would spend it: the answer above was
@@ -93,7 +94,7 @@ export function WorldPreview({ title, world, outcome, delay, blockId }: Props) {
 
       {openable && blockId && (
         <button type="button" className="wp-open" onClick={() => requestOpenWorld(blockId)}>
-          Open the world
+          Open the living answer
           <Icon.chevR className="ic" />
         </button>
       )}

@@ -26,6 +26,7 @@ import {
   yearOf,
   type TimeTick,
 } from './lanes';
+import { foldOnto, splitByFold } from './nesting';
 import { placeShelf } from './shelf';
 
 const PLOT_W = 880;
@@ -61,10 +62,45 @@ function seriesOf(node: MorphNodeDatum): SeriesNode | null {
   return points.length > 0 ? { node, points } : null;
 }
 
-/** Can this representation draw the node a line, rather than shelve it? Exported so a surface
- *  deciding whether to OFFER the chart asks the same question the lane below asks before shelving —
- *  a second copy of the test is a copy that drifts. */
+/** Can this representation draw the node a line, rather than shelve it?
+ *
+ *  ONE point is enough here and that is deliberate: a node with a single receipted observation HAS
+ *  something measured over time, and shelving it under "nothing measured over time" would be a false
+ *  sentence about it. Whether the CHART as a whole is worth offering is a different, stricter
+ *  question — `worthOnChart` below. */
 export const placeableOnChart = (node: MorphNodeDatum): boolean => seriesOf(node) !== null;
+
+/**
+ * Is there a PLOT here, or a dot?
+ *
+ * One observation is not a history, and one line has nothing to be read against — so the chip asks
+ * for two lines and for a y axis that actually moves.
+ *
+ * Movement is asked per UNIT BAND rather than per series, and that is the whole subtlety: five flat
+ * series at five different levels is a ranking a reader takes straight off the axis, while five flat
+ * series at the SAME level is one line drawn five times with five leaders pointing at it. Taking the
+ * range over every point in a band catches the within-series and the across-series case at once.
+ */
+export function worthOnChart(world: WorldData): boolean {
+  const byUnit = new Map<string, { lo: number; hi: number }>();
+  let lines = 0;
+  for (const node of world.nodes) {
+    if (node.parentId !== undefined) continue;
+    const s = seriesOf(node);
+    if (!s || s.points.length < 2) continue;
+    lines += 1;
+    const unit = node.unit ?? '';
+    const range = byUnit.get(unit) ?? { lo: Infinity, hi: -Infinity };
+    for (const p of s.points) {
+      range.lo = Math.min(range.lo, p.v);
+      range.hi = Math.max(range.hi, p.v);
+    }
+    byUnit.set(unit, range);
+  }
+  if (lines < 2) return false;
+  for (const { lo, hi } of byUnit.values()) if (hi > lo) return true;
+  return false;
+}
 
 /** One unit's own plot: its value domain, its gridlines, and where it sits in the stack. */
 interface UnitBand {
@@ -215,10 +251,15 @@ function place(
   world: WorldData,
   plot: PlotSpec | null,
   viewport: { w: number; h: number },
+  expanded: ReadonlySet<string> | undefined,
 ): Omit<MorphLayout, 'rep'> {
+  // An unopened part folds onto its cause rather than being plotted or held aside — see the same
+  // rule on the timeline. The band's count is a promise about the WORLD, not about how much of a
+  // breakdown the reader happens to have bought.
+  const { drawn, folded } = splitByFold(world, expanded);
   const series: SeriesNode[] = [];
   const shelved: MorphNodeDatum[] = [];
-  for (const node of world.nodes) {
+  for (const node of drawn) {
     const s = seriesOf(node);
     if (s && plot) series.push(s);
     else shelved.push(node);
@@ -379,10 +420,18 @@ function place(
   );
   if (shelf.band) chrome.bands.push(shelf.band);
   for (const [id, placed] of shelf.positions) positions.set(id, placed);
+  // After the shelf, so a folded part whose cause is itself held aside still lands on it.
+  foldOnto(positions, folded, {
+    x: shelf.bbox.x + PAD,
+    y: shelf.bbox.y + PAD,
+    w: MARK,
+    h: MARK,
+    face: 'mark',
+  });
   return { positions, edgePaths: [], chrome, bbox: shelf.bbox };
 }
 
 export const layoutChart: LayoutFn = (world, opts) => ({
   rep: 'chart',
-  ...place(world, plotSpec([world]), opts?.viewport ?? DEFAULT_VIEWPORT),
+  ...place(world, plotSpec([world]), opts?.viewport ?? DEFAULT_VIEWPORT, opts?.expandedIds),
 });

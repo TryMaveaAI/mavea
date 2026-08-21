@@ -14,6 +14,8 @@
 // when the standing world cannot answer it for free.
 import type { Representation } from '../../canvas/spatial/morph/types';
 import type { WorldSpec } from './types';
+import { worldToMorph } from '../../canvas/spatial/morph/adapters';
+import { representationHolds } from '../../canvas/spatial/morph/offers';
 
 /** A follow-up that EVOLVES the world already on the canvas rather than opening a new subject:
  *  another representation of the same nodes, a counterfactual, or a zoom into one of them. */
@@ -52,9 +54,15 @@ function representationAsked(text: string): Representation | null {
   return null;
 }
 
-/** Two points make a line; one is a dot pretending to be a trend. */
-const hasSeries = (world: WorldSpec): boolean =>
-  world.nodes.some((n) => (n.series?.points.length ?? 0) >= 2);
+/** Would the surface actually OFFER this view of the standing world?
+ *
+ *  Asked of the surface's own gate rather than re-derived here. This module used to carry its own
+ *  "two points make a line" test, and the two answers drifted: on a world with a single 2-point
+ *  series it said yes, `representationHolds` said no, and the reader who asked to see it as a chart
+ *  was told the answer was free and then handed the causal web with no chart chip and nothing saying
+ *  why. A promise the turn makes has to be one the overlay keeps. */
+const wouldOffer = (world: WorldSpec, rep: Representation): boolean =>
+  representationHolds(rep, worldToMorph(world));
 
 /** What a follow-up on the STANDING world costs.
  *
@@ -73,5 +81,5 @@ export function followUpPlan(
   if (!detectWorldFollowUp(text)) return null;
   const rep = representationAsked(text);
   if (!rep) return { kind: 'local', view: 'graph' }; // a what-if or a zoom — both are local
-  return hasSeries(world) ? { kind: 'local', view: rep } : { kind: 'evolve' };
+  return wouldOffer(world, rep) ? { kind: 'local', view: rep } : { kind: 'evolve' };
 }

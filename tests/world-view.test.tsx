@@ -250,7 +250,7 @@ describe('the world control in the answer header', () => {
     expect(getViewMode()).toBe('world');
 
     // …and leaving lands back in the answer, in the mode the reader actually chose.
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the answer' }));
     await waitFor(() => expect(screen.queryByLabelText(`Living answer: ${question}`)).toBeNull());
     expect(getViewMode()).toBe(savedViewMode());
   });
@@ -298,10 +298,12 @@ describe('what entering the view costs', () => {
       fireEvent.click(chip);
     });
     await waitFor(() => expect(worldCalls()).toHaveLength(1));
-    // The built world is on screen, not the wait state.
-    expect(await screen.findByRole('button', { name: 'Graph' })).toBeTruthy();
+    // The built world is on screen, not the wait state. Asserted on the STAGE rather than on a
+    // named chip: which views a world offers, and how many, is now a property of the world.
+    await waitFor(() => expect(document.querySelector('.wo-stage')).toBeTruthy());
+    expect(document.querySelector('.wo-shell')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the answer' }));
     await waitFor(() => expect(screen.queryByLabelText(`Living answer: ${question}`)).toBeNull());
 
     // Re-entering re-renders what the card now carries — no second call, by any route.

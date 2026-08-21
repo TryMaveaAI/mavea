@@ -41,6 +41,12 @@ export interface WorldTransportProps {
   expanded: boolean;
   onToggle: () => void;
   onSeek: (index: number) => void;
+  /** Nothing on this world has been touched yet. The walk is the best first move a reader can make
+   *  here — it costs no model call, it explains the world, and it TEACHES the other two affordances
+   *  by performing them (it selects causes, lights links, changes the view). It was also the
+   *  quietest control on screen. While the surface is untouched it leads; the first interaction of
+   *  any kind settles it back for good. */
+  inviting?: boolean;
 }
 
 export function WorldTransport({
@@ -51,6 +57,7 @@ export function WorldTransport({
   expanded,
   onToggle,
   onSeek,
+  inviting,
 }: WorldTransportProps): ReactElement | null {
   if (count === 0) return null;
   const at = Math.min(Math.max(index, -1), count - 1);
@@ -69,6 +76,7 @@ export function WorldTransport({
         <button
           type="button"
           className="wo-play"
+          data-inviting={inviting && !playing ? '' : undefined}
           onClick={onToggle}
           aria-label={playing ? 'Pause the walkthrough' : 'Walk me through it'}
         >
@@ -77,6 +85,7 @@ export function WorldTransport({
           </span>
           <span className="wo-play-label">{playing ? 'Pause' : 'Walk me through it'}</span>
         </button>
+        {inviting && !playing && <span className="wo-play-aside">or press any cause</span>}
         {/* One segment per beat. Real buttons, not a slider: the beats are discrete and named, so a
             reader can jump to the cause they care about and a screen reader can say which.
             Only while the walk is up. The track spans the stage, and the stage is a CANVAS the

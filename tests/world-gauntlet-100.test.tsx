@@ -732,7 +732,12 @@ describe('Gauntlet-100 — chart sanity', () => {
     const bad: string[] = [];
     for (const p of PASSES) {
       if (p.rep !== 'chart') continue;
-      const marks = [...p.layout.positions.entries()].filter(([, n]) => n.face === 'mark');
+      // Painted marks only. A part the reader has not opened folds onto its cause — coincident by
+      // design, because that is what it animates out of — and it paints nothing and takes no hit
+      // target, so it cannot crowd anything.
+      const marks = [...p.layout.positions.entries()].filter(
+        ([, n]) => n.face === 'mark' && n.folded !== true,
+      );
       for (let i = 0; i < marks.length; i++) {
         for (let j = i + 1; j < marks.length; j++) {
           const [aId, a] = marks[i];
@@ -773,17 +778,26 @@ describe('Gauntlet-100 — the surface renders every scenario', () => {
       const { id, spec } = scenario;
       try {
         const { container, unmount } = render(<WorldOverlay spec={spec} />);
-        // Only the views this world offers exist as chips; Graph always does, so a world can
-        // never quietly opt out of the sweep entirely.
-        for (const view of ['Graph', 'As a chart', 'Over time', 'Graph']) {
-          const chip = screen.queryByRole('button', { name: view }) as HTMLButtonElement | null;
-          if (!chip) {
-            if (view === 'Graph') bad.push(`${id}: no Graph chip — every world has one`);
-            continue;
-          }
-          act(() => chip.click());
-          bad.push(...debrisIn(container).map((t) => `${id}/${view}: ${t}`));
+        // Sweep the chips this world actually renders. A hard-coded list named three views and so
+        // never pressed Contribution once across a hundred worlds — and every view added later
+        // would have inherited that hole. Reading the row keeps the sweep honest by construction.
+        const chips = () =>
+          Array.from(container.querySelectorAll<HTMLButtonElement>('.wo-views .wo-chip'));
+        const offered = chips().map((c) => c.textContent ?? '');
+        const sole = container.querySelector('.wo-chip-sole')?.textContent ?? null;
+        // Every world has causal structure, so the causal web is always among the readings — a chip
+        // where there is a choice, a plain label where it is the only one.
+        if (offered.length === 0 && sole === null) bad.push(`${id}: no reading offered at all`);
+        else if (offered.length > 0 && !offered.includes('Graph')) {
+          bad.push(`${id}: Graph missing from [${offered.join(', ')}]`);
+        } else if (offered.length === 0 && sole !== 'Graph') {
+          bad.push(`${id}: sole reading is ${sole}, not Graph`);
         }
+        for (let i = 0; i < offered.length; i += 1) {
+          act(() => chips()[i].click());
+          bad.push(...debrisIn(container).map((t) => `${id}/${offered[i]}: ${t}`));
+        }
+        if (offered.length > 1) act(() => chips()[0].click());
         const nodeCount = allNodes(spec).length;
         const painted = container.querySelectorAll('.mv-node').length;
         if (painted !== nodeCount) {

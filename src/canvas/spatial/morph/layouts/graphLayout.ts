@@ -782,7 +782,44 @@ function place(world: WorldData, opts: LayoutOpts | undefined): Omit<MorphLayout
           };
         });
 
-  return { positions, edgePaths, chrome: { bands, paths: [], labels: [] }, bbox };
+  // …and ONE strip behind the whole composition, always. The reading bands appear only where a world
+  // wraps onto a second row, so a three-to-six cause world — the common one — got no ground at all
+  // and its cards floated on a flat panel. That is a large part of "it looks unfinished", and it is
+  // the case a live answer is most often in. Emitted FIRST so it paints behind the reading bands,
+  // and clamped into the bbox like them, so no fit changes.
+  const ground: ChromeSpec['bands'] = empty
+    ? []
+    : [
+        {
+          id: 'causal-ground',
+          x: contentLeft - BAND_INSET,
+          y: bbox.y,
+          w: contentRight - contentLeft + BAND_INSET * 2,
+          h: bbox.h,
+          className: 'morph-causal-ground',
+        },
+      ];
+
+  return {
+    positions,
+    edgePaths,
+    chrome: { bands: [...ground, ...bands], paths: [], labels: [] },
+    bbox,
+  };
 }
+
+/**
+ * The honest floor, and the only unconditional one.
+ *
+ * The causal web places every node it is given and claims nothing the world did not: the reader
+ * asked a causal question, and "what led to what" is the answer to it. It is `true` by CONTRACT
+ * rather than by omission — the first-read fallback lands here, the walk's establishing shot names
+ * it, and the chip row must never be empty. A corpus-wide test pins it so nobody tightens it later.
+ *
+ * A three-cause world with no drawn links is genuinely thin, but the cure for that is a richer world
+ * and a better rail — never a refused graph. A surface that can offer nothing at all is worse than
+ * one offering the only true reading it has.
+ */
+export const worthOnGraph = (): true => true;
 
 export const layoutGraph: LayoutFn = (world, opts) => ({ rep: 'graph', ...place(world, opts) });
