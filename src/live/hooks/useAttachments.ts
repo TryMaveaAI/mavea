@@ -16,8 +16,10 @@ export interface UseAttachments {
   /** Whether the most recent turn was sent with files attached (drives evidence-panel copy). */
   turnHadFiles: boolean;
   setTurnHadFiles: Dispatch<SetStateAction<boolean>>;
-  /** Encode picked files into staged attachments, enforcing the guards and surfacing rejections. */
-  onFiles: (files: File[]) => Promise<void>;
+  /** Encode picked files into staged attachments, enforcing the guards and surfacing rejections.
+   *  Resolves to what was ACTUALLY staged, so a caller that picked files for a purpose can act on
+   *  them straight away rather than waiting a render for `attached` to catch up. */
+  onFiles: (files: File[]) => Promise<Attachment[]>;
   /** Drop a staged attachment by index. */
   removeAttachment: (idx: number) => void;
 }
@@ -31,12 +33,12 @@ export function useAttachments(): UseAttachments {
   // Encode picked files into staged attachments, enforcing the count/size/type guards and
   // surfacing the first rejection reason so a too-large or unsupported file isn't silent.
   const onFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[]): Promise<Attachment[]> => {
       setAttachError(null);
       const room = MAX_ATTACHMENTS - attached.length;
       if (room <= 0) {
         setAttachError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
-        return;
+        return [];
       }
       const next: Attachment[] = [];
       let rejected: string | null = null;
@@ -54,6 +56,7 @@ export function useAttachments(): UseAttachments {
       if (files.length > room) rejected = `Only the first ${room} file(s) were added.`;
       if (next.length) setAttached((cur) => [...cur, ...next]);
       if (rejected) setAttachError(rejected);
+      return next;
     },
     [attached.length],
   );

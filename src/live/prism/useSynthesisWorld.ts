@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment } from '../attachments';
 import type { ModelConfig } from '../../types/mavea';
 import { mapCorpus } from './synthesis/mapCorpus';
+import { synthesisMapKey, readSynthesisMap, writeSynthesisMap, rehydrateSources } from './cache';
+import type { CachedSynthesisMap } from './cache';
 import type { CorpusPhase, CorpusSpec } from './synthesis/types';
 
 export interface UseSynthesisWorldReturn {
@@ -21,8 +23,9 @@ export interface UseSynthesisWorldReturn {
   /** The current pipeline stage line, shown under the bloom animation. */
   stage: string;
   error: string | null;
-  /** Start (or restart) the synthesis for a pile of sources. */
-  synthesize: (sources: readonly Attachment[]) => void;
+  /** Start (or restart) the synthesis for a pile of sources. `fresh` skips the remembered map
+   *  and re-reads every source for real. */
+  synthesize: (sources: readonly Attachment[], opts?: { fresh?: boolean }) => void;
   reset: () => void;
 }
 
@@ -65,7 +68,7 @@ export function useSynthesisWorld(cfg: ModelConfig | null): UseSynthesisWorldRet
   }, [cleanup]);
 
   const synthesize = useCallback(
-    (sources: readonly Attachment[]) => {
+    (sources: readonly Attachment[], opts?: { fresh?: boolean }) => {
       if (!cfg) {
         setError('Connect a model to synthesize a corpus.');
         setPhase('error');
@@ -86,30 +89,59 @@ export function useSynthesisWorld(cfg: ModelConfig | null): UseSynthesisWorldRet
         if (runIdRef.current === runId) setPhase((p) => (p === 'igniting' ? 'blooming' : p));
       }, IGNITE_MS);
 
-      void mapCorpus(sources, cfg, ac.signal, {
-        onProgress: (s) => {
-          if (runIdRef.current === runId) setStage(s);
-        },
-      })
-        .then((res) => {
+      const key = synthesisMapKey(sources, cfg);
+      const settle = (res: CachedSynthesisMap) => {
+        setSpec(res.spec);
+        setCorpus(res.corpus);
+        // A remembered map names its sources; it never carries their bytes. The panels get those
+        // from the files the reader still has open, matched back by identity.
+        setSourcesAtt(rehydrateSources(res.sourcesAtt, sources));
+        setProposed(res.proposed);
+        setPhase('settled');
+      };
+
+      void (async () => {
+        try {
+          // A corpus already fused from these exact sources under this exact model. Synthesis is
+          // the most expensive thing Prism does — many documents, several calls — and re-opening
+          // one is the common case, so re-running it charges the reader again for a result that
+          // cannot have changed. See prism/cache.ts.
+          if (!opts?.fresh) {
+            const hit = await readSynthesisMap(key);
+            if (runIdRef.current !== runId) return;
+            if (hit) {
+              settle(hit);
+              return;
+            }
+          }
+          const res = await mapCorpus(sources, cfg, ac.signal, {
+            onProgress: (s) => {
+              if (runIdRef.current === runId) setStage(s);
+            },
+          });
           if (runIdRef.current !== runId) return;
           if (res.spec) {
-            setSpec(res.spec);
-            setCorpus(res.corpus ?? null);
-            setSourcesAtt(res.sourcesAtt ?? null);
-            setProposed(res.proposed);
-            setPhase('settled');
+            const value: CachedSynthesisMap = {
+              spec: res.spec,
+              corpus: res.corpus ?? null,
+              sourcesAtt: res.sourcesAtt ?? null,
+              proposed: res.proposed,
+            };
+            settle(value);
+            // Best-effort; a failed write only costs the next open a re-run. Failures are never
+            // written — an error is not a result worth remembering.
+            void writeSynthesisMap(key, value);
           } else {
             setError(res.error ?? 'This corpus could not be synthesized.');
             setPhase('error');
           }
-        })
-        .catch((err: unknown) => {
+        } catch (err: unknown) {
           if (runIdRef.current !== runId) return;
           if (ac.signal.aborted) return;
           setError(err instanceof Error ? err.message : 'Synthesis failed.');
           setPhase('error');
-        });
+        }
+      })();
     },
     [cfg, cleanup],
   );

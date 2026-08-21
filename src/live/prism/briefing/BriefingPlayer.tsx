@@ -1,20 +1,44 @@
-// briefing/BriefingPlayer.tsx — drives The Briefing: a silent, captioned flight along the argument's
-// spine. Each beat frames the camera (via onBeat) and shows a verbatim caption; the flight auto-times
-// off each beat's length. SILENT BY DEFAULT — audio is an explicit 🔊 opt-in (then each beat speaks its
-// plain twin). Honors prefers-reduced-motion by not auto-advancing (you step it). No model call.
+// briefing/BriefingPlayer.tsx — drives The Briefing: a captioned flight along the argument's spine.
+// Each beat frames the camera (via onBeat) and shows a verbatim caption, and speaks its plain twin.
+// Narration is ON by default for a briefing the reader asked for — being told about the document is
+// the point of asking — and OFF for the first-run tour, which narrates over the top itself. Either
+// way it is one toggle. Honors prefers-reduced-motion by not auto-advancing (you step it). No model
+// call.
+//
+// WHAT PACES IT. Silent, a beat holds for `dwellMs` — an estimate of how long its caption takes to
+// read, which is the only signal there is. With AUDIO ON that estimate is the wrong clock and used
+// to be the only one: ~17 characters a second, capped at 7s, while the next beat opened by
+// cancelling the current line. Any beat longer than the cap — or any voice slower than 1× — was
+// guillotined mid-word, which is what made the document briefing sound like it kept interrupting
+// itself. Voiced, a beat now ends when its narration ends, the same rule the reveal walk follows
+// (walkSync). Every wait is bounded: a voice that never starts falls back to the silent pacing, and
+// one that never finishes is capped, so the flight can stall on nothing.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { bounded } from '../../../lib/bounded';
+import { delay, waitLineEnd, MIN_STOP_MS } from '../../walkSync';
+import type { SpokenLine } from '../../../voice/tts';
 import type { BeatKind, BriefingBeat } from './types';
 import './briefing.css';
+
+/** How long to wait for the voice module to hand back a line handle before pacing this beat as if
+ *  it were silent. The module is lazily imported, so the first beat pays a chunk fetch. */
+const HANDLE_CAP_MS = 4_000;
 
 export interface BriefingPlayerProps {
   beats: BriefingBeat[];
   /** Frame the camera on + glow this beat's cards. */
   onBeat: (beat: BriefingBeat) => void;
   onExit: () => void;
-  /** Speak a line (only called when the reader turns audio on). */
-  speak: (text: string) => void;
+  /** Speak a line (only called when audio is on). Resolves to the line's lifecycle handle, which
+   *  is what paces a voiced flight; null when nothing will be heard. */
+  speak: (text: string) => Promise<SpokenLine | null>;
   cancelSpeak: () => void;
+  /** Whether narration starts on. A briefing the reader ASKED for is a narrated flight — being
+   *  told about the document is the point, and starting it mute meant most people never heard it.
+   *  The first-run tour passes false: it narrates over the top itself, and two voices at once is
+   *  worse than either. Toggleable either way. */
+  audioDefault?: boolean;
 }
 
 const KIND_EYEBROW: Record<BeatKind, string> = {
@@ -46,11 +70,12 @@ export function BriefingPlayer({
   onExit,
   speak,
   cancelSpeak,
+  audioDefault = true,
 }: BriefingPlayerProps): ReactElement {
   const reduced = usePrefersReducedMotion();
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(!reduced);
-  const [audioOn, setAudioOn] = useState(false);
+  const [audioOn, setAudioOn] = useState(audioDefault);
 
   // Callbacks read through a ref so the per-beat effect keys only on the beat + audio toggle.
   const cbs = useRef({ onBeat, speak, cancelSpeak });
@@ -59,22 +84,51 @@ export function BriefingPlayer({
   const beat = beats[idx];
   const last = idx >= beats.length - 1;
 
-  // Each beat: frame the camera, and (only if audio is on) speak its plain twin.
+  // This beat's line, once it is speaking. Held in a ref rather than state: the advance effect
+  // below awaits it, and re-rendering the whole player when a promise lands buys nothing.
+  const lineRef = useRef<Promise<SpokenLine | null> | null>(null);
+
+  // Each beat: frame the camera, and (only if audio is on) speak its plain twin. The cancel here
+  // is for a JUMP (prev/next/replay/mute) — advancing naturally leaves nothing to cancel, because
+  // the line has already finished by then.
   useEffect(() => {
     if (!beat) return;
     cbs.current.onBeat(beat);
-    if (audioOn) {
-      cbs.current.cancelSpeak();
-      cbs.current.speak(beat.spoken);
+    if (!audioOn) {
+      lineRef.current = null;
+      return;
     }
+    cbs.current.cancelSpeak();
+    lineRef.current = cbs.current.speak(beat.spoken).catch(() => null);
   }, [beat, audioOn]);
 
   // Auto-advance while playing (never under reduced-motion — then you step it yourself).
   useEffect(() => {
     if (!playing || reduced || !beat || last) return;
-    const t = setTimeout(() => setIdx((i) => Math.min(beats.length - 1, i + 1)), beat.dwellMs);
-    return () => clearTimeout(t);
-  }, [beat, playing, reduced, last, beats.length]);
+    let cancelled = false;
+    const go = (): void => {
+      if (!cancelled) setIdx((i) => Math.min(beats.length - 1, i + 1));
+    };
+    if (!audioOn) {
+      const t = setTimeout(go, beat.dwellMs);
+      return () => {
+        cancelled = true;
+        clearTimeout(t);
+      };
+    }
+    void (async () => {
+      const line = await bounded(lineRef.current ?? Promise.resolve(null), HANDLE_CAP_MS);
+      if (cancelled) return;
+      // A real line ends the beat when it stops speaking, floored so a one-clause beat still
+      // reads. No line (voice down, or the module never loaded) paces as if silent.
+      if (line) await waitLineEnd(line, beat.dwellMs, MIN_STOP_MS);
+      else await delay(beat.dwellMs);
+      go();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [beat, playing, reduced, last, beats.length, audioOn]);
 
   // Reaching the end stops playback (the button becomes "Replay").
   useEffect(() => {

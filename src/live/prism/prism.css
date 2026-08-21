@@ -679,7 +679,7 @@
    the group's currentColor, concrete like every pen ink so the reel matches. */
 .prism-pen-glyph {
   fill: currentColor;
-  font-family: 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', 'Marker Felt', cursive;
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', 'Marker Felt', cursive;
   font-weight: 700;
   opacity: 0;
   animation: prism-glyph-in 0.4s ease-out calc(var(--ink-delay, 0ms) + 0.6s) forwards;

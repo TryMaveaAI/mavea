@@ -234,6 +234,10 @@ export interface PrismOverlayProps {
   world?: ExternalWorld;
   /** Corpus mode: the lens switcher + gap/consensus objects layered on the shared view. */
   corpusChrome?: CorpusChrome;
+  /** Corpus mode: re-run the OWNER's pipeline for Replay. Without it, Replay on an externally
+   *  settled world ran this component's own single-document explode over the corpus attachments —
+   *  the wrong pipeline entirely. The owner also decides what "from scratch" means for it. */
+  onReplay?: () => void;
   /** The first-run tour: once the map settles, auto-play the silent claim fly-through (camera glows
    *  each grounded claim in turn) — no bytes, no model. */
   autoBriefing?: boolean;
@@ -246,6 +250,7 @@ export function PrismOverlay({
   onClose,
   world,
   corpusChrome,
+  onReplay,
   autoBriefing,
 }: PrismOverlayProps): ReactElement {
   const pdfs = useMemo(() => (Array.isArray(pdf) ? pdf : [pdf as Attachment]), [pdf]);
@@ -320,6 +325,9 @@ export function PrismOverlay({
   // handled separately below (it backs out of nested panels before closing the whole overlay),
   // so onEscape is intentionally left unset here.
   const panelRef = useRef<HTMLElement>(null);
+  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim's
+  // handlers below. A click is only a dismissal when the whole gesture happened out there.
+  const downOnScrim = useRef(false);
   useFocusTrap(panelRef);
   // Veracity: load-bearing claims checked against the live world → a verdict + gated web citation per
   // claim (keyed by claim id). `verifying` shows the honest "checking N claims" state while in flight.
@@ -577,8 +585,12 @@ export function PrismOverlay({
     setWhyDag(null);
     setLensBusy(null);
     setLens('map');
-    explode(pdfs);
-  }, [explode, pdfs]);
+    // "from scratch" is the promise on the button: skip the remembered map and re-read the source
+    // for real. Every other route in reuses it (see prism/cache.ts). An externally settled world
+    // owns its own pipeline, so it re-runs itself.
+    if (onReplay) onReplay();
+    else explode(pdfs, { fresh: true });
+  }, [explode, pdfs, onReplay]);
 
   // Answer-first open: the instant the map settles, frame the load-bearing claims (the few the model
   // marked as carrying the document's case) so the point comes to the reader instead of a flat field
@@ -933,9 +945,13 @@ export function PrismOverlay({
     (beat: BriefingBeat): void => {
       setBriefingIds(new Set(beat.claimIds));
       frameClaimIds(beat.claimIds);
-      if (penOn || autoBriefing) setOpenId(beat.claimIds[0] ?? null);
+      // The page is always the hero of a briefing: opening the beat's claim shows the real document
+      // with its quote highlighted, which is the proof the map is grounded in it. It used to open
+      // only with the pen on or under the tour, so an ordinary briefing talked ABOUT a document the
+      // reader could not see.
+      setOpenId(beat.claimIds[0] ?? null);
     },
-    [penOn, autoBriefing, frameClaimIds],
+    [frameClaimIds],
   );
 
   const exitBriefing = useCallback((): void => {
@@ -1249,7 +1265,17 @@ export function PrismOverlay({
     <div
       className="prism-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      onClick={onClose}
+      // Close only on a click that BEGAN and ENDED on the backdrop itself. `onClick={onClose}`
+      // alone closed the map on two ordinary gestures: a drag that started on a card and released
+      // past the panel's edge (the browser fires the click on their common ancestor — the scrim),
+      // and a click whose target unmounted mid-gesture, which the browser then dispatches on the
+      // nearest surviving ancestor. Both read as "I clicked a thing and the document shut".
+      onPointerDown={(e) => {
+        downOnScrim.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && downOnScrim.current) onClose();
+      }}
       role="button"
       tabIndex={0}
       aria-label="Close Prism"
@@ -1890,7 +1916,14 @@ export function PrismOverlay({
             {/* The Briefing — a silent, captioned, camera-led flight through the document's argument */}
             {settled && briefing && (
               <AsyncSurface label="Briefing">
-                <PrismBriefingPlayer beats={briefing} onBeat={onBriefBeat} onExit={exitBriefing} />
+                <PrismBriefingPlayer
+                  beats={briefing}
+                  onBeat={onBriefBeat}
+                  onExit={exitBriefing}
+                  // The tour narrates over the top of its own flight; two voices at once is worse
+                  // than either, so its briefing stays silent.
+                  audioDefault={!autoBriefing}
+                />
               </AsyncSurface>
             )}
 

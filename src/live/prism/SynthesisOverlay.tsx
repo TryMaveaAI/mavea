@@ -127,6 +127,12 @@ export function SynthesisOverlay({
   return (
     <PrismOverlay
       pdf={attachments}
+      // Replay belongs to whoever owns the pipeline: re-fuse the pile, skipping the remembered map.
+      onReplay={
+        !demo && sources && sources.length > 0
+          ? () => live.synthesize(sources, { fresh: true })
+          : undefined
+      }
       // Preview mode is a settled, canned world. Null keeps Ask/Verify/Why/Levers controls from
       // turning exploration of that prerecorded surface into a provider-backed request.
       cfg={demo ? null : cfg}

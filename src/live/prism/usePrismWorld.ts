@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment } from '../attachments';
 import type { ModelConfig } from '../../types/mavea';
 import { mapClaims } from './mapClaims';
+import { prismMapKey, readPrismMap, writePrismMap } from './cache';
 import type { PrismPhase, PrismSpec } from './types';
 
 export interface UsePrismWorldReturn {
@@ -17,8 +18,10 @@ export interface UsePrismWorldReturn {
   /** Honest count of claims the model proposed before grounding (for "N grounded of M"). */
   proposed: number;
   error: string | null;
-  /** Start (or restart) the explode for one PDF or several (multi-PDF compares them). */
-  explode: (pdf: Attachment | readonly Attachment[]) => void;
+  /** Start (or restart) the explode for one PDF or several (multi-PDF compares them).
+   *  `fresh` skips the remembered map and re-reads the document for real — what "map it again"
+   *  means, and the only way past the cache. */
+  explode: (pdf: Attachment | readonly Attachment[], opts?: { fresh?: boolean }) => void;
   /** Return to idle (the document, un-exploded). */
   reset: () => void;
 }
@@ -61,7 +64,7 @@ export function usePrismWorld(cfg: ModelConfig | null): UsePrismWorldReturn {
   }, [cleanup]);
 
   const explode = useCallback(
-    (pdf: Attachment | readonly Attachment[]) => {
+    (pdf: Attachment | readonly Attachment[], opts?: { fresh?: boolean }) => {
       if (!cfg) {
         setError('Connect a model that reads documents (Anthropic or Gemini) to explode one.');
         setPhase('error');
@@ -83,25 +86,50 @@ export function usePrismWorld(cfg: ModelConfig | null): UsePrismWorldReturn {
         if (runIdRef.current === runId) setPhase((p) => (p === 'igniting' ? 'blooming' : p));
       }, IGNITE_MS);
 
-      void mapClaims(pdf, cfg, ac.signal)
-        .then((res) => {
-          if (runIdRef.current !== runId) return; // superseded
+      const docs = Array.isArray(pdf) ? (pdf as readonly Attachment[]) : [pdf as Attachment];
+      const key = prismMapKey(docs, cfg);
+
+      const settle = (res: { spec: PrismSpec; corpus: string[][] | null; proposed: number }) => {
+        setProposed(res.proposed);
+        setSpec(res.spec);
+        setCorpus(res.corpus);
+        setPhase('settled');
+      };
+
+      void (async () => {
+        try {
+          // A map already built for these exact bytes under this exact model. Re-opening a
+          // document is the common case, and re-reading it costs the reader real money for an
+          // answer that cannot have changed — the file is the same file. The ignition beat still
+          // plays, so stepping back in reads as the same gesture, just instant.
+          if (!opts?.fresh) {
+            const hit = await readPrismMap(key);
+            if (runIdRef.current !== runId) return; // superseded
+            if (hit) {
+              settle(hit);
+              return;
+            }
+          }
+          const res = await mapClaims(pdf, cfg, ac.signal);
+          if (runIdRef.current !== runId) return;
           setProposed(res.proposed);
           if (res.spec) {
-            setSpec(res.spec);
-            setCorpus(res.corpus ?? null);
-            setPhase('settled');
+            const value = { spec: res.spec, corpus: res.corpus ?? null, proposed: res.proposed };
+            settle(value);
+            // Best-effort and fire-and-forget: a failed write only costs the next open a re-map.
+            // A FAILED mapping is never written — an error is not an answer worth remembering.
+            void writePrismMap(key, value);
           } else {
             setError(res.error ?? 'This document could not be mapped.');
             setPhase('error');
           }
-        })
-        .catch((err: unknown) => {
+        } catch (err: unknown) {
           if (runIdRef.current !== runId) return;
           if (ac.signal.aborted) return; // intentional cancel — stay where the caller left us
           setError(err instanceof Error ? err.message : 'Mapping failed.');
           setPhase('error');
-        });
+        }
+      })();
     },
     [cfg, cleanup],
   );
