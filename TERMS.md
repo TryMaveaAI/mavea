@@ -131,4 +131,4 @@ No governing-law, arbitration, venue, or class-action-waiver clause is included 
 
 ## 16. Contact
 
-For a hosted copy, contact the person or organization that gave you access. For the public repository, use the Mavéa GitHub issue tracker for non-sensitive questions. Do not put confidential information in a public issue. Security reports must follow [SECURITY.md](./SECURITY.md).
+For a hosted copy, contact the person or organization that gave you access. For the public repository, use the Mavéa GitHub issue tracker for non-sensitive questions. Do not put confidential information in a public issue. Security reports must follow [SECURITY.md](./SECURITY.md). Commercial licensing, trademark permission, and other business inquiries may be sent to trymavea@gmail.com. Correspondence does not create a license, warranty, support obligation, or commercial right; see Section 2.

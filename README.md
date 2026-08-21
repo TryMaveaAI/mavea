@@ -1,6 +1,6 @@
 <div align="center">
 
-# Mavéa
+# Mavéa™
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/mascot-dark.svg" />
@@ -174,3 +174,9 @@ components remain under their own licenses.
 Copies of the software must keep the license's required notice:
 
 > Required Notice: Copyright (c) 2026 Akash Maitra and Aryan Chordia
+
+## Contact
+
+- **Commercial license, trademark permission, or acquisition** — <trymavea@gmail.com>
+- **Questions and feature ideas** — [GitHub Discussions](https://github.com/TryMaveaAI/mavea/discussions)
+- **Security** — follow [SECURITY.md](./SECURITY.md); never report a vulnerability in a public issue

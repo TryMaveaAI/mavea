@@ -16,7 +16,7 @@ Please **do not** open a public issue for security problems. Instead:
 - **Preferred** — open a private report through GitHub:
   [**Report a vulnerability**](https://github.com/TryMaveaAI/mavea/security/advisories/new)
   (the repository's _Security → Advisories_ tab), or
-- email the maintainers at **akash.maitra@gmail.com**.
+- email the maintainers at **trymavea@gmail.com**.
 
 Do not submit a public or external security pull request or attach exploit code unless a maintainer
 requests it through the private reporting channel.

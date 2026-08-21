@@ -35,6 +35,6 @@ requests, and whenever an individual is representing the project in public.
 
 ## Reporting
 
-Report unacceptable behaviour privately to the maintainers at **akash.maitra@gmail.com**. All
+Report unacceptable behaviour privately to the maintainers at **trymavea@gmail.com**. All
 reports will be reviewed and investigated promptly and fairly, and the maintainers will respect
 the privacy and safety of the reporter.

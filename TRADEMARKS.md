@@ -1,4 +1,4 @@
-# Mavéa Trademark Policy
+# Mavéa™ Trademark Policy
 
 Effective: July 19, 2026
 
@@ -13,3 +13,5 @@ You may make truthful, nominative references such as "runs with Mavéa" or "a no
 - preserve all required copyright and license notices.
 
 You may not use the Mavéa Marks for commercial promotion, merchandise, advertising, or fundraising without prior written permission from the applicable rights holders. No permission is granted by silence, issue discussion, or software-license compliance.
+
+Requests for written permission may be sent to trymavea@gmail.com. A request is not permission; only a signed writing from the applicable rights holder grants it.
