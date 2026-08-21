@@ -33,6 +33,10 @@ const MODELS = '/v1/models';
 const VERSION = '2023-06-01';
 const GEN_TIMEOUT_MS = 60_000;
 const PROBE_TIMEOUT_MS = 4_000;
+/** Hard ceiling on one turn's whole stream. GEN_TIMEOUT_MS only guards time-to-first-BYTE and the
+ *  SSE idle timer only catches a stream that has gone silent — neither stops one that trickles
+ *  thinking deltas forever. Matches the ceiling openaiCompatible has always had. */
+const STREAM_TOTAL_MS = 180_000;
 
 function headers(cfg: ModelConfig): Record<string, string> {
   return {
@@ -183,101 +187,109 @@ export const anthropicAdapter: ProviderAdapter = {
 
     const useNativeSearch = !!req.tools?.webSearch;
 
-    const res = await fetchWithTimeout(
-      `${base}${MESSAGES}`,
-      {
-        method: 'POST',
-        headers: headers(cfg),
-        body: JSON.stringify({
-          model: cfg.model,
-          max_tokens: req.maxTokens ?? 1024,
-          temperature: useThinking ? 1 : (req.temperature ?? 0.3),
-          ...(useThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
-          system: systemBlocks,
-          messages: [...history, { role: 'user', content: userContent }],
-          // Structured Outputs validates the FINAL text response against the schema —
-          // tool_choice is left at its default 'auto' (never forced), which is what lets
-          // Claude call web_search first when it's offered below.
-          ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
-          ...(useNativeSearch
-            ? {
-                tools: [{ type: webSearchToolType(cfg.model), name: 'web_search', max_uses: 5 }],
-              }
-            : {}),
-          stream: true,
-        }),
-      },
-      GEN_TIMEOUT_MS,
-      req.signal,
-    );
-    // Carry the provider's own reason: a 429 is either a per-minute rate limit or a spent quota,
-    // and only the body says which (describeLiveError reads the words, not just the status).
-    if (!res.ok) throw new Error(`anthropic ${res.status}${await providerErrorDetail(res)}`);
-
-    // The schema-validated answer arrives as ordinary text_delta fragments on a `text`
-    // content block — Structured Outputs constrains the FINAL text, it doesn't reroute it
-    // through a tool_use block the way the old tool-forcing trick did. Any preceding
-    // server_tool_use / web_search_tool_result blocks carry no `delta.text`, so they fall
-    // out of `acc` for free. Citations ride alongside as citations_delta events; collected
-    // defensively (any delta carrying a `citation` object) since the exact delta shape for
-    // web-search citations wasn't verifiable against a live key.
-    let acc = '';
-    let usage: TokenUsage | undefined;
-    const grounding = new Map<string, GroundingSource>();
-    await readSSE(res, (ev) => {
-      const e = obj(ev);
-      const type = str(e.type);
-      if (type === 'content_block_delta') {
-        const delta = obj(e.delta);
-        const frag = str(delta.text);
-        if (frag) {
-          acc += frag;
-          onDelta?.(frag);
-        }
-        const citation = obj(delta.citation);
-        const curl = str(citation.url);
-        if (curl && !grounding.has(curl)) {
-          grounding.set(curl, { title: str(citation.title) || curl, url: curl });
-        }
-      } else if (type === 'message_start') {
-        // Anthropic's input_tokens EXCLUDES the cached slices (unlike Gemini/OpenAI, whose
-        // prompt totals INCLUDE them), so sum all three — the fresh input plus the two cache
-        // slices — to make `input` mean "total input tokens" the same way across providers;
-        // the cache_read slice is also surfaced as cachedInput (the cheap-rate portion).
-        const u = obj(obj(e.message).usage);
-        usage = {
-          input:
-            num(u.input_tokens) +
-            num(u.cache_read_input_tokens) +
-            num(u.cache_creation_input_tokens),
-          output: num(u.output_tokens),
-          cachedInput: num(u.cache_read_input_tokens),
-        };
-      } else if (type === 'message_delta') {
-        // The final cumulative output_tokens lands on message_delta; keep the input/cache
-        // figures captured at message_start.
-        const u = obj(e.usage);
-        if (u.output_tokens !== undefined) {
-          usage = {
-            input: usage?.input ?? 0,
-            cachedInput: usage?.cachedInput ?? 0,
-            output: num(u.output_tokens),
-          };
-        }
-      }
-    });
-
-    const sources = grounding.size ? [...grounding.values()] : undefined;
-    // Resolve as the parsed object when possible; else hand the raw string to the
-    // validator (it tolerates partial/embedded JSON).
+    // Total-turn ceiling, merged with the caller's abort (a superseded turn). See STREAM_TOTAL_MS.
+    const capCtrl = new AbortController();
+    const capTimer = setTimeout(() => capCtrl.abort(), STREAM_TOTAL_MS);
     try {
-      return {
-        raw: JSON.parse(acc) as object,
-        ...(sources ? { sources } : {}),
-        ...(usage ? { usage } : {}),
-      };
-    } catch {
-      return { raw: acc, ...(sources ? { sources } : {}), ...(usage ? { usage } : {}) };
+      const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
+      const res = await fetchWithTimeout(
+        `${base}${MESSAGES}`,
+        {
+          method: 'POST',
+          headers: headers(cfg),
+          body: JSON.stringify({
+            model: cfg.model,
+            max_tokens: req.maxTokens ?? 1024,
+            temperature: useThinking ? 1 : (req.temperature ?? 0.3),
+            ...(useThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
+            system: systemBlocks,
+            messages: [...history, { role: 'user', content: userContent }],
+            // Structured Outputs validates the FINAL text response against the schema —
+            // tool_choice is left at its default 'auto' (never forced), which is what lets
+            // Claude call web_search first when it's offered below.
+            ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
+            ...(useNativeSearch
+              ? {
+                  tools: [{ type: webSearchToolType(cfg.model), name: 'web_search', max_uses: 5 }],
+                }
+              : {}),
+            stream: true,
+          }),
+        },
+        GEN_TIMEOUT_MS,
+        signal,
+      );
+      // Carry the provider's own reason: a 429 is either a per-minute rate limit or a spent quota,
+      // and only the body says which (describeLiveError reads the words, not just the status).
+      if (!res.ok) throw new Error(`anthropic ${res.status}${await providerErrorDetail(res)}`);
+
+      // The schema-validated answer arrives as ordinary text_delta fragments on a `text`
+      // content block — Structured Outputs constrains the FINAL text, it doesn't reroute it
+      // through a tool_use block the way the old tool-forcing trick did. Any preceding
+      // server_tool_use / web_search_tool_result blocks carry no `delta.text`, so they fall
+      // out of `acc` for free. Citations ride alongside as citations_delta events; collected
+      // defensively (any delta carrying a `citation` object) since the exact delta shape for
+      // web-search citations wasn't verifiable against a live key.
+      let acc = '';
+      let usage: TokenUsage | undefined;
+      const grounding = new Map<string, GroundingSource>();
+      await readSSE(res, (ev) => {
+        const e = obj(ev);
+        const type = str(e.type);
+        if (type === 'content_block_delta') {
+          const delta = obj(e.delta);
+          const frag = str(delta.text);
+          if (frag) {
+            acc += frag;
+            onDelta?.(frag);
+          }
+          const citation = obj(delta.citation);
+          const curl = str(citation.url);
+          if (curl && !grounding.has(curl)) {
+            grounding.set(curl, { title: str(citation.title) || curl, url: curl });
+          }
+        } else if (type === 'message_start') {
+          // Anthropic's input_tokens EXCLUDES the cached slices (unlike Gemini/OpenAI, whose
+          // prompt totals INCLUDE them), so sum all three — the fresh input plus the two cache
+          // slices — to make `input` mean "total input tokens" the same way across providers;
+          // the cache_read slice is also surfaced as cachedInput (the cheap-rate portion).
+          const u = obj(obj(e.message).usage);
+          usage = {
+            input:
+              num(u.input_tokens) +
+              num(u.cache_read_input_tokens) +
+              num(u.cache_creation_input_tokens),
+            output: num(u.output_tokens),
+            cachedInput: num(u.cache_read_input_tokens),
+          };
+        } else if (type === 'message_delta') {
+          // The final cumulative output_tokens lands on message_delta; keep the input/cache
+          // figures captured at message_start.
+          const u = obj(e.usage);
+          if (u.output_tokens !== undefined) {
+            usage = {
+              input: usage?.input ?? 0,
+              cachedInput: usage?.cachedInput ?? 0,
+              output: num(u.output_tokens),
+            };
+          }
+        }
+      });
+
+      const sources = grounding.size ? [...grounding.values()] : undefined;
+      // Resolve as the parsed object when possible; else hand the raw string to the
+      // validator (it tolerates partial/embedded JSON).
+      try {
+        return {
+          raw: JSON.parse(acc) as object,
+          ...(sources ? { sources } : {}),
+          ...(usage ? { usage } : {}),
+        };
+      } catch {
+        return { raw: acc, ...(sources ? { sources } : {}), ...(usage ? { usage } : {}) };
+      }
+    } finally {
+      clearTimeout(capTimer);
     }
   },
 };

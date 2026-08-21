@@ -693,11 +693,19 @@ export function LiveSettings({
     }
   }, []);
 
-  // Re-probe shortly after any provider/model/key change settles.
+  // Re-probe shortly after any provider/model/key change settles — but never with no key in hand.
+  // A remembered key is decrypted from IndexedDB asynchronously, so opening Settings within the
+  // first moments of a session finds `key` still empty; probing then tested nothing, came back
+  // rejected, and painted a working setup as invalid until the vault landed and flipped it back.
+  // No key means no verdict, not a bad verdict — the same rule the Connect step already follows.
   useEffect(() => {
+    if (info.needsKey && !key) {
+      setReady(null);
+      return;
+    }
     const t = setTimeout(() => void probe(), 400);
     return () => clearTimeout(t);
-  }, [cfg.provider, model, key, probe]);
+  }, [cfg.provider, model, key, probe, info.needsKey]);
 
   const dotColor = checking
     ? 'var(--text-muted)'

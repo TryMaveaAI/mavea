@@ -25,7 +25,16 @@ import type {
   GroundingSource,
   TokenUsage,
 } from './types';
-import { fetchWithTimeout, readSSE, obj, str, arr, num } from './http';
+import {
+  fetchWithTimeout,
+  readSSE,
+  retryAfterMs,
+  sleepAbortable,
+  obj,
+  str,
+  arr,
+  num,
+} from './http';
 import { openaiResponsesUserContent } from './parts';
 import { isReasoningModel, isMinimalGlimpse, inBandErrorMessage } from './openaiCompatible';
 import { liveJsonSchema } from './schema';
@@ -35,31 +44,6 @@ const PROBE_TIMEOUT_MS = 4_000;
 
 /** How many times to retry a transient 429 (rate limit) before surfacing it. */
 const RATE_LIMIT_RETRIES = 3;
-
-/** Wait before retrying a 429: the provider's Retry-After header when present (capped), else a short
- *  exponential backoff. Keeps a burst of dashboard refreshes (or a bumped-effort search turn) from
- *  failing on a brief tokens-per-minute spike. */
-function retryAfterMs(res: Response, attempt: number): number {
-  const hdr = Number(res.headers.get('retry-after'));
-  if (Number.isFinite(hdr) && hdr > 0) return Math.min(hdr * 1000, 10_000);
-  return Math.min(800 * 2 ** attempt, 8_000);
-}
-
-/** A cancellable sleep — resolves after `ms`, or rejects if the turn aborts mid-wait. */
-function sleepAbortable(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(t);
-        reject(new DOMException('Aborted', 'AbortError'));
-      },
-      { once: true },
-    );
-  });
-}
 
 /** Pull the real reason out of a non-200 response body so a 400 ("Unsupported parameter" etc.)
  *  isn't a silent, undebuggable "openai 400" — mirrors gemini.ts's errorDetail. Never throws,

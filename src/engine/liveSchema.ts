@@ -86,6 +86,7 @@ import {
 import { Icon, ICON_KEYS, type IconKey } from '../icons/icons';
 import { completedBlocks as recoverBlocks, extractStringField } from '../live/streamParse';
 import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.generated';
+import { resolvesKeyedRows, resolvesTextItems } from '../canvas/lib/empty';
 import {
   trimToSentence,
   collapseRepeatedValues,
@@ -152,7 +153,10 @@ export interface TourMark {
 }
 
 /** Every drawn-gesture kind the model may author — the validator drops anything else. */
-const MARK_KINDS: ReadonlySet<string> = new Set<TourMark['kind']>([
+/** The closed gesture vocabulary. Exported so the prompt's teaching can be held to it: every kind
+ *  here must carry a worked example in the addendum, which is what keeps a new kind from being
+ *  added to the enum and then never authored because nothing ever showed the model one. */
+export const MARK_KINDS: ReadonlySet<string> = new Set<TourMark['kind']>([
   'circle',
   'underline',
   'point',
@@ -369,8 +373,9 @@ export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first A
 SPOKEN PRONUNCIATION — "narration", every "tour" line, and every block "note" are READ ALOUD by a synthetic voice that mangles anything it can't sound out: it spells acronyms letter by letter ("CUDA"→"C-U-D-A") and reads symbols/numbers literally ("$5,000/mo"→"dollar sign five thousand slash em-oh"). You know how each is really said, so wherever the words on screen differ from how a person SPEAKS them, mark JUST that span inline as [[shown|said]] — the screen shows the left side EXACTLY as normally written, while the voice reads the right:
 - numbers, money, dates, symbols, equations: "[[$5,000/mo|five thousand dollars a month]]", "[[3.4×|three point four times]]", "[[1990s|nineteen nineties]]", "[[E=mc²|E equals m c squared]]", "[[~20%|about twenty percent]]".
 - abbreviated dates and shortened words the voice reads literally — a person says the FULL word, and a day-of-month as an ordinal: "[[Aug 2|august second]]", "[[Feb 28, 2027|february twenty-eighth, twenty twenty-seven]]", "[[Dr.|doctor]]", "[[St. Louis|saint louis]]", "[[approx.|approximately]]".
-- acronyms said as a word, product/library/model names, people's/place names, and borrowed or foreign words: "[[CUDA|kooda]]", "[[GUI|gooey]]", "[[Qwen|kwen]]", "[[nginx|engine x]]", "[[Nguyen|win]]", "[[gnocchi|nyoh-kee]]", "[[Omakase|oh-mah-kah-seh]]".
-For names and non-English terms, the said side MUST be the closest voice-safe version of a NATIVE speaker's source-language pronunciation — preserve its real syllables and vowels; never substitute an Anglicized guess. The said side is plain lowercase phonetic syllables for an English-language voice — NEVER capitals (they get spelled out) and NEVER IPA. Leave ordinary words and normal letter-by-letter initialisms (API, GPU, URL, HTML) un-annotated. Before returning JSON, scan EVERY narration, tour line, and note and annotate EVERY term a synthesizer could plausibly mispronounce, on each spoken occurrence. This pronunciation pass is REQUIRED, not optional. Everything else stays plain. The SAME [[shown|said]] markup works in narration, tour lines, and notes — nowhere else. The annotation IS the pronunciation — never ALSO spell it out in the surrounding sentence ("CUDA, pronounced kooda" or "said as kooda"); the voice would say the word twice back to back. Tag it once and move on.
+- acronyms said as a word, product/library/model names, and names or borrowed words that are NOT ordinary English — a non-English spelling, or an English name a reader would also hesitate over: "[[CUDA|kooda]]", "[[GUI|gooey]]", "[[Qwen|kwen]]", "[[nginx|engine x]]", "[[Nguyen|win]]", "[[gnocchi|nyoh-kee]]", "[[Omakase|oh-mah-kah-seh]]".
+For names and non-English terms, the said side MUST be the closest voice-safe version of a NATIVE speaker's source-language pronunciation — preserve its real syllables and vowels; never substitute an Anglicized guess. The said side is plain lowercase phonetic syllables for an English-language voice — NEVER capitals (they get spelled out) and NEVER IPA.
+ANNOTATE SPARINGLY — the said side is one you write from scratch, so a wrong one does not merely waste a tag, it makes the voice say a word WRONG out loud. The bar is: you would bet money a good English text-to-speech engine gets this wrong. Ordinary English words are NEVER annotated, however long or Latinate they look — a synthesizer says "analysis", "hierarchy", "epitome", "colonel", "salmon", "queue", "often", "thorough" and "February" perfectly well, and "[[analysis|uh-nal-uh-sis]]" turns a word it had right into one it now has wrong. Ordinary English names (Smith, Michael, London, Chicago) are not annotated either. Normal letter-by-letter initialisms (API, GPU, URL, HTML) stay plain — spelling them out is correct. When you are unsure, LEAVE IT ALONE: no annotation is always better than a wrong one. Everything else stays plain. The SAME [[shown|said]] markup works in narration, tour lines, and notes — nowhere else. The annotation IS the pronunciation — never ALSO spell it out in the surrounding sentence ("CUDA, pronounced kooda" or "said as kooda"); the voice would say the word twice back to back. Tag it once and move on.
 
 SAFETY FIRST — if the user expresses acute crisis (wanting to die, self-harm, being in danger, or fearing someone they love is in danger), this OVERRIDES everything below. Open with the lifeline block: a warm, validating opener, then REAL, region-appropriate crisis helplines (in the US: 988 Suicide & Crisis Lifeline — call or text 988; Crisis Text Line — text HOME to 741741; 911 for immediate danger), and an honest line that you are not a substitute for a trained person who can help. Do NOT respond with a chart, a cheerful reframe, a breathing exercise, or any decorative card — warmth and real resources only. Keep narration gentle and brief. Never invent a hotline number; if unsure of the user's country, offer an international option alongside 988.
 
@@ -453,8 +458,32 @@ VARIETY IN SERVICE OF THE ANSWER — aim for 4-5+ different block types drawn fr
  *  'lean' canvas is a couple of focused blocks no walkthrough would ever tour. */
 const TOUR_GESTURE_ADDENDUM = `
 
-SPOTLIGHT TOUR — for any SUBSTANTIVE answer (a recipe, how-to, explanation, plan, comparison, or anything with a few distinct parts), INCLUDE a "tour": an array of {"index": <0-based block index>, "say": <one warm spoken line>} walking 3-5 KEY blocks in order. Each "say" is SPOKEN ALOUD the instant its block is spotlighted, so write it ABOUT that block's content — like a friend pointing at the screen and talking you through it: "First, here's everything you'll need…", "Now the steps — start by browning the onions…", "And this is how the flavors balance out." Make each line flow into the next, and keep them conversational, not labels. Lead with the most important block. OMIT the tour ONLY for a simple, single-glance answer where a calm canvas beats a walk. Never tour every block — spotlight only the stops that genuinely deserve a beat.
-DRAWN GESTURE — while speaking a stop, Mavéa DRAWS on that block like a friend at a whiteboard. Use "marks": an ARRAY of drawn gestures for every stop whose line names specific data — one gesture per datum the line mentions, drawn in sequence as Mavéa speaks. "at" must be text that literally appears in that block's data — a value, label, or short phrase — never reworded, never invented. Gesture kinds: "circle" a bar/slice/row/option (by its label), "underline" a number or phrase, "point" at a small dot or marker, "highlight" to sweep a semi-transparent band over a key figure, "rising"/"falling" to sweep a trend arrow across a series (set "at" to where it starts and "to" to where it lands, e.g. the first and last quarter — or omit "to" to gloss the whole chart), "bracket" to span a range of items ("at"→"to") with an optional "label" delta like "+38%", "note" to scrawl a short handwritten aside next to an item (put the words in "label", e.g. "vs. last year"). Use a trend arrow only when the line is ABOUT the trajectory ("revenue keeps climbing"), a bracket for a gap between two named items, a note for a brief margin remark — keep "label" under ~24 characters. JUDGMENT INK — "strike" crosses out a misconception or rejected option (never a fact you stand by; the line must say why it's out), "question" scrawls a small ? beside a figure this answer itself marked uncertain (allowed only on a block whose "conf" is "inferred" or "partial"), "star" marks THE one takeaway of the whole answer (max one), "check" ticks a step or condition that holds, "frame" boxes a row, cell, or code line a loop would swallow, and "brace" groups 2-4 ADJACENT rows down their side ("at" = the first row's text, "to" = the last row's, optional short "label" naming the group). TEACHING SEQUENCE — a line that walks through STEPS of one complex block ("first the input hits the queue, then the worker picks it up, which writes the result") should mark each step in the order you say it: marks[] order IS the drawn order, and Mavéa numbers them on-screen automatically, so a 3-4 step walk reads as a guided sequence, not a scatter of highlights. CROSS-BLOCK CONNECT — the one gesture that isn't confined to this stop's own block: "connect" draws an arrow from "at" (here, in this block) to "to" (in a DIFFERENT block, named by "onIndex", the 0-based index into this same response's blocks — same numbering as "tour[].index"). Use it ONLY when the line is genuinely ABOUT the relationship between two blocks you rendered this turn ("that total is exactly what the chart shows for Q4") — never to connect a block to itself, never to a block outside this turn's own list, and never more than once per stop (rare across the whole tour, not a default). Example: {"index":2,"say":"That $48K total is exactly what the chart already showed for Q4.","marks":[{"kind":"connect","at":"$48K","to":"Q4","onIndex":0}]}. RULE: the count follows the line — mark every datum your sentence specifically calls out by name, no more, no less. One thing named → one mark. Two compared → two marks. Five cities in a ranking → five marks. Example (two marks): {"index":1,"say":"Seattle leads at $1,950; Austin comes in lower at $1,200.","marks":[{"kind":"circle","at":"Seattle","color":"key"},{"kind":"circle","at":"Austin","color":"cool"}]}. Example (four marks): {"index":2,"say":"The four cost drivers: rent $1,200, food $600, transport $350, utilities $180.","marks":[{"kind":"underline","at":"$1,200"},{"kind":"underline","at":"$600"},{"kind":"underline","at":"$350"},{"kind":"highlight","at":"$180"}]}. Example (a trend + a note): {"index":0,"say":"Revenue climbs every quarter, ending 38% up on where it started.","marks":[{"kind":"rising","at":"Q1","to":"Q6","color":"key"},{"kind":"note","at":"Q6","label":"+38%"}]}. INK COLOR — add "color":"key" to the single most important mark in the whole tour; add "color":"cool" for a negative/lower/risk datum. Never add "color" to more than one mark. A stop about the block as a whole (no specific datum named) takes no marks.`;
+SPOTLIGHT TOUR — for any SUBSTANTIVE answer (a recipe, how-to, explanation, plan, comparison, or anything with a few distinct parts), INCLUDE a "tour": an array of {"index": <0-based block index>, "say": <one warm spoken line>} walking 3-5 KEY blocks in order. Each "say" is SPOKEN ALOUD the instant its block is spotlighted, so write it ABOUT that block's content — like a friend pointing at the screen and talking you through it: "First, here's everything you'll need…", "Now the steps — start by browning the onions…", "And this is how the flavors balance out." Make each line flow into the next, and keep them conversational, not labels. Lead with the most important block. A canvas with several distinct parts GETS a tour — that is the normal case, not the exception; omit it ONLY when the whole answer is a single block or one figure taken in at a glance. Never tour every block — spotlight only the stops that genuinely deserve a beat.
+DRAWN GESTURE — while speaking a stop, Mavéa DRAWS on that block like a friend at a whiteboard. Add "marks": an ARRAY of drawn gestures to every stop whose line names specific data — one gesture per datum the line mentions, drawn in the order you say them. "at" (and "to") must be text that LITERALLY appears in that block's data — a value, label, or short phrase — never reworded, never invented; text that is not on screen draws nothing at all.
+
+THE FIFTEEN GESTURES — each is a tool for one job, and the right one says what a circle cannot. Reach past the first few: a pen that only ever circles and underlines teaches less than one that means something different every time it moves.
+- "circle" — loop a bar, slice, row or option by its label. {"kind":"circle","at":"Seattle"}
+- "underline" — a number or phrase worth reading twice. {"kind":"underline","at":"$1,200"}
+- "point" — an arrow to a dot or marker too small to loop. {"kind":"point","at":"Q3"}
+- "highlight" — sweep a marker band over a key figure. {"kind":"highlight","at":"18 months"}
+- "rising" — sweep a climbing trend arrow across a series, "at" where it starts and "to" where it lands. Only when the line is ABOUT the trajectory. {"kind":"rising","at":"Q1","to":"Q6"}
+- "falling" — the same sweep for a decline. {"kind":"falling","at":"Jan","to":"Jun"}
+- "bracket" — span the gap between two named items. An optional short "label" NAMES that gap; never put a figure in it, because Mavéa measures the gap itself from the two values on screen. {"kind":"bracket","at":"Austin","to":"Seattle","label":"the premium"}
+- "note" — scrawl a brief handwritten aside beside an item; the words go in "label", under ~24 characters. {"kind":"note","at":"Q6","label":"first profitable quarter"}
+- "brace" — group 2-4 ADJACENT rows down their side, "at" the first row and "to" the last. {"kind":"brace","at":"Rent","to":"Utilities","label":"fixed costs"}
+- "frame" — box a row, cell or code line the eye would otherwise slide past. {"kind":"frame","at":"retry(3)"}
+- "check" — tick a step or condition that holds. {"kind":"check","at":"Backup verified"}
+- "strike" — cross out a misconception or rejected option; never a fact you stand by, and the line must say why it is out. {"kind":"strike","at":"Refrigerate the dough"}
+- "question" — a small ? beside a figure THIS answer marked uncertain; allowed only on a block whose own "conf" is "inferred" or "partial". {"kind":"question","at":"~40M users"}
+- "star" — THE one takeaway of the whole answer, at most one per turn. {"kind":"star","at":"Start with the index"}
+- "connect" — an arrow from "at" in this block to "to" in a DIFFERENT block of this same turn, named by "onIndex" (0-based, the same numbering as "tour[].index"). Only when the line is genuinely ABOUT the relationship between the two, and rarely. {"kind":"connect","at":"$48K","to":"Q4","onIndex":0}
+
+JUDGMENT INK — "strike", "question", "star", "check", "frame" and "brace" each state a CLAIM about the datum (wrong, doubted, the takeaway, satisfied, worth boxing, grouped). Use one when your line genuinely makes that claim, and not otherwise: they are rare because the claim is rare, not because the gesture is exotic.
+HOW MANY — the count follows the line. Mark every datum your sentence names, no more and no less: one thing named, one mark; two compared, two marks; five cities ranked, five marks. A stop about the block as a whole, naming no specific datum, takes NO marks.
+TEACHING SEQUENCE — marks[] order IS the drawn order, and Mavéa numbers them on screen, so a line walking through the steps of one block ("first the input hits the queue, then the worker picks it up, which writes the result") should mark each step in the order you say it.
+INK COLOR — add "color":"key" to the single most important mark in the whole tour, or "color":"cool" to a negative, lower or risk datum. Never colour more than one mark.
+Example (two marks): {"index":1,"say":"Seattle leads at $1,950; Austin comes in lower at $1,200.","marks":[{"kind":"circle","at":"Seattle","color":"key"},{"kind":"circle","at":"Austin","color":"cool"}]}
+Example (a trend and an aside): {"index":0,"say":"Revenue climbs every quarter, ending 38% up on where it started.","marks":[{"kind":"rising","at":"Q1","to":"Q6","color":"key"},{"kind":"note","at":"Q6","label":"first profit"}]}`;
 
 /** Directives that go out on EVERY turn with identical wording — the icon vocabulary, the
  *  "what you understood" chips, and the follow-up chips. They used to travel in the per-turn
@@ -640,8 +669,11 @@ function buildWebSources(v: Json): WebSource[] | undefined {
 
 /** Coerce a loose follow-up array into a short list of chip labels. */
 function buildChips(v: Json): string[] | undefined {
+  // forDisplay, like every other display-only field: a chip is never spoken, so an inline
+  // [[shown|said]] span here has no twin to be split into and printed as literal markup on the
+  // chip instead. Its neighbours (buildUnderstood, buildCorrects) have always done this.
   const out = asArr(v)
-    .map((s) => asStr(s).trim())
+    .map((s) => forDisplay(asStr(s)).trim())
     .filter((s) => s.length > 0 && s.length <= 80)
     .slice(0, 4);
   return out.length ? out : undefined;
@@ -1721,6 +1753,13 @@ function coerceGeneric(
       (Array.isArray(v) && v.length === 0);
     if (empty) return null;
   }
+  // "Present" is not the same as "usable". An array of five rows that resolve no cells passes every
+  // check above — length 5, nothing null — and renders as a header over blank lines. Drop it here,
+  // the same as any other block whose data cannot be shown.
+  if (!resolvesKeyedRows(meta.type, repaired)) return null;
+  // The same defect where the items are a plain list rather than keyed rows: an entry whose text is
+  // blank (or is markup that paints nothing) still counts, and still draws its own furniture.
+  if (!resolvesTextItems(meta.type, repaired)) return null;
   const raw = RAW_TEXT_PROPS[meta.type];
   const out: Record<string, Json> = {};
   for (const key of [...meta.requires, ...meta.optional]) {

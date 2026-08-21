@@ -62,6 +62,67 @@ export async function providerErrorDetail(res: Response): Promise<string> {
  *  few seconds, so a 30s gap with zero bytes is a genuine stall, not a slow-but-live generation. */
 export const STREAM_IDLE_MS = 30_000;
 
+/** Max silence before the FIRST chunk, which is a different wait from the gaps that follow.
+ *  Once a stream is flowing, 30s of nothing means it died. But the first frame is preceded by the
+ *  model reading the whole prompt and (where thinking is on) reasoning before it emits a token —
+ *  and on the first turn of a session none of that prefix is cached, so it is by far the slowest
+ *  frame of the turn. Holding it to the mid-stream budget turned an ordinary cold start into
+ *  "stream stalled", which carries no status and so surfaced as "couldn't reach the provider" —
+ *  and the retry the user then typed by hand succeeded, because by then the prefix was cached. */
+export const STREAM_FIRST_CHUNK_MS = 75_000;
+
+/** Thrown when a stream goes quiet past its budget. Named so a caller can tell a stall — which is
+ *  worth one retry when nothing arrived — from a real provider error, which is not. */
+export const STREAM_STALLED = 'stream stalled';
+
+/** True when `err` is the stall above (and not, say, an abort or an HTTP failure). */
+export function isStreamStall(err: unknown): boolean {
+  return err instanceof Error && err.message === STREAM_STALLED;
+}
+
+/* --- markers for a 200 OK that carried no usable answer ------------------------------------- *
+ * A provider can accept a request, return HTTP 200, and stream nothing — safety-blocked, stopped
+ * on recitation, or having spent its whole output budget on thinking. With no status code to read,
+ * describeLiveError would file every one of those under "couldn't reach the provider". Adapters put
+ * one of these markers in the thrown message so the user gets told what actually happened. */
+
+/** The provider refused the content (safety, recitation, prohibited content). */
+export const PROVIDER_BLOCKED = 'content-blocked';
+/** The provider answered, but with nothing in it, and said no more than that. */
+export const PROVIDER_EMPTY = 'empty-response';
+/** The output budget was spent before a single visible token — thinking ate the whole allowance. */
+export const PROVIDER_THINKING_BUDGET = 'thinking-budget';
+
+/** How long to wait before retrying a rate-limited request: the provider's own Retry-After header
+ *  when it sent one (capped), else a short exponential backoff. Shared by every adapter that
+ *  retries, so a burst of dashboard refreshes rides out a brief tokens-per-minute spike the same
+ *  way whichever model is connected. */
+export function retryAfterMs(res: Response, attempt: number): number {
+  const hdr = Number(res.headers.get('retry-after'));
+  if (Number.isFinite(hdr) && hdr > 0) return Math.min(hdr * 1000, 10_000);
+  return Math.min(800 * 2 ** attempt, 8_000);
+}
+
+/** A cancellable sleep — resolves after `ms`, or rejects the moment the turn aborts, so a
+ *  superseded turn never sits out a backoff it no longer cares about. */
+export function sleepAbortable(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 /** One `reader.read()`, but rejected if no chunk arrives within `idleMs` — so a mid-stream stall
  *  surfaces as an error the turn can recover from instead of an indefinite freeze. */
 async function readChunk<T>(
@@ -73,7 +134,7 @@ async function readChunk<T>(
     return await Promise.race([
       reader.read(),
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('stream stalled')), idleMs);
+        timer = setTimeout(() => reject(new Error(STREAM_STALLED)), idleMs);
       }),
     ]);
   } finally {
@@ -91,19 +152,25 @@ async function readChunk<T>(
  * stealth OpenRouter models) finish the answer but then hold the connection open with keep-alives
  * and never send `[DONE]` or close it; without this the loop — and the turn — would hang until the
  * total-stream cap. On an early stop the still-open socket is released.
+ *
+ * The wait for the FIRST frame gets its own, longer budget (`firstChunkMs`): it covers the model
+ * reading the prompt and thinking, which no later gap does. See STREAM_FIRST_CHUNK_MS.
  */
 export async function readSSE(
   res: Response,
   onData: (obj: unknown) => void | boolean,
   idleMs: number = STREAM_IDLE_MS,
+  firstChunkMs: number = STREAM_FIRST_CHUNK_MS,
 ): Promise<void> {
   const reader = res.body?.getReader();
   if (!reader) return;
   const dec = new TextDecoder();
   let buf = '';
+  let first = true;
   try {
     for (;;) {
-      const { done, value } = await readChunk(reader, idleMs);
+      const { done, value } = await readChunk(reader, first ? firstChunkMs : idleMs);
+      first = false;
       // Flush the decoder on the final read so a multi-byte char split across the last chunk
       // boundary isn't silently dropped.
       buf += done ? dec.decode() : dec.decode(value, { stream: true });
@@ -142,14 +209,17 @@ export async function readNDJSON(
   res: Response,
   onObj: (obj: unknown) => void,
   idleMs: number = STREAM_IDLE_MS,
+  firstChunkMs: number = STREAM_FIRST_CHUNK_MS,
 ): Promise<void> {
   const reader = res.body?.getReader();
   if (!reader) return;
   const dec = new TextDecoder();
   let buf = '';
+  let first = true;
   try {
     for (;;) {
-      const { done, value } = await readChunk(reader, idleMs);
+      const { done, value } = await readChunk(reader, first ? firstChunkMs : idleMs);
+      first = false;
       // Flush the decoder on the final read (see readSSE) so a split multi-byte char survives.
       buf += done ? dec.decode() : dec.decode(value, { stream: true });
       let nl: number;

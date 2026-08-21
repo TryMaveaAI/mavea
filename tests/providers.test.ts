@@ -603,6 +603,130 @@ describe('openrouter adapter — OpenAI-compatible, attribution + correct URL', 
   });
 });
 
+/** One well-formed Gemini SSE frame carrying real text — the minimum a request-shape test needs
+ *  now that a stream with no text at all is treated as a failed turn. */
+const TEXT_FRAME = 'data: {"candidates":[{"content":{"parts":[{"text":"{}"}]}}]}\n';
+
+/** A 200 response whose body dies the way a stalled stream does — after emitting `before` first,
+ *  if given. Lets the retry rule be tested without waiting out the real first-chunk budget. */
+function stallingResponse(before: string[] = []): Response {
+  const enc = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const c of before) controller.enqueue(enc.encode(c));
+    },
+    pull(controller) {
+      controller.error(new Error('stream stalled'));
+    },
+  });
+  return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+}
+
+describe('gemini retries a stall only when nothing was streamed', () => {
+  const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
+
+  it('retries once when the stream died before a single byte', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(stallingResponse())
+      .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const { raw } = await geminiAdapter.generate(req, cfg);
+    expect(raw).toBe('{}');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does NOT retry once fragments have already been streamed', async () => {
+    // Re-asking here would bill the turn twice AND paint the answer's opening twice — the user has
+    // already seen and heard what arrived, and generateLive salvages it.
+    const fetchMock = vi.fn(async () => stallingResponse([TEXT_FRAME]));
+    vi.stubGlobal('fetch', fetchMock);
+    const deltas: string[] = [];
+    await expect(geminiAdapter.generate(req, cfg, (c) => deltas.push(c))).rejects.toThrow(
+      /stream stalled/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(deltas).toEqual(['{}']);
+  });
+
+  it('gives up after one retry rather than looping', async () => {
+    const fetchMock = vi.fn(async () => stallingResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/stream stalled/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('gemini answers with 200 OK and nothing in it', () => {
+  // Google reports a refusal in-band: HTTP 200, a well-formed stream, and a finishReason instead
+  // of text. Reading only parts[].text turned every one of those into raw:'' — which the validator
+  // rejected, which triggered generateLive's collapse recovery (a second billed call nobody saw),
+  // which finally rendered a card reading "try asking again". That card is why people learned to
+  // send the prompt twice; these tests are what keep it from coming back.
+  const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
+
+  it('names a safety block instead of returning an empty answer', async () => {
+    mockFetchOnce(
+      streamResponse(
+        ['data: {"candidates":[{"finishReason":"SAFETY","content":{"parts":[]}}]}\n'],
+        'text/event-stream',
+      ),
+    );
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/content-blocked — SAFETY/);
+  });
+
+  it('names a prompt-level block from promptFeedback', async () => {
+    mockFetchOnce(
+      streamResponse(
+        ['data: {"promptFeedback":{"blockReason":"OTHER"},"candidates":[]}\n'],
+        'text/event-stream',
+      ),
+    );
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/content-blocked — OTHER/);
+  });
+
+  it('calls out a budget spent entirely on thinking, which the user can actually fix', async () => {
+    mockFetchOnce(
+      streamResponse(
+        ['data: {"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[]}}]}\n'],
+        'text/event-stream',
+      ),
+    );
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/thinking-budget/);
+  });
+
+  it('still salvages a MAX_TOKENS stop that DID produce text (the cut-short path)', async () => {
+    mockFetchOnce(
+      streamResponse(
+        [
+          'data: {"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"text":"{\\"a\\":1"}]}}]}\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    const { raw } = await geminiAdapter.generate(req, cfg);
+    expect(raw).toBe('{"a":1');
+  });
+
+  it('retries a transient 503 rather than failing the turn on it', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockResolvedValueOnce(streamResponse([TEXT_FRAME], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    const { raw } = await geminiAdapter.generate(req, cfg);
+    expect(raw).toBe('{}');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces a non-transient status without retrying', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 400 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(geminiAdapter.generate(req, cfg)).rejects.toThrow(/gemini 400/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('gemini adapter — candidates parts streaming', () => {
   it('accumulates candidates[0].content.parts[].text', async () => {
     mockFetchOnce(
@@ -622,7 +746,9 @@ describe('gemini adapter — candidates parts streaming', () => {
   });
 
   it('omits thinkingConfig + tools by default (Flash-Lite minimal stands, no search billed)', async () => {
-    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    // A frame with real text: an empty stream is now a failure in its own right (see the
+    // empty-response tests below), and this one is only about what we SEND.
+    const fetchMock = vi.fn(async () => streamResponse([TEXT_FRAME], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
     await geminiAdapter.generate(req, cfg);
@@ -641,7 +767,7 @@ describe('gemini adapter — candidates parts streaming', () => {
   });
 
   it('sends thinkingLevel (uppercased) and native tools when the turn asks for them', async () => {
-    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    const fetchMock = vi.fn(async () => streamResponse([TEXT_FRAME], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
     await geminiAdapter.generate(
@@ -1450,6 +1576,44 @@ describe('an HTTP error carries the provider’s reason, not just its status', (
       expect(msg.length).toBeLessThan(200); // trimmed — never the whole page
       expect(describeLiveError(err, 'anthropic').status).toBe(502);
     }
+  });
+});
+
+describe('a failure the user can act on, not a wrong one', () => {
+  // Each of these used to land on a message that pointed somewhere else entirely — at the model
+  // name, or at the network — and sent the reader off fixing something that wasn't broken.
+  it('reads an in-band block as a refusal, not as an unreachable provider', () => {
+    const e = describeLiveError(new Error('gemini content-blocked — SAFETY'), 'gemini');
+    expect(e.kind).toBe('http');
+    expect(e.message).toMatch(/safety/i);
+    expect(e.message).not.toMatch(/connection/i);
+  });
+
+  it('tells the user their thinking budget ate the answer, and what to change', () => {
+    const e = describeLiveError(new Error('gemini thinking-budget'), 'gemini');
+    expect(e.message).toMatch(/Quality/);
+  });
+
+  it('reads an empty answer as an empty answer', () => {
+    const e = describeLiveError(new Error('gemini empty-response'), 'gemini');
+    expect(e.kind).toBe('http');
+    expect(e.message).toMatch(/empty/i);
+  });
+
+  it('calls a rejected key a rejected key, even when Google bills it as a 400', () => {
+    const e = describeLiveError(
+      new Error('gemini 400 — INVALID_ARGUMENT: API key not valid. Please pass a valid API key.'),
+      'gemini',
+    );
+    expect(e.kind).toBe('auth');
+    // The old mapping sent people hunting for a typo in a model name that was perfectly fine.
+    expect(e.message).not.toMatch(/model name/i);
+  });
+
+  it('still blames the model name for an ordinary 400', () => {
+    const e = describeLiveError(new Error('gemini 400 — INVALID_ARGUMENT: bad field'), 'gemini');
+    expect(e.kind).toBe('http');
+    expect(e.message).toMatch(/model name/i);
   });
 });
 

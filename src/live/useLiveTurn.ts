@@ -38,6 +38,7 @@ import { cacheGet, cachePut, fnv1a, rippleCacheKey } from './ripple/cache';
 import { turnCorpus } from './world/grounding';
 import type { WorldSpec } from './world/types';
 import { StringFieldScanner, nextSpeakableChunk } from './streamParse';
+import { createSpeechPacer } from './speechPacer';
 import { collapseRepeatedValues, forDisplay } from '../lib/spokenText';
 import { classifyAsk } from './select/complexity';
 import { spokenBudget } from './effort';
@@ -634,11 +635,36 @@ export function hydrateFromSession(session: SavedSession): LiveTurnState {
   };
 }
 
+/** Why a turn would not start: `blocked` = not authorized to reach a model (the product terms
+ *  were never accepted); `busy` = a turn is still generating and this ask did not ask to interrupt
+ *  it; `empty` = neither words nor a file to send. */
+export type TurnRefusal = 'blocked' | 'busy' | 'empty';
+
+/** What to tell the user for each refusal. Lives beside the reason it explains, so a new refusal
+ *  cannot be added without deciding what it says out loud. `empty` is here for completeness — the
+ *  surfaces guard it earlier, where there is nothing to explain. */
+export const TURN_REFUSAL_NOTICE: Record<TurnRefusal, string> = {
+  blocked: 'Mavéa needs the terms accepted before it can reach a model — open Settings to review.',
+  busy: 'Still finishing the last answer — your question is still here, send it again in a moment.',
+  empty: 'There’s nothing to send yet — type a question or attach a file.',
+};
+
 export interface UseLiveTurnArgs {
   /** Final authorization gate for billable/provider-backed turns. Scripted frames still work. */
   canRun?: () => boolean;
   /** Read the active model config at call time (so picker changes take effect next turn). */
   getConfig: () => ModelConfig;
+  /** Resolves once the config is fully restored — remembered API keys are decrypted from
+   *  IndexedDB asynchronously, so a turn fired in that window would read an undefined key and be
+   *  rejected by the provider. Awaited immediately before `getConfig()`; already settled on every
+   *  turn after the first. Optional so scripted/test hosts need not supply one. */
+  configReady?: () => Promise<void>;
+  /** Resolves once this turn's answer has something on screen to talk about — its first card
+   *  committed and done entering. Awaited before the turn's FIRST spoken line only; later
+   *  sentences flow as they arrive, because by then the canvas is filling behind the voice.
+   *  Must be bounded by the host: a silent turn is far worse than an early one. Omit it and the
+   *  voice starts the instant the first sentence forms, as it always did. */
+  canvasReady?: () => Promise<void>;
   /** Read the active capabilities at call time (web search / image gen toggles). */
   getCaps?: () => LiveCaps;
   /** Speak a line (the surface wires this to TTS). The surface's wrapper may return the line's
@@ -686,6 +712,13 @@ export interface UseLiveTurn extends LiveTurnState {
     },
   ) => Promise<void>;
   reset: () => void;
+  /** Why `run` would refuse this ask RIGHT NOW, or null if it would start.
+   *
+   *  `run` is fired as `void turn.run(...)` and its guards return silently, so a caller that had
+   *  already emptied the composer left the user staring at a blank box with nothing happening —
+   *  indistinguishable from a send that was simply ignored, and the reason people learned to type
+   *  the question a second time. Ask FIRST, and either clear the composer or say why not. */
+  refuseReason: (text: string, hasAttachments: boolean) => TurnRefusal | null;
   /** Move the spotlight (the surface drives the reveal tour through this). */
   setSpot: (spot: string | null) => void;
   /** Re-open a saved canvas from the Library (no model call). */
@@ -731,7 +764,16 @@ export interface UseLiveTurn extends LiveTurnState {
 }
 
 export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
-  const { canRun, getConfig, getCaps, speak, cancelSpeak, getLibraryEnabled } = args;
+  const {
+    canRun,
+    getConfig,
+    configReady,
+    canvasReady,
+    getCaps,
+    speak,
+    cancelSpeak,
+    getLibraryEnabled,
+  } = args;
   const [state, dispatch] = useReducer(reducer, args.initial ?? INITIAL);
   // The surface rebuilds these arrow props every render, so a callback that must stay
   // identity-stable (generateWorld, driven from an effect) reads them here instead of closing
@@ -741,6 +783,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
 
   // Refs so run() reads current values without re-binding the callback.
   const busyRef = useRef(false);
+  // run() also sets this true synchronously the moment a turn is committed, ahead of its own
+  // `start` dispatch; this re-sync from state is what clears it again when the turn settles.
   busyRef.current = state.busy;
   const historyRef = useRef<ChatMessage[]>(state.history);
   historyRef.current = state.history;
@@ -845,6 +889,29 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       showFrameCancelRef.current = null;
       const ctrl = new AbortController();
       abortRef.current = ctrl;
+      // Busy from the instant the turn is committed, BEFORE the first await below. The guard at the
+      // top of this function reads busyRef, so a start deferred even one microtask would let a
+      // second Enter in the same tick open a second turn — and would leave the surface looking idle
+      // while the config finishes restoring.
+      busyRef.current = true;
+      dispatch({ type: 'start', fresh: opts?.freshStart });
+
+      // The turn's speech gate. The FIRST line waits for the answer to have something on screen to
+      // talk about; every line after it queues straight behind, so ordering is preserved and only
+      // the opening is ever delayed. Chained rather than awaited inline because the streaming
+      // callback is synchronous — and because `speak` must still be CALLED in sentence order, or
+      // the burst handle the reveal walk paces off would track the wrong line.
+      let speechGate: Promise<void> | null = null;
+      const speakWhenVisible = (text: string): void => {
+        if (!canvasReady) {
+          speak?.(text);
+          return;
+        }
+        speechGate = (speechGate ?? canvasReady()).then(() => {
+          if (ctrl.signal.aborted) return; // a superseded turn must not speak over its replacement
+          speak?.(text);
+        });
+      };
 
       // A fresh standalone start ignores the restored/prior conversation entirely: no prior
       // history goes to the model (so a self-contained map answers ITSELF, not a stale topic),
@@ -866,6 +933,13 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         (filledBlanks && Object.keys(filledBlanks).length) ||
         inkIntents?.length
       );
+      // Let a remembered key finish decrypting before reading it. Restoring the encrypted vault is
+      // asynchronous, and a send that lands inside that window — the mount-time hand-off from the
+      // landing composer lands there routinely — read an undefined key, sent an empty auth header,
+      // and came back rejected. The user's fix was to press send again, by which time the vault had
+      // landed. Settled on every turn after the first, so this costs a microtask.
+      await configReady?.();
+      if (ctrl.signal.aborted) return;
       // Read the config ONCE for the whole turn, so the signature a cached answer is filed under
       // is the config the call actually ran with — not whatever the settings say by the time the
       // lazily-imported engine has loaded. A prefetch generated under yesterday's provider/model
@@ -889,7 +963,6 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         ? prefetchAbortRef.current.filter((p) => p.key === answerKey)
         : [];
       const cached = uniqueInput ? null : readAnswer(answerCacheRef.current, answerKey);
-      dispatch({ type: 'start', fresh: opts?.freshStart });
 
       // Decide UP FRONT whether to reveal progressively. We only stream a turn that
       // will REPLACE the canvas (a new topic, or the very first turn): then blocks can
@@ -933,7 +1006,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         if (hit.narration) {
           dispatch({ type: 'speak', narration: hit.narration });
           // Show the normal narration as the caption; SPEAK the voice-ready twin when present.
-          speak?.(hit.spoken || hit.narration);
+          // Gated like the streaming path: a cache hit speaks instantly from Kokoro's own PCM cache
+          // while the canvas it replaces is still replaying every card's entrance, so this is the
+          // case where the voice most obviously runs ahead of the screen.
+          speakWhenVisible(hit.spoken || hit.narration);
         }
         result = hit;
       } else {
@@ -952,6 +1028,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // most turns are heard sentence-by-sentence on THIS path, well before that final trim runs.
         const spokenCap = spokenBudget(classifyAsk(userText));
         let spokenChars = 0;
+        const pacer = createSpeechPacer();
 
         // The engine is a lazy chunk: a cold cache, an offline tab, or a deploy that rotated the
         // hashed filename mid-session all make this import REJECT. Unguarded, that rejection escapes
@@ -1015,7 +1092,16 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             const prog = narrationStream.progress();
             if (!prog) return;
             const { chunk: say, consumed } = nextSpeakableChunk(prog.text, spokenLen, prog.done);
-            if (!say) return;
+            if (!say) {
+              // The narration field closed with nothing new to cut — every sentence was already
+              // taken. Release whatever the pacer is still gathering, or a short answer's tail
+              // would wait out the rest of the canvas before it was said.
+              if (prog.done) {
+                const tail = pacer.flush();
+                if (tail) speakWhenVisible(tail);
+              }
+              return;
+            }
             spokenLen = consumed;
             narrationStreamed = true;
             // The streamed narration may carry inline [[shown|said]] annotations: show the clean side
@@ -1029,9 +1115,22 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             // keeps growing with the raw stream (it self-corrects to the capped narration when the
             // turn settles), but the audio queue must never keep growing past the conversational
             // length a person would actually say out loud.
-            if (spokenChars >= spokenCap) return;
+            if (spokenChars >= spokenCap) {
+              // Stop ADDING sentences — but say whatever the pacer had already gathered, or the
+              // answer would break off mid-thought at whichever sentence happened to trip the cap.
+              const gathered = pacer.flush();
+              if (gathered) speakWhenVisible(gathered);
+              return;
+            }
             spokenChars += say.length;
-            speak?.(say);
+            // The opening sentence goes out alone (its latency is the one a listener hears); the
+            // rest are gathered into breath-sized utterances so the synthesizer carries prosody
+            // ACROSS the sentence boundaries instead of resetting at every one. See speechPacer.
+            // The narration field CLOSING is the end of speech — not the end of the response, which
+            // is a whole canvas later — so a short answer's last sentence is released here, not
+            // held until the final block has streamed.
+            const utterance = pacer.push(say, prog.done);
+            if (utterance) speakWhenVisible(utterance);
           },
           {
             caps,
@@ -1098,6 +1197,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // waiting on is lost and the settle below compares against what actually painted.
         if (partialFrame) cancelAnimationFrame(partialFrame);
         flushPartial();
+        // Same for the voice: a sentence the pacer was still gathering into a breath has nothing
+        // left to gather with, so say it rather than swallow the end of the answer.
+        if (!ctrl.signal.aborted) {
+          const tail = pacer.flush();
+          if (tail) speakWhenVisible(tail);
+        }
 
         // A newer turn may have aborted this one while generateLive was in flight. If so, stop
         // here: none of the tail (speak, error, show, history, prefetch) must run, or a slow
@@ -1109,7 +1214,9 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         if (!narrationStreamed && result.narration) {
           dispatch({ type: 'speak', narration: result.narration });
           // Caption stays the normal narration; the voice gets the spoken twin when supplied.
-          speak?.(result.spoken || result.narration);
+          // Gated like the other two: this line lands with the whole canvas at once, so it is the
+          // most likely of the three to arrive before a single card has finished appearing.
+          speakWhenVisible(result.spoken || result.narration);
         }
 
         // Remember this answer — a later identical re-ask, in the same conversation under the same
@@ -1350,7 +1457,20 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         });
       }
     },
-    [canRun, getConfig, getCaps, speak, cancelSpeak, getLibraryEnabled],
+    [canRun, getConfig, configReady, canvasReady, getCaps, speak, cancelSpeak, getLibraryEnabled],
+  );
+
+  // The same three tests `run` applies at its top, readable BEFORE a caller commits to the send.
+  // Deliberately shares `busyRef` with run rather than reading `state.busy`, so the two can never
+  // disagree about whether a turn would start.
+  const refuseReason = useCallback(
+    (text: string, hasAttachments: boolean): TurnRefusal | null => {
+      if (canRun && !canRun()) return 'blocked';
+      if (!text.trim() && !hasAttachments) return 'empty';
+      if (busyRef.current) return 'busy';
+      return null;
+    },
+    [canRun],
   );
 
   const reset = useCallback(() => {
@@ -1595,6 +1715,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   return {
     ...state,
     run,
+    refuseReason,
     reset,
     setSpot,
     restore,

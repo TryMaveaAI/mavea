@@ -28,7 +28,20 @@ import type {
   GroundingSource,
   TokenUsage,
 } from './types';
-import { fetchWithTimeout, readSSE, obj, str, arr, num } from './http';
+import {
+  fetchWithTimeout,
+  readSSE,
+  isStreamStall,
+  retryAfterMs,
+  sleepAbortable,
+  PROVIDER_BLOCKED,
+  PROVIDER_EMPTY,
+  PROVIDER_THINKING_BUDGET,
+  obj,
+  str,
+  arr,
+  num,
+} from './http';
 import { geminiUserParts } from './parts';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
@@ -37,6 +50,18 @@ const PROXY_BASE = '/llm/gemini';
 const API_BASE = '/v1beta';
 const GEN_TIMEOUT_MS = 60_000;
 const PROBE_TIMEOUT_MS = 4_000;
+/** Hard ceiling on one turn's whole stream. GEN_TIMEOUT_MS only guards time-to-first-BYTE and the
+ *  SSE idle timer only catches a stream that has gone silent — neither stops one that trickles
+ *  forever. Matches the ceiling openaiCompatible has always had; generous, because the face shows a
+ *  live thinking state throughout. */
+const STREAM_TOTAL_MS = 180_000;
+/** Transient statuses worth one more try: 429 is a per-minute rate limit, 503 is Google's
+ *  "model overloaded". Both clear on their own; failing the turn on them makes the user do by hand
+ *  exactly what this loop does. */
+const RETRY_STATUSES = new Set([429, 503]);
+const TRANSIENT_RETRIES = 2;
+/** Finish reasons that mean the model refused, rather than ran out of room or simply finished. */
+const BLOCKED_FINISH = new Set(['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII']);
 
 function keyHeader(cfg: ModelConfig): Record<string, string> {
   return { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.apiKey ?? '' };
@@ -79,6 +104,24 @@ function buildTools(req: LiveRequest): Array<Record<string, unknown>> | undefine
   if (req.tools?.webSearch) tools.push({ google_search: {} });
   if (req.tools?.urlContext) tools.push({ url_context: {} });
   return tools.length ? tools : undefined;
+}
+
+/** Turn a 200-OK-but-empty Gemini response into an error that says what happened.
+ *
+ * Gemini reports a refusal in-band: HTTP 200, a well-formed stream, and `finishReason` /
+ * `promptFeedback.blockReason` instead of text. Reading only `parts[].text` therefore produced an
+ * empty string, which validateLiveResponse rejected, which triggered generateLive's collapse
+ * recovery — a SECOND billed call the user never saw — before finally rendering the fallback card
+ * that reads "try asking again". That card is why people learned to send the prompt twice. */
+function emptyResponseError(finishReason: string, blockReason: string): Error {
+  const reason = blockReason || finishReason;
+  if (blockReason || BLOCKED_FINISH.has(finishReason)) {
+    return new Error(`gemini ${PROVIDER_BLOCKED} — ${reason}`);
+  }
+  // MAX_TOKENS with nothing visible means the thinking budget consumed the entire allowance; the
+  // user can actually fix that, so say so rather than calling it an empty answer.
+  if (finishReason === 'MAX_TOKENS') return new Error(`gemini ${PROVIDER_THINKING_BUDGET}`);
+  return new Error(`gemini ${PROVIDER_EMPTY}${reason ? ` — ${reason}` : ''}`);
 }
 
 /** Pull the real web sources out of a candidate's groundingMetadata. Sources arrive in
@@ -165,52 +208,83 @@ export const geminiAdapter: ProviderAdapter = {
     if (thinking) generationConfig.thinkingConfig = thinking;
     const tools = buildTools(req);
 
-    const res = await fetchWithTimeout(
-      url,
-      {
-        method: 'POST',
-        headers: keyHeader(cfg),
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: stableSystem }] },
-          contents,
-          generationConfig,
-          ...(tools ? { tools } : {}),
-        }),
-      },
-      GEN_TIMEOUT_MS,
-      req.signal,
-    );
-    if (!res.ok) throw new Error(`gemini ${res.status}${await errorDetail(res)}`);
+    const requestInit: RequestInit = {
+      method: 'POST',
+      headers: keyHeader(cfg),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: stableSystem }] },
+        contents,
+        generationConfig,
+        ...(tools ? { tools } : {}),
+      }),
+    };
 
-    let acc = '';
-    const grounding = new Map<string, GroundingSource>();
-    let usage: TokenUsage | undefined;
-    await readSSE(res, (ev) => {
-      // candidates[0]: text fragments in content.parts[], sources in groundingMetadata.
-      const cand = obj(arr(obj(ev).candidates)[0]);
-      const parts = arr(obj(cand.content).parts);
-      for (const p of parts) {
-        const frag = str(obj(p).text);
-        if (frag) {
-          acc += frag;
-          onDelta?.(frag);
+    // Total-turn ceiling, merged with the caller's abort (a superseded turn). See STREAM_TOTAL_MS.
+    const capCtrl = new AbortController();
+    const capTimer = setTimeout(() => capCtrl.abort(), STREAM_TOTAL_MS);
+    const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
+    try {
+      // One retry for a stream that went quiet before a single byte. Bounded to the ZERO-byte case
+      // on purpose: once fragments have been streamed the user has seen them and generateLive
+      // salvages what arrived, so re-asking would both double-bill and paint the answer twice.
+      for (let attempt = 0; ; attempt++) {
+        let acc = '';
+        const grounding = new Map<string, GroundingSource>();
+        let usage: TokenUsage | undefined;
+        let finishReason = '';
+        let blockReason = '';
+        try {
+          let res: Response;
+          for (let tries = 0; ; tries++) {
+            res = await fetchWithTimeout(url, requestInit, GEN_TIMEOUT_MS, signal);
+            if (res.ok) break;
+            if (RETRY_STATUSES.has(res.status) && tries < TRANSIENT_RETRIES && !signal.aborted) {
+              await sleepAbortable(retryAfterMs(res, tries), signal);
+              continue;
+            }
+            throw new Error(`gemini ${res.status}${await errorDetail(res)}`);
+          }
+
+          await readSSE(res, (ev) => {
+            // candidates[0]: text fragments in content.parts[], sources in groundingMetadata.
+            const cand = obj(arr(obj(ev).candidates)[0]);
+            const parts = arr(obj(cand.content).parts);
+            for (const p of parts) {
+              const frag = str(obj(p).text);
+              if (frag) {
+                acc += frag;
+                onDelta?.(frag);
+              }
+            }
+            collectGrounding(cand, grounding);
+            // Why the stream ended, and whether the prompt itself was refused. Only consulted when
+            // no text arrived — a finished answer needs no explanation, and a MAX_TOKENS stop with
+            // real content is generateLive's existing "cut short" salvage, not a failure.
+            finishReason = str(cand.finishReason) || finishReason;
+            blockReason = str(obj(obj(ev).promptFeedback).blockReason) || blockReason;
+            // usageMetadata rides on the final chunk(s); cachedContentTokenCount is the slice
+            // billed at the cheap cached rate (implicit caching — proves the long-convo savings).
+            const u = obj(ev).usageMetadata;
+            if (u) {
+              usage = {
+                input: num(obj(u).promptTokenCount),
+                output: num(obj(u).candidatesTokenCount),
+                cachedInput: num(obj(u).cachedContentTokenCount),
+              };
+            }
+          });
+        } catch (err) {
+          if (attempt === 0 && !acc && isStreamStall(err) && !signal.aborted) continue;
+          throw err;
         }
+        if (!acc) throw emptyResponseError(finishReason, blockReason);
+        const out: RawResult = { raw: acc };
+        if (grounding.size) out.sources = [...grounding.values()];
+        if (usage) out.usage = usage;
+        return out;
       }
-      collectGrounding(cand, grounding);
-      // usageMetadata rides on the final chunk(s); cachedContentTokenCount is the slice
-      // billed at the cheap cached rate (implicit caching — proves the long-convo savings).
-      const u = obj(ev).usageMetadata;
-      if (u) {
-        usage = {
-          input: num(obj(u).promptTokenCount),
-          output: num(obj(u).candidatesTokenCount),
-          cachedInput: num(obj(u).cachedContentTokenCount),
-        };
-      }
-    });
-    const out: RawResult = { raw: acc };
-    if (grounding.size) out.sources = [...grounding.values()];
-    if (usage) out.usage = usage;
-    return out;
+    } finally {
+      clearTimeout(capTimer);
+    }
   },
 };

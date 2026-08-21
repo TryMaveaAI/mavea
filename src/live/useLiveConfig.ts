@@ -278,6 +278,18 @@ export type SecretPersistenceStatus =
 
 let secretPersistenceStatus: SecretPersistenceStatus = 'not-requested';
 let secretPersistenceTask: Promise<void> = Promise.resolve();
+// The INITIAL read-back, kept apart from secretPersistenceTask (which every setLiveConfigV2 call
+// reassigns to its own write). Callers that must not act on a half-restored config await this one.
+let secretsHydrateTask: Promise<void> = Promise.resolve();
+
+/** Resolves once remembered keys have been decrypted back into memory — or once we know there are
+ *  none to decrypt. Awaiting it before reading a key is the difference between a turn that runs and
+ *  one that sends an empty `Authorization` header and comes back 400 "API key not valid", which the
+ *  user then fixes by pressing send a second time. Already-resolved after the first turn, so this
+ *  costs a microtask and nothing else. */
+export function secretsReady(): Promise<void> {
+  return secretsHydrateTask;
+}
 
 function reportSecretPersistence(status: SecretPersistenceStatus): void {
   secretPersistenceStatus = status;
@@ -419,7 +431,12 @@ export function setLiveConfigV2(patch: Partial<LiveConfigV2>): LiveConfigV2 {
 // One-time bridge on module load: migrate any legacy plaintext keys out of the main blob (a re-save
 // strips them and writes the encrypted blob), otherwise decrypt the existing secrets blob.
 function initSecrets(): void {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') {
+    // No storage means no blob to restore: nothing is pending, and anyone awaiting readiness
+    // should proceed immediately rather than wait for a hydrate that will never run.
+    secretsHydrated = true;
+    return;
+  }
   const c = getLiveConfigV2();
   if (hasSecrets(c)) {
     // Legacy plaintext keys were just read from the old blob, synchronously — memory already
@@ -428,7 +445,8 @@ function initSecrets(): void {
     secretsHydrated = true;
     setLiveConfigV2({});
   } else {
-    secretPersistenceTask = hydrateSecrets();
+    secretsHydrateTask = hydrateSecrets();
+    secretPersistenceTask = secretsHydrateTask;
   }
 }
 initSecrets();

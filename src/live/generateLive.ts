@@ -30,6 +30,7 @@ import type { ModelConfig } from '../types/mavea';
 import { catalogFacts } from '../canvas/blocks/catalog/facts';
 import { ensureDetails } from '../canvas/blocks/catalog/details';
 import { getAdapter } from './providers';
+import { PROVIDER_BLOCKED, PROVIDER_EMPTY, PROVIDER_THINKING_BUDGET } from './providers/http';
 import { isReasoningModel } from './providers/openaiCompatible';
 import { currentDateTimeLine } from './ground/now';
 import { semanticFit } from './semantic';
@@ -97,6 +98,7 @@ import type { WorldFitness } from './world/fitness';
 import { evolveWorld } from './world/explode';
 import { rememberTurnGrounding, turnCorpus } from './world/grounding';
 import type { WorldSpec } from './world/types';
+import { worldSubject } from './world/subject';
 import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
 import type { Representation } from '../canvas/spatial/morph/types';
 import {
@@ -249,6 +251,12 @@ const PROVIDER_LABELS: Record<string, string> = {
 const SPENT_ACCOUNT =
   /resource.?exhausted|quota.?exceed|exceeded your (?:current )?quota|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|billing/i;
 
+/** The words a provider uses when the KEY itself is no good — missing, malformed, revoked, or not
+ *  enabled for this API. Google returns these as a 400 INVALID_ARGUMENT, which the generic 400
+ *  branch below would otherwise translate into "check the model name in settings". */
+const BAD_KEY =
+  /api[_ ]?key not valid|api[_ ]?key.{0,20}invalid|invalid[_ ]api[_ ]?key|API_KEY_INVALID|missing.{0,10}api[_ ]?key|authentication[_ ]error/i;
+
 /** Map a provider failure to a plain-language LiveError. Adapters throw `Error('<provider> <status>
  *  — <reason from the body>')` on HTTP failure, so the status is parsed from the message; no status
  *  at all means the request never got a response (network down, timeout, CORS). */
@@ -256,6 +264,30 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
   const msg = err instanceof Error ? err.message : '';
   const status = Number(/\b(\d{3})\b/.exec(msg)?.[1]) || undefined;
   const label = PROVIDER_LABELS[provider] ?? provider;
+  // A 200 OK that carried no answer. These have no status, so without an explicit branch they
+  // would fall all the way through to the network message below and blame the connection for
+  // something that reached the model and came back.
+  if (msg.includes(PROVIDER_BLOCKED))
+    return {
+      kind: 'http',
+      message: `${label} declined to answer that one — its safety filters stopped the reply. Rephrasing usually gets past it.`,
+    };
+  if (msg.includes(PROVIDER_THINKING_BUDGET))
+    return {
+      kind: 'http',
+      message: `${label} spent its whole output budget thinking and had none left to answer with — try a lower Quality setting, or a simpler ask.`,
+    };
+  if (msg.includes(PROVIDER_EMPTY))
+    return { kind: 'http', message: `${label} returned an empty answer — try again.` };
+  // An unusable key is billed at different statuses by different providers (Google answers 400
+  // INVALID_ARGUMENT), and "check the model name" sends the user hunting for a typo that isn't
+  // there. The adapters carry the provider's own words into the message, so match on those first.
+  if (BAD_KEY.test(msg))
+    return {
+      kind: 'auth',
+      status,
+      message: `Your ${label} API key was rejected — check it in settings.`,
+    };
   if (status === 401)
     return { kind: 'auth', status, message: 'Your API key was rejected — check it in settings.' };
   if (status === 403)
@@ -555,9 +587,15 @@ function answeredInProse(raw: string | object): boolean {
 }
 
 /** Said to the reader when answeredInProse is true. Names the cause and the fix, in their terms —
- *  no wire vocabulary, because the only useful action is "choose a different model". */
+ *  no wire vocabulary, because the only useful action is "choose a different model".
+ *
+ *  WORDING RULE — describe what happened in THIS turn and what Mavéa requires; never characterise
+ *  anyone else's models as a class. The earlier line said preview and reasoning models "ignore the
+ *  request for structured output", which is both a claim about third-party products we would have
+ *  to stand behind and simply inaccurate: a model without JSON mode is not ignoring anything, it
+ *  does not implement it. Same rule as the picker note in setup/ModelSelect.tsx. */
 const PROSE_COLLAPSE_MSG =
-  'This model replied in plain prose instead of the structured answer Mavéa builds the canvas from. Some models — preview and reasoning ones especially — ignore the request for structured output. Try one that supports it.';
+  'This model replied in plain prose instead of the structured answer Mavéa builds a canvas from. Mavéa needs structured output, and not every model supports it — try another.';
 
 /** The graceful fallback: one honest insight carrying whatever we can show. */
 function fallbackSpec(summary: string): ConversationSpec {
@@ -1992,16 +2030,22 @@ async function worldCard(
   pending: Promise<WorldSpec | null> | null,
 ): Promise<WorldPreviewProps | null> {
   if (arm.kind === 'offer') {
+    // WHAT this world would be about, resolved before anything is offered. A follow-up that names
+    // nothing ("tell me more", "why?") is answered by the thread's own subject — the headline of the
+    // answer sitting above it — because handed the bare phrase the builder explains the phrase. With
+    // no subject from either, no card: one that opens onto the wrong thing is worse than none.
+    const subject = worldSubject(userText, headline);
+    if (subject === null) return null;
     // Re-asking the question a built world already answers must never wipe the world the reader
-    // paid for — the card's signature is its question, so a bare offer would replace it in place.
-    if (opts.priorWorld?.title === userText) {
-      return { title: userText, world: opts.priorWorld };
+    // paid for — the card's signature is its subject, so a bare offer would replace it in place.
+    if (opts.priorWorld?.title === subject) {
+      return { title: subject, world: opts.priorWorld };
     }
-    rememberTurnGrounding(userText, {
+    rememberTurnGrounding(subject, {
       attachments: opts.attachments ?? [],
       sources: [...sources],
     });
-    return { title: userText, ...(headline ? { outcome: headline } : {}) };
+    return { title: subject, ...(headline ? { outcome: headline } : {}) };
   }
   const prior = opts.priorWorld;
   if (!prior) return null;
