@@ -932,9 +932,9 @@ export function pdfProperties(meta: ExportMeta): PdfMetadata {
   return {
     title: meta.title,
     subject: meta.topic,
-    author: 'Mavea',
+    author: 'Mavéa',
     keywords: meta.sources.length ? meta.sources.map((s) => s.name).join(', ') : undefined,
-    creator: 'Mavea',
+    creator: 'Mavéa',
   };
 }
 

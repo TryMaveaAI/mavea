@@ -746,18 +746,18 @@ describe('rasterToPdf', () => {
       properties: {
         title: 'Q3 board review',
         subject: 'Finance',
-        author: 'Mavea',
+        author: 'Mavéa',
         keywords: 'a.pdf, b.pdf',
-        creator: 'Mavea',
+        creator: 'Mavéa',
       },
     });
 
     expect(pdf.setProperties).toHaveBeenCalledWith({
       title: 'Q3 board review',
       subject: 'Finance',
-      author: 'Mavea',
+      author: 'Mavéa',
       keywords: 'a.pdf, b.pdf',
-      creator: 'Mavea',
+      creator: 'Mavéa',
     });
   });
 

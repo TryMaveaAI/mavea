@@ -78,8 +78,8 @@ export async function exportDeckToPptx(
   const pptx = new PptxGenCtor();
   pptx.defineLayout({ name: PPTX_LAYOUT_NAME, width: SLIDE_W_IN, height: SLIDE_H_IN });
   pptx.layout = PPTX_LAYOUT_NAME;
-  pptx.author = 'Mavea';
-  pptx.company = 'Mavea';
+  pptx.author = 'Mavéa';
+  pptx.company = 'Mavéa';
   if (opts.title) pptx.title = opts.title;
   if (opts.subject) pptx.subject = opts.subject;
 

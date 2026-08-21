@@ -208,8 +208,8 @@ describe('exportDeckToPptx', () => {
     const pptx = FakePptxGenJS.last!;
     expect(pptx.title).toBe('The State of Urban Mobility');
     expect(pptx.subject).toBe('Strategy');
-    expect(pptx.author).toBe('Mavea');
-    expect(pptx.company).toBe('Mavea');
+    expect(pptx.author).toBe('Mavéa');
+    expect(pptx.company).toBe('Mavéa');
   });
 
   it('passes scale/accent/progress/signal straight through to the shared rasterizer', async () => {

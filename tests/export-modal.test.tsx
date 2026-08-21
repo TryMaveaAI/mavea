@@ -283,7 +283,7 @@ describe('ExportModal — the document pipeline gets the same progress/cancel/me
     expect(queryByText('Cancel')).toBeNull();
   });
 
-  it('supplies the real title/topic/sources as the PDF properties, authored as Mavea', async () => {
+  it('supplies the real title/topic/sources as the PDF properties, authored as Mavéa', async () => {
     exportDocToPdf.mockResolvedValue(new Blob(['pdf']));
     const { getByText } = await openDocumentModal([answer(0, 'Quarterly review')]);
     fireEvent.click(getByText('Download PDF'));
@@ -293,8 +293,8 @@ describe('ExportModal — the document pipeline gets the same progress/cancel/me
       properties?: { title?: string; author?: string; creator?: string };
     };
     expect(opts.properties?.title).toBe('Quarterly review');
-    expect(opts.properties?.author).toBe('Mavea');
-    expect(opts.properties?.creator).toBe('Mavea');
+    expect(opts.properties?.author).toBe('Mavéa');
+    expect(opts.properties?.creator).toBe('Mavéa');
   });
 
   it('defaults the page-size control to Letter/A4 by locale, and the choice reaches the exported doc', async () => {
