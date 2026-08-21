@@ -8,6 +8,7 @@
 // failure, and the caller (CoursesApp) shows that failure honestly instead of a hollow course.
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers';
+import { parseLooseJsonObject } from '../ground/json';
 import type { CheckpointQuestion, CourseLevel, TopicCourse, TopicLesson } from './model';
 
 const MIN_LESSONS = 3;
@@ -34,13 +35,6 @@ function friendlyGenError(err: unknown, provider: string): string {
 /** A checkpoint is exactly this many questions — small enough to stay a quick self-check, real
  *  enough to test the lesson. Written lazily by generateCheckpoint, never as part of the syllabus. */
 const CHECKPOINT_QS = 2;
-
-function stripFences(s: string): string {
-  return s
-    .replace(/^```[a-z]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-}
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0;
@@ -138,16 +132,12 @@ Rules:
 Return ONLY valid JSON, no markdown fences, no prose:
 { "checkpoint": [{ "question": "...", "answer": "..." }, { "question": "...", "answer": "..." }] }`;
 
-/** Parse the model's raw text into an object, tolerant of fences and stray prose — the same
- *  fence-strip-then-brace-regex fallback ../deepzoom/generate.ts's identical pattern relies on. A
- *  response with nothing JSON-shaped degrades to {}, so the caller fails its own honest way. */
+/** Parse the model's raw text into an object, tolerant of fences and stray prose. Shares the one
+ *  tolerant parser with ../deepzoom/generate.ts rather than keeping a second copy: the copy's own
+ *  fallback parse was unguarded, so the docblock's promise that a response with nothing JSON-shaped
+ *  "degrades to {}" was false whenever the brace regex matched something that would not parse. */
 function parseJsonObject(raw: string): Record<string, unknown> {
-  try {
-    return JSON.parse(stripFences(raw));
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : {};
-  }
+  return parseLooseJsonObject(raw);
 }
 
 interface CallOpts {

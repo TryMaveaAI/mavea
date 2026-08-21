@@ -3,6 +3,7 @@
 // This keeps cost minimal: a full 10-level trunk costs 1 call, not 10.
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers';
+import { parseLooseJson, parseLooseJsonObject } from '../ground/json';
 import type { ZoomLevel } from './types';
 
 export const BRANCH_DEPTH = 10;
@@ -49,25 +50,14 @@ function coerceLevel(raw: unknown, scale: number): ZoomLevel | null {
   };
 }
 
-function stripFences(s: string): string {
-  return s
-    .replace(/^```[a-z]*\n?/, '')
-    .replace(/\n?```$/, '')
-    .trim();
-}
-
 function extractLevels(raw: unknown, startScale: number, max: number): ZoomLevel[] {
-  let obj: Record<string, unknown>;
-  try {
-    if (typeof raw === 'string') {
-      obj = JSON.parse(stripFences(raw));
-    } else {
-      obj = raw as Record<string, unknown>;
-    }
-  } catch {
-    const match = typeof raw === 'string' ? raw.match(/\{[\s\S]*\}/) : null;
-    obj = match ? JSON.parse(match[0]) : {};
-  }
+  // A trunk arrives as a string; a fork's already-parsed payload arrives as an object. Both go
+  // through the tolerant parser, which passes a non-string straight back.
+  const parsed = typeof raw === 'string' ? parseLooseJson(raw) : raw;
+  const obj = (parsed !== null && typeof parsed === 'object' ? parsed : {}) as Record<
+    string,
+    unknown
+  >;
   const arr = Array.isArray(obj.levels) ? obj.levels : Array.isArray(obj) ? obj : [];
   const levels: ZoomLevel[] = [];
   for (let i = 0; i < Math.min((arr as unknown[]).length, max); i++) {
@@ -136,13 +126,7 @@ export async function generateTrunk(
     },
     cfg,
   );
-  let obj: Record<string, unknown>;
-  try {
-    obj = JSON.parse(stripFences(typeof result.raw === 'string' ? result.raw : ''));
-  } catch {
-    const match = typeof result.raw === 'string' ? result.raw.match(/\{[\s\S]*\}/) : null;
-    obj = match ? JSON.parse(match[0]) : {};
-  }
+  const obj = parseLooseJsonObject(typeof result.raw === 'string' ? result.raw : '');
   const levels = extractLevels(obj, 0, BRANCH_DEPTH);
   if (levels.length === 0) throw new Error('No zoom levels in model response');
   return { rangeStart: String(obj.rangeStart ?? levels[0].title), levels };
