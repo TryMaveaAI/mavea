@@ -319,6 +319,15 @@ export function PresentationDeck({
     return () => window.clearInterval(id);
   }, [autoAdvanceMs, count, clamp]);
 
+  // Take focus the moment the show opens. Every shortcut below is ignored when the keydown lands
+  // on a text field (`isEditableTarget`), and every route IN — the ⌘K palette, the Share menu —
+  // leaves focus sitting in the composer. So the deck opened with its whole keyboard dead: arrows
+  // did nothing, Escape did not end the show, and pressing `o` for the overview typed a letter into
+  // the conversation behind it.
+  useEffect(() => {
+    deckRef.current?.focus({ preventScroll: true });
+  }, []);
+
   // Keyboard map. Registered on the CAPTURE phase, not the default bubble phase — a real keydown
   // dispatches on the focused element and bubbles up through document to window, visiting window
   // TWICE (once descending as a capture listener, once ascending as a bubble listener). Capture
@@ -538,6 +547,9 @@ export function PresentationDeck({
       className="preso-deck"
       role="region"
       aria-label="Presentation"
+      // Focusable only programmatically (see the mount effect above) — it must be able to HOLD
+      // focus so the shortcuts work, without joining the tab order ahead of the deck's own controls.
+      tabIndex={-1}
       style={{ background: '#0a0c11' }}
       ref={deckRef}
     >

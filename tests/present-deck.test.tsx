@@ -441,3 +441,34 @@ describe('PresentationDeck', () => {
     });
   });
 });
+
+describe('the show takes the keyboard when it opens', () => {
+  // Every shortcut below is ignored when the keydown lands on a text field, and every route into
+  // Present — the ⌘K palette, the Share menu — leaves focus in the composer. So the deck opened
+  // with its whole keyboard dead: arrows did nothing, Escape did not end the show, and `o` typed a
+  // letter into the conversation behind it.
+  it('focuses the deck root on mount, so the deck is what receives keys', () => {
+    const { container } = mount();
+    const deck = container.querySelector('.preso-deck');
+    expect(deck).toBeTruthy();
+    expect(document.activeElement).toBe(deck);
+  });
+
+  it('holds focus without joining the tab order ahead of its own controls', () => {
+    const { container } = mount();
+    expect(container.querySelector('.preso-deck')?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('does not steal keys from a text field the presenter is actually typing in', () => {
+    // The guard that made this bug possible is also load-bearing: a keydown on an input must still
+    // be left alone, or typing a question mid-show would trigger shortcuts.
+    const onExit = vi.fn();
+    mount(onExit);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    act(() => void fireEvent.keyDown(input, { key: 'Escape' }));
+    expect(onExit).not.toHaveBeenCalled();
+    input.remove();
+  });
+});

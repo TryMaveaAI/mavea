@@ -60,7 +60,7 @@ describe('ReplayOverlay — scroll back and replay', () => {
 
   it('switches the shown canvas when another turn is clicked', () => {
     render(<ReplayOverlay frames={frames} initialIndex={1} onClose={() => {}} />);
-    fireEvent.click(screen.getByTitle('what is jazz'));
+    fireEvent.click(screen.getByTitle('What is jazz'));
     expect(screen.getByText(/Jazz basics/i)).toBeInTheDocument();
   });
 

@@ -127,6 +127,34 @@ describe('SetupWizard — first-run', () => {
   });
 });
 
+describe('SetupWizard — the nav row holds together', () => {
+  it('keeps the right flank as ONE grid item, whatever it carries', () => {
+    // The nav is a 1fr-auto-1fr grid so the constellation sits on the true page centre-line. Add a
+    // second element out on the right and it becomes a FOURTH grid item, which wraps onto its own
+    // row — that is what dropped the appearance toggle below the constellation on a phone.
+    const { container } = render(
+      <SetupWizard
+        {...defaultProps}
+        speak={mkSpeak()}
+        paletteSlot={<button type="button">Search</button>}
+      />,
+    );
+    const nav = container.querySelector('.setup-nav');
+    expect(nav).toBeTruthy();
+    expect(nav?.children.length).toBe(3);
+    const end = nav?.querySelector('.setup-nav-end');
+    expect(end).toBeTruthy();
+    expect(end?.parentElement).toBe(nav);
+    // Both the palette handle and the appearance toggle live inside that one flank.
+    expect(end?.querySelectorAll('button').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('still holds together with no palette handle at all', () => {
+    const { container } = render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    expect(container.querySelector('.setup-nav')?.children.length).toBe(3);
+  });
+});
+
 describe('SetupWizard — Connect step model input', () => {
   it('lets the model field go empty instead of snapping back to the provider default', () => {
     const speak = mkSpeak();

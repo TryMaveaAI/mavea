@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { Library } from '../src/live/Library';
+import { LIBRARY_CAP } from '../src/live/library/store';
 import type { LibraryEntry } from '../src/live/library/store';
 import type { ConversationSpec } from '../src/data/conversation';
 
@@ -17,9 +18,20 @@ const ENTRIES = [
 ];
 
 describe('Library tools — search, tabs, count line', () => {
-  it('counts this week vs all time, honestly from savedAt', () => {
+  it('counts this week honestly from savedAt, against the cap it actually keeps', () => {
+    // "all time" was never true: the store keeps the most recent LIBRARY_CAP and drops the rest,
+    // so a conversation could vanish with nothing having warned it might — and on a BYOK key,
+    // re-asking for what vanished costs real money.
     const { getByText } = render(<Library entries={ENTRIES} onResume={vi.fn()} />);
-    expect(getByText('2 this week · 3 all time')).toBeTruthy();
+    expect(getByText(/2 this week · 3 of 12 kept on this device/)).toBeTruthy();
+  });
+
+  it('says what happens next once the shelf is full', () => {
+    const full = Array.from({ length: LIBRARY_CAP }, (_, i) =>
+      entry(`f${i}`, `Saved ${i}`, `ask ${i}`, Date.now() - i * 3_600_000),
+    );
+    const { getByText } = render(<Library entries={full} onResume={vi.fn()} />);
+    expect(getByText(/saving another drops the oldest/)).toBeTruthy();
   });
 
   it('search filters by what the cards actually show, with an empty state', () => {

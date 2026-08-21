@@ -84,3 +84,101 @@ describe('landing captions — reading text stays on the 9px legibility floor', 
     expect(Number(size)).toBeGreaterThanOrEqual(9);
   });
 });
+
+describe('tierlist — a tier graded in WORDS must not be shredded mid-syllable', () => {
+  const css = read('src/canvas/blocks/everyday/styles.css');
+  const railRule = /\.tier-rail\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+  const rowsRule = /\.tier-rows\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+
+  it('never pins the rail to a fixed width — the fixture grades S/A/B/C, real answers grade in words', () => {
+    // The shipped bug: `flex: 0 0 56px` is generous for one letter and impossible for "Significant",
+    // so every word wrapped mid-syllable ("Critic|al"). 56px survives only as a FLOOR.
+    expect(railRule).not.toMatch(/flex:\s*0\s+0\s+\d/);
+    expect(railRule).toMatch(/min-width:\s*56px/);
+  });
+
+  it('breaks a word only as a last resort — `anywhere` also destroys the min-content the track reads', () => {
+    // `overflow-wrap: anywhere` reports min-content as ONE CHARACTER, so the track that is supposed
+    // to size itself to the longest word sizes itself to nothing instead, and the word shreds.
+    expect(railRule).toMatch(/overflow-wrap:\s*break-word/);
+    expect(railRule).not.toMatch(/overflow-wrap:\s*anywhere/);
+  });
+
+  it('floors the shared track at min-content so a whole word always fits on its own line', () => {
+    expect(rowsRule).toMatch(/grid-template-columns:\s*minmax\(min-content,\s*max-content\)/);
+  });
+
+  it('caps the rail in ch, never a percentage — a % max-width collapses the very track it sizes', () => {
+    // Measured: `max-width: 45%` on the grid item resolves against its own track, drove the track
+    // back to its 56px floor and shredded every word again. `ch` scales with the type instead.
+    expect(railRule).toMatch(/max-width:\s*\d+ch/);
+    expect(railRule).not.toMatch(/max-width:\s*\d+%/);
+  });
+
+  it('never reclaims the `.tl-` names the core Timeline already owns globally', () => {
+    // src/canvas/Timeline.tsx renders `.tl-row` / `.tl-rail`, styled globally in styles/canvas.css,
+    // and both sheets are live together the moment a tierlist mounts. While TierList used the same
+    // names the two silently overwrote each other: Timeline's `gap: 14px` opened a stray gutter
+    // between a tier and its chips, and its `:not(:last-child) .tl-rail::after` drew a connector
+    // line inside the tier cell. Distinct prefixes are the only thing keeping them apart.
+    expect(css).not.toMatch(/^\.tl-(row|rail|rows|items|chip|empty|caption)\b/m);
+    const timeline = read('src/canvas/Timeline.tsx');
+    expect(timeline).toMatch(/className="tl-row"/);
+    expect(read('src/canvas/blocks/everyday/TierList.tsx')).not.toMatch(/className="tl-/);
+  });
+
+  it('keeps a non-subgrid fallback so old engines get whole words, even if rails go ragged', () => {
+    expect(css).toMatch(/@supports not \(grid-template-columns: subgrid\)/);
+  });
+});
+
+// The walkthrough panel is `position: fixed`, so it sits OUTSIDE `.canvas-scroll` and its only
+// ancestors are the overflow:hidden app shell. A wheel over it therefore finds no scrollable
+// ancestor and the answer refuses to move — and the panel is parked over the content, which is
+// exactly where a reader rests the cursor. Reported as "I can't scroll the tour", reproduced in the
+// browser (scrollTop stayed 0 while the canvas overflowed by 1636px), and fixed by forwarding the
+// delta. jsdom has no scrolling, so the wiring is pinned by source scan.
+describe('walkthrough panel never blocks scrolling the answer behind it', () => {
+  const src = read('src/tour/TourOverlay.tsx');
+
+  it('forwards the wheel to the canvas scroller', () => {
+    expect(src).toMatch(/onWheel=\{forwardWheel\}/);
+    expect(src).toMatch(/querySelector<HTMLElement>\('\.canvas-scroll'\)/);
+    expect(src).toMatch(/scrollTop \+= /);
+  });
+
+  it('normalises line and page wheel modes so a mouse wheel is not a one-pixel nudge', () => {
+    expect(src).toMatch(/deltaMode === 1/);
+    expect(src).toMatch(/deltaMode === 2/);
+  });
+
+  it('does NOT fix it by making the panel pointer-transparent', () => {
+    // That would restore scrolling by letting CLICKS fall through onto the cards behind the panel.
+    const rule = /\.tourx-panel\s*\{[^}]*\}/.exec(read('src/tour/tour.css'))?.[0] ?? '';
+    expect(rule).toMatch(/pointer-events:\s*auto/);
+  });
+});
+
+// The tour's end card is a two-column grid capped at the viewport, with each column set to scroll.
+// On a short window the 30-item explore list was cut off mid-row and could not be reached at all.
+// Two separate things are required and BOTH were missing/insufficient:
+//   1. `min-height: 0` on each column — a grid item defaults to `min-height: auto` and refuses to
+//      shrink below its content, so `overflow-y: auto` never engages.
+//   2. a CONSTRAINED row — `min-height: 0` alone is not enough. Measured in the browser: with the
+//      columns fixed but the row still auto-sized, the extras column stayed 1204px tall inside a
+//      644px card and `overflow: hidden` merely clipped it. The row cap is what makes it scroll.
+describe('tour end card — the explore list must be reachable on a short window', () => {
+  const css = read('src/tour/tour.css');
+  const rule = (sel: string): string => new RegExp(`\\${sel}\\s*\\{[^}]*\\}`).exec(css)?.[0] ?? '';
+
+  it("caps the card's row so its columns cannot grow past it", () => {
+    expect(rule('.tour-end-card')).toMatch(/grid-template-rows:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  it('lets each column shrink below its content so overflow-y can engage', () => {
+    for (const sel of ['.tour-end-extras', '.tour-end-intro']) {
+      expect(rule(sel), `${sel} needs min-height: 0`).toMatch(/min-height:\s*0/);
+      expect(rule(sel), `${sel} needs to scroll`).toMatch(/overflow-y:\s*auto/);
+    }
+  });
+});

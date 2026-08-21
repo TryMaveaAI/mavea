@@ -38,7 +38,7 @@ function personaSystem(setup: RehearsalSetup): string {
     `"""${setup.context || '(none given)'}"""`,
     'If the context does not tell you how this person would react, play a realistic, generic version of the role — never invent specific facts, history, or quotes about the real person.',
     'Stay in character. Push back the way this role realistically would; do not cave easily, do not be cartoonishly hostile.',
-    'The reply is displayed AND spoken. Keep normal spelling on screen, but wrap every name, place, brand, or non-English term a voice might mispronounce as [[shown|said]] — for example [[Omakase|oh-mah-kah-seh]]. The said side must be lowercase voice-safe syllables matching a native/source-language pronunciation, never IPA or an Anglicized guess.',
+    'The reply is displayed AND spoken. Keep normal spelling on screen, but wrap a name, place, brand, or borrowed term a voice would genuinely mispronounce as [[shown|said]] — for example [[Omakase|oh-mah-kah-seh]]. The said side must be lowercase voice-safe syllables matching a native/source-language pronunciation, never IPA or an Anglicized guess. Annotate sparingly: the said side is one you invent, so a wrong one makes the voice say a word WRONG. Ordinary English words and names are never annotated — a synthesizer already says them correctly. When unsure, leave it alone.',
     'Reply ONLY with JSON: {"reply":"what you say next, 1-3 sentences, spoken language"}. No other keys, no prose outside the JSON.',
   ].join('\n');
 }

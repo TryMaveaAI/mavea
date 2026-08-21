@@ -2,13 +2,27 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The back-pressure test needs a running-but-frozen clock; the same stub shape the mute/speed
 // suites use. decodePcm16 below is pure and never touches this.
+const audio = vi.hoisted(() => ({
+  ramps: [] as { to: number }[],
+  stops: [] as (number | undefined)[],
+}));
+
 vi.mock('../src/voice/voiceEnergy', () => {
   const sharedAudioContext = () => ({
     currentTime: 0,
     state: 'running',
     resume: async () => {},
     destination: {},
-    createGain: () => ({ gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() }),
+    createGain: () => ({
+      gain: {
+        value: 1,
+        cancelScheduledValues: vi.fn(),
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: (to: number) => audio.ramps.push({ to }),
+      },
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    }),
     createBuffer: (_ch: number, len: number) => ({
       duration: len / 24000,
       getChannelData: () => new Float32Array(len),
@@ -18,7 +32,7 @@ vi.mock('../src/voice/voiceEnergy', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       start: vi.fn(),
-      stop: vi.fn(),
+      stop: (at?: number) => audio.stops.push(at),
       onended: null,
     }),
   });
@@ -135,5 +149,45 @@ describe('streamSpeak — back-pressure is one cancellable computed sleep per wi
     cancelActiveStream();
     await expect(done).resolves.toBe(true);
     expect(vi.getTimerCount()).toBe(0); // the sleep was cleared, not left to fire late
+  });
+});
+
+// Stopping a buffer source mid-waveform leaves a discontinuity, and a discontinuity is a CLICK —
+// on every barge-in, every mute, every hush. The offline export path has always ramped each line
+// out; the live path cut it dead. The ramp must also cost nothing that outlives the cancel: a
+// deferred teardown timer would be a regression against the invariant right above this.
+describe('streamSpeak — a cancelled clip fades out instead of clicking', () => {
+  afterEach(() => {
+    cancelActiveStream();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    audio.ramps.length = 0;
+    audio.stops.length = 0;
+  });
+
+  it('ramps the output to silence, and stops the sources AFTER the ramp rather than during it', async () => {
+    vi.useFakeTimers();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body));
+    // Same shape as the back-pressure test above: enough queued audio that the first flush
+    // schedules real sources and the read then parks, so the cancel lands mid-clip.
+    controller.enqueue(new Uint8Array(3 * 24000 * 2));
+    const done = streamSpeak('hello there', 'af_heart');
+    for (let i = 0; i < 400 && audio.stops.length === 0; i++) await Promise.resolve();
+
+    cancelActiveStream();
+    await expect(done).resolves.toBe(true);
+
+    expect(audio.ramps.at(-1)).toEqual({ to: 0 });
+    // Every source is stopped at a FUTURE time — the end of the ramp — not at zero (now).
+    expect(audio.stops.length).toBeGreaterThan(0);
+    for (const at of audio.stops) expect(at).toBeGreaterThan(0);
+    // And nothing is left pending: the fade rides the sources' own end, never a timer.
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

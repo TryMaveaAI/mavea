@@ -75,3 +75,10 @@ await ensureAllDetails();
 // thread an `await ensureExamples(...)` through code that is synchronous in production.
 import { ensureAllExamples } from '../src/live/select/examples';
 await ensureAllExamples();
+
+// Breakdowns a reader has bought are remembered for the session, deliberately — closing the living
+// answer used to discard work they had paid a model call for. Module state outlives a render, so
+// without this every test inherits whatever the previous one bought, which is an order-dependent
+// flake waiting to happen rather than a property anybody meant to assert.
+import { forgetExpansions } from '../src/live/world/openWorld';
+afterEach(forgetExpansions);

@@ -678,10 +678,12 @@ export async function refreshDashboards(
         ? 'Also compose "briefing": 2-4 warm, concrete sentences summarizing ALL dashboards — ' +
           'this batch PLUS the CONTEXT lines below (already-known values — do NOT search for ' +
           'those, use them as given) — real values only, never memory. The briefing is displayed ' +
-          'and spoken: preserve normal spelling on the left, but wrap every name, place, brand, ' +
-          'or non-English term a voice might mispronounce as [[shown|said]] (for example ' +
+          'and spoken: preserve normal spelling on the left, but wrap a name, place, brand, ' +
+          'or borrowed term a voice would genuinely mispronounce as [[shown|said]] (for example ' +
           '[[Omakase|oh-mah-kah-seh]]). The said side must be lowercase voice-safe syllables ' +
-          'matching a native/source-language pronunciation, never IPA or an Anglicized guess. '
+          'matching a native/source-language pronunciation, never IPA or an Anglicized guess. ' +
+          'Annotate sparingly — the said side is one you invent, so a wrong one makes the voice ' +
+          'say a word WRONG. Ordinary English words and names are never annotated. '
         : '') +
       'If search genuinely turns up nothing more specific than what is already shown, say so ' +
       'honestly rather than inventing new specifics or repeating the old ones as if just ' +

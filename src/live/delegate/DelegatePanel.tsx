@@ -16,6 +16,7 @@ import { useVoiceEnergySink } from '../../voice/voiceEnergy';
 import { isHidden } from '../../lib/pageVisibility';
 import { getAdapter } from '../providers';
 import { useFocusTrap } from '../useFocusTrap';
+import { forDisplay } from '../../lib/spokenText';
 import { FeatureUseNotice } from '../../legal/FeatureUseNotice';
 import { TakeSeatStage } from './TakeSeat';
 import type { RehearsalSetup } from './rehearse';
@@ -316,7 +317,7 @@ function DebriefSection({
     return (
       <p className="dlg-debrief-quote">
         <span className="dlg-debrief-quote-who">{speakerLabel(e, themLabel)}</span>
-        {`“${e.say}”`}
+        {`“${forDisplay(e.say)}”`}
       </p>
     );
   };
@@ -892,12 +893,12 @@ export function DelegatePanel({
                 e.side === 'engine' ? (
                   <li key={i} className="dlg-referee">
                     <ShieldIcon />
-                    <span>{e.say}</span>
+                    <span>{forDisplay(e.say)}</span>
                   </li>
                 ) : (
                   <li key={i} className={`dlg-turn ${e.side} ${e.kind}`}>
                     <SideChip side={e.side} name={counterpart} />
-                    <p className="dlg-turn-say">{e.say}</p>
+                    <p className="dlg-turn-say">{forDisplay(e.say)}</p>
                     {e.offer && e.kind !== 'accept' && (
                       <span className="dlg-turn-tag">Now on the table</span>
                     )}

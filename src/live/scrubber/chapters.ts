@@ -10,6 +10,7 @@ import type { AccentVar, Block } from '../../data/conversation';
 import type { IconKey } from '../../types/mavea';
 import { blockLabel } from '../../canvas/blockLabel';
 import { threadStarts } from '../semantic/threads';
+import { sentenceCase } from '../../lib/sentenceCase';
 
 /** One navigable element of a moment's answer — a single canvas block (the comparison table, the
  *  chart, the map…). Its `id` matches the block's `data-spot-id`, so the Overview can scroll to and
@@ -77,7 +78,7 @@ function chapterTitle(first: TurnFrame): string {
   const t = first.spec?.title?.trim();
   if (t) return shortLabel(t);
   const q = first.question?.replace(LEADING_QUESTION_WORD, '').trim();
-  if (q) return shortLabel(q.charAt(0).toUpperCase() + q.slice(1));
+  if (q) return shortLabel(sentenceCase(q));
   return 'Moment';
 }
 

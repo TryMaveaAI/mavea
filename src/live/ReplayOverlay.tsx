@@ -16,6 +16,7 @@ import type { TurnFrame } from './history';
 import { replaySequence, type ReplaySegment } from './replay';
 import { useFocusTrap } from './useFocusTrap';
 import './replay-overlay.css';
+import { sentenceCase } from '../lib/sentenceCase';
 
 interface ReplayOverlayProps {
   frames: TurnFrame[];
@@ -220,10 +221,10 @@ export function ReplayOverlay({
               key={i}
               className={'replay-turn' + (i === index ? ' is-active' : '')}
               onClick={() => select(i)}
-              title={f.question}
+              title={f.question && sentenceCase(f.question)}
             >
               <span className="replay-turn-title">
-                {i + 1}. {f.question || f.spec.title}
+                {i + 1}. {sentenceCase(f.question || f.spec.title)}
               </span>
               <span className="replay-turn-meta">
                 {f.spec.blocks.length} cards

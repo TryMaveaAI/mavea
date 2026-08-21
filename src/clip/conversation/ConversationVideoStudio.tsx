@@ -42,6 +42,7 @@ import type {
   ConversationVideoSize,
 } from './types';
 import './video-studio.css';
+import { sentenceCase } from '../../lib/sentenceCase';
 
 // A conversation cut is plain screen video, not a social reel — familiar 16:9 resolutions only.
 const SIZES: { id: ConversationVideoSize; label: string; hint: string }[] = [
@@ -469,7 +470,7 @@ export function ConversationVideoStudio({
                   {frame.spec.blocks.length}
                 </span>
                 <span className="cvs-turn-copy">
-                  <strong>{frame.question || frame.spec.title}</strong>
+                  <strong>{sentenceCase(frame.question || frame.spec.title)}</strong>
                   <small>
                     {new Date(frame.at).toLocaleTimeString([], {
                       hour: 'numeric',

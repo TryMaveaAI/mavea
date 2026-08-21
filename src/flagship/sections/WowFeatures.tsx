@@ -333,6 +333,13 @@ function WalkVisual() {
           <span className="fl-walk-spot" aria-hidden="true" />
         </div>
       </div>
+      {/* Same on-screen label the sibling section carries (SeeDontRead's .fl-seen-note): these are
+          invented figures in a mock card, and the landing says so rather than leaving a reader to
+          assume a real company's ARR. The note beside the chips above explained this to US, in a
+          code comment nobody reading the page can see.
+          Sits OUTSIDE .fl-walk-stage, which is a flex ROW — inside it the note becomes a third
+          column beside the figures instead of a caption under them. */}
+      <div className="fl-seen-note">Illustrative numbers</div>
     </div>
   );
 }

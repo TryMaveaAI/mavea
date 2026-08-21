@@ -78,9 +78,12 @@ describe('useLiveTurn — the streaming feed respects the spoken-length cap', ()
       calls[0].onDelta?.(`${sentences[5]} `);
     });
 
-    expect(speak).toHaveBeenCalledTimes(5);
-    expect(speak.mock.calls.map((c) => c[0])).toEqual(sentences.slice(0, 5));
-    expect(speak).not.toHaveBeenCalledWith(sentences[5]);
+    // What is queued, not how many calls it took: the opener goes out alone and the sentences
+    // after it are gathered into breath-sized utterances (see speechPacer), so the call COUNT is
+    // deliberately not the contract. The budget is.
+    const queued = speak.mock.calls.map((c) => c[0] as string).join(' ');
+    for (const sentence of sentences.slice(0, 5)) expect(queued).toContain(sentence);
+    expect(queued).not.toContain(sentences[5]);
   });
 
   it('keeps a rich (non-lean) ask to its larger 320-character budget', async () => {
@@ -105,7 +108,15 @@ describe('useLiveTurn — the streaming feed respects the spoken-length cap', ()
         calls[0].onDelta?.(buf);
       });
     }
+    // Close the narration field, as a real stream does — that is the end of SPEECH, and what
+    // releases anything the pacer was still gathering into a breath.
+    act(() => {
+      calls[0].onDelta?.('","title":"Rome"');
+    });
 
-    expect(speak).toHaveBeenCalledTimes(5);
+    // All five are inside the budget, so all five reach the voice — however few utterances the
+    // pacer gathered them into.
+    const queued = speak.mock.calls.map((c) => c[0] as string).join(' ');
+    expect(queued.split(sentence).length - 1).toBe(5);
   });
 });

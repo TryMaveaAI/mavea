@@ -178,6 +178,38 @@ describe('gesture geometry — hand strokes, not machine arcs', () => {
     for (const p of pts) expect(p.y).toBeGreaterThan(100 + 24 - 1);
   });
 
+  it('a long label keeps its lasso — flatness alone must not demote a circle', () => {
+    // The regression the `&&` exists for: a mark resolves to its text's CHARACTER RANGE, one line
+    // box tall, so a name like "Bixby Creek Bridge" is ~100x18 — aspect 5.6. Under the old `||`
+    // that tripped the flatness half and silently underlined it, while "Medicare" kept its loop.
+    // It occupies a quarter of the card, so it is not a row and must still be encircled.
+    const host = rect(0, 0, 400, 300);
+    const m = rect(30, 100, 100, 18);
+    const s = strokeFor('circle', m, host, 'seed')!;
+    expect(s.kind).toBe('circle');
+    const pts = coords(s.d);
+    // A lasso surrounds; an underline would sit entirely below the target.
+    expect(Math.min(...pts.map((p) => p.y))).toBeLessThan(m.top);
+    expect(Math.max(...pts.map((p) => p.y))).toBeGreaterThan(m.top + m.height);
+    expect(Math.min(...pts.map((p) => p.x))).toBeLessThan(m.left);
+    expect(Math.max(...pts.map((p) => p.x))).toBeGreaterThan(m.left + m.width);
+  });
+
+  it('a long line of text is a row and still underlines, even in a roomy card', () => {
+    // The other side of the recalibration, caught in the browser: a 36-character heading at aspect
+    // 20 takes only a third of a wide card, so a width-share test alone would lasso a whole line of
+    // prose. Flat AND long is a row wherever it sits.
+    const s = strokeFor('circle', rect(20, 100, 300, 15), rect(0, 0, 900, 300), 'seed')!;
+    expect(s.kind).toBe('underline');
+  });
+
+  it('a wide-but-tall target keeps its lasso — width alone must not demote a circle either', () => {
+    // The other half of the `&&`: a chart/figure spanning most of the card but 120px tall is a
+    // graphic to loop, not a row to underline.
+    const s = strokeFor('circle', rect(20, 40, 300, 120), rect(0, 0, 400, 300), 'seed')!;
+    expect(s.kind).toBe('circle');
+  });
+
   it('a lasso on a target hard against the card edge still encircles it (overflow clip keeps it on-card)', () => {
     // A datum pinned to the right edge: the loop must still SURROUND it (accuracy), only extending
     // a hair past the card edge — the .ink-layer overflow:hidden trims that sliver so it never
