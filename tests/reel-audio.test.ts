@@ -133,7 +133,7 @@ describe('renderReelAudio — paced synthesis', () => {
 describe('reel playback leases the shared audio context', () => {
   it('holds it while playing and releases it on stop', async () => {
     audio.release.mockClear();
-    const { bufferToStream } = await import('../src/clip/reel/audioTrack');
+    const { bufferToStream } = await import('../src/clip/reel/audioPlayback');
 
     const track = bufferToStream({ duration: 1 } as AudioBuffer);
     expect(track).not.toBeNull();
@@ -146,7 +146,7 @@ describe('reel playback leases the shared audio context', () => {
 
   it('the looping preview releases it too', async () => {
     audio.release.mockClear();
-    const { makePreviewAudio } = await import('../src/clip/reel/audioTrack');
+    const { makePreviewAudio } = await import('../src/clip/reel/audioPlayback');
 
     const preview = makePreviewAudio({ duration: 1 } as AudioBuffer);
     expect(preview).not.toBeNull();

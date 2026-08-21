@@ -88,7 +88,7 @@ function fakeCtx() {
 }
 
 import { ReelPlayer } from '../src/clip/reel/ReelPlayer';
-import { elapsedOffset, clampResumeOffset, makePreviewAudio } from '../src/clip/reel/audioTrack';
+import { elapsedOffset, clampResumeOffset, makePreviewAudio } from '../src/clip/reel/audioPlayback';
 
 // Guards the reel's "one call, every slide fits" guarantee. The director prompt tells the model a max
 // CHARACTER budget per field (CHAR_BUDGET) — the most that reads well on the tightest finish of each

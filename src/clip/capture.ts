@@ -29,7 +29,7 @@
 import type * as Mediabunny from 'mediabunny';
 import type * as ModernScreenshot from 'modern-screenshot';
 import { currentAppliedTier, type PerfTier } from '../lib/perfTier';
-import { bufferToStream } from './reel/audioTrack';
+import { bufferToStream } from './reel/audioPlayback';
 import { selectOpenEncoding, supportedWebMRecorderMime } from './codecs';
 import { realtimeSink, timestampedSink, type FrameSink } from './frameSink';
 import { createAnimationRegistry } from './mediaClock';

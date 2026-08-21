@@ -207,7 +207,13 @@ const ROUTE_BUDGETS = [
   // simply lost its data. The course frame cache is one of the three that volunteers an eviction, so
   // the route's shell carries the ledger; it cannot be lazy — a store has to register its shedder
   // before its first write, which happens on the route's own first save.
-  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 26 },
+  // 38 (was 26): the course surfaces now wear the workspace appearance, which means the route's
+  // shell carries styles/templates.css — 10.8 kB gzip of the five template families' token blocks.
+  // It cannot be deferred: a skin that arrives after paint is a flash of the wrong page, and it
+  // cannot be subset either, because any surface can wear any skin and the token blocks ARE the
+  // skin. A visitor arriving from Live already holds the sheet; this budget prices the cold
+  // direct-link entry. Deliberate — revisit by changing the feature, not the number.
+  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 38 },
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],
@@ -222,12 +228,24 @@ const ROUTE_BUDGETS = [
       'src/live/ripple/seed.ts',
       'src/live/ripple/RippleOverlay.tsx',
     ],
-    gzip: 55,
+    // 56 (was 55): the per-feature use notices left the eager landing chunk, so a route that shows
+    // one now carries the copy instead of every first-time visitor carrying all of it. The landing
+    // was quoting a single entry out of a record holding prose for 25 features it cannot even
+    // reach; a bundler drops an unused export but never an unused property, so the whole catalogue
+    // rode first paint. Moving it is a straight win overall — this is the half that shows up here.
+    gzip: 56,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus
   // the approved-codec capability gate and mandatory-audio failure path. The 1080p stage,
   // timeline, audio preparation, and encoder remain in their deferred chunks.
-  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 47 },
+  // 51 (was 47): +6.8 for the voice's annotation guard and +2.2 for this surface's use notice,
+  // less 5.7 given back by deferring the narration synthesizer. The guard is lib/plainWords, the
+  // evidence behind refusing a model-invented respelling of an ordinary word — a reel SPEAKS, so
+  // its voiceover runs the same guard every other spoken path does, and the check is synchronous
+  // at the moment speech starts, which is the one shape that cannot be a dynamic import. The
+  // synthesizer, by contrast, moved out on its own seam (reel/audioPlayback): playing a rendered
+  // buffer needs no speech stack, and a first preview is silent.
+  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 51 },
   { label: 'Gallery', roots: ['src/gallery/GalleryApp.tsx'], gzip: 130 },
 ];
 

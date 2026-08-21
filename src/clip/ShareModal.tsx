@@ -18,12 +18,8 @@ import { downloadClip } from './share';
 import { toast } from '../lib/toast';
 import { ReelPlayer } from './reel/ReelPlayer';
 import { buildReelFallback, reseedFinishes } from './reel/director';
-import {
-  renderReelAudio,
-  makePreviewAudio,
-  type ReelAudio,
-  type ReelPreviewAudio,
-} from './reel/audioTrack';
+import { makePreviewAudio, type ReelPreviewAudio } from './reel/audioPlayback';
+import type { ReelAudio } from './reel/audioTrack';
 import { PALETTES } from './reel/palette';
 import type { ReelScript } from './reel/reelScript';
 import { preloadAlternateFinishes } from './reel/templates/alternateLoader';
@@ -31,6 +27,14 @@ import { preloadIntentProps } from '../lib/preloadableLazy';
 import { FeatureUseNotice } from '../legal/FeatureUseNotice';
 import type { VideoStudioMode } from './conversation/types';
 import './share-modal.css';
+
+/** The narration synthesizer, fetched on the gesture that asks for sound.
+ *
+ *  Rendering narration pulls the whole speech stack (voice/kokoro → voice/tts → the pronunciation
+ *  layer); playing an already-rendered buffer pulls none of it. A reel's first preview is silent, so
+ *  that stack has no business in the payload that draws it. Both call sites below already await. */
+const narrator = (): Promise<typeof import('./reel/audioTrack').renderReelAudio> =>
+  import('./reel/audioTrack').then((m) => m.renderReelAudio);
 
 const ConversationVideoStudio = lazy(() =>
   import('./conversation/ConversationVideoStudio').then((module) => ({
@@ -225,7 +229,7 @@ export function ShareModal({
     if (!cache || cache.sig !== sig) {
       setSoundLoading(true);
       try {
-        cache = { sig, ...(await renderReelAudio(shown)) };
+        cache = { sig, ...(await (await narrator())(shown)) };
         audioCacheRef.current = cache;
       } catch {
         toast('Could not prepare the narration', 'warn');
@@ -341,7 +345,9 @@ export function ShareModal({
     const sig = voiceoverSig(shown);
     const cached = audioCacheRef.current;
     const audioReady: Promise<ReelAudio> =
-      cached && cached.sig === sig ? Promise.resolve(cached) : renderReelAudio(shown);
+      cached && cached.sig === sig
+        ? Promise.resolve(cached)
+        : narrator().then((render) => render(shown));
     void audioReady
       .then((audio) => {
         audioCacheRef.current = { sig, ...audio };
