@@ -198,11 +198,27 @@ describe('clear space — written words find empty card space or stay unwritten'
     expect(firstClearPlace(cands, [rect(90, 0, 60, 20), rect(0, 95, 200, 40)])).toBeNull();
   });
 
-  it('labelPlacements orders note candidates right → below → above and sizes off the words', () => {
+  it('labelPlacements orders note candidates beside-first, then stacked, and sizes off the words', () => {
     const m = rect(150, 140, 60, 20);
     const cands = labelPlacements('note', m, HOST, 'vs. last year');
-    expect(cands.map((c) => c.place)).toEqual(['right', 'below', 'above']);
+    expect(cands.map((c) => c.place)).toEqual(['right', 'left', 'below', 'above']);
     for (const c of cands) expect(c.box.width).toBeGreaterThan('vs. last year'.length * 6);
+  });
+
+  it('a note on a right-aligned value can park to its LEFT instead of dying', () => {
+    // The KPI / last-table-column case: nothing fits to the right of the figure, but the card is
+    // empty to its left. Before 'left' was offered, this note was dropped outright — and a note's
+    // words ARE the mark, so dropping the label dropped the whole gesture.
+    const m = rect(320, 140, 60, 20);
+    const text = 'vs. last year';
+    const cands = labelPlacements('note', m, HOST, text);
+    expect(cands.map((c) => c.place)).toContain('left');
+    // Everything to the right of the value is occupied; the left pocket still rescues it.
+    expect(firstClearPlace(cands, [rect(HOST.width - 60, 0, 60, HOST.height)])).toBe('left');
+    // And the box that was cleared is the box that gets drawn.
+    const left = cands.find((c) => c.place === 'left')!;
+    const stroke = strokeFor('note', m, HOST, 'seed', { label: text, place: 'left' })!;
+    expect(stroke.label!.x).toBe(left.box.left);
   });
 
   it('a bracket label has exactly one candidate — above its own bar — or none near the top edge', () => {
@@ -301,6 +317,116 @@ describe('AnnotationLayer — the guard in the real measurement path', () => {
       );
       act(() => vi.advanceTimersByTime(2000));
       expect(wrap.querySelector('.ink-layer')).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  /** A card holding two real figures, both locatable — the shape a bracket actually spans. */
+  function twoFigureCard(spot: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.setAttribute('data-spot-id', spot);
+    for (const v of ['$1,200', '$2,760']) {
+      const el = document.createElement('span');
+      el.textContent = v;
+      wrap.appendChild(el);
+    }
+    document.body.appendChild(wrap);
+    wrap.getBoundingClientRect = () => domRect(0, 0, 400, 200);
+    Object.defineProperty(wrap, 'offsetWidth', { value: 400 });
+    Object.defineProperty(wrap, 'offsetHeight', { value: 200 });
+    return wrap;
+  }
+
+  function stubTwoFigures(): () => void {
+    const origRects = Range.prototype.getClientRects;
+    const origBCR = Range.prototype.getBoundingClientRect;
+    Range.prototype.getClientRects = function () {
+      return [] as unknown as DOMRectList;
+    };
+    Range.prototype.getBoundingClientRect = function (this: Range) {
+      const t = this.toString();
+      if (t.includes('1,200')) return domRect(40, 100, 60, 16);
+      if (t.includes('2,760')) return domRect(260, 100, 60, 16);
+      return domRect(0, 0, 0, 0);
+    };
+    return () => {
+      Range.prototype.getClientRects = origRects;
+      Range.prototype.getBoundingClientRect = origBCR;
+    };
+  }
+
+  it('a bracket writes the delta it MEASURED, not the figure the model typed', () => {
+    // The wiring, end to end: both anchors locate in the card's real DOM, so the gap between them
+    // is something the pen can prove — and a model-authored "+15%", which nothing backs, gives way.
+    const restore = stubTwoFigures();
+    try {
+      const wrap = twoFigureCard('m1');
+      render(
+        <AnnotationLayer
+          spots={[
+            { spot: 'm1', mark: { kind: 'bracket', at: '$1,200', to: '$2,760', label: '+15%' } },
+          ]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(700));
+      expect(wrap.querySelector('.ink-note')?.textContent).toBe('2.3×');
+    } finally {
+      restore();
+    }
+  });
+
+  it('a bracket measures the gap even when the model left the label off', () => {
+    const restore = stubTwoFigures();
+    try {
+      const wrap = twoFigureCard('m2');
+      render(
+        <AnnotationLayer
+          spots={[{ spot: 'm2', mark: { kind: 'bracket', at: '$1,200', to: '$2,760' } }]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(700));
+      expect(wrap.querySelector('.ink-note')?.textContent).toBe('2.3×');
+    } finally {
+      restore();
+    }
+  });
+
+  it('a bracket keeps a model label that NAMES the gap — the pen never deletes meaning', () => {
+    const restore = stubTwoFigures();
+    try {
+      const wrap = twoFigureCard('m3');
+      render(
+        <AnnotationLayer
+          spots={[
+            {
+              spot: 'm3',
+              mark: { kind: 'bracket', at: '$1,200', to: '$2,760', label: 'the premium' },
+            },
+          ]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(700));
+      expect(wrap.querySelector('.ink-note')?.textContent).toBe('the premium');
+    } finally {
+      restore();
+    }
+  });
+
+  it('a bracket whose far anchor never resolves keeps the model label untouched', () => {
+    // No second box, no measurement — the pen must not invent one from a single anchor.
+    const restore = stubTwoFigures();
+    try {
+      const wrap = twoFigureCard('m4');
+      render(
+        <AnnotationLayer
+          spots={[
+            { spot: 'm4', mark: { kind: 'bracket', at: '$1,200', to: 'nowhere', label: '+15%' } },
+          ]}
+        />,
+      );
+      act(() => vi.advanceTimersByTime(700));
+      expect(wrap.querySelector('.ink-note')?.textContent).toBe('+15%');
     } finally {
       restore();
     }

@@ -63,17 +63,38 @@ describe('strokeFor — trend / bracket / note geometry', () => {
     expect(s!.head).toBeTruthy();
   });
 
-  it('a vertical span (a list / timeline, not a chart) degrades to a point, never a slash down the card', () => {
-    // Two items stacked vertically — the festival-schedule case where a falling arrow slashed the card.
+  it('a vertical span runs down the MARGIN beside the rows, never a slash across them', () => {
+    // Two items stacked vertically — the festival-schedule case where a falling arrow slashed the
+    // card. The span is still the thing the mark named, so it keeps it; it just moves out of the way.
     const TOP: Rect = { left: 30, top: 30, width: 200, height: 40 };
     const BOTTOM: Rect = { left: 30, top: 190, width: 200, height: 40 };
     for (const kind of ['rising', 'falling'] as const) {
       const s = strokeFor(kind, TOP, HOST, 'seed', { to: BOTTOM })!;
-      expect(s.kind).toBe('point'); // a single precise arrow on the named item, not a whole-card sweep
+      expect(s.kind).toBe(kind); // the whole span is kept, not collapsed to one dot
       expect(s.head).toBeTruthy();
-      // and it stays well inside the card height — no top-to-bottom gloss
-      const ys = coords(s.d).map((p) => p.y);
-      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(HOST.height * 0.7);
+      const pts = coords(s.d);
+      // Not one point crosses the rows it is talking about.
+      for (const p of pts) expect(p.x).toBeLessThan(TOP.left);
+      // ...and none of it leaves the card.
+      for (const p of pts) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThanOrEqual(HOST.height);
+      }
+      // It genuinely spans the two rows rather than hovering by one of them.
+      const ys = pts.map((p) => p.y);
+      expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(100);
+    }
+  });
+
+  it('a vertical span with no margin to run down keeps the honest point fallback', () => {
+    // Full-bleed rows: neither side has room for a shaft, so the pen makes the one claim it can.
+    const TOP: Rect = { left: 4, top: 30, width: HOST.width - 8, height: 40 };
+    const BOTTOM: Rect = { left: 4, top: 190, width: HOST.width - 8, height: 40 };
+    for (const kind of ['rising', 'falling'] as const) {
+      const s = strokeFor(kind, TOP, HOST, 'seed', { to: BOTTOM })!;
+      expect(s.kind).toBe('point');
+      expect(s.head).toBeTruthy();
     }
   });
 

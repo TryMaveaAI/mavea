@@ -300,8 +300,7 @@ export function DocumentMarkupSlide({ slots }: SlideProps<'markup'>) {
                     fill="currentColor"
                     opacity={0.92}
                     style={{
-                      fontFamily:
-                        "'Bradley Hand', 'Segoe Print', 'Comic Sans MS', 'Marker Felt', cursive",
+                      fontFamily: "'Caveat', 'Bradley Hand', 'Segoe Print', 'Marker Felt', cursive",
                     }}
                   >
                     {s.label.text}

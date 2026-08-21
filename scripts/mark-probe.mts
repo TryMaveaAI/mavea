@@ -2,16 +2,26 @@
 //
 // Runs a small battery of real questions through the ACTUAL generateLive pipeline against
 // gemini-3.1-flash-lite and reports, per turn: did the model author a tour, how many stops,
-// and how many stops carry a `mark` (the circle/underline/point gesture request) — plus
-// whether each mark's `at` text actually appears in the named block's data (a mark that
-// can't be located on screen falls back to the stamped salient node, so a low locate rate
-// is a prompt problem worth knowing about). Sequential with a delay to respect free-tier
-// RPM. ONE generate call per question. Reads the key from the repo-root .env.
+// how many gestures those stops carry, and whether each one's `at` text actually appears in
+// the named block's data (a mark that can't be located draws nothing, so a low locate rate is
+// a prompt problem worth knowing about).
+//
+// It also prints a PER-KIND histogram, which is the number that matters. The aggregate hides the
+// failure mode entirely: measured across this repo's baked corpora, 91% of tour stops carried a
+// mark — a healthy-looking funnel — while three of the fifteen kinds accounted for 77% of all ink
+// and four had never been authored once. An average cannot see a vocabulary collapsing, and the
+// earlier version of this probe counted only `t.mark` (the mirror of the FIRST gesture on a stop),
+// so it could not have seen it either. Watch the silent-kinds line.
+//
+// Sequential with a delay to respect free-tier RPM. ONE generate call per question — this spends
+// real tokens on the key in the repo-root .env, so it is a deliberate, on-demand instrument.
 //
 //   npx tsx scripts/mark-probe.mts
 //   QS="compare X and Y|how does Z work" npx tsx scripts/mark-probe.mts
 //   DELAY=7000 npx tsx scripts/mark-probe.mts
+//   JSON=1 npx tsx scripts/mark-probe.mts     # also emit a machine-readable baseline
 import { readFileSync } from 'node:fs';
+import { MARK_KINDS } from '../src/engine/liveSchema';
 import { generateLive } from '../src/live/generateLive';
 import type { ModelConfig } from '../src/types/mavea';
 
@@ -61,8 +71,15 @@ async function main(): Promise<void> {
 
   let toured = 0;
   let stops = 0;
+  let stopsMarked = 0;
   let marked = 0;
   let locatable = 0;
+  // Per-kind, because the aggregate hid the whole problem: with 91% of stops marked the funnel
+  // reads healthy, while three kinds carry 77% of the ink and four have never been authored at all.
+  const authored = new Map<string, number>();
+  const located = new Map<string, number>();
+  const bump = (m: Map<string, number>, k: string): void => void m.set(k, (m.get(k) ?? 0) + 1);
+
   for (let i = 0; i < battery.length; i++) {
     const ask = battery[i];
     try {
@@ -70,28 +87,62 @@ async function main(): Promise<void> {
       const tour = res.tour ?? [];
       if (tour.length > 0) toured++;
       stops += tour.length;
-      const marks = tour.filter((t) => t.mark);
-      marked += marks.length;
-      const located = marks.filter(
-        (t) => t.mark && blockCarries(res.spec.blocks[t.index], t.mark.at),
+      // Every gesture on every stop — `marks[]` is the real payload; `mark` only mirrors the first,
+      // so counting it alone under-reports any stop that draws more than one.
+      const marks = tour.flatMap((t) =>
+        (t.marks ?? (t.mark ? [t.mark] : [])).map((mark) => ({ mark, index: t.index })),
       );
-      locatable += located.length;
+      stopsMarked += tour.filter((t) => (t.marks ?? (t.mark ? [t.mark] : [])).length > 0).length;
+      marked += marks.length;
+      let hereLocated = 0;
+      for (const { mark, index } of marks) {
+        bump(authored, mark.kind);
+        if (blockCarries(res.spec.blocks[index], mark.at)) {
+          bump(located, mark.kind);
+          hereLocated++;
+        }
+      }
+      locatable += hereLocated;
       console.log(`━━━ Q${i + 1}: ${ask}`);
       console.log(
-        `  blocks ${res.spec.blocks.length} · tour ${tour.length} stops · marks ${marks.length} (${located.length} locatable)`,
+        `  blocks ${res.spec.blocks.length} · tour ${tour.length} stops · marks ${marks.length} (${hereLocated} locatable)`,
       );
-      for (const t of marks) {
-        const hit = t.mark && blockCarries(res.spec.blocks[t.index], t.mark.at) ? '✓' : '✗';
-        console.log(`    ${hit} stop ${t.index} ${t.mark!.kind} @ ${JSON.stringify(t.mark!.at)}`);
+      for (const { mark, index } of marks) {
+        const hit = blockCarries(res.spec.blocks[index], mark.at) ? '✓' : '✗';
+        console.log(`    ${hit} stop ${index} ${mark.kind} @ ${JSON.stringify(mark.at)}`);
       }
     } catch (e) {
       console.log(`━━━ Q${i + 1}: ${ask}\n  ✗ ${(e as Error).message}`);
     }
     if (i < battery.length - 1) await sleep(DELAY);
   }
+
   console.log(
-    `\nTOTALS: ${toured}/${battery.length} turns toured · ${marked}/${stops} stops marked · ${locatable}/${marked || 1} marks locatable`,
+    `\nTOTALS: ${toured}/${battery.length} turns toured · ${stopsMarked}/${stops} stops marked · ${marked} marks · ${locatable}/${marked || 1} locatable`,
   );
+  console.log('\nPER KIND (authored · locatable · share of all ink)');
+  const bar = (n: number, of: number): string => '█'.repeat(Math.round((n / (of || 1)) * 28));
+  const top = Math.max(1, ...[...authored.values()]);
+  for (const kind of MARK_KINDS) {
+    const a = authored.get(kind) ?? 0;
+    const l = located.get(kind) ?? 0;
+    const share = marked ? ((a / marked) * 100).toFixed(1) : '0.0';
+    const flag = a === 0 ? '  ← never authored' : '';
+    console.log(
+      `  ${kind.padEnd(10)} ${String(a).padStart(3)} ${String(l).padStart(4)}  ${share.padStart(5)}%  ${bar(a, top)}${flag}`,
+    );
+  }
+  const silent = [...MARK_KINDS].filter((k) => !authored.get(k));
+  console.log(
+    `\n${MARK_KINDS.size - silent.length}/${MARK_KINDS.size} kinds authored at least once.` +
+      (silent.length ? ` Silent: ${silent.join(', ')}` : ''),
+  );
+  if (process.env.JSON) {
+    const rows = [...MARK_KINDS].map((k) => [k, authored.get(k) ?? 0, located.get(k) ?? 0]);
+    console.log(
+      `\n${JSON.stringify({ model: MODEL, asks: battery.length, toured, stops, stopsMarked, marked, locatable, byKind: Object.fromEntries(rows.map(([k, a, l]) => [k, { authored: a, locatable: l }])) }, null, 2)}`,
+    );
+  }
 }
 
 void main();

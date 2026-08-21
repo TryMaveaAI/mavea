@@ -130,9 +130,16 @@
    fading in just after its connecting stroke lands so the aside reads as written, not typed. */
 .ink-note {
   fill: var(--ink-gesture, var(--warning));
-  font-family: 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', 'Marker Felt', cursive;
-  font-size: 14px;
-  font-style: italic;
+  /* Caveat is self-hosted (public/fonts) so the pen's hand is the SAME hand everywhere — the old
+     stack resolved to Bradley Hand only on macOS and Segoe Print only on Windows, and fell through
+     to generic `cursive` on Linux, in CI, and in the video-export rasterizer, where the one
+     typographic voice meant to look handwritten came out as a plain serif.
+     Size is paired with `labelSize()` in gesture.ts, which budgets 8px/char for the box the
+     clear-space check clears: Caveat averages 0.359em (5.7px here), so the drawn words stay
+     comfortably inside the box that was cleared. Move one of these two and you must move both.
+     No synthetic italic — Caveat is already a slanted hand, and obliquing a script face smears it. */
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', 'Marker Felt', cursive;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.01em;
   opacity: 0;

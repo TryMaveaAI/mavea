@@ -22,6 +22,7 @@ import {
   type Rect,
 } from './gesture';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
+import { measuredLabel } from './measure';
 import {
   saidTokens,
   findSaidMatch,
@@ -54,6 +55,27 @@ interface Placed {
    *  stagger still carries the order), because a chip PARKED ON TEXT blocks the very words the
    *  sequence is teaching. */
   chip?: { x: number; y: number };
+}
+
+/** The pen's hand is a WEB font now (Caveat, self-hosted), and it only starts downloading when
+ *  something using it is first laid out. With `font-display: swap` that means the first written
+ *  aside paints in the fallback and re-paints a beat later — invisible on a warm page, but the
+ *  video export rasterizes frames as fast as it can and would bake those fallback glyphs in.
+ *  `document.fonts.ready` cannot help: it resolves against loads already PENDING, and nothing is
+ *  pending until the note renders (the same race src/export/render/fonts.ts documents). So ask for
+ *  the face explicitly the moment any ink exists — the note's own entrance is delayed ~0.5s behind
+ *  its stroke, which is ample head start for a same-origin 75KB file. Idempotent, fire-and-forget,
+ *  and it costs nothing on a canvas that draws no ink at all. */
+const HAND_FACE = '600 16px Caveat';
+let handWarmed = false;
+function warmHand(): void {
+  if (handWarmed) return;
+  handWarmed = true;
+  try {
+    void document.fonts?.load?.(HAND_FACE);
+  } catch {
+    /* no font loading API (jsdom, old engines) — the fallback stack still renders. */
+  }
 }
 
 /** The step chip's radius — mirrored by `.ink-step-dot`'s r in SpotInk's render below. */
@@ -89,8 +111,16 @@ function withSpan(rect: DOMRect, mark: TourMark, said: SaidText): Target {
     const rt = mt && saidRect(mt);
     if (rt) t.toRect = rt;
   }
-  if ((mark.kind === 'note' || mark.kind === 'bracket' || mark.kind === 'brace') && mark.label) {
-    t.label = mark.label;
+  // A bracket spans two named items, and once BOTH ends resolved on screen the gap between them
+  // is something the pen can measure rather than repeat — see measure.ts. Restricted to `bracket`
+  // deliberately: a brace's `to` is the last ROW of a group, so a first-to-last delta would be a
+  // figure about two rows dressed up as one about the group.
+  const label =
+    mark.kind === 'bracket' && t.toRect && mark.to
+      ? measuredLabel(mark.at, mark.to, mark.label)
+      : mark.label;
+  if ((mark.kind === 'note' || mark.kind === 'bracket' || mark.kind === 'brace') && label) {
+    t.label = label;
   }
   return t;
 }
@@ -775,6 +805,7 @@ export function AnnotationLayer({
   onPlaced?: (request: InkRequest) => void;
 }): ReactElement | null {
   if (spots.length === 0) return null;
+  warmHand();
   // Margin notes are one coordinated rail, not per-card portals — their vertical de-overlap
   // needs every note at once — so they split off here and the rest render exactly as before.
   const noteEntries = spots.filter((s) => s.noteText);

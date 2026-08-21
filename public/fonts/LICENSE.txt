@@ -8,6 +8,8 @@ Copyright and Reserved Font Name notices, copied from the shipped font metadata:
 - Archivo — Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
 - Bodoni Moda — Copyright 2020 The Bodoni Moda Project Authors
   (https://github.com/indestructible-type/Bodoni)
+- Caveat — Copyright 2014 The Caveat Project Authors
+  (https://github.com/googlefonts/caveat)
 - EB Garamond — Copyright 2017 The EB Garamond Project Authors
   (https://github.com/octaviopardo/EBGaramond12)
 - Hanken Grotesk — Copyright 2021 The Hanken Grotesk Project Authors

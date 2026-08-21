@@ -9,6 +9,7 @@ come from each file's OpenType `name` table; SHA-256 identifies the exact shippe
 | `archivo-var-latin.woff2`                 | 2.001            | `7150c0ec5ad356453013d11affec1fbab95de0dd2dcecb043b4f1cb7f87c4ba4` |
 | `bodoni-moda-400-italic-latin.woff2`      | 2.005            | `068e05ed09c93380583f8a61fd0a640aab30cfb464fc3ba7c94b09eb124574fb` |
 | `bodoni-moda-var-latin.woff2`             | 2.005            | `c1de3473cec36815a9cfb203f3b6202971e26ac642017d08f097df2368cfe195` |
+| `caveat-var-latin.woff2`                  | 2.000            | `7a0049db01fdd8fc7af7ef36675862a72a5c76d0cb45ae63c9f5b6f1b769dac7` |
 | `eb-garamond-var-italic-latin.woff2`      | 1.003            | `d2761541b314509e02df3539cd35fc712954a48a50f4e0ab424dde817c699c2a` |
 | `eb-garamond-var-latin.woff2`             | 1.003            | `68fd4b247dde89984ee835d99953d235e4927be2b1b732ad81173b519869cee8` |
 | `hanken-grotesk-var-latin.woff2`          | 3.013            | `1f21c6eaa0000f3329cfcfac966b43d5bebf5aa610303e33294ac31bc6f4bb59` |

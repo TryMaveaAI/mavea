@@ -285,6 +285,48 @@ function shyOfEdge(box: Rect, ux: number, uy: number, gap = 5): Pt {
   return { x: c.x - ux * edge, y: c.y - uy * edge };
 }
 
+/** The vertical form of a trend: a bowed arrow running down (or up) the margin ALONGSIDE two
+ *  stacked anchors, head at the far one. Both `rising` and `falling` draw the same shaft here on
+ *  purpose — a slope only exists to trace when a series is plotted, and down a list the trajectory
+ *  is stated by the values the arrow runs beside. Pure geometry, like every stroke in this file:
+ *  it picks whichever margin has room, bows AWAY from the content, and caps the bow to the margin
+ *  it found so the swoop can never wander back over the rows. No margin wide enough → the old,
+ *  honest fallback, a single precise point on the element named first.
+ */
+const TREND_GUTTER = 14;
+
+function trendDown(
+  kind: 'rising' | 'falling',
+  r: Rect,
+  toR: Rect,
+  host: Rect,
+  rnd: () => number,
+): InkStroke {
+  const left = Math.min(r.left, toR.left);
+  const right = Math.max(r.left + r.width, toR.left + toR.width);
+  const roomLeft = left;
+  const roomRight = host.width - right;
+  const onLeft = roomLeft >= TREND_GUTTER;
+  if (!onLeft && roomRight < TREND_GUTTER) return point(r, host, rnd);
+  const room = onLeft ? roomLeft : roomRight;
+  const x = onLeft ? left - TREND_GUTTER * 0.5 : right + TREND_GUTTER * 0.5;
+
+  const tailY = r.top + r.height / 2;
+  const farY = toR.top + toR.height / 2;
+  const dir = farY > tailY ? 1 : -1;
+  // Stop shy of the far row's middle so the head points AT it rather than through it.
+  const tipY = farY - dir * Math.min(toR.height / 2, 6);
+  const tail: Pt = { x, y: tailY };
+  const tip: Pt = { x, y: tipY };
+  const dist = Math.abs(tipY - tailY) || 1;
+  // The jitter is inside the cap, not added to it, so a narrow margin can never bow the swoop
+  // back over the rows on one side or off the card on the other.
+  const bow = Math.min(dist * 0.12 + rnd() * 2, room * 0.4, 10) * (onLeft ? -1 : 1);
+  const mid1: Pt = { x: x + bow, y: tailY + (tipY - tailY) * 0.35 };
+  const mid2: Pt = { x: x + bow * 0.6, y: tailY + (tipY - tailY) * 0.72 };
+  return { d: penPath([tail, mid1, mid2, tip]), head: arrowHead(tip, mid2), kind };
+}
+
 /** A trend arrow that connects the two REAL elements it names: the tail sits on the start
  *  element, the head rests just shy of the end element, and a bow between them gives the swoop
  *  — rising bows below the chord (concave-up climb), falling bows above. It tracks exactly where
@@ -303,9 +345,11 @@ function trend(
   const dx = ec.x - tail.x;
   const dy = ec.y - tail.y;
   // A trend reads left→right across a plotted series. When the two named anchors are stacked
-  // vertically — a list, timeline, or schedule, not a chart — a swept arrow becomes a meaningless
-  // slash down the whole card, so degrade to a single precise point on the element named first.
-  if (Math.abs(dy) > Math.abs(dx)) return point(r, host, rnd);
+  // vertically — a list, timeline, or schedule, not a chart — a swept arrow between them slashes
+  // diagonally across the very rows it is talking about, so the stroke moves to the margin beside
+  // them instead. That is what a hand does next to a column of numbers, and it keeps the whole
+  // span the mark named rather than collapsing it to one dot.
+  if (Math.abs(dy) > Math.abs(dx)) return trendDown(kind, r, toR, host, rnd);
   const dist = Math.hypot(dx, dy) || 1;
   const tip = shyOfEdge(toR, dx / dist, dy / dist);
   // Bow vertically (charts read left→right): rising sags down between the ends for a concave-up
@@ -399,7 +443,9 @@ function labelSize(text: string): { w: number; lineH: number; h: number } {
   const lines = text.split('\n');
   const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
   // 8px/char over-estimates the average hand-font glyph on purpose: the clear-space check
-  // clears THIS box, so the drawn words must never be wider than what was cleared.
+  // clears THIS box, so the drawn words must never be wider than what was cleared. Paired with
+  // `.ink-note`'s font-size in annotate.css — at its 16px, Caveat's average lowercase advance is
+  // 0.359em ≈ 5.7px, so the budget still has room. Change either and re-check the other.
   return { w: longest * 8 + 10, lineH: 17, h: (lines.length - 1) * 17 + 17 };
 }
 
@@ -686,10 +732,18 @@ export function strokeFor(
   const r = relativeRect(mark, host);
   const toR = extra?.to ? relativeRect(extra.to, host) : undefined;
   if (kind === 'circle') {
-    // A lasso around a wide, flat box (a full-width row) degenerates into a giant
-    // squashed ellipse — a hand would underline that instead.
-    const tooWide = r.width > host.width * 0.6 || r.width / Math.max(r.height, 1) > 5;
-    if (tooWide) return { d: underline(r, host, rnd, extra?.tight), kind: 'underline' };
+    // A lasso around a ROW degenerates into a giant squashed ellipse — a hand underlines those.
+    // But "row" needs both parts of the test, and the old rule (`wide OR aspect > 5`) had neither
+    // calibrated: a mark resolves to its text's CHARACTER RANGE, one line box tall, so aspect
+    // alone starts refusing at about thirteen characters. "Bixby Creek Bridge" and "Carbon
+    // Fixation" lost their loop while "Medicare" and "Day 1" kept theirs — a pen with no rule the
+    // reader could name. Measured on real cards, a mark target under a quarter of the card's
+    // width sits anywhere from aspect 5 to 7; a heading or a prose line runs past 12.
+    // So: flatness is necessary — a tall figure is never a row — and then it is a row if it
+    // either spans most of the card OR is long enough to be a line of text rather than a label.
+    const aspect = r.width / Math.max(r.height, 1);
+    const isRow = aspect > 5 && (r.width > host.width * 0.6 || aspect > 12);
+    if (isRow) return { d: underline(r, host, rnd, extra?.tight), kind: 'underline' };
     return { d: circle(r, host, rnd, extra?.tight), kind };
   }
   if (kind === 'underline') return { d: underline(r, host, rnd, extra?.tight), kind };
@@ -777,6 +831,15 @@ export function labelPlacements(
       {
         place: 'right',
         box: { left: r.left + r.width + 14, top: midY, width: w, height: h },
+      },
+      // The mirror of 'right', which `note()` has always known how to draw but the search never
+      // offered: a note on a right-aligned value (a KPI figure, a table's last column) has clear
+      // card to its LEFT and nowhere to its right. Tried before the stacked placements because a
+      // note beside its item reads as an aside; one under it reads as another row of content.
+      // The clamp mirrors `note()`'s own `lx` exactly, so the box cleared is the box drawn.
+      {
+        place: 'left',
+        box: { left: Math.max(8, r.left - w - 14), top: midY, width: w, height: h },
       },
       {
         place: 'below',
