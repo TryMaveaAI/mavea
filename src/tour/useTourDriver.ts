@@ -230,6 +230,8 @@ export function useTourDriver(opts: {
   const [userMuted, setUserMuted] = useState(false);
   const userMutedRef = useRef(userMuted);
   userMutedRef.current = userMuted;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   const [done, setDone] = useState(false);
   // Bumped to force the apply-effect to re-run even when the index is unchanged (replay / re-enter).
   const [token, setToken] = useState(0);
@@ -625,6 +627,13 @@ export function useTourDriver(opts: {
       replay();
       return;
     }
+    // Pausing has to SOUND paused. `playing` only gates the advance gate below; a chapter's own
+    // scripted steps and its narration were started when the chapter was ENTERED (the apply effect
+    // is deliberately not keyed on `playing`), so without this the voice talks on for the rest of
+    // the line and the button reads as broken — reported as "pause doesn't work".
+    // Silencing is the half that is safe to do: the chapter's queued VISUAL steps are left alone,
+    // because cancelling mid-apply can strand a half-opened feature (see resetTriggers).
+    if (playingRef.current) opsRef.current.cancelSpeech();
     setPlaying((p) => !p);
   }, [done, replay, start, started]);
   const toggleMute = useCallback(() => {

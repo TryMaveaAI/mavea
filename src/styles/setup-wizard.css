@@ -59,6 +59,15 @@
 .setup-nav > .appearance-picker {
   justify-self: end;
 }
+/* The right flank as ONE grid item — see SetupWizard. Everything that lives out here (the palette
+   handle, the appearance toggle) rides inside it, so the constellation keeps the centre column. */
+.setup-nav-end {
+  align-items: center;
+  display: flex;
+  gap: var(--s-sm);
+  justify-self: end;
+  min-width: 0;
+}
 
 .setup-back {
   appearance: none;
@@ -887,6 +896,17 @@
   grid-column: 1 / -1;
 }
 
+/* Where one section ends and the next begins. The Go hub stacks full-width sections under its
+   two-column head — the launcher, then the study shelf, then the library — separated by nothing but
+   whitespace, so each boundary had to be inferred from its heading alone. A hairline does the work
+   the headings could not. */
+.go-grid > .start-with,
+.go-grid > .go-study,
+.go-grid > .go-library {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-lg);
+}
+
 /* checklist (Go hub summary rows) */
 .checklist {
   display: flex;
@@ -1199,5 +1219,47 @@
   }
   .const-step.is-current .const-disc::before {
     animation: none;
+  }
+}
+
+/* The ⌘K palette handle, borrowed into the wizard's own header. The app topbar that normally
+   carries it is hidden here (see the top of this file), so the shortcut existed in the wizard with
+   nothing on screen saying so. Sized to sit beside Appearance rather than in a menu bar. */
+.setup-nav .topbar-search-btn {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  font: 500 11.5px/1 var(--font);
+  padding: 0 9px;
+  height: 30px;
+}
+.setup-nav .topbar-search-btn:hover {
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line));
+  color: var(--text-primary);
+}
+
+/* On a phone the label and the shortcut both go — the icon alone is the affordance, and the row
+   already has to hold Back, four 44px step targets and Appearance. */
+@media (max-width: 430px) {
+  /* A square icon, not a padded pill. Measured: back (44) + the constellation (266) + this flank
+     has to clear 420px, and a labelled button overran it by ~10px — which showed up as the
+     constellation and the flank overlapping rather than as a scrollbar. */
+  .setup-nav .topbar-search-btn {
+    height: 30px;
+    padding: 0;
+    place-items: center;
+    width: 30px;
+  }
+  .setup-nav .topbar-search-label,
+  .setup-nav .topbar-search-kbd {
+    display: none;
+  }
+  .setup-nav-end {
+    gap: 6px;
   }
 }

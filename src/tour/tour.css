@@ -453,6 +453,13 @@ body[data-tour-chapter='highlight'] .block-actions {
   max-height: calc(100dvh - 32px);
   display: grid;
   grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+  /* The single row must be CONSTRAINED to the card, not sized to its tallest child. Without this
+     the row grew to the full height of the 30-item explore list (measured: 1204px inside a 644px
+     card), `overflow: hidden` simply clipped it, and neither column's `overflow-y: auto` ever
+     engaged — the list was cut off mid-row on any short window with no way to reach the rest.
+     `min-height: 0` on the columns is necessary but NOT sufficient; the row cap is what makes
+     them scroll. */
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 28px;
@@ -462,6 +469,8 @@ body[data-tour-chapter='highlight'] .block-actions {
 
 .tour-end-intro {
   min-width: 0;
+  /* Same grid-item trap as .tour-end-extras below — without this the column cannot scroll. */
+  min-height: 0;
   overflow-y: auto;
   padding: clamp(24px, 4vw, 48px);
   text-align: center;
@@ -544,10 +553,54 @@ body[data-tour-chapter='highlight'] .block-actions {
 
 .tour-end-extras {
   min-width: 0;
+  /* min-height:0 is load-bearing, not tidiness. This is a GRID ITEM of .tour-end-card, whose
+     default `min-height: auto` refuses to shrink below its content — so the column grew to fit
+     all 30 mini-demos, the card's `max-height: 100dvh` + `overflow: hidden` clipped it, and this
+     `overflow-y: auto` never engaged. On a short window the explore list was cut off mid-row with
+     no way to reach the rest. Same idiom .tour-dash-body already uses above. */
+  min-height: 0;
   overflow-y: auto;
   padding: clamp(22px, 3vw, 36px);
   border-left: 1px solid var(--line);
   background: var(--surface-default);
+}
+
+/* The explore list is the one place in the tour with content below the fold, so the scrollbar
+   STAYS — it is the only signal that sixteen more mini-demos exist, and "reachable but
+   undiscoverable" is the bug this card just had. It is only slimmed: the app-wide bar is a 10px
+   gutter carrying a ~4px thumb (its 3px transparent border insets it), which reads heavy against
+   this pale card. A 7px gutter with a 2px inset gives a ~3px thumb in a tighter channel — same
+   language, less furniture. NOT the 7px table treatment: that thumb is solid, so it would be
+   thicker than what it replaced. */
+.tour-end-extras {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.tour-end-extras::-webkit-scrollbar {
+  width: 7px;
+}
+.tour-end-extras::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tour-end-extras::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--r-full);
+}
+
+/* Hidden, like every other bounded scroller in the app (.canvas-scroll, .setup-stage,
+   .vlib-chips). Discoverability is carried by the layout instead: the grid deliberately cuts a row
+   in half at the fold, which reads as "more below" without furniture. The scroll itself is
+   load-bearing — sixteen of the thirty mini-demos live under the fold — so the CONTAINER keeps
+   overflow-y:auto and min-height:0; only the bar is suppressed. */
+.tour-end-extras,
+.tour-end-intro {
+  scrollbar-width: none;
+}
+.tour-end-extras::-webkit-scrollbar,
+.tour-end-intro::-webkit-scrollbar {
+  display: none;
 }
 
 .tour-end-extras h3 {

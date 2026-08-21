@@ -288,6 +288,10 @@ export function CommandComposer({
           placeholder={placeholder || 'Ask Mavéa anything — or just talk'}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
+            // `isComposing` guards IME input: while a Japanese, Chinese or Korean candidate window
+            // is open, Enter COMMITS the candidate. Without this check that same Enter also sent
+            // the turn, so the question left half-typed and the reader had to write it again.
+            if (e.nativeEvent.isComposing) return;
             if (e.key === 'Enter' && value.trim()) onSend(value);
           }}
         />

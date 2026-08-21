@@ -59,6 +59,13 @@ function CrashFallback() {
  *  the slowest connection. Announced as a polite status so a screen-reader user hears that a
  *  load is underway instead of landing on a silent, empty page. */
 export function SurfaceFallback() {
+  // While the static boot splash (index.html #boot) is still up it is ALREADY showing this exact
+  // orb — same size, same gradient, same 1.1s pulse — and has been since first paint. Painting a
+  // second, identically-styled one over it starts a NEW animation from phase zero, so the orb
+  // visibly snaps mid-pulse. That is the flash on a cold surface load, and it looks random because
+  // it depends purely on where in the cycle the bundle happened to finish. Two indicators for one
+  // wait is one too many: while the splash holds the screen, this renders nothing.
+  if (typeof document !== 'undefined' && document.getElementById('boot')) return null;
   return (
     <div
       className="surface-fallback"

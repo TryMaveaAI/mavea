@@ -94,6 +94,17 @@ describe('tour marks — the model names what Mavéa draws on', () => {
     expect(prompt).toContain('one gesture per datum the line mentions');
   });
 
+  it('every one of the fifteen kinds carries a worked example — the debias, pinned', async () => {
+    // Measured across the repo's baked corpora, three kinds were 76.6% of all ink — and the four
+    // kinds the model never once authored were exactly the ones the addendum never showed it. An
+    // example is the cheapest teaching there is, so every kind gets one and keeps it.
+    const { liveSystemPrompt, MARK_KINDS } = await import('../src/engine/liveSchema');
+    const prompt = liveSystemPrompt('frontier');
+    for (const kind of MARK_KINDS) {
+      expect(prompt, `"${kind}" has no worked JSON example`).toContain(`{"kind":"${kind}"`);
+    }
+  });
+
   it('the judgment-ink teaching rides the gesture addendum — never the small-model prompt', async () => {
     const { liveSystemPrompt } = await import('../src/engine/liveSchema');
     const frontier = liveSystemPrompt('frontier');

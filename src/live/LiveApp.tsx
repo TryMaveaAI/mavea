@@ -82,6 +82,7 @@ import { setKokoroVoice, kokoroKnownAvailable } from '../voice/kokoro';
 import { useVoiceEnergySink } from '../voice/voiceEnergy';
 import {
   awaitWalkReady,
+  awaitFirstPaint,
   waitLineStart,
   waitLineEnd,
   waitQueueQuiet,
@@ -113,10 +114,17 @@ import { useCommandPalette } from './features/useCommandPalette';
 import { TopbarSearchButton } from './features/TopbarSearchButton';
 import { PALETTE_SHORTCUT } from './features/paletteShortcut';
 import { FEATURES } from './features/registry';
+import { StartWith, type StartWithItem } from './welcome/StartWith';
+import { START_WITH_IDS, NEEDS_LIVE_SURFACE, prismRow } from './welcome/startWithIds';
 import { useLibrary } from './library/useLibrary';
 import { removeEntry, saveCanvas, getLibrary } from './library/store';
 import { MEMORY_EVENT, getMemoryNodes } from './memory/store';
-import { useLiveTurn, hydrateFromSession, type TurnPhase } from './useLiveTurn';
+import {
+  useLiveTurn,
+  hydrateFromSession,
+  TURN_REFUSAL_NOTICE,
+  type TurnPhase,
+} from './useLiveTurn';
 import { loadSession, saveSession, clearSession, hasSavedSession } from './session/store';
 import {
   useLiveConfig,
@@ -124,6 +132,7 @@ import {
   toModelConfig,
   toCaps,
   getLiveConfigV2,
+  secretsReady,
   type LiveConfigV2,
 } from './useLiveConfig';
 import { providerInfo, getAdapter } from './providers';
@@ -134,6 +143,7 @@ import {
   isOffice,
   isText,
   isExplodable,
+  ACCEPTED_TYPES,
   type Attachment,
 } from './attachments';
 import { SetupWizard } from './setup/SetupWizard';
@@ -287,6 +297,7 @@ import { FeatureUseNotice } from '../legal/FeatureUseNotice';
 import { hasLegalAcceptance } from '../legal/acceptance';
 import { preloadRoute } from '../routes';
 import { mountTemplateSkin } from './templates';
+import { sentenceCase } from '../lib/sentenceCase';
 
 // Remembers whether the user collapsed the desktop conversation rail to a slim strip.
 // What the lazy-canvas Suspense fallback sketches while the TopicCanvas chunk downloads: two
@@ -1039,6 +1050,16 @@ export function LiveApp(): ReactElement {
     // (tour, demo persona) a real provider turn requires a recorded acknowledgement.
     canRun: hasLegalAcceptance,
     getConfig: () => toModelConfig(getLiveConfigV2()),
+    configReady: secretsReady,
+    // Hold the turn's FIRST spoken line until its first card is on screen and done appearing, so
+    // Mavéa is never describing an answer the reader cannot see yet. Reads scrollRef at CALL time
+    // (it is declared below, and the stage it belongs to only mounts once a turn has a spec).
+    // Skipped when nothing will be heard anyway — the same test the pre-walk barrier uses — since a
+    // muted or captions-only turn must not wait on audio that will never come.
+    canvasReady: () =>
+      mutedRef.current || kokoroKnownAvailable() === false
+        ? Promise.resolve()
+        : awaitFirstPaint(() => scrollRef.current),
     getCaps: () => toCaps(getLiveConfigV2()),
     speak,
     cancelSpeak: cancelSpeech,
@@ -1119,7 +1140,7 @@ export function LiveApp(): ReactElement {
     () =>
       turn.frames.map((f, i) => ({
         index: i,
-        label: f.question || `Answer ${i + 1}`,
+        label: f.question ? sentenceCase(f.question) : `Answer ${i + 1}`,
         spec: f.spec,
       })),
     [turn.frames],
@@ -2706,6 +2727,17 @@ export function LiveApp(): ReactElement {
       }
       // A turn is valid with words, a staged file, OR pending ink marks (a mark alone is a real ask).
       if (!t && attached.length === 0 && userInk.intents.length === 0) return;
+      // Ask whether the turn would actually start BEFORE clearing anything. `turn.run` refuses
+      // silently, and everything below has already emptied the composer by the time it does — so a
+      // refusal used to read as "my question vanished and nothing happened", which is exactly what
+      // makes someone type it again. Keep what they wrote, and say why.
+      // `force` is the barge-in path: it bypasses the busy guard inside run(), so it must bypass
+      // the same one here — but nothing bypasses `blocked`, which run() refuses either way.
+      const refusal = turn.refuseReason(t, attached.length > 0 || userInk.intents.length > 0);
+      if (refusal && !(force && refusal === 'busy')) {
+        setVoiceNotice(TURN_REFUSAL_NOTICE[refusal]);
+        return;
+      }
       setHeard(null);
       setLastAsk(t || null);
       setValue('');
@@ -3977,6 +4009,12 @@ export function LiveApp(): ReactElement {
     const before = alwaysOnBeforeListenRef.current;
     if (before === null) return;
     alwaysOnBeforeListenRef.current = null;
+    // A listening surface entered from the hub is a BORROW — and if it produced nothing (no answer,
+    // nothing generating), the session never really started. Hand the hub back rather than leaving
+    // the reader on the stage meant for a turn in flight, which with no turn draws nothing at all:
+    // neither hub nor answer, and missing the menus that key off having one. Only this path resets
+    // it, so pressing "Start talking" — a deliberate move to the live surface — still stays there.
+    if (!turn.spec && !turn.busy) setConversationStarted(false);
     setAlwaysPaused(before.paused);
     setAlwaysOn(before.enabled);
     if (before.enabled && !before.paused && sttOk && !value.trim()) {
@@ -3984,7 +4022,7 @@ export function LiveApp(): ReactElement {
     } else {
       voice.stop();
     }
-  }, [watchThinking, justListen, sttOk, value, voice, turn.spec]);
+  }, [watchThinking, justListen, sttOk, value, voice, turn.spec, turn.busy]);
 
   // ── The living answer, as a VIEW ────────────────────────────────────────────────────────────
   // 'world' is a view of the current answer, peer to Focus and the spatial Canvas and driven by the
@@ -4336,6 +4374,57 @@ export function LiveApp(): ReactElement {
       watch,
     };
   });
+
+  // Leaving the wizard for the conversation surface. `conversationStarted` is what swaps the
+  // stage and un-hides the dock, so an action that lands the reader in a listening mode or an
+  // overlay has to flip it FIRST — otherwise the mic arms behind a wizard that is still up.
+  const leaveWizard = useCallback(() => setConversationStarted(true), []);
+  // The Go hub's own file picker: the wizard hides the composer's paperclip, so the Prism card
+  // opens this instead. Staging a document is what makes Prism available in the first place.
+  const wizardFileRef = useRef<HTMLInputElement>(null);
+
+  // The Go hub's "ways to begin". Built from paletteItems so availability, the "why not yet"
+  // reason and the preload are the SAME resolution the ⌘K palette uses — the registry is meant to
+  // be the one place a capability is declared, and a second hand-written list here would undo
+  // that. Actions that need the live surface run through `leaveWizard`, because the wizard is
+  // still on screen at this point and several of them (the listening modes especially) would
+  // otherwise arm into a dock that CSS is hiding.
+  const startWithItems: StartWithItem[] = START_WITH_IDS.map((id) =>
+    paletteItems.find((it) => it.feature.id === id),
+  )
+    .filter((it): it is PaletteItem => !!it)
+    .map((it) => {
+      // Prism before anything is staged. Its palette action points at the paperclip — the exact
+      // control the wizard hides — so here the card opens a file picker itself. That makes it
+      // genuinely AVAILABLE (clicking always does something), and it has to say so: rendered as
+      // unavailable it read as an instruction with no way to follow it, which is precisely how
+      // "how do I attach a document on a new conversation?" happens.
+      if (it.feature.id === 'pdf-world') {
+        // Nothing staged: the card IS the picker, since its palette action points at the paperclip
+        // — the one control the wizard hides. Something staged: it names that document and opens
+        // it. See prismRow for why the naming is the fix, not a flourish.
+        const staged = attached.filter(isExplodable);
+        const row = prismRow(staged);
+        return {
+          feature: it.feature,
+          available: true,
+          blurb: row.blurb,
+          preload: it.preload,
+          run: row.opensPicker ? () => wizardFileRef.current?.click() : () => openExplode(staged),
+        };
+      }
+      return {
+        feature: it.feature,
+        available: it.available,
+        reason: it.reason,
+        preload: it.preload,
+        run: () => {
+          // Only the listening modes need the wizard out of the way — see NEEDS_LIVE_SURFACE.
+          if (NEEDS_LIVE_SURFACE.has(it.feature.id)) leaveWizard();
+          it.run();
+        },
+      };
+    });
 
   // The topbar's feature menus, grouped by intent. Each is a stable category; an item only
   // appears once it's actionable in the current context (a contextual `show`), and a whole
@@ -5801,6 +5890,77 @@ export function LiveApp(): ReactElement {
               void voice.start({ inCanvas: false });
             }}
             onSeeHow={() => setShowHow(true)}
+            paletteSlot={
+              <TopbarSearchButton onOpen={openPalette} preload={commandPaletteLoad.preload} />
+            }
+            launcherSlot={
+              <>
+                <StartWith
+                  items={startWithItems}
+                  onSeeHow={(f) => f.tourChapter && playFeatureDemo(f.tourChapter)}
+                />
+                {/* The Prism card's picker. The composer's paperclip is hidden here, and the
+                    root-level drop target stages a file into an attach strip nobody can see — so
+                    this is how a document gets in before there is a conversation.
+                    Choosing a file OPENS the map: picking "Prism" and then a document is one
+                    intention, and making the reader press the card a second time afterwards (with
+                    nothing on screen saying to) is the kind of step that reads as the app having
+                    ignored them. */}
+                <input
+                  ref={wizardFileRef}
+                  type="file"
+                  accept={ACCEPTED_TYPES}
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = ''; // re-picking the same file must fire again
+                    if (!files.length) return;
+                    void onFiles(files).then((staged) => {
+                      const docs = staged.filter(isExplodable);
+                      if (docs.length) openExplode(docs);
+                    });
+                  }}
+                />
+                {/* What is staged, and how to change it. The real attach strip lives in the dock
+                    the wizard hides, so a document picked here was invisible from the moment Prism
+                    closed — and the launcher would then keep re-opening it with nothing on screen
+                    saying why, or how to choose a different one. */}
+                {attached.length > 0 && (
+                  <div className="start-with-staged">
+                    <ul className="start-with-files">
+                      {attached.map((a, idx) => (
+                        <li key={`${a.name}-${idx}`}>
+                          <span className="start-with-file">{attachmentLabel(a)}</span>
+                          <button
+                            type="button"
+                            className="start-with-drop"
+                            onClick={() => removeAttachment(idx)}
+                            aria-label={`Remove ${a.name}`}
+                          >
+                            ✕
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      className="start-with-another"
+                      onClick={() => wizardFileRef.current?.click()}
+                    >
+                      Choose a different file
+                    </button>
+                  </div>
+                )}
+                {/* The same strip is where a rejection ("too large", "not a supported type") has to
+                    surface, or a refused file was a picker that opened and then simply nothing. */}
+                {attachError && (
+                  <p className="start-with-error" role="alert">
+                    {attachError}
+                  </p>
+                )}
+              </>
+            }
             studySlot={<ReadyShelf onStudy={() => setSrsOpen(true)} />}
             librarySlot={
               libraryEntries.length > 0 ? (

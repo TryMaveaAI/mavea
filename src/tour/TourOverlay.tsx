@@ -2,7 +2,7 @@
 // coach caption, and a full transport (back / play-pause / next / chapter dots / skip). It renders
 // OVER the real Live surface (which keeps running underneath), reads everything from the driver,
 // and is pointer-transparent except for its own controls so it never blocks the app it's teaching.
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement, type WheelEvent } from 'react';
 import { Icon } from '../icons/icons';
 import { useFocusTrap } from '../live/useFocusTrap';
 import { useElementRect } from './useElementRect';
@@ -10,6 +10,28 @@ import type { TourDriver } from './useTourDriver';
 import './tour.css';
 
 export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | null {
+  // This panel is `position: fixed`, so it sits OUTSIDE `.canvas-scroll` and its only ancestors are
+  // the overflow:hidden app shell — a wheel over it finds no scrollable ancestor and the answer
+  // simply refuses to move. It is parked over the content (bottom-centre, or top on `.is-top`),
+  // which is exactly where a reader rests the cursor, so the whole walkthrough reads as "I can't
+  // scroll". Forward the delta to the canvas instead. Deliberately NOT `pointer-events: none` on
+  // the panel: that would fix scrolling by letting CLICKS through onto the cards behind it, which
+  // is the worse trade. This restores what the file header already promises — the walkthrough never
+  // blocks the app it is teaching.
+  const scrollerRef = useRef<HTMLElement | null>(null);
+  const forwardWheel = (e: WheelEvent<HTMLDivElement>): void => {
+    const cached = scrollerRef.current;
+    const sc =
+      cached && cached.isConnected
+        ? cached
+        : (scrollerRef.current = document.querySelector<HTMLElement>('.canvas-scroll'));
+    if (!sc) return;
+    // deltaMode 1 = lines, 2 = pages — normalise so a mouse wheel travels like a trackpad.
+    const px =
+      e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * sc.clientHeight : e.deltaY;
+    sc.scrollTop += px;
+  };
+
   const rect = useElementRect(driver.spotlight, driver.active && driver.started && !driver.done);
   // The welcome card is the walkthrough's one modal moment (a full-screen scrim over the real
   // surface) — hold keyboard focus inside it, or Tab wanders into an app the pointer can't reach.
@@ -118,6 +140,7 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
         className={'tourx-panel' + (driver.solo ? ' is-solo' : '') + (panelAtTop ? ' is-top' : '')}
         role="group"
         aria-label={driver.solo ? 'Mini-demo controls' : 'Walkthrough controls'}
+        onWheel={forwardWheel}
       >
         <div className="tourx-head" key={'head-' + driver.index}>
           <span className="tourx-count">

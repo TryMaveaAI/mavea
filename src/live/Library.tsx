@@ -6,12 +6,14 @@
 // collapses a run of related asks into one thread (groupByTopic) so the same subject reads as a
 // single card, not a wall of look-alikes. Tap a card to resume; "live" only ever means a real re-ask.
 import { useMemo, useState } from 'react';
+import { LIBRARY_CAP } from './library/store';
 import type { LibraryEntry } from './library/store';
 import { groupByTopic, type TopicGroup } from './library/grouping';
 import { momentsFor, type MomentIcon } from './library/moments';
 import { formatAgo } from './library/time';
 import { Icon } from '../icons/icons';
 import './library.css';
+import { sentenceCase } from '../lib/sentenceCase';
 
 /** Rotating, purely-decorative accents so the wall of cards has rhythm (matches the design tokens). */
 const ACCENTS = ['var(--presence)', 'var(--insight)', 'var(--warning)'] as const;
@@ -33,6 +35,13 @@ interface Props {
 
 /** Everything searchable about an entry, lowercased once: its title, the ask, and the
  *  real moment rows a card shows — so search finds what the eye can see. */
+/** How a saved canvas is named on screen. The model's own `title` when it wrote one, otherwise the
+ *  reader's question — which is stored exactly as they typed it, so it is shown back to them as a
+ *  sentence rather than as raw input. */
+function entryLabel(e: LibraryEntry): string {
+  return sentenceCase(e.title || e.question);
+}
+
 function searchText(e: LibraryEntry): string {
   const { moments } = momentsFor(e);
   return [e.title, e.question, ...moments.map((m) => m.text)].join(' ').toLowerCase();
@@ -69,11 +78,11 @@ function SoloCard({
         type="button"
         className="lib-open"
         onClick={() => onResume(entry)}
-        aria-label={`Resume "${entry.title || entry.question}"`}
+        aria-label={`Resume "${entryLabel(entry)}"`}
       >
         <div className={'lib-card-head' + (onRemove ? ' has-remove' : '')}>
           <span className="lib-dot" />
-          <span className="lib-card-title">{entry.title || entry.question}</span>
+          <span className="lib-card-title">{entryLabel(entry)}</span>
           <span className="lib-count tab-num">{blockCount}</span>
         </div>
         <ul className="lib-moments">
@@ -100,7 +109,7 @@ function SoloCard({
         <button
           type="button"
           className="lib-remove"
-          aria-label={`Remove "${entry.title || entry.question}" from your library`}
+          aria-label={`Remove "${entryLabel(entry)}" from your library`}
           onClick={() => onRemove(entry.id)}
         >
           <Icon.x />
@@ -144,16 +153,16 @@ function GroupCard({
               type="button"
               className="lib-session-open"
               onClick={() => onResume(e)}
-              aria-label={`Resume "${e.title || e.question}"`}
+              aria-label={`Resume "${entryLabel(e)}"`}
             >
-              <span className="lib-session-title">{e.title || e.question}</span>
+              <span className="lib-session-title">{entryLabel(e)}</span>
               <span className="lib-session-ago">{formatAgo(e.savedAt)}</span>
             </button>
             {onRemove && (
               <button
                 type="button"
                 className="lib-session-remove"
-                aria-label={`Remove "${e.title || e.question}" from your library`}
+                aria-label={`Remove "${entryLabel(e)}" from your library`}
                 onClick={() => onRemove(e.id)}
               >
                 <Icon.x />
@@ -194,7 +203,7 @@ export function Library({ entries, onResume, onRemove, heading = 'Your library',
     const list = q ? entries.filter((e) => (haystacks.get(e.id) ?? '').includes(q)) : entries;
     if (tab === 'topic') return groupByTopic(list);
     // Recent: every canvas stands alone, newest first — one singleton thread each, saved order kept.
-    return list.map((e) => ({ id: e.id, name: e.title || e.question, entries: [e] }));
+    return list.map((e) => ({ id: e.id, name: entryLabel(e), entries: [e] }));
   }, [entries, haystacks, query, tab]);
   // Browsing stays capped so the hub (and its type bar) never drowns in cards; a search
   // is already a filter, so its hits all show.
@@ -211,7 +220,11 @@ export function Library({ entries, onResume, onRemove, heading = 'Your library',
           {sub ?? 'Every canvas stays here after the conversation — tap one to pick it back up.'}
         </p>
         <p className="library-count">
-          {thisWeek} this week · {entries.length} all time
+          {/* "all time" was never true — the store keeps the most recent LIBRARY_CAP and drops the
+              rest, so a conversation could vanish with nothing on screen having said it might.
+              State the cap instead, and say plainly what happens at it. */}
+          {thisWeek} this week · {entries.length} of {LIBRARY_CAP} kept on this device
+          {entries.length >= LIBRARY_CAP && ' · saving another drops the oldest'}
         </p>
       </div>
       {withTools && (

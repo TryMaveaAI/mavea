@@ -48,17 +48,25 @@ function useHashRoute(): string {
   return hash;
 }
 
+/** Retires the static boot splash (index.html #boot).
+ *
+ *  Rendered INSIDE Suspense on purpose: it mounts only once the lazy surface chunk has resolved,
+ *  which is the first moment real UI exists underneath. Run from Root's own mount it fired while
+ *  that chunk was still downloading — pulling the splash off early, exactly when it was still
+ *  doing its job. Until then the splash covers the window, so a slow bundle shows the pulsing orb
+ *  instead of a blank page; if the bundle never runs, the splash just stays. */
+function RetireBootSplash(): null {
+  useEffect(() => {
+    document.getElementById('boot')?.remove();
+  }, []);
+  return null;
+}
+
 function Root() {
   // Keep the docked face glued to its corner during window resizes (no transition slide).
   useResizeQuiet();
   const hash = useHashRoute();
   const Surface = routeFor(hash);
-  // Retire the static boot splash (index.html #boot) on the first commit — the earliest moment
-  // real UI exists underneath it. Until then it covers the window, so a slow bundle shows the
-  // pulsing orb instead of a blank page; if the bundle never runs, the splash just stays.
-  useEffect(() => {
-    document.getElementById('boot')?.remove();
-  }, []);
   // Arm the refresh loop after first paint, never alongside it — the same delay the dashboards
   // surface used when it owned the mount.
   const [startLoop, setStartLoop] = useState(false);
@@ -71,6 +79,7 @@ function Root() {
       {/* Suspense covers every lazy surface chunk; FlagshipHost (the landing) renders
           synchronously and never suspends. */}
       <Suspense fallback={<SurfaceFallback />}>
+        <RetireBootSplash />
         {Surface ? (
           <LegalGate bypass={isLegalGateBypassed(hash)}>
             <Surface />

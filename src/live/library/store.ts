@@ -43,6 +43,10 @@ const STORAGE_KEY = 'mavea-live-library-v1';
 export const LIBRARY_EVENT = STORAGE_KEY;
 /** Keep the library bounded — newest canvases win once we hit the cap. */
 const MAX_ENTRIES = 12;
+/** The cap, said out loud. The surface has to be able to state it: a saved conversation quietly
+ *  falling off the end is confusing at the best of times, and on a BYOK key re-asking for what
+ *  vanished costs real money — so the limit is shown, not discovered. */
+export const LIBRARY_CAP = MAX_ENTRIES;
 /** Skip persisting a single monster canvas rather than blow the whole localStorage quota. Note
  *  this caps ONE entry: twelve of them reserve ~2.9MB of a ~5MB origin quota the session and
  *  course stores also draw on, which is why writes go through `lib/localBudget` and this store

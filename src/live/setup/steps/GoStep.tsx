@@ -42,6 +42,7 @@ export function GoStep({
   onSeeHow,
   studySlot,
   librarySlot,
+  launcherSlot,
 }: {
   onJump: (id: StepId) => void;
   onStart: (text: string) => void;
@@ -50,6 +51,7 @@ export function GoStep({
   onSeeHow?: () => void;
   studySlot?: ReactNode;
   librarySlot?: ReactNode;
+  launcherSlot?: ReactNode;
 }): ReactElement {
   const [cfg] = useLiveConfig();
   const facts = useMemory();
@@ -143,6 +145,9 @@ export function GoStep({
         <StarterChips onStart={onStart} />
       </div>
 
+      {/* Ways to BEGIN, before ways to resume: on a fresh device the study shelf and the library
+          are both empty, and this is the only thing on the hub that says what Mavéa can do. */}
+      {launcherSlot}
       {studySlot}
       {librarySlot && <div className="go-library">{librarySlot}</div>}
     </div>

@@ -321,11 +321,16 @@ export const FEATURES: Feature[] = [
   {
     id: 'export',
     label: 'Export',
-    blurb: 'Print this or save it as a PDF',
+    // Was "Print this or save it as a PDF", which undersold it and disagreed with the walkthrough's
+    // own line for the same feature ("Any answer becomes a deck or document"). ExportModal opens on
+    // a format choice — presentation deck or document — with a template picker behind it, so a
+    // reader searching "slides" or "deck" was finding nothing for the feature that does exactly
+    // that. Keywords widened for the same reason.
+    blurb: 'Turn this answer into a presentation deck or a designed document',
     group: 'This session',
     surface: 'live',
     tourChapter: 'export',
-    keywords: ['pdf', 'print', 'save', 'download'],
+    keywords: ['pdf', 'print', 'save', 'download', 'deck', 'slides', 'presentation', 'document'],
   },
   {
     id: 'board',
@@ -382,7 +387,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'watch-me-think',
     label: 'Watch me think',
-    blurb: 'Talk for a minute — Mavéa draws a live map of your thinking',
+    blurb: 'Talk freely — nothing is answered, your thinking is drawn as a live map',
     group: 'While listening',
     surface: 'live',
     tourChapter: 'think',
@@ -391,7 +396,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'just-listen',
     label: 'Just listen',
-    blurb: 'Bank recognized speech without answering — sort it later',
+    blurb: 'Talk freely — nothing is answered, every thought is banked to sort later',
     group: 'While listening',
     surface: 'live',
     tourChapter: 'just-listen',

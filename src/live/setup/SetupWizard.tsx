@@ -34,6 +34,8 @@ export function SetupWizard({
   onSeeHow,
   studySlot,
   librarySlot,
+  launcherSlot,
+  paletteSlot,
   seed,
 }: {
   speak: (text: string) => void;
@@ -43,6 +45,13 @@ export function SetupWizard({
   onSeeHow?: () => void;
   studySlot?: ReactNode;
   librarySlot?: ReactNode;
+  /** The "ways to begin" launcher — the Go hub's front door to the capabilities the wizard's
+   *  hidden topbar and dock would otherwise put out of reach until after the first question. */
+  launcherSlot?: ReactNode;
+  /** The ⌘K palette handle. The app topbar that normally carries it is hidden here (it would sit
+   *  as an opaque, click-blocking layer over the constellation — see setup-wizard.css), so the
+   *  shortcut worked in the wizard with nothing on screen saying it existed. */
+  paletteSlot?: ReactNode;
   /** A question handed over from the landing — prefills the Go composer so it's ready post-setup. */
   seed?: string;
 }): ReactElement {
@@ -166,7 +175,14 @@ export function SetupWizard({
           <span aria-hidden>←</span> Back to the demo
         </button>
         <Constellation current={step} done={doneSet} onPick={go} />
-        <TemplatePicker triggerClassName="setup-icon-btn" />
+        {/* One right flank, not two children: the nav is a 1fr-auto-1fr grid that puts the
+            constellation on the true page centre-line, so a second element out here became a
+            fourth grid item and wrapped onto its own row — which is what dropped the appearance
+            toggle below the constellation on a phone. */}
+        <div className="setup-nav-end">
+          {paletteSlot}
+          <TemplatePicker triggerClassName="setup-icon-btn" />
+        </div>
       </header>
 
       <div className="setup-stage" ref={stageRef}>
@@ -192,6 +208,7 @@ export function SetupWizard({
               onSeeHow={onSeeHow}
               studySlot={studySlot}
               librarySlot={librarySlot}
+              launcherSlot={launcherSlot}
             />
           )}
 
@@ -218,6 +235,8 @@ export function SetupWizard({
               spellCheck={false}
               onChange={(e) => setTyped(e.target.value)}
               onKeyDown={(e) => {
+                // See CommandComposer: an IME's Enter commits a candidate, it doesn't send.
+                if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && typed.trim()) {
                   onStart(typed.trim());
                 }

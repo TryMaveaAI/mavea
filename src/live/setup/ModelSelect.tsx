@@ -19,6 +19,33 @@ function companyOf(label: string): string {
   return label.split(' · ')[1] ?? label;
 }
 
+/** The one muted line under the picker, shown for EVERY provider.
+ *
+ *  WORDING RULE — this line describes MAVÉA’S OWN behaviour and, at most, a provider’s own
+ *  published terms. It never characterises another company’s service as slow, unreliable or
+ *  low-quality. Earlier drafts said OpenRouter’s "quality varies" and that some models "can’t
+ *  build a canvas": both are claims about a named third party that we would have to stand behind,
+ *  and we gain nothing by making them. Keep new copy descriptive, hedged, and about us.
+ *
+ *  It is also the accurate framing. A long turn is usually not the provider at all — `effort.ts`
+ *  promotes a hard ask to extended reasoning on the default Balanced dial, and reasoning tokens
+ *  stream invisibly (see the SSE note in providers/anthropic.ts), so the wait looks like dead air
+ *  whoever is serving it. Naming the model CHOICE as the thing that moves the number is true for
+ *  every provider, and singles out none. */
+function pickerHint(model: string): string {
+  const base =
+    'Which model you pick changes how long a turn takes: from seconds to two minutes or more.';
+  // A free variant is a different service from the paid model of the same name, on the provider’s
+  // own rate limits. Mavéa answers it with a smaller canvas — say so, so a shorter answer reads as
+  // the deliberate trade it is rather than as Mavéa misbehaving.
+  //
+  // Only the canvas claim is made, deliberately. Mavéa ALSO waits longer on a free route, but that
+  // lives in providers/openaiCompatible.ts (FREE_ROUTE_STREAM_TOTAL_MS) and so is true only for the
+  // adapters built on it — Gemini and Anthropic keep their own fixed ceilings. The smaller canvas
+  // is provider-agnostic (`speedTierFor` in generateLive.ts), so it is the one that is always true.
+  return isFreeRoute(model) ? base + ' Free ones are rate-limited — smaller canvas.' : base;
+}
+
 export function ModelSelect({
   provider,
   value,
@@ -42,6 +69,7 @@ export function ModelSelect({
   // The empty field falls back to the provider default at request time (toModelConfig), so the
   // menu marks that same effective model as current rather than showing nothing selected.
   const effective = value || info.defaultModel;
+  const hint = pickerHint(effective);
   const optionId = (index: number): string => `${listId}-opt-${index}`;
 
   const openMenu = (): void => {
@@ -179,15 +207,8 @@ export function ModelSelect({
             document.body,
           )}
       </div>
-      {/* A free route is a different service from the paid model of the same name: queued and rate
-          limited. Mavéa adapts (a smaller canvas, a longer patience) — say so, so a slower, shorter
-          answer reads as the deliberate trade it is rather than as Mavéa misbehaving. Sits OUTSIDE
-          .drop-select, whose absolutely-positioned chevron sizes itself to that box. */}
-      {isFreeRoute(effective) && (
-        <span className="drop-select-hint">
-          Free routes are queued and rate-limited — expect a slower turn and a smaller canvas.
-        </span>
-      )}
+      {/* Sits OUTSIDE .drop-select, whose absolutely-positioned chevron sizes itself to that box. */}
+      {hint && <span className="drop-select-hint">{hint}</span>}
     </>
   );
 }

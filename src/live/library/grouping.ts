@@ -9,6 +9,8 @@
 import type { LibraryEntry } from './store';
 import { cosine, termVector } from '../atlas/similarity';
 import { salientTerms } from '../atlas/neighborhoods';
+// A thread name reads as a calm label ("Batting average"), not a shout or Title Case.
+import { sentenceCase as sentence } from '../../lib/sentenceCase';
 
 /** A thread of related canvases the user can pick any one of back up. */
 export interface TopicGroup {
@@ -64,13 +66,6 @@ function freshest(c: Cluster): number {
   let max = 0;
   for (const e of c.entries) if (e.savedAt > max) max = e.savedAt;
   return max;
-}
-
-/** Capitalize the first letter only — a thread name reads as a calm label ("Batting average"), not
- *  a shout or Title Case. */
-function sentence(text: string): string {
-  const t = text.trim();
-  return t ? t[0].toUpperCase() + t.slice(1) : t;
 }
 
 function nameFor(c: Cluster): string {

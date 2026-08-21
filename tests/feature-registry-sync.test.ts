@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { FEATURES } from '../src/live/features/registry';
+import { START_WITH_IDS } from '../src/live/welcome/startWithIds';
 import { chapterById } from '../src/tour/tourPlan';
 
 const liveApp = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
@@ -50,6 +51,30 @@ describe('feature registry', () => {
     // The always-visible handle on the palette (also the only path to it on phones, where the menus
     // collapse away). Source-scan so a refactor that drops it fails here, like the menu guards below.
     expect(liveApp).toContain('<TopbarSearchButton');
+  });
+
+  it('offers only real features as ways to begin', () => {
+    // The Go hub's launcher is the ONLY door to the capabilities while the wizard is up (it hides
+    // the whole topbar and dock), so a renamed or removed feature must fail here rather than paint
+    // a card that does nothing.
+    const ids = new Set(FEATURES.map((f) => f.id));
+    for (const id of START_WITH_IDS) expect(ids).toContain(id);
+  });
+
+  it('never offers a way to begin that needs an answer to already exist', () => {
+    // A launcher row is a promise there is something to see. These act on the current answer, and
+    // on a fresh conversation there is none.
+    for (const id of ['present', 'export', 'share', 'track', 'focus', 'board', 'ink', 'recap']) {
+      expect(START_WITH_IDS).not.toContain(id);
+    }
+  });
+
+  it('renders the launcher, and the palette handle, inside the setup wizard', () => {
+    // Source-scan, like the topbar guards above: the wizard is a separate render branch, so a
+    // refactor could drop either and leave a fresh conversation with no door again.
+    expect(liveApp).toContain('launcherSlot=');
+    expect(liveApp).toContain('paletteSlot=');
+    expect(liveApp).toContain('<StartWith');
   });
 
   it('lists Prism (pdf-world) in the Explore topbar menu', () => {

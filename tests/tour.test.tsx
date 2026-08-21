@@ -846,6 +846,24 @@ describe('walkthrough autoplay breathing room', () => {
 //
 // The match is deliberately dot-prefixed (`.foo`, i.e. a CSS rule / querySelector), not any bare
 // occurrence of the word: a coincidental prose mention must not count. GatingPlot's header comment
+describe('transport — pause must actually pause', () => {
+  const driver = readFileSync(join(__dirname, '..', 'src/tour/useTourDriver.ts'), 'utf8');
+
+  it('silences the narration when autoplay is turned off', () => {
+    // `playing` only gates the advance gate: a chapter's scripted steps and its narration start
+    // when the chapter is ENTERED (the apply effect is deliberately not keyed on `playing`), so
+    // without an explicit cancel the voice talks on after Pause and the button reads as broken.
+    const toggle = /const toggle = useCallback\(\(\) => \{[\s\S]*?\}, \[/.exec(driver)?.[0] ?? '';
+    expect(toggle, 'toggle should exist').toBeTruthy();
+    expect(toggle).toMatch(/cancelSpeech\(\)/);
+    expect(toggle).toMatch(/playingRef\.current/);
+  });
+
+  it('still halts the advance gate, so a paused tour does not walk on', () => {
+    expect(driver).toMatch(/if \(!active \|\| !started \|\| done \|\| !playing/);
+  });
+});
+
 // says "…cluster-legend/focus-toggle interaction, reused here" — a bare `focus-toggle` with no dot
 // — so a whole-word check would let a renamed real `.focus-toggle` slip through on that comment
 // alone. Requiring the leading dot pins the check to an actual selector.
