@@ -6,6 +6,81 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-21
+
+### Added
+
+- **A new conversation now has a front door.** The Go hub offers Prism, the listening modes, Deep
+  Zoom, Delegate, Courses, Synthesis, and Ripple as ways to _begin_. Before this, the setup wizard
+  hid the whole dock, so the only route to any of them was to ask a throwaway question first. The
+  Prism row names the file it will open, and picking a file opens the map on the same gesture
+  instead of staging it somewhere you cannot see.
+- **A fifth way to read a living answer: spheres.** It answers a question the other four cannot —
+  what kinds of force an outcome is made of, and where the explanation hands off from one kind to
+  another. Links that cross between kinds are drawn at full weight; links that stay inside one go
+  faint.
+- **A world now looks like what it is about.** Its domain reaches the room as light rather than one
+  6px dot, so a photosynthesis world and a bailout world no longer read as the same grey rectangles.
+- **Prism and Synthesis remember a document's map.** Re-opening the same file no longer re-reads it
+  through your key. The map is filed under that file's identity and the model that read it, so it is
+  only ever reused for the same document, and the store is bounded by least-recently-opened.
+- **The pen writes in a real hand** — a self-hosted face rather than whatever the system happened to
+  have, so a mark looks the same everywhere.
+- **A bracket's figure is computed, not quoted.** Both of a bracket's anchors have to be found in the
+  rendered page before it draws at all, so the delta between them is provable by construction. A
+  model-authored number gives way to the computed one; a label carrying no digits is a name and is
+  kept.
+
+### Changed
+
+- **The voice sounds like a voice, not a list.** Sentences after the first are gathered into
+  breath-sized utterances, so the synthesizer carries prosody across them instead of restarting for
+  each one, and the first spoken line waits for the canvas's first card to finish arriving.
+- **A briefing beat ends when its narration ends**, instead of being cut off by a character-count
+  guess.
+- **"Tell me more" now builds a world about what you were discussing.** A follow-up that carries no
+  subject of its own used to be explained literally — a thread about refinancing, asked to go on,
+  returned a causal web about the act of explaining.
+- **Your own question is shown back to you in sentence case.** One character, so a typed line reads
+  as a question someone asked rather than as an unfinished fragment.
+- Storage that can fill up now says its cap where you can see it, and the device cache retires what
+  you have not opened in longest rather than what was written first.
+
+### Fixed
+
+- **A pronunciation can never reach the screen, and can no longer make the voice say a common word
+  wrong.** The respelled side of a pronunciation is invented rather than looked up, so asked to catch
+  anything a synthesizer might mangle, a model also respells ordinary vocabulary. Ordinary English is
+  now recognised and the respelling dropped, keeping the word exactly as written.
+- **A card that resolved no content no longer renders.** A table whose rows produced no cells used to
+  draw a header over blank lines under a footer confidently counting them — in a live answer and in a
+  recorded demo alike.
+- **A remembered key is no longer reported missing.** Settings probed the vault before it had
+  finished decrypting, so a key that was there showed as absent; the same race could also fail a real
+  send.
+- **A send that cannot start now says so and keeps what you wrote**, instead of silently discarding
+  it.
+- **A turn that trickles forever now stops.** The Anthropic and Gemini streams carry the same hard
+  ceiling on a whole turn that the OpenAI-compatible path always had — the previous guards only
+  covered time-to-first-byte and a stream that had gone completely silent.
+- **Clicking outside a document map only closes it when you meant to.** A drag released past the
+  panel's edge, or a click whose target disappeared mid-gesture, used to read as "close".
+- **Leaving something you started from the hub lands you back on the hub**, not on an empty stage
+  with half the menus gone.
+- Copy about other companies' models describes what Mavéa needs and what this turn did, never how
+  good somebody else's service is.
+
+### Security
+
+- **The device-local map of a document no longer keeps the document.** A file staged through the
+  conversation dock carried its bytes into the saved map, so re-opening a corpus wrote whole
+  documents into browser storage; the map now keeps only what names a source, and the bytes come from
+  the file you still have open. This also repaired the cache itself, which had been silently
+  refusing to save a corpus of three or more documents for exceeding its entry ceiling.
+- The legal acknowledgement is versioned again for this release, so the changed Privacy Notice is
+  shown once to everyone who had already accepted, and the documents are now digest-pinned in the
+  test suite so a future edit cannot ship without that decision being made.
+
 ## [2.0.1] - 2026-08-18
 
 ### Fixed
