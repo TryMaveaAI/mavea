@@ -26,19 +26,21 @@
   border: none;
   background: none;
   color: var(--text-muted);
-  font: 600 12px/1 var(--font);
+  /* 13px/15px matches .cr-nav-back on the courses home: the same "go back" action reading at the
+     same size on both course surfaces, rather than a pill on one and fine print on the other. */
+  font: 600 13px/1 var(--font);
   cursor: pointer;
   padding: 0;
 }
 .cx-back svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 .cx-back:hover {
   color: var(--text-primary);
 }
 .cx-position {
-  font: 700 11px/1 var(--font);
+  font: 700 12px/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--presence);

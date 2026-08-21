@@ -34,6 +34,13 @@
   margin-inline: auto;
 }
 
+/* The reader's only surface chrome: one right-aligned row above the reading column. */
+.clr-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .clr-canvas {
   margin-top: 2px;
 }

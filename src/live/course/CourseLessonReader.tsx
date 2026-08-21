@@ -15,6 +15,7 @@
 import './courses.css';
 import './courseRail.css';
 import './course-reader.css';
+import '../../styles/templates.css';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
 import { CourseRail } from './CourseRail';
@@ -35,7 +36,8 @@ import {
 import type { TopicCourse } from './model';
 import type { LiveResult } from '../generateLive';
 import { createTurnFrameId, type TurnFrame } from '../history';
-import { applyTheme, readTheme } from '../../lib/theme';
+import { mountTemplateSkin } from '../templates';
+import { TemplatePicker } from '../TemplatePicker';
 import { Icon } from '../../icons/icons';
 import { createPreloadableLazy } from '../../lib/preloadableLazy';
 import { AsyncSurface } from '../../components/AsyncSurface';
@@ -131,7 +133,10 @@ export function CourseLessonReader(): ReactElement {
   // never reflect a checkpoint write. This directive opts the reader out of compilation (the same
   // escape hatch CoursesApp documents), so every store read runs fresh on each render.
   'use no memo';
-  useEffect(() => applyTheme(readTheme()), []);
+  // Wear the workspace skin for as long as the reader is mounted — brightness AND template, the
+  // way FlashcardsApp and Dashboards do. The bare applyTheme(readTheme()) this replaces carried
+  // only brightness, so arriving from Live dropped the chosen skin on the way in.
+  useEffect(() => mountTemplateSkin(document), []);
   useCourseRevision();
   // A lesson's own in-canvas quiz blocks can grade its checkpoint too: course/mastery.ts joins their
   // answers to the lesson's checkpoint list and calls recordCheckpoint itself. Wire that listener the
@@ -352,6 +357,12 @@ export function CourseLessonReader(): ReactElement {
     <div className="mavea-app clr-app">
       <main className="clr-stage">
         <div className="clr-col">
+          {/* Appearance is chrome for the SURFACE, not for the lesson — inside the rail card it read
+              as one more lesson control and crowded the notice above it. Its own row keeps the rail
+              about the lesson and matches where #/courses puts the same control. */}
+          <div className="clr-top">
+            <TemplatePicker triggerClassName="ctrl" />
+          </div>
           <FeatureUseNotice kind="learning" />
           <CourseRail
             // Keyed by course+lesson so a mid-checkpoint self-check never survives into the next

@@ -1,12 +1,13 @@
 // CoursesApp.tsx — the course home surface at #/courses: every syllabus the learner has generated,
 // each with its own "Lesson X of N" progress, a "Continue" that opens the lesson in the dedicated
 // contained reader (#/course — see CourseLessonReader), and a composer to start a new course. Mirrors
-// FlashcardsApp's structural conventions (a .mavea-app surface, applyTheme(readTheme()) on mount, a
+// FlashcardsApp's structural conventions (a .mavea-app surface, mountTemplateSkin on mount, a
 // top nav + main column, an overlay sheet for the "new" flow) so it reads as the same family of
 // small surface. Real-data-only: an empty library shows an explainer, never sample courses.
 import './courses.css';
+import '../../styles/templates.css';
 import { homeTarget } from '../../lib/homeTarget';
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { FormEvent, ReactElement } from 'react';
 import {
   getCourses,
@@ -25,10 +26,23 @@ import { deckLine } from '../srs/deckLine';
 import { useSrsRevision } from '../srs/useSrsCards';
 import { Icon } from '../../icons/icons';
 import { DropSelect } from '../setup/DropSelect';
-import { applyTheme, readTheme } from '../../lib/theme';
+import { mountTemplateSkin } from '../templates';
 import { useFocusTrap } from '../useFocusTrap';
 import { preloadRoute } from '../../routes';
-import { preloadIntentProps, scheduleIdlePreload } from '../../lib/preloadableLazy';
+import {
+  createPreloadableLazy,
+  preloadIntentProps,
+  scheduleIdlePreload,
+} from '../../lib/preloadableLazy';
+
+// The picker reaches useLiveConfig and so the whole provider stack, which this surface is boundaried
+// against (tests/eager-bundle.test.ts): the course LIBRARY must not ship the model code just to list
+// what you already made. Lazy, with a null fallback — the skin itself is already applied by
+// mountTemplateSkin, so only the control arrives a beat later, not the appearance.
+const appearancePicker = createPreloadableLazy(() =>
+  import('../TemplatePicker').then((m) => ({ default: m.TemplatePicker })),
+);
+const AppearancePicker = appearancePicker.Component;
 
 let courseBuilderPromise:
   Promise<[typeof import('./generateCourse'), typeof import('../useLiveConfig')]> | undefined;
@@ -439,7 +453,9 @@ export function CoursesApp(): ReactElement {
   'use no memo';
   // Back goes where you came from — Live if you have a session, the front door otherwise.
   const home = homeTarget();
-  useEffect(() => applyTheme(readTheme()), []);
+  // Same skin hold as the lesson reader and FlashcardsApp: the whole course family wears the
+  // chosen workspace appearance, not just its brightness.
+  useEffect(() => mountTemplateSkin(document), []);
   useCourseRevision();
   // A topic handed off from Deep Zoom's "Turn this into a course" (see courseSeed.ts) opens
   // the composer pre-filled and generating immediately — same mount-time, read-once pattern
@@ -475,6 +491,9 @@ export function CoursesApp(): ReactElement {
         <button type="button" className="cr-btn cr-btn-primary" onClick={() => openComposer()}>
           <Icon.plus /> New course
         </button>
+        <Suspense fallback={null}>
+          <AppearancePicker triggerClassName="ctrl" />
+        </Suspense>
       </header>
 
       <main className="cr-main">

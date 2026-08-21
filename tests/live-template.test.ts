@@ -326,12 +326,33 @@ describe('template apply / persist / clear', () => {
     expect(document.querySelector('link[href*="fonts.googleapis.com"]')).toBeNull();
   });
 
-  it('applyStartupTemplate only acts on a Live load', () => {
+  it('applyStartupTemplate only acts on a skinned load', () => {
     persistTemplate('console');
     applyStartupTemplate(document, '#/gallery');
     expect(document.documentElement.dataset.template).toBeUndefined();
     applyStartupTemplate(document, '#/live');
     expect(document.documentElement.dataset.template).toBe('console');
+  });
+
+  // The course surfaces wore only the brightness half of the choice, so opening a lesson from a
+  // skinned Live dropped the skin on the way in — and a direct load of a lesson link (the shape a
+  // shared course URL takes) never had it at all.
+  it.each([
+    ['the courses home', '#/courses'],
+    ['a lesson reader deep link', '#/course?c=3dce9d6f&l=1'],
+  ])('applyStartupTemplate skins %s', (_label, hash) => {
+    persistTemplate('console');
+    applyStartupTemplate(document, hash);
+    expect(document.documentElement.dataset.template).toBe('console');
+  });
+
+  it('leaves an unskinned neighbour alone', () => {
+    persistTemplate('console');
+    applyStartupTemplate(document, '#/coursework-that-does-not-exist');
+    expect(document.documentElement.dataset.template).toBe('console');
+    delete document.documentElement.dataset.template;
+    applyStartupTemplate(document, '#/flagship');
+    expect(document.documentElement.dataset.template).toBeUndefined();
   });
 });
 

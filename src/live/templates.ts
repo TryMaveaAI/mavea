@@ -234,7 +234,9 @@ export function mountTemplateSkin(doc: Document = document): () => void {
 /** Route prefixes whose surfaces wear the chosen workspace skin. Keep in step with the surfaces
  *  that mount it (each calls mountTemplateSkin, or renders a TemplatePicker that does) — a surface
  *  missing from this list still gets the skin, just one frame late and with a visible flash. */
-const SKINNED_ROUTES = ['#/live', '#/dashboards', '#/flashcards'] as const;
+// '#/course' covers the lesson reader AND the '#/courses' home, since this is a prefix test and
+// '#/courses'.startsWith('#/course') — the same overlap routes.ts orders its two entries around.
+const SKINNED_ROUTES = ['#/live', '#/dashboards', '#/flashcards', '#/course'] as const;
 
 /** Pre-paint apply for a direct load of a skinned surface, so it never flashes the default skin
  *  (the CSP forbids an inline boot script; this runs from main.tsx before the first render). */
