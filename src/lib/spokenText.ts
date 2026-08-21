@@ -12,6 +12,11 @@
 // the screen), forSpeech keeps the said side (for the voice). One model payload, no extra call,
 // no per-term dictionary to maintain — it scales to anything the model can say. Pure string
 // helpers (no DOM), so they run identically in the browser, the validator, and headless eval.
+//
+// The said side is INVENTED by the model, which over-reaches — see lib/annotationGuard, applied
+// inside forSpeech below, where the said side is chosen.
+
+import { guardAnnotations } from './annotationGuard';
 
 /** [[shown|said]] — the said side wins for speech, the shown side for display. */
 const ANNOTATED = /\[\[([^[\]|]*)\|([^[\]]*)\]\]/g;
@@ -88,9 +93,15 @@ export function forDisplay(text: string): string {
     .trimEnd();
 }
 
-/** What the voice says: keep the said (right) side of every annotation, drop the markers. */
+/** What the voice says: keep the said (right) side of every annotation, drop the markers.
+ *
+ *  The guard runs FIRST, and it runs here rather than at any one caller because this is the single
+ *  place the said side is ever chosen — narration, tour lines, notes, a rehearsal reply, a briefing,
+ *  a reel voiceover all arrive through it. A said side the voice does not need is thrown away
+ *  before it can be spoken; the shown side survives untouched, so display is unaffected either way
+ *  (forDisplay keeps the same text with or without the guard). See lib/annotationGuard. */
 export function forSpeech(text: string): string {
-  let out = resolveToFixedPoint(text, ANNOTATED, '$2');
+  let out = resolveToFixedPoint(guardAnnotations(text), ANNOTATED, '$2');
   out = resolveToFixedPoint(out, PLAIN, '$1');
   return out.replace(DANGLING, '').trimEnd();
 }

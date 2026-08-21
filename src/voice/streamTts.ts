@@ -37,6 +37,11 @@ const FLUSH_SECONDS = 0.2;
 const MAX_AHEAD_SECONDS = 2;
 /** Extra on the computed back-pressure sleep so timer skew rarely needs a second wake. */
 const BACK_PRESSURE_MARGIN_MS = 15;
+/** Fade to silence before stopping a clip that is still playing. Cutting a buffer source mid-
+ *  waveform leaves a discontinuity, which is heard as a click — on every barge-in, every mute, every
+ *  hush. Eight milliseconds is inaudible as a fade and completely removes the edge; it is the same
+ *  ramp the offline export path has always applied per line (clip/reel/audioTrack). */
+const CANCEL_FADE_S = 0.008;
 
 /**
  * Decode a chunk of signed 16-bit little-endian PCM into Float32 samples in [-1, 1), carrying a
@@ -167,6 +172,10 @@ export function bindOutputGain(el: HTMLMediaElement): () => void {
 
 interface ActiveStream {
   sources: Set<AudioBufferSourceNode>;
+  /** The leased context this clip plays on. Carried explicitly rather than read off the gain node:
+   *  teardown needs the clock for its fade-out, and `gain.context` is not something every host
+   *  (or test double) provides. */
+  ctx: BaseAudioContext;
   releaseTap: () => void;
   /** Returns the shared context's lease. Held for the WHOLE clip — taken before the fetch, given
    *  back only in teardown, once every scheduled source has stopped — so the idle timer can never
@@ -193,33 +202,57 @@ let pendingAbort: AbortController | null = null;
 
 function teardown(state: ActiveStream): void {
   state.wakeBackPressure?.();
-  for (const src of state.sources) {
+  // Only a clip still MID-WAVEFORM can click; one that simply ended has nothing left running, so
+  // the fade below costs nothing on the normal path.
+  const live = state.sources.size > 0;
+  const ctx = state.ctx;
+  const stopAt = live ? ctx.currentTime + CANCEL_FADE_S : 0;
+  if (live) {
     try {
-      src.stop();
+      const g = state.gain.gain;
+      g.cancelScheduledValues(ctx.currentTime);
+      g.setValueAtTime(g.value, ctx.currentTime);
+      g.linearRampToValueAtTime(0, stopAt);
     } catch {
-      /* already stopped */
+      /* a context that refuses the ramp still gets the hard stop below */
     }
+  }
+  // The gain node is the last thing to go: disconnecting it while the sources are still ramping
+  // out would cut the audio dead, which is the click this exists to remove. It rides each source's
+  // OWN `onended` rather than a timer — a cancel must not leave anything pending behind it.
+  let gainDropped = false;
+  const dropGain = (): void => {
+    if (gainDropped) return;
+    gainDropped = true;
     try {
-      src.disconnect();
+      state.gain.disconnect();
     } catch {
       /* no-op */
     }
+  };
+  for (const src of state.sources) {
+    const prior = src.onended;
+    src.onended = function (this: AudioScheduledSourceNode, ev: Event) {
+      prior?.call(this, ev); // the scheduler's own handler removes it from `sources`
+      if (state.sources.size === 0) dropGain();
+    };
+    try {
+      src.stop(stopAt);
+    } catch {
+      /* already stopped — its onended has run, or will not come */
+    }
   }
-  state.sources.clear();
+  // Nothing was playing (or every source had already ended): there is nothing to wait for.
+  if (state.sources.size === 0) dropGain();
   try {
     state.releaseTap();
   } catch {
     /* no-op */
   }
-  // Every source above is stopped by now, so the context is genuinely idle as far as this clip is
-  // concerned and may park 30s from here.
+  // Every source is stopped or stopping, so the context is idle as far as this clip is concerned
+  // and may park 30s from here. Released synchronously: a lease must never outlive a cancel.
   try {
     state.releaseAudio();
-  } catch {
-    /* no-op */
-  }
-  try {
-    state.gain.disconnect();
   } catch {
     /* no-op */
   }
@@ -337,6 +370,7 @@ export async function streamSpeak(
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
     sources: new Set(),
+    ctx,
     releaseTap: tapPlaybackNode(gain),
     releaseAudio: lease.release,
     gain,
@@ -567,6 +601,7 @@ export async function playPcmBytes(
   gain.gain.value = effectiveGain();
   const state: ActiveStream = {
     sources: new Set(),
+    ctx,
     releaseTap: tapPlaybackNode(gain),
     releaseAudio: lease.release,
     gain,

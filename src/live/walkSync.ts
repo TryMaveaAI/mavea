@@ -44,6 +44,11 @@ export const PREPARE_CUE_DELAY_MS = 600;
 /** showFrame (tour/demo replay) reveal: wait for the frame narration's audio to start, but no
  *  longer than this — with no voice at all, `started` resolves false in milliseconds anyway. */
 export const SHOWFRAME_REVEAL_CAP_MS = 3_000;
+/** Ceiling on holding the turn's FIRST spoken line for the answer's first card to appear. Past
+ *  this the voice goes ahead regardless: a slow renderer, an answer with no blocks at all, or a
+ *  backgrounded tab must never leave a turn silent. Comfortably longer than a card's entrance
+ *  (`--m-expressive`, 550ms) plus the commit that precedes it. */
+export const FIRST_PAINT_CAP_MS = 1_800;
 
 /** Failure-only ceiling on "line finished": double the word-count estimate (0.5× voice speed is
  *  the slowest a user can pick) plus synthesis slack. Real lines resolve `finished` themselves —
@@ -146,6 +151,56 @@ export interface WalkReadyOpts {
   /** Whether this walk will actually be voiced — a muted or captions-only walk must never
    *  wait on audio that will not come. */
   wantVoice: boolean;
+}
+
+/** True once nothing under `host` is still animating. The same reading the export path takes
+ *  (clip/capture.ts) — `getAnimations` is what knows about a CSS entrance; a ResizeObserver and a
+ *  scrollHeight poll do not, because `.reveal` animates only opacity and transform. */
+function stillAnimating(host: Element): boolean {
+  const el = host as Element & { getAnimations?: (o?: { subtree?: boolean }) => Animation[] };
+  if (typeof el.getAnimations !== 'function') return false; // can't tell → don't wait
+  return el.getAnimations({ subtree: true }).some((a) => a.playState === 'running');
+}
+
+/**
+ * Wait until the answer has something on screen to talk about: the first card committed, laid out,
+ * and done making its entrance.
+ *
+ * The opening narration is spoken sentence-by-sentence the instant each one streams in, which is
+ * the whole point of the streaming voice — but on the first sentence there is often nothing on the
+ * stage yet, so Mavéa describes an answer the reader cannot see. Holding ONLY the first line costs
+ * almost nothing (the first card lands well before the first sentence finishes streaming) and
+ * removes the case where the voice talks to an empty screen.
+ *
+ * Bounded by `capMs` and never rejects: with no host, no card, or no `getAnimations`, it resolves
+ * and the voice proceeds exactly as it used to.
+ */
+export async function awaitFirstPaint(
+  host: () => Element | null,
+  cardSelector = '.card',
+  capMs: number = FIRST_PAINT_CAP_MS,
+): Promise<void> {
+  await bounded(
+    (async () => {
+      // Two frames: the same commit-then-layout wait the pre-walk barrier takes, so the card we
+      // then ask about has actually reached the compositor.
+      await nextFrame();
+      await nextFrame();
+      // WAIT for the first card rather than checking once: on the opening turn the stage itself
+      // has not mounted yet when the first sentence forms, so a single look would find nothing and
+      // wave the voice through on exactly the turn this exists for. `bounded` owns the ceiling.
+      let card = host()?.querySelector(cardSelector) ?? null;
+      while (!card) {
+        await nextFrame();
+        card = host()?.querySelector(cardSelector) ?? null;
+      }
+      // Poll a frame at a time rather than listening: a card's entrance is a TRANSITION whose
+      // `transitionend` never fires if it had already finished when we looked, and several
+      // properties animate at once. A handful of frames is cheaper than getting that right.
+      while (stillAnimating(card)) await nextFrame();
+    })(),
+    capMs,
+  );
 }
 
 /**
