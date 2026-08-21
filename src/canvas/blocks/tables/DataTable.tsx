@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { resolveTableAnnotations } from '../../lib/annotate/tableAnnotations';
+import { BlockEmpty } from '../../lib/BlockEmpty';
+import { hasKeyedRows } from '../../lib/empty';
 import type { DataTableProps } from './types';
 
 type Props = DataTableProps & { delay?: number };
@@ -64,6 +66,29 @@ export function DataTable({
       setDir(colFor(k)?.numeric ? 'desc' : 'asc');
     }
   };
+
+  // Rows are looked up by column key, so a set of rows keyed differently — or not keyed at all —
+  // resolves every cell to '' while still counting as rows: a card of blank lines under a header,
+  // with a footer confidently reporting "5 of 5 rows". Say there is nothing here instead, the same
+  // way the other tables in this family do (Raci, Gradebook).
+  if (
+    !hasKeyedRows(
+      rows,
+      columns.map((c) => c.key),
+    )
+  ) {
+    return (
+      <div
+        className="card reveal tbl"
+        style={{ ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties}
+      >
+        <div className="card-eyebrow">
+          <Ic className="ic" style={{ color: iconColor }} /> {title}
+        </div>
+        <BlockEmpty message="No rows to show" />
+      </div>
+    );
+  }
 
   return (
     <div

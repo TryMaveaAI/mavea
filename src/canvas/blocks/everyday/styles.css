@@ -2814,21 +2814,38 @@
   overflow-wrap: anywhere;
 }
 
-/* ───────────────────────── tierlist ───────────────────────── */
-.tl-caption {
+/* ───────────────────────── tierlist ─────────────────────────
+   Prefixed `tier-`, NOT `tl-`: the core Timeline (src/canvas/Timeline.tsx) already owns global
+   `.tl-row` / `.tl-rail` in styles/canvas.css, and both sheets are live together the moment a
+   tierlist mounts. They were quietly overwriting each other — Timeline's `gap: 14px` opened a
+   stray gutter between a tier and its chips, and its `.tl-row:not(:last-child) .tl-rail::after`
+   drew a connector line down the inside of the tier cell. Keep these names distinct. */
+.tier-caption {
   font-size: var(--fs-sm, 13px);
   color: var(--text-secondary);
   margin: 2px 0 10px;
   line-height: 1.4;
 }
-.tl-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* The rail was a fixed 56px because the tiers it was built for are single letters (S/A/B/C).
+   A model that grades in WORDS — "Critical", "Significant", "Manageable" — got them shredded
+   mid-syllable, because 56px cannot hold a word and `overflow-wrap: anywhere` will break at any
+   character rather than overflow. So the rail now SIZES to its content: one shared grid track,
+   floored at the old 56px so letter tiers look exactly as before, and capped so a long grade can
+   never crowd out the items it is grading. The track FLOORS at min-content, which with
+   `break-word` is the longest whole WORD — that is what keeps "Significant" on one line. */
+.tier-rows {
+  display: grid;
+  grid-template-columns: minmax(min-content, max-content) minmax(0, 1fr);
+  row-gap: 6px;
+  column-gap: 0;
   margin-top: 4px;
 }
-.tl-row {
-  display: flex;
+/* One row is a subgrid spanning both tracks, so every rail shares one width and the items all
+   start on the same line — a rail that sized per-row would leave the chips ragged down the card. */
+.tier-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: stretch;
   min-width: 0;
   border: 1px solid var(--line);
@@ -2836,8 +2853,22 @@
   overflow: hidden;
   background: var(--surface-glass);
 }
-.tl-rail {
-  flex: 0 0 56px;
+/* Without subgrid the row would collapse to one track and the rail/items would scatter. Rebuild
+   the same pair per row: rails may end up slightly ragged across rows, which is the right thing
+   to lose — a whole readable word beats a shared edge. */
+@supports not (grid-template-columns: subgrid) {
+  .tier-row {
+    grid-template-columns: minmax(min-content, max-content) minmax(0, 1fr);
+  }
+}
+.tier-rail {
+  /* Floor: the 56px the letter tiers were built around, so S/A/B/C is pixel-identical to before.
+     Cap: 13ch — a CH cap, never a percentage. A percentage max-width on a grid item resolves
+     against the very track it is trying to size, which collapses the track to its floor and
+     shreds every word (measured). `ch` scales with the rail's own type instead, so it caps a
+     rambling grade at a readable column while leaving one-word grades on a single line. */
+  min-width: 56px;
+  max-width: 13ch;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2845,13 +2876,16 @@
   font-weight: 800;
   font-size: var(--fs-md, 14.5px);
   text-align: center;
-  overflow-wrap: anywhere;
+  /* `break-word`, never `anywhere`: a word breaks only when it cannot fit on a line of its own,
+     and — unlike `anywhere` — it leaves min-content at the whole word, which is exactly what the
+     track's min-content floor above reads to decide how wide the rail should be. */
+  overflow-wrap: break-word;
+  line-height: 1.25;
   color: var(--tier-c, var(--presence));
   background: color-mix(in oklab, var(--tier-c, var(--presence)) 18%, transparent);
   border-right: 2px solid var(--tier-c, var(--presence));
 }
-.tl-items {
-  flex: 1 1 auto;
+.tier-items {
   display: flex;
   flex-wrap: wrap;
   align-content: center;
@@ -2859,7 +2893,7 @@
   min-width: 0;
   padding: 8px 10px;
 }
-.tl-chip {
+.tier-chip {
   padding: 4px 10px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--text-primary) 6%, transparent);
@@ -2869,7 +2903,7 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
-.tl-empty {
+.tier-empty {
   color: var(--text-faint);
   font-size: var(--fs-sm, 13px);
   padding: 4px 2px;

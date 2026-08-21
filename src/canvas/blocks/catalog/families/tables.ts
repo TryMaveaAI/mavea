@@ -26,6 +26,11 @@ export const CATALOG_TABLES: ComponentCatalog = [
       'annotations',
     ],
     propHints: {
+      // The one contract nothing else states: a row is looked up BY the column keys. Keyed by the
+      // labels instead ("Bridge Element") and every cell resolves to nothing while the footer still
+      // counts the rows — a header over blank lines. Spelled out here the way pivot's rows are.
+      'rows[]':
+        "object keyed by each columns[].key → that cell's text. NEVER keyed by the column LABEL, and never an array",
       annotations:
         'OPTIONAL closed-grammar adornments that turn a plain table into a receipt/ledger/scorecard. An array of {op,...}: {"op":"format","target":{"kind":"column","key":"<col>"},"as":"currency|percent|unit"}; {"op":"summary","stat":"total|mean|max|min","columns":["<col>"]} (WE compute it — never send the number); {"op":"emphasize","target":{"kind":"row","match":"<row label>"},"tone":"presence|insight|warning|danger"}; {"op":"status","target":{"kind":"column","key":"<col>"},"rules":[{"match":"<text>","tone":"danger"}]}; {"op":"bar","target":{"kind":"column","key":"<col>"}}. Reference only real column keys / row labels.',
     },

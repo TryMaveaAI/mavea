@@ -70,7 +70,12 @@ const figure = (id: string, label: string, value: number): WorldValue => ({
   },
 });
 
-/** A subject with three parts, two of which carry a figure. */
+/** A subject with five parts, four of which carry a figure — and one of those is most of the whole.
+ *
+ *  The unsized part is deliberate: the registry cannot back it, so the lens must drop it rather than
+ *  draw it at zero. The dominance is deliberate too — an area layout only beats a plain list of
+ *  names once one part is about as big as the rest together, and below that the lens declines to
+ *  draw anything at all. A fixture that could not earn a picture would be testing the refusal. */
 function graph(domain?: string): ContentGraph {
   return {
     title: 'Where the money went',
@@ -78,17 +83,23 @@ function graph(domain?: string): ContentGraph {
       { id: 'spend', label: 'Total spend', role: 'measure', ...(domain ? { domain } : {}) },
       { id: 'spend.rent', label: 'Rent', parentId: 'spend' },
       { id: 'spend.wages', label: 'Wages', parentId: 'spend' },
+      { id: 'spend.tax', label: 'Payroll tax', parentId: 'spend' },
+      { id: 'spend.ops', label: 'Operations', parentId: 'spend' },
       { id: 'spend.other', label: 'Everything else', parentId: 'spend' },
     ],
     relations: [],
     facts: [
       { valueId: 'v:rent', entityId: 'spend.rent' },
       { valueId: 'v:wages', entityId: 'spend.wages' },
+      { valueId: 'v:tax', entityId: 'spend.tax' },
+      { valueId: 'v:ops', entityId: 'spend.ops' },
     ],
     trust: buildRegistry(
       new Map([
         ['v:rent', figure('v:rent', 'Rent', 40)],
         ['v:wages', figure('v:wages', 'Wages', 60)],
+        ['v:tax', figure('v:tax', 'Payroll tax', 200)],
+        ['v:ops', figure('v:ops', 'Operations', 20)],
       ]),
       [],
     ),
@@ -124,10 +135,15 @@ describe('hierarchyLens', () => {
     const root = (plan.block.props as { root: { value: number; children: { label: string }[] } })
       .root;
     // "Everything else" has no figure. Drawn at zero it would read as a measured nothing.
-    expect(root.children.map((c) => c.label)).toEqual(['Rent', 'Wages']);
+    expect(root.children.map((c) => c.label)).toEqual([
+      'Rent',
+      'Wages',
+      'Payroll tax',
+      'Operations',
+    ]);
     // The container takes the sum of its parts — its own field is empty, and sizing a hierarchy node
     // off that instead of a children-rollup is the bug the canvas rubric names.
-    expect(root.value).toBe(100);
+    expect(root.value).toBe(320);
   });
 
   it('refuses a subject with fewer than two sizeable parts', () => {
@@ -170,7 +186,12 @@ describe('a real world, through the lens', () => {
     const withParts = spec.nodes.find((n) => (n.children?.length ?? 0) >= 2)!;
     const plan = hierarchyLens.compile(content, withParts.id);
     expect(plan, `${withParts.id} has parts but compiled nothing`).not.toBeNull();
-    expect(plan!.type).toBe('sunburst');
+    // A TREEMAP, not the sunburst this used to assert — and the change is the point. The lens used
+    // to fall through to `wowWeight` and return sunburst for every subject in every domain, which is
+    // the looks-hardcoded complaint living inside the one mechanism built to defeat it. This world's
+    // parts are flat and one of them is nearly two thirds of the whole, so area is what a reader can
+    // rank by eye; rings would say nothing, having only one level to be rings of.
+    expect(plan!.type).toBe('treemap');
   });
 });
 

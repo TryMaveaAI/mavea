@@ -39,30 +39,30 @@ export function TierList({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      {caption && <div className="tl-caption">{caption}</div>}
+      {caption && <div className="tier-caption">{caption}</div>}
 
-      <div className="tl-rows">
+      <div className="tier-rows">
         {safeRows.map((row, i) => {
           const color = row.color ?? DEFAULT_TIER_COLORS[i % DEFAULT_TIER_COLORS.length];
           const items = row.items ?? [];
           return (
             <div
               key={i}
-              className="tl-row m-stagger-item m-fade-rise"
+              className="tier-row m-stagger-item m-fade-rise"
               style={{ ['--i' as string]: i, ['--tier-c' as string]: color } as CSSProperties}
             >
-              <div className="tl-rail" title={row.tier}>
+              <div className="tier-rail" title={row.tier}>
                 {row.tier}
               </div>
-              <div className="tl-items">
+              <div className="tier-items">
                 {items.length > 0 ? (
                   items.map((it, j) => (
-                    <span key={j} className="tl-chip">
+                    <span key={j} className="tier-chip">
                       {it}
                     </span>
                   ))
                 ) : (
-                  <span className="tl-empty">—</span>
+                  <span className="tier-empty">—</span>
                 )}
               </div>
             </div>

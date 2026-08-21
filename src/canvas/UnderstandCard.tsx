@@ -5,18 +5,25 @@ import { richInnerHtml } from '../lib/richText';
 import { Icon } from '../icons/icons';
 import { SourceChip, ConfidenceBadge, CONF_TITLE_UNVERIFIED } from './trust';
 import { toast } from '../lib/toast';
+import { readableText } from './lib/empty';
 import type { UnderstandProps } from '../data/conversation';
 
 type Props = UnderstandProps & { delay?: number };
 
 export function UnderstandCard({ title = 'What I learned about you', items, conf, delay }: Props) {
+  // An inference with nothing to show still drew a check circle, a source slot and a "Fix this"
+  // button, so the card read as confident about something it never said. Drop those rows here as
+  // well as in the validator: a baked demo frame is replayed straight to the canvas and never
+  // revisits it. Nothing readable at all means there is no card to draw.
+  const shown = items.filter((it) => readableText(it.text));
+  if (shown.length === 0) return null;
   return (
     <div className="card reveal" style={{ '--delay': (delay || 0) + 'ms' } as CSSProperties}>
       <div className="card-eyebrow">
         <Icon.sparkle className="ic" style={{ color: 'var(--presence-soft)' }} /> {title}
       </div>
       <div className="understand-list">
-        {items.map((it, i) => (
+        {shown.map((it, i) => (
           <div className="understand-row" key={i}>
             <span className="understand-check">
               <Icon.check />
@@ -49,7 +56,7 @@ export function UnderstandCard({ title = 'What I learned about you', items, conf
         {conf && (
           <ConfidenceBadge
             level={conf}
-            title={items.some((it) => it.source) ? undefined : CONF_TITLE_UNVERIFIED}
+            title={shown.some((it) => it.source) ? undefined : CONF_TITLE_UNVERIFIED}
           />
         )}
       </div>
