@@ -78,11 +78,20 @@ export function Pdfreader({
         {frameUrl ? (
           // <object type="application/pdf"> is blocked by CSP object-src:'none'. The iframe is
           // same-origin by construction, matching frame-src/default-src 'self'.
+          //
+          // No `sandbox` here, and that is deliberate: Chrome's built-in viewer will not render a
+          // PDF inside ANY sandboxed frame. Measured against this exact document — `sandbox=""`,
+          // `allow-scripts`, and `allow-scripts allow-same-origin` each painted the browser's
+          // broken-document placeholder; only an unsandboxed frame showed the pages. The attribute
+          // was buying no isolation, it was silently replacing every embedded PDF with an error
+          // tile. What constrains this frame is the gate above — same origin, http(s), and a path
+          // ending in .pdf or the audited /pdf forwarder — plus CSP's frame-src 'self'; model
+          // output can widen neither. A PDF's own scripts run in the viewer's process and cannot
+          // reach this document.
           <iframe
             className="pr-embed"
             src={frameUrl}
             title={source || title}
-            sandbox=""
             referrerPolicy="no-referrer"
           />
         ) : file ? (

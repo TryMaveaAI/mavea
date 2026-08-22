@@ -22,9 +22,20 @@ describe('Pdfreader URL boundary', () => {
     const { container } = render(<Pdfreader {...base} file="/demo-assets/pdf/primer.pdf" />);
     const frame = container.querySelector('iframe');
     expect(frame).toHaveAttribute('src', '/demo-assets/pdf/primer.pdf');
-    expect(frame).toHaveAttribute('sandbox', '');
     expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(container.querySelector('a[href]')).toBeNull();
+  });
+
+  it('does NOT sandbox the frame — a sandboxed PDF renders as a browser error tile', () => {
+    // This assertion is inverted on purpose, and it is the point of the whole boundary below.
+    // Chrome's built-in viewer refuses to run inside a sandboxed frame: measured against the
+    // shipped NASA memorandum, `sandbox=""`, `allow-scripts`, and `allow-scripts
+    // allow-same-origin` all painted the broken-document placeholder, and only an unsandboxed
+    // frame showed the pages. Re-adding the attribute buys no isolation — the URL gate exercised
+    // in the neighbouring cases plus CSP frame-src 'self' are what contain this frame — and it
+    // silently turns every embedded PDF in the product back into an error tile.
+    const { container } = render(<Pdfreader {...base} file="/demo-assets/pdf/primer.pdf" />);
+    expect(container.querySelector('iframe')).not.toHaveAttribute('sandbox');
   });
 
   it('does not become a general same-origin HTML iframe', () => {

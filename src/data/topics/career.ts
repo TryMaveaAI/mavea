@@ -229,11 +229,14 @@ export const career: ConversationSpec = {
       col: 12,
       delay: 680,
       props: {
-        name: 'Jordan Alvarez',
+        name: 'John Smith',
         title: 'Senior Product Manager',
         icon: 'doc',
         iconColor: 'var(--presence)',
-        contact: ['jordan.alvarez@email.com', 'Austin, TX', 'linkedin.com/in/jordanalvarez'],
+        // A demo résumé is the one fixture that can accidentally describe a REAL person, so the
+        // identifying fields use reserved-for-documentation forms only: example.com can never be
+        // registered (RFC 2606), and a real linkedin.com/in/… slug would point at somebody.
+        contact: ['john.smith@example.com', 'Austin, TX', 'example.com/in/johnsmith'],
         summary:
           'Product leader with eight years in B2B SaaS, the last three managing a team of five. Led the usage-based pricing rework that lifted net revenue retention 18 points.',
         experience: [

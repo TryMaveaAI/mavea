@@ -227,7 +227,7 @@ export const compsci: ConversationSpec = {
         title: 'The reference, in full',
         icon: 'doc',
         iconColor: 'var(--text-muted)',
-        source: 'NASA CR, A First Course in CFD · public domain',
+        source: 'NASA TM 108834 · Holst, 1994 · public domain',
         file: '/demo-assets/pdf/cfd-primer.pdf',
         footer:
           'The actual report, embedded, scroll the real PDF for the derivations behind the scheme.',
