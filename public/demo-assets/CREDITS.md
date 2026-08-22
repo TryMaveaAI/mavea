@@ -85,6 +85,42 @@ Drawn in-repo for Mavéa, so no third-party license applies.
 | `images/slide-placeholder.svg`       | Gradient placeholder tile, slide-lab fixtures   |
 | `images/slide-placeholder-light.svg` | Light-theme variant of the placeholder gradient |
 
+## `docs/media` — first-party captures of Mavéa itself
+
+These ship in the npm package (`package.json` `files` lists `docs/media`) and illustrate the
+README. They are screenshots of this application rendering its own demo fixtures, plus the mascot
+mark, so no third-party licence attaches to the images themselves. They were reviewed on
+2026-08-22 and are gated by `tests/credits-completeness.test.ts` from here on, because a screenshot
+is the one asset that can quietly acquire third-party content later.
+
+**What a new capture must be checked for**, since the file itself carries no licence metadata:
+
+- **A map.** Tiles are OpenFreeMap / OpenMapTiles over OpenStreetMap data, and ODbL attribution is
+  MANDATORY — unlike everything else in this file. `canvas/blocks/media/MapAttribution.tsx` renders
+  it in-flow precisely so it survives a raster capture; confirm the credit line is legible in the
+  image before committing it (`trip-plan.jpg` is the worked example).
+- **A document, photograph, or source file that is not ours.** Demo fixtures are fiction and the
+  bundled photos are CC0, so a capture of the app is clean by default — but a screenshot taken
+  against a real PDF, a real repository, or a personal account would carry that content's rights
+  into a distributed artifact.
+
+| File                | Subject                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `answer-ink.jpg`    | An answer in the Ink template                                  |
+| `canvas-view.jpg`   | The canvas view of a conversation                              |
+| `course-lesson.jpg` | A generated course lesson                                      |
+| `deck-export.jpg`   | The export studio previewing a slide                           |
+| `deep-zoom.jpg`     | Deep Zoom on a canvas                                          |
+| `doc-export.jpg`    | The export studio previewing a document page                   |
+| `doc-prism.jpg`     | Prism reading the bundled public-domain NASA memorandum        |
+| `living-answer.jpg` | The living world over an answer                                |
+| `repo-course.jpg`   | Ripple on the fictional `acme/auth-service` worked example     |
+| `think-map.jpg`     | Watch Me Think's live map                                      |
+| `trip-plan.jpg`     | A trip itinerary — **contains a map; carries its ODbL credit** |
+| `voice-scrub.jpg`   | The voice scrubber over an answer                              |
+| `mascot-dark.svg`   | The Mavéa mark, dark                                           |
+| `mascot-light.svg`  | The Mavéa mark, light                                          |
+
 ## Hotlinked tour imagery — Wikimedia Commons, CC0 (not bundled)
 
 The recorded tour replays reference three photos by URL from Wikimedia Commons; the files

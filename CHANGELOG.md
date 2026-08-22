@@ -6,6 +6,32 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-08-22
+
+### Fixed
+
+- **The embedded PDF reader showed a broken-document tile instead of the document.** It framed the
+  file with an empty `sandbox`, and Chrome's built-in viewer will not run inside a sandboxed frame
+  at all — so the attribute bought no isolation and silently replaced every embedded PDF with an
+  error placeholder. The frame is still confined to same-origin `.pdf` paths (or the audited
+  forwarder) by its own URL gate and by `frame-src 'self'`.
+- The reference card cited the wrong document. The bundled report is NASA TM 108834 (Holst, 1994),
+  not the contractor report the label named.
+- **The gallery's family filter could not be scrolled past the visible chips.** The row scrolls,
+  but it hid its scrollbar on both engines, so with a mouse there was neither a cue that families
+  continued past the right edge nor a way to reach them. It has a visible, themed scrollbar now.
+
+### Changed
+
+- The demo résumé is an unmistakably fictional person. It previously carried an address on a live
+  mail domain and a `linkedin.com/in/` slug that would resolve to somebody real; it now uses only
+  forms reserved for documentation, and a new test holds every fixture to that standard — RFC 2606
+  domains for e-mail, the 555 exchange for telephone numbers, and no real profile URLs.
+- The README screenshots in `docs/media` ship in the npm package but were covered by no licence
+  gate. They are declared in the asset credits and checked by the same completeness test as the
+  bundled media, with the rule a future capture has to satisfy written down — a screenshot showing
+  a map carries OpenStreetMap's ODbL credit, which is mandatory, unlike the CC0 media around it.
+
 ## [2.2.0] - 2026-08-22
 
 ### Added

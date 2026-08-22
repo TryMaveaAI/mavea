@@ -27,6 +27,20 @@ describe('demo-asset credits completeness', () => {
     }
   });
 
+  it('lists every docs/media file shipped in the npm package', () => {
+    // docs/media is in package.json `files`, so these captures are distributed exactly like the
+    // demo assets — but nothing used to check them. They are screenshots of Mavéa rendering its
+    // own fixtures, which is clean by default; the risk is a FUTURE capture that quietly includes
+    // third-party content. A map is the sharp case: OpenStreetMap data is ODbL and its credit is
+    // mandatory, unlike the CC0 media in this file. Forcing every capture to be declared is what
+    // turns "someone remembered to look" into a gate.
+    const media = filesUnder(resolve(root, 'docs/media'));
+    expect(media.length).toBeGreaterThan(0);
+    for (const file of media) {
+      expect(credits, `${basename(file)} missing from CREDITS.md`).toContain(basename(file));
+    }
+  });
+
   it('credits every reviewed hotlinked photo by its original Commons file name', () => {
     expect(REVIEWED_HOTLINKED_MEDIA.size).toBeGreaterThan(0);
     for (const url of REVIEWED_HOTLINKED_MEDIA.keys()) {
