@@ -211,7 +211,7 @@ async function main(): Promise<void> {
     await settle(page);
 
     const chips = await page
-      .locator('.wo-views .wo-chip')
+      .locator('.wo-views [role="tab"]')
       .evaluateAll((els) => els.map((el) => (el.textContent ?? '').trim()));
 
     // A silent pass over every view BEFORE anything is measured.
@@ -225,21 +225,24 @@ async function main(): Promise<void> {
     // "open the world" is for. (The same reasoning is why weekly.yml builds the artifact before
     // running `perf`/`perf:memory` — a dev server cannot answer a response-time question.)
     for (const label of chips) {
-      await page.getByRole('button', { name: label, exact: true }).click();
+      // `role="tab"`, not the implicit button role — the chip row is a TABLIST, and an explicit
+      // role replaces the implicit one, so a getByRole('button') lookup matches nothing and this
+      // probe times out before it measures anything. Same fix as scripts/world-audit.mts.
+      await page.locator('.wo-views [role="tab"]', { hasText: label }).first().click();
       await settle(page);
     }
 
     for (const label of chips) {
       results.push(
         await measure(page, `morph → ${label.toLowerCase()}`, async () => {
-          await page.getByRole('button', { name: label, exact: true }).click();
+          await page.locator('.wo-views [role="tab"]', { hasText: label }).first().click();
         }),
       );
       await settle(page);
     }
     // Back to the graph, which is where the levers and the breakdown live.
     if (chips.length) {
-      await page.getByRole('button', { name: chips[0], exact: true }).click();
+      await page.locator('.wo-views [role="tab"]', { hasText: chips[0] }).first().click();
       await settle(page);
     }
 

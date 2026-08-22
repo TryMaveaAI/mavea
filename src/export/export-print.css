@@ -65,7 +65,12 @@
   /* Presentation decks: a 16:9 landscape page sized to the slide's true 1920×1080, so each slide
    * prints 1:1 with selectable text (no transform). Named so it can't disturb the document page. */
   @page mavea-slide {
-    size: 1920px 1080px landscape;
+    /* Lengths ONLY — no `landscape` keyword. The `size` grammar is `<length>{1,2}` OR
+       `[<page-size> || [portrait | landscape]]`, never both at once, so `1920px 1080px landscape`
+       is invalid and the browser DROPS THE WHOLE DECLARATION. The deck then printed onto the
+       default portrait Letter page with the slide overflowing its right edge. Two lengths already
+       state the orientation: 1920 wide by 1080 tall is landscape by construction. */
+    size: 1920px 1080px;
     margin: 0;
   }
 
@@ -87,7 +92,8 @@
    * separate host class (`.mavea-export-slides-notes`, not `.mavea-export-slides`) keeps this from
    * ever inheriting the plain deck's per-`.slide-page` page/break rules above. */
   @page mavea-slide-notes {
-    size: 1920px 1400px landscape;
+    /* Same correction as @page mavea-slide above — lengths alone, or the declaration is invalid. */
+    size: 1920px 1400px;
     margin: 0;
   }
 

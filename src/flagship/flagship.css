@@ -4174,8 +4174,23 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  /* Column gap unchanged — the pills sit 10px apart on a line, as designed. The ROW gap is bigger
+     because this row WRAPS on a phone, and 10px between stacked controls is inside the reach of the
+     thumb aimed at either one: a press meant for the lower edge of one lands on its neighbour.
+     Measured with the tap audit's own probe at 390×844 — 3 of 4 reachable at 10px, 4 of 4 at 18. */
+  column-gap: 10px;
+  row-gap: 18px;
 }
+/* Both pills in this row are 9px of padding around 13.5px type — 35px tall, under the 44px floor
+   the tap audit enforces for a thumb. The floor is a MINIMUM, not a new height: the padding stays,
+   so on a pointer the pill looks as it did, and on a touch screen the box grows to something a
+   finger can actually land on. Raised together because they sit side by side and a 44px pill beside
+   a 35px one reads as a mistake. */
+.fl-tour-invite-play,
+.fl-tour-invite-world {
+  min-height: 44px;
+}
+
 .fl-tour-invite-play {
   display: inline-flex;
   align-items: center;

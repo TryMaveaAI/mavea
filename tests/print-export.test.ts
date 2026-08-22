@@ -68,3 +68,41 @@ describe('PDF export — header does not overlap the canvas', () => {
     expect(rule).toMatch(/position:\s*absolute/);
   });
 });
+
+// A deck must print onto the page it declares, and one keyword stopped it.
+//
+// `@page { size: ... }` takes EITHER explicit lengths OR a page-size keyword with an orientation —
+// `<length>{1,2} | [<page-size> || [portrait | landscape]]` — never both. `size: 1920px 1080px
+// landscape` matches neither branch, so the browser dropped the whole declaration and fell back to
+// the default portrait Letter page: every slide printed squeezed into the top of a portrait sheet
+// with its text running off the right edge, on "Print" and "Print with notes" alike. Two lengths
+// already state the orientation. Measured through a real print pipeline (Playwright `page.pdf`,
+// `preferCSSPageSize`): 612×792pt portrait before, 1440×810pt landscape after.
+describe('the deck print pages declare a size the browser will actually honour', () => {
+  // Comments stripped first: the rules explain themselves in prose that contains CSS grammar
+  // (`<length>{1,2}`), and a brace inside a comment ends a naive block match early.
+  const printCss = read('src/export/export-print.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const sizeOf = (pageName: string): string => {
+    const block = new RegExp(`@page\\s+${pageName}\\s*\\{([^}]*)\\}`).exec(printCss)?.[1] ?? '';
+    return /size:\s*([^;]+);/.exec(block)?.[1].trim() ?? '';
+  };
+
+  it('sizes the slide page in lengths alone', () => {
+    expect(sizeOf('mavea-slide')).toBe('1920px 1080px');
+  });
+
+  it('sizes the speaker-notes page in lengths alone', () => {
+    expect(sizeOf('mavea-slide-notes')).toBe('1920px 1400px');
+  });
+
+  it('never mixes an orientation keyword into a length-based size, in any @page', () => {
+    for (const [, body] of printCss.matchAll(/@page[^{]*\{([^}]*)\}/g)) {
+      const size = /size:\s*([^;]+);/.exec(body)?.[1].trim();
+      if (!size || !/\d/.test(size)) continue; // keyword-only sizes (Letter, A4) are fine as-is
+      expect(size, `"${size}" mixes lengths with an orientation keyword`).not.toMatch(
+        /\b(portrait|landscape)\b/,
+      );
+    }
+  });
+});

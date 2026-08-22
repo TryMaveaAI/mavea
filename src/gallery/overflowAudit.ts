@@ -266,6 +266,47 @@ function isRotated(el: Element, card: Element): boolean {
  *  treating that union as ink creates false collisions with perfectly stacked siblings. A Range
  *  reports the line fragments the browser actually painted. Bounded by `max` so a pathological
  *  card can't stall the sweep. */
+/** A run's box as the reader can actually SEE it: intersected with every ancestor that clips.
+ *
+ *  `getBoundingClientRect` — and the line-fragment rects above — report painted INK, and know
+ *  nothing about `overflow: hidden`. A decorative 180px quotation glyph set on a 0.4 line-height
+ *  inside an 80px clipping box therefore reported a box more than twice the height of the one on
+ *  screen, and "collided" with the paragraph beneath it that it never touches. 26 of the slide
+ *  gate's 44 failures were that one glyph, across every skin that uses it.
+ *
+ *  Clamping is the fix rather than exempting the element, which would have been the wrong shape of
+ *  answer twice over: a decorative layer CAN genuinely sit over a label and want reporting, and the
+ *  same clipped-box error applies to ordinary text in any scroll or clip container. The world audit
+ *  already judges collisions this way for the same reason. Scrollable clippers count too — content
+ *  reachable by scrolling is not on screen at this scroll offset, and a collision it is not part of
+ *  is not a collision. */
+function clampToClippers(el: Element, rect: DOMRect): DOMRect {
+  let left = rect.left;
+  let top = rect.top;
+  let right = rect.right;
+  let bottom = rect.bottom;
+  // Starts at the element ITSELF, not its parent: a line-clamped block is its own clipper, and the
+  // fragment rects above are every line the browser laid out — including the ones the clamp hides.
+  // Skipping it left a 3-line-clamped cover title reporting the height of its unclamped text and
+  // "overlapping" the subtitle it visibly clears.
+  for (let node: Element | null = el; node; node = node.parentElement) {
+    const cs = getComputedStyle(node);
+    const clipsX = cs.overflowX !== 'visible';
+    const clipsY = cs.overflowY !== 'visible';
+    if (!clipsX && !clipsY) continue;
+    const box = node.getBoundingClientRect();
+    if (clipsX) {
+      left = Math.max(left, box.left);
+      right = Math.min(right, box.right);
+    }
+    if (clipsY) {
+      top = Math.max(top, box.top);
+      bottom = Math.min(bottom, box.bottom);
+    }
+  }
+  return new DOMRect(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
+}
+
 function textRunBoxes(card: Element, max = 400): { el: Element; rect: DOMRect; text: string }[] {
   const out: { el: Element; rect: DOMRect; text: string }[] = [];
   const push = (el: Element): void => {
@@ -311,8 +352,9 @@ function textRunBoxes(card: Element, max = 400): { el: Element; rect: DOMRect; t
       }
     }
     if (!rects.length) rects.push(el.getBoundingClientRect());
-    for (const rect of rects) {
+    for (const raw of rects) {
       if (out.length >= max) return;
+      const rect = clampToClippers(el, raw);
       if (rect.width < 2 || rect.height < 2) continue;
       out.push({ el, rect, text });
     }
