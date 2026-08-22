@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { Icon } from '../../../icons/icons';
 import { safeCssColor } from '../../../lib/safeCssColor';
-import { loadMapLibre } from './maplibreRuntime';
+import { disposeMap, loadMapLibre } from './maplibreRuntime';
 import { MapAttribution } from './MapAttribution';
 import type { GeoMapProps, GeoZone, ZoneCategory } from './types';
 
@@ -278,9 +278,8 @@ export function GeoMap({
       cancelled = true;
       window.clearTimeout(unveilCap);
       themeObs?.disconnect();
-      for (const marker of mapMarkers) marker.remove();
+      disposeMap(map, mapMarkers);
       mapMarkers = [];
-      map?.remove();
     };
   }, [pins, zonesValid, zoom]);
 
