@@ -5,41 +5,25 @@ export {
   selectComponents,
   chooseComponents,
   menuFor,
-  weightFor,
-  TEACHING_KIT,
   type SelectionResult,
   type SelectionInput,
-  type Choice,
 } from './rank';
 export {
-  SAFE_SET,
   BASE_FLOOR,
   GENERATIVE_BLOCK_TYPES,
   FAKE_DATA_TYPES,
   COERCIBLE_TYPES,
   catalogSpan,
-  metaFor,
-  tierPool,
-  type ModelTier,
 } from './catalog';
-export {
-  detectShapes,
-  detectRequested,
-  requestedFormLabel,
-  formRequestDirective,
-  type ShapeVector,
-} from './shapes';
+export { detectShapes, detectRequested, formRequestDirective, type ShapeVector } from './shapes';
 export { classifyAsk, isTeachingAsk, type AskComplexity } from './complexity';
 export {
-  simpleAsk,
-  deepAsk,
-  standardAsk,
   effectiveExplainLevel,
   simpleLevelMenu,
   deepLevelMenu,
   type ExplainLevel,
 } from './simpleLevel';
-export { analyzeIntent, type IntentSignals, type IntentDomain } from './intent';
+export { analyzeIntent } from './intent';
 export { detectSpecialists, specialistDirective } from './specialists';
 export { isMultiPart, multiPartDirective } from './facets';
 export {

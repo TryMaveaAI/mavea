@@ -15,12 +15,7 @@
 import type { CSSProperties } from 'react';
 import { clampStyle, tierIndex, type Ladder } from '../../../slides/skins/layouts/fit';
 
-export {
-  nowrapEllipsis,
-  tierIndex,
-  type Ladder,
-  type Tier,
-} from '../../../slides/skins/layouts/fit';
+export { type Ladder } from '../../../slides/skins/layouts/fit';
 
 /** The longest unbroken run in the text — the word that must survive whole on one line. */
 function longestWord(text: string): number {

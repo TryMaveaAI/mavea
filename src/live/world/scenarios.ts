@@ -1172,11 +1172,6 @@ export const WORLD_SCENARIOS: readonly WorldScenario[] = [
   },
 ];
 
-/** Look one up by id — the dev lab and a failing test both want this rather than an index. */
-export function worldScenario(id: string): WorldScenario | undefined {
-  return WORLD_SCENARIOS.find((s) => s.id === id);
-}
-
 /**
  * Every quote a spec cites, as one body of text: the corpus that grounds it. Pass it as
  * `coerceWorldSpec(raw, worldCorpus(spec))` to round-trip a scenario through the honesty gates

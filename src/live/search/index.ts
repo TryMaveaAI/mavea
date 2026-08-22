@@ -166,4 +166,4 @@ export function requestedResultCount(userText: string): number | undefined {
   return Number.isFinite(n) && n >= 1 ? n : undefined;
 }
 
-export type { SearchProvider, SearchResult, SearchProviderId, SearchOpts } from './types';
+export type { SearchProvider, SearchResult, SearchProviderId } from './types';

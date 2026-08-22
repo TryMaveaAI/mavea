@@ -1,37 +1,5 @@
 // Public surface of the Living Canvas component library.
-export { SourceChip, ConfidenceBadge, ContextPill } from './trust';
-export { InsightCard } from './InsightCard';
-export { TrendChart } from './TrendChart';
-export { BreakdownCard } from './BreakdownCard';
-export { ListCard } from './ListCard';
-export { Timeline } from './Timeline';
-export { ComparisonMatrix } from './ComparisonMatrix';
-export { SlidePreview } from './SlidePreview';
-export { ReplayCard } from './ReplayCard';
-export { ActionCard } from './ActionCard';
-export { RingStat } from './RingStat';
-export { BarChart } from './BarChart';
-export { StackedBar } from './StackedBar';
-export { Scatter } from './Scatter';
-export { Heatmap } from './Heatmap';
-export { FlowSteps } from './FlowSteps';
-export { WebSnippets } from './WebSnippets';
-export { Gallery } from './Gallery';
-export { CodeMap } from './CodeMap';
-export { DiffView } from './DiffView';
-export { Checks } from './Checks';
-export { Donut } from './Donut';
-export { Gauge } from './Gauge';
-export { Scoreboard } from './Scoreboard';
-export { Standings } from './Standings';
-export { Pipeline } from './Pipeline';
-export { KpiGrid } from './KpiGrid';
-export { QuoteBlock } from './QuoteBlock';
-export { ProgressChecklist } from './ProgressChecklist';
+
 // Creation layer — build a tool from the user's own site.
-export { UnderstandCard } from './UnderstandCard';
-export { SchemaDiagram } from './SchemaDiagram';
-export { ScreenMap } from './ScreenMap';
-export { BuildProgress } from './BuildProgress';
-export { PreviewFrame } from './PreviewFrame';
+
 export { TopicCanvas } from './TopicCanvas';

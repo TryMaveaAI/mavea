@@ -2,7 +2,7 @@
 // composition (not just colour/type): Noir's centred, ornamented cover and quote; North's
 // full-colour statement; Press's drop-cap prose. Each sizes its headline by content length and
 // clamps it, so even these bespoke compositions never overflow the frame.
-import { displayWeight, Footer, SlideFrame } from '../chrome/bits';
+import { displayWeight, SlideFrame } from '../chrome/bits';
 import type { SlideContext, SlideLayout, SlideSkin } from '../types';
 import { BandFit } from './BandFit';
 import {
@@ -367,6 +367,3 @@ export const PressProse: SlideLayout<'prose'> = ({ slide, skin, ctx }) => {
     </SlideFrame>
   );
 };
-
-// Footer is re-exported so skin files can compose minimal custom chrome if needed.
-export { Footer };

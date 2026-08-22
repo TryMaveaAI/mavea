@@ -15,9 +15,10 @@ import type { Block, InsightProps } from '../data/conversation';
 import { parseAmount, type ParsedAmount } from './ground/number';
 import type { AskComplexity } from './select/complexity';
 
-// parseAmount + ParsedAmount now live in the shared spine (ground/number.ts); re-exported here so
-// existing importers of verify.ts are unchanged.
-export { parseAmount, type ParsedAmount };
+// parseAmount now lives in the shared spine (ground/number.ts); re-exported here so existing
+// importers of verify.ts are unchanged. ParsedAmount is NOT re-exported — nothing ever imported the
+// type through this module, and a re-export nobody takes is weight in every graph that walks it.
+export { parseAmount };
 
 export interface Issue {
   code: string;

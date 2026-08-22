@@ -106,4 +106,4 @@ export const EXTENDED_REGISTRY: BlockRegistry = {
   ...financeRegistry,
 };
 
-export type { BlockRegistry, BlockCommon } from './registry-types';
+export type { BlockRegistry } from './registry-types';

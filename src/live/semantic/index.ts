@@ -6,8 +6,7 @@
 // the right component. It is a STRICT ENHANCEMENT — it runs in a Web Worker, never blocks the answer,
 // and degrades to the keyword/intent path on any device that can't or hasn't yet loaded the ~7MB
 // model. The selector folds its output in as a bounded, additive boost (see rank.ts `semanticFit`).
-export { warmSemanticFit, semanticFit, embedText, resetSemanticFitForTest } from './client';
-export { threadStarts, THREAD_KEEP, THREAD_UNRELATED } from './threads';
+export { warmSemanticFit, semanticFit, embedText } from './client';
 
 /** The model the shipped vectors were built with. The query matrix and the component vectors MUST
  *  share this id (the build step versions them together); a mismatch means stale assets, so the

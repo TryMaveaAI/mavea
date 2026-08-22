@@ -2,6 +2,3 @@
 // builder. ShareModal stays behind direct dynamic imports so its renderers and encoders never join
 // the eager application payload.
 export { ClipButton } from './ClipButton';
-export { framesFromSpec } from './frames';
-export { buildAnnotationReel } from './reel/annotationReel';
-export type { ClipAspect, ClipResult } from './types';

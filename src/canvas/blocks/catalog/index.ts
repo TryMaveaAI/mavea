@@ -4,18 +4,5 @@
 // './catalog.data' explicitly.
 export * from './meta';
 export { catalogMeta } from './lookup';
-export {
-  CATALOG_FACTS,
-  catalogFacts,
-  familyOf,
-  type ComponentFacts,
-  type ComponentDetail,
-} from './facts';
-export {
-  ensureDetails,
-  ensureAllDetails,
-  detailFor,
-  detailsReady,
-  shardOf,
-  SHARD_COUNT,
-} from './details';
+export { CATALOG_FACTS, catalogFacts, familyOf } from './facts';
+export { ensureDetails } from './details';

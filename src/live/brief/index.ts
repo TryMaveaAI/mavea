@@ -1,1 +1,1 @@
-export { briefNeeded, markBriefShown, buildBriefPrompt, BRIEF_EVENT } from './store';
+export { briefNeeded, markBriefShown, buildBriefPrompt } from './store';
