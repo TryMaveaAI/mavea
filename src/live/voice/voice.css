@@ -21,6 +21,12 @@
   border-bottom: 1px solid var(--hairline-ink);
   padding-bottom: 22px;
   margin-bottom: 24px;
+  /* Every template caps `.voice-text` at its own reading measure (--content-measure, 64-84ch).
+     That rule is more specific than the one below, and `max-inline-size` and `max-width` cascade
+     as the same property, so the template silently won: on `paper` the headline stopped 275px
+     short of its own divider. Rebinding the slot here — rather than fighting the selector — keeps
+     the measure available to every other surface and lets this one span its column. */
+  --content-measure: 100%;
 }
 .live-voice .hero-ask {
   margin: 0;
@@ -32,15 +38,12 @@
 }
 .live-voice .hero-line {
   margin: 0;
-  /* A reading measure, not a slice of the container. 90% tracked nothing on screen — it stopped
-     just short of the grid the hint bar and cards align to, which read as a mistake rather than a
-     margin, and it let the line run past 90 characters on a wide column. Tying the cap to the type
-     holds the line near 70 characters at every font size and --fs-scale setting; on anything
-     narrower than the measure it simply fills the column.
-     `em`, not `ch`: ch is the width of the font's own "0", so Chrome resolves it against whichever
-     face is loaded at the time — the Georgia fallback's zero is 0.6em against Newsreader's 0.56em,
-     and the cap does not re-resolve once the webfont arrives. em depends only on font-size. */
-  max-width: 35em;
+  /* The divider defines this answer column's visual edge. Let the headline use that same edge;
+     an independent reading-measure cap made ordinary answers wrap early and left a conspicuous,
+     accidental-looking blank strip before the rule. The route's --live-content-max still bounds
+     the line on wide displays, and the viewport owns the narrower limit. Needs the
+     --content-measure rebind above to hold under a template. */
+  max-width: 100%;
   color: var(--text-primary);
   /* One continuous reading scale across phones, laptop windows, desktop displays, and ultrawides.
      Each template's --voice-size remains the art-directed ceiling, never a desktop-sized floor —
@@ -333,9 +336,6 @@
 @media (max-width: 760px) {
   .live-voice .answer-footer {
     grid-template-columns: 1fr;
-  }
-  .live-voice .hero-line {
-    max-width: 100%;
   }
 }
 

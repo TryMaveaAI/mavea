@@ -104,4 +104,29 @@ describe('surface stylesheets — narrow-viewport overflow guards', () => {
     expect(block).toMatch(/\.starter-grid/);
     expect(block).toMatch(/grid-template-columns:\s*1fr/);
   });
+
+  it('answer headlines use the full content width up to the divider', () => {
+    const css = read('live/voice/voice.css');
+    const rule = css.match(/\.live-voice \.hero-line\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/max-width:\s*100%/);
+  });
+
+  it('opts the hero out of the template reading measure that outranks that cap', () => {
+    // `max-width: 100%` above is NOT sufficient on its own, and asserting it alone is what let
+    // this ship broken: templates.css caps every .voice-text at --content-measure with a more
+    // specific selector, and max-inline-size/max-width cascade as one property — measured on
+    // `paper`, the headline computed to 1265px under a 1540px divider. The hero rebinds the slot
+    // instead of fighting the selector, so it must keep doing so.
+    const css = read('live/voice/voice.css');
+    const hero = css.match(/\.live-voice \.answer-hero\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(hero).toMatch(/--content-measure:\s*100%/);
+  });
+
+  it('still caps every other templated .voice-text at the template measure', () => {
+    // The rebind is deliberately scoped to the hero — the reading measure is the point of the
+    // templates everywhere else (Recap's title is the other .voice-text on screen).
+    const tpl = read('styles/templates.css');
+    const rule = tpl.match(/:root\[data-template\] \.voice-text\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/max-inline-size:\s*var\(--content-measure\)/);
+  });
 });
