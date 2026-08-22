@@ -173,10 +173,24 @@
   gap: 6px;
   max-width: 1400px;
   margin: var(--s-md) auto 0;
-  scrollbar-width: none;
+  /* The bar SCROLLS, but it used to hide its scrollbar on both engines — so on a desktop with a
+     mouse there was no way to see that families continued past the right edge, and no way to get
+     to them short of guessing at shift+wheel. `overflow-x: auto` alone is a capability, not an
+     affordance. A thin, token-coloured bar restores both without bringing back the wrap this rule
+     exists to prevent; it stays out of the way at rest on platforms with overlay scrollbars. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding-bottom: 2px;
 }
 .vlib-chips::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+.vlib-chips::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vlib-chips::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--r-full);
 }
 .vlib-chip {
   display: inline-flex;

@@ -55,6 +55,18 @@ describe('gallery family chips — a sticky filter bar must never out-grow the v
     const chipRule = /\.vlib-chip\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(chipRule).toMatch(/flex-shrink:\s*0/);
   });
+
+  it('leaves the scrollbar visible, so the overflow is reachable with a mouse', () => {
+    // `overflow-x: auto` is a capability, not an affordance. The row used to hide its scrollbar on
+    // both engines, so on a desktop with a mouse nothing showed that families continued past the
+    // right edge and nothing but a guessed shift+wheel could reach them — the row read as simply
+    // truncated. Asserting the overflow property alone passed the whole time this was true.
+    const chipsRule = /\.vlib-chips\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(chipsRule).not.toMatch(/scrollbar-width:\s*none/);
+    const webkit = /\.vlib-chips::-webkit-scrollbar\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(webkit).not.toMatch(/display:\s*none/);
+    expect(webkit).toMatch(/height:\s*\d/);
+  });
 });
 
 describe('flagship mobile nav — the compact Explore items must actually win the cascade', () => {
