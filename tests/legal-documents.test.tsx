@@ -23,7 +23,7 @@ describe('canonical legal documents', () => {
     render(<TermsApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Terms of Use' })).toBeInTheDocument();
-    expect(screen.getByText('Effective August 17, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Effective August 22, 2026')).toBeInTheDocument();
     expect(screen.getByText(/govern your use of the Mavéa application/i)).toBeInTheDocument();
     expect(screen.getByText(/at least 18 years old/i)).toBeInTheDocument();
     expect(screen.getByText(/does not provide medical, legal, financial/i)).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('canonical legal documents', () => {
     render(<PrivacyApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Privacy Notice' })).toBeInTheDocument();
-    expect(screen.getByText('Effective August 21, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Effective August 22, 2026')).toBeInTheDocument();
     expect(screen.getByText(/no Mavéa user-account system/i)).toBeInTheDocument();
     expect(screen.getByText(/course data, mastery and progress/i)).toBeInTheDocument();
     expect(screen.getByText(/non-extractable, device-bound browser key/i)).toBeInTheDocument();

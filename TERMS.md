@@ -1,6 +1,6 @@
 # Mavéa Terms of Use
 
-Effective: August 17, 2026
+Effective: August 22, 2026
 
 These Terms of Use (the **Terms**) govern your use of the Mavéa application, command-line package, demos, documentation, and related materials (collectively, the **Service**). **Licensor** means each applicable copyright holder offering software under the PolyForm license. **Maintainers** means the people who publish or contribute to Mavéa; a Maintainer is not necessarily a Licensor. **Deployment operator** means the person or organization hosting the copy you use. **Responsible Party** means the applicable Licensor, Maintainer, or deployment operator responsible for a statement, obligation, service, or claim. In these Terms, **we**, **us**, or **our** means the relevant Responsible Party or Parties in context. A separately operated deployment remains independent from the Licensors and Maintainers unless the same person or organization serves both roles.
 
@@ -37,6 +37,8 @@ You must independently review and verify important output against qualified prof
 ## 5. Third-party services, credentials, and costs
 
 Mavéa can communicate with model, search, speech, media, hosting, OAuth, and action providers that you select. Those services are independent third parties and are governed by their own contracts, privacy policies, acceptable-use rules, retention practices, availability, and pricing.
+
+Connecting a code host or other content account authorizes Mavéa to read what that credential can reach and to include the relevant parts in requests to the provider you select. This applies to private repositories exactly as it does to public ones: if the scope you grant can read private source, internal documentation, diffs, or issues, that material can be sent to a third party under that party's own terms. You are responsible for having the right to disclose it, for granting the narrowest scope that works, and for revoking connections you no longer use.
 
 You provide and control your own accounts, API keys, OAuth grants, and other credentials. Requests send relevant credentials and content through the deployment's same-origin proxy before reaching the selected third party. The proxy operator can access that material in transit. You must use a deployment operator you trust.
 

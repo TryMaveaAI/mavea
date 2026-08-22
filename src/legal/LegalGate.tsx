@@ -63,6 +63,13 @@ export function LegalGate({
             you select.
           </li>
           <li>
+            <strong>A connected repository is read the same way.</strong> If you connect a code
+            host, the files, docs, diffs, and issues a feature reads can be sent to your model
+            provider — including from a <strong>private</strong> repository, if the access you grant
+            can reach one. Grant the narrowest scope that works, and only connect what you may
+            disclose.
+          </li>
+          <li>
             All provider charges are your sole responsibility. Mavéa does not charge you or pay
             providers on your behalf — use of your API keys and accounts is billed to you under each
             provider's own pricing and terms. Most provider dashboards let you track usage and set a

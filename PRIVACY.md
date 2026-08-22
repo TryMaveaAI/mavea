@@ -1,6 +1,6 @@
 # Mavéa Privacy Notice
 
-Effective: August 21, 2026
+Effective: August 22, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
@@ -42,6 +42,8 @@ Provider and search keys stay in memory until reload unless you choose Remember.
 
 Keys are decrypted when needed and pass through the deployment's same-origin proxy to the provider you selected. The proxy and its host can technically access credentials and content in transit. Browser encryption does not protect against an active compromise of the device, browser, extension, deployment, proxy, or provider.
 
+The scope you grant is the boundary of what these features can read: a token that can reach private repositories lets any feature you run reach them too, and what it reads can then be sent to your selected model provider (see section 4). Review the scopes at the point of authorization, prefer read-only, and revoke a connection you are no longer using.
+
 Optional GitHub and Google connections can store access tokens, refresh tokens, or repository settings in the actions gateway or its host configuration. The unmodified gateway writes persisted OAuth tokens to an owner-readable host file and keeps limited audit metadata, not request bodies or provider response text. Whoever runs the gateway controls that file, its backups, logs, deletion, and security.
 
 The unmodified gateway has no separate Mavéa user accounts. On a shared deployment, everyone allowed to use action features may act through the deployment operator's connected GitHub or Google account. Use a dedicated, least-privilege gateway and do not expose it to people who should not share those permissions.
@@ -51,6 +53,10 @@ The unmodified gateway has no separate Mavéa user accounts. On a shared deploym
 Text you type or paste, conversation context, remembered facts, attached files, extracted document text, images, repository content, diffs, search queries, and feature instructions may be sent through the deployment to the model, search, or connected provider needed for the feature you request. Responses and generated content return through the deployment to your browser.
 
 Prism and Synthesis stage and extract supported files locally where possible, but relevant content can still be sent for analysis. Ripple can parse code locally before optional model enrichment sends relevant code or diffs. Local staging is not a promise that later analysis remains local.
+
+Two of these flows do not wait for you to press anything, which is the part worth knowing. Features that watch something for you — tracked items, dashboards, and the morning brief — re-issue requests on the cadence you configure, so the same content and credentials go out again on a timer rather than only when you ask; most run only while Mavéa is open, and each run can bill your provider. And remembered facts are attached to later requests: something you told Mavéa once can be included in a request you make weeks afterwards, to whichever provider is selected at that time. You can review or forget remembered items, and turning a tracked item or a dashboard off stops its checks.
+
+Connecting a code host is the same boundary, and it is worth stating plainly because the content is not something you typed: when you point Mavéa at a repository, the files, documentation, diffs, commit messages, issues, and other repository data a feature reads can be sent through the deployment to the model provider you selected. **A private repository is not treated differently from a public one** — if you grant a token or OAuth scope that can read private repositories, private source and internal documentation can leave your control the same way a pasted snippet does, and the provider's own retention and processing terms then apply to it. Grant the narrowest scope that makes the feature work, prefer read-only and a repository allowlist where your host offers one, use a dedicated account for shared deployments, and do not connect a repository whose contents you are not permitted to disclose to that provider.
 
 ## 5. Voice, microphone, speech, and reels
 

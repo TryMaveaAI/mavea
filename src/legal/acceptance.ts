@@ -6,8 +6,12 @@
    v8: a Prism/Synthesis map — a document's claims and the page text they are quoted against — is
    kept on the device, with no timer expiry, so re-opening a file does not re-bill the reader's key.
    `tests/legal-version-guard` pins the documents' digests, so the next material edit cannot ship
-   without this decision being made again. */
-export const LEGAL_ACCEPTANCE_VERSION = '2026-08-21-document-maps-v8';
+   without this decision being made again.
+   v9: connected repositories stated outright — the files, docs, diffs and issues a feature reads
+   go to the selected model provider, and a PRIVATE repository is not treated differently, so the
+   scope granted is the boundary. The docs already said "repository content" in a list; what they
+   never said is the part someone would want to be asked about. */
+export const LEGAL_ACCEPTANCE_VERSION = '2026-08-22-connected-repos-v9';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

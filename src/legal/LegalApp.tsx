@@ -23,6 +23,10 @@ const DISCLOSURES = [
     body: 'Local storage describes where Mavéa saves information on this device; it does not mean requests sent to a selected provider stay local. Anything you type, paste, attach, or upload may be transmitted to selected providers. Do not submit passwords, secrets, work-related or personal material, identifiable information, confidential information, regulated data, or another person’s information unless you are authorized to share it and accept the providers’ processing and retention practices.',
   },
   {
+    title: 'A connected repository leaves with your request',
+    body: 'Connecting a code host lets Mavéa read what the access you grant can reach — files, documentation, diffs, commit messages, and issues — and send the relevant parts to the model provider you selected, under that provider\u2019s own retention and processing terms. A private repository is not handled differently from a public one: if the token or OAuth scope can read private code, private code can leave your control. Grant the narrowest scope that makes the feature work, prefer read-only and a repository allowlist where your host offers one, use a dedicated account on a shared deployment, revoke connections you no longer use, and do not connect a repository you are not permitted to disclose.',
+  },
+  {
     title: 'Use content you have the right to use',
     body: 'Only upload, transform, publish, or share material you have the rights and permission to use. AI output may not be unique, may resemble other material, may include protected content, or may not qualify for copyright protection. Mavéa does not guarantee ownership or non-infringement; review output before publishing or commercial use.',
   },
