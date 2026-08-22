@@ -6,6 +6,37 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-22
+
+### Added
+
+- **A new family of applied briefs — 17 cards for the work people actually bring to an
+  assistant.** Decision records, assumption ledgers, requirement boards, experiment and
+  negotiation plans, stakeholder maps, service blueprints, approval flows, resource and
+  maintenance plans, contact directories, trip budgets, care instructions, clause comparisons,
+  incident briefs, coverage checks and offer breakdowns. The component catalog is now 625
+  contracts across 24 families.
+- **The UI gate can sweep more than one data shape.** The gallery derives `verbose` and `minimal`
+  variants of any fixture, and `pnpm audit:ui -- --variants all` renders every block against all
+  three. It also collects render failures — duplicate keys, thrown renderers, NaN attributes —
+  rather than only measuring geometry.
+
+### Changed
+
+- Blocks now derive their geometry from the data they are handed rather than the fixture they
+  were authored against: the diagram family sized nodes and routed edges off the authored node
+  count, the relationship map placed labels from a fixed count, and several components assumed
+  optional fields were present.
+- The selector's prompt states its contracts as executable requirements — a component whose
+  contract cannot be satisfied is omitted rather than sent half-filled — and can now express
+  required fields nested inside objects and closed vocabularies on required sibling fields.
+
+### Fixed
+
+- The spoken answer's headline runs to the divider beneath it again. Each workspace template caps
+  body text at its own reading measure with a more specific rule, which quietly won over the
+  headline's own full-width cap and left a blank strip before the rule.
+
 ## [2.1.1] - 2026-08-22
 
 ### Changed
