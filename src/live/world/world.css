@@ -362,6 +362,14 @@
   /* The 24px floor above does double duty: it keeps the figure a pointer-sized target AND, being
      an explicit min-width, it overrides a flex item's default `min-width: auto` — which is what
      let a long number set the card's width in the first place. */
+  /* ...and `text-overflow` needs a BLOCK container to act on. Inherited from the rule above, this
+     was an `inline-flex` centring its own text, so the ellipsis was silently ignored and a long
+     figure overflowed EQUALLY IN BOTH DIRECTIONS — the reader saw the middle of it, clipped at both
+     ends, with no sign there was more ("…) percent th…"). Block, with the 24px target kept by the
+     line-height, so the declaration below is finally the one that applies. */
+  display: inline-block;
+  line-height: 24px;
+  text-align: center;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -49,3 +49,44 @@ describe('the subject a living answer is offered on', () => {
     expect(worldSubject('', undefined)).toBeNull();
   });
 });
+
+// The other way a subject goes missing — and the one that produced "This living answer didn't come
+// back" rather than a wrong-but-present world.
+//
+// Some turns send the MODEL a composed instruction instead of the reader's words: an "edit its mind"
+// correction, a block fuse, a morning brief. They name plenty of words, so `namesSubject` waves them
+// through — and the world was then asked to build a causal web of the INSTRUCTION. A reader who
+// corrected an answer and pressed the living answer got a failure, every time.
+describe('a composed instruction is never mistaken for what the reader asked', () => {
+  const CORRECTION =
+    'Correction — you understood "iPad input mechanisms", but it\'s actually "the pen tips". ' +
+    'Keep the rest of your understanding and update the answer wherever this changes it.';
+
+  it('falls back to the thread’s headline for an “edit its mind” correction', () => {
+    expect(worldSubject(CORRECTION, 'How Apple Pencil input works')).toBe(
+      'How Apple Pencil input works',
+    );
+  });
+
+  it('offers nothing rather than a world about the instruction, when there is no headline', () => {
+    expect(worldSubject(CORRECTION, undefined)).toBeNull();
+    expect(worldSubject(CORRECTION, '   ')).toBeNull();
+  });
+
+  it('covers the other composed prompts the same way', () => {
+    const headline = 'Quarterly revenue drivers';
+    for (const composed of [
+      'Fuse these two blocks — the connection between "Churn" and "Pricing" is unexplained.',
+      'You are Mavéa, an AI presence. Generate a concise morning brief for today.',
+      'I just thought out loud for about four minutes. Sort it.',
+    ]) {
+      expect(worldSubject(composed, headline), composed.slice(0, 32)).toBe(headline);
+    }
+  });
+
+  it('still lets a real question through untouched', () => {
+    expect(worldSubject('Why did the 2008 financial crisis happen?', 'Something else')).toBe(
+      'Why did the 2008 financial crisis happen?',
+    );
+  });
+});

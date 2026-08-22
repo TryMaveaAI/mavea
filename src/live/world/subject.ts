@@ -13,6 +13,8 @@
 
 /** Words that carry no subject: pronouns, articles, auxiliaries, question words, and the small
  *  vocabulary of asking-for-more. A phrase built only from these names nothing to explain. */
+import { friendlyAsk } from '../friendlyAsk';
+
 const EMPTY_WORDS = new Set([
   'a',
   'about',
@@ -216,7 +218,18 @@ export function namesSubject(text: string): boolean {
  */
 export function worldSubject(userText: string, headline: string | undefined): string | null {
   const asked = userText.trim();
-  if (asked !== '' && namesSubject(asked)) return asked;
+  // A turn whose "question" is a COMPOSED INSTRUCTION is the other way a subject goes missing, and
+  // the more damaging one. "Correction — you understood X, but it's actually Y. Keep the rest of
+  // your understanding…" is written by the app, not the reader; it names a dozen words, so
+  // namesSubject waves it through, and the world is then asked to explain the instruction rather
+  // than the thing it corrects. That build does not come back — a causal web of an edit request is
+  // not something a model can honestly return, so the reader pressed the button and got nothing.
+  //
+  // friendlyAsk already knows every one of these prompts by shape (it exists to keep them off the
+  // screen), so a text it rewrites is by definition not the reader's own question, and the thread's
+  // headline — the subject stated by the turn that just answered — is what the world is about.
+  const composed = asked !== '' && friendlyAsk(asked) !== asked;
+  if (!composed && asked !== '' && namesSubject(asked)) return asked;
   const fallback = headline?.trim();
   return fallback !== undefined && fallback !== '' && namesSubject(fallback) ? fallback : null;
 }

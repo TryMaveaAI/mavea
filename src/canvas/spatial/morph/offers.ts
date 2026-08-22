@@ -125,25 +125,25 @@ export function readingsOf(world: WorldData): Representation[] {
   );
 }
 
-/** How full a non-causal view has to be before a world OPENS on it rather than on the causal web.
- *  Two thirds: below it the reader's first sight of their own question is a stage with a third of it
- *  sitting in a band underneath, and above it the alternative view genuinely IS the world. */
-const FIRST_READ_FILL = 2 / 3;
-
 /**
- * The view this world is best MET in.
+ * The view this world OPENS in: the causal web wherever it holds, and otherwise the leftmost chip
+ * the world can actually stand behind.
  *
- * Opening every living answer the same way is most of why they feel identical, and the world itself
- * knows better: one that is mostly dated wants its timeline, one that is mostly measured shares wants
- * its contributions. Every branch is checked against `representationHolds`, so a first read can never
- * open onto a shelf of excuses.
+ * USER-DIRECTED. This used to pick whichever non-causal reading filled two thirds of the world, on
+ * the reasoning that a mostly-dated world wants its timeline. What that produced was a reader
+ * pressing "why did this happen" and landing somewhere other than what caused what — a different
+ * question, answered before they had asked it, and a different one from world to world, so the
+ * surface never taught its own vocabulary. The other readings are one press away and their chips
+ * say what they show; the first sight of a living answer is the causal web.
  *
- * A view a follow-up explicitly named still wins — this only replaces the constant fallback, and it
- * must reach the stage as its INITIAL rep, never as a later assignment: recomputed mid-session it
- * would snap a reader off the view they were exploring.
+ * Left-to-right is REPRESENTATIONS order, which is also the chip order, so "the default" and "the
+ * first chip" cannot disagree. The fallback is unreachable in practice — the graph places every node
+ * it is given — and is kept because a Representation must be returned.
+ *
+ * A view a follow-up explicitly named still wins; this is only the default. It must reach the stage
+ * as its INITIAL rep, never as a later assignment: recomputed mid-session it would snap a reader off
+ * the view they were exploring.
  */
 export function firstRead(world: WorldData): Representation {
-  return (
-    readingsOf(world).find((r) => r !== 'graph' && fillOf(r, world) >= FIRST_READ_FILL) ?? 'graph'
-  );
+  return REPRESENTATIONS.find((r) => representationHolds(r, world)) ?? 'graph';
 }

@@ -469,7 +469,16 @@
 }
 .zoom-sheet {
   position: relative;
-  width: min(920px, 92vw);
+  /* One source for the sheet's width, because .zoom-sheet-body has to state the SAME length in its
+     own box (see there) and the two drifting apart is the whole bug.
+
+     920px was a cap set when this sheet only ever had to hold a card's text. Now that magnifying
+     actually enlarges the drawing, the cap was the thing making a zoomed diagram feel small: on a
+     wide display the reader had most of a screen of empty desk either side of a 920px window they
+     were panning a chart inside. It fits the viewport first and only then stops growing — 1440
+     because that is where a single figure stops being a figure and starts being a wall. */
+  --zoom-sheet-w: min(1440px, 92vw);
+  width: var(--zoom-sheet-w);
   max-height: 88vh;
   overflow: auto;
   padding: 32px;
@@ -480,10 +489,15 @@
 }
 /* The close + zoom controls sit in their own sticky row so they stay reachable while a scaled-up
    block is scrolled/panned, instead of being absolutely positioned over content that can scroll
-   underneath them. */
+   underneath them. Sticky on BOTH axes, and sized to the sheet rather than to the content: now that
+   a magnified block is genuinely wider than the sheet, a row that stuck only to the top rode away
+   with the horizontal pan — the controls drifted inward and the band behind them stopped covering
+   the width it sits over, which is the same defect this row was introduced to fix. */
 .zoom-sheet-toolbar {
   position: sticky;
   top: 0;
+  left: 0;
+  width: var(--zoom-sheet-w);
   z-index: 1;
   display: flex;
   align-items: center;
@@ -532,7 +546,16 @@
   /* Magnify with the `zoom` property, not `transform: scale` — `zoom` affects layout, so the
      sheet's scrollable area grows to match the enlarged content instead of clipping the painted
      overflow while reporting the pre-scale (smaller) scroll bounds. That mismatch was why the
-     zoomed view used to cut off content and couldn't be fully panned. */
+     zoomed view used to cut off content and couldn't be fully panned.
+
+     The explicit width is what makes `zoom` reach the BLOCK and not just its type. Left to fill its
+     parent, this box's rendered width is pinned by the sheet, so `zoom: z` gives it a CSS-pixel
+     width of (sheet ÷ z) — and a child sized to 100% of that renders at exactly the same size at
+     every zoom level. Fixed lengths (icons, font sizes) still multiplied, so magnifying grew the
+     text of a full-width chart or diagram while the drawing under it never moved: the one thing a
+     reader opens this sheet to enlarge. Stating the length in the body's OWN box means zoom
+     multiplies it like any other, and the sheet's `overflow: auto` pans what no longer fits. */
+  width: calc(var(--zoom-sheet-w) - 64px);
   margin-bottom: 24px;
 }
 .zoom-sheet-body .block-actions {

@@ -82,9 +82,23 @@ describe('first read', () => {
     }
   });
 
-  it('meets different worlds in different ways', () => {
-    const opened = new Set(ALL_WORLD_SCENARIOS.map((s) => firstRead(worldToMorph(s.spec))));
-    expect(opened.size).toBeGreaterThan(1);
+  it('opens on the causal web, which is the question a living answer was asked', () => {
+    // USER-DIRECTED. The old rule opened on whichever reading filled two thirds of the world, so
+    // "why did this happen" could land on a timeline — a different question, answered first, and a
+    // different one per world, so the chips never taught what they meant.
+    for (const s of ALL_WORLD_SCENARIOS) {
+      const world = worldToMorph(s.spec);
+      if (representationHolds('graph', world)) expect(firstRead(world), s.id).toBe('graph');
+    }
+  });
+
+  it('falls to the leftmost chip it can stand behind, never to one that would be refused', () => {
+    for (const s of ALL_WORLD_SCENARIOS) {
+      const world = worldToMorph(s.spec);
+      const held = REPRESENTATIONS.filter((r) => representationHolds(r, world));
+      // Same order as the chip row, so the default and the first chip cannot disagree.
+      expect(firstRead(world), s.id).toBe(held[0] ?? 'graph');
+    }
   });
 });
 

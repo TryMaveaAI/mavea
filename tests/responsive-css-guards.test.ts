@@ -182,3 +182,65 @@ describe('tour end card — the explore list must be reachable on a short window
     }
   });
 });
+
+// The zoom sheet has to magnify the BLOCK, not just its type.
+//
+// `zoom: z` on a box whose rendered width is pinned by its parent gives that box a CSS-pixel width
+// of (parent ÷ z) — so a chart or diagram sized to 100% of it lays out narrower by exactly the
+// factor zoom then multiplies back, and renders at the same size at every level. Fixed lengths
+// (icons, font sizes) still scale, which is why magnifying appeared to work on some blocks and to
+// grow only the text on others: the ones that fill their container never moved. Measured in a real
+// browser at 175%: the widest SVG went 630px → 630px before, and 630px → 1103px after.
+describe('the zoom sheet magnifies the whole block, not only its text', () => {
+  const css = read('src/styles/wow-polish.css');
+
+  it('states the body width in the body’s own box, so `zoom` has a length to multiply', () => {
+    const body = /\.zoom-sheet-body\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(body).toMatch(/width:\s*calc\(var\(--zoom-sheet-w\)/);
+  });
+
+  it('drives that width and the sheet’s from one custom property, so they cannot drift', () => {
+    const sheet = /\.zoom-sheet\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(sheet).toMatch(/--zoom-sheet-w:/);
+    expect(sheet).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
+    // The pan the magnified block now needs.
+    expect(sheet).toMatch(/overflow:\s*auto/);
+  });
+
+  it('keeps the controls pinned while a magnified block is panned sideways', () => {
+    // Sticky on the top axis alone rode away with the horizontal scroll once the content could
+    // actually be wider than the sheet.
+    const bar = /\.zoom-sheet-toolbar\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(bar).toMatch(/position:\s*sticky/);
+    expect(bar).toMatch(/top:\s*0/);
+    expect(bar).toMatch(/left:\s*0/);
+    expect(bar).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
+  });
+});
+
+// A figure on a cause card must truncate, not spill out of both sides of itself.
+//
+// The rule already declared `text-overflow: ellipsis`, and it was silently ignored: the shared
+// `.wo-num, .wo-expand` block above makes the box an inline-flex that CENTRES its own text, and
+// `text-overflow` acts on block containers. So a long value overflowed equally in both directions
+// and the reader saw the middle of it clipped at both ends — "…) percent th…" — with nothing
+// indicating there was more. Measured after the fix: display block, ellipsis applied, the box stays
+// inside its parent.
+describe('a cause card truncates a long figure instead of clipping it at both ends', () => {
+  const css = read('src/live/world/world.css');
+
+  it('gives .wo-num a block box, so its own text-overflow can apply', () => {
+    const rule = /\n\.wo-num\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(rule).toMatch(/display:\s*inline-block/);
+    expect(rule).toMatch(/text-overflow:\s*ellipsis/);
+    expect(rule).toMatch(/overflow:\s*hidden/);
+    expect(rule).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('keeps the 24px pointer target the shared rule established', () => {
+    const rule = /\n\.wo-num\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    // line-height stands in for the flex centring the block box gives up.
+    expect(rule).toMatch(/line-height:\s*24px/);
+    expect(/\.wo-num,\s*\n\.wo-expand\s*\{[^}]*min-height:\s*24px/.test(css)).toBe(true);
+  });
+});

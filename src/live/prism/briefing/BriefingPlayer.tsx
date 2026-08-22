@@ -64,6 +64,38 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
+/** The reader's own answer to "should this talk?", remembered across briefings.
+ *
+ *  `audioDefault` is a good answer to a question nobody has been asked yet — a briefing you asked
+ *  for should speak, the tour's own narration should not be talked over. It is a bad answer once
+ *  someone HAS answered it: muting a briefing and having the next one start talking again is the
+ *  app forgetting an instruction it was just given, every single time.
+ *
+ *  So three states, not two. Absent means untouched, and the caller's default stands; 'on'/'off' is
+ *  a choice and outranks it — but only where speaking was allowed at all, because `audioDefault:
+ *  false` is the tour saying "do not talk over me", which is a constraint and not a preference.
+ *  Not a cache — nothing here is re-derivable — so it registers no shedder and is written like the
+ *  theme (see lib/localBudget on why that distinction matters).
+ */
+const AUDIO_CHOICE_KEY = 'mavea-brief-audio';
+
+function rememberedAudio(): boolean | null {
+  try {
+    const raw = localStorage.getItem(AUDIO_CHOICE_KEY);
+    return raw === 'on' ? true : raw === 'off' ? false : null;
+  } catch {
+    return null; // private mode / storage disabled — the default simply stands
+  }
+}
+
+function rememberAudio(on: boolean): void {
+  try {
+    localStorage.setItem(AUDIO_CHOICE_KEY, on ? 'on' : 'off');
+  } catch {
+    /* the choice still holds for this briefing; it just will not outlive it */
+  }
+}
+
 export function BriefingPlayer({
   beats,
   onBeat,
@@ -75,7 +107,14 @@ export function BriefingPlayer({
   const reduced = usePrefersReducedMotion();
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(!reduced);
-  const [audioOn, setAudioOn] = useState(audioDefault);
+  // Lazy initialiser: read the remembered choice once, not on every render.
+  //
+  // `audioDefault: false` is a CONSTRAINT, not a preference — the first-run tour narrates over the
+  // top itself, and two voices at once is exactly what that flag exists to prevent. A remembered
+  // "on" must not reach it. Where speaking is allowed, the reader's own answer wins.
+  const [audioOn, setAudioOn] = useState(() =>
+    audioDefault ? (rememberedAudio() ?? true) : false,
+  );
 
   // Callbacks read through a ref so the per-beat effect keys only on the beat + audio toggle.
   const cbs = useRef({ onBeat, speak, cancelSpeak });
@@ -151,6 +190,7 @@ export function BriefingPlayer({
   const toggleAudio = useCallback(() => {
     setAudioOn((a) => {
       if (a) cbs.current.cancelSpeak();
+      rememberAudio(!a);
       return !a;
     });
   }, []);
@@ -205,9 +245,12 @@ export function BriefingPlayer({
           className={'prism-brief-btn prism-brief-audio' + (audioOn ? ' is-on' : '')}
           onClick={toggleAudio}
           aria-pressed={audioOn}
+          // The glyph was the button's only name, so a screen reader announced "speaker, pressed".
+          // The label says what pressing it DOES; the emoji is decoration beside it.
+          aria-label={audioOn ? 'Mute narration' : 'Play with audio'}
           title={audioOn ? 'Mute narration' : 'Play with audio'}
         >
-          {audioOn ? '🔊' : '🔇'}
+          <span aria-hidden="true">{audioOn ? '🔊' : '🔇'}</span>
         </button>
         <button
           type="button"
