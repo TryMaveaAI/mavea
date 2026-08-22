@@ -472,11 +472,17 @@
   /* One source for the sheet's width, because .zoom-sheet-body has to state the SAME length in its
      own box (see there) and the two drifting apart is the whole bug.
 
-     920px was a cap set when this sheet only ever had to hold a card's text. Now that magnifying
-     actually enlarges the drawing, the cap was the thing making a zoomed diagram feel small: on a
-     wide display the reader had most of a screen of empty desk either side of a 920px window they
-     were panning a chart inside. It fits the viewport first and only then stops growing — 1440
-     because that is where a single figure stops being a figure and starts being a wall. */
+     920px was a cap set when this sheet only ever had to hold a card's text, and it is why a
+     magnified diagram still felt small: on a 1449px window the sheet was 920 of it. 92vw is the
+     real size — it tracks the screen — and 1440 is where it stops.
+
+     The ceiling is not timidity, it is measured. A block inside this sheet fills the width it is
+     given (`width: fit-content` on the sheet resolves straight back to the maximum — tried, on
+     three different block types, all three unchanged), so the sheet's width IS the line length. At
+     2560×1440 an uncapped version came out 2304px wide holding one sentence: a ~2300px measure with
+     the close button at the far edge. Growing past roughly this point stops helping the diagrams and
+     starts hurting everything else, and the reader who wants more still has zoom, which now
+     enlarges the drawing itself and pans. */
   --zoom-sheet-w: min(1440px, 92vw);
   width: var(--zoom-sheet-w);
   max-height: 88vh;

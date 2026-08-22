@@ -59,8 +59,10 @@ export function LegalGate({
             <strong>{VOICE_DATA_NOTICE.title}.</strong> {VOICE_DATA_NOTICE.body}
           </li>
           <li>
-            Prompts, files, code, and context may also pass through this deployment to the providers
-            you select.
+            <strong>A file you upload is sent, not just read locally.</strong> Prompts, documents,
+            code, images and context pass through this deployment to the providers you select —
+            including anything confidential, personal, or belonging to someone else. Only upload
+            what you are allowed to share with them.
           </li>
           <li>
             <strong>A connected repository is read the same way.</strong> If you connect a code

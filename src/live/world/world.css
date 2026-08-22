@@ -97,6 +97,21 @@
    pointer, no press state, and it never moves when the reader clicks it. */
 /* "4 parts" — a fact about the cause, on a view that cannot draw them. Deliberately NOT a control:
    it sits in the same foot row as the break-down chip, so it must not look pressable. */
+/* The two things this release added to the foot — a cause's date and its part count — are the ones
+   that must give way when the row runs out of 200 units. Without `min-width: 0` a flex item refuses
+   to shrink below its content, so the row simply overflowed and `.mv-card-foot`'s `overflow: hidden`
+   clipped ~79px of it: the world audit found 144 cards silently cutting their own foot. They shrink
+   and ellipsis now, and the figure and the breakdown affordance keep their 24px floors, so what
+   survives a narrow row is the value and the way in rather than whichever item happened to be
+   first. */
+.wo-when,
+.wo-parts-count {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .wo-parts-count {
   /* 11px, not 9.5: this is PERSISTENT type on a card, so at the camera's fit floor it renders at
      `11 × FIT_FLOOR × COUNTER_MAX` ≈ 9.0px — exactly the legibility floor, and the size FIT_FLOOR
