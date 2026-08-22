@@ -1,4 +1,4 @@
-// blocks/index.ts — assembles the extended component library (23 families, ~575 components).
+// blocks/index.ts — assembles the extended component library (24 families, 595 components).
 // Each family fills its own types.ts / registry.tsx / *.tsx / styles.css (disjoint).
 //
 // This static merge is for the surfaces that genuinely want EVERYTHING at once — the gallery,
@@ -14,6 +14,7 @@ import { tablesRegistry } from './tables/registry';
 import { flowsRegistry } from './flows/registry';
 import { docsRegistry } from './docs/registry';
 import { aiRegistry } from './ai/registry';
+import { briefsRegistry } from './briefs/registry';
 import { mediaRegistry } from './media/registry';
 import { layoutRegistry } from './layout/registry';
 import { statusRegistry } from './status/registry';
@@ -38,6 +39,7 @@ import type { TablesBlock } from './tables/types';
 import type { FlowsBlock } from './flows/types';
 import type { DocsBlock } from './docs/types';
 import type { AiBlock } from './ai/types';
+import type { BriefsBlock } from './briefs/types';
 import type { MediaBlock } from './media/types';
 import type { LayoutBlock } from './layout/types';
 import type { StatusBlock } from './status/types';
@@ -63,6 +65,7 @@ export type ExtendedBlock =
   | FlowsBlock
   | DocsBlock
   | AiBlock
+  | BriefsBlock
   | MediaBlock
   | LayoutBlock
   | StatusBlock
@@ -88,6 +91,7 @@ export const EXTENDED_REGISTRY: BlockRegistry = {
   ...flowsRegistry,
   ...docsRegistry,
   ...aiRegistry,
+  ...briefsRegistry,
   ...mediaRegistry,
   ...layoutRegistry,
   ...statusRegistry,

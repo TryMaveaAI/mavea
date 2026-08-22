@@ -19,6 +19,7 @@ import { DATA_EXAMPLES } from './examples.data';
 import { STRUCTURE_EXAMPLES } from './examples.structure';
 import { PLANNING_EXAMPLES } from './examples.planning';
 import { COVERAGE_EXAMPLES } from './examples.coverage';
+import { APPLIED_EXAMPLES } from './examples.applied';
 
 export const AUTHORED_EXAMPLES: Record<string, Record<string, unknown>> = {
   ...DOCUMENT_EXAMPLES,
@@ -34,4 +35,5 @@ export const AUTHORED_EXAMPLES: Record<string, Record<string, unknown>> = {
   // ── new domain-coverage components ──────────────────────────────────────
 
   ...COVERAGE_EXAMPLES,
+  ...APPLIED_EXAMPLES,
 };

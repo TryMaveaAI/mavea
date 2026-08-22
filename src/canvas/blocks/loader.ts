@@ -9,8 +9,8 @@ import type { ReactNode } from 'react';
 import { FAMILY_OF, type BlockFamily } from './familyMap';
 import { lazyRetry } from '../../lib/lazyRetry';
 
-// One explicit line per family (mirrors blocks/index.ts) so Rollup sees 23 static import()
-// targets and emits 23 chunks — a computed path would defeat the split.
+// One explicit line per family (mirrors blocks/index.ts) so Rollup sees 24 static import()
+// targets and emits one chunk per family — a computed path would defeat the split.
 const FAMILY_IMPORTS: Record<BlockFamily, () => Promise<BlockRegistry>> = {
   charts1: lazyRetry(() => import('./charts1/registry').then((m) => m.charts1Registry)),
   charts2: lazyRetry(() => import('./charts2/registry').then((m) => m.charts2Registry)),
@@ -19,6 +19,7 @@ const FAMILY_IMPORTS: Record<BlockFamily, () => Promise<BlockRegistry>> = {
   flows: lazyRetry(() => import('./flows/registry').then((m) => m.flowsRegistry)),
   docs: lazyRetry(() => import('./docs/registry').then((m) => m.docsRegistry)),
   ai: lazyRetry(() => import('./ai/registry').then((m) => m.aiRegistry)),
+  briefs: lazyRetry(() => import('./briefs/registry').then((m) => m.briefsRegistry)),
   media: lazyRetry(() => import('./media/registry').then((m) => m.mediaRegistry)),
   layout: lazyRetry(() => import('./layout/registry').then((m) => m.layoutRegistry)),
   status: lazyRetry(() => import('./status/registry').then((m) => m.statusRegistry)),

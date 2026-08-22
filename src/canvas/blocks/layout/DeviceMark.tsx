@@ -67,13 +67,21 @@ function buildSegments(
   text: string,
   marks: { phrase: string; device: string; note?: string }[],
 ): Segment[] {
+  const safeText = typeof text === 'string' ? text : '';
+  const safeMarks = marks.filter(
+    (mark) =>
+      typeof mark?.phrase === 'string' &&
+      mark.phrase.trim().length > 0 &&
+      typeof mark.device === 'string' &&
+      mark.device.trim().length > 0,
+  );
   // Sort marks longest-first so a longer phrase is preferred over a shorter substring.
-  const sorted = [...marks].sort((a, b) => b.phrase.length - a.phrase.length);
+  const sorted = [...safeMarks].sort((a, b) => b.phrase.length - a.phrase.length);
   // Find non-overlapping occurrences using a greedy left-to-right pass.
   type Hit = { start: number; end: number; device: string; phrase: string; note?: string };
   const hits: Hit[] = [];
   for (const m of sorted) {
-    const lower = text.toLowerCase();
+    const lower = safeText.toLowerCase();
     const phraseLower = m.phrase.toLowerCase();
     let idx = 0;
     while (idx < lower.length) {
@@ -86,7 +94,7 @@ function buildSegments(
           start: pos,
           end: pos + m.phrase.length,
           device: m.device,
-          phrase: text.slice(pos, pos + m.phrase.length),
+          phrase: safeText.slice(pos, pos + m.phrase.length),
           note: m.note,
         });
       idx = pos + 1;
@@ -97,12 +105,12 @@ function buildSegments(
   const segs: Segment[] = [];
   let cursor = 0;
   for (const h of hits) {
-    if (h.start > cursor) segs.push({ kind: 'plain', text: text.slice(cursor, h.start) });
+    if (h.start > cursor) segs.push({ kind: 'plain', text: safeText.slice(cursor, h.start) });
     segs.push({ kind: 'marked', text: h.phrase, device: h.device, note: h.note });
     cursor = h.end;
   }
-  if (cursor < text.length) segs.push({ kind: 'plain', text: text.slice(cursor) });
-  return segs.length ? segs : [{ kind: 'plain', text }];
+  if (cursor < safeText.length) segs.push({ kind: 'plain', text: safeText.slice(cursor) });
+  return segs.length ? segs : [{ kind: 'plain', text: safeText }];
 }
 
 export function DeviceMark({
@@ -116,7 +124,17 @@ export function DeviceMark({
   delay,
 }: Props) {
   const Ic = Icon[icon] ?? Icon.doc;
-  const safeMarks = useMemo(() => marks ?? [], [marks]);
+  const safeMarks = useMemo(
+    () =>
+      (marks ?? []).filter(
+        (mark) =>
+          typeof mark?.phrase === 'string' &&
+          mark.phrase.trim().length > 0 &&
+          typeof mark.device === 'string' &&
+          mark.device.trim().length > 0,
+      ),
+    [marks],
+  );
 
   const segments = useMemo(() => buildSegments(text, safeMarks), [text, safeMarks]);
   const devicesUsed = useMemo(() => [...new Set(safeMarks.map((m) => m.device))], [safeMarks]);

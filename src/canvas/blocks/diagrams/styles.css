@@ -3679,7 +3679,10 @@
 }
 
 .wp-badge {
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  margin-inline-start: 8px;
   padding: 2px 8px;
   border-radius: var(--r-full);
   border: 1px solid color-mix(in oklab, var(--warning) 38%, transparent);
@@ -3688,6 +3691,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--warning);
+  white-space: nowrap;
 }
 
 .wp-outcome {

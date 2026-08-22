@@ -43,6 +43,7 @@ function boxWidth(label: string): number {
 
 interface Placed {
   id: string;
+  renderId: string;
   label: string;
   kind: 'block' | 'sum';
   cx: number;
@@ -51,25 +52,35 @@ interface Placed {
   halfH: number;
 }
 
-/** Rank every block by longest path over non-feedback wires — cycles (a stray forward wire
- *  pointing backward) are tolerated because a rank already relaxed to the node-count ceiling
- *  is never pushed further, bounding the walk. Unresolved ids in a wire are ignored so a
- *  malformed reference can't corrupt another block's rank. */
+/** Rank every block by longest path over non-feedback wires in O(blocks + wires). A stray
+ *  forward cycle cannot be topologically ranked, so its members retain rank zero; feedback
+ *  wires already take the explicit loop route. Unresolved ids are ignored. */
 function rankBlocks(blocks: ControlBlockNode[], wires: ControlWire[]): Map<string, number> {
+  const ids = new Set(blocks.map((block) => block.id));
   const rank = new Map<string, number>();
-  for (const b of blocks) rank.set(b.id, 0);
-  const forward = wires.filter((w) => !w.feedback);
-  for (let pass = 0; pass < blocks.length; pass++) {
-    let moved = false;
-    for (const w of forward) {
-      if (!rank.has(w.from) || !rank.has(w.to)) continue;
-      const next = (rank.get(w.from) ?? 0) + 1;
-      if (next > (rank.get(w.to) ?? 0) && next < blocks.length) {
-        rank.set(w.to, next);
-        moved = true;
-      }
+  const indegree = new Map<string, number>();
+  const outgoing = new Map<string, string[]>();
+  for (const id of ids) {
+    rank.set(id, 0);
+    indegree.set(id, 0);
+    outgoing.set(id, []);
+  }
+  for (const wire of wires) {
+    if (wire.feedback || !ids.has(wire.from) || !ids.has(wire.to)) continue;
+    outgoing.get(wire.from)!.push(wire.to);
+    indegree.set(wire.to, (indegree.get(wire.to) ?? 0) + 1);
+  }
+
+  const queue: string[] = [];
+  for (const id of ids) if (indegree.get(id) === 0) queue.push(id);
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const from = queue[cursor];
+    for (const to of outgoing.get(from) ?? []) {
+      rank.set(to, Math.max(rank.get(to) ?? 0, (rank.get(from) ?? 0) + 1));
+      const remaining = (indegree.get(to) ?? 1) - 1;
+      indegree.set(to, remaining);
+      if (remaining === 0) queue.push(to);
     }
-    if (!moved) break;
   }
   return rank;
 }
@@ -89,8 +100,9 @@ function layoutBlocks(
     if (!byRank.has(r)) byRank.set(r, []);
     byRank.get(r)!.push(b);
   }
+  const rankCursor = new Map<number, number>();
 
-  const placed: Placed[] = blocks.map((b) => {
+  const placed: Placed[] = blocks.map((b, index) => {
     const kind = b.kind === 'sum' ? 'sum' : 'block';
     const label = typeof b.label === 'string' && b.label ? b.label : kind === 'sum' ? 'Σ' : 'Block';
     const halfW = kind === 'sum' ? SUM_R : boxWidth(label) / 2;
@@ -99,6 +111,7 @@ function layoutBlocks(
     if (Number.isFinite(b.x) && Number.isFinite(b.y)) {
       return {
         id: b.id,
+        renderId: `${b.id || 'block'}:${index}`,
         label,
         kind,
         cx: PAD_X + clamp01(b.x as number) * innerW,
@@ -110,7 +123,8 @@ function layoutBlocks(
 
     const r = rank.get(b.id) ?? 0;
     const siblings = byRank.get(r) ?? [b];
-    const idx = siblings.indexOf(b);
+    const idx = rankCursor.get(r) ?? 0;
+    rankCursor.set(r, idx + 1);
     const n = siblings.length;
     // Bound the total spread of a crowded rank (many unranked blocks sharing one column)
     // so the card stays a sane height instead of growing linearly with a long, flat input.
@@ -118,7 +132,7 @@ function layoutBlocks(
     const mid = (n - 1) / 2;
     const cx = maxRank === 0 ? VIEW_W / 2 : PAD_X + (r / maxRank) * innerW;
     const cy = ROW_Y + (idx - mid) * gap;
-    return { id: b.id, label, kind, cx, cy, halfW, halfH };
+    return { id: b.id, renderId: `${b.id || 'block'}:${index}`, label, kind, cx, cy, halfW, halfH };
   });
 
   const feedbackCount = wires.filter((w) => w.feedback).length;
@@ -188,7 +202,11 @@ export function ControlBlockDiagram({
     () => layoutBlocks(safeBlocks, safeWires),
     [safeBlocks, safeWires],
   );
-  const byId = useMemo(() => new Map(placed.map((p) => [p.id, p])), [placed]);
+  const byId = useMemo(() => {
+    const result = new Map<string, Placed>();
+    for (const block of placed) if (block.id && !result.has(block.id)) result.set(block.id, block);
+    return result;
+  }, [placed]);
 
   // Feedback loops nest by wire span (rank distance) so a longer return path draws a deeper
   // loop than a short one and the two never cross.
@@ -298,7 +316,7 @@ export function ControlBlockDiagram({
 
           {placed.map((p) =>
             p.kind === 'sum' ? (
-              <g key={p.id}>
+              <g key={p.renderId}>
                 <circle cx={p.cx} cy={p.cy} r={SUM_R} className="dg-cbd-sum" />
                 <line
                   x1={p.cx - SUM_R * 0.4}
@@ -325,7 +343,7 @@ export function ControlBlockDiagram({
                 </text>
               </g>
             ) : (
-              <g key={p.id}>
+              <g key={p.renderId}>
                 <rect
                   x={p.cx - p.halfW}
                   y={p.cy - p.halfH}

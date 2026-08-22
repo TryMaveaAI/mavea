@@ -7,7 +7,7 @@
 // reports how many types render real content, which flags the ones still wanting a custom
 // builder.
 import { RAW_CATALOG } from '../src/canvas/blocks/catalog/catalog.data';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { TopicCanvas } from '../src/canvas';
 import { validateLiveResponse } from '../src/engine/liveSchema';
@@ -139,6 +139,7 @@ function specOfAllCoercible(): { spec: ConversationSpec; produced: string[] } {
 }
 describe('Live canvas — failure-proof rendering of the full vocabulary', () => {
   it('coerces and renders every coercible type without ever crashing the surface', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { spec, produced } = specOfAllCoercible();
     // The coercers keep the vast majority of types (those they can fill from the sample).
     expect(produced.length).toBeGreaterThan(100);
@@ -148,13 +149,14 @@ describe('Live canvas — failure-proof rendering of the full vocabulary', () =>
         <TopicCanvas data={spec} spot={null} built={{}} onProve={() => {}} />,
       ).container;
     }).not.toThrow();
-    // The grid is up and most cells rendered real content rather than an empty boundary.
+    // Every accepted block must mount its designed renderer. A boundary fallback preserves text
+    // for production resilience, but it is still a contract failure in this exhaustive test.
     const grid = container!.querySelector('.card-grid');
     expect(grid).not.toBeNull();
     const nonEmptyCells = [...grid!.children].filter((c) => c.children.length > 0).length;
-    console.log(
-      `live-canvas-render: ${nonEmptyCells}/${spec.blocks.length} component types rendered content`,
-    );
-    expect(nonEmptyCells).toBeGreaterThan(spec.blocks.length * 0.6);
+    expect(nonEmptyCells).toBe(spec.blocks.length);
+    expect(container!.querySelectorAll('.fb-card')).toHaveLength(0);
+    expect(consoleError.mock.calls).toEqual([]);
+    consoleError.mockRestore();
   }, 60_000); // renders the full block vocabulary; the global 20s budget flakes under heavy load
 });

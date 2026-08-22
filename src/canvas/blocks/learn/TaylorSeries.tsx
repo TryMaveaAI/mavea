@@ -486,14 +486,22 @@ export function TaylorSeries({
 
       {/* Interactive slider — hidden when showTerms pins a fixed N */}
       {!showTerms && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
+        <div
+          style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 8, padding: '0 4px' }}
+        >
           <input
             type="range"
             min={1}
             max={maxTerms}
             value={nState}
             onChange={(e) => setNState(Number(e.target.value))}
-            style={{ flex: 1, accentColor: 'var(--presence)', marginTop: '4px' }}
+            style={{
+              width: '100%',
+              minWidth: 0,
+              flex: 1,
+              accentColor: 'var(--presence)',
+              marginTop: '4px',
+            }}
             aria-label="Number of Taylor terms"
           />
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

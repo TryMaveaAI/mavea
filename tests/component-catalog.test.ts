@@ -151,6 +151,23 @@ describe('component catalog', () => {
       'calibration',
       'httpexchange',
       'trainingcurve',
+      'decisionrecord',
+      'assumptionledger',
+      'requirementboard',
+      'experimentplan',
+      'negotiationplan',
+      'stakeholdermap',
+      'serviceblueprint',
+      'approvalflow',
+      'resourceplan',
+      'maintenanceplan',
+      'contactdirectory',
+      'tripbudget',
+      'careinstructions',
+      'clausecompare',
+      'incidentbrief',
+      'coveragecheck',
+      'offerbreakdown',
       'treemap',
       'sunburst',
       'sankey',
@@ -748,7 +765,7 @@ describe('component catalog', () => {
       'sponsorshiptracker',
       'caseload',
     ];
-    expect(RAW_CATALOG.length).toBe(608);
+    expect(RAW_CATALOG.length).toBe(625);
     expect(RAW_CATALOG.map((m) => m.type)).toEqual(ORDERED_TYPES);
   });
   it('every itemShape names a real prop on its component (no orphan item contracts)', () => {

@@ -885,7 +885,7 @@ function WorldSurface({
 
   // The lens plan and the component that draws it, both fetched on SELECTION.
   //
-  // Neither may sit in the world's static import graph. content/lens reads the catalog's 608-row
+  // Neither may sit in the world's static import graph. content/lens reads the catalog's 625-row
   // facts index, and decoding it is ~200ms that landed in whichever task first touched the module —
   // measured as the FIRST morph costing 252ms against ~50ms for every morph after it. A reader who
   // never selects a cause should never pay for the catalog at all, and one who does pays it off the

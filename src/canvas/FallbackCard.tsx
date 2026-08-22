@@ -22,16 +22,20 @@ export function FallbackCard({ block }: { block: Block }) {
       <div className="card-eyebrow">
         <Icon.layers className="ic" /> {blockLabel(block)}
       </div>
-      {lines.length > 0 && (
-        <ul className="fb-lines">
-          {lines.map((line, i) => (
-            <li key={i} className="fb-line">
-              {line}
-            </li>
-          ))}
-          {more > 0 && <li className="fb-line fb-more">+{more} more</li>}
-        </ul>
-      )}
+      <ul className="fb-lines">
+        {lines.length > 0 ? (
+          <>
+            {lines.map((line, i) => (
+              <li key={i} className="fb-line">
+                {line}
+              </li>
+            ))}
+            {more > 0 && <li className="fb-line fb-more">+{more} more</li>}
+          </>
+        ) : (
+          <li className="fb-line">No readable details were returned for this visual.</li>
+        )}
+      </ul>
     </div>
   );
 }

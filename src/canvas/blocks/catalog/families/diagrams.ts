@@ -92,8 +92,19 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Directed-graph state machine; nodes are states, edges are transitions with trigger labels.',
-    itemShapes: [{ prop: 'states', text: 'label', textAliases: ['name', 'state', 'title'] }],
+    itemShapes: [
+      {
+        prop: 'states',
+        text: 'label',
+        textAliases: ['name', 'state', 'title'],
+        requiredFields: ['id'],
+      },
+      { prop: 'transitions', requiredFields: ['from', 'to', 'label'] },
+    ],
     propHints: {
+      'states[].id': 'unique nonblank id within this block',
+      'transitions[].from': 'exactly one existing states[].id',
+      'transitions[].to': 'exactly one existing states[].id',
       'states[].start': 'true to mark the entry state',
       'states[].final': 'true to mark an accepting/terminal state',
     },
@@ -131,11 +142,23 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Schematic circuit diagram with resistors, capacitors, voltage sources, and wire routing.',
-    itemShapes: [{ prop: 'components', text: 'label', textAliases: ['name', 'id', 'value'] }],
+    itemShapes: [
+      {
+        prop: 'components',
+        text: 'label',
+        textAliases: ['name', 'id', 'value'],
+        requiredFields: ['id', 'kind', 'x', 'y'],
+        closedVocabFields: ['kind'],
+      },
+      { prop: 'wires', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'components[].id': 'unique nonblank id within this block',
       'components[].kind': "'battery'|'resistor'|'capacitor'|'bulb'|'switch'|'ground'|'node'",
       'components[].x': 'position 0..100 on the canvas',
       'components[].y': 'position 0..100 on the canvas',
+      'wires[].from': 'exactly one existing components[].id',
+      'wires[].to': 'exactly one existing components[].id',
     },
   }),
   createMeta('controlblockdiagram', {
@@ -151,8 +174,18 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A control-systems block diagram: transfer-function blocks as labeled rectangles joined by directional signal wires, with a summing junction drawn as a small +/- circle. Blocks auto-place left-to-right by graph order when x/y are omitted; a wire marked feedback routes as a rectangular loop back to an earlier block. Use for "draw the PID control loop", "block diagram of a thermostat", closed-loop transfer functions, feedback-control coursework.',
-    itemShapes: [{ prop: 'blocks', text: 'label', textAliases: ['name', 'id'] }],
+    itemShapes: [
+      {
+        prop: 'blocks',
+        text: 'label',
+        textAliases: ['name', 'id'],
+        requiredFields: ['id', 'kind'],
+        closedVocabFields: ['kind'],
+      },
+      { prop: 'wires', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'blocks[].id': 'unique nonblank id within this block',
       'blocks[].kind':
         "'block'|'sum' — 'block' is a labeled transfer-function rectangle, 'sum' is a summing junction",
       'blocks[].x': 'optional position 0..100; omit both x and y to auto-place left-to-right',
@@ -161,6 +194,8 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         "'plus'|'minus' — only meaningful when the wire's `to` is a sum block; default plus",
       'wires[].feedback':
         'true to route this wire as a rectangular loop back to an earlier block, instead of a straight line',
+      'wires[].from': 'exactly one existing blocks[].id',
+      'wires[].to': 'exactly one existing blocks[].id',
     },
     intents: ['explain', 'teach', 'reference'],
     domains: ['engineering', 'science', 'code'],
@@ -223,13 +258,25 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A system-design whiteboard diagram: each node kind is a distinct SHAPE, not just a color — database is a cylinder, queue is a stacked rectangle, cache is a rounded diamond, loadbalancer is a hexagon; client/service/gateway/cdn share a rounded-rectangle silhouette told apart by a small inline icon. Auto-laid-out left-to-right by the edge graph. Use for "draw the system architecture", "whiteboard this design", a load-balanced web service, a CQRS/event pipeline, a CDN-fronted API, system-design-interview walkthroughs.',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['name', 'id'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'id'],
+        requiredFields: ['id', 'kind'],
+        closedVocabFields: ['kind'],
+      },
+      { prop: 'edges', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[].kind':
         "'client'|'loadbalancer'|'service'|'database'|'cache'|'queue'|'gateway'|'cdn'",
       'nodes[].sub': 'optional second line — an instance count, a tech name, a region',
       'edges[].label': 'what the connection does, e.g. "writes", "cache-aside"',
       'edges[].protocol': 'the wire protocol, e.g. "HTTPS", "gRPC", "TCP:5432"',
+      'edges[].from': 'exactly one existing nodes[].id',
+      'edges[].to': 'exactly one existing nodes[].id',
     },
     intents: ['explain', 'teach', 'reference'],
     domains: ['code', 'tech', 'business'],
@@ -396,8 +443,17 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A multi-step chemical synthesis route: compound nodes auto-laid-out left-to-right by graph rank, supporting real branching — several precursors converging into one product, or one intermediate fanning out into several targets — which a single linear reaction-mechanism block cannot express. Each arrow carries its reagents/conditions above and a yield percentage below; a retrosynthetic disconnection (direction retro) draws as a dashed hollow arrow. Use for a total-synthesis route, a convergent synthesis, retrosynthetic analysis.',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['name', 'compound', 'formula'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'compound', 'formula'],
+        requiredFields: ['id'],
+      },
+      { prop: 'edges', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[].label':
         'compound name or formula; plain text (SVG), use unicode subscripts like "C₆H₆" rather than HTML markup',
       'nodes[].smiles': 'optional SMILES string, shown as a small line under the label',
@@ -407,6 +463,8 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
       'edges[].yieldPct': 'isolated yield for this step, 0..100 — shown below the arrow',
       'edges[].direction':
         "'forward'|'retro' — retro draws a dashed hollow arrow FROM the target TO its precursor (a retrosynthetic disconnection); from/to follow that reasoning direction, the reverse of a forward precursor→product step. Default forward.",
+      'edges[].from': 'exactly one existing nodes[].id',
+      'edges[].to': 'exactly one existing nodes[].id',
     },
     intents: ['explain', 'teach', 'reference'],
     domains: ['science', 'education'],
@@ -635,14 +693,26 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Residential/automotive one-line wiring diagram drawn with real trade symbols (breaker, switch, 3-way, GFCI, outlet, light, panel); wires are color-coded by conductor (hot/neutral/ground/traveler) with gauge labels. Auto-laid out on a grid when x/y are omitted. Use for wiring a circuit, a 3-way switch loop, a GFCI-protected outlet, a service-panel one-line.',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['name', 'id', 'device'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'id', 'device'],
+        requiredFields: ['id', 'kind'],
+        closedVocabFields: ['kind'],
+      },
+      { prop: 'wires', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[].kind':
         "'breaker'|'switch'|'switch3way'|'outlet'|'gfci'|'light'|'panel'|'motor'|'ground'|'junction'",
       'nodes[].x': 'optional position 0..100 on the canvas; omit to auto-grid',
       'nodes[].y': 'optional position 0..100 on the canvas; omit to auto-grid',
       'wires[].conductor': "'hot'|'neutral'|'ground'|'traveler' — colors the run (default 'hot')",
       'wires[].gauge': 'wire gauge label, e.g. "12 AWG"',
+      'wires[].from': 'exactly one existing nodes[].id',
+      'wires[].to': 'exactly one existing nodes[].id',
     },
     domains: ['tech', 'science'],
     intents: ['explain', 'howto', 'reference'],
@@ -660,13 +730,25 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'P&ID-lite piping/HVAC/hydraulic flow schematic; standard process glyphs (tank, pump, valve, heater, filter, instrument, fitting) joined by routed lines with optional flow-direction arrows and line-size labels. Auto-laid out on a grid when coords are absent. Use for a heating loop, a pump-and-filter circuit, a closed-loop HVAC diagram.',
-    itemShapes: [{ prop: 'components', text: 'label', textAliases: ['name', 'id', 'tag'] }],
+    itemShapes: [
+      {
+        prop: 'components',
+        text: 'label',
+        textAliases: ['name', 'id', 'tag'],
+        requiredFields: ['id', 'kind'],
+        closedVocabFields: ['kind'],
+      },
+      { prop: 'lines', requiredFields: ['from', 'to'] },
+    ],
     propHints: {
+      'components[].id': 'unique nonblank id within this block',
       'components[].kind': "'pipe'|'valve'|'pump'|'tank'|'heater'|'filter'|'fitting'|'sensor'",
       'components[].x': 'optional position 0..100; omit to auto-grid',
       'components[].y': 'optional position 0..100; omit to auto-grid',
       'lines[].flow': 'true to draw a flow-direction arrowhead toward `to`',
       'lines[].size': 'line-size label, e.g. "DN50" or 2 inch',
+      'lines[].from': 'exactly one existing components[].id',
+      'lines[].to': 'exactly one existing components[].id',
     },
     domains: ['tech', 'science'],
     intents: ['explain', 'reference'],

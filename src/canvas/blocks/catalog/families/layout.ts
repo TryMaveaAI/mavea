@@ -691,6 +691,13 @@ export const CATALOG_LAYOUT: ComponentCatalog = [
     colDefault: 10,
     colMin: 7,
     coercer: 'generic',
+    itemShapes: [
+      {
+        prop: 'marks',
+        requiredFields: ['phrase', 'device'],
+        closedVocabFields: ['device'],
+      },
+    ],
     blurb:
       'A text passage with rhetorical/literary device spans highlighted and colour-coded by device class (metaphor, simile, alliteration, irony, anaphora, hyperbole, personification, allusion, parallelism, antithesis, oxymoron, …), with a legend. Use for AP-English/IB analysis, debate rhetoric, speechwriting tuition.',
     propHints: {

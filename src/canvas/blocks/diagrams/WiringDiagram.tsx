@@ -123,17 +123,42 @@ export function WiringDiagram({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.spark;
+  const graph = useMemo(() => {
+    const aliases = new Map<string, string>();
+    const safeNodes = (Array.isArray(nodes) ? nodes : []).map((node, index) => {
+      const rawId = typeof node?.id === 'string' ? node.id.trim() : '';
+      const label = typeof node?.label === 'string' ? node.label.trim() : '';
+      const id = `${rawId || label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-') || 'device'}:${index}`;
+      for (const alias of [rawId, label]) {
+        const normalized = alias.trim().toLocaleLowerCase();
+        if (normalized && !aliases.has(normalized)) aliases.set(normalized, id);
+      }
+      return { ...node, id, label };
+    });
+    const safeWires = (Array.isArray(wires) ? wires : []).flatMap((wire) => {
+      const from = aliases.get(
+        typeof wire?.from === 'string' ? wire.from.trim().toLocaleLowerCase() : '',
+      );
+      const to = aliases.get(
+        typeof wire?.to === 'string' ? wire.to.trim().toLocaleLowerCase() : '',
+      );
+      return from && to ? [{ ...wire, from, to }] : [];
+    });
+    return { nodes: safeNodes, wires: safeWires };
+  }, [nodes, wires]);
+  const safeNodes = graph.nodes;
+  const safeWires = graph.wires;
 
   // Honour explicit coords; otherwise tile devices on a centred grid so the figure is always
   // laid out even when the model gives none.
   const pos = useMemo(() => {
-    const n = Math.max(1, nodes.length);
+    const n = Math.max(1, safeNodes.length);
     const cols = Math.min(n, Math.ceil(Math.sqrt(n) * 1.4));
     const rows = Math.ceil(n / cols);
     const cw = VB_W / (cols + 1);
     const ch = VB_H / (rows + 1);
     const m: Record<string, { x: number; y: number }> = {};
-    nodes.forEach((node, i) => {
+    safeNodes.forEach((node, i) => {
       if (node.x !== undefined && node.y !== undefined) {
         m[node.id] = { x: node.x, y: node.y };
       } else {
@@ -143,7 +168,7 @@ export function WiringDiagram({
       }
     });
     return m;
-  }, [nodes]);
+  }, [safeNodes]);
 
   return (
     <div
@@ -163,7 +188,7 @@ export function WiringDiagram({
           aria-label={title || 'wiring diagram'}
         >
           {/* wires under devices, routed as right-angle Manhattan runs, coloured by conductor */}
-          {wires.map((w, i) => {
+          {safeWires.map((w, i) => {
             const a = pos[w.from];
             const b = pos[w.to];
             if (!a || !b) return null;
@@ -192,7 +217,7 @@ export function WiringDiagram({
             );
           })}
           {/* devices */}
-          {nodes.map((node) => {
+          {safeNodes.map((node) => {
             const p = pos[node.id];
             if (!p) return null;
             return (
@@ -209,7 +234,7 @@ export function WiringDiagram({
         </svg>
       </div>
       {/* conductor legend, derived from the conductors actually present */}
-      <WiringLegend wires={wires} />
+      <WiringLegend wires={safeWires} />
       {caption && <p className="dg-wir-cap">{caption}</p>}
       {footer && (
         <div

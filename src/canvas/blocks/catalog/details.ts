@@ -7,7 +7,7 @@
 //
 // Details are therefore fetched in small canonical-order SHARDS rather than by family. Family-sized
 // modules were the obvious unit and the wrong one: the selector caps its picks at two per family, so
-// a menu spans ~17 of 23 families and a family module ships ~30× more prose than the turn quotes
+// a menu spans ~17 of 24 families and a family module ships ~30× more prose than the turn quotes
 // (measured: 126 KB of 138 KB fetched for a single ask). Shards make the bytes track the menu.
 //
 // The contract, and the reason `catalogMeta` returns undefined rather than a half-filled record:

@@ -19,6 +19,12 @@ interface Rule {
   test: RegExp;
 }
 
+// "Map" is also a named fictional/computing object ("the Marauder's Map said…", "hash map").
+// Treat it as geography only when the surrounding words actually ask for spatial information.
+// Other location words remain independently sufficient below.
+const GEO_MAP_CONTEXT =
+  /\b(?:on (?:a|the) map|maps? (?:of|for|showing)\b|(?:show|give|draw|make|plot|view)\b[^.?!]{0,32}\bmaps?\b|map (?:out )?(?:the |my |our |a |an )?(?:route|trip|journey|locations?|places?|cities|countries|regions?|neighbou?rhood|area|stops?))\b/;
+
 // First-match-wins is NOT used here — every matching rule contributes, so an ask can
 // score several shapes. Patterns are word-bounded to avoid accidental substring hits.
 const RULES: Rule[] = [
@@ -67,7 +73,9 @@ const RULES: Rule[] = [
   {
     shape: 'geo',
     weight: 1,
-    test: /\b(map|where is|near\w*|location|route|directions?|cities|country|countries|region|travel|trip|drive)\b/,
+    test: new RegExp(
+      `${GEO_MAP_CONTEXT.source}|\\b(where is|near\\w*|location|route|directions?|cities|country|countries|region|travel|trip|drive)\\b`,
+    ),
   },
   {
     shape: 'list',
@@ -150,7 +158,9 @@ const REQUEST_RULES: { test: RegExp; types: string[] }[] = [
   // depends on the model knowing a real allowlisted image URL for that exact place (it almost never
   // does), leaving a bare gradient where a real map would have rendered every time.
   {
-    test: /\b(maps?|where is|located|directions?|on a map|near (?:the|downtown|campus)|walking distance|walkable|nearby|neighborhood|what'?s around|close to (?:downtown|the))\b/,
+    test: new RegExp(
+      `${GEO_MAP_CONTEXT.source}|\\b(where is|located|directions?|near (?:the|downtown|campus)|walking distance|walkable|nearby|neighbou?rhood|what'?s around|close to (?:downtown|the))\\b`,
+    ),
     types: ['geomap'],
   },
   // (video is intentionally NOT requestable yet: we have no reliable source for a real,

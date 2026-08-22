@@ -787,6 +787,11 @@
   min-height: 84px;
   padding-bottom: 4px;
 }
+@container (max-width: 260px) {
+  .fl-ms {
+    margin-inline: 28px;
+  }
+}
 .fl-ms-line {
   position: absolute;
   top: 9px;
@@ -806,6 +811,7 @@
   gap: 6px;
   background: none;
   border: none;
+  padding: 0;
   cursor: pointer;
   /* --w is set inline per-instance, shrinking as milestone count grows so a busy track's
      caps stay inside their own slice instead of overlapping the next one (fixed 80px was

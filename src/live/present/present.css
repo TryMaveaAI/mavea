@@ -169,6 +169,29 @@
 }
 
 /* ── Floating exit pill ──────────────────────────────────────────────────────────────────── */
+/* Keep the current canvas visible on a cold Present import; this compact acknowledgement floats
+   over it until the deck is ready, then both states swap in one React batch. */
+.preso-preparing {
+  position: fixed;
+  inset: auto 18px calc(var(--dock-h, 72px) + 18px) auto;
+  z-index: 160;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-floating);
+  color: var(--text-secondary);
+  font: 600 11px/1 var(--font-data, var(--font));
+  letter-spacing: 0.04em;
+}
+.preso-preparing .async-pending-spinner {
+  width: 12px;
+  height: 12px;
+}
+
 .present-exit {
   position: fixed;
   top: 14px;

@@ -376,6 +376,9 @@ export interface ItemSpec {
    *  recovery can re-ask, than a rendered card of placeholders. Leave unset when the renderer
    *  degrades gracefully (litigationtimeline shows an unknown kind as its own capitalized text). */
   closedVocab?: boolean;
+  /** Additional required fields whose pipe-enum hints are renderer contracts. Use when a renderer
+   *  buckets, indexes, or styles by a required sibling field rather than by `text`. */
+  closedVocabFields?: string[];
   /** A nested item array carried on each item (e.g. commandk's groups carry
    *  `commands`). Coerced and taught recursively. */
   children?: ItemSpec;
@@ -443,6 +446,9 @@ export interface ComponentMeta {
    *  arrays whose items carry visible TEXT need an entry; numeric/chart/graph item
    *  arrays are left out (there is no text field to repair). */
   itemShapes?: ItemSpec[];
+  /** Required fields inside singular nested objects, expressed as `left.label` paths. Item-array
+   *  requirements belong in `itemShapes`, where alias repair and recursive children also apply. */
+  requiredPaths?: string[];
   /** Prop names whose value the renderer reads as an array of PLAIN STRINGS (step lines,
    *  tips…). The generic coercer flattens whatever arrived — objects carrying a text field,
    *  a lone string — into clean strings and drops blanks, so a wrong item shape degrades to

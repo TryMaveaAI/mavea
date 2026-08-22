@@ -226,7 +226,7 @@ function BlockViewImpl({
     const p = (b as unknown as { props: ActionProposalProps }).props;
     return <ActionProposal {...p} {...common} />;
   }
-  // Extended library (~575 components, 23 families) — looked up through the per-family
+  // Extended library (595 components, 24 families) — looked up through the per-family
   // loader (null while that family's chunk is in flight; useBlockFamilies holds the grid
   // back until every needed family has settled, so this is never null mid-render).
   // Cast through unknown so this compiles whether the extended union is empty (never) or full.

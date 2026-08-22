@@ -14,7 +14,7 @@ import { availableParallelism, totalmem } from 'node:os';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { safePdfUrl } from './src/live/doc/safeUrl';
+import { safePdfUrl } from './src/live/doc/safeUrl.js';
 
 // /pdf?url=<allowlisted https pdf> — fetch the document server-side and re-serve it from our
 // own origin (stripping the source's X-Frame-Options), so an external PDF previews INLINE in

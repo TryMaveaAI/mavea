@@ -100,7 +100,7 @@ export function SequenceDiagram({
         >
           {/* lifelines */}
           {actors.map((a, i) => (
-            <g key={a.id}>
+            <g key={`${a.id}-${i}`}>
               <line
                 x1={lanes.x[i]}
                 y1={TOP + HEAD_H}

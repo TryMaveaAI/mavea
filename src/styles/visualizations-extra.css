@@ -504,21 +504,122 @@
 
 /* CodeMap (blast radius) */
 .codemap {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  align-items: stretch;
   margin-top: 4px;
 }
-.codemap-pulse {
-  animation: codepulse 2.4s var(--ease-in-out) infinite;
-  transform-origin: center;
+.codemap-hub {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 132px;
+  place-content: center;
+  gap: 9px;
+  padding: 18px;
+  border: 1px solid color-mix(in oklab, var(--presence) 34%, var(--line));
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(
+      circle at center,
+      color-mix(in oklab, var(--presence) 12%, transparent),
+      transparent 58%
+    ),
+    var(--surface-glass);
+  text-align: center;
+}
+.codemap-hub strong,
+.codemap-node-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.codemap-hub-dot {
+  width: 16px;
+  height: 16px;
+  margin-inline: auto;
+  border: 2px solid var(--surface-default);
+  border-radius: 50%;
+  background: var(--presence);
+  box-shadow: 0 0 18px color-mix(in oklab, var(--presence) 52%, transparent);
+}
+.codemap-hub-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in oklab, var(--presence) 38%, transparent);
+  border-radius: 50%;
+  translate: -50% -72%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .codemap-hub-ring {
+    animation: codepulse 2.4s var(--ease-in-out) infinite;
+    animation-play-state: var(--ambient-play, running);
+  }
+}
+.codemap-nodes {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.codemap-node {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid var(--grid-line);
+  border-radius: var(--r-sm);
+  background: var(--surface-elevated);
+}
+.codemap-node[data-hot] {
+  border-color: color-mix(in oklab, var(--warning) 42%, var(--line));
+}
+.codemap-node-dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface-elevated-2);
+}
+.codemap-node[data-hot] .codemap-node-dot {
+  border-color: var(--warning);
+  background: var(--warning);
+}
+.codemap-node-copy {
+  display: grid;
+  gap: 1px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+}
+.codemap-node-copy > span {
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
 }
 @keyframes codepulse {
   0%,
   100% {
-    r: 11;
-    opacity: 0.4;
+    scale: 0.75;
+    opacity: 0.32;
   }
   50% {
-    r: 17;
+    scale: 1.15;
     opacity: 0;
+  }
+}
+@container (max-width: 420px) {
+  .codemap {
+    grid-template-columns: 1fr;
+  }
+  .codemap-hub {
+    min-height: 104px;
   }
 }
 
@@ -756,6 +857,27 @@
 .cmp-rec b {
   color: var(--text-primary);
   font-weight: 600;
+}
+@container (max-width: 320px) {
+  .cmp > div {
+    min-width: 0;
+    padding: 7px 4px;
+    overflow-wrap: anywhere;
+  }
+  .cmp-opt-name,
+  .cmp-crit,
+  .cmp-val {
+    font-size: max(9px, var(--fs-2xs));
+  }
+  .cmp-val {
+    gap: 3px;
+  }
+  .cmp-tick {
+    display: none;
+  }
+  .cmp-pick {
+    padding-inline: 3px;
+  }
 }
 
 /* heard transcript in composer */

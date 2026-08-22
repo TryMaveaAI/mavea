@@ -344,8 +344,34 @@ export function SysArchDiagram({
   const Ic = Icon[icon] || Icon.share;
   const uid = useId().replace(/:/g, '');
 
-  const safeNodes = useMemo(() => (Array.isArray(nodes) ? nodes : []), [nodes]);
-  const safeEdges = useMemo(() => (Array.isArray(edges) ? edges : []), [edges]);
+  const graph = useMemo(() => {
+    const aliases = new Map<string, string>();
+    const safeNodes = (Array.isArray(nodes) ? nodes : []).map((node, index) => {
+      const rawId = typeof node?.id === 'string' ? node.id.trim() : '';
+      const label =
+        typeof node?.label === 'string' && node.label.trim()
+          ? node.label.trim()
+          : `Node ${index + 1}`;
+      const id = `${rawId || label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-') || 'node'}:${index}`;
+      for (const alias of [rawId, label]) {
+        const normalized = alias.trim().toLocaleLowerCase();
+        if (normalized && !aliases.has(normalized)) aliases.set(normalized, id);
+      }
+      return { ...node, id, label };
+    });
+    const safeEdges = (Array.isArray(edges) ? edges : []).flatMap((edge): SysArchEdge[] => {
+      const from = aliases.get(
+        typeof edge?.from === 'string' ? edge.from.trim().toLocaleLowerCase() : '',
+      );
+      const to = aliases.get(
+        typeof edge?.to === 'string' ? edge.to.trim().toLocaleLowerCase() : '',
+      );
+      return from && to ? [{ ...edge, from, to }] : [];
+    });
+    return { nodes: safeNodes, edges: safeEdges };
+  }, [nodes, edges]);
+  const safeNodes = graph.nodes;
+  const safeEdges = graph.edges;
 
   const vbW = useMemo(() => computeVbW(safeNodes, safeEdges), [safeNodes, safeEdges]);
   const vbH = useMemo(() => computeVbH(safeNodes, safeEdges), [safeNodes, safeEdges]);

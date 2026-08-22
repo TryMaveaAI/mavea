@@ -740,7 +740,7 @@
 /* Ticks */
 .lr-gc-tick {
   fill: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 9.25px;
   font-variant-numeric: tabular-nums;
 }
 .lr-gc-axis-lbl {

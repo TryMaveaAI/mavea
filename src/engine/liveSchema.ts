@@ -86,6 +86,7 @@ import {
 import { Icon, ICON_KEYS, type IconKey } from '../icons/icons';
 import { completedBlocks as recoverBlocks, extractStringField } from '../live/streamParse';
 import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.generated';
+import { enumValuesFromHint } from '../canvas/blocks/catalog/propHints';
 import { resolvesKeyedRows, resolvesTextItems } from '../canvas/lib/empty';
 import {
   trimToSentence,
@@ -394,6 +395,8 @@ ANSWER THE QUESTION FIRST — IN FULL — then make it beautiful. Substance befo
 - "explain / what is / how does X work" → a real, substantive explanation, not a single sentence.
 - "tell me about / overview / compare X" → go wide: many angles and many visuals.
 Fill each block COMPLETELY — list EVERY step, ingredient, or option the answer genuinely needs; never stop at two or three just to look tidy. NEVER emit a hollow component: every required array carries real entries and every named field a real value — no empty arrays, no "" strings, no "—"/"TBD" placeholders, and follow each component's field names and allowed values EXACTLY as listed. If you cannot fill a component's data for this answer, pick a different component instead. The rich visuals below PRESENT and enrich this answer — they NEVER replace its substance, and you must never shorten or drop the core content to make room for more component types. A complete answer in 6 blocks beats a shallow one in 12.
+
+COMPONENT CONTRACTS ARE STRICT — treat every "needs", item shape, required nested path, hint, enum, id, and reference printed below as executable schema, not a suggestion. Required strings are nonblank; object-array items contain every required field; enum values match one printed value exactly; ids inside a block are unique and nonblank; every edge/link/reference names an id that exists in that same block and never points to itself unless the component explicitly says it may. Do not invent alternate field names. If you cannot satisfy the complete contract with real data, OMIT that component and choose a simpler offered block you can fill correctly. Never emit a partial visual and expect the UI to repair it.
 
 BLOCK SELECTION — PRIORITY ORDER (the per-turn menu is the STAR, not the common types):
 1. LEAD WITH THE PER-TURN MENU — the "HERO COMPONENTS" listed below were hand-picked from a library of ${LIBRARY_SIZE_LABEL} specifically for THIS question. Build the canvas AROUND 3-4 of them; they are what make the answer feel designed for this exact topic. An answer assembled only from the common types is a GENERIC, BORING FAILURE — exactly what every other chatbot produces. Reach into the menu FIRST.
@@ -1456,6 +1459,7 @@ function coerceToReferenceShape(
   reference: unknown,
   canonicalItemFields: ReadonlyMap<string, ReadonlySet<string>>,
   optionalFields: ReadonlySet<string>,
+  requiredPaths: ReadonlySet<string>,
   openRecordPaths: ReadonlySet<string>,
   nestedEnums: ReadonlyMap<string, NestedEnum>,
   path: string,
@@ -1499,6 +1503,7 @@ function coerceToReferenceShape(
               itemReference,
               canonicalItemFields,
               optionalFields,
+              requiredPaths,
               openRecordPaths,
               nestedEnums,
               `${path}[]`,
@@ -1534,6 +1539,7 @@ function coerceToReferenceShape(
           sample,
           canonicalItemFields,
           optionalFields,
+          requiredPaths,
           openRecordPaths,
           nestedEnums,
           `${path}.${k}`,
@@ -1550,6 +1556,7 @@ function coerceToReferenceShape(
     for (const [key, fieldReference] of fields) {
       if (!(key in input)) {
         const optionalScalar =
+          !requiredPaths.has(`${path}.${key}`) &&
           !requiredCanonicalFields.has(key) &&
           (typeof fieldReference === 'string' || typeof fieldReference === 'boolean');
         if (optionalScalar || optionalFields.has(`${path}.${key}`)) continue;
@@ -1560,12 +1567,19 @@ function coerceToReferenceShape(
         fieldReference,
         canonicalItemFields,
         optionalFields,
+        requiredPaths,
         openRecordPaths,
         nestedEnums,
         `${path}.${key}`,
         depth + 1,
       );
       if (coerced === INVALID_STRUCTURE) return INVALID_STRUCTURE;
+      if (
+        (requiredCanonicalFields.has(key) || requiredPaths.has(`${path}.${key}`)) &&
+        typeof coerced === 'string' &&
+        !coerced.trim()
+      )
+        return INVALID_STRUCTURE;
       // An `icon` at any depth is a registry key, not display text: a hallucinated name is
       // dropped here (the item renders fine without one) instead of reaching a renderer whose
       // `Icon[name]` lookup would come back undefined. Same contract coerceIcon enforces for
@@ -1605,24 +1619,6 @@ function coerceToReferenceShape(
     return out;
   }
   return INVALID_STRUCTURE;
-}
-
-/** Recover a closed string enum from a hint such as `"sin" | "cos" | "exp"`. One quoted
- * example is descriptive, not a closed set; two or more alternatives form an enforceable
- * vocabulary. */
-function enumValuesFromHint(hint: string | undefined): ReadonlySet<string> | null {
-  // Quoted examples separated by prose ("A", "B", or "C") are not an enum. Only the catalog's
-  // explicit pipe vocabulary ("a" | "b") closes the set; otherwise valid fixture/model values
-  // such as a person's relationship or an arbitrary magnitude would be rejected accidentally.
-  if (!hint || !/\|\s*["']/.test(hint)) return null;
-  // An "e.g." BEFORE the first quoted value marks the whole pipe list as illustrative
-  // ('e.g. "TypeError"|"ValueError"') — enforcing it would reject every legitimate value the
-  // example didn't happen to include. An "e.g." later in the hint is just descriptive prose
-  // after a genuine vocabulary and doesn't reopen the set.
-  const egAt = hint.indexOf('e.g.');
-  if (egAt !== -1 && egAt < hint.search(/["']/)) return null;
-  const values = [...hint.matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
-  return values.length >= 2 ? new Set(values) : null;
 }
 
 /** Snap a model-authored value onto a closed vocabulary: exact first, then a trimmed,
@@ -1696,6 +1692,7 @@ function coerceGeneric(
       .filter(([, hint]) => /\boptional\b/i.test(hint))
       .map(([path]) => path),
   );
+  const requiredPaths = new Set(meta.requiredPaths ?? []);
   const openRecordPaths = OPEN_RECORD_PATHS[meta.type] ?? NO_OPEN_RECORDS;
   // Closed vocabularies the catalog declares on NESTED fields ('columns[].stage', 'diff[].t') —
   // normalized during reference projection so an off-vocabulary value can't validate and then be
@@ -1704,6 +1701,9 @@ function coerceGeneric(
   const strictVocabPaths = new Set<string>();
   const registerClosedVocab = (spec: ItemSpec, path: string): void => {
     if (spec.closedVocab && spec.text) strictVocabPaths.add(`${path}[].${spec.text}`);
+    for (const field of spec.closedVocabFields ?? []) {
+      strictVocabPaths.add(`${path}[].${field}`);
+    }
     if (spec.children) registerClosedVocab(spec.children, `${path}[].${spec.children.prop}`);
   };
   for (const spec of meta.itemShapes ?? []) registerClosedVocab(spec, spec.prop);
@@ -1725,6 +1725,7 @@ function coerceGeneric(
       (reference as Record<string, unknown>)[key],
       canonicalItemFields,
       optionalFields,
+      requiredPaths,
       openRecordPaths,
       nestedEnums,
       key,

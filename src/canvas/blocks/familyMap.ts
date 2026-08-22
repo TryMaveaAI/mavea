@@ -14,6 +14,7 @@ export type BlockFamily =
   | 'flows'
   | 'docs'
   | 'ai'
+  | 'briefs'
   | 'media'
   | 'layout'
   | 'status'
@@ -39,6 +40,7 @@ export const BLOCK_FAMILIES: readonly BlockFamily[] = [
   'flows',
   'docs',
   'ai',
+  'briefs',
   'media',
   'layout',
   'status',
@@ -58,6 +60,24 @@ export const BLOCK_FAMILIES: readonly BlockFamily[] = [
 ];
 
 export const FAMILY_OF: Record<string, BlockFamily> = {
+  // — briefs —
+  decisionrecord: 'briefs',
+  assumptionledger: 'briefs',
+  requirementboard: 'briefs',
+  experimentplan: 'briefs',
+  negotiationplan: 'briefs',
+  stakeholdermap: 'briefs',
+  serviceblueprint: 'briefs',
+  approvalflow: 'briefs',
+  resourceplan: 'briefs',
+  maintenanceplan: 'briefs',
+  contactdirectory: 'briefs',
+  tripbudget: 'briefs',
+  careinstructions: 'briefs',
+  clausecompare: 'briefs',
+  incidentbrief: 'briefs',
+  coveragecheck: 'briefs',
+  offerbreakdown: 'briefs',
   // — charts1 —
   treemap: 'charts1',
   sunburst: 'charts1',

@@ -13,6 +13,7 @@ import { flowsRegistry } from '../canvas/blocks/flows/registry';
 import { docsRegistry } from '../canvas/blocks/docs/registry';
 import { referenceRegistry } from '../canvas/blocks/reference/registry';
 import { aiRegistry } from '../canvas/blocks/ai/registry';
+import { briefsRegistry } from '../canvas/blocks/briefs/registry';
 import { mediaRegistry } from '../canvas/blocks/media/registry';
 import { layoutRegistry } from '../canvas/blocks/layout/registry';
 import { composeRegistry } from '../canvas/blocks/compose/registry';
@@ -48,6 +49,7 @@ export const FAMILIES: FamilyDef[] = [
   { id: 'docs', label: 'Documents & evidence', registry: docsRegistry },
   { id: 'reference', label: 'Reference & language', registry: referenceRegistry },
   { id: 'ai', label: 'AI & reasoning', registry: aiRegistry },
+  { id: 'briefs', label: 'Applied briefs', registry: briefsRegistry },
   { id: 'layout', label: 'Layout & content', registry: layoutRegistry },
   { id: 'compose', label: 'Compose & messages', registry: composeRegistry },
   { id: 'everyday', label: 'Everyday & utilities', registry: everydayRegistry },

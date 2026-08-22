@@ -16,7 +16,7 @@
 // twice reaches for different cool visuals, and the long tail finally gets surfaced. The
 // model still makes the final semantic pick, and the base floor is always present, so a
 // novel-but-ill-fitting candidate can never break or empty the canvas.
-import type { ComponentMeta } from '../../canvas/blocks/catalog/meta';
+import type { ComponentMeta, ItemSpec } from '../../canvas/blocks/catalog/meta';
 import type { ComponentFacts } from '../../canvas/blocks/catalog/facts';
 import { catalogMeta } from '../../canvas/blocks/catalog/lookup';
 import { ensureDetails } from '../../canvas/blocks/catalog/details';
@@ -411,9 +411,14 @@ function itemShapeClause(m: ComponentMeta): string {
   const specs = m.itemShapes ?? [];
   const strs = m.stringItems ?? [];
   if (!specs.length && !strs.length) return '';
-  const one = (s: { prop: string; text?: string; children?: unknown }): string => {
-    const child = s.children as Parameters<typeof one>[0] | undefined;
-    const fields = [s.text, child ? one(child) : undefined].filter(Boolean).join(', ');
+  const one = (s: ItemSpec): string => {
+    const fields = [
+      s.text,
+      ...(s.requiredFields ?? []).filter((field) => field !== s.text),
+      s.children ? one(s.children) : undefined,
+    ]
+      .filter(Boolean)
+      .join(', ');
     return `${s.prop}[]: {${fields}}`;
   };
   // stringItems are the arrays the renderer reads as PLAIN strings — teach that explicitly,
@@ -436,6 +441,10 @@ function propHintsClause(m: ComponentMeta): string {
   return ` · hints: ${entries.map(([k, v]) => `${k}=${v}`).join(', ')}`;
 }
 
+function requiredPathsClause(m: ComponentMeta): string {
+  return m.requiredPaths?.length ? ` · required nested: ${m.requiredPaths.join(', ')}` : '';
+}
+
 function describe(m: ComponentMeta, withExample = false, dense = false): string {
   const needs = m.requires.length ? m.requires.join(', ') : '—';
   // A concrete, demo-sourced example is the most reliable thing an LLM can copy, so when one
@@ -447,10 +456,10 @@ function describe(m: ComponentMeta, withExample = false, dense = false): string 
   // optional fields — the parts that actually prevent blank cards.
   const ex = withExample ? exampleFor(m.type, dense) : null;
   if (ex)
-    return `- ${m.type} — ${m.blurb} · needs: ${needs}${contentBudgetPromptClause(m)} · example: ${ex}`;
+    return `- ${m.type} — ${m.blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${propHintsClause(m)} · example: ${ex}`;
   const extra = m.optional.slice(0, TEACH_OPTIONAL);
   const richer = extra.length ? ` · richer with: ${extra.join(', ')}` : '';
-  return `- ${m.type} — ${m.blurb} · needs: ${needs}${itemShapeClause(m)}${contentBudgetPromptClause(m)}${propHintsClause(m)}${richer}`;
+  return `- ${m.type} — ${m.blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${propHintsClause(m)}${richer}`;
 }
 
 /** The always-present common blocks (the base floor), with their fields taught too, so the
@@ -495,6 +504,10 @@ function buildMenu(chosen: ComponentFacts[], fitOf: ReadonlyMap<string, number>)
       'fill in the rest with the common blocks below. Pick only components that genuinely FIT this',
       "answer's content — a striking visual used for data it wasn't meant for reads as a mistake;",
       'when in doubt prefer the clearer block. Use the exact prop NAMES and printed limits shown.',
+      'Treat every needs/item-shape/required-nested/hints clause as an executable contract: all',
+      'required strings are nonblank, ids are unique, references resolve to an existing id, and',
+      'closed values match exactly. If you cannot satisfy a contract, omit that block and use a',
+      'simpler offered type; never send a partial or placeholder-shaped component.',
       'The example shows SHAPE and DENSITY, not the answer. Prioritize the highest-value real items',
       'that fit; summarize any remainder and offer it as a follow-up instead of cramming, shrinking,',
       "or overflowing the card. Use the ANSWER'S OWN real values — never copy example values:",

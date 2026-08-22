@@ -44,36 +44,35 @@ const FIRST_LINE_ASCENT = 13;
  *  faces made it worse. Sized so the fonts can grow ~20% and the bands still clear. */
 const BADGE_CLEARANCE = 16;
 
-/** Greedy word-wrap to `maxLines`, ellipsizing the last line if it still overflows. Pure and
- *  bounded — a pathological single long word is hard-truncated, never looped. Local copy of
- *  the same idiom every sibling in this family carries (CycleWheel, CausationChain, …). */
-function wrap(text: string, perLine: number, maxLines: number): string[] {
+/** Greedy word-wrap that preserves every character. Live validation bounds input size; the
+ *  renderer's job is to grow with that valid content rather than silently ellipsize the cause. */
+function wrap(text: string, perLine: number): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let cur = '';
-  let truncated = false;
-  for (const w of words) {
-    const next = cur ? `${cur} ${w}` : w;
-    if (next.length <= perLine || !cur) {
-      cur = next;
-    } else {
-      lines.push(cur);
-      cur = w;
-      if (lines.length === maxLines) {
-        truncated = true;
+  for (const word of words) {
+    const chunks: string[] = [];
+    for (let offset = 0; offset < word.length; offset += perLine) {
+      chunks.push(word.slice(offset, offset + perLine));
+    }
+    for (const chunk of chunks) {
+      if (chunk.length === perLine) {
+        if (cur) lines.push(cur);
+        lines.push(chunk);
         cur = '';
-        break;
+        continue;
+      }
+
+      const next = cur ? `${cur} ${chunk}` : chunk;
+      if (next.length <= perLine || !cur) {
+        cur = next;
+      } else {
+        lines.push(cur);
+        cur = chunk;
       }
     }
   }
-  if (cur && lines.length < maxLines) lines.push(cur);
-  if (lines.length) {
-    const li = lines.length - 1;
-    let last = lines[li];
-    if (last.length > perLine) last = last.slice(0, perLine - 1).trimEnd();
-    if (truncated || lines[li].length > perLine) last = last.replace(/[…\s]*$/, '') + '…';
-    lines[li] = last;
-  }
+  if (cur) lines.push(cur);
   return lines.length ? lines : [''];
 }
 
@@ -111,7 +110,7 @@ export function FiveWhyChain({
     const built: Row[] = [];
     let y = PAD_TOP;
 
-    const problemLines = wrap(typeof problem === 'string' ? problem : '', CHARS_PER_LINE, 3);
+    const problemLines = wrap(typeof problem === 'string' ? problem : '', CHARS_PER_LINE);
     const problemH = rowHeight(0, problemLines.length);
     built.push({
       kind: 'problem',
@@ -132,8 +131,8 @@ export function FiveWhyChain({
     entries.forEach((w, i) => {
       const isFinalRow = i === lastIdx && !safeRootCause;
       const question = typeof w.question === 'string' ? w.question.trim() : '';
-      const questionLines = question ? wrap(question, CHARS_PER_LINE, 2) : [];
-      const answerLines = wrap(w.answer, CHARS_PER_LINE, 3);
+      const questionLines = question ? wrap(question, CHARS_PER_LINE) : [];
+      const answerLines = wrap(w.answer, CHARS_PER_LINE);
       const h = rowHeight(questionLines.length, answerLines.length);
       built.push({
         kind: isFinalRow ? 'root' : 'why',
@@ -147,7 +146,7 @@ export function FiveWhyChain({
     });
 
     if (safeRootCause) {
-      const rootLines = wrap(safeRootCause, CHARS_PER_LINE, 3);
+      const rootLines = wrap(safeRootCause, CHARS_PER_LINE);
       const h = rowHeight(0, rootLines.length);
       built.push({
         kind: 'root',

@@ -81,4 +81,6 @@ export const SHARD_LOADERS: (() => Promise<{ E: Record<string, unknown> }>)[] = 
   () => import('./shard074'),
   () => import('./shard075'),
   () => import('./shard076'),
+  () => import('./shard077'),
+  () => import('./shard078'),
 ];

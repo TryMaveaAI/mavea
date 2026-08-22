@@ -91,3 +91,15 @@ describe('present.css — the retired persona theming system stays retired', () 
     }
   });
 });
+
+describe('Present cold-load handoff', () => {
+  it('keeps the current answer visible until the presentation chunk is ready', () => {
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+    expect(live).toMatch(/presentationDeckLoad\.preload\(\)\.then\(enter, enter\)/);
+    expect(live).toMatch(/presentationPreparing\s*&&[\s\S]*?className="preso-preparing"/);
+
+    const preparing = css.match(/\.preso-preparing\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(preparing).toMatch(/position:\s*fixed/);
+    expect(preparing).not.toMatch(/inset:\s*0(?:\s|;)/);
+  });
+});

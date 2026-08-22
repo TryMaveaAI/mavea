@@ -152,6 +152,23 @@ describe('the fallback invariant — a failed block still shows its content', ()
     expect(fb!.textContent).toContain('Orphan content');
     expect(fb!.textContent).toContain('first fact');
   });
+
+  it('a block with no projectable content still renders an explicit readable state', () => {
+    const block = {
+      type: 'nosuchblock',
+      col: 6,
+      delay: 0,
+      id: 'live-empty',
+      props: { enabled: true, count: 0, metadata: {} },
+    } as unknown as Block;
+
+    const { container } = render(
+      <TopicCanvas data={specFor([block])} spot={null} built={{}} onProve={() => {}} />,
+    );
+    const fallback = container.querySelector('.fb-card');
+    expect(fallback).not.toBeNull();
+    expect(fallback?.textContent).toContain('No readable details were returned for this visual.');
+  });
 });
 
 describe('projectText — the textual projection behind FallbackCard', () => {
@@ -178,6 +195,19 @@ describe('projectText — the textual projection behind FallbackCard', () => {
     expect(projectText('just a string').lines).toEqual([]);
     expect(projectText([1, 2, 3]).lines).toEqual([]);
     expect(projectText({ a: { deeply: { nested: true } }, b: [[1], [2]] }).lines).toEqual([]);
+  });
+
+  it('recovers readable content from nested objects without unbounded recursion', () => {
+    const cyclic: Record<string, unknown> = {
+      root: {
+        children: [{ label: 'Prongs', detail: 'James Potter' }, { name: 'Padfoot' }],
+      },
+    };
+    cyclic.self = cyclic;
+    const projected = projectText(cyclic);
+    expect(projected.lines).toContain('Prongs — James Potter');
+    expect(projected.lines).toContain('Padfoot');
+    expect(projected.lines.length).toBeLessThanOrEqual(14);
   });
 
   it('caps runaway line counts and reports the remainder', () => {

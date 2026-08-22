@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { FormpanelProps, FormField } from './types';
@@ -53,20 +53,23 @@ export function Formpanel({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.edit;
+  const formId = useId().replace(/:/g, '');
+  const stateKey = (field: FormField, index: number): string => `${field.key || 'field'}:${index}`;
   const [vals, setVals] = useState<Record<string, string>>(() => {
     const o: Record<string, string> = {};
-    for (const f of fields)
-      o[f.key] = f.value ?? (f.type === 'select' ? (f.options?.[0] ?? '') : '');
+    fields.forEach((field, index) => {
+      o[stateKey(field, index)] =
+        field.value ?? (field.type === 'select' ? (field.options?.[0] ?? '') : '');
+    });
     return o;
   });
   const [errs, setErrs] = useState<Record<string, string | null>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [done, setDone] = useState(false);
 
-  const setField = (k: string, v: string) => {
+  const setField = (k: string, field: FormField, v: string) => {
     setVals((s) => ({ ...s, [k]: v }));
-    const f = fields.find((x) => x.key === k);
-    if (f && touched[k]) setErrs((e) => ({ ...e, [k]: validate(f, v) }));
+    if (touched[k]) setErrs((e) => ({ ...e, [k]: validate(field, v) }));
     setDone(false);
   };
 
@@ -74,12 +77,13 @@ export function Formpanel({
     const next: Record<string, string | null> = {};
     const t: Record<string, boolean> = {};
     let ok = true;
-    for (const f of fields) {
-      const err = validate(f, vals[f.key] ?? '');
-      next[f.key] = err;
-      t[f.key] = true;
+    fields.forEach((field, index) => {
+      const key = stateKey(field, index);
+      const err = validate(field, vals[key] ?? '');
+      next[key] = err;
+      t[key] = true;
       if (err) ok = false;
-    }
+    });
     setErrs(next);
     setTouched(t);
     if (ok) setDone(true);
@@ -99,25 +103,27 @@ export function Formpanel({
       {heading && <div className="fp-heading">{heading}</div>}
 
       <div className="fp-fields">
-        {fields.map((f) => {
-          const err = errs[f.key];
-          const val = vals[f.key] ?? '';
+        {fields.map((f, index) => {
+          const key = stateKey(f, index);
+          const inputId = `fp-${formId}-${index}`;
+          const err = errs[key];
+          const val = vals[key] ?? '';
           return (
-            <div className={`fp-field ${err ? 'err' : ''}`} key={f.key}>
-              <label className="fp-label" htmlFor={`fp-${f.key}`}>
+            <div className={`fp-field ${err ? 'err' : ''}`} key={key}>
+              <label className="fp-label" htmlFor={inputId}>
                 {f.label}
                 {f.required && <span className="fp-req">*</span>}
               </label>
               {f.type === 'select' ? (
                 <div className="fp-select-wrap">
                   <select
-                    id={`fp-${f.key}`}
+                    id={inputId}
                     className="fp-input fp-select"
                     value={val}
-                    onChange={(e) => setField(f.key, e.target.value)}
+                    onChange={(e) => setField(key, f, e.target.value)}
                   >
-                    {(f.options || []).map((o) => (
-                      <option key={o} value={o}>
+                    {(f.options || []).map((o, optionIndex) => (
+                      <option key={`${o}-${optionIndex}`} value={o}>
                         {o}
                       </option>
                     ))}
@@ -126,28 +132,28 @@ export function Formpanel({
                 </div>
               ) : f.type === 'textarea' ? (
                 <textarea
-                  id={`fp-${f.key}`}
+                  id={inputId}
                   className="fp-input fp-textarea"
                   value={val}
                   placeholder={f.placeholder}
-                  onChange={(e) => setField(f.key, e.target.value)}
+                  onChange={(e) => setField(key, f, e.target.value)}
                   onBlur={() => {
-                    setTouched((t) => ({ ...t, [f.key]: true }));
-                    setErrs((e) => ({ ...e, [f.key]: validate(f, val) }));
+                    setTouched((t) => ({ ...t, [key]: true }));
+                    setErrs((e) => ({ ...e, [key]: validate(f, val) }));
                   }}
                   rows={2}
                 />
               ) : (
                 <input
-                  id={`fp-${f.key}`}
+                  id={inputId}
                   className="fp-input"
                   type={f.type === 'email' ? 'email' : 'text'}
                   value={val}
                   placeholder={f.placeholder}
-                  onChange={(e) => setField(f.key, e.target.value)}
+                  onChange={(e) => setField(key, f, e.target.value)}
                   onBlur={() => {
-                    setTouched((t) => ({ ...t, [f.key]: true }));
-                    setErrs((e) => ({ ...e, [f.key]: validate(f, val) }));
+                    setTouched((t) => ({ ...t, [key]: true }));
+                    setErrs((e) => ({ ...e, [key]: validate(f, val) }));
                   }}
                 />
               )}

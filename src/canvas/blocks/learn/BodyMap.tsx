@@ -493,13 +493,13 @@ export function BodyMap({
         {/* Legend — only the highlighted regions (with their notes). */}
         {regions.length > 0 && (
           <ul className="bm-legend" aria-label="Highlighted regions">
-            {regions.map((r) => {
+            {regions.map((r, index) => {
               const color = r.color ?? 'var(--presence)';
               const segs = REGION_TO_SEGMENTS[r.id];
               const name =
                 r.label ?? (segs?.length ? SEGMENT_LABEL[view][segs[0]] : undefined) ?? r.id;
               return (
-                <li key={r.id} className="bm-legend-item">
+                <li key={`${r.id}-${index}`} className="bm-legend-item">
                   <span
                     className="bm-legend-dot"
                     style={{ background: color } as CSSProperties}

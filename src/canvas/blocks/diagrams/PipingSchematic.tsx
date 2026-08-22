@@ -96,16 +96,41 @@ export function PipingSchematic({
   // Per-instance arrow marker id so two schematics in one answer don't share a def.
   const arrowId = `dg-pip-arrow-${useId().replace(/:/g, '')}`;
   const arrow = `url(#${arrowId})`;
+  const graph = useMemo(() => {
+    const aliases = new Map<string, string>();
+    const safeComponents = (Array.isArray(components) ? components : []).map((component, index) => {
+      const rawId = typeof component?.id === 'string' ? component.id.trim() : '';
+      const label = typeof component?.label === 'string' ? component.label.trim() : '';
+      const id = `${rawId || label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-') || 'component'}:${index}`;
+      for (const alias of [rawId, label]) {
+        const normalized = alias.trim().toLocaleLowerCase();
+        if (normalized && !aliases.has(normalized)) aliases.set(normalized, id);
+      }
+      return { ...component, id, label };
+    });
+    const safeLines = (Array.isArray(lines) ? lines : []).flatMap((line) => {
+      const from = aliases.get(
+        typeof line?.from === 'string' ? line.from.trim().toLocaleLowerCase() : '',
+      );
+      const to = aliases.get(
+        typeof line?.to === 'string' ? line.to.trim().toLocaleLowerCase() : '',
+      );
+      return from && to ? [{ ...line, from, to }] : [];
+    });
+    return { components: safeComponents, lines: safeLines };
+  }, [components, lines]);
+  const safeComponents = graph.components;
+  const safeLines = graph.lines;
 
   // Honour explicit coords; otherwise tile components on a centred grid.
   const pos = useMemo(() => {
-    const n = Math.max(1, components.length);
+    const n = Math.max(1, safeComponents.length);
     const cols = Math.min(n, Math.ceil(Math.sqrt(n) * 1.5));
     const rows = Math.ceil(n / cols);
     const cw = VB_W / (cols + 1);
     const ch = VB_H / (rows + 1);
     const m: Record<string, { x: number; y: number }> = {};
-    components.forEach((c, i) => {
+    safeComponents.forEach((c, i) => {
       if (c.x !== undefined && c.y !== undefined) {
         m[c.id] = { x: c.x, y: c.y };
       } else {
@@ -115,7 +140,7 @@ export function PipingSchematic({
       }
     });
     return m;
-  }, [components]);
+  }, [safeComponents]);
 
   return (
     <div
@@ -140,7 +165,7 @@ export function PipingSchematic({
             </marker>
           </defs>
           {/* connector lines under components, routed orthogonally with an elbow */}
-          {lines.map((l, i) => {
+          {safeLines.map((l, i) => {
             const a = pos[l.from];
             const b = pos[l.to];
             if (!a || !b) return null;
@@ -163,7 +188,7 @@ export function PipingSchematic({
             );
           })}
           {/* components */}
-          {components.map((c) => {
+          {safeComponents.map((c) => {
             const p = pos[c.id];
             if (!p) return null;
             return (

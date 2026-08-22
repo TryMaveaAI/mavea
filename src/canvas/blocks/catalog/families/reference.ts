@@ -286,6 +286,10 @@ export const CATALOG_REFERENCE: ComponentCatalog = [
     colDefault: 8,
     colMin: 6,
     coercer: 'generic',
+    itemShapes: [
+      { prop: 'roots', requiredFields: ['form', 'lang'] },
+      { prop: 'descendants', requiredFields: ['form', 'lang'] },
+    ],
     blurb:
       'Word-origin tree: roots flow in from the left, the focus word sits centre, descendants/cognates branch out to the right. Each entry carries a language-of-origin badge and optional gloss. Use for vocabulary tuition, historical linguistics, GMAT/GRE word-roots prep.',
     propHints: {

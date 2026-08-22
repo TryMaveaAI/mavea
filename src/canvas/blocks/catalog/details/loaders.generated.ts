@@ -85,4 +85,7 @@ export const SHARD_LOADERS: (() => Promise<{ D: Record<string, ComponentDetail> 
   () => import('./shard073'),
   () => import('./shard074'),
   () => import('./shard075'),
+  () => import('./shard076'),
+  () => import('./shard077'),
+  () => import('./shard078'),
 ];

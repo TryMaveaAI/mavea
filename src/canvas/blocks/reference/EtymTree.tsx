@@ -22,8 +22,8 @@ const BOX_H = 38;
 const ROW_GAP = 14;
 
 // Language family colour hints — readable in light and dark via token mixing.
-function langColor(lang: string): string {
-  const l = lang.toLowerCase();
+function langColor(lang: unknown): string {
+  const l = typeof lang === 'string' ? lang.toLowerCase() : '';
   if (l.includes('proto') || l.includes('pie') || l.includes('indo')) return 'var(--text-muted)';
   if (l.includes('latin') || l.includes('greek') || l.includes('ancient')) return 'var(--presence)';
   if (
@@ -52,7 +52,12 @@ function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 export function EtymTree({ word, roots, descendants, note, footer, delay }: Props) {
+  const safeWord = text(word) || 'Word';
   const layout = useMemo(() => {
     const safeRoots = roots ?? [];
     const safeDesc = descendants ?? [];
@@ -110,7 +115,7 @@ export function EtymTree({ word, roots, descendants, note, footer, delay }: Prop
           className="et-svg"
           viewBox={`0 0 ${VB_W} ${vbH}`}
           role="img"
-          aria-label={`Etymology of "${word}"`}
+          aria-label={`Etymology of "${safeWord}"`}
           preserveAspectRatio="xMidYMid meet"
         >
           {/* Root → word connectors */}
@@ -139,7 +144,10 @@ export function EtymTree({ word, roots, descendants, note, footer, delay }: Prop
 
           {/* Root boxes */}
           {rootBoxes.map(({ r, x, y, cy, color }, i) => {
-            const langText = r.lang + (r.gloss ? ` · ${r.gloss}` : '');
+            const form = text(r.form);
+            const lang = text(r.lang);
+            const gloss = text(r.gloss);
+            const langText = lang + (gloss ? ` · ${gloss}` : '');
             return (
               <g key={`r${i}`}>
                 <rect
@@ -152,8 +160,8 @@ export function EtymTree({ word, roots, descendants, note, footer, delay }: Prop
                   style={{ stroke: color }}
                 />
                 <text x={COL_ROOTS} y={cy - 7} textAnchor="middle" className="et-form">
-                  {r.form.length > FORM_MAX_CHARS && <title>{r.form}</title>}
-                  {truncate(r.form, FORM_MAX_CHARS)}
+                  {form.length > FORM_MAX_CHARS && <title>{form}</title>}
+                  {truncate(form, FORM_MAX_CHARS)}
                 </text>
                 <text
                   x={COL_ROOTS}
@@ -179,14 +187,15 @@ export function EtymTree({ word, roots, descendants, note, footer, delay }: Prop
             className="et-word-box"
           />
           <text x={COL_WORD} y={wordCY + 5} textAnchor="middle" className="et-word">
-            {word}
+            {safeWord}
           </text>
 
           {/* Descendant boxes */}
           {descBoxes.map(({ d, x, y, cy, color }, i) => {
-            const langText = d.lang
-              ? `${d.lang}${d.gloss ? ` · ${d.gloss}` : ''}`
-              : (d.gloss ?? '');
+            const form = text(d.form);
+            const lang = text(d.lang);
+            const gloss = text(d.gloss);
+            const langText = lang ? `${lang}${gloss ? ` · ${gloss}` : ''}` : gloss;
             return (
               <g key={`d${i}`}>
                 <rect
@@ -199,8 +208,8 @@ export function EtymTree({ word, roots, descendants, note, footer, delay }: Prop
                   style={{ stroke: color }}
                 />
                 <text x={COL_DESC} y={cy - 7} textAnchor="middle" className="et-form">
-                  {d.form.length > FORM_MAX_CHARS && <title>{d.form}</title>}
-                  {truncate(d.form, FORM_MAX_CHARS)}
+                  {form.length > FORM_MAX_CHARS && <title>{form}</title>}
+                  {truncate(form, FORM_MAX_CHARS)}
                 </text>
                 <text
                   x={COL_DESC}

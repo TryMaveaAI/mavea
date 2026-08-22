@@ -97,6 +97,23 @@ const AUTHORED_KEYS = [
   'controlchart',
   'probabilitytree',
   'teachdiagram',
+  'decisionrecord',
+  'assumptionledger',
+  'requirementboard',
+  'experimentplan',
+  'negotiationplan',
+  'stakeholdermap',
+  'serviceblueprint',
+  'approvalflow',
+  'resourceplan',
+  'maintenanceplan',
+  'contactdirectory',
+  'tripbudget',
+  'careinstructions',
+  'clausecompare',
+  'incidentbrief',
+  'coveragecheck',
+  'offerbreakdown',
 ];
 
 describe('AUTHORED_EXAMPLES (per-domain split)', () => {

@@ -4,6 +4,7 @@ export type GalleryFixtureMap = Readonly<Record<string, unknown>>;
 
 const LOADERS: Readonly<Record<string, () => Promise<GalleryFixtureMap>>> = {
   "ai": () => import('./fixtures/ai.json').then((module) => module.default as GalleryFixtureMap),
+  "briefs": () => import('./fixtures/briefs.json').then((module) => module.default as GalleryFixtureMap),
   "charts1": () => import('./fixtures/charts1.json').then((module) => module.default as GalleryFixtureMap),
   "charts2": () => import('./fixtures/charts2.json').then((module) => module.default as GalleryFixtureMap),
   "code": () => import('./fixtures/code.json').then((module) => module.default as GalleryFixtureMap),

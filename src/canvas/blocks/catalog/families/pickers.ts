@@ -84,6 +84,7 @@ export const CATALOG_PICKERS: ComponentCatalog = [
     colDefault: 4,
     colMin: 4,
     coercer: 'generic',
+    itemShapes: [{ prop: 'swatches', requiredFields: ['hex'] }],
     blurb: 'Swatch grid and hue strip with hex preview.',
   }),
   createMeta('fileupload', {

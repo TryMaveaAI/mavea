@@ -1485,6 +1485,26 @@ describe('FiveWhyChain', () => {
       expect(lastY + 5).toBeLessThanOrEqual(rectY + rectH);
     }
   });
+
+  it('preserves long questions and answers instead of ellipsizing them', () => {
+    const question = Array.from({ length: 18 }, () => 'Why did the handoff fail?').join(' ');
+    const answer = Array.from({ length: 24 }, () => 'Because ownership was unclear.').join(' ');
+    const { container } = render(
+      <FiveWhyChain
+        title="Root cause"
+        problem="The release slipped."
+        whys={[{ question, answer }]}
+      />,
+    );
+
+    const renderedLines = (selector: string) =>
+      Array.from(container.querySelectorAll(`${selector} tspan`))
+        .map((line) => line.textContent)
+        .join(' ');
+    expect(renderedLines('.fwy-question')).toBe(question);
+    expect(renderedLines('.fwy-answer--root')).toBe(answer);
+    expect(container.querySelector('.fwy-stage')?.textContent).not.toContain('…');
+  });
 });
 
 // Inside a viewBox a font-size is in USER UNITS, so what reaches the eye is

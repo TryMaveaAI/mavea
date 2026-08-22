@@ -1,4 +1,4 @@
-// content/lens.ts — choosing something from the 608 to draw a piece of meaning with.
+// content/lens.ts — choosing something from the 625 to draw a piece of meaning with.
 //
 // The living world renders through four bespoke layouts, which is right for a causal web and says
 // nothing about the rest of the library. The catalog already carries, per component, the data shapes
@@ -8,7 +8,7 @@
 //
 // The load-bearing decision is how much the lens claims to be able to fill.
 //
-// Compiling arbitrary props for 608 components is not a thing anyone can do correctly — `requires`
+// Compiling arbitrary props for 625 components is not a thing anyone can do correctly — `requires`
 // names a component's prop KEYS, not their inner types, so "it needs `rows`" is not a contract. What
 // IS a contract is a set of keys whose inner shape several components genuinely share, and the
 // catalog can be asked which components speak one. So a lens owns a small number of PROP CONTRACTS

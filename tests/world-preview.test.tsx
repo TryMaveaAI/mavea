@@ -6,6 +6,8 @@
 // with no receipt beside it is exactly what the trust layer exists to prevent.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { WorldPreview } from '../src/canvas/blocks/diagrams/WorldPreview';
 import { registerWorldOpener } from '../src/live/world/openWorld';
 import { WORLD_SEED } from '../src/live/world/seed';
@@ -53,6 +55,17 @@ describe('WorldPreview', () => {
     expect(text).not.toContain('undefined');
     // The illustrative seed wears the trust layer's own badge rather than a bespoke word.
     expect(screen.getByText('ILLUSTRATIVE')).toBeTruthy();
+  });
+
+  it('keeps the illustrative badge beside the eyebrow instead of pushing it across the card', () => {
+    const { container } = mount();
+    const badge = container.querySelector('.wp-badge');
+    expect(badge?.parentElement).toHaveClass('card-eyebrow');
+
+    const css = readFileSync(join(__dirname, '../src/canvas/blocks/diagrams/styles.css'), 'utf8');
+    const rule = css.match(/\.wp-badge\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/margin-inline-start:\s*8px/);
+    expect(rule).not.toMatch(/margin-left:\s*auto/);
   });
 });
 

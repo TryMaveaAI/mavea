@@ -34,7 +34,7 @@ export function Segmented({
       </div>
 
       <div
-        className="sg-control"
+        className={`sg-control${n > 4 ? ' sg-control--dense' : ''}`}
         role="radiogroup"
         style={{ ['--sg-n' as string]: n } as CSSProperties}
       >

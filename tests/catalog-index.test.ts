@@ -45,6 +45,10 @@ describe('the generated facts index cannot go stale', () => {
         'structures.generated.ts is stale — run `pnpm gen:catalog` and commit the result',
       ).toBe(read('src/canvas/blocks/catalog/structures.generated.ts'));
       expect(
+        read(`${scratch}/fixture-contracts.generated.ts`),
+        'fixture-contracts.generated.ts is stale — run `pnpm gen:catalog` and commit the result',
+      ).toBe(read('src/canvas/blocks/catalog/fixture-contracts.generated.ts'));
+      expect(
         read(`${scratch}/details/loaders.generated.ts`),
         'detail shard loaders are stale — run `pnpm gen:catalog`',
       ).toBe(read('src/canvas/blocks/catalog/details/loaders.generated.ts'));

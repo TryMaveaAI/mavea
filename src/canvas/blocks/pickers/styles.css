@@ -580,6 +580,8 @@
 }
 .cp-swatch {
   position: relative;
+  width: 100%;
+  min-width: 0;
   aspect-ratio: 1 / 1;
   border-radius: var(--r-sm);
   cursor: pointer;
@@ -588,6 +590,11 @@
   transition:
     transform var(--m-fast) var(--ease-spring),
     box-shadow var(--m-fast);
+}
+@container (max-width: 260px) {
+  .cp-swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .cp-swatch:hover {
   transform: translateY(-2px) scale(1.05);

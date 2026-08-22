@@ -749,6 +749,27 @@ export function LiveApp(): ReactElement {
   const [presenting, setPresenting] = useState(false);
   const presentingRef = useRef(false);
   presentingRef.current = presenting;
+  const [presentationPreparing, setPresentationPreparing] = useState(false);
+  const presentationRequestRef = useRef(0);
+  const openPresentation = useCallback(() => {
+    const request = ++presentationRequestRef.current;
+    setPresentationPreparing(true);
+    // Keep the current answer painted while the split deck chunk arrives. Flipping `presenting`
+    // first applies the theatre background immediately, so a cold import used to show a gray
+    // full-screen interstitial before the first slide existed.
+    const enter = (): void => {
+      if (presentationRequestRef.current !== request) return;
+      setPresentationPreparing(false);
+      setPresenting(true);
+    };
+    void presentationDeckLoad.preload().then(enter, enter);
+  }, []);
+  useEffect(
+    () => () => {
+      presentationRequestRef.current += 1;
+    },
+    [],
+  );
   const [persona, setPersona] = useState<PersonaId>(() => readPersona());
   const [personaMenuOpen, setPersonaMenuOpen] = useState(false);
   const [roomFrames, setRoomFrames] = useState<ReadonlySet<number>>(new Set());
@@ -4200,7 +4221,7 @@ export function LiveApp(): ReactElement {
     present: {
       available: !!turn.spec,
       reason: 'Once there is an answer',
-      run: () => setPresenting(true),
+      run: openPresentation,
       preload: presentationDeckLoad.preload,
     },
     track: {
@@ -4814,7 +4835,7 @@ export function LiveApp(): ReactElement {
             setShareOpen(true);
           } else if (action === 'present') {
             // From "kept this shape" — go straight into Present mode for the current canvas.
-            setPresenting(true);
+            openPresentation();
           } else if (
             action === 'answer' ||
             action === 'plan' ||
@@ -4918,6 +4939,12 @@ export function LiveApp(): ReactElement {
             <DemoOverlay driver={demoDrive} member={member} onExit={endTourToApp} />
           ) : null;
         })()}
+      {presentationPreparing && (
+        <div className="preso-preparing" role="status" aria-live="polite" aria-busy="true">
+          <span className="async-pending-spinner" aria-hidden="true" />
+          Preparing presentation…
+        </div>
+      )}
       {presenting && (
         <>
           {/* Persona style picker — top-left, ghost until hovered */}

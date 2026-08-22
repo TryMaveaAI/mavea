@@ -143,10 +143,10 @@ export function CircuitDiagram({
             );
           })}
           {/* components */}
-          {components.map((c) => (
-            <g key={c.id} transform={`translate(${c.x} ${c.y})`}>
+          {components.map((c, index) => (
+            <g key={`${c.id}-${index}`} transform={`translate(${c.x} ${c.y})`}>
               {glyph(c.kind)}
-              {c.label && (
+              {typeof c.label === 'string' && c.label && (
                 <text x={0} y={labelY(c.kind)} className="dg-cir-lbl" textAnchor="middle">
                   {c.label.length > LABEL_MAX_CHARS && <title>{c.label}</title>}
                   {truncate(c.label, LABEL_MAX_CHARS)}

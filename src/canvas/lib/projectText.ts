@@ -56,6 +56,8 @@ const TITLE_KEYS = ['title', 'label', 'heading', 'name', 'question', 'eyebrow', 
 
 const MAX_LINES = 14;
 const MAX_LINE = 200;
+const MAX_DEPTH = 6;
+const MAX_VISITS = 160;
 
 function clamp(s: string): string {
   const t = s.trim().replace(/\s+/g, ' ');
@@ -99,6 +101,46 @@ function textOfItem(item: unknown): string | null {
   return text;
 }
 
+/**
+ * Recover readable leaves from nested structures such as `root.children[]`, grouped rows, and
+ * keyed comparison objects. The walk is iterative (no attacker-controlled recursion), cycle-safe,
+ * and capped independently of the rendered line limit so a malformed payload cannot turn fallback
+ * rendering into unbounded work.
+ */
+function nestedLines(value: unknown): string[] {
+  const lines: string[] = [];
+  const seen = new Set<object>();
+  const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  let cursor = 0;
+  let visits = 0;
+
+  while (cursor < queue.length && visits < MAX_VISITS && lines.length <= MAX_LINES) {
+    const next = queue[cursor++]!;
+    visits += 1;
+    if (isContentString(next.value)) {
+      lines.push(clamp(next.value));
+      continue;
+    }
+    if (!next.value || typeof next.value !== 'object' || next.depth >= MAX_DEPTH) continue;
+    if (seen.has(next.value)) continue;
+    seen.add(next.value);
+
+    if (Array.isArray(next.value)) {
+      for (const item of next.value) queue.push({ value: item, depth: next.depth + 1 });
+      continue;
+    }
+
+    const object = next.value as Record<string, unknown>;
+    const direct = textOfItem(object);
+    if (direct) lines.push(direct);
+    for (const [key, child] of Object.entries(object)) {
+      if (SKIP_KEYS.has(key) || isContentString(child)) continue;
+      queue.push({ value: child, depth: next.depth + 1 });
+    }
+  }
+  return lines;
+}
+
 export interface ProjectedText {
   /** The block's own heading, or null when none of its props carries one. */
   title: string | null;
@@ -132,7 +174,10 @@ export function projectText(props: unknown): ProjectedText {
       for (const item of v) {
         const line = textOfItem(item);
         if (line) lines.push(line);
+        else lines.push(...nestedLines(item));
       }
+    } else if (v && typeof v === 'object') {
+      lines.push(...nestedLines(v));
     }
   }
   const more = Math.max(0, lines.length - MAX_LINES);

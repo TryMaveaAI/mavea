@@ -4,6 +4,7 @@ import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
 import { TOPIC_LIST } from '../src/data/topics';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
+import { APPLIED_EXAMPLES } from '../src/live/select/examples.applied';
 
 // TopicCanvas resolves extended blocks through the per-family loader (async chunks in the
 // app). Tests assert on the same tick, so prime the merged registry — every lookup is then
@@ -40,10 +41,20 @@ function renderBlock(block: Block) {
   );
 }
 
-/** Every block authored across every topic spec, tagged with where it came from. */
-const ALL_BLOCKS: { topic: string; index: number; block: Block }[] = TOPIC_LIST.flatMap((t) =>
+/** Every block authored across the topic corpus and the applied-brief example family. */
+const TOPIC_BLOCKS: { topic: string; index: number; block: Block }[] = TOPIC_LIST.flatMap((t) =>
   t.blocks.map((block, index) => ({ topic: t.id, index, block })),
 );
+const APPLIED_BLOCKS: { topic: string; index: number; block: Block }[] = Object.entries(
+  APPLIED_EXAMPLES,
+).map(([type, props], index) => ({
+  topic: 'applied',
+  index,
+  // These fixtures are validated against the generated live schema in live-examples.test.ts;
+  // this companion path proves the resulting production renderer also mounts cleanly.
+  block: { type, props, col: 12, delay: 0 } as Block,
+}));
+const ALL_BLOCKS = [...TOPIC_BLOCKS, ...APPLIED_BLOCKS];
 
 /** The first authored block of a given type, or fail loudly so the test is never silently empty. */
 function firstBlockOfType(type: string): Block {

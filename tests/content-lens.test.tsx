@@ -1,4 +1,4 @@
-// content-lens.test.tsx — the join between meaning and the 608.
+// content-lens.test.tsx — the join between meaning and the 625.
 //
 // A lens reads a ContentGraph subgraph, asks the CATALOG which components accept that shape and speak
 // a prop contract it can fill, and compiles props for the winner. The two things that make it a

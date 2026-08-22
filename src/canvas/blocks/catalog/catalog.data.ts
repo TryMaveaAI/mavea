@@ -11,6 +11,7 @@
 import type { ComponentCatalog } from './meta';
 
 import { CATALOG_AI } from './families/ai';
+import { CATALOG_BRIEFS } from './families/briefs';
 import { CATALOG_CHARTS1 } from './families/charts1';
 import { CATALOG_CHARTS2 } from './families/charts2';
 import { CATALOG_CODE } from './families/code';
@@ -36,6 +37,7 @@ import { CATALOG_TABLES } from './families/tables';
 
 export const RAW_CATALOG: ComponentCatalog = [
   ...CATALOG_AI,
+  ...CATALOG_BRIEFS,
   ...CATALOG_CHARTS1,
   ...CATALOG_CHARTS2,
   ...CATALOG_CODE,

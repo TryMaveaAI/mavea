@@ -44,7 +44,7 @@ export function Avatargroup({
   const [spread, setSpread] = useState(false);
   // Faces whose photo URL failed to load — they fall back to initials instead of a broken image.
   const [failed, setFailed] = useState<ReadonlySet<number>>(() => new Set());
-  const px = SIZE_PX[size];
+  const px = SIZE_PX[size] ?? SIZE_PX.md;
   const overlap = Math.round(px * 0.36);
 
   // cap visible faces so a large `max` can't overflow the card; the rest collapse into "+N"

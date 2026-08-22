@@ -1090,6 +1090,9 @@
   height: 14px;
   flex-shrink: 0;
 }
+.sg-control--dense .sg-opt-ic {
+  display: none;
+}
 /* Each option gets a third (or less) of the control, and its label is a single unbreakable word: on a
    phone the icon plus that word no longer fit, and since the options centre their content the icon
    spilled out of both ends of the pill. The label is what carries the meaning — drop the decoration

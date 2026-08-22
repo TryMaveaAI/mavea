@@ -126,6 +126,7 @@ export type ComponentDetail = Pick<
   | 'blurb'
   | 'optional'
   | 'itemShapes'
+  | 'requiredPaths'
   | 'stringItems'
   | 'propHints'
   | 'contentBudget'

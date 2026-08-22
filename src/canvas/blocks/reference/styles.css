@@ -835,12 +835,13 @@
 }
 /* one sound chunk — a box you tap to hear it; data-kind tints onset/rime/digraph/blend/silent */
 .pw-chunk {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
+  max-width: 100%;
   min-width: 38px;
   padding: 8px 12px;
   border: 1.5px solid var(--line-strong);
@@ -869,12 +870,16 @@
   border-color: var(--presence);
 }
 .pw-chunk-text {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: var(--fs-lg, 22px);
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 .pw-chunk-sound {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: var(--fs-2xs, 10px);
   font-weight: 600;

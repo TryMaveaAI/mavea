@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
-import type { RelationshipTie, RelationshipMapProps, TieKind } from './types';
+import type { RelationshipPerson, RelationshipTie, RelationshipMapProps, TieKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = RelationshipMapProps & { delay?: number };
@@ -38,6 +38,58 @@ function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
+interface RenderPerson extends RelationshipPerson {
+  /** Renderer-only identity. Model-authored ids may be blank or duplicated. */
+  renderId: string;
+}
+
+interface RenderTie extends Omit<RelationshipTie, 'source' | 'target' | 'kind'> {
+  source: string;
+  target: string;
+  kind: TieKind;
+}
+
+function aliasKey(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase() : '';
+}
+
+function tieKind(value: unknown): TieKind {
+  return typeof value === 'string' && value in KIND_STYLE ? (value as TieKind) : 'other';
+}
+
+/**
+ * Give every visible person a unique identity and resolve tie endpoints in one pass. LLM payloads
+ * commonly omit ids, repeat a name as every id, or connect by name instead of id; none of those
+ * should collapse the entire graph onto one coordinate. The index suffix makes uniqueness O(1)
+ * per person, while the alias map keeps the first unambiguous id/name target stable.
+ */
+function normalizeRelationshipGraph(
+  people: readonly RelationshipPerson[],
+  ties: readonly RelationshipTie[],
+): { people: RenderPerson[]; ties: RenderTie[] } {
+  const aliases = new Map<string, string>();
+  const normalizedPeople = people.map((person, index) => {
+    const rawId = typeof person?.id === 'string' ? person.id.trim() : '';
+    const rawName = typeof person?.name === 'string' ? person.name.trim() : '';
+    const name = rawName || `Person ${index + 1}`;
+    const base = rawId || aliasKey(name).replace(/[^a-z0-9]+/g, '-') || 'person';
+    const renderId = `${base}:${index}`;
+    for (const alias of [rawId, rawName]) {
+      const key = aliasKey(alias);
+      if (key && !aliases.has(key)) aliases.set(key, renderId);
+    }
+    return { ...person, id: rawId, name, renderId };
+  });
+
+  const normalizedTies = ties.flatMap((tie): RenderTie[] => {
+    const source = aliases.get(aliasKey(tie?.source));
+    const target = aliases.get(aliasKey(tie?.target));
+    if (!source || !target || source === target) return [];
+    return [{ ...tie, source, target, kind: tieKind(tie?.kind) }];
+  });
+  return { people: normalizedPeople, ties: normalizedTies };
+}
+
 // A typed people graph: who's connected to whom, and how. Ports Network's circle/grid
 // layout wholesale; the difference is edges carry a relationship KIND (family/ally/rival/
 // romance/colleague/other) instead of an unlabeled weight, styled by a legend below the SVG
@@ -56,50 +108,48 @@ export function RelationshipMap({
   const [hover, setHover] = useState<string | null>(null);
 
   const model = useMemo(() => {
+    const graph = normalizeRelationshipGraph(people, ties);
     const pos = new Map<string, { x: number; y: number }>();
     if (layout === 'grid') {
-      const cols = Math.ceil(Math.sqrt(people.length));
+      const cols = Math.ceil(Math.sqrt(graph.people.length));
       const cw = (W - 80) / Math.max(1, cols - 1 || 1);
-      const rows = Math.ceil(people.length / cols);
+      const rows = Math.ceil(graph.people.length / cols);
       const ch = (H - 80) / Math.max(1, rows - 1 || 1);
-      people.forEach((p, i) => {
+      graph.people.forEach((p, i) => {
         const c = i % cols,
           r = Math.floor(i / cols);
-        pos.set(p.id, { x: 40 + c * cw, y: 40 + r * ch });
+        pos.set(p.renderId, { x: 40 + c * cw, y: 40 + r * ch });
       });
     } else {
       const R = 120;
-      people.forEach((p, i) => {
-        const a = (i / Math.max(1, people.length)) * Math.PI * 2 - Math.PI / 2;
-        pos.set(p.id, { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) });
+      graph.people.forEach((p, i) => {
+        const a = (i / Math.max(1, graph.people.length)) * Math.PI * 2 - Math.PI / 2;
+        pos.set(p.renderId, { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) });
       });
     }
     const adj = new Map<string, Set<string>>();
-    people.forEach((p) => adj.set(p.id, new Set()));
-    ties.forEach((t) => {
+    graph.people.forEach((p) => adj.set(p.renderId, new Set()));
+    graph.ties.forEach((t) => {
       adj.get(t.source)?.add(t.target);
       adj.get(t.target)?.add(t.source);
     });
-    return { pos, adj };
+    return { ...graph, pos, adj };
   }, [people, ties, layout]);
 
   const neighbors = hover ? model.adj.get(hover) : null;
-  const edgeLit = (t: RelationshipTie) => !hover || t.source === hover || t.target === hover;
+  const edgeLit = (t: RenderTie) => !hover || t.source === hover || t.target === hover;
   const nodeLit = (id: string) => !hover || id === hover || !!neighbors?.has(id);
   // Highest-degree person is the hub — the natural gesture target while Mavéa talks.
   const salientId = useMemo(() => {
-    if (!people.length) return null;
-    return people.reduce((best, p) => {
-      const degP = model.adj.get(p.id)?.size ?? 0;
-      const degB = model.adj.get(best.id)?.size ?? 0;
+    if (!model.people.length) return null;
+    return model.people.reduce((best, p) => {
+      const degP = model.adj.get(p.renderId)?.size ?? 0;
+      const degB = model.adj.get(best.renderId)?.size ?? 0;
       return degP > degB ? p : best;
-    }, people[0]).id;
-  }, [people, model.adj]);
+    }, model.people[0]).renderId;
+  }, [model.people, model.adj]);
 
-  const kindsUsed = useMemo(
-    () => [...new Set(ties.map((t) => t.kind))].filter((k): k is TieKind => k in KIND_STYLE),
-    [ties],
-  );
+  const kindsUsed = useMemo(() => [...new Set(model.ties.map((t) => t.kind))], [model.ties]);
 
   if (people.length === 0) {
     return (
@@ -125,7 +175,7 @@ export function RelationshipMap({
       </div>
 
       <svg role="img" aria-label={title} viewBox={`0 0 ${W} ${H}`} width="100%" className="rm-svg">
-        {ties.map((t, i) => {
+        {model.ties.map((t, i) => {
           const a = model.pos.get(t.source),
             b = model.pos.get(t.target);
           if (!a || !b) return null;
@@ -159,18 +209,18 @@ export function RelationshipMap({
             </g>
           );
         })}
-        {people.map((p, i) => {
-          const pt = model.pos.get(p.id);
+        {model.people.map((p, i) => {
+          const pt = model.pos.get(p.renderId);
           if (!pt) return null;
-          const lit = nodeLit(p.id);
-          const isHover = hover === p.id;
+          const lit = nodeLit(p.renderId);
+          const isHover = hover === p.renderId;
           const name = truncate(p.name, 12);
           return (
             <g
-              key={p.id}
+              key={p.renderId}
               className="rm-node m-stagger-item m-scale-in"
               style={{ ['--i' as string]: i } as CSSProperties}
-              onMouseEnter={() => setHover(p.id)}
+              onMouseEnter={() => setHover(p.renderId)}
               onMouseLeave={() => setHover(null)}
             >
               <title>{p.role ? `${p.name} · ${p.role}` : p.name}</title>
@@ -181,7 +231,7 @@ export function RelationshipMap({
                 r={NODE_R}
                 className="rm-node-dot"
                 opacity={lit ? 1 : 0.32}
-                data-mark={p.id === salientId ? 'circle' : undefined}
+                data-mark={p.renderId === salientId ? 'circle' : undefined}
               />
               <text
                 x={pt.x}

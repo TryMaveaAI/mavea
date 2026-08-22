@@ -119,6 +119,139 @@ describe('generic live component structural references', () => {
   });
 });
 
+describe('applied brief runtime contracts', () => {
+  const validateBrief = (type: string, props: Record<string, unknown>) =>
+    validateLiveResponse({ title: 'T', blocks: [{ type, props }] }, new Set([type]), 1)?.blocks;
+
+  const cases: Array<{
+    type: string;
+    valid: Record<string, unknown>;
+    invalid: Record<string, unknown>;
+  }> = [
+    {
+      type: 'requirementboard',
+      valid: {
+        title: 'Scope',
+        groups: [{ priority: 'must', items: [{ requirement: 'Works offline' }] }],
+      },
+      invalid: { title: 'Scope', groups: [{ priority: 'must', items: [{ owner: 'Sam' }] }] },
+    },
+    {
+      type: 'experimentplan',
+      valid: {
+        title: 'Test',
+        hypothesis: 'The change helps.',
+        variables: [{ name: 'Variant', role: 'input' }],
+        steps: ['Measure once.'],
+      },
+      invalid: {
+        title: 'Test',
+        hypothesis: 'The change helps.',
+        variables: [{ name: 'Variant' }],
+        steps: ['Measure once.'],
+      },
+    },
+    {
+      type: 'stakeholdermap',
+      valid: {
+        title: 'People',
+        stakeholders: [{ name: 'Jordan', influence: 'high', interest: 'low' }],
+      },
+      invalid: { title: 'People', stakeholders: [{ name: 'Jordan', influence: 'high' }] },
+    },
+    {
+      type: 'approvalflow',
+      valid: {
+        title: 'Approval',
+        request: 'Approve the plan',
+        approvers: [{ name: 'Jordan', status: 'pending' }],
+      },
+      invalid: {
+        title: 'Approval',
+        request: 'Approve the plan',
+        approvers: [{ name: 'Jordan' }],
+      },
+    },
+    {
+      type: 'maintenanceplan',
+      valid: { title: 'Care', assets: [{ asset: 'Filter', tasks: [{ task: 'Replace' }] }] },
+      invalid: { title: 'Care', assets: [{ asset: 'Filter', tasks: [{ interval: 'Monthly' }] }] },
+    },
+    {
+      type: 'contactdirectory',
+      valid: {
+        title: 'Contacts',
+        entries: [{ name: 'Jordan', methods: [{ label: 'Work', value: '(555) 010-0184' }] }],
+      },
+      invalid: {
+        title: 'Contacts',
+        entries: [{ name: 'Jordan', methods: [{ label: 'Work' }] }],
+      },
+    },
+    {
+      type: 'tripbudget',
+      valid: { title: 'Trip', lines: [{ category: 'Rail', planned: '$80' }] },
+      invalid: { title: 'Trip', lines: [{ category: 'Rail' }] },
+    },
+    {
+      type: 'clausecompare',
+      valid: {
+        title: 'Terms',
+        left: { label: 'Current', text: 'Thirty days.' },
+        right: { label: 'Proposed', text: 'Sixty days.' },
+        differences: [{ topic: 'Notice', change: 'The period changes.' }],
+      },
+      invalid: {
+        title: 'Terms',
+        left: { label: 'Current' },
+        right: { label: 'Proposed', text: 'Sixty days.' },
+        differences: [{ topic: 'Notice', change: 'The period changes.' }],
+      },
+    },
+    {
+      type: 'incidentbrief',
+      valid: {
+        title: 'Incident',
+        impact: 'Checkout delayed',
+        timeline: [{ time: '10:00', event: 'Detected' }],
+      },
+      invalid: { title: 'Incident', impact: 'Checkout delayed', timeline: [{ event: 'Detected' }] },
+    },
+    {
+      type: 'coveragecheck',
+      valid: { title: 'Coverage', rows: [{ item: 'Mechanical fault', status: 'unknown' }] },
+      invalid: { title: 'Coverage', rows: [{ item: 'Mechanical fault', status: 'maybe' }] },
+    },
+    {
+      type: 'offerbreakdown',
+      valid: { title: 'Offer', parts: [{ label: 'Base', value: '$100,000' }] },
+      invalid: { title: 'Offer', parts: [{ label: 'Base' }] },
+    },
+  ];
+
+  it.each(cases)('accepts substantive minimal $type props', ({ type, valid }) => {
+    expect(validateBrief(type, valid)).toHaveLength(1);
+  });
+
+  it.each(cases)(
+    'drops $type when required nested data is absent or invalid',
+    ({ type, invalid }) => {
+      expect(validateBrief(type, invalid)).toHaveLength(0);
+    },
+  );
+
+  it('drops optional statuses that cannot be normalized onto the closed vocabulary', () => {
+    const blocks = validateBrief('approvalflow', {
+      title: 'Approval',
+      request: 'Approve the plan',
+      status: 'waiting-for-a-miracle',
+      approvers: [{ name: 'Jordan', status: 'pending' }],
+    });
+    expect(blocks).toHaveLength(1);
+    expect(blocks?.[0]?.props).not.toHaveProperty('status');
+  });
+});
+
 // The "validated but hollow" class: a block whose data passes validation but is then discarded
 // by the renderer's own vocabulary switch (logicmodel buckets columns by `stage` and drops any
 // column without one of its five keys), leaving a card of nothing but "—" placeholders. Nested

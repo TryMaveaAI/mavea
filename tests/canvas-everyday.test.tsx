@@ -6,6 +6,7 @@ import { ContractionTimer } from '../src/canvas/blocks/everyday/ContractionTimer
 import { CycleTrack } from '../src/canvas/blocks/everyday/CycleTrack';
 import { Forecast } from '../src/canvas/blocks/everyday/Forecast';
 import { PrayerTimes } from '../src/canvas/blocks/everyday/PrayerTimes';
+import { RelationshipMap } from '../src/canvas/blocks/everyday/RelationshipMap';
 import { SettleUp } from '../src/canvas/blocks/everyday/SettleUp';
 import { UnitConvert } from '../src/canvas/blocks/everyday/UnitConvert';
 import type {
@@ -15,6 +16,36 @@ import type {
   Settlement,
   UnitEquivalent,
 } from '../src/canvas/blocks/everyday/types';
+
+describe('RelationshipMap', () => {
+  it('keeps nodes distinct when model-authored ids are blank or duplicated', () => {
+    const { container } = render(
+      <RelationshipMap
+        title="Who knew about the map?"
+        people={[
+          { id: '', name: 'Snape' },
+          { id: 'keeper', name: 'James' },
+          { id: 'keeper', name: 'Sirius' },
+          { id: '', name: 'Remus' },
+        ]}
+        ties={[
+          { source: 'Snape', target: 'James', kind: 'rival' },
+          { source: 'Sirius', target: 'Remus', kind: 'ally' },
+        ]}
+      />,
+    );
+
+    const nodes = Array.from(container.querySelectorAll<SVGCircleElement>('.rm-node-dot'));
+    expect(nodes).toHaveLength(4);
+    const coordinates = nodes.map(
+      (node) => `${node.getAttribute('cx')}:${node.getAttribute('cy')}`,
+    );
+    expect(new Set(coordinates).size).toBe(4);
+    expect(container.querySelectorAll('.rm-edge')).toHaveLength(2);
+    expect(container.textContent).toContain('Snape');
+    expect(container.textContent).toContain('Sirius');
+  });
+});
 
 // Regression coverage for a real bug: every gap-interval label ("6m", "5m", ...) was pinned to
 // a fixed top:40% band via CSS, so once the log grew past ~5-7 entries the labels sat at the

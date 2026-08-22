@@ -1049,8 +1049,19 @@ export const CATALOG_EVERYDAY: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A typed people graph — who\'s connected to whom and how (family/ally/rival/romance/colleague), with a kind-keyed legend below. Use for "map the relationships in this story", "who\'s connected to who", "family/rivalry web".',
-    itemShapes: [{ prop: 'people', text: 'name', textAliases: ['label'] }],
+    itemShapes: [
+      { prop: 'people', text: 'name', textAliases: ['label'], requiredFields: ['id'] },
+      {
+        prop: 'ties',
+        requiredFields: ['source', 'target', 'kind'],
+        closedVocabFields: ['kind'],
+      },
+    ],
     propHints: {
+      'people[].id':
+        'unique nonblank id within this block; never reuse an id, even when names repeat',
+      'ties[].source': 'exactly one existing people[].id',
+      'ties[].target': 'exactly one existing people[].id different from source',
       'ties[].kind': "'family'|'ally'|'rival'|'romance'|'colleague'|'other'",
       layout: "'circle'|'grid', default 'circle'",
     },

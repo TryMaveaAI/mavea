@@ -60,8 +60,13 @@ export function Colorpicker({
   delay,
 }: Props) {
   const Ic = Icon[icon] || Icon.edit;
-  const [hex, setHex] = useState<string>(value.toUpperCase());
-  const [hue, setHue] = useState<number>(hexToHue(value));
+  const initialHex = typeof value === 'string' && value.trim() ? value.toUpperCase() : '#6366F1';
+  const safeSwatches = swatches.filter(
+    (swatch): swatch is { hex: string; name?: string } =>
+      !!swatch && typeof swatch.hex === 'string' && swatch.hex.trim().length > 0,
+  );
+  const [hex, setHex] = useState<string>(initialHex);
+  const [hue, setHue] = useState<number>(hexToHue(initialHex));
   const [drag, setDrag] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -150,9 +155,9 @@ export function Colorpicker({
       </div>
 
       <div className="cp-swatches">
-        {swatches.map((s) => (
+        {safeSwatches.map((s, index) => (
           <button
-            key={s.hex}
+            key={`${s.hex}-${index}`}
             type="button"
             className={`cp-swatch ${hex.toUpperCase() === s.hex.toUpperCase() ? 'on' : ''}`}
             style={{ background: s.hex }}

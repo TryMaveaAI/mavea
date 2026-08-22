@@ -10,6 +10,7 @@ import { tablesRegistry } from '../src/canvas/blocks/tables/registry';
 import { flowsRegistry } from '../src/canvas/blocks/flows/registry';
 import { docsRegistry } from '../src/canvas/blocks/docs/registry';
 import { aiRegistry } from '../src/canvas/blocks/ai/registry';
+import { briefsRegistry } from '../src/canvas/blocks/briefs/registry';
 import { mediaRegistry } from '../src/canvas/blocks/media/registry';
 import { layoutRegistry } from '../src/canvas/blocks/layout/registry';
 import { statusRegistry } from '../src/canvas/blocks/status/registry';
@@ -211,6 +212,7 @@ describe('extended registry integrity', () => {
     flowsRegistry,
     docsRegistry,
     aiRegistry,
+    briefsRegistry,
     mediaRegistry,
     layoutRegistry,
     statusRegistry,

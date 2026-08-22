@@ -54,6 +54,12 @@ describe('detectShapes', () => {
     expect(detectShapes('how do linked lists work').code).toBeGreaterThan(0);
     expect(detectShapes('explain the quicksort algorithm').code).toBeGreaterThan(0);
   });
+
+  it('does not mistake a named fictional object for a geographic request', () => {
+    const ask = "What did the Marauder's Map say to Snape?";
+    expect(detectShapes(ask).geo).toBeUndefined();
+    expect(detectRequested(ask)).not.toContain('geomap');
+  });
 });
 
 describe('selectComponents', () => {

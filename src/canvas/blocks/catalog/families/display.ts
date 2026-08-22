@@ -55,6 +55,7 @@ export const CATALOG_DISPLAY: ComponentCatalog = [
     blurb: 'Overlapping stack of avatars with +N overflow; hover to see all members.',
     propHints: {
       'members[].status': "'online'|'away'|'busy'|'offline'",
+      size: "'sm'|'md'|'lg'",
     },
   }),
   createMeta('badgeset', {
