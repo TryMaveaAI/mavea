@@ -136,10 +136,6 @@ const SHOTS: Shot[] = [
     then: ['Graph'],
   },
   { name: 'course-lesson', from: 'tour', chapter: 'course', settleMs: 6000 },
-  // Row 4 — the front door. Setup is marked done (a bare "1", no key and nothing secret) so the
-  // wizard opens on its GO step, which is where the launcher lives; with no key configured the hub
-  // shows exactly what a first-run reader sees.
-  { name: 'go-hub', from: 'route', hash: '#/live', ready: '.setup-nav', settleMs: 4000 },
 ];
 
 /** The README shows one look, not two: the paper template in light, which is what the product is
@@ -295,8 +291,6 @@ async function main(): Promise<void> {
       await page.addInitScript(
         ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
           localStorage.setItem('mavea-theme', initialTheme);
-          // The Go hub is the wizard's LAST step, so the shot needs setup already behind it.
-          localStorage.setItem('mavea-live-setup-v1', '1');
           localStorage.setItem('mavea-template', initialTemplate);
           localStorage.setItem(
             legalKey,

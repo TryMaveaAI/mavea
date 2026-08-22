@@ -1,6 +1,6 @@
 # Mavéa Terms of Use
 
-Effective: August 22, 2026
+Effective: August 23, 2026
 
 These Terms of Use (the **Terms**) govern your use of the Mavéa application, command-line package, demos, documentation, and related materials (collectively, the **Service**). **Licensor** means each applicable copyright holder offering software under the PolyForm license. **Maintainers** means the people who publish or contribute to Mavéa; a Maintainer is not necessarily a Licensor. **Deployment operator** means the person or organization hosting the copy you use. **Responsible Party** means the applicable Licensor, Maintainer, or deployment operator responsible for a statement, obligation, service, or claim. In these Terms, **we**, **us**, or **our** means the relevant Responsible Party or Parties in context. A separately operated deployment remains independent from the Licensors and Maintainers unless the same person or organization serves both roles.
 
@@ -8,7 +8,7 @@ The [PolyForm Noncommercial License 1.0.0](./LICENSE) separately governs copyrig
 
 ## 1. Acceptance and eligibility
 
-By downloading, installing, accessing, or using the Service, or by selecting the in-product acceptance checkbox, you agree to these Terms and the PolyForm license and acknowledge the [Privacy Notice](./PRIVACY.md) and [Disclaimer](./DISCLAIMER.md). If you use Mavéa for an organization, you represent that you have authority to accept these Terms for it. If you do not agree, do not use the Service.
+By downloading, installing, accessing, or using the Service, by selecting the in-product acceptance checkbox, or by submitting an issue, a discussion post, a message to a published Mavéa contact address, or any other feedback through a Mavéa project channel, you agree to these Terms and the PolyForm license and acknowledge the [Privacy Notice](./PRIVACY.md) and [Disclaimer](./DISCLAIMER.md). Submitting feedback is enough on its own: Section 9 is written to bind whoever sends it, including someone who has never installed or run Mavéa. If you use Mavéa for an organization, you represent that you have authority to accept these Terms for it. If you do not agree, do not use the Service.
 
 You must be at least 18 years old, legally capable of entering this agreement, and permitted to use the Service under applicable law. The Service is not directed to children. A parent or guardian should not provide a child access to connected model, upload, microphone, or action features.
 
@@ -91,7 +91,13 @@ As between you and the Responsible Parties, the Responsible Parties do not claim
 
 Bundled and linked third-party materials can carry copyright licences, attribution requirements, personality or publicity rights, privacy interests, trademark rights, property restrictions, or other limitations. A copyright licence or public-domain label does not necessarily clear every depicted person, place, object, logo, or use. Preserve the notices in `THIRD-PARTY.txt` and `public/demo-assets/CREDITS.md`, follow their source terms, and obtain any additional releases or permissions your use requires.
 
-You may submit issue reports and feature suggestions without including code, patches, documentation changes, confidential information, or trade secrets. You grant the applicable Licensors and Maintainers, and their successors and assigns, a worldwide, perpetual, irrevocable, royalty-free right to use, modify, publish, and commercialize ideas and feedback you voluntarily submit, without restriction or compensation. This does not transfer ownership of inventions or copyrighted materials that are not included in your feedback.
+You may submit issue reports and feature suggestions without including code, patches, documentation changes, confidential information, or trade secrets. Mavéa does not accept external code: material of that kind posted in any channel is not reviewed, not incorporated, and creates no contribution, no authorship, and no rights in Mavéa. The only authorized code maintainers are named in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+You grant the applicable Licensors and Maintainers, and their successors and assigns, a worldwide, perpetual, irrevocable, transferable, sublicensable, royalty-free right to use, modify, publish, and commercialize ideas and feedback you voluntarily submit, without restriction, attribution, accounting, or compensation. This grant applies however the feedback reaches us — an issue, a discussion, an email, or any other project channel — and whether or not you have installed, accessed, or used the Service. It survives any assignment or transfer of these Terms and runs to the benefit of a successor in a financing, merger, acquisition, or sale of assets, on the same terms.
+
+Feedback is not confidential and creates no confidential or fiduciary relationship. We may already be working on, or may independently develop, anything your feedback describes, and nothing in it obliges us to use it, keep it, respond to it, or refrain from developing something similar. To the maximum extent permitted by law, you waive any moral rights and any right to be identified in relation to feedback you submit. You represent that you are entitled to submit what you send and that it infringes no one else's rights.
+
+This does not transfer ownership of inventions or copyrighted materials that are not included in your feedback.
 
 ## 10. Availability, changes, and support
 

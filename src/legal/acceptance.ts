@@ -10,8 +10,11 @@
    v9: connected repositories stated outright — the files, docs, diffs and issues a feature reads
    go to the selected model provider, and a PRIVATE repository is not treated differently, so the
    scope granted is the boundary. The docs already said "repository content" in a list; what they
-   never said is the part someone would want to be asked about. */
-export const LEGAL_ACCEPTANCE_VERSION = '2026-08-22-connected-repos-v9';
+   never said is the part someone would want to be asked about.
+   v10: the feedback terms bind whoever SENDS feedback, not only whoever ran the app — posting an
+   issue, a discussion or an email is now itself an acceptance, because §9's grant was worth nothing
+   against a person who had never installed Mavéa and so had never agreed to anything. */
+export const LEGAL_ACCEPTANCE_VERSION = '2026-08-23-feedback-terms-v10';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {

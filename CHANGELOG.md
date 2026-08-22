@@ -6,6 +6,19 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-22
+
+### Changed
+
+- The feature strip in the README is three rows of four again, and Contact lists one address for
+  anything that needs a person alongside the existing routes for questions and security reports.
+- CONTRIBUTING and the Terms state the project's one standing rule more plainly: the two named
+  maintainers are the only contributors, that holds in issues, discussions and email exactly as it
+  does in pull requests, and code posted in any channel is not reviewed or incorporated.
+- The feedback terms now bind whoever sends feedback rather than only whoever ran the app —
+  submitting an issue, a discussion post or an email is itself an acceptance. You will be asked to
+  acknowledge the updated Terms once.
+
 ## [2.1.0] - 2026-08-21
 
 ### Added
