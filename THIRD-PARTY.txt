@@ -1030,7 +1030,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-@commitlint/cli@21.2.1
+@commitlint/cli@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/cli
 
@@ -1057,7 +1057,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/config-conventional@21.2.0
+@commitlint/config-conventional@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/config-conventional
 
@@ -1165,7 +1165,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/format@21.2.0
+@commitlint/format@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/format
 
@@ -1192,7 +1192,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/is-ignored@21.2.0
+@commitlint/is-ignored@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/is-ignored
 
@@ -1219,7 +1219,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/lint@21.2.0
+@commitlint/lint@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/lint
 
@@ -1246,7 +1246,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/load@21.2.0
+@commitlint/load@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/load
 
@@ -1300,7 +1300,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/parse@21.2.0
+@commitlint/parse@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/parse
 
@@ -1354,7 +1354,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/resolve-extends@21.2.0
+@commitlint/resolve-extends@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/resolve-extends
 
@@ -1381,7 +1381,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@commitlint/rules@21.2.0
+@commitlint/rules@21.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@commitlint/rules
 
@@ -1516,7 +1516,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@conventional-changelog/template@1.3.0
+@conventional-changelog/template@1.4.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@conventional-changelog/template
 
@@ -4089,7 +4089,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-@maplibre/mlt@1.1.12
+@maplibre/mlt@1.2.0
 Declared license: (MIT OR Apache-2.0)
 Registry: https://www.npmjs.com/package/@maplibre/mlt
 
@@ -4414,7 +4414,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@oxc-project/types@0.142.0
+@oxc-project/types@0.143.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@oxc-project/types
 
@@ -4442,7 +4442,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@oxc-project/types@0.144.0
+@oxc-project/types@0.146.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@oxc-project/types
 
@@ -6165,7 +6165,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
 OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
-@vitejs/plugin-react@6.0.5
+@vitejs/plugin-react@6.1.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitejs/plugin-react
 
@@ -6192,7 +6192,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/expect@4.1.10
+@vitest/expect@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/expect
 
@@ -6219,7 +6219,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/mocker@4.1.10
+@vitest/mocker@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/mocker
 
@@ -6246,7 +6246,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/pretty-format@4.1.10
+@vitest/pretty-format@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/pretty-format
 
@@ -6273,7 +6273,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/runner@4.1.10
+@vitest/runner@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/runner
 
@@ -6300,7 +6300,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/snapshot@4.1.10
+@vitest/snapshot@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/snapshot
 
@@ -6327,7 +6327,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/spy@4.1.10
+@vitest/spy@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/spy
 
@@ -6354,7 +6354,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/utils@4.1.10
+@vitest/utils@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/utils
 
@@ -6502,7 +6502,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-ansi-regex@6.2.2
+ansi-regex@6.3.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/ansi-regex
 
@@ -9144,7 +9144,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-conventional-changelog-angular@9.3.0
+conventional-changelog-angular@9.4.0
 Declared license: ISC
 Registry: https://www.npmjs.com/package/conventional-changelog-angular
 
@@ -9165,7 +9165,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
-conventional-changelog-conventionalcommits@10.3.0
+conventional-changelog-conventionalcommits@10.4.0
 Declared license: ISC
 Registry: https://www.npmjs.com/package/conventional-changelog-conventionalcommits
 
@@ -9320,7 +9320,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-cosmiconfig@9.0.1
+cosmiconfig@9.0.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/cosmiconfig
 
@@ -9678,7 +9678,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-default-browser@5.5.0
+default-browser@5.5.1
 Declared license: MIT
 Registry: https://www.npmjs.com/package/default-browser
 
@@ -10536,7 +10536,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-es-module-lexer@2.1.0
+es-module-lexer@2.3.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/es-module-lexer
 
@@ -10660,18 +10660,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-es-toolkit@1.47.0
+es-toolkit@1.51.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/es-toolkit
 
 --- LICENSE ---
 MIT License
 
-Copyright (c) 2024 Viva Republica, Inc
-
-Copyright OpenJS Foundation and other contributors
-
-Parts of the test suite and compatibility layer in `es-toolkit/compat` are derived from Lodash (https://github.com/lodash/lodash) by the OpenJS Foundation (https://openjsf.org/) and Underscore.js by Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors (http://underscorejs.org/)
+Copyright (c) 2024 Viva Republica, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -10690,6 +10686,47 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--- NOTICE ---
+es-toolkit
+
+Parts of the test suite and compatibility layer in es-toolkit/compat are
+derived from Lodash (https://github.com/lodash/lodash).
+
+Lodash copyright notice and MIT permission notice:
+
+Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
+
+Based on Underscore.js, copyright Jeremy Ashkenas,
+DocumentCloud and Investigative Reporters & Editors <http://underscorejs.org/>
+
+This software consists of voluntary contributions made by many
+individuals. For exact contribution history, see the revision history
+available at https://github.com/lodash/lodash
+
+The following license applies to all parts of this software except as
+documented below:
+
+====
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 esbuild@0.28.1
 Declared license: MIT
@@ -11412,7 +11449,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-expect-type@1.3.0
+expect-type@1.4.0
 Declared license: Apache-2.0
 Registry: https://www.npmjs.com/package/expect-type
 
@@ -12474,7 +12511,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-globals@17.9.0
+globals@17.11.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/globals
 
@@ -15100,7 +15137,7 @@ Declared license: MIT
 Registry: https://www.npmjs.com/package/keyv
 No license or notice file was included at the package root; the declaration above is from package.json.
 
-knip@6.32.1
+knip@6.32.2
 Declared license: ISC
 Registry: https://www.npmjs.com/package/knip
 
@@ -15949,7 +15986,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-maplibre-gl@6.3.0
+maplibre-gl@6.4.1
 Declared license: BSD-3-Clause
 Registry: https://www.npmjs.com/package/maplibre-gl
 
@@ -17188,7 +17225,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-obug@2.1.3
+obug@2.1.4
 Declared license: MIT
 Registry: https://www.npmjs.com/package/obug
 
@@ -17323,7 +17360,7 @@ The redistributed ort-wasm-simd-threaded.wasm binary statically links third-part
 (protobuf — BSD-3-Clause, Eigen — MPL-2.0, Abseil — Apache-2.0, and others) whose notices are
 enumerated upstream: https://github.com/microsoft/onnxruntime/blob/main/ThirdPartyNotices.txt
 
-open@11.0.0
+open@11.0.1
 Declared license: MIT
 Registry: https://www.npmjs.com/package/open
 
@@ -17338,7 +17375,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-openchemlib@9.24.0
+openchemlib@9.25.0
 Declared license: BSD-3-Clause
 Registry: https://www.npmjs.com/package/openchemlib
 
@@ -17426,7 +17463,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-oxc-parser@0.142.0
+oxc-parser@0.143.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/oxc-parser
 
@@ -18576,6 +18613,21 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+powershell-utils@0.2.0
+Declared license: MIT
+Registry: https://www.npmjs.com/package/powershell-utils
+
+--- license ---
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 pptxgenjs@4.0.1
 Declared license: MIT
 Registry: https://www.npmjs.com/package/pptxgenjs
@@ -19303,7 +19355,7 @@ Exemptions
 
 Please either apply this, the MIT license, or the license in './FEEL-FREE.md'
 
-rolldown@1.2.4
+rolldown@1.2.5
 Declared license: MIT
 Registry: https://www.npmjs.com/package/rolldown
 
@@ -19334,7 +19386,7 @@ end of terms and conditions
 
 The licenses of externally maintained libraries from which parts of the Software is derived are listed [here](https://github.com/rolldown/rolldown/blob/main/THIRD-PARTY-LICENSE).
 
-rollup-plugin-visualizer@7.0.1
+rollup-plugin-visualizer@7.1.1
 Declared license: MIT
 Registry: https://www.npmjs.com/package/rollup-plugin-visualizer
 
@@ -19934,7 +19986,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-source-map@0.7.6
+source-map@0.8.0
 Declared license: BSD-3-Clause
 Registry: https://www.npmjs.com/package/source-map
 
@@ -20005,7 +20057,7 @@ Declared license: MIT
 Registry: https://www.npmjs.com/package/stackblur-canvas
 No license or notice file was included at the package root; the declaration above is from package.json.
 
-std-env@4.1.0
+std-env@4.2.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/std-env
 
@@ -20140,6 +20192,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 string-width@7.2.0
+Declared license: MIT
+Registry: https://www.npmjs.com/package/string-width
+
+--- license ---
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+string-width@8.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/string-width
 
@@ -20469,6 +20536,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+tinyexec@1.3.0
+Declared license: MIT
+Registry: https://www.npmjs.com/package/tinyexec
+
+--- LICENSE ---
+MIT License
+
+Copyright (c) 2024 Tinylibs
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 tinyglobby@0.2.17
 Declared license: MIT
 Registry: https://www.npmjs.com/package/tinyglobby
@@ -20517,7 +20611,7 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
-tinyrainbow@3.1.0
+tinyrainbow@3.1.1
 Declared license: MIT
 Registry: https://www.npmjs.com/package/tinyrainbow
 
@@ -21357,7 +21451,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-vite@8.2.1
+vite@8.2.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/vite
 
@@ -23685,7 +23779,7 @@ Repository: https://github.com/sveltejs/zimmerframe
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
 
-vitest@4.1.10
+vitest@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/vitest
 
@@ -24810,7 +24904,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-wsl-utils@0.3.1
+wsl-utils@1.0.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/wsl-utils
 
@@ -25110,7 +25204,7 @@ OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
 WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
 ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-yargs@18.0.0
+yargs@18.1.0
 Declared license: MIT
 Registry: https://www.npmjs.com/package/yargs
 
