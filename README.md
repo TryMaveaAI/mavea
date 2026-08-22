@@ -120,10 +120,16 @@ Twelve moments from the walkthrough and the recorded sessions. Every one replays
     <td width="25%" valign="top"><img width="168" src="docs/media/doc-prism.jpg" alt="A NASA technical report read claim by claim, each finding highlighted on the real scanned page" /><br /><sub><b>A document, claim by claim.</b> Every finding highlighted on the real page it came from.</sub></td>
   </tr>
   <tr>
+    <td width="25%" valign="top"><img width="168" src="docs/media/go-hub.jpg" alt="A new conversation offering Prism, Just listen, Watch me think and Deep Zoom as ways to begin, beside the model and voice already set up" /><br /><sub><b>Start anywhere.</b> A new conversation offers every mode as a way in — no need to ask a question first.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/trip-plan.jpg" alt="A day trip drawn as a route map with numbered stops beside an hour-by-hour plan" /><br /><sub><b>It picks the right form.</b> A route becomes a map; a day becomes an hour-by-hour plan.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/repo-course.jpg" alt="A GitHub repository turned into a beginner-to-expert curriculum with lessons, files to read and a checkpoint" /><br /><sub><b>A repository, taught.</b> Beginner to expert, built from the code, with real files.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/deck-export.jpg" alt="The export studio previewing a generated slide, with PDF and PPTX downloads" /><br /><sub><b>Out as a deck.</b> Ten skins, a live preview, PDF or PowerPoint.</sub></td>
+  </tr>
+  <tr>
     <td width="25%" valign="top"><img width="168" src="docs/media/doc-export.jpg" alt="The export studio previewing a generated document page in an editorial template" /><br /><sub><b>Or as a document.</b> The same answer set as a paper, ready to print or send.</sub></td>
+    <td width="25%"></td>
+    <td width="25%"></td>
+    <td width="25%"></td>
   </tr>
 </table>
 

@@ -44,7 +44,7 @@ interface BaseShot {
 type Shot = BaseShot &
   (
     | { from: 'demo'; persona: string; asCanvas?: boolean; then?: string[] }
-    | { from: 'tour'; chapter: string }
+    | { from: 'tour'; chapter: string; then?: string[]; awaitWalk?: boolean }
     | { from: 'ripple'; section: string; then?: string[] }
     | { from: 'route'; hash: string; ready: string; click?: string[] }
   );
@@ -122,8 +122,24 @@ const SHOTS: Shot[] = [
   },
   // Row 3 — reasoning made visible, and made to stick: a real-world "why" laid open, and a
   // question that grows into a taught course.
-  { name: 'living-answer', from: 'tour', chapter: 'living-answer', settleMs: 6000 },
+  // 6s caught this mid-flight: the walk was three beats in, so the camera was still zoomed onto a
+  // single card and the shot showed four of twelve causes. Waiting it out on the chapter's clock
+  // overshoots the other way, onto the end card. So the chapter is HELD and the world's own walk is
+  // waited on (awaitWalk), then the frame is put back on the causal web this tile is captioned
+  // about — the walk ends on Contribution.
+  {
+    name: 'living-answer',
+    from: 'tour',
+    chapter: 'living-answer',
+    settleMs: 6000,
+    awaitWalk: true,
+    then: ['Graph'],
+  },
   { name: 'course-lesson', from: 'tour', chapter: 'course', settleMs: 6000 },
+  // Row 4 — the front door. Setup is marked done (a bare "1", no key and nothing secret) so the
+  // wizard opens on its GO step, which is where the launcher lives; with no key configured the hub
+  // shows exactly what a first-run reader sees.
+  { name: 'go-hub', from: 'route', hash: '#/live', ready: '.setup-nav', settleMs: 4000 },
 ];
 
 /** The README shows one look, not two: the paper template in light, which is what the product is
@@ -204,6 +220,40 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     await page.waitForTimeout(shot.settleMs / 2);
     await retryOnce(page, shot.settleMs / 2);
     await page.waitForTimeout(shot.settleMs / 2);
+    if (shot.awaitWalk) {
+      // The living answer flies itself, and the camera pulls back to the whole web only when that
+      // flight ENDS — which is after the chapter's own clock runs out. Hold the chapter (its timer
+      // would advance past the surface entirely, onto the end card) and wait on the world's own
+      // transport instead. Never on page text: the tour panel carries its own "7 / 10".
+      const hold = page.locator('[class*="tourx"] button').filter({ hasText: /pause/i });
+      if (await hold.count())
+        await hold
+          .first()
+          .click()
+          .catch(() => undefined);
+      for (let i = 0; i < 150; i++) {
+        const done = await page.evaluate(() => {
+          const t = document.querySelector('.wo-transport')?.textContent ?? '';
+          const m = /(\d+)\s*\/\s*(\d+)/.exec(t);
+          return !!m && m[1] === m[2];
+        });
+        if (done) break;
+        await page.waitForTimeout(1000);
+      }
+      await page.waitForTimeout(2500);
+    }
+    // A chapter that plays a flight lands wherever the flight ended. Put the frame back on the
+    // reading the caption is about — matched on the chip's exact label, because clickThrough's
+    // startsWith match also finds the narration text that quotes the same word.
+    for (const label of shot.then ?? []) {
+      await page.evaluate((want) => {
+        const chip = [...document.querySelectorAll('button')].find(
+          (b) => b.textContent?.trim() === want,
+        );
+        chip?.click();
+      }, label);
+      await page.waitForTimeout(3000);
+    }
     return;
   }
   if (shot.from === 'ripple') {
@@ -245,6 +295,8 @@ async function main(): Promise<void> {
       await page.addInitScript(
         ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {
           localStorage.setItem('mavea-theme', initialTheme);
+          // The Go hub is the wizard's LAST step, so the shot needs setup already behind it.
+          localStorage.setItem('mavea-live-setup-v1', '1');
           localStorage.setItem('mavea-template', initialTemplate);
           localStorage.setItem(
             legalKey,
