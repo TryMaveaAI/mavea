@@ -15,3 +15,38 @@ export async function loadMapLibre(): Promise<typeof import('maplibre-gl') | nul
   if (ml.getWorkerCount() !== 1) ml.setWorkerCount(1);
   return ml;
 }
+
+/** The minimum every map card's teardown needs from MapLibre — structural, so a version bump
+ *  cannot change the shape this module depends on. */
+interface Disposable {
+  remove: () => void;
+}
+
+/**
+ * Release a map and its markers on unmount. Best-effort BY DESIGN, and that is the whole point:
+ * every map card builds its map inside an async effect, so React can run the cleanup in the window
+ * between `new ml.Map()` and the style finishing load. MapLibre 6.4 throws out of `remove()` in
+ * exactly that window — its internal handlers are not constructed yet, so it reads `.destroy` off
+ * undefined — where 6.3 tolerated it. An exception escaping here is the expensive failure: React
+ * abandons the rest of the unmount, and the WebGL context, the tile requests and the resize
+ * observer this call exists to release all survive the card that owned them.
+ *
+ * Markers are removed first and individually, so one detached marker cannot strand the map itself.
+ */
+export function disposeMap(
+  map: Disposable | null | undefined,
+  markers: readonly Disposable[],
+): void {
+  for (const marker of markers) {
+    try {
+      marker.remove();
+    } catch {
+      /* already detached with its parent — nothing left to release */
+    }
+  }
+  try {
+    map?.remove();
+  } catch {
+    /* torn down before it finished initialising; MapLibre owns what it could not release */
+  }
+}
