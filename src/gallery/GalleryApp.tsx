@@ -12,7 +12,10 @@
 // uses (persisted to the shared `mavea-theme` key), with an in-page toggle.
 import {
   Component,
+  lazy,
+  Suspense,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -20,20 +23,23 @@ import {
   type ReactNode,
 } from 'react';
 import { homeTarget } from '../lib/homeTarget';
-import { TopicCanvas } from '../canvas/TopicCanvas';
 import type { Block, ConversationSpec } from '../data/conversation';
 import { CATALOG_FACTS, catalogFacts, familyOf as catalogFamilyOf } from '../canvas/blocks/catalog';
 import { useInView } from '../hooks/useInView';
 import { Icon } from '../icons/icons';
 import { readTheme, writeTheme, applyTheme, type Theme } from '../lib/theme';
+import type { OverflowHit } from './overflowAudit';
 import {
-  auditGallery,
-  auditGalleryOverlap,
-  auditGalleryTruncation,
-  type OverflowHit,
-} from './overflowAudit';
+  applyFixtureVariant,
+  readFixtureVariant,
+  type GalleryFixtureVariant,
+} from './fixtureVariants';
 import { loadGalleryFixture } from './fixtures.generated';
 import './gallery.css';
+
+const TopicCanvas = lazy(() =>
+  import('../canvas/TopicCanvas').then((module) => ({ default: module.TopicCanvas })),
+);
 
 /** Labels are metadata only. Renderer registries stay behind loader.ts's per-family imports. */
 const FAMILY_LABELS: Record<string, string> = {
@@ -48,6 +54,7 @@ const FAMILY_LABELS: Record<string, string> = {
   docs: 'Documents & evidence',
   reference: 'Reference & language',
   ai: 'AI & reasoning',
+  briefs: 'Applied briefs',
   layout: 'Layout & content',
   compose: 'Compose & messages',
   everyday: 'Everyday & utilities',
@@ -109,12 +116,14 @@ function buildSections(): Section[] {
   }
   return FAMILY_ORDER.flatMap((id) => {
     const types = byFamily.get(id);
-    return types ? [{ id, label: FAMILY_LABELS[id] ?? id, types: types.sort() }] : [];
+    return types ? [{ id, label: FAMILY_LABELS[id] ?? id, types }] : [];
   });
 }
 
 const ALL_SECTIONS = buildSections();
 const TOTAL = ALL_TYPES.length;
+const INITIAL_TILE_COUNT = 8;
+const FIXTURE_CACHE = new Map<string, Block['props'] | null>();
 
 class GalleryRenderBoundary extends Component<
   { children: ReactNode; type: string },
@@ -154,50 +163,113 @@ function readMountAll(): boolean {
   return new URLSearchParams(q).get('mountall') === '1';
 }
 
+function writeHashQuery(updates: Record<string, string | null>): void {
+  if (typeof window === 'undefined') return;
+  const [route, query = ''] = window.location.hash.split('?');
+  const next = new URLSearchParams(query);
+  for (const [key, value] of Object.entries(updates)) {
+    if (!value) next.delete(key);
+    else next.set(key, value);
+  }
+  const encoded = next.toString();
+  window.location.hash = encoded ? `${route}?${encoded}` : route;
+}
+
 function GalleryTile({
   type,
   flag,
   mountAll,
+  variant,
 }: {
   type: string;
   flag?: OverflowHit;
   mountAll: boolean;
+  variant: GalleryFixtureVariant;
 }) {
   const fact = catalogFacts(type);
   const [block, setBlock] = useState<Block | null>(null);
   const [fixtureFailed, setFixtureFailed] = useState(false);
+  const [reservedHeight, setReservedHeight] = useState<number | null>(null);
+  const renderRef = useRef<HTMLDivElement>(null);
   // Size the tile to the block's natural width so wide components (flows, wide charts, tables)
   // aren't squished into a narrow cell where headers wrap to one letter per line.
   const col = fact?.colDefault ?? 6;
   const span = col >= 10 ? ' vlib-full' : col >= 7 ? ' vlib-wide' : '';
   const flagged = flag ? ` vlib-tile--${flag.kind}` : '';
-  // Windowed mounting: the whole library is ~450 real block renders, so mounting them all at once
+  // Windowed mounting: the whole 625-type library renders real blocks, so mounting it all at once
   // janks the first paint on a weak CPU. Keep the (heavy) TopicCanvas out of the DOM until the tile
   // scrolls within a screen of the viewport; a reserved-height skeleton holds its place so the
   // scroll never jumps. `mountAll` (?mountall=1) forces every tile in for the overflow audit.
-  const [ref, inView] = useInView<HTMLDivElement>({ rootMargin: '900px 0px', threshold: 0 });
+  const [ref, inView] = useInView<HTMLDivElement>({
+    rootMargin: '900px 0px',
+    threshold: 0,
+    once: false,
+    nearestScrollRoot: true,
+  });
   const mounted = mountAll || inView;
   useEffect(() => {
     const rendererFamily = fact?.family;
-    if (!mounted || !fact || !rendererFamily) return;
+    if (!mounted || !fact || !rendererFamily) {
+      if (!mountAll) setBlock(null);
+      return;
+    }
     let live = true;
     setFixtureFailed(false);
+    const cached = FIXTURE_CACHE.get(type);
+    if (cached !== undefined) {
+      if (cached)
+        setBlock({
+          type,
+          props: applyFixtureVariant(cached, fact, variant),
+          col: fact.colDefault,
+          delay: 0,
+        } as Block);
+      else setFixtureFailed(true);
+      return () => {
+        live = false;
+      };
+    }
     void loadGalleryFixture(rendererFamily, type)
       .then((props) => {
         if (!live) return;
         if (!props || typeof props !== 'object' || Array.isArray(props)) {
+          FIXTURE_CACHE.set(type, null);
           setFixtureFailed(true);
           return;
         }
-        setBlock({ type, props, col: fact.colDefault, delay: 0 } as Block);
+        FIXTURE_CACHE.set(type, props);
+        setBlock({
+          type,
+          props: applyFixtureVariant(props, fact, variant),
+          col: fact.colDefault,
+          delay: 0,
+        } as Block);
       })
       .catch(() => {
-        if (live) setFixtureFailed(true);
+        if (live) {
+          FIXTURE_CACHE.set(type, null);
+          setFixtureFailed(true);
+        }
       });
     return () => {
       live = false;
     };
-  }, [mounted, type, fact]);
+  }, [mounted, mountAll, type, fact, variant]);
+
+  useLayoutEffect(() => {
+    const el = renderRef.current;
+    if (!mounted || !block || fixtureFailed || !el) return;
+    const measure = () => {
+      const next = Math.ceil(el.getBoundingClientRect().height);
+      if (next > 0) setReservedHeight((current) => (current === next ? current : next));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mounted, block, fixtureFailed]);
+
   return (
     <div ref={ref} className={'vlib-tile' + span + flagged}>
       <div className="vlib-tile-head">
@@ -220,13 +292,24 @@ function GalleryTile({
           </div>
         </div>
       ) : mounted && block ? (
-        <div className="vlib-render">
+        <div ref={renderRef} className="vlib-render">
           <GalleryRenderBoundary type={type}>
-            <TopicCanvas data={tileSpec(block)} spot={null} built={{}} onProve={() => {}} />
+            <Suspense
+              fallback={
+                <div className="vlib-canvas-pending vlib-render--pending" aria-hidden="true" />
+              }
+            >
+              <TopicCanvas data={tileSpec(block)} spot={null} built={{}} onProve={() => {}} />
+            </Suspense>
           </GalleryRenderBoundary>
         </div>
       ) : (
-        <div className="vlib-render vlib-render--pending" aria-hidden="true" />
+        <div
+          ref={renderRef}
+          className="vlib-render vlib-render--pending"
+          style={reservedHeight ? { minHeight: reservedHeight } : undefined}
+          aria-hidden="true"
+        />
       )}
     </div>
   );
@@ -244,6 +327,8 @@ export function GalleryApp() {
   const [truncN, setTruncN] = useState<number | null>(null);
   // The ?mountall=1 audit hatch, kept in sync with the hash so appending it takes effect live.
   const [mountAll, setMountAll] = useState(readMountAll);
+  const [variant, setVariant] = useState<GalleryFixtureVariant>(readFixtureVariant);
+  const [libraryReady, setLibraryReady] = useState(readMountAll);
 
   // Focus the search box on load — imperative (not the `autoFocus` prop) so it fires once, after
   // mount, under our control rather than the browser's own often-surprising autofocus timing.
@@ -259,62 +344,82 @@ export function GalleryApp() {
   }, [theme]);
 
   useEffect(() => {
-    const sync = () => setMountAll(readMountAll());
+    const sync = () => {
+      setMountAll(readMountAll());
+      setVariant(readFixtureVariant());
+    };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
+
+  // Commit the first family with the shell, then fill the rest when the browser has breathing room.
+  // On a 6×-throttled CPU, creating 625 tile shells in the route's first commit delayed usable UI by
+  // hundreds of milliseconds even though only the first row can be seen. Audit mode and an explicit
+  // search/filter stay synchronous; the ordinary all-family view completes during the first idle beat.
+  useEffect(() => {
+    if (mountAll || libraryReady) return;
+    if (typeof window.requestIdleCallback === 'function') {
+      const idle = window.requestIdleCallback(() => setLibraryReady(true), { timeout: 800 });
+      return () => window.cancelIdleCallback(idle);
+    }
+    const timer = window.setTimeout(() => setLibraryReady(true), 0);
+    return () => clearTimeout(timer);
+  }, [mountAll, libraryReady]);
 
   // Sweep the currently-rendered tiles for clipped/scrolled content, badge the offenders, and log
   // a full report. Audits only what's mounted, so filtering by family keeps the DOM bounded on a
   // huge library. Also exposed as window.__overflowAudit() for console/automation use.
   const runAudit = useMemo(() => {
-    return () => {
-      const report = auditGallery();
-      const map = new Map<string, OverflowHit>();
-      for (const h of report.clip) if (!map.has(h.type)) map.set(h.type, h);
-      for (const h of report.scroll) if (!map.has(h.type)) map.set(h.type, h);
-      setFlags(map);
+    return () =>
+      import('./overflowAudit').then(({ auditGallery }) => {
+        const report = auditGallery();
+        const map = new Map<string, OverflowHit>();
+        for (const h of report.clip) if (!map.has(h.type)) map.set(h.type, h);
+        for (const h of report.scroll) if (!map.has(h.type)) map.set(h.type, h);
+        setFlags(map);
 
-      // The console dump is a dev-only affordance — a production gallery stays silent.
-      if (import.meta.env.DEV) {
-        console.log(
-          `[overflow audit] ${report.scanned} tiles, ${report.ms}ms — ${report.clip.length} clipped, ${report.scroll.length} scroll`,
-        );
-        console.table([...report.clip, ...report.scroll]);
-      }
-      return report;
-    };
+        // The console dump is a dev-only affordance — a production gallery stays silent.
+        if (import.meta.env.DEV) {
+          console.log(
+            `[overflow audit] ${report.scanned} tiles, ${report.ms}ms — ${report.clip.length} clipped, ${report.scroll.length} scroll`,
+          );
+          console.table([...report.clip, ...report.scroll]);
+        }
+        return report;
+      });
   }, []);
 
   // Overlapping-text and truncated-label sweeps — the other two ways a label becomes unreadable
   // inside a card. Console.table is the actionable output (type · family · text); the button label
   // carries the count. Also exposed as window.__overlapAudit() / __truncationAudit().
   const runOverlapAudit = useMemo(() => {
-    return () => {
-      const report = auditGalleryOverlap();
-      setOverlapN(report.overlaps.length);
-      if (import.meta.env.DEV) {
-        console.log(
-          `[overlap audit] ${report.scanned} tiles, ${report.ms}ms — ${report.overlaps.length} with overlapping text`,
-        );
-        console.table(report.overlaps);
-      }
-      return report;
-    };
+    return () =>
+      import('./overflowAudit').then(({ auditGalleryOverlap }) => {
+        const report = auditGalleryOverlap();
+        setOverlapN(report.overlaps.length);
+        if (import.meta.env.DEV) {
+          console.log(
+            `[overlap audit] ${report.scanned} tiles, ${report.ms}ms — ${report.overlaps.length} with overlapping text`,
+          );
+          console.table(report.overlaps);
+        }
+        return report;
+      });
   }, []);
 
   const runTruncationAudit = useMemo(() => {
-    return () => {
-      const report = auditGalleryTruncation();
-      setTruncN(report.truncations.length);
-      if (import.meta.env.DEV) {
-        console.log(
-          `[truncation audit] ${report.scanned} tiles, ${report.ms}ms — ${report.truncations.length} truncated labels`,
-        );
-        console.table(report.truncations);
-      }
-      return report;
-    };
+    return () =>
+      import('./overflowAudit').then(({ auditGalleryTruncation }) => {
+        const report = auditGalleryTruncation();
+        setTruncN(report.truncations.length);
+        if (import.meta.env.DEV) {
+          console.log(
+            `[truncation audit] ${report.scanned} tiles, ${report.ms}ms — ${report.truncations.length} truncated labels`,
+          );
+          console.table(report.truncations);
+        }
+        return report;
+      });
   }, []);
 
   useEffect(() => {
@@ -327,23 +432,35 @@ export function GalleryApp() {
     w.__overflowAudit = runAudit;
     w.__overlapAudit = runOverlapAudit;
     w.__truncationAudit = runTruncationAudit;
+    return () => {
+      delete w.__overflowAudit;
+      delete w.__overlapAudit;
+      delete w.__truncationAudit;
+    };
   }, [runAudit, runOverlapAudit, runTruncationAudit]);
 
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return ALL_SECTIONS.filter((s) => family === 'all' || s.id === family)
-      .map((s) => ({
-        ...s,
-        types: q
-          ? s.types.filter(
-              (t) => t.includes(q) || s.label.toLowerCase().includes(q) || s.id.includes(q),
-            )
-          : s.types,
-      }))
-      .filter((s) => s.types.length);
+    const next: Section[] = [];
+    for (const section of ALL_SECTIONS) {
+      if (family !== 'all' && section.id !== family) continue;
+      const types = q
+        ? section.types.filter(
+            (t) =>
+              t.includes(q) || section.label.toLowerCase().includes(q) || section.id.includes(q),
+          )
+        : section.types;
+      if (types.length) next.push({ ...section, types });
+    }
+    return next;
   }, [query, family]);
 
   const shown = sections.reduce((n, s) => n + s.types.length, 0);
+  const firstPaintSections = sections[0]
+    ? [{ ...sections[0], types: sections[0].types.slice(0, INITIAL_TILE_COUNT) }]
+    : [];
+  const renderedSections =
+    mountAll || libraryReady || query.trim() || family !== 'all' ? sections : firstPaintSections;
 
   return (
     <div className={'vlib' + (mountAll ? ' vlib--mountall' : '')}>
@@ -362,7 +479,9 @@ export function GalleryApp() {
             <h1>Visual library</h1>
             <p className="vlib-subtitle">
               Production-rendered library. {shown} of {TOTAL} browsable types shown. Every card is
-              fixed demonstration data, not advice.
+              {variant === 'base'
+                ? ' fixed demonstration data, not advice.'
+                : ` ${variant} stress data, not advice.`}
             </p>
           </div>
           <div className="vlib-controls">
@@ -375,12 +494,31 @@ export function GalleryApp() {
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search visuals"
             />
+            <div className="vlib-variants" role="radiogroup" aria-label="Fixture density">
+              {(['base', 'verbose', 'minimal'] as const).map((nextVariant) => (
+                <button
+                  key={nextVariant}
+                  type="button"
+                  role="radio"
+                  aria-checked={variant === nextVariant}
+                  className={`vlib-variant ${variant === nextVariant ? 'active' : ''}`}
+                  onClick={() =>
+                    writeHashQuery({ variant: nextVariant === 'base' ? null : nextVariant })
+                  }
+                >
+                  {nextVariant}
+                </button>
+              ))}
+            </div>
             {import.meta.env.DEV && (
               <>
                 <button
                   className={`vlib-audit ${flags ? 'active' : ''}`}
                   type="button"
-                  onClick={() => (flags ? setFlags(null) : runAudit())}
+                  onClick={() => {
+                    if (flags) setFlags(null);
+                    else void runAudit();
+                  }}
                   title="Measure every rendered tile for clipped / scrolled content"
                 >
                   {flags ? `Audit: ${flags.size} flagged` : 'Run overflow audit'}
@@ -388,7 +526,10 @@ export function GalleryApp() {
                 <button
                   className={`vlib-audit ${overlapN != null ? 'active' : ''}`}
                   type="button"
-                  onClick={() => (overlapN != null ? setOverlapN(null) : runOverlapAudit())}
+                  onClick={() => {
+                    if (overlapN != null) setOverlapN(null);
+                    else void runOverlapAudit();
+                  }}
                   title="Measure every rendered tile for overlapping text labels"
                 >
                   {overlapN != null ? `Overlap: ${overlapN}` : 'Run overlap audit'}
@@ -396,7 +537,10 @@ export function GalleryApp() {
                 <button
                   className={`vlib-audit ${truncN != null ? 'active' : ''}`}
                   type="button"
-                  onClick={() => (truncN != null ? setTruncN(null) : runTruncationAudit())}
+                  onClick={() => {
+                    if (truncN != null) setTruncN(null);
+                    else void runTruncationAudit();
+                  }}
                   title="Measure every rendered tile for truncated (…) labels"
                 >
                   {truncN != null ? `Truncated: ${truncN}` : 'Run truncation audit'}
@@ -414,11 +558,11 @@ export function GalleryApp() {
             </button>
           </div>
         </div>
-        <div className="vlib-chips" role="tablist" aria-label="Filter by family">
+        <div className="vlib-chips" role="radiogroup" aria-label="Filter by family">
           <button
             type="button"
-            role="tab"
-            aria-selected={family === 'all'}
+            role="radio"
+            aria-checked={family === 'all'}
             className={`vlib-chip ${family === 'all' ? 'active' : ''}`}
             onClick={() => setFamily('all')}
           >
@@ -428,8 +572,8 @@ export function GalleryApp() {
             <button
               key={s.id}
               type="button"
-              role="tab"
-              aria-selected={family === s.id}
+              role="radio"
+              aria-checked={family === s.id}
               className={`vlib-chip ${family === s.id ? 'active' : ''}`}
               onClick={() => setFamily(s.id)}
             >
@@ -443,7 +587,7 @@ export function GalleryApp() {
         {sections.length === 0 ? (
           <p className="vlib-empty">No visuals match “{query}”.</p>
         ) : (
-          sections.map((s) => (
+          renderedSections.map((s) => (
             <section className="vlib-section" key={s.id}>
               <div className="vlib-section-head">
                 <h2>{s.label}</h2>
@@ -451,7 +595,13 @@ export function GalleryApp() {
               </div>
               <div className="vlib-grid">
                 {s.types.map((t) => (
-                  <GalleryTile type={t} key={t} flag={flags?.get(t)} mountAll={mountAll} />
+                  <GalleryTile
+                    type={t}
+                    key={`${variant}:${t}`}
+                    flag={flags?.get(t)}
+                    mountAll={mountAll}
+                    variant={variant}
+                  />
                 ))}
               </div>
             </section>

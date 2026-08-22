@@ -43,7 +43,7 @@ jobs:
     name: Responsive · Touch · Artifacts · Slow CPU · Memory
     # Weekly + on-demand, NOT per-push. Two reasons, both learned the expensive way:
     #
-    # Resource use — this is the longest job (~9-15 min of Playwright driving 600 gallery tiles,
+    # Resource use — this is the longest job (~9-15 min of Playwright driving 625 gallery tiles,
     # ~500 reel remounts, and the perf/memory probes), so weekly plus on-demand gives useful broad
     # coverage without burning compute on unrelated pushes. Standard public-repository runners are
     # free; no paid or larger runner is selected.
@@ -134,7 +134,7 @@ jobs:
             echo "::endgroup::"
           }
 
-          gate audit:ui           pnpm audit:ui
+          gate audit:ui           pnpm audit:ui -- --widths 280,390,768,1280,1920 --variants all
           gate audit:tap          pnpm audit:tap
           gate audit:interactions pnpm audit:interactions -- --slow-machine
           gate slides:gate        pnpm slides:gate

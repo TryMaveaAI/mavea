@@ -71,6 +71,8 @@
   margin: var(--s-xs) 0 0;
   color: var(--text-muted);
   font-size: 14px;
+  max-width: 54ch;
+  text-wrap: pretty;
 }
 
 .vlib-controls {
@@ -79,10 +81,11 @@
   gap: var(--s-sm);
   flex: 1 1 320px;
   max-width: 540px;
+  flex-wrap: wrap;
 }
 
 .vlib-search {
-  flex: 1;
+  flex: 1 1 220px;
   padding: var(--s-sm) var(--s-md);
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -98,6 +101,40 @@
 }
 .vlib-search::placeholder {
   color: var(--text-faint);
+}
+
+.vlib-variants {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-default);
+}
+
+.vlib-variant {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 12px/1 var(--font);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-transform: capitalize;
+  transition:
+    background var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+
+.vlib-variant:hover {
+  color: var(--text-primary);
+}
+
+.vlib-variant.active {
+  background: color-mix(in oklab, var(--presence) 16%, transparent);
+  color: var(--text-primary);
 }
 
 .vlib-theme {
@@ -259,7 +296,7 @@
 
 .vlib-tile-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--s-sm);
   padding: var(--s-sm) var(--s-md);
@@ -271,10 +308,14 @@
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .vlib-fam {
   font-size: 11px;
   color: var(--text-faint);
+  flex-shrink: 0;
+  text-align: right;
 }
 
 @media (max-width: 600px) {
@@ -293,6 +334,26 @@
   }
   .vlib-bar {
     padding: var(--s-md);
+  }
+  .vlib-bar-top {
+    align-items: stretch;
+  }
+  .vlib-controls {
+    max-width: none;
+  }
+  .vlib-search {
+    flex-basis: 100%;
+  }
+  .vlib-variants {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .vlib-tile-head {
+    flex-direction: column;
+  }
+  .vlib-fam,
+  .vlib-flag {
+    text-align: left;
   }
   .vlib-render {
     padding: var(--s-md);
@@ -385,6 +446,9 @@
    in the gallery. The layered highlight still reads as intentional during a fast fling. */
 .vlib-render--pending {
   min-height: 220px;
+}
+.vlib-canvas-pending {
+  margin: calc(-1 * var(--s-lg));
 }
 .vlib-render--pending::after {
   content: '';

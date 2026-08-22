@@ -10,6 +10,7 @@
 //   pnpm dev
 //   pnpm audit:ui
 //   pnpm audit:ui -- --widths 320,768,1280 --family "Charts"
+//   pnpm audit:ui -- --variants all --widths 280,390,768,1280,1920
 //   pnpm audit:ui -- --templates all --widths 390,768,1440,1920
 //
 // Exits 1 with a printed report if anything is flagged.
@@ -47,6 +48,7 @@ interface Truncation {
 interface Finding {
   width: number;
   theme: string;
+  variant: GalleryVariant;
   clipped: OverflowHit[];
   scrolled: OverflowHit[];
   overlaps: Collision[];
@@ -64,6 +66,10 @@ interface TemplateFinding {
 
 // No lower or upper bound: the smallest real phone (a folded Galaxy Fold is 280) through 4K.
 const DEFAULT_WIDTHS = [280, 320, 390, 768, 1024, 1280, 1536, 1920, 2560, 3840];
+const RENDER_CONSOLE_FAILURE =
+  /(?:same key|unique "key" prop|block render failed|failed to render|NaN is an invalid value|TypeError:)/i;
+const GALLERY_VARIANTS = ['base', 'verbose', 'minimal'] as const;
+type GalleryVariant = (typeof GALLERY_VARIANTS)[number];
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);
@@ -413,6 +419,17 @@ async function main(): Promise<void> {
     .map((w) => Number(w.trim()))
     .filter(Boolean);
   const themes = readFlag('themes', 'dark,light').split(',');
+  const variantFlag = readFlag('variants', 'base').trim();
+  const variants = (
+    variantFlag === 'all' ? GALLERY_VARIANTS : variantFlag.split(',')
+  ) as readonly string[];
+  for (const variant of variants) {
+    if (!GALLERY_VARIANTS.includes(variant as GalleryVariant)) {
+      throw new Error(
+        `Unknown gallery variant "${variant}". Use ${GALLERY_VARIANTS.join(',')} or all.`,
+      );
+    }
+  }
 
   if (templateFlag) {
     const templates = templateFlag === 'all' ? [...ALL_TEMPLATES] : templateFlag.split(',');
@@ -424,122 +441,149 @@ async function main(): Promise<void> {
   const findings: Finding[] = [];
   try {
     for (const theme of themes) {
-      for (const width of widths) {
-        // Geometry must be measured in the settled state. Entrance animations deliberately move
-        // labels through clipping boxes for a few hundred milliseconds, and family-level staggers
-        // can still be running after every renderer has mounted. Reduced motion is a first-class
-        // supported product mode and renders the same final layout immediately, making the gate
-        // deterministic instead of sampling a random animation frame.
-        const ctx = await browser.newContext({
-          viewport: { width, height: 900 },
-          reducedMotion: 'reduce',
-        });
-        const page = await ctx.newPage();
-        // Pin the theme before first paint so nothing is measured mid-swap.
-        await page.addInitScript((t) => localStorage.setItem('mavea-theme', t), theme);
-        await page.goto(`${baseUrl}/#/gallery?mountall=1`, { waitUntil: 'load' });
-        // Every tile must be mounted and settled before anything is measured.
-        await page.waitForFunction(
-          () =>
-            typeof window.__overflowAudit === 'function' &&
-            typeof window.__truncationAudit === 'function',
-          null,
-          { timeout: 30_000 },
-        );
-        await page.waitForFunction(
-          () => document.querySelectorAll('.vlib-tile').length > 100,
-          null,
-          {
-            timeout: 30_000,
-          },
-        );
-        // Catalog details and family renderers are route-scoped chunks. A fixed delay can audit
-        // skeletons on a slow machine or cold network and falsely report success. Require every
-        // listed tile to settle into its real renderer before measuring overflow/collisions.
-        await page.waitForFunction(
-          () => {
-            const tiles = document.querySelectorAll('.vlib-tile').length;
-            return (
-              tiles > 100 &&
-              document.querySelectorAll('.vlib-render--pending').length === 0 &&
-              document.querySelectorAll('.vlib-render').length === tiles
-            );
-          },
-          null,
-          { timeout: 60_000 },
-        );
-        // TopicCanvas performs one guaranteed post-lazy-paint accessibility pass at 700 ms to
-        // label/focus deliberate horizontal scroll regions and attach complete-text disclosures.
-        // Wait for that contract, otherwise a cold family chunk can be measured before the exact
-        // same DOM becomes keyboard/touch/screen-reader reachable and the result depends on cache
-        // warmth or theme order.
-        await page.waitForTimeout(850);
-        // The UI faces load with `font-display: swap`, so a cold run can paint fallback metrics
-        // and re-layout mid-measure — rects captured before the swap collide with rects captured
-        // after it, and fallback glyphs run wider than the real face. Measure only settled type.
-        await page.evaluate(() => document.fonts.ready);
-        // Even after the fonts land, a narrow viewport keeps reflowing for a beat: a lazily-mounted
-        // family chunk momentarily overflows its scroll pane before the pane resolves, which the
-        // sweep reads as a real horizontal scroll. It showed up as a handful of tiles flagged in
-        // ONE theme and not the other on the same run — the signature of a race, not a defect, and
-        // an intermittently red gate is one nobody trusts. Wait for the overflow picture itself to
-        // hold still rather than guessing at another fixed delay.
-        await page.waitForFunction(
-          () => {
-            const w = window as unknown as { __lastOverflow?: string; __stableTicks?: number };
-            const key = [...document.querySelectorAll<HTMLElement>('.vlib-tile *')]
-              .filter(
-                (el) =>
-                  el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
-              )
-              .length.toString();
-            w.__stableTicks = key === w.__lastOverflow ? (w.__stableTicks ?? 0) + 1 : 0;
-            w.__lastOverflow = key;
-            return (w.__stableTicks ?? 0) >= 3;
-          },
-          null,
-          { timeout: 30_000, polling: 250 },
-        );
-
-        const renderErrors = await page
-          .locator('.vlib-render-error')
-          .evaluateAll((nodes) =>
-            nodes.map((node) => (node as HTMLElement).dataset.blockType ?? 'unknown'),
+      for (const variant of variants as readonly GalleryVariant[]) {
+        for (const width of widths) {
+          // Geometry must be measured in the settled state. Entrance animations deliberately move
+          // labels through clipping boxes for a few hundred milliseconds, and family-level staggers
+          // can still be running after every renderer has mounted. Reduced motion is a first-class
+          // supported product mode and renders the same final layout immediately, making the gate
+          // deterministic instead of sampling a random animation frame.
+          const ctx = await browser.newContext({
+            viewport: { width, height: 900 },
+            reducedMotion: 'reduce',
+          });
+          const page = await ctx.newPage();
+          const consoleFailures: string[] = [];
+          page.on('console', (message) => {
+            const text = message.text();
+            if (message.type() === 'error' && RENDER_CONSOLE_FAILURE.test(text)) {
+              consoleFailures.push(text);
+            }
+          });
+          page.on('pageerror', (error) => {
+            // The intentionally sandboxed preview renderer exercises a no-same-origin iframe;
+            // its localStorage denial is the browser enforcing that isolation, not a block crash.
+            if (
+              !/document is sandboxed and lacks the 'allow-same-origin' flag/i.test(error.message)
+            ) {
+              consoleFailures.push(error.message);
+            }
+          });
+          // Pin the theme before first paint so nothing is measured mid-swap.
+          await page.addInitScript((t) => localStorage.setItem('mavea-theme', t), theme);
+          await page.goto(`${baseUrl}/#/gallery?mountall=1&variant=${variant}`, {
+            waitUntil: 'load',
+          });
+          // Every tile must be mounted and settled before anything is measured.
+          await page.waitForFunction(
+            () =>
+              typeof window.__overflowAudit === 'function' &&
+              typeof window.__truncationAudit === 'function',
+            null,
+            { timeout: 30_000 },
           );
-        if (renderErrors.length) {
-          throw new Error(`Gallery render failures: ${renderErrors.join(', ')}`);
+          await page.waitForFunction(
+            () => document.querySelectorAll('.vlib-tile').length > 100,
+            null,
+            {
+              timeout: 30_000,
+            },
+          );
+          // Catalog details and family renderers are route-scoped chunks. A fixed delay can audit
+          // skeletons on a slow machine or cold network and falsely report success. Require every
+          // listed tile to settle into its real renderer before measuring overflow/collisions.
+          await page.waitForFunction(
+            () => {
+              const tiles = document.querySelectorAll('.vlib-tile').length;
+              return (
+                tiles > 100 &&
+                document.querySelectorAll('.vlib-render--pending').length === 0 &&
+                document.querySelectorAll('.vlib-render').length === tiles
+              );
+            },
+            null,
+            { timeout: 60_000 },
+          );
+          // TopicCanvas performs one guaranteed post-lazy-paint accessibility pass at 700 ms to
+          // label/focus deliberate horizontal scroll regions and attach complete-text disclosures.
+          // Wait for that contract, otherwise a cold family chunk can be measured before the exact
+          // same DOM becomes keyboard/touch/screen-reader reachable and the result depends on cache
+          // warmth or theme order.
+          await page.waitForTimeout(850);
+          // The UI faces load with `font-display: swap`, so a cold run can paint fallback metrics
+          // and re-layout mid-measure — rects captured before the swap collide with rects captured
+          // after it, and fallback glyphs run wider than the real face. Measure only settled type.
+          await page.evaluate(() => document.fonts.ready);
+          // Even after the fonts land, a narrow viewport keeps reflowing for a beat: a lazily-mounted
+          // family chunk momentarily overflows its scroll pane before the pane resolves, which the
+          // sweep reads as a real horizontal scroll. It showed up as a handful of tiles flagged in
+          // ONE theme and not the other on the same run — the signature of a race, not a defect, and
+          // an intermittently red gate is one nobody trusts. Wait for the overflow picture itself to
+          // hold still rather than guessing at another fixed delay.
+          await page.waitForFunction(
+            () => {
+              const w = window as unknown as { __lastOverflow?: string; __stableTicks?: number };
+              const key = [...document.querySelectorAll<HTMLElement>('.vlib-tile *')]
+                .filter(
+                  (el) =>
+                    el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
+                )
+                .length.toString();
+              w.__stableTicks = key === w.__lastOverflow ? (w.__stableTicks ?? 0) + 1 : 0;
+              w.__lastOverflow = key;
+              return (w.__stableTicks ?? 0) >= 3;
+            },
+            null,
+            { timeout: 60_000, polling: 250 },
+          );
+
+          const renderErrors = await page
+            .locator('.vlib-render-error')
+            .evaluateAll((nodes) =>
+              nodes.map((node) => (node as HTMLElement).dataset.blockType ?? 'unknown'),
+            );
+          if (renderErrors.length) {
+            throw new Error(`Gallery render failures: ${renderErrors.join(', ')}`);
+          }
+          if (consoleFailures.length) {
+            const sample = [...new Set(consoleFailures)].slice(0, 8).join('\n  ');
+            throw new Error(
+              `Gallery console render failures (${theme}/${variant}/${width}px):\n  ${sample}`,
+            );
+          }
+
+          const report = (await page.evaluate('window.__overflowAudit()')) as Report;
+          const truncation = (await page.evaluate('window.__truncationAudit()')) as {
+            truncations: Truncation[];
+          };
+          const { overlaps, tiny } = await collide(page);
+
+          findings.push({
+            width,
+            theme,
+            variant,
+            scanned: report.scanned,
+            clipped: report.clip,
+            scrolled: report.scroll,
+            overlaps,
+            truncated: truncation.truncations,
+            tiny,
+          });
+          const bad =
+            report.clip.length +
+            report.scroll.length +
+            overlaps.length +
+            truncation.truncations.length +
+            tiny.length;
+          console.log(
+            `${theme.padEnd(5)} ${variant.padEnd(7)} ${String(width).padStart(4)}px — ${report.scanned} tiles · ` +
+              `${report.clip.length} clipped · ${report.scroll.length} scrolled · ` +
+              `${overlaps.length} overlapping · ${truncation.truncations.length} truncated · ` +
+              `${tiny.length} illegible` +
+              (bad === 0 ? '  ✓' : ''),
+          );
+          await ctx.close();
         }
-
-        const report = (await page.evaluate('window.__overflowAudit()')) as Report;
-        const truncation = (await page.evaluate('window.__truncationAudit()')) as {
-          truncations: Truncation[];
-        };
-        const { overlaps, tiny } = await collide(page);
-
-        findings.push({
-          width,
-          theme,
-          scanned: report.scanned,
-          clipped: report.clip,
-          scrolled: report.scroll,
-          overlaps,
-          truncated: truncation.truncations,
-          tiny,
-        });
-        const bad =
-          report.clip.length +
-          report.scroll.length +
-          overlaps.length +
-          truncation.truncations.length +
-          tiny.length;
-        console.log(
-          `${theme.padEnd(5)} ${String(width).padStart(4)}px — ${report.scanned} tiles · ` +
-            `${report.clip.length} clipped · ${report.scroll.length} scrolled · ` +
-            `${overlaps.length} overlapping · ${truncation.truncations.length} truncated · ` +
-            `${tiny.length} illegible` +
-            (bad === 0 ? '  ✓' : ''),
-        );
-        await ctx.close();
       }
     }
   } finally {
@@ -588,7 +632,7 @@ async function main(): Promise<void> {
 
   console.log('\n─── findings ───');
   for (const f of failing) {
-    console.log(`\n${f.theme} @ ${f.width}px`);
+    console.log(`\n${f.theme} · ${f.variant} @ ${f.width}px`);
     for (const h of f.clipped)
       console.log(`  CLIPPED    ${h.type}: ${h.el} → ${h.clipper} (${h.px}px)`);
     for (const h of f.scrolled)

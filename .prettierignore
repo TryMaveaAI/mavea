@@ -17,6 +17,7 @@ src/gallery/fixtures/
 # Generated compact catalog index — machine-written, kept dense on purpose (pnpm gen:catalog)
 src/canvas/blocks/catalog/facts.generated.ts
 src/canvas/blocks/catalog/structures.generated.ts
+src/canvas/blocks/catalog/fixture-contracts.generated.ts
 src/canvas/blocks/catalog/details/
 
 # The same split for the selector's reference examples — machine-written (pnpm gen:examples).

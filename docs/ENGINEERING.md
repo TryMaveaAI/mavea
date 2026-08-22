@@ -100,8 +100,9 @@ Each has a script. The layout audit runs against a dev server (`pnpm dev`); the 
 probes measure the shipped artifact, so build and serve it first (`pnpm build && pnpm preview`,
 then pass `--url http://localhost:4173`).
 
-- **`pnpm audit:ui`** — renders all 600 browsable block types in `#/gallery` across the full width range (a folded
-  phone at 280px through 4K) in both themes, and reports three faults: content **clipped** out of its
+- **`pnpm audit:ui`** — renders all 625 browsable block types in `#/gallery` across the full width range (a folded
+  phone at 280px through 4K) in both themes; pass `-- --variants all` to sweep base, verbose, and
+  minimal data shapes (the weekly gate does). It reports three faults: content **clipped** out of its
   card, text **overlapping** other text, and type shrunk **below legibility**. The clip check is the
   gallery's own; the other two exist because a collision clips nothing, so nothing else catches it —
   and it is the failure the eye notices first. It measures the ink, line by line, and knows to ignore
