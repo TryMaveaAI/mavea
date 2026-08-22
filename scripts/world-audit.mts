@@ -581,13 +581,24 @@ async function auditScenario(
   await page.waitForSelector('.wo-panel .mv-node', { state: 'attached', timeout: 30_000 });
   await settle(page);
 
+  // Two shapes, because one reading is not a choice: a world that holds several renders a tablist
+  // of chips, and a world that holds ONE names its view in a bare `.wo-chip-sole` span outside the
+  // row — there is nothing to switch to, so there is no switch. Reading only the row missed the
+  // second entirely and reported "none of the requested views is offered" for seventeen scenarios
+  // that were rendering perfectly well, which is the audit failing rather than the world.
   const offered = await page
-    .locator('.wo-views .wo-chip')
+    .locator('.wo-views [role="tab"], .wo-chip-sole')
     .evaluateAll((els) => els.map((el) => (el.textContent ?? '').trim()));
+  const sole = offered.length === 1;
   const rows: Row[] = [];
   for (const label of offered) {
     if (wanted.length && !wanted.includes(label)) continue;
-    await page.getByRole('button', { name: label, exact: true }).click();
+    // `role="tab"`, not the implicit button role: the chip row became a TABLIST (exactly one view
+    // can be on), and an explicit role replaces the implicit one — so a getByRole('button') lookup
+    // matched nothing and every scenario in the corpus timed out here. The audit is the instrument
+    // that says the world's geometry is sound; pointed at a selector that cannot match, it says
+    // nothing at all. Located inside the row so this cannot drift onto some other tab.
+    if (!sole) await page.locator('.wo-views [role="tab"]', { hasText: label }).first().click();
     await settle(page);
     const result = (await page.evaluate(AUDIT_SCRIPT)) as ViewAudit | null;
     if (!result) throw new Error(`${id} (${label}): the world panel never rendered`);

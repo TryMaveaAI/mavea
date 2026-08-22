@@ -98,7 +98,12 @@
 /* "4 parts" — a fact about the cause, on a view that cannot draw them. Deliberately NOT a control:
    it sits in the same foot row as the break-down chip, so it must not look pressable. */
 .wo-parts-count {
-  font: 500 9.5px/1 var(--font);
+  /* 11px, not 9.5: this is PERSISTENT type on a card, so at the camera's fit floor it renders at
+     `11 × FIT_FLOOR × COUNTER_MAX` ≈ 9.0px — exactly the legibility floor, and the size FIT_FLOOR
+     (lanes.ts) is derived from. At 9.5 it painted 7.8px on a spheres view at 0.58× and the world
+     audit failed it. The alternative was raising FIT_FLOOR to 0.68, which would stop the camera
+     earlier for EVERY world to accommodate one caption. Do not shrink this without moving that. */
+  font: 500 11px/1 var(--font);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-faint);
