@@ -7,7 +7,7 @@ import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { Icon } from '../../../icons/icons';
 import { richInnerHtml } from '../../../lib/richText';
 import { formatValue } from '../../lib/format';
-import { loadMapLibre } from './maplibreRuntime';
+import { disposeMap, loadMapLibre } from './maplibreRuntime';
 import { MapAttribution } from './MapAttribution';
 import type { MapRouteProps } from './types';
 
@@ -207,9 +207,8 @@ export function MapRoute({
       cancelled = true;
       window.clearTimeout(unveilCap);
       themeObs?.disconnect();
-      for (const marker of mapMarkers) marker.remove();
+      disposeMap(map, mapMarkers);
       mapMarkers = [];
-      map?.remove();
     };
   }, [stops, zoom, center]);
 

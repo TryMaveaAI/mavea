@@ -5,8 +5,14 @@ import { MapRoute } from '../src/canvas/blocks/media/MapRoute';
 
 // The lazy MapLibre chunk can fail to arrive (offline mid-demo, a strict CSP). Both map cards must
 // say so straight away instead of shimmering out the 8s cap and then fading to an empty slab.
+// The whole module is stubbed rather than partially mocked because importing the real one pulls
+// MapLibre's worker asset through Vite's `?worker&url` suffix, which is a bundler concern this
+// suite has no reason to resolve. `disposeMap` is stubbed alongside it because the cards call it
+// on unmount even when the chunk never arrived; its own behaviour is covered by
+// tests/maplibre-dispose.test.ts.
 vi.mock('../src/canvas/blocks/media/maplibreRuntime', () => ({
   loadMapLibre: () => Promise.resolve(null),
+  disposeMap: () => {},
 }));
 
 const markers = [{ name: 'Louvre', lat: 48.8606, lng: 2.3376 }];
