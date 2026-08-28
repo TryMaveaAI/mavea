@@ -1,27 +1,27 @@
-// useRoomMargin.ts — where Mavéa's note sits, and the arrow that makes it point.
+// useStudyMargin.ts — where Mavéa's note sits, and the arrow that makes it point.
 //
 // ONE note at a time, and that is a finding rather than a simplification. Showing every object's
 // note at once put five of them in one gutter with arrows crossing the foreground card and each
-// other to reach objects on the far side — the room read as a wiring diagram. MarginNoteRail hit
+// other to reach objects on the far side — the study read as a wiring diagram. MarginNoteRail hit
 // the same wall in the grid and answered it with two gutters plus a refusal to draw any tether
-// that crosses a card; the room's objects ring its centre, so there is no path that does not.
+// that crosses a card; the study's objects ring its centre, so there is no path that does not.
 //
 // So the note follows attention: the object being held up, or the one under the pointer. The
 // others are not lost — they are one hover away, which is also how a reader learns the background
 // objects are live things they can pick.
 //
 // The foreground object is always centred. Its note uses one stable right gutter, so recasting the
-// room changes the lesson instead of making the handwriting jump from side to side.
+// study changes the lesson instead of making the handwriting jump from side to side.
 //
 // Measured, never assumed: the note's height depends on its words and the object's box on which
-// object it is, so both are read after layout and re-read when the room re-casts or resizes.
+// object it is, so both are read after layout and re-read when the study re-casts or resizes.
 import { useEffect, useState, type RefObject } from 'react';
 
 /** Pulled back from the object's edge so the head points AT the card rather than onto it. */
 const HEAD_GAP = 9;
 /** Under this the note is practically touching its object and a line between them is clutter. */
 const MIN_SPAN = 40;
-/** The note's inset from the stage edge — mirrors `.room-aside`'s own offset in room.css. */
+/** The note's inset from the stage edge — mirrors `.study-aside`'s own offset in study.css. */
 const GUTTER_EDGE = 20;
 /** How far a note may sit off its object's centre line, in px, either way. */
 const DRIFT = 46;
@@ -48,9 +48,9 @@ function seeded(id: string, salt: string): number {
   return ((h >>> 0) % 100000) / 100000;
 }
 
-export interface RoomMargin {
+export interface StudyMargin {
   id: string;
-  /** Which gutter the note sits in. Room teaching notes use the right side consistently. */
+  /** Which gutter the note sits in. Study teaching notes use the right side consistently. */
   side: 'left' | 'right';
   /** Top edge in stage coordinates. */
   top: number;
@@ -81,22 +81,22 @@ function arrowHead(tip: { x: number; y: number }, from: { x: number; y: number }
 }
 
 /**
- * Lay the room's notes out in the gutter and draw each one's arrow.
+ * Lay the study's notes out in the gutter and draw each one's arrow.
  *
  * `ids` is the note order — the objects that have something to say, in the order they should
- * stack. `revision` is any value that changes when the room re-casts.
+ * stack. `revision` is any value that changes when the study re-casts.
  */
 /**
  * Place the note for `id` and draw its arrow, or null when there is nothing to place.
  *
- * `revision` is any value that changes when the room re-casts.
+ * `revision` is any value that changes when the study re-casts.
  */
-export function useRoomMargin(
+export function useStudyMargin(
   stageRef: RefObject<HTMLElement | null>,
   id: string | null,
   revision: unknown,
-): RoomMargin | null {
-  const [margin, setMargin] = useState<RoomMargin | null>(null);
+): StudyMargin | null {
+  const [margin, setMargin] = useState<StudyMargin | null>(null);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -107,10 +107,10 @@ export function useRoomMargin(
 
     // Never clears on a failed read: a re-measure that finds nothing yet (mid-travel, a card whose
     // family chunk has not landed) LEAVES the last good placement alone. Clearing it is what made
-    // the note blink out every time the room moved — SpotInk's rule, for the same reason.
+    // the note blink out every time the study moved — SpotInk's rule, for the same reason.
     const measure = (): void => {
       const s = stage.getBoundingClientRect();
-      const note = stage.querySelector<HTMLElement>('.room-aside');
+      const note = stage.querySelector<HTMLElement>('.study-aside');
       const object = stage.querySelector(`[data-spot-id="${CSS.escape(id)}"]`);
       if (!s.width || !note || !object) return;
       const n = note.getBoundingClientRect();
@@ -132,9 +132,9 @@ export function useRoomMargin(
         x: b.left - s.left + b.width + HEAD_GAP,
         y: b.top - s.top + b.height / 2,
       };
-      let tether: RoomMargin['tether'];
+      let tether: StudyMargin['tether'];
       if (Math.abs(tip.x - from.x) >= MIN_SPAN) {
-        // The bow is seeded too, so no two arrows in a room describe the same curve — a straight
+        // The bow is seeded too, so no two arrows in a study describe the same curve — a straight
         // line repeated at the same angle is what made the pointing read as a diagram connector.
         const bow = (seeded(id, 'bow') - 0.5) * 2 * BOW;
         const cx = from.x + (tip.x - from.x) * 0.42;

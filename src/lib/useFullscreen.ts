@@ -1,7 +1,7 @@
 // useFullscreen.ts — a reliable viewport-filling mode for one surface.
 //
 // The native Fullscreen API is not dependable inside embedded browsers and can reject a valid
-// click without changing anything. Room needs the same interaction everywhere, so it becomes a
+// click without changing anything. The Study needs the same interaction everywhere, so it becomes a
 // fixed viewport layer instead. This also avoids a browser permission-like transition and keeps
 // the app's own Escape behavior deterministic.
 import { useCallback, useEffect, useState } from 'react';
@@ -23,7 +23,7 @@ export function useFullscreen(): Fullscreen {
     const leave = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
       // Escape belongs to the topmost surface first. Without stopping it here, Live's presentation
-      // and demo handlers also receive the same key and close the experience underneath the Room.
+      // and demo handlers also receive the same key and close the experience underneath the Study.
       event.preventDefault();
       event.stopImmediatePropagation();
       setActive(false);

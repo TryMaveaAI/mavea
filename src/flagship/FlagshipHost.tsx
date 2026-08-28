@@ -79,11 +79,11 @@ export function FlagshipHost(): ReactElement {
     window.location.hash = '#/live';
   }, []);
 
-  const playRoomDemo = useCallback(() => {
-    const roomDemo = castMember('cfo');
-    if (!roomDemo) return;
+  const playStudyDemo = useCallback(() => {
+    const studyDemo = castMember('cfo');
+    if (!studyDemo) return;
     retireTourInvite();
-    playDemo(roomDemo);
+    playDemo(studyDemo);
   }, [playDemo, retireTourInvite]);
 
   // Enter the real product. An optional seed (the hero composer's typed question) is stashed
@@ -175,7 +175,7 @@ export function FlagshipHost(): ReactElement {
       <div ref={homeStageRef} className="presence-stage stage flagship" data-active="1">
         <FlagshipLanding
           onPlay={playDemo}
-          onPlayRoomDemo={playRoomDemo}
+          onPlayStudyDemo={playStudyDemo}
           onEnterLive={enterLive}
           onWarm={warmLive}
           onDemoIntent={warmLive}

@@ -28,9 +28,9 @@ export function runBeat(
   after: StepTimers['after'],
 ): void {
   switch (b.kind) {
-    case 'room': {
+    case 'study': {
       const ids = blockIds(frame, 3);
-      after(b.atMs, () => o.setViewMode('room'));
+      after(b.atMs, () => o.setViewMode('study'));
       ids.forEach((id, i) => after(b.atMs + 500 + i * 1050, () => o.setSpot(id)));
       if (b.connect) {
         after(b.atMs + 500 + ids.length * 1050, () => o.pinFirstBlocks(b.connect ?? 2));
@@ -98,7 +98,7 @@ export function runBeat(
  *  auto-advance never cuts a flight or an overlay short. Estimates on the generous side. */
 export function beatDurationMs(b: DemoBeat): number {
   switch (b.kind) {
-    case 'room':
+    case 'study':
       return 1500 + 3 * 1050;
     case 'canvas':
       return FLY_SETTLE_MS + 3 * FLY_STEP_MS + 1600;

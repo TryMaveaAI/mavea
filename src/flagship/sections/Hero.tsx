@@ -76,7 +76,7 @@ function useRotatingPlaceholder(paused: boolean): string {
 export function Hero({
   onEnterLive,
   onWarm,
-  onPlayRoomDemo,
+  onPlayStudyDemo,
   showTourInvite,
   onPlayTour,
   onDismissTourInvite,
@@ -84,7 +84,7 @@ export function Hero({
 }: {
   onEnterLive: (seed?: string) => void;
   onWarm?: () => void;
-  onPlayRoomDemo?: () => void;
+  onPlayStudyDemo?: () => void;
   showTourInvite?: boolean;
   onPlayTour?: () => void;
   onDismissTourInvite?: () => void;
@@ -115,8 +115,8 @@ export function Hero({
         <em>come alive around you.</em>
       </h1>
       <p className="fl-hero-lede">
-        Not a chat thread. Mavéa turns one question into a shared room of charts, timelines and
-        evidence. Point at what matters, hold two ideas together, change an assumption — the answer
+        Not a chat thread. Mavéa turns one question into a study of charts, timelines and evidence.
+        Point at what matters, hold two ideas together, change an assumption — the answer
         re-composes without starting over.
       </p>
 
@@ -161,19 +161,19 @@ export function Hero({
       {showTourInvite ? (
         <div className="fl-tour-invite" role="note">
           <p className="fl-tour-invite-text">
-            See one question become a room you can point at, connect and interrogate. No key, no
-            setup, no device permissions.
+            See one question become a study you can walk through, point at and interrogate. No key,
+            no setup, no device permissions.
           </p>
           <div className="fl-tour-invite-actions">
             <button
               type="button"
               className="fl-tour-invite-play"
-              onClick={onPlayRoomDemo ?? onPlayTour}
+              onClick={onPlayStudyDemo ?? onPlayTour}
             >
               <span className="fl-hero-watch-glyph" aria-hidden="true">
                 ▶
               </span>
-              Watch the Room
+              Watch the Study
             </button>
             {onPlayTour && (
               <button type="button" className="fl-tour-invite-world" onClick={onPlayTour}>
@@ -201,13 +201,13 @@ export function Hero({
           type="button"
           className="fl-hero-watch"
           onClick={() => {
-            onPlayRoomDemo?.();
+            onPlayStudyDemo?.();
           }}
         >
           <span className="fl-hero-watch-glyph" aria-hidden="true">
             ▶
           </span>
-          Watch the Room
+          Watch the Study
           <span className="fl-hero-watch-time">key-free fictional replay</span>
         </button>
       )}

@@ -19,7 +19,7 @@ import { FIT_TYPES } from './layout/fitPolicy';
 import { useBloomMode } from './reveal/useBloomMode';
 import { CanvasTakeover } from './focus/CanvasView';
 import { boardCapable } from './focus/canvasGate';
-import type { RoomAside } from './room/types';
+import type { StudyAside } from './study/types';
 import { InsightCard } from './InsightCard';
 import { TrendChart } from './TrendChart';
 import { BreakdownCard } from './BreakdownCard';
@@ -78,7 +78,7 @@ import { useCardDrag } from './dnd/useCardDrag';
 import { FocusStage } from './focus/FocusStage';
 import { FocusToggle } from './focus/FocusToggle';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
-import { RoomStage } from './room/RoomStage';
+import { StudyStage } from './study/StudyStage';
 import type {
   Block,
   BendSpec,
@@ -271,9 +271,9 @@ interface Props {
   onAddToDashboard?: (b: Block) => void;
   /** Ids of blocks the user has pinned, so they read as visibly selected on the canvas. */
   selectedBlockIds?: ReadonlySet<string>;
-  /** What Mavéa has written about each object in the Room, keyed by block id. */
-  roomAsides?: Readonly<Record<string, RoomAside>>;
-  /** When set, the canvas offers a Room/Focus/Everything view toggle (the surface owns the
+  /** What Mavéa has written about each object in the Study, keyed by block id. */
+  studyAsides?: Readonly<Record<string, StudyAside>>;
+  /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
    *  remembered preference). Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
   viewMode?: ViewMode;
@@ -327,7 +327,7 @@ export function TopicCanvas({
   onAskBlock,
   onAddToDashboard,
   selectedBlockIds,
-  roomAsides,
+  studyAsides,
   viewMode,
   onViewMode,
   onNarrate,
@@ -399,14 +399,14 @@ export function TopicCanvas({
   const previewBlock = data.blocks.find((b) => b.type === 'preview');
   const previewProps = previewBlock ? (previewBlock.props as PreviewProps) : null;
 
-  // Room mode needs one addressable object. Focus is offered only when the surface opts in AND
+  // Study mode needs one addressable object. Focus is offered only when the surface opts in AND
   // there are at least two
   // id-bearing cards to page through — a single card has nothing to focus, so it stays a plain
-  // Room. Neither mode disturbs the remembered preference if a particular answer cannot use it.
+  // Study. Neither mode disturbs the remembered preference if a particular answer cannot use it.
   const addressableCount = displayBlocks.filter((b) => !!b.id).length;
-  const roomCapable = viewMode !== undefined && addressableCount >= 1;
+  const studyCapable = viewMode !== undefined && addressableCount >= 1;
   const focusCapable = viewMode !== undefined && addressableCount >= 2;
-  const roomed = roomCapable && viewMode === 'room';
+  const inStudy = studyCapable && viewMode === 'study';
   const focused = focusCapable && viewMode === 'focus';
   // The spatial "Canvas" board is offered only when the answer is genuinely board-shaped. Gate on
   // data.blocks (not the responsive-trimmed set) so the offer is stable as the container resizes.
@@ -649,7 +649,7 @@ export function TopicCanvas({
             </button>
           ) : (
             <>
-              {useSections && hasDeeper && !focused && !roomed && (
+              {useSections && hasDeeper && !focused && !inStudy && (
                 <button
                   type="button"
                   className={'depth-reading-toggle' + (readingMode ? ' is-reading' : '')}
@@ -662,9 +662,9 @@ export function TopicCanvas({
                   {readingMode ? 'Collapse sections' : 'Expand sections'}
                 </button>
               )}
-              {roomCapable && onViewMode && (
+              {studyCapable && onViewMode && (
                 <FocusToggle
-                  value={roomed ? 'room' : focused ? 'focus' : 'everything'}
+                  value={inStudy ? 'study' : focused ? 'focus' : 'everything'}
                   onChange={onViewMode}
                   focusCapable={focusCapable}
                 />
@@ -712,14 +712,14 @@ export function TopicCanvas({
           selectedBlockIds={selectedBlockIds}
           onExit={() => onViewMode?.(savedViewMode())}
         />
-      ) : familiesLoaded && roomed ? (
-        <RoomStage
+      ) : familiesLoaded && inStudy ? (
+        <StudyStage
           data={data}
           blocks={displayBlocks}
           spot={spot}
           renderBlock={renderBlock}
           onAskBlock={onAskBlock}
-          asides={roomAsides}
+          asides={studyAsides}
           selectedBlockIds={selectedBlockIds}
           onNarrate={onNarrate}
           narratingId={narratingId}

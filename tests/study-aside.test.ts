@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../src/data/conversation';
 import { asideFor } from '../src/live/content/asideFor';
-import { notableIn, roomPromptIn } from '../src/live/content/notableIn';
+import { notableIn, studyPromptIn } from '../src/live/content/notableIn';
 import type { ContentGraph } from '../src/live/content/types';
 
 /** A registry holding just what asideFor reads: ids that encode a block index, and a status. */
@@ -76,7 +76,7 @@ describe('asideFor — Mavéa says what she can and cannot back', () => {
   });
 });
 
-describe('Room observations — a different layer from the spoken tour', () => {
+describe('Study observations — a different layer from the spoken tour', () => {
   it('turns an inferred headline into an assumption check instead of repeating its note', () => {
     const block = {
       type: 'insight',
@@ -110,7 +110,7 @@ describe('Room observations — a different layer from the spoken tour', () => {
     expect(notableIn(block)?.text).toMatch(/70%.*Warning/);
   });
 
-  it('uses a Room interaction prompt when an object has no structural observation', () => {
+  it('uses a Study interaction prompt when an object has no structural observation', () => {
     const block = {
       type: 'quotes',
       id: 'voice',
@@ -119,7 +119,7 @@ describe('Room observations — a different layer from the spoken tour', () => {
       note: 'Do not recycle this sentence.',
     } as Block;
 
-    const prompt = roomPromptIn(block);
+    const prompt = studyPromptIn(block);
     expect(prompt.kind).toBe('question');
     expect(prompt.text).toMatch(/nearby object/i);
     expect(prompt.text).not.toContain(block.note);

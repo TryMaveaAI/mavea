@@ -1,18 +1,18 @@
-// useRoomFlip.ts — a promotion has to LOOK like a move, not a cut.
+// useStudyTravel.ts — a promotion has to LOOK like a move, not a cut.
 //
-// An object in the room is either a thumbnail or the foreground, never both, so choosing one
-// unmounts an element and mounts a different one and the browser has nothing to tween: the room
+// An object in the study is either a thumbnail or the foreground, never both, so choosing one
+// unmounts an element and mounts a different one and the browser has nothing to tween: the study
 // hard-cuts, which is what made a spatial stage read as a slideshow. This is the classic FLIP —
 // record where the object WAS just before the state change, then, after React commits the new DOM
 // but before the browser paints it, start the new element at the old element's box and animate it
 // home.
 //
 // Two deliberate choices:
-//   · Boxes are measured RELATIVE TO THE STAGE, not the viewport. The room scrolls with the answer,
+//   · Boxes are measured RELATIVE TO THE STAGE, not the viewport. The study scrolls with the answer,
 //     so a viewport delta captured in a click handler and consumed after a re-layout carries the
 //     scroll distance with it.
-//   · The tween runs on the Web Animations API against `transform`, while `.room-actor` transitions
-//     `top`/`left` and carries its drag offset on `translate` (room.css). Three different property
+//   · The tween runs on the Web Animations API against `transform`, while `.study-actor` transitions
+//     `top`/`left` and carries its drag offset on `translate` (study.css). Three different property
 //     channels, so the travel can never fight the slot transition or a half-finished drag.
 import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 
@@ -20,7 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 
 const TRAVEL_MS = 420;
 /** Under this the move is imperceptible, and animating it is pure cost. */
 const MIN_TRAVEL_PX = 2;
-/** Decelerating, with a touch of overshoot in the tail — the room settles, it doesn't snap. */
+/** Decelerating, with a touch of overshoot in the tail — the study settles, it doesn't snap. */
 const TRAVEL_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 /** An arriving object fades the last of the way in, so a cross-fade covers any content reflow
  *  between the miniature and the full card. */
@@ -40,8 +40,8 @@ interface Plan {
   outgoing?: { id: string; from: Box };
 }
 
-export interface RoomFlip {
-  /** Attach to the room's own stage element — every box is measured against it. */
+export interface StudyTravel {
+  /** Attach to the study's own stage element — every box is measured against it. */
   stageRef: RefObject<HTMLElement | null>;
   /**
    * Call in the event handler, BEFORE the state change that swaps the foreground. Reads the DOM as
@@ -58,7 +58,7 @@ function boxWithin(stage: Element, el: Element): Box {
 }
 
 function thumbOf(stage: ParentNode, id: string): Element | null {
-  return stage.querySelector(`[data-room-actor="${CSS.escape(id)}"] .room-actor-pick`);
+  return stage.querySelector(`[data-study-actor="${CSS.escape(id)}"] .study-actor-pick`);
 }
 
 function prefersReducedMotion(): boolean {
@@ -66,10 +66,10 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Travel between room positions for the object entering the foreground and the one leaving it.
- * `activeId` is what drives the effect: it is the only thing whose change means the room re-cast.
+ * Travel between study positions for the object entering the foreground and the one leaving it.
+ * `activeId` is what drives the effect: it is the only thing whose change means the study re-cast.
  */
-export function useRoomFlip(activeId: string | null): RoomFlip {
+export function useStudyTravel(activeId: string | null): StudyTravel {
   const stageRef = useRef<HTMLElement | null>(null);
   const planRef = useRef<Plan | null>(null);
   const runningRef = useRef<Animation[]>([]);
@@ -81,7 +81,7 @@ export function useRoomFlip(activeId: string | null): RoomFlip {
       return;
     }
     const arriving = thumbOf(stage, nextId);
-    const hero = stage.querySelector('.room-hero');
+    const hero = stage.querySelector('.study-hero');
     planRef.current = {
       ...(arriving ? { incoming: { id: nextId, from: boxWithin(stage, arriving) } } : {}),
       ...(hero && currentId ? { outgoing: { id: currentId, from: boxWithin(stage, hero) } } : {}),
@@ -101,7 +101,7 @@ export function useRoomFlip(activeId: string | null): RoomFlip {
 
     const travel = (from: Box, el: Element) => {
       // The travel is an enhancement, never a requirement: a host without the Web Animations API
-      // (jsdom, an ancient engine) still gets the room, just without the move.
+      // (jsdom, an ancient engine) still gets the study, just without the move.
       if (typeof el.animate !== 'function') return;
       const to = boxWithin(stage, el);
       if (!to.w || !to.h || !from.w || !from.h) return;
@@ -129,7 +129,7 @@ export function useRoomFlip(activeId: string | null): RoomFlip {
         });
     };
 
-    const hero = stage.querySelector('.room-hero');
+    const hero = stage.querySelector('.study-hero');
     if (plan.incoming && hero) travel(plan.incoming.from, hero);
     if (plan.outgoing) {
       const landed = thumbOf(stage, plan.outgoing.id);
@@ -137,7 +137,7 @@ export function useRoomFlip(activeId: string | null): RoomFlip {
     }
   }, [activeId]);
 
-  // Nothing may outlive the stage: a running animation holds its element, and the room unmounts
+  // Nothing may outlive the stage: a running animation holds its element, and the study unmounts
   // on every view switch.
   useEffect(
     () => () => {

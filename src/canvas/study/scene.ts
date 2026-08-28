@@ -1,44 +1,44 @@
 import type { Block } from '../../data/conversation';
 import { defaultHeroId } from '../focus/heroSelect';
 
-export type RoomIntensity = 'quiet' | 'guided' | 'immersive';
-export type RoomZone = 'foreground' | 'near' | 'horizon';
+export type StudyIntensity = 'quiet' | 'guided' | 'immersive';
+export type StudyZone = 'foreground' | 'near' | 'horizon';
 
-export interface RoomActor {
+export interface StudyActor {
   block: Block;
   id: string;
   sourceIndex: number;
-  zone: RoomZone;
+  zone: StudyZone;
   slot: number;
 }
 
-export interface RoomScene {
-  active: RoomActor | null;
-  nearby: RoomActor[];
-  horizon: RoomActor[];
-  parked: RoomActor[];
-  intensity: RoomIntensity;
+export interface StudyScene {
+  active: StudyActor | null;
+  nearby: StudyActor[];
+  horizon: StudyActor[];
+  parked: StudyActor[];
+  intensity: StudyIntensity;
 }
 
 const NEAR_CAP = 4;
 
-function intensityFor(count: number): RoomIntensity {
+function intensityFor(count: number): StudyIntensity {
   if (count <= 2) return 'quiet';
   if (count <= 5) return 'guided';
   return 'immersive';
 }
 
 /**
- * Builds the room from answer order, the current conversational focus, and reversible local parks.
+ * Builds the study from answer order, the current conversational focus, and reversible local parks.
  * The active object's neighbors alternate forward/backward around it, keeping related evidence
  * close without making placement depend on a particular demo's card count.
  */
-export function deriveRoomScene(
+export function deriveStudyScene(
   blocks: readonly Block[],
   activeId: string | null,
   parkedIds: ReadonlySet<string>,
   prioritizedIds: ReadonlySet<string> = new Set(),
-): RoomScene {
+): StudyScene {
   const eligible = blocks
     .map((block, sourceIndex) => ({ block, sourceIndex }))
     .filter((entry): entry is { block: Block & { id: string }; sourceIndex: number } =>
@@ -79,7 +79,7 @@ export function deriveRoomScene(
     if (before >= 0) proximityOrder.push(visible[before]);
   }
 
-  const actor = (entry: (typeof visible)[number], zone: RoomZone, slot: number): RoomActor => ({
+  const actor = (entry: (typeof visible)[number], zone: StudyZone, slot: number): StudyActor => ({
     block: entry.block,
     id: entry.block.id,
     sourceIndex: entry.sourceIndex,
@@ -91,7 +91,7 @@ export function deriveRoomScene(
   const attentionOrder = [...prioritized, ...ordinary];
   const nearbyEntries = attentionOrder.slice(0, NEAR_CAP);
   // The horizon may scroll, but it must never truncate the answer. Provider output is dynamic and
-  // a silent cap would make later objects impossible to recover in any Room interaction.
+  // a silent cap would make later objects impossible to recover in any Study interaction.
   const horizonEntries = attentionOrder.slice(NEAR_CAP);
 
   return {

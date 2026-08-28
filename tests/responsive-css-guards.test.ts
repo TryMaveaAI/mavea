@@ -8,17 +8,17 @@ import { join } from 'path';
 
 const read = (rel: string): string => readFileSync(join(__dirname, '..', rel), 'utf8');
 
-describe('Conversation Room — a compact lesson stays inside the viewport', () => {
-  const css = read('src/canvas/room/room.css');
+describe('The Study — a compact lesson stays inside the viewport', () => {
+  const css = read('src/canvas/study/study.css');
 
   it('stands down the nearby ring when the typed note and foreground become full-width', () => {
     // At <=820px the foreground and note return to flow. Leaving every nearby actor as another
     // 100%-wide row made the note-gutter positioning push them beyond the right edge; navigation
-    // already exposes every teaching point without turning the room into a clipped card list.
+    // already exposes every teaching point without turning the study into a clipped card list.
     const compactActors =
-      /\.room-stage\[data-note-gutter\] \.room-actor,[^{]+\{[^}]*\}/.exec(css)?.[0] ?? '';
+      /\.study-stage\[data-note-gutter\] \.study-actor,[^{]+\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(compactActors).toMatch(/display:\s*none/);
-    expect(css).toMatch(/\.room-stage:is\(:fullscreen, \.is-fullscreen\)/);
+    expect(css).toMatch(/\.study-stage:is\(:fullscreen, \.is-fullscreen\)/);
     expect(css).toMatch(/position:\s*fixed/);
     expect(css).toMatch(/height:\s*100dvh/);
   });

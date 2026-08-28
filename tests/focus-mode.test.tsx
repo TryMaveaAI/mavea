@@ -28,12 +28,23 @@ function blk(type: string, id?: string, props: Record<string, unknown> = {}): Bl
 describe('useFocusMode store', () => {
   beforeEach(() => {
     localStorage.clear();
-    setViewMode('room'); // reset the in-session cache to the default
+    setViewMode('study'); // reset the in-session cache to the default
     localStorage.clear();
   });
 
-  it('defaults to the Conversation Room', () => {
-    expect(getViewMode()).toBe('room');
+  it('defaults to the Study', () => {
+    expect(getViewMode()).toBe('study');
+  });
+
+  it("migrates a stored pre-rename 'room' preference to 'study' on read", async () => {
+    localStorage.setItem('mavea-view-mode', 'room');
+    // A fresh module instance, so the read really comes from storage rather than the
+    // in-session cache the beforeEach just seeded.
+    vi.resetModules();
+    const fresh = await import('../src/canvas/focus/useFocusMode');
+    expect(fresh.getViewMode()).toBe('study');
+    // Migrated on read only — the stored value is never rewritten behind the user's back.
+    expect(localStorage.getItem('mavea-view-mode')).toBe('room');
   });
 
   it('persists the chosen mode to localStorage under the shared key', () => {
@@ -190,7 +201,7 @@ describe('TopicCanvas — Focus mode', () => {
     expect(container.querySelectorAll('.filmstrip-entry')).toHaveLength(3);
   });
 
-  it('falls back to the grid but still offers Room when only one card can hold a stage', () => {
+  it('falls back to the grid but still offers Study when only one card can hold a stage', () => {
     const oneId: Block[] = [
       insight('a1', 'Alpha'),
       { type: 'list', col: 12, props: { title: 'Notes', items: ['x'] } } as Block,

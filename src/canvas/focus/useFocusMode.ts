@@ -1,6 +1,6 @@
 // useFocusMode.ts — the canvas view mode, remembered across sessions.
 //
-// 'room' is the shared-attention stage: one foreground object, nearby evidence, and a quiet
+// 'study' is the shared-attention stage: one foreground object, nearby evidence, and a quiet
 // horizon. 'everything' is the full adaptive grid. 'focus' pages one card at a time. 'canvas'
 // spreads THIS answer's cards on a board, and 'world' opens the causal web behind it. The choice is
 // a single shared preference (one key, both surfaces) so flipping it in the Demo carries into Live.
@@ -10,12 +10,12 @@
 // a bad value degrades to the default. The store half is framework-free; the hook subscribes.
 import { useCallback, useEffect, useState } from 'react';
 
-export type ViewMode = 'room' | 'focus' | 'everything' | 'canvas' | 'world';
+export type ViewMode = 'study' | 'focus' | 'everything' | 'canvas' | 'world';
 
 const STORAGE_KEY = 'mavea-view-mode';
 /** Broadcast on every write so live views re-read (same key, so it's self-describing). */
 export const VIEW_MODE_EVENT = STORAGE_KEY;
-const DEFAULT: ViewMode = 'room';
+const DEFAULT: ViewMode = 'study';
 
 /**
  * The views that belong to ONE answer rather than to the reader's standing preference: the spatial
@@ -26,7 +26,7 @@ const DEFAULT: ViewMode = 'room';
 const TRANSIENT: ReadonlySet<string> = new Set<ViewMode>(['canvas', 'world']);
 
 function isViewMode(v: unknown): v is ViewMode {
-  return v === 'room' || v === 'focus' || v === 'everything' || v === 'canvas' || v === 'world';
+  return v === 'study' || v === 'focus' || v === 'everything' || v === 'canvas' || v === 'world';
 }
 
 // In-session source of truth, so re-reads within a session are cheap and consistent.
@@ -36,7 +36,10 @@ function fromStorage(): ViewMode {
   try {
     if (typeof localStorage === 'undefined') return DEFAULT;
     const raw = localStorage.getItem(STORAGE_KEY);
-    return isViewMode(raw) && !TRANSIENT.has(raw) ? raw : DEFAULT;
+    // A preference saved before the Study rename says 'room' — read it as the same choice.
+    // Migrated on read only; 'room' is never written back.
+    const v = raw === 'room' ? 'study' : raw;
+    return isViewMode(v) && !TRANSIENT.has(v) ? v : DEFAULT;
   } catch {
     return DEFAULT;
   }
@@ -61,7 +64,7 @@ export function setViewMode(mode: ViewMode): void {
   cache = mode;
   try {
     // A transient per-answer view is not a saved preference — never persist it (and don't clobber
-    // the saved room/focus/everything choice), so it can't stick across answers or a reload.
+    // the saved study/focus/everything choice), so it can't stick across answers or a reload.
     if (typeof localStorage !== 'undefined' && !TRANSIENT.has(mode)) {
       localStorage.setItem(STORAGE_KEY, mode);
     }

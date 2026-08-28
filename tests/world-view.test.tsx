@@ -217,7 +217,7 @@ describe("the 'world' view mode is transient, like the spatial canvas", () => {
     localStorage.setItem(VIEW_MODE_KEY, 'world');
     vi.resetModules();
     const m = await import('../src/canvas/focus/useFocusMode');
-    expect(m.getViewMode()).toBe('room');
+    expect(m.getViewMode()).toBe('study');
   });
 });
 

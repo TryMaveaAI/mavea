@@ -14,12 +14,12 @@ import { Icon } from '../../icons/icons';
 import { BlockBoundary } from '../BlockBoundary';
 import { FallbackCard } from '../FallbackCard';
 import { blockKind, blockLabel } from '../blockLabel';
-import { deriveRoomScene } from './scene';
-import type { RoomAside, RoomNoteKind } from './types';
-import { useRoomFlip } from './useRoomFlip';
-import { useRoomMargin } from './useRoomMargin';
+import { deriveStudyScene } from './scene';
+import type { StudyAside, StudyNoteKind } from './types';
+import { useStudyTravel } from './useStudyTravel';
+import { useStudyMargin } from './useStudyMargin';
 import { useFullscreen } from '../../lib/useFullscreen';
-import './room.css';
+import './study.css';
 
 interface Point {
   x: number;
@@ -33,9 +33,9 @@ interface Props {
   renderBlock: (block: Block, depth?: number) => ReactNode;
   onAskBlock?: (block: Block) => void;
   /** What Mavéa has written about each object, keyed by block id. The SET is stable for an answer
-   *  — what changes as the room re-casts is only which note is emphasised, which is a class rather
-   *  than a remount, so nothing tears down as the room moves. */
-  asides?: Readonly<Record<string, RoomAside>>;
+   *  — what changes as the study re-casts is only which note is emphasised, which is a class rather
+   *  than a remount, so nothing tears down as the study moves. */
+  asides?: Readonly<Record<string, StudyAside>>;
   selectedBlockIds?: ReadonlySet<string>;
   onNarrate?: (block: Block) => void;
   narratingId?: string | null;
@@ -46,7 +46,7 @@ const DRAG_LIMIT_X = 96;
 const DRAG_LIMIT_Y = 72;
 const DRAG_THRESHOLD = 5;
 
-const NOTE_LABELS: Record<RoomNoteKind, string> = {
+const NOTE_LABELS: Record<StudyNoteKind, string> = {
   insight: 'Pattern',
   evidence: 'Evidence',
   caution: 'Assumption',
@@ -54,7 +54,7 @@ const NOTE_LABELS: Record<RoomNoteKind, string> = {
   takeaway: 'Decision cue',
 };
 
-function NoteIcon({ kind }: { kind: RoomNoteKind }) {
+function NoteIcon({ kind }: { kind: StudyNoteKind }) {
   switch (kind) {
     case 'evidence':
       return <Icon.proof />;
@@ -73,7 +73,7 @@ function clamp(value: number, limit: number): number {
   return Math.max(-limit, Math.min(limit, value));
 }
 
-export function RoomStage({
+export function StudyStage({
   data,
   blocks,
   spot,
@@ -109,24 +109,24 @@ export function RoomStage({
   const activeId =
     (pinnedId && eligibleIds.has(pinnedId) && !parkedIds.has(pinnedId) ? pinnedId : null) ?? spot;
   const scene = useMemo(
-    () => deriveRoomScene(blocks, activeId, parkedIds, selectedBlockIds),
+    () => deriveStudyScene(blocks, activeId, parkedIds, selectedBlockIds),
     [blocks, activeId, parkedIds, selectedBlockIds],
   );
 
   const foregroundId = scene.active?.id ?? null;
-  const { stageRef, capture } = useRoomFlip(foregroundId);
-  // Scoped to the stage element, so filling the screen gives the screen to the ROOM — not to the
+  const { stageRef, capture } = useStudyTravel(foregroundId);
+  // Scoped to the stage element, so filling the screen gives the screen to the STUDY — not to the
   // app around it. The control and its target live together rather than being plumbed through
   // two components that would both have to be told which element they meant.
   const fullscreen = useFullscreen();
   // What Mavéa has written about the object being held up, and where that note sits.
   const activeAside = foregroundId ? (asides?.[foregroundId] ?? null) : null;
-  const margin = useRoomMargin(stageRef, activeAside ? foregroundId : null, activeAside?.text);
+  const margin = useStudyMargin(stageRef, activeAside ? foregroundId : null, activeAside?.text);
 
   const choose = useCallback(
     (block: Block, keepContext = false) => {
       if (!block.id) return;
-      // Holding an object in context must not disturb the room — it is an addition, not a recast.
+      // Holding an object in context must not disturb the study — it is an addition, not a recast.
       if (keepContext) {
         onAskBlock?.(block);
         return;
@@ -233,12 +233,12 @@ export function RoomStage({
   return (
     <section
       ref={stageRef}
-      className={`room-stage intensity-${scene.intensity}${fullscreen.active ? ' is-fullscreen' : ''}`}
-      aria-label="Conversation Room"
-      data-room-active={active.id}
-      data-room-speaking={speakingId}
-      data-room-note-kind={activeAside?.kind}
-      // The room reserves its own margins, so MarginNoteRail can write the walk's asides beside
+      className={`study-stage intensity-${scene.intensity}${fullscreen.active ? ' is-fullscreen' : ''}`}
+      aria-label="The Study"
+      data-study-active={active.id}
+      data-study-speaking={speakingId}
+      data-study-note-kind={activeAside?.kind}
+      // The study reserves its own margins, so MarginNoteRail can write the walk's asides beside
       // the objects they belong to. The gutter is measured off this element's own padding, which
       // keeps CSS the single source of the width.
       data-note-gutter={activeAside ? '' : undefined}
@@ -249,20 +249,20 @@ export function RoomStage({
           — each becomes the note the moment its object is brought forward. */}
       {activeAside && margin?.tether && (
         <svg
-          className={`room-tether kind-${activeAside.kind}`}
+          className={`study-tether kind-${activeAside.kind}`}
           viewBox={`0 0 ${Math.round(margin.w)} ${Math.round(margin.h)}`}
           width={margin.w}
           height={margin.h}
           aria-hidden="true"
         >
-          <path className="room-tether-line" d={margin.tether.d} />
-          <path className="room-tether-head" d={margin.tether.head} />
+          <path className="study-tether-line" d={margin.tether.d} />
+          <path className="study-tether-head" d={margin.tether.head} />
         </svg>
       )}
       {activeAside && (
         <aside
           key={foregroundId ?? 'aside'}
-          className={`room-aside kind-${activeAside.kind} side-${margin?.side ?? 'right'}`}
+          className={`study-aside kind-${activeAside.kind} side-${margin?.side ?? 'right'}`}
           style={
             margin
               ? ({
@@ -273,18 +273,18 @@ export function RoomStage({
           }
           aria-live="polite"
         >
-          <span className="room-note-kicker">
+          <span className="study-note-kicker">
             <NoteIcon kind={activeAside.kind} />
             {NOTE_LABELS[activeAside.kind]}
           </span>
-          <p className="room-note-copy">{activeAside.text}</p>
+          <p className="study-note-copy">{activeAside.text}</p>
           {lessonBlocks.length > 1 && (
-            <footer className="room-note-footer">
+            <footer className="study-note-footer">
               <span aria-label={`Teaching point ${lessonIndex + 1} of ${lessonBlocks.length}`}>
                 {String(lessonIndex + 1).padStart(2, '0')} /{' '}
                 {String(lessonBlocks.length).padStart(2, '0')}
               </span>
-              <span className="room-note-nav">
+              <span className="study-note-nav">
                 <button
                   type="button"
                   onClick={() => moveLesson(-1)}
@@ -309,39 +309,39 @@ export function RoomStage({
 
       <button
         type="button"
-        className="room-fullscreen"
+        className="study-fullscreen"
         onClick={fullscreen.toggle}
         aria-pressed={fullscreen.active}
-        title={fullscreen.active ? 'Leave full screen (Esc)' : 'Fill the screen with this room'}
-        aria-label={fullscreen.active ? 'Leave full screen' : 'Fill the screen with this room'}
+        title={fullscreen.active ? 'Leave full screen (Esc)' : 'Fill the screen with this study'}
+        aria-label={fullscreen.active ? 'Leave full screen' : 'Fill the screen with this study'}
       >
         {fullscreen.active ? <Icon.collapse /> : <Icon.expand />}
       </button>
 
-      <div className="room-field">
+      <div className="study-field">
         {scene.nearby.map((actor) => {
           const point = offsets.get(actor.id) ?? { x: 0, y: 0 };
           const selected = !!selectedBlockIds?.has(actor.id);
           const actorStyle = {
-            '--room-slot': actor.slot,
-            '--room-dx': `${point.x}px`,
-            '--room-dy': `${point.y}px`,
+            '--study-slot': actor.slot,
+            '--study-dx': `${point.x}px`,
+            '--study-dy': `${point.y}px`,
           } as CSSProperties;
           return (
             <article
               key={actor.id}
-              className={`room-actor room-actor-${actor.slot}${selected ? ' is-context' : ''}`}
+              className={`study-actor study-actor-${actor.slot}${selected ? ' is-context' : ''}`}
               style={actorStyle}
-              data-room-actor={actor.id}
+              data-study-actor={actor.id}
               // The pen resolves its targets by data-spot-id alone (AnnotationLayer's host
               // lookup). Stamping only the foreground object meant Mavéa could mark exactly one
-              // thing in the room and could never draw a connector between two — the room had
+              // thing in the study and could never draw a connector between two — the study had
               // objects but no way to point at them. Every actor is a mark target now.
               data-spot-id={actor.id}
               data-kind={actor.block.type}
             >
               <div
-                className="room-actor-pick"
+                className="study-actor-pick"
                 role="button"
                 tabIndex={0}
                 aria-label={`Bring ${blockLabel(actor.block)} forward`}
@@ -356,16 +356,16 @@ export function RoomStage({
                 {/* Named, not previewed. A real card shrunk to a 148px box renders its body text
                     at ~5px — the shape of a chart with none of its information, which reads as
                     broken rather than as a preview. What survives the shrink is what the object
-                    IS and what it is called, so that is what the room shows. */}
-                <span className="room-actor-meta">
-                  <span className="room-actor-kind">{blockKind(actor.block)}</span>
-                  <span className="room-actor-title">{blockLabel(actor.block)}</span>
-                  {actor.block.note && <span className="room-actor-note">{actor.block.note}</span>}
+                    IS and what it is called, so that is what the study shows. */}
+                <span className="study-actor-meta">
+                  <span className="study-actor-kind">{blockKind(actor.block)}</span>
+                  <span className="study-actor-title">{blockLabel(actor.block)}</span>
+                  {actor.block.note && <span className="study-actor-note">{actor.block.note}</span>}
                 </span>
               </div>
               <button
                 type="button"
-                className="room-actor-park"
+                className="study-actor-park"
                 onClick={() => park(actor.block)}
                 aria-label={`Park ${blockLabel(actor.block)}`}
                 title="Move out of the way"
@@ -376,15 +376,15 @@ export function RoomStage({
           );
         })}
 
-        <div className="room-foreground">
-          <div className="room-hero-shell">
+        <div className="study-foreground">
+          <div className="study-hero-shell">
             {/* Nothing floats over the object. Every pill tray tried here — a persistent one under
                 the hero, then the grid's hover cluster in its corner — read as chrome bolted to a
                 scene whose whole point is that there is nothing between the reader and the thing.
                 The per-object actions live in the answer grid, which is the surface for working on
-                a card; the room is the surface for looking at one. */}
+                a card; the study is the surface for looking at one. */}
             <div
-              className={`room-hero${spot === active.id ? ' spotlit' : ''}`}
+              className={`study-hero${spot === active.id ? ' spotlit' : ''}`}
               key={active.id}
               data-spot-id={active.id}
             >
@@ -394,7 +394,7 @@ export function RoomStage({
             </div>
           </div>
           {active.note && !asides?.[active.id ?? ''] && (
-            <p className="room-caption" aria-live="polite">
+            <p className="study-caption" aria-live="polite">
               {active.note}
             </p>
           )}
@@ -402,12 +402,12 @@ export function RoomStage({
       </div>
 
       {(scene.horizon.length > 0 || scene.parked.length > 0) && (
-        <div className="room-horizon" aria-label="More in this answer">
+        <div className="study-horizon" aria-label="More in this answer">
           {scene.horizon.map((actor) => (
             <button
               key={actor.id}
               type="button"
-              className="room-horizon-chip"
+              className="study-horizon-chip"
               onClick={(event) => choose(actor.block, event.shiftKey)}
               title="Bring forward"
             >
@@ -419,10 +419,10 @@ export function RoomStage({
             <button
               key={actor.id}
               type="button"
-              className="room-horizon-chip is-parked"
+              className="study-horizon-chip is-parked"
               onClick={() => restore(actor.id)}
               aria-label={`Restore ${blockLabel(actor.block)}`}
-              title="Restore to the room"
+              title="Restore to the study"
             >
               <span>Parked</span>
               {blockLabel(actor.block)}

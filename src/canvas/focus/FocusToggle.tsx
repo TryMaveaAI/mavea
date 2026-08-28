@@ -1,10 +1,10 @@
-// The compact view switch. Room is the shared-attention default, Focus is a linear presentation,
+// The compact view switch. Study is the shared-attention default, Focus is a linear presentation,
 // and Everything is the full handout. A one-object answer omits Focus because there is no sequence.
 import type { ViewMode } from './useFocusMode';
 import './focus.css';
 
 const OPTIONS: { mode: ViewMode; label: string }[] = [
-  { mode: 'room', label: 'Room' },
+  { mode: 'study', label: 'Study' },
   { mode: 'focus', label: 'Focus' },
   { mode: 'everything', label: 'Everything' },
 ];

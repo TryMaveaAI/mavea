@@ -161,7 +161,7 @@ export function useDemoDriver(opts: {
     resetTriggers();
     // Curated replays lead with the product's defining surface even when this browser previously
     // chose a grid. The visitor's standing preference is restored when the replay unmounts.
-    o.setViewMode('room');
+    o.setViewMode('study');
     o.setMuted(userMutedRef.current);
 
     const rawFrame = frameFor(script.steps, index, convo);

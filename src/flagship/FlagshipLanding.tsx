@@ -65,7 +65,7 @@ export const DEMO_ANCHOR = 'flagship-demo';
 
 interface Props {
   onPlay: (p: DemoCastMember) => void;
-  onPlayRoomDemo: () => void;
+  onPlayStudyDemo: () => void;
   onEnterLive: (seed?: string) => void;
   /** Warm the Live provider/TTS connections ahead of time (fired when the composer is focused),
    *  so a click-through into Live doesn't pay cold-start latency on the first turn. */
@@ -83,7 +83,7 @@ interface Props {
 
 export function FlagshipLanding({
   onPlay,
-  onPlayRoomDemo,
+  onPlayStudyDemo,
   onEnterLive,
   onWarm,
   onDemoIntent,
@@ -97,7 +97,7 @@ export function FlagshipLanding({
       <Reveal className="fl-hero-section">
         <Hero
           onEnterLive={onEnterLive}
-          onPlayRoomDemo={onPlayRoomDemo}
+          onPlayStudyDemo={onPlayStudyDemo}
           onWarm={onWarm}
           showTourInvite={showTourInvite}
           onPlayTour={onPlayTour}

@@ -116,14 +116,14 @@ describe('flagship — the first-run tour invite retires wherever the tour start
   it('retires when the walkthrough is taken from the topbar, not just from the invite', () => {
     render(<FlagshipHost />);
     // A first-time visitor sees the invite in the hero.
-    expect(screen.getByText('Watch the Room')).toBeInTheDocument();
+    expect(screen.getByText('Watch the Study')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Take the tour' }));
     expect(window.location.hash).toBe('#/live');
     // Coming back to the landing after touring must not re-offer the tour.
     expect(isTourSeen()).toBe(true);
     expect(screen.queryByText('Take the full tour')).toBeNull();
-    expect(screen.getByText(/Watch the Room/i)).toBeInTheDocument();
+    expect(screen.getByText(/Watch the Study/i)).toBeInTheDocument();
   });
 
   it('retires when the Explore shortcut starts the walkthrough', () => {

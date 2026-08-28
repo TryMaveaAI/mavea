@@ -1,6 +1,6 @@
 // notableIn.ts — the one thing worth pointing at on a block, derived from the block itself.
 //
-// The room's first aside condensed a block's own summary, which is why it read as saying nothing:
+// The study's first aside condensed a block's own summary, which is why it read as saying nothing:
 // the card already said it, usually in the same words. A note has to POINT — name one specific
 // thing on this object and say why it is the thing to look at. That is what a person does when
 // they explain something, and it is the difference between a caption and a remark.
@@ -243,9 +243,9 @@ export function notableIn(block: Block): Notable | null {
   }
 }
 
-/** A Room-only prompt for objects with no structural observation or source receipt. It never
+/** A Study-only prompt for objects with no structural observation or source receipt. It never
  * repeats the block's narration: it turns the object into a question the nearby objects can test. */
-export function roomPromptIn(block: Block): Notable {
+export function studyPromptIn(block: Block): Notable {
   const props = block.props;
   const title =
     'title' in props && typeof props.title === 'string' && props.title.trim()

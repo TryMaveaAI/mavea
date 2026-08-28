@@ -40,7 +40,7 @@ const TopicCanvas = lazy(() =>
 );
 import { useTapNarration } from '../canvas/focus/useTapNarration';
 import { savedViewMode, useViewMode, type ViewMode } from '../canvas/focus/useFocusMode';
-import type { RoomAside } from '../canvas/room/types';
+import type { StudyAside } from '../canvas/study/types';
 
 import { blockLabel, speakableLine } from '../canvas/blockLabel';
 import { CommandComposer } from '../components/CommandComposer';
@@ -175,11 +175,11 @@ import { isTeachAsk } from './annotate/teach';
 import { condenseForNote } from './annotate/marginNote';
 import { answerToContent } from './content/fromAnswer';
 import { asideFor } from './content/asideFor';
-import { notableIn, roomPromptIn } from './content/notableIn';
+import { notableIn, studyPromptIn } from './content/notableIn';
 
-/** How far apart the room's opening marks land — a quick cascade that reads as a hand
+/** How far apart the study's opening marks land — a quick cascade that reads as a hand
  *  moving across the board, not a batch that appears all at once. CSS delay, not a wait. */
-const ROOM_INK_STEP_MS = 190;
+const STUDY_INK_STEP_MS = 190;
 import { UserInkLayer } from './annotate/UserInkLayer';
 import { useInkIntent } from './annotate/useInkIntent';
 import { InkBar } from './annotate/InkBar';
@@ -1559,12 +1559,12 @@ export function LiveApp(): ReactElement {
   // Teach mode widens the pen to every spoken stop — from the setting, or just by asking
   // ("teach me…", "walk me through…").
   const teachTurn = cfg.teachMode || isTeachAsk(lastAsk);
-  // The Room is a teaching surface by construction — it exists to hold one object up and talk
+  // The Study is a teaching surface by construction — it exists to hold one object up and talk
   // about it — so it points generously without waiting for the reader to say "walk me through".
   // Generosity costs no model call: with no model-authored mark for a stop, `revealInkPlan`
   // falls through to the component's OWN stamped salient node (BarChart's tallest bar,
   // BreakdownCard's largest row, Donut's biggest slice), which is already there in the DOM.
-  const teachSurface = teachTurn || savedViewMode() === 'room';
+  const teachSurface = teachTurn || savedViewMode() === 'study';
   // A ref so the tour loop (which runs once per turn) always reads the live toggle value.
   const annotationsEnabledRef = useRef(cfg.annotationsEnabled);
   annotationsEnabledRef.current = cfg.annotationsEnabled;
@@ -1693,7 +1693,7 @@ export function LiveApp(): ReactElement {
 
   const [viewMode, setViewMode] = useViewMode();
 
-  // What Mavéa writes beside the object the room is holding up.
+  // What Mavéa writes beside the object the study is holding up.
   //
   // Her read, not the card's: `asideFor` reports which of the block's figures a source sentence
   // actually states and which are the model's shape — the one thing she knows that a card cannot
@@ -1702,10 +1702,10 @@ export function LiveApp(): ReactElement {
   //
   // Falls back to the block's own words when it carries no readable figures (prose, a list, a
   // diagram): silence there would be right, but the block's summary is better than nothing and is
-  // what the room showed before.
-  const roomContent = useMemo(() => {
+  // what the study showed before.
+  const studyContent = useMemo(() => {
     const spec = turn.spec;
-    if (viewMode !== 'room' || !spec) return null;
+    if (viewMode !== 'study' || !spec) return null;
     const corpus = (spec.sources ?? [])
       .map((src) => src.snippet ?? '')
       .filter(Boolean)
@@ -1717,14 +1717,14 @@ export function LiveApp(): ReactElement {
   //   1. What the block's own structure says but never spells out — which option took the most
   //      rows, how far the series really moved. Specific, checkable, and not a paraphrase.
   //   2. What Mavéa can and cannot back. Only speaks on an answer carrying figures.
-  //   3. A Room-only pressure-test prompt. It asks the reader to use the nearby objects rather
+  //   3. A Study-only pressure-test prompt. It asks the reader to use the nearby objects rather
   //      than recycling the spoken tour or the card's own note.
-  // Keyed by block id and stable for the turn, so the room re-casting changes only which note is
+  // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
   // emphasised — never the set, which is what made the old rail tear down on every move.
-  const roomAsides = useMemo(() => {
+  const studyAsides = useMemo(() => {
     const spec = turn.spec;
-    if (viewMode !== 'room' || !spec) return undefined;
-    const out: Record<string, RoomAside> = {};
+    if (viewMode !== 'study' || !spec) return undefined;
+    const out: Record<string, StudyAside> = {};
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
       const notable = notableIn(block);
@@ -1732,7 +1732,7 @@ export function LiveApp(): ReactElement {
         out[block.id] = { text: notable.text, kind: notable.kind ?? 'insight' };
         return;
       }
-      const honest = roomContent ? asideFor(roomContent, index) : null;
+      const honest = studyContent ? asideFor(studyContent, index) : null;
       if (honest) {
         out[block.id] = {
           text: honest.text,
@@ -1740,11 +1740,11 @@ export function LiveApp(): ReactElement {
         };
         return;
       }
-      const prompt = roomPromptIn(block);
+      const prompt = studyPromptIn(block);
       out[block.id] = { text: prompt.text, kind: prompt.kind ?? 'question' };
     });
     return out;
-  }, [roomContent, turn.spec, viewMode]);
+  }, [studyContent, turn.spec, viewMode]);
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
@@ -1755,10 +1755,10 @@ export function LiveApp(): ReactElement {
   // exactly when the layout really swapped — never as a side effect of some unrelated re-render
   // landing on the same on/off value twice in a row. Set during render (the officially-sanctioned
   // "adjust state from a prop/state change" pattern) so it's ready on the very render that changed.
-  // ── The room opens already marked up ────────────────────────────────────────────────────────
+  // ── The study opens already marked up ────────────────────────────────────────────────────────
   // Everywhere else the pen is a WALK artefact: marks land as the voice reaches each stop, so an
-  // answer you scroll back to — or a room you switch into after the walk finished — is a clean,
-  // silent page. That is right for a canvas you are reading and wrong for the room, whose whole
+  // answer you scroll back to — or a study you switch into after the walk finished — is a clean,
+  // silent page. That is right for a canvas you are reading and wrong for the study, whose whole
   // premise is that Mavea has been working through this with you. A teacher's board still has the
   // working on it when you look up.
   //
@@ -1768,21 +1768,21 @@ export function LiveApp(): ReactElement {
   // block that stamps nothing simply gets no ink — the hand only points at things really there.
   // Zero model calls, which is the rule on a BYOK turn path.
   //
-  // Marks only — no margin notes. The room's aside is a LIVE slot that follows the foreground
-  // (see `roomAside` below), not a rail entry: routed through MarginNoteRail it re-measured and
-  // re-tethered on every re-cast, so the note visibly tore down and rebuilt each time the room
+  // Marks only — no margin notes. The study's aside is a LIVE slot that follows the foreground
+  // (see `studyAside` below), not a rail entry: routed through MarginNoteRail it re-measured and
+  // re-tethered on every re-cast, so the note visibly tore down and rebuilt each time the study
   // moved. `ink()` dedupes per (block, gesture), so re-entry cannot stack duplicates.
-  const roomInkedFor = useRef<string | null>(null);
+  const studyInkedFor = useRef<string | null>(null);
   useEffect(() => {
     const spec = turn.spec;
-    if (viewMode !== 'room' || !spec || !annotationsEnabledRef.current) return;
-    // Once per answer. Re-entering the room on the SAME answer must not re-run the cascade.
-    if (roomInkedFor.current === spec.id) return;
-    roomInkedFor.current = spec.id;
+    if (viewMode !== 'study' || !spec || !annotationsEnabledRef.current) return;
+    // Once per answer. Re-entering the study on the SAME answer must not re-run the cascade.
+    if (studyInkedFor.current === spec.id) return;
+    studyInkedFor.current = spec.id;
     let step = 0;
     for (const b of spec.blocks) {
       if (!b.id) continue;
-      ink(b.id, b.note ?? undefined, undefined, true, step * ROOM_INK_STEP_MS);
+      ink(b.id, b.note ?? undefined, undefined, true, step * STUDY_INK_STEP_MS);
       step++;
     }
   }, [viewMode, turn.spec, ink]);
@@ -2294,12 +2294,12 @@ export function LiveApp(): ReactElement {
     // Latched here — before the first stop — and held for the turn: the gutter reserves once
     // (cards tile around it from the start), so a later mute flip changes only what's inked
     // next, never the layout. Only a turn that ARRIVED muted with a spoken tour gets one.
-    // A muted turn gets notes because there is no voice to carry the asides. The Room gets them
+    // A muted turn gets notes because there is no voice to carry the asides. The Study gets them
     // for the opposite reason: it is a teaching surface, and a lesson that leaves nothing written
     // down is a lecture you cannot re-read. Latched here — before the first stop — and held for
     // the turn, so the gutter reserves once and a later mute flip changes only what is inked next.
     const withNotes =
-      (mutedRef.current || savedViewMode() === 'room') &&
+      (mutedRef.current || savedViewMode() === 'study') &&
       spokenWalk &&
       annotationsEnabledRef.current;
     setNoteGutterTurn(withNotes);
@@ -4390,10 +4390,10 @@ export function LiveApp(): ReactElement {
       run: () => setExportOpen(true),
       preload: exportModalLoad.preload,
     },
-    room: {
+    study: {
       available: !!turn.spec,
       reason: 'Once there is an answer',
-      run: () => setViewMode('room'),
+      run: () => setViewMode('study'),
     },
     focus: {
       available: !!turn.spec,
@@ -5892,7 +5892,7 @@ export function LiveApp(): ReactElement {
                   onNarrate={narrateBlock}
                   narratingId={narratingId}
                   muted={muted}
-                  roomAsides={roomAsides}
+                  studyAsides={studyAsides}
                   viewMode={viewMode}
                   onViewMode={setViewMode}
                   presenting={presenting}

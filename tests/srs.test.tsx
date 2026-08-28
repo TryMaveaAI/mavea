@@ -735,7 +735,7 @@ describe('the study invitation', () => {
   }
 
   /** Save cards off the answer the way a user does: the block's "Cards" pill, then Save.
-   *  The pill lives on the answer GRID — the Room is a surface for looking at one object, not for
+   *  The pill lives on the answer GRID — the Study is a surface for looking at one object, not for
    *  working on it, so it deliberately carries no per-object controls. Hence the explicit view. */
   async function saveCardsFromBlock(container: HTMLElement): Promise<void> {
     // The block library loads in per-family chunks, so the first mount in a run pays for that.
@@ -757,7 +757,7 @@ describe('the study invitation', () => {
     sessionStorage.clear();
     __resetSrsCacheForTests();
     resetLiveConfig();
-    // localStorage.clear() above wipes the remembered view, which then defaults to the Room.
+    // localStorage.clear() above wipes the remembered view, which then defaults to the Study.
     setViewMode('everything');
     clearSession();
     priorSession();

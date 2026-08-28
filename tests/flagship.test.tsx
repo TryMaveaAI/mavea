@@ -4,12 +4,12 @@ import { heroCast } from '../src/demo/cast';
 
 function setup() {
   const onPlay = vi.fn();
-  const onPlayRoomDemo = vi.fn();
+  const onPlayStudyDemo = vi.fn();
   const onEnterLive = vi.fn();
   const utils = render(
-    <FlagshipLanding onPlay={onPlay} onPlayRoomDemo={onPlayRoomDemo} onEnterLive={onEnterLive} />,
+    <FlagshipLanding onPlay={onPlay} onPlayStudyDemo={onPlayStudyDemo} onEnterLive={onEnterLive} />,
   );
-  return { onPlay, onPlayRoomDemo, onEnterLive, ...utils };
+  return { onPlay, onPlayStudyDemo, onEnterLive, ...utils };
 }
 
 describe('FlagshipLanding', () => {
@@ -84,10 +84,10 @@ describe('FlagshipLanding', () => {
     }
   });
 
-  it('shows the key-free Room replay when no invite is passed', () => {
-    const { getByText, queryByText, onPlayRoomDemo } = setup();
-    fireEvent.click(getByText(/^Watch the Room$/i));
-    expect(onPlayRoomDemo).toHaveBeenCalledTimes(1);
+  it('shows the key-free Study replay when no invite is passed', () => {
+    const { getByText, queryByText, onPlayStudyDemo } = setup();
+    fireEvent.click(getByText(/^Watch the Study$/i));
+    expect(onPlayStudyDemo).toHaveBeenCalledTimes(1);
     expect(queryByText(/Take the full tour/i)).toBeNull();
   });
 
@@ -97,16 +97,16 @@ describe('FlagshipLanding', () => {
     const { getByText } = render(
       <FlagshipLanding
         onPlay={vi.fn()}
-        onPlayRoomDemo={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={onPlayTour}
         onDismissTourInvite={onDismissTourInvite}
       />,
     );
-    // The invite promotes the same Room replay into its primary action — never duplicates it.
-    expect(getByText(/^Watch the Room$/i)).toBeTruthy();
-    expect(getByText(/one question become a room/i)).toBeTruthy();
+    // The invite promotes the same Study replay into its primary action — never duplicates it.
+    expect(getByText(/^Watch the Study$/i)).toBeTruthy();
+    expect(getByText(/one question become a study/i)).toBeTruthy();
 
     fireEvent.click(getByText('Take the full tour'));
     expect(onPlayTour).toHaveBeenCalledTimes(1);
@@ -119,7 +119,7 @@ describe('FlagshipLanding', () => {
     const { queryByText, rerender } = render(
       <FlagshipLanding
         onPlay={vi.fn()}
-        onPlayRoomDemo={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={vi.fn()}
@@ -132,7 +132,7 @@ describe('FlagshipLanding', () => {
     rerender(
       <FlagshipLanding
         onPlay={vi.fn()}
-        onPlayRoomDemo={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={vi.fn()}
