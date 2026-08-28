@@ -1,706 +1,412 @@
+/* study.css — The Study: one answer laid out on a lamplit desk.
+
+   The desk is AUTHORED at a fixed 1440×740 (slots.ts) and scaled to the stage like a piece of
+   print, so the composition cannot come apart at an unanticipated size — the scale clamps at
+   STUDY_FIT_FLOOR (9px rendered ÷ 11px authored) and the stage crops rather than shrinking type
+   past legibility. The palette is the Study's own identity (the approved design, verbatim in
+   light), scoped as custom properties on the stage: dark is the same room after dark — warm
+   umber, the same amber lamp — never a grey inversion. Blocks rendered on the desk harmonize by
+   TOKEN REBINDING only; no block component is touched.
+
+   Legibility contract: reading surfaces (the front card, Mavéa's note, the beat bar, the
+   takeaway) author no persistent type below 11px, because the desk may legally shrink to
+   9/11 of authored size. Back-arc cards are deliberately illegible — blurred, dimmed scenery
+   whose accessible name lives on the card button and whose readable name lives in the beat
+   bar — and are exempt by construction, the way the world's faded decoration is. */
+
 .study-stage {
-  /* The study sizes its own contents. `cqi` is a fraction of THIS element's width, so one set of
-     rules covers the inline stage and the full-screen one — no class, no media query, no second
-     set of numbers to keep in sync. Every scale is a clamp: the floor keeps type above the 9px
-     legibility floor on a small stage, the ceiling stops a 2560px screen inflating a card into a
-     poster. */
+  /* ── The Study's palette — dark base ("the study after dark") ─────────────────────────── */
+  --study-bg: #171209;
+  --study-glow-1: #2a2214;
+  --study-glow-2: #1f1910;
+  --study-glow-3: #131008;
+  --study-frame: #3b3220;
+  --study-card: #201a10;
+  --study-card-border: #3b3220;
+  --study-inner: #261f12;
+  --study-inner-border: #463a24;
+  --study-ink: #ede4d0;
+  --study-ink-soft: #bfb299;
+  --study-ink-muted: #8c8069;
+  --study-ink-faint: #6e6350;
+  --study-green: #93a671;
+  --study-green-deep: #7c9459;
+  --study-amber: #d98f45;
+  --study-amber-deep: #c08a50;
+  --study-amber-press: #b06018;
+  --study-highlight: #4a3b1e;
+  --study-red: #d26b50;
+  --study-note-bg: #251e11;
+  --study-note-border: #463a24;
+  --study-crib: #2b2413;
+  --study-hand-ink: #d8c9a8;
+  --study-pen: #c08a50;
+  --study-shadow-soft: rgba(0, 0, 0, 0.4);
+  --study-shadow-deep: rgba(0, 0, 0, 0.65);
+  --study-glass: rgba(30, 24, 14, 0.62);
+  --study-glass-line: rgba(70, 58, 36, 0.8);
+  --study-mute: rgba(23, 18, 9, 0.6);
+  --study-vignette: rgba(0, 0, 0, 0.5);
+  --study-scrim: rgba(10, 8, 4, 0.6);
+  --study-floor-line: rgba(216, 201, 168, 0.1);
+  --study-pool: rgba(255, 236, 200, 0.07);
+  --study-grain-opacity: 0.04;
+  --study-grain-blend: soft-light;
+  --study-chip-active: #ede4d0;
+  --study-chip-active-ink: #171209;
+  --study-beat-num: #8c6a3f;
+
+  /* ── Type. The families ship in public/fonts (OFL, provenance documented). ───────────── */
+  --study-serif: 'Source Serif 4', Georgia, serif;
+  --study-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* ── What the blocks on the desk inherit. A rendered block reads tokens, not colors, so
+        rebinding the small shared set here is how a chart, a table or a KPI row arrives already
+        in the room's light — with no block component knowing the Study exists. ─────────── */
+  --surface-elevated: var(--study-card);
+  --surface-glass: var(--study-inner);
+  --text-primary: var(--study-ink);
+  --text-secondary: var(--study-ink-soft);
+  --text-muted: var(--study-ink-muted);
+  --line-soft: var(--study-card-border);
+  --grid-line: color-mix(in oklab, var(--study-ink) 12%, transparent);
+  --grid-strong: color-mix(in oklab, var(--study-ink) 20%, transparent);
+  --track: color-mix(in oklab, var(--study-ink) 10%, transparent);
+  --hover-line: color-mix(in oklab, var(--study-ink) 26%, transparent);
+  --cell-empty: color-mix(in oklab, var(--study-ink) 6%, transparent);
+  --presence: var(--study-amber);
+  --font: var(--study-serif);
+  --mono: var(--study-mono);
+
   container-type: inline-size;
   container-name: study;
-  --study-actor-w: clamp(166px, 13cqi, 268px);
   position: relative;
-  /* MEASURED, not guessed: on a 819px viewport the stage sits at y=309 with the dock at y=688,
-     so it has 379px — and a 573px stage overflowed it by 194, dropping the object and its aside
-     below the fold. The subtrahend is the answer header + dock the study always sits between. */
-  min-height: min(460px, calc(100dvh - 440px));
-  padding: 18px 18px 14px;
+  height: clamp(430px, calc(100dvh - 430px), 820px);
   overflow: clip;
-  border: 1px solid color-mix(in oklab, var(--presence) 20%, var(--line-soft));
-  border-radius: calc(var(--r-xl) + 4px);
-  background:
-    radial-gradient(
-      circle at 50% 38%,
-      color-mix(in oklab, var(--presence) 11%, transparent),
-      transparent 37%
-    ),
-    linear-gradient(
-      150deg,
-      color-mix(in oklab, var(--surface-elevated) 82%, transparent),
-      var(--surface-glass)
-    );
-  box-shadow:
-    inset 0 1px color-mix(in oklab, var(--text-primary) 9%, transparent),
-    0 30px 90px color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border: 1px solid var(--study-frame);
+  border-radius: 26px;
+  background: var(--study-bg);
+  color: var(--study-ink);
+  font-family: var(--study-serif);
   isolation: isolate;
 }
 
-.study-stage::after {
-  content: '';
+/* The approved design, verbatim: the lamplit parchment desk. */
+:root[data-theme='light'] .study-stage {
+  --study-bg: #efe7d6;
+  --study-glow-1: #faf3e3;
+  --study-glow-2: #efe1c4;
+  --study-glow-3: #dcc59b;
+  --study-frame: #d9c9a8;
+  --study-card: #fcf8ed;
+  --study-card-border: #e6dcc4;
+  --study-inner: #faf5e6;
+  --study-inner-border: #e0d5b8;
+  --study-ink: #26231c;
+  --study-ink-soft: #4a4438;
+  --study-ink-muted: #8a8272;
+  --study-ink-faint: #9a8e76;
+  --study-green: #56673f;
+  --study-green-deep: #3e5230;
+  --study-amber: #b06018;
+  --study-amber-deep: #8a5a2b;
+  --study-amber-press: #8a4b14;
+  --study-highlight: #f2e4c6;
+  --study-red: #a8402a;
+  --study-note-bg: #fbf4e1;
+  --study-note-border: #e3d6b8;
+  --study-crib: #fffbea;
+  --study-hand-ink: #4a3b22;
+  --study-pen: #8a5a2b;
+  --study-shadow-soft: rgba(96, 74, 40, 0.16);
+  --study-shadow-deep: rgba(96, 74, 40, 0.2);
+  --study-glass: rgba(250, 243, 227, 0.72);
+  --study-glass-line: rgba(201, 188, 159, 0.7);
+  --study-mute: rgba(247, 240, 226, 0.6);
+  --study-vignette: rgba(80, 58, 30, 0.26);
+  --study-scrim: rgba(239, 231, 214, 0.55);
+  --study-floor-line: rgba(138, 90, 43, 0.13);
+  --study-pool: rgba(255, 250, 234, 0.6);
+  --study-grain-opacity: 0.05;
+  --study-grain-blend: multiply;
+  --study-chip-active: #26231c;
+  --study-chip-active-ink: #fcf8ed;
+  --study-beat-num: #a79878;
+}
+
+/* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
+
+.study-desk {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  opacity: 0.45;
-  background-image: radial-gradient(circle, var(--grid-line) 0.7px, transparent 0.8px);
-  background-size: 18px 18px;
-  mask-image: linear-gradient(to bottom, transparent, black 24%, black 76%, transparent);
-  pointer-events: none;
+  background: radial-gradient(
+    1300px 720px at 50% 24%,
+    var(--study-glow-1) 0%,
+    var(--study-glow-2) 55%,
+    var(--study-glow-3) 100%
+  );
 }
 
-.study-field {
-  --study-foreground-w: min(calc(100% - (var(--study-actor-w) + 34px) * 2), 760px);
-  position: relative;
-  z-index: 2;
-  /* Tall enough to compose in, never taller than the page can show. 570px flat pushed a centred
-     composition below the fold on a laptop — the object and its aside were simply off-screen — and
-     a study you have to scroll to see the middle of is not a study. Full screen lifts the cap. */
-  min-height: min(400px, calc(100dvh - 470px));
-}
-
-.study-foreground {
-  position: relative;
-  z-index: 3;
-  /* Derived, not chosen: the foreground may take whatever the two actor columns and their gutters
-     do not need. A percentage looked fine at one width and cut the corner cards at every other —
-     the same class of bug as reserving a card's authored height instead of its real footprint. */
-  width: var(--study-foreground-w);
-  /* Dead centre of the field, on the same point the actors ring. The old 90px top margin left the
-     object high and the study bottom-heavy at any height it was not tuned for. */
+.study-canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  translate: -50% -50%;
+  width: 1440px;
+  height: 740px;
+  transform: translate(-50%, -50%) scale(var(--study-scale, 1));
+  transform-style: preserve-3d;
+  perspective: 1600px;
+  perspective-origin: 50% 38%;
 }
 
-.study-hero-shell {
-  position: relative;
-  padding: 10px;
-  border-radius: calc(var(--r-xl) + 2px);
-  background: color-mix(in oklab, var(--surface-elevated) 72%, transparent);
+.study-scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--study-rx, 0deg)) rotateY(var(--study-ry, 0deg));
+}
+
+/* The floor: a perspective grid receding from under the cards. Decorative; the first thing to
+   go on a shallow stage. */
+.study-floor {
+  position: absolute;
+  inset: 64% -20% -130% -20%;
+  height: 130%;
+  transform: rotateX(76deg);
+  transform-origin: top center;
+  background-image:
+    repeating-linear-gradient(90deg, var(--study-floor-line) 0 1.5px, transparent 1.5px 64px),
+    repeating-linear-gradient(0deg, var(--study-floor-line) 0 1.5px, transparent 1.5px 64px);
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.85), transparent 72%);
+  pointer-events: none;
+}
+
+.study-pool {
+  position: absolute;
+  top: 190px;
+  left: 240px;
+  width: 700px;
+  height: 470px;
+  background: radial-gradient(closest-side, var(--study-pool), transparent);
+  pointer-events: none;
+}
+
+/* Unscaled atmosphere over the whole stage. The vignette is what makes the light read as a lamp;
+   the grain is what makes the surface read as paper. Both are pure backgrounds — no filters, no
+   per-frame work. */
+.study-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: radial-gradient(1100px 640px at 50% 36%, transparent 55%, var(--study-vignette) 100%);
+  pointer-events: none;
+}
+
+.study-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  opacity: var(--study-grain-opacity);
+  mix-blend-mode: var(--study-grain-blend);
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* ── The cards ───────────────────────────────────────────────────────────────────────────── */
+
+.study-card {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  box-sizing: border-box;
+  transform: translate(-50%, -50%) translateZ(var(--sz)) rotateY(var(--sry)) scale(var(--ss));
+  border: 1px solid var(--study-card-border);
+  border-radius: var(--r-md);
+  background: var(--study-card);
+  box-shadow: 0 30px 70px var(--study-shadow-deep);
+  transition:
+    left 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.9s ease,
+    opacity 0.7s ease,
+    box-shadow 0.3s ease;
+  transition-delay: var(--sd, 0ms);
+}
+
+.study-card.is-front {
+  z-index: 10;
+}
+
+.study-card.is-back {
+  z-index: 2;
+  opacity: 0.55;
+  filter: blur(2.5px) saturate(0.75);
+  cursor: pointer;
+}
+
+.study-card.is-back:hover {
+  opacity: 0.78;
+  filter: blur(1.4px) saturate(0.9);
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--presence) 26%, transparent),
-    0 24px 70px color-mix(in oklab, var(--text-primary) 13%, transparent),
-    0 0 64px color-mix(in oklab, var(--presence) 13%, transparent);
-  backdrop-filter: var(--glass-blur-soft);
-  -webkit-backdrop-filter: var(--glass-blur-soft);
+    0 30px 70px var(--study-shadow-deep),
+    0 0 0 2px color-mix(in oklab, var(--study-amber) 35%, transparent);
 }
 
-.study-hero {
-  position: relative;
+.study-card.is-back:focus-visible {
+  outline: 2px solid var(--study-amber);
+  outline-offset: 3px;
+}
+
+.study-card.is-context {
+  box-shadow:
+    0 30px 70px var(--study-shadow-deep),
+    0 0 0 2px color-mix(in oklab, var(--study-amber) 45%, transparent);
+}
+
+/* The parchment mute over a background card — the desk's depth-of-field, faded out the moment
+   the card takes the desk. */
+.study-card-mute {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  background: var(--study-mute);
+  opacity: 1;
+  transition: opacity 0.85s ease;
+  pointer-events: none;
+}
+
+.study-card.is-front .study-card-mute {
+  opacity: 0;
+}
+
+.study-card-kicker {
+  padding: 18px 28px 0;
+  font: 600 11px/1 var(--study-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--study-green);
+}
+
+.study-card-face {
+  padding: 12px 28px 20px;
+}
+
+/* A block on the desk keeps its own anatomy but sheds its app chrome: the Study's card IS the
+   card. Tokens (rebound above) carry the palette in; these strip the double frame. */
+.study-card-face > * {
   min-width: 0;
 }
 
-.study-hero > .card,
-.study-hero > .fit-box {
+.study-card-face .card,
+.study-card-face .fit-box {
   width: 100%;
 }
 
-.study-hero .card.spotlight,
-.study-hero .card.dimmed {
+.study-card-face .card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* The walk's spotlight choreography dims non-narrated cards on the grid; on the desk that job
+   belongs to the arc, so the embedded card never dims or drifts. */
+.study-card-face .card.spotlight,
+.study-card-face .card.dimmed {
   opacity: 1;
   filter: none;
   transform: none;
 }
 
-.study-caption {
-  max-width: 680px;
-  margin: 27px auto 0;
-  text-align: center;
-  text-wrap: balance;
-  font: 450 14.5px/1.55 var(--font);
-  color: var(--text-secondary);
+/* The narrated object wears the lamp: a slow amber ring while the voice is on it. Reaction to
+   something audibly happening — never pausable by the lite tier, only by the visibility layer. */
+.study-stage[data-study-speaking] .study-card.is-front {
+  animation: study-pulse 3.2s ease-in-out infinite;
+  animation-play-state: var(--reactive-play, running);
 }
 
-.study-actor {
+/* ── Mavéa's note, on the desk beside the object ─────────────────────────────────────────── */
+
+.study-note-wrap {
   position: absolute;
-  z-index: 2;
-  width: var(--study-actor-w);
-  /* Every object is placed as a POINT in the field (a percentage, so it scales with the study) and
-     then centred on that point. The slots used to be hard pixels — `top: 44px`, `top: 346px` —
-     measured against one card width, so at any other size the composition came apart into
-     scattered cards with voids between them. Nothing here is a measured constant. */
-  translate: calc(-50% + var(--study-dx)) calc(-50% + var(--study-dy));
-  transition:
-    top var(--m-expressive) var(--ease-out),
-    left var(--m-expressive) var(--ease-out),
-    opacity var(--m-fast) var(--ease-out),
-    filter var(--m-fast) var(--ease-out),
-    box-shadow var(--m-fast) var(--ease-out);
+  left: 1165px;
+  top: 392px;
+  width: 302px;
+  z-index: 11;
+  transform: translate(-50%, -50%) translateZ(75px);
 }
 
-/* Four points around the foreground, as fractions of the field. Slightly wider than tall because
-   a room is wider than tall, and offset from the centre line so the corners read as a ring around
-   the object rather than a cross through it. */
-.study-actor-0 {
-  top: 27%;
-  left: 13%;
+.study-note-layer {
+  margin: 0 0 7px 4px;
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.18em;
+  color: var(--study-ink-faint);
 }
 
-.study-actor-1 {
-  top: 27%;
-  left: 87%;
-}
-
-.study-actor-2 {
-  top: 73%;
-  left: 13%;
-}
-
-.study-actor-3 {
-  top: 73%;
-  left: 87%;
-}
-
-.study-actor-pick {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 0.7cqi, 12px);
-  min-height: clamp(92px, 7.4cqi, 148px);
-  padding: clamp(13px, 1.1cqi, 20px) clamp(14px, 1.2cqi, 22px);
-  border: 1px solid color-mix(in oklab, var(--presence) 18%, var(--line-soft));
-  border-radius: var(--r-lg);
-  background: color-mix(in oklab, var(--surface-elevated) 82%, transparent);
-  box-shadow: 0 12px 36px color-mix(in oklab, var(--text-primary) 9%, transparent);
-  backdrop-filter: var(--glass-blur-soft);
-  -webkit-backdrop-filter: var(--glass-blur-soft);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.study-actor-pick:active {
-  cursor: grabbing;
-}
-
-.study-actor:hover,
-.study-actor:focus-within,
-.study-actor.is-context {
-  z-index: 4;
-  filter: none;
-}
-
-.study-actor-pick:focus-visible {
-  outline: 2px solid var(--presence);
-  outline-offset: 3px;
-}
-
-.study-actor.is-context .study-actor-pick {
-  border-color: color-mix(in oklab, var(--presence) 58%, transparent);
-  box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--presence) 10%, transparent),
-    0 12px 36px color-mix(in oklab, var(--text-primary) 9%, transparent);
-}
-
-/* Every line here is read at its authored size — nothing in the study is shrunk below the 9px
-   legibility floor to imply detail it cannot actually show. */
-.study-actor-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.study-actor-kind {
-  font: 650 clamp(9.5px, 0.78cqi, 12px) / 1 var(--font);
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--presence);
-}
-
-.study-actor-title {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  font: 600 clamp(13px, 1.05cqi, 17px) / 1.32 var(--font);
-  color: var(--text-primary);
-}
-
-.study-actor-note {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  font: 450 clamp(11.5px, 0.92cqi, 15px) / 1.4 var(--font);
-  color: var(--text-secondary);
-}
-
-.study-actor-park {
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--line-soft);
-  border-radius: 50%;
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-raised);
-  color: var(--text-muted);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity var(--m-fast) var(--ease-out);
-}
-
-.study-actor-park svg {
-  width: 10px;
-  height: 10px;
-}
-
-.study-actor:hover .study-actor-park,
-.study-actor:focus-within .study-actor-park {
-  opacity: 1;
-}
-
-.study-horizon {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  gap: 7px;
-  overflow-x: auto;
-  padding: 10px 2px 2px;
-  border-top: 1px solid var(--line-soft);
-  scrollbar-width: thin;
-}
-
-.study-horizon-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  flex: 0 0 auto;
-  max-width: 230px;
-  padding: 7px 11px;
-  overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: var(--r-full);
-  background: var(--surface-glass);
-  font: 500 11px/1 var(--font);
-  color: var(--text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.study-horizon-chip:hover,
-.study-horizon-chip:focus-visible {
-  border-color: color-mix(in oklab, var(--presence) 34%, var(--line-soft));
-}
-
-.study-horizon-chip > span {
-  font-size: 9px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.study-horizon-chip.is-parked {
-  border-style: dashed;
-  opacity: 0.76;
-}
-
-.study-horizon-chip b {
-  color: var(--presence);
-}
-
-.intensity-immersive .study-actor-2,
-.intensity-immersive .study-actor-3 {
-  filter: saturate(0.82) opacity(0.88);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .study-hero {
-    animation: studyHeroArrive var(--m-expressive) var(--ease-out) both;
-  }
-
-  .study-actor {
-    animation: studyActorArrive 620ms var(--ease-out) both;
-    animation-delay: calc(var(--study-slot) * 55ms);
-  }
-}
-
-@keyframes studyHeroArrive {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes studyActorArrive {
-  from {
-    opacity: 0;
-    scale: 0.94;
-  }
-  to {
-    opacity: 1;
-    scale: 1;
-  }
-}
-
-@keyframes studySpeak {
-  from {
-    scale: 1 0.4;
-  }
-  to {
-    scale: 1 1;
-  }
-}
-
-@keyframes studyAttention {
-  0%,
-  100% {
-    opacity: 0.45;
-    scale: 1 0.86;
-  }
-  50% {
-    opacity: 1;
-    scale: 1 1;
-  }
-}
-
-@media (max-width: 1120px) {
-  .study-stage {
-    --study-actor-w: 142px;
-  }
-
-  .study-field {
-    --study-foreground-w: min(66%, 680px);
-  }
-}
-
-@media (max-width: 820px) {
-  .study-stage {
-    min-height: auto;
-    padding: 14px;
-    overflow: hidden;
-  }
-
-  .study-field {
-    --study-foreground-w: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .study-foreground {
-    position: relative;
-    top: auto;
-    left: auto;
-    translate: none;
-    order: -1;
-    width: 100%;
-    margin: 24px 0 22px;
-  }
-
-  .study-actor {
-    position: relative;
-    top: auto;
-    left: auto;
-    width: 100%;
-    translate: none;
-  }
-
-  .study-actor + .study-actor {
-    margin-top: 8px;
-  }
-
-  .study-actor-pick {
-    flex-direction: row;
-    align-items: center;
-    cursor: pointer;
-    touch-action: auto;
-  }
-
-  .study-actor-park {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin: -37px 11px 0 auto;
-    opacity: 1;
-  }
-}
-
-@media (max-width: 520px) {
-  .study-stage {
-    margin-inline: -8px;
-    border-radius: var(--r-lg);
-  }
-
-  .study-hero-shell {
-    padding: 5px;
-  }
-
-  .study-caption {
-    margin-top: 14px;
-    text-align: left;
-  }
-}
-
-/* A written lesson is a three-part composition: nearby objects on the left, the subject in the
-   middle, and the note on the right. Two actor columns plus two empty note gutters crushed the
-   subject into a narrow strip on ordinary laptop widths. */
-.study-stage[data-note-gutter] {
-  padding-inline: 18px;
-}
-
-.study-stage[data-note-gutter] .study-field {
-  --study-foreground-w: min(58%, 680px);
-}
-
-.study-stage[data-note-gutter] .study-actor-0,
-.study-stage[data-note-gutter] .study-actor-2 {
-  left: 10%;
-}
-
-.study-stage[data-note-gutter] .study-actor-1,
-.study-stage[data-note-gutter] .study-actor-3 {
-  display: none;
-}
-
-@media (max-width: 1180px) {
-  /* Below this the two columns would each be narrower than a readable note, and a note clipped
-     to three words is worse than a note the reader scrolls to. The rail measures the padding and
-     stands down on its own. */
-  .study-stage[data-note-gutter] {
-    padding-inline: 18px;
-  }
-
-  .study-stage[data-note-gutter] .study-field {
-    --study-foreground-w: min(66%, 680px);
-  }
-}
-
-/* ── Fill the screen ─────────────────────────────────────────────────────────────────────────
-   The study's one piece of chrome, parked in the corner of the stage rather than in the app's
-   menus — it acts on THIS surface, so it belongs on it. Ghost at rest so the study stays just the
-   objects; it comes up when the pointer is anywhere in the study, and on keyboard focus. */
-.study-fullscreen {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-full);
-  background: color-mix(in oklab, var(--surface-elevated) 70%, transparent);
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity var(--m-fast) var(--ease-out),
-    color var(--m-fast) var(--ease-out);
-}
-
-.study-stage:hover .study-fullscreen,
-.study-fullscreen:focus-visible {
-  opacity: 1;
-}
-
-.study-fullscreen:hover {
-  color: var(--presence);
-  border-color: color-mix(in oklab, var(--presence) 45%, var(--line-soft));
-}
-
-.study-fullscreen svg {
-  width: 15px;
-  height: 15px;
-}
-
-/* Touch has no hover — a hover-only reveal would leave the control undiscoverable rather than
-   just unobtrusive (the .block-actions precedent). */
-@media (hover: none) {
-  .study-fullscreen {
-    opacity: 1;
-  }
-}
-
-/* ── The study, filling the screen ────────────────────────────────────────────────────────────
-   `:fullscreen` is the element's own state, so this needs no class plumbing. The frame comes off
-   (a bordered, rounded panel is a card ON a page; full screen it IS the page) and the stage takes
-   the viewport it was only ever imitating. A full-screen element gets a black backdrop by
-   default, so the background is stated explicitly rather than inherited. */
-.study-stage:is(:fullscreen, .is-fullscreen) {
-  box-sizing: border-box;
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  width: 100vw;
-  height: 100dvh;
-  min-height: 100dvh;
-  padding: 24px 28px 18px;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
-  background: var(--app-bg, var(--surface-glass));
-}
-
-/* Full screen has the whole viewport, so the composition gets its full ring back. */
-.study-stage:is(:fullscreen, .is-fullscreen) .study-field {
-  min-height: 0;
-  height: 100%;
-}
-
-/* Full screen only widens what the object may take — it is already centred by the base rule.
-   The cap is generous rather than absent: past ~1200px a card stops reading as an object you are
-   being shown and starts reading as a page, and the line length goes with it. */
-.study-stage:is(:fullscreen, .is-fullscreen) .study-foreground {
-  width: var(--study-foreground-w);
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen) .study-field {
-  --study-foreground-w: min(calc(100% - (var(--study-actor-w) + 64px) * 2), 1180px);
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-field {
-  --study-foreground-w: min(56%, 920px);
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] {
-  padding-inline: 28px;
-}
-
-/* A written lesson gets a real three-zone study in the expanded view: an object shelf, the thing
-   being examined, and the teaching note. The inline view intentionally hides the right actors to
-   protect the subject; expanded mode has room to bring the whole cast back without covering it. */
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-foreground {
-  left: 51%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor {
-  display: block;
-  left: 10%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-0 {
-  top: 18%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-1 {
-  top: 39%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-2 {
-  top: 61%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-3 {
-  top: 82%;
-}
-
-.study-stage:is(:fullscreen, .is-fullscreen) .study-aside {
-  position: absolute;
-  right: 28px;
-  width: clamp(220px, 18cqi, 320px);
-  max-width: none;
-  margin: 0;
-}
-
-/* ── The aside ───────────────────────────────────────────────────────────────────────────────
-   What Mavéa has written about the object being held up, parked in the margin the stage reserved.
-   One slot, always in the same place: the study re-casts constantly, and a note that moved or
-   re-measured on every re-cast read as a glitch. Only the WORDS change — React's key swaps the
-   element, so the text cross-fades in place and the box never jumps. */
-.study-aside {
-  --study-note-accent: var(--presence);
-  box-sizing: border-box;
-  position: absolute;
-  /* Placed by measurement (useStudyMargin): level with the object it is about, in the gutter on
-     that object's own side so the arrow is short and crosses nothing. The 50% here is only the
-     pre-measurement resting place — it is overwritten on the first frame. */
-  top: 50%;
-  z-index: 5;
-  width: clamp(178px, 14cqi, 280px);
-  padding: clamp(13px, 1.1cqi, 20px) clamp(15px, 1.3cqi, 24px);
-  border: 1px solid color-mix(in oklab, var(--study-note-accent) 24%, var(--line-soft));
-  border-left: 3px solid color-mix(in oklab, var(--study-note-accent) 72%, transparent);
-  border-radius: 4px var(--r-md) var(--r-md) 4px;
-  background: color-mix(in oklab, var(--surface-elevated) 78%, transparent);
-  color: var(--text-secondary);
-  text-wrap: pretty;
-  animation: studyAsideIn 420ms var(--ease-out) both;
-}
-
-/* An admission, not a claim — warmer edge, so "I can't back this" doesn't read the same as the
-   figures she stands behind. */
-.study-aside.side-left {
-  left: 20px;
-}
-
-.study-aside.side-right {
-  right: 20px;
-}
-
-.study-aside.kind-insight {
-  --study-note-accent: var(--insight);
-}
-
-.study-aside.kind-evidence {
-  --study-note-accent: var(--presence);
-}
-
-.study-aside.kind-caution {
-  --study-note-accent: var(--warning);
-}
-
-.study-aside.kind-question {
-  --study-note-accent: var(--presence-soft);
-}
-
-.study-aside.kind-takeaway {
-  --study-note-accent: var(--text-secondary);
+.study-note {
+  border: 1px solid var(--study-note-border);
+  border-left: 4px solid var(--study-pen);
+  border-radius: 6px var(--r-md) var(--r-md) 6px;
+  background: var(--study-note-bg);
+  padding: 17px 18px 13px;
+  box-shadow: 0 24px 50px var(--study-shadow-deep);
 }
 
 .study-note-kicker {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 9px;
-  color: var(--study-note-accent);
-  font: 700 clamp(10px, 0.78cqi, 12px) / 1 var(--font);
-  letter-spacing: 0.09em;
+  gap: 8px;
+  font: 600 11px/1 var(--study-mono);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  color: var(--study-amber-deep);
 }
 
-.study-note-kicker svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
+.study-note-kicker b {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Mavéa's written hand is the SHIPPED face (see ink-hand-font.test.ts) — named first, so the
+   note never renders in a borrowed OS cursive. */
+.study-note-copy,
+.study-note-sig,
+.study-takeaway-line {
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
 }
 
 .study-note-copy {
-  margin: 0;
-  font: italic 450 clamp(13px, 1.05cqi, 17px) / 1.55 var(--font-hand, var(--font));
-  color: var(--text-secondary);
+  margin: 10px 0 0;
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--study-hand-ink);
+  text-wrap: pretty;
+}
+
+.study-note-sig {
+  margin-top: 6px;
+  text-align: right;
+  transform: rotate(-1.5deg);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--study-ink-faint);
 }
 
 .study-note-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in oklab, var(--study-note-accent) 16%, var(--line-soft));
-  color: var(--text-muted);
-  font: 650 10px/1 var(--font-mono, var(--font));
-  letter-spacing: 0.08em;
+  margin-top: 10px;
+  font: 500 11px/1 var(--study-mono);
+  color: var(--study-ink-muted);
 }
 
 .study-note-nav {
-  display: inline-flex;
-  gap: 5px;
+  display: flex;
+  gap: 6px;
 }
 
 .study-note-nav button {
@@ -709,332 +415,416 @@
   width: 27px;
   height: 27px;
   padding: 0;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-full);
-  background: color-mix(in oklab, var(--surface-elevated) 76%, transparent);
-  color: var(--text-secondary);
+  border: 1px solid var(--study-inner-border);
+  border-radius: 50%;
+  background: var(--study-inner);
+  color: var(--study-ink-muted);
   cursor: pointer;
-  transition:
-    border-color var(--m-fast) var(--ease-out),
-    color var(--m-fast) var(--ease-out),
-    background var(--m-fast) var(--ease-out);
 }
 
-.study-note-nav button:hover,
-.study-note-nav button:focus-visible {
-  border-color: color-mix(in oklab, var(--study-note-accent) 56%, var(--line-soft));
-  background: color-mix(in oklab, var(--study-note-accent) 10%, var(--surface-elevated));
-  color: var(--study-note-accent);
+.study-note-nav button:hover {
+  border-color: var(--study-amber);
+  color: var(--study-amber-deep);
 }
 
-.study-note-nav button:focus-visible {
-  outline: 2px solid var(--study-note-accent);
-  outline-offset: 2px;
-}
-
-.study-note-nav svg {
+.study-note-nav button svg {
   width: 13px;
   height: 13px;
 }
 
-@keyframes studyAsideIn {
-  from {
-    opacity: 0;
-    translate: -6px 0;
-  }
-  to {
+/* The arrow that makes the note POINT: from the note's edge toward the front card. */
+.study-connect {
+  position: absolute;
+  left: 872px;
+  top: 358px;
+  z-index: 11;
+  transform: translateZ(72px);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.study-connect path {
+  fill: none;
+  stroke: var(--study-pen);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* ── The takeaway, handwritten under the object ──────────────────────────────────────────── */
+
+.study-takeaway {
+  position: absolute;
+  left: 590px;
+  top: 648px;
+  width: 600px;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.study-takeaway-kicker {
+  margin-right: 12px;
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--study-ink-faint);
+}
+
+.study-takeaway-line {
+  display: inline-block;
+  font-weight: 500;
+  font-size: 23px;
+  line-height: 1.25;
+  color: var(--study-hand-ink);
+}
+
+.study-takeaway-stroke {
+  display: block;
+  margin: 3px auto 0;
+}
+
+.study-takeaway-stroke path {
+  fill: none;
+  stroke: var(--study-pen);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0.65;
+}
+
+/* ── The beat bar: the answer's spine, walkable ──────────────────────────────────────────── */
+
+.study-beats {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92%, 1080px);
+  padding: 7px 10px;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: var(--study-glass);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  box-shadow: 0 14px 34px var(--study-shadow-soft);
+}
+
+.study-beats-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.study-beats-row::-webkit-scrollbar {
+  display: none;
+}
+
+.study-beat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  font: 400 12.5px/1 var(--study-serif);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-beat.is-now {
+  background: var(--study-chip-active);
+  color: var(--study-chip-active-ink);
+  font-weight: 600;
+}
+
+.study-beat-num {
+  font: 600 11px/1 var(--study-mono);
+  color: var(--study-beat-num);
+}
+
+.study-beat.is-now .study-beat-num {
+  color: #e8b87a;
+}
+
+.study-beat-label {
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.study-beat-next {
+  flex: none;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--study-amber);
+  color: #fcf8ed;
+  font: 500 13px/1 var(--study-serif);
+  cursor: pointer;
+}
+
+.study-beat-next:hover {
+  background: var(--study-amber-press);
+}
+
+/* ── The fullscreen control ──────────────────────────────────────────────────────────────── */
+
+.study-fullscreen {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: var(--study-glass);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.study-stage:hover .study-fullscreen,
+.study-fullscreen:focus-visible,
+.study-stage:is(:fullscreen, .is-fullscreen) .study-fullscreen {
+  opacity: 1;
+}
+
+.study-fullscreen:hover {
+  color: var(--study-ink);
+  border-color: var(--study-amber);
+}
+
+.study-fullscreen svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: none) {
+  .study-fullscreen {
     opacity: 1;
-    translate: 0 0;
+  }
+}
+
+/* ── Filling the screen ──────────────────────────────────────────────────────────────────────
+   `:fullscreen` is the element's own state, so this needs no class plumbing. The frame comes off
+   (a bordered, rounded panel is a card ON a page; full screen it IS the page). A full-screen
+   element gets a black backdrop by default, so the background is stated explicitly. */
+.study-stage:is(:fullscreen, .is-fullscreen) {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--study-bg);
+}
+
+/* ── A shallow stage: protect the cards, sacrifice the floor ─────────────────────────────────
+   Set by useStudyScale when the clamped scale would crop deeper than the desk's decorative band.
+   The floor-grid band collapses and the whole composition lifts, so the crop lands on empty
+   parchment rather than on the arc. */
+.study-stage[data-shallow] .study-floor {
+  display: none;
+}
+
+.study-stage[data-shallow] .study-card.is-back {
+  top: calc(var(--sy) - 34px);
+}
+
+.study-stage[data-shallow] .study-takeaway {
+  top: 610px;
+}
+
+/* ── One-shot entrances (draw-on ink, the note writing itself) ───────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .study-note-copy {
+    animation: study-write 0.9s 0.15s ease-out backwards;
+  }
+
+  .study-note-sig {
+    animation: study-write 0.5s 1s ease-out backwards;
+  }
+
+  /* Per-animation play-states, ambient first: the entrance must finish even when the lite tier
+     pauses the ambient sway, or a paused declaration freezes the note at opacity 0. */
+  .study-note {
+    animation:
+      study-sway 5.6s 2s ease-in-out infinite,
+      study-fade-up 0.4s ease both;
+    animation-play-state: var(--ambient-play, running), running;
+  }
+
+  .study-takeaway-line {
+    animation:
+      study-sway 6s 3s ease-in-out infinite,
+      study-write 0.9s 0.5s ease-out backwards;
+    animation-play-state: var(--ambient-play, running), running;
+  }
+
+  .study-connect-line {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+    animation: study-draw 0.8s 0.3s ease forwards;
+  }
+
+  .study-connect-head {
+    stroke-dasharray: 44;
+    stroke-dashoffset: 44;
+    animation: study-draw 0.3s 1s ease forwards;
+  }
+
+  .study-takeaway-stroke path {
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: study-draw 0.7s 1.2s ease forwards;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .study-aside {
-    animation: none;
+  .study-card,
+  .study-card-mute {
+    transition: none;
   }
 }
 
-/* Below the two-column width the stage stands its gutters down, so the aside returns to the flow
-   under the object rather than overlapping it. */
-@media (max-width: 1180px) {
-  .study-stage[data-note-gutter] .study-field {
-    --study-foreground-w: min(66%, 680px);
-  }
-
-  .study-aside {
-    position: static;
-    translate: none;
-    width: auto;
-    max-width: 46ch;
-    margin: 0 auto 14px;
-  }
-}
-
-@media (max-width: 820px) {
-  .study-stage:is(:fullscreen, .is-fullscreen) {
-    display: flex;
-    flex-direction: column;
-    padding: 18px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .study-stage[data-note-gutter] .study-field,
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-field {
-    --study-foreground-w: 100%;
-  }
-
-  .study-stage:is(:fullscreen, .is-fullscreen) .study-field {
-    flex: 0 0 auto;
-    width: 100%;
-    height: auto;
-  }
-
-  /* On a phone the typed note and the object it teaches already fill the useful viewport. The
-     nearby ring otherwise becomes a second full-width stack — and its note-gutter offsets win the
-     cascade, pushing those rows past the right edge. The lesson arrows still visit every object,
-     while the horizon keeps the rest of the answer directly reachable. */
-  .study-stage[data-note-gutter] .study-actor,
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor {
-    display: none;
-  }
-
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-foreground {
-    position: relative;
-    left: auto;
-    translate: none;
-    margin: 10px 0 0;
-  }
-
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-aside {
-    position: static;
-    flex: 0 0 auto;
-    width: auto;
-    max-width: 46ch;
-    margin: 0 auto 14px;
-  }
-}
-
-/* ── A short study holds fewer neighbours ─────────────────────────────────────────────────────
-   The ring needs vertical room the inline page does not have on a laptop: at ~380px the object and
-   both rows of neighbours want the same band, and they simply collide. Rather than shrink
-   everything below the legibility floor, the lower pair stands down — those objects are still in
-   the study, one click away on the horizon rail, which is what the rail is for.
-
-   Scoped away from :fullscreen, where the same viewport height buys a much taller stage. */
-@media (max-height: 940px) {
-  .study-stage:not(:fullscreen):not(.is-fullscreen) .study-actor-2,
-  .study-stage:not(:fullscreen):not(.is-fullscreen) .study-actor-3 {
-    display: none;
-  }
-
-  /* With one row of neighbours the ring is a shoulder, not a circle — lift them clear of the
-     object rather than leaving them level with its middle. */
-  .study-stage:not(:fullscreen):not(.is-fullscreen) .study-actor-0,
-  .study-stage:not(:fullscreen):not(.is-fullscreen) .study-actor-1 {
-    top: 22%;
-  }
-}
-
-/* Short expanded windows cannot fit four readable shelf objects. Keep the first pair available
-   and let the lesson navigator visit the rest; never shrink their type below the legibility floor. */
-@media (max-height: 700px) {
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-0 {
-    top: 30%;
-  }
-
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-1 {
-    top: 70%;
-  }
-
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-2,
-  .study-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .study-actor-3 {
-    display: none;
-  }
-}
-
-/* ── The arrow ───────────────────────────────────────────────────────────────────────────────
-   What joins the aside to the object it is about. A remark in the margin with nothing drawn to
-   the page is a caption that happens to sit off to one side; the line is the pointing.
-
-   An <svg>, not a div: `.live-voice .card-grid > div` makes every div child a positioning context
-   and grid div children carry a transform transition, so a div overlay drifts under the spotlight
-   choreography — the same reason ConnectInk and MarginNoteRail are svg/aside. */
-.study-tether {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.study-tether-line,
-.study-tether-head {
-  fill: none;
-  stroke: color-mix(in oklab, var(--presence) 62%, transparent);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* An admission points in the same warmer hand its aside is written in. */
-.study-tether.kind-caution .study-tether-line,
-.study-tether.kind-caution .study-tether-head {
-  stroke: color-mix(in oklab, var(--warning) 68%, transparent);
-}
-
-.study-tether.kind-insight .study-tether-line,
-.study-tether.kind-insight .study-tether-head {
-  stroke: color-mix(in oklab, var(--insight) 68%, transparent);
-}
-
-/* Drawn, not faded in — the line should read as having been made by a hand moving across the
-   study, which is the whole difference between a pointer and a border. */
-@media (prefers-reduced-motion: no-preference) {
-  .study-tether-line {
-    stroke-dasharray: 420;
-    stroke-dashoffset: 420;
-    animation: studyTetherDraw 620ms var(--ease-out) 120ms forwards;
-  }
-
-  .study-tether-head {
+@keyframes study-fade-up {
+  from {
     opacity: 0;
-    animation: studyTetherHead 200ms var(--ease-out) 700ms forwards;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
-@keyframes studyTetherDraw {
+@keyframes study-write {
+  from {
+    clip-path: inset(-20% 105% -25% -5%);
+  }
+  to {
+    clip-path: inset(-20% -8% -25% -5%);
+  }
+}
+
+@keyframes study-draw {
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes studyTetherHead {
-  to {
-    opacity: 1;
+@keyframes study-sway {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-2.5px) rotate(-0.7deg);
   }
 }
 
-/* Below the two-column width the aside sits in the flow under the object — there is no gap left
-   to draw across, and a line looping back on itself explains nothing. */
-@media (max-width: 1180px) {
-  .study-tether {
+@keyframes study-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 30px 70px var(--study-shadow-deep),
+      0 0 0 0 color-mix(in oklab, var(--study-amber) 38%, transparent);
+  }
+  55% {
+    box-shadow:
+      0 30px 70px var(--study-shadow-deep),
+      0 0 0 12px transparent;
+  }
+}
+
+/* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
+   Under ~880px of container the 3-D composition has nothing to offer but squinting; the Study
+   reflows to a flat reading column — the front card full-width, Mavéa's note beneath it, the
+   beat bar as the whole navigator. Background objects keep their NAMES (the beat chips), never
+   an unreadable miniature. */
+@container study (max-width: 880px) {
+  .study-stage {
+    height: auto;
+  }
+
+  .study-desk {
+    position: static;
+    background: var(--study-bg);
+  }
+
+  .study-canvas,
+  .study-scene {
+    position: static;
+    width: auto;
+    height: auto;
+    transform: none;
+    perspective: none;
+  }
+
+  .study-floor,
+  .study-pool,
+  .study-vignette,
+  .study-grain,
+  .study-connect,
+  .study-card.is-back,
+  .study-card-mute {
     display: none;
   }
-}
 
-/* ═══ DEPTH ══════════════════════════════════════════════════════════════════════════════════
-   Until now every object in the study was lit identically and the foreground was simply the bigger
-   box — so the study read as a flat page with one card enlarged, not as a space with something held
-   up in it. Distance is what makes a room a room.
-
-   Three cues, all cheap, none of them blur: blur destroys the legibility the background objects
-   need in order to be worth picking, and picking them is the whole point of the ring.
-
-   IMPORTANT: the recede uses the independent `scale` property, never `transform`. `.study-actor`
-   already carries its drag on `translate` and its travel animates `transform` on the inner
-   `.study-actor-pick` — three separate channels, so depth can never fight either. */
-.study-actor {
-  scale: 0.94;
-  opacity: 0.72;
-  filter: saturate(0.88);
-  transition:
-    top var(--m-expressive) var(--ease-out),
-    left var(--m-expressive) var(--ease-out),
-    scale var(--m-expressive) var(--ease-out),
-    opacity var(--m-expressive) var(--ease-out),
-    filter var(--m-expressive) var(--ease-out);
-}
-
-/* Reaching for one brings it forward before you have even picked it. */
-.study-actor:hover,
-.study-actor:focus-within {
-  scale: 1;
-  opacity: 1;
-  filter: none;
-}
-
-.study-actor-pick {
-  /* A near object casts a shorter, tighter shadow than the one held up — the shadow is most of
-     what says "further away" once the sizes are close. */
-  box-shadow: 0 6px 18px color-mix(in oklab, var(--text-primary) 7%, transparent);
-  transition:
-    box-shadow var(--m-expressive) var(--ease-out),
-    border-color var(--m-fast) var(--ease-out);
-}
-
-.study-actor:hover .study-actor-pick,
-.study-actor:focus-within .study-actor-pick {
-  box-shadow: 0 14px 40px color-mix(in oklab, var(--text-primary) 11%, transparent);
-}
-
-/* ── The light ───────────────────────────────────────────────────────────────────────────────
-   A pool centred where the object is, so the foreground is LIT rather than merely larger. Painted
-   on the stage's own ::before at a negative z so it sits under every object and never intercepts a
-   pointer. It breathes — slowly enough to read as the study being alive rather than as an animation
-   asking for attention. */
-.study-stage::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    58% 46% at 50% 50%,
-    color-mix(in oklab, var(--surface-elevated) 92%, transparent),
-    transparent 72%
-  );
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .study-stage::before {
-    animation: studyLightBreathe 11s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes studyLightBreathe {
-  from {
-    opacity: 0.78;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* The object being held up sits IN that light: a longer, softer shadow than anything around it,
-   which is what separates "in front" from "bigger". */
-.study-hero {
-  position: relative;
-  z-index: 3;
-  border-radius: var(--r-lg);
-  box-shadow:
-    0 2px 6px color-mix(in oklab, var(--text-primary) 5%, transparent),
-    0 26px 64px color-mix(in oklab, var(--text-primary) 13%, transparent);
-  transition: box-shadow var(--m-expressive) var(--ease-out);
-}
-
-/* ── Life at rest ────────────────────────────────────────────────────────────────────────────
-   Between interactions the study used to be a still page. A slow drift — a few pixels over many
-   seconds, each object on its own phase off `--study-slot` so they never move in lockstep — reads
-   as air in the space. Deliberately on `rotate`, the one channel `translate` (drag) and
-   `transform` (travel) both leave free. */
-@media (prefers-reduced-motion: no-preference) {
-  .study-actor-pick {
-    animation: studyDrift 15s ease-in-out infinite alternate;
-    animation-delay: calc(var(--study-slot, 0) * -3.7s);
+  .study-card.is-front {
+    position: static;
+    width: 100% !important;
+    transform: none;
+    margin: 0 0 14px;
   }
 
-  .study-actor:hover .study-actor-pick,
-  .study-actor:focus-within .study-actor-pick {
-    animation-play-state: paused;
+  .study-note-wrap {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0 0 14px;
   }
-}
 
-@keyframes studyDrift {
-  from {
-    rotate: -0.22deg;
+  .study-takeaway {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0 0 14px;
   }
-  to {
-    rotate: 0.22deg;
+
+  .study-beats {
+    position: static;
+    transform: none;
+    max-width: none;
+    flex-wrap: wrap;
+    border-radius: 18px;
+  }
+
+  .study-beats-row {
+    flex-wrap: wrap;
+  }
+
+  .study-stage {
+    padding: 14px;
   }
 }

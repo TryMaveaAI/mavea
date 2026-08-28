@@ -10,17 +10,33 @@ const read = (rel: string): string => readFileSync(join(__dirname, '..', rel), '
 
 describe('The Study — a compact lesson stays inside the viewport', () => {
   const css = read('src/canvas/study/study.css');
+  const scene = read('src/canvas/study/slots.ts');
 
-  it('stands down the nearby ring when the typed note and foreground become full-width', () => {
-    // At <=820px the foreground and note return to flow. Leaving every nearby actor as another
-    // 100%-wide row made the note-gutter positioning push them beyond the right edge; navigation
-    // already exposes every teaching point without turning the study into a clipped card list.
-    const compactActors =
-      /\.study-stage\[data-note-gutter\] \.study-actor,[^{]+\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(compactActors).toMatch(/display:\s*none/);
+  it('stands down the desk when the container cannot hold a legible 3-D composition', () => {
+    // Under the compact container query the front card and note return to flow and the blurred
+    // back arc disappears entirely — its objects keep their NAMES on the beat chips; a 3-D scene
+    // squeezed into a phone column is an unreadable miniature, not a study.
+    const compact = /@container study \(max-width: \d+px\)[\s\S]*$/.exec(css)?.[0] ?? '';
+    expect(compact).toBeTruthy();
+    expect(compact).toMatch(/\.study-card\.is-back[^{]*\{[^}]*\}|\.study-card\.is-back,/);
+    expect(compact).toMatch(/display:\s*none/);
     expect(css).toMatch(/\.study-stage:is\(:fullscreen, \.is-fullscreen\)/);
     expect(css).toMatch(/position:\s*fixed/);
     expect(css).toMatch(/height:\s*100dvh/);
+  });
+
+  it('collapses the floor band on a shallow stage instead of cropping into the cards', () => {
+    // useStudyScale flags data-shallow when the clamped scale would crop deeper than the desk's
+    // decorative band; the floor grid is the sacrifice, the arc is not.
+    const shallow = /\.study-stage\[data-shallow\] \.study-floor\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(shallow).toMatch(/display:\s*none/);
+  });
+
+  it('derives the scale floor from the legibility floor rather than choosing it', () => {
+    // 9px rendered ÷ 11px authored: if either number moves, the floor must be recomputed. The
+    // constant lives beside the slots so the CSS and the arithmetic cannot drift apart.
+    expect(scene).toMatch(/STUDY_FIT_FLOOR = 9 \/ 11/);
+    expect(css).toMatch(/9\/11 of authored size|STUDY_FIT_FLOOR/);
   });
 });
 

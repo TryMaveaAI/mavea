@@ -4,6 +4,7 @@ import type { Block, ConversationSpec } from '../src/data/conversation';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
 import { StudyStage } from '../src/canvas/study/StudyStage';
 import { deriveStudyScene } from '../src/canvas/study/scene';
+import { BACK_CAP } from '../src/canvas/study/slots';
 
 function block(id: string, title: string): Block {
   return {
@@ -20,7 +21,7 @@ function spec(blocks: Block[], id = 'study-turn'): ConversationSpec {
     id,
     workspace: 'Study test',
     title: 'Pressure test',
-    sub: 'One answer, one scene',
+    sub: 'One answer, one desk',
     opener: '',
     context: [],
     blocks,
@@ -43,31 +44,25 @@ const blocks = [
 
 describe('deriveStudyScene', () => {
   it('keeps the conversational focus foregrounded and alternates its closest neighbors', () => {
-    const scene = deriveStudyScene(blocks, 'c', new Set());
+    const scene = deriveStudyScene(blocks, 'c');
     expect(scene.active?.id).toBe('c');
-    expect(scene.nearby.map((actor) => actor.id)).toEqual(['d', 'b', 'e', 'a']);
-    expect(scene.horizon.map((actor) => actor.id)).toEqual(['f']);
+    expect(scene.nearby.map((actor) => actor.id)).toEqual(['d', 'b', 'e', 'a', 'f']);
+    expect(scene.horizon).toEqual([]);
     expect(scene.intensity).toBe('immersive');
   });
 
-  it('removes parked actors without losing their source identity', () => {
-    const scene = deriveStudyScene(blocks, 'c', new Set(['b', 'd']));
-    expect(scene.active?.id).toBe('c');
-    expect(scene.nearby.map((actor) => actor.id)).not.toContain('b');
-    expect(scene.nearby.map((actor) => actor.id)).not.toContain('d');
-    expect(scene.parked.map((actor) => actor.id)).toEqual(['b', 'd']);
+  it('fills exactly the back arc and overflows the rest to the horizon', () => {
+    const many = Array.from({ length: 9 }, (_, index) => block(`m-${index}`, `Object ${index}`));
+    const scene = deriveStudyScene(many, 'm-0');
+    expect(scene.nearby).toHaveLength(BACK_CAP);
+    expect(scene.horizon).toHaveLength(many.length - 1 - BACK_CAP);
   });
 
-  it('falls back to a visible object when the active object is parked', () => {
-    const scene = deriveStudyScene(blocks, 'a', new Set(['a']));
-    expect(scene.active?.id).toBe('b');
-  });
-
-  it('keeps every object reachable when an answer is larger than the nearby ring', () => {
+  it('keeps every object reachable when an answer is larger than the back arc', () => {
     const many = Array.from({ length: 24 }, (_, index) =>
       block(`block-${index}`, `Object ${index + 1}`),
     );
-    const scene = deriveStudyScene(many, 'block-0', new Set());
+    const scene = deriveStudyScene(many, 'block-0');
     const reachable = [scene.active, ...scene.nearby, ...scene.horizon]
       .filter((actor) => actor !== null)
       .map((actor) => actor.id);
@@ -85,7 +80,7 @@ describe('StudyStage', () => {
     </div>
   );
 
-  it('pulls a nearby object into the foreground without creating a new answer', () => {
+  it('pulls a back-arc object onto the desk without creating a new answer', () => {
     const onNarrate = vi.fn();
     const { container } = render(
       <StudyStage
@@ -101,11 +96,27 @@ describe('StudyStage', () => {
       key: 'Enter',
     });
 
-    expect(container.querySelector('.study-hero')?.textContent).toContain('Retention');
+    expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Retention');
     expect(onNarrate).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
   });
 
-  it('uses Shift activation to keep context while leaving the foreground in place', () => {
+  it('keeps a promoted card the SAME element, so the travel is a slot transition — not a cut', () => {
+    const { container } = render(
+      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
+    );
+    const before = container.querySelector('[data-study-actor="b"]');
+    expect(before?.classList.contains('is-back')).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Retention forward' }));
+
+    const after = container.querySelector('[data-study-actor="b"]');
+    // Same DOM node: React keyed the card by block id, so the promotion changed its slot
+    // variables and classes in place and CSS transitions carry it to the front of the desk.
+    expect(after).toBe(before);
+    expect(after?.classList.contains('is-front')).toBe(true);
+  });
+
+  it('uses Shift activation to keep context while leaving the desk in place', () => {
     const onAskBlock = vi.fn();
     const { container } = render(
       <StudyStage
@@ -123,17 +134,7 @@ describe('StudyStage', () => {
     });
 
     expect(onAskBlock).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
-    expect(container.querySelector('.study-hero')?.textContent).toContain('Revenue');
-  });
-
-  it('parks and restores an object reversibly', () => {
-    render(<StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Park Retention' }));
-    expect(screen.queryByRole('button', { name: 'Bring Retention forward' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Restore Retention' }));
-    expect(screen.getByRole('button', { name: 'Bring Revenue forward' })).toBeTruthy();
-    expect(document.querySelector('.study-hero')?.textContent).toContain('Retention');
+    expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Revenue');
   });
 
   it('contains no capture controls or permission-triggering media inputs', () => {
@@ -146,7 +147,7 @@ describe('StudyStage', () => {
     expect(container.textContent).not.toMatch(/camera|record|listen in background/i);
   });
 
-  it('moves through typed teaching notes without duplicating the global Presence', () => {
+  it('walks the teaching notes without duplicating the global Presence', () => {
     const onNarrate = vi.fn();
     const { container } = render(
       <StudyStage
@@ -167,9 +168,67 @@ describe('StudyStage', () => {
     expect(screen.getByText('Revenue is the lead signal.')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Next teaching point' }));
-    expect(container.querySelector('.study-hero')?.textContent).toContain('Retention');
-    expect(screen.getByText('Evidence')).toBeTruthy();
+    expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Retention');
+    expect(screen.getByText('Evidence check')).toBeTruthy();
     expect(onNarrate).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
+  });
+
+  it('offers every object as a beat, in answer order, with the active one marked', () => {
+    const many = Array.from({ length: 24 }, (_, index) =>
+      block(`block-${index}`, `Object ${index + 1}`),
+    );
+    const { container } = render(
+      <StudyStage data={spec(many)} blocks={many} spot="block-0" renderBlock={renderBlock} />,
+    );
+
+    // The beat bar is the reachability guarantee: the arc holds BACK_CAP objects, the beat bar
+    // holds them ALL — never truncated, provider output is dynamic.
+    const chips = container.querySelectorAll('.study-beat');
+    expect(chips).toHaveLength(many.length);
+    expect(container.querySelector('.study-beat[aria-current="step"]')?.textContent).toContain(
+      'Object 1',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: `Beat 24 of 24: Object 24` }));
+    expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Object 24');
+    expect(container.querySelector('.study-beat[aria-current="step"]')?.textContent).toContain(
+      'Object 24',
+    );
+  });
+
+  it('stamps the pen target on the desk object alone, and re-stamps as the desk re-casts', () => {
+    const { container } = render(
+      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
+    );
+    // AnnotationLayer resolves a mark's host by data-spot-id ALONE, and its rect math assumes an
+    // unscaled host. A back card lives behind a rotateY+scale transform where a painted stroke
+    // would land doubled — so only the front card is a target, and each object becomes one the
+    // moment it arrives on the desk.
+    const marked = () =>
+      [...container.querySelectorAll('[data-spot-id]')].map((el) =>
+        el.getAttribute('data-spot-id'),
+      );
+    expect(marked()).toEqual(['a']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Retention forward' }));
+    expect(marked()).toEqual(['b']);
+  });
+
+  it('hides the blurred scenery from assistive tech and names the object on its button', () => {
+    const { container } = render(
+      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
+    );
+    // A blurred card at 44% scale is scenery, not content: its accessible name lives on the
+    // card button, its readable name on the beat chip — never an unreadable miniature offered
+    // as if it were legible.
+    for (const back of container.querySelectorAll('.study-card.is-back')) {
+      expect(back.getAttribute('role')).toBe('button');
+      expect(back.getAttribute('aria-label')).toMatch(/^Bring .+ forward$/);
+      expect(back.querySelector('.study-card-face')?.getAttribute('aria-hidden')).toBe('true');
+    }
+    const front = container.querySelector('.study-card.is-front');
+    expect(front?.getAttribute('role')).toBeNull();
+    expect(front?.querySelector('.study-card-face')?.getAttribute('aria-hidden')).toBeNull();
   });
 
   it('fills the app viewport reliably and leaves with Escape', () => {
@@ -212,106 +271,19 @@ describe('TopicCanvas — Live Study path', () => {
     expect(container.querySelector('.study-stage')).not.toBeNull();
     expect(container.querySelector('.card-grid')).toBeNull();
 
-    // The foreground object carries no button tray. A floating toolbar under the hero reads as
-    // chrome bolted to the scene, and it re-states affordances the object itself already offers —
-    // so the study keeps its actions in the gestures, not in a rail.
+    // The desk object carries no button tray. A floating toolbar under it reads as chrome bolted
+    // to a scene whose whole point is that there is nothing between the reader and the thing.
     expect(container.querySelector('.study-hero-actions')).toBeNull();
     expect(container.textContent).not.toMatch(/Keep in context|Move aside/);
 
     // Shift-click is the surviving route to the grounded multi-block follow-up: it holds an
-    // object in context WITHOUT stealing the foreground, which is what a plain click does.
-    const pick = container.querySelector('.study-actor .study-actor-pick');
-    expect(pick).not.toBeNull();
-    fireEvent.pointerDown(pick as Element, { button: 0, pointerId: 1 });
-    fireEvent.pointerUp(pick as Element, { pointerId: 1, shiftKey: true });
+    // object in context WITHOUT stealing the desk, which is what a plain click does.
+    const back = container.querySelector('.study-card.is-back');
+    expect(back).not.toBeNull();
+    fireEvent.click(back as Element, { shiftKey: true });
     expect(onAskBlock).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Everything' }));
     expect(onViewMode).toHaveBeenCalledWith('everything');
-  });
-});
-
-describe('StudyStage — the object travels, and it stays legible', () => {
-  const renderBlock = (item: Block) => (
-    <div className="card">
-      <span>{'title' in item.props ? String(item.props.title) : item.id}</span>
-    </div>
-  );
-
-  /** jsdom measures everything as 0×0, and a FLIP that measures nothing correctly does nothing —
-   *  so the boxes are staged here. Distinct positions AND sizes, since the travel scales too. */
-  function stageGeometry(): () => void {
-    const original = Element.prototype.getBoundingClientRect;
-    const rect = (x: number, y: number, w: number, h: number) =>
-      ({ x, y, width: w, height: h, top: y, left: x, right: x + w, bottom: y + h }) as DOMRect;
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      if (this.classList.contains('study-stage')) return rect(0, 0, 900, 640);
-      if (this.classList.contains('study-actor-pick')) return rect(24, 40, 166, 96);
-      if (this.classList.contains('study-hero')) return rect(280, 180, 480, 320);
-      return rect(0, 0, 0, 0);
-    };
-    return () => {
-      Element.prototype.getBoundingClientRect = original;
-    };
-  }
-
-  it('animates the promoted object from its slot to the foreground', () => {
-    const restoreGeometry = stageGeometry();
-    const animate = vi.fn(() => ({ cancel: vi.fn(), finished: Promise.resolve() }));
-    const originalAnimate = Element.prototype.animate;
-    Element.prototype.animate = animate as unknown as typeof Element.prototype.animate;
-    try {
-      const { container } = render(
-        <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
-      );
-      const pick = container.querySelector('.study-actor .study-actor-pick');
-      expect(pick).not.toBeNull();
-
-      fireEvent.pointerDown(pick as Element, { button: 0, pointerId: 1 });
-      fireEvent.pointerUp(pick as Element, { pointerId: 1 });
-
-      expect(animate).toHaveBeenCalled();
-      // It starts displaced and scaled at the slot it came from, and lands at its own box —
-      // a cut would have no keyframes at all.
-      const [frames] = animate.mock.calls[0] as unknown as [Keyframe[]];
-      expect(String(frames[0].transform)).toMatch(/translate\(-?\d/);
-      expect(String(frames[0].transform)).toMatch(/scale\(/);
-      expect(frames[1].transform).toBe('none');
-    } finally {
-      Element.prototype.animate = originalAnimate;
-      restoreGeometry();
-    }
-  });
-
-  it('makes every object in the study a target the pen can reach', () => {
-    const { container } = render(
-      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
-    );
-    // AnnotationLayer resolves a mark's host by data-spot-id ALONE. Stamping only the foreground
-    // meant Mavea could mark exactly one thing in the study and could never draw a connector
-    // between two — the difference between a study she can teach in and a slideshow.
-    const marked = [...container.querySelectorAll('[data-spot-id]')].map((el) =>
-      el.getAttribute('data-spot-id'),
-    );
-    expect(marked).toContain('a');
-    for (const actor of container.querySelectorAll('.study-actor')) {
-      expect(actor.getAttribute('data-spot-id')).toBe(actor.getAttribute('data-study-actor'));
-      expect(actor.getAttribute('data-kind')).toBeTruthy();
-    }
-    // Foreground plus every nearby slot, not just the one card.
-    expect(marked.length).toBeGreaterThan(1);
-  });
-
-  it('names nearby objects rather than rendering an unreadable miniature of them', () => {
-    const { container } = render(
-      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
-    );
-    // A real card scaled into a ~150px box renders its body text at ~5px, well under the 9px
-    // legibility floor — the study must not ship a preview it cannot actually show.
-    expect(container.querySelector('.filmstrip-thumb')).toBeNull();
-
-    const first = container.querySelector('.study-actor');
-    expect(first?.querySelector('.study-actor-title')?.textContent).toBeTruthy();
-    expect(first?.querySelector('.study-actor-kind')?.textContent).toBeTruthy();
   });
 });

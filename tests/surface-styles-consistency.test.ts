@@ -15,8 +15,10 @@ import { join } from 'path';
 const root = join(__dirname, '..', 'src');
 const read = (rel: string) => readFileSync(join(root, rel), 'utf8');
 
-// Every surface stylesheet touched by the cleanup (the task's edit scope).
+// Every surface stylesheet touched by the cleanup (the task's edit scope), plus the Study —
+// which lives under src/canvas but is a surface sheet in every way that matters here.
 const surfaceFiles = [
+  'canvas/study/study.css',
   'flagship/flagship.css',
   'gallery/gallery.css',
   'clip/reel/reel.css',
