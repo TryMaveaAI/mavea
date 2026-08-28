@@ -1,10 +1,9 @@
 // The hero. The living Presence face floats in from the app shell (App.tsx) and sits above
 // this content; the hero reserves vertical space for it via CSS. The composer is real — typing
-// and sending, or tapping the mic, both open Live seeded with the text. While it sits empty it
+// and sending opens Live seeded with the text. While it sits empty it
 // rotates example prompts at a calm cadence (frozen on focus, in lite mode, and in background tabs).
 import { useEffect, useRef, useState } from 'react';
-import { GlobeIcon, MicIcon, SendIcon } from '../../icons/coreIcons';
-import { stashTourMode } from '../../tour/tourEntry';
+import { GlobeIcon, SendIcon } from '../../icons/coreIcons';
 
 const EXAMPLES = [
   'How do black holes bend light?',
@@ -77,6 +76,7 @@ function useRotatingPlaceholder(paused: boolean): string {
 export function Hero({
   onEnterLive,
   onWarm,
+  onPlayRoomDemo,
   showTourInvite,
   onPlayTour,
   onDismissTourInvite,
@@ -84,6 +84,7 @@ export function Hero({
 }: {
   onEnterLive: (seed?: string) => void;
   onWarm?: () => void;
+  onPlayRoomDemo?: () => void;
   showTourInvite?: boolean;
   onPlayTour?: () => void;
   onDismissTourInvite?: () => void;
@@ -109,14 +110,14 @@ export function Hero({
     <div className="fl-hero">
       <div className="fl-hero-orbspace" aria-hidden="true" />
       <h1 className="fl-hero-title">
-        Talk to it. Type to it.
+        Ask once. Watch the answer
         <br />
-        <em>See what it means.</em>
+        <em>come alive around you.</em>
       </h1>
       <p className="fl-hero-lede">
-        A calm face listens — by voice or keyboard — speaks the headline the instant it forms, then
-        steps aside while a living canvas draws the answer. Charts, timelines, evidence you can
-        check. Not another wall of text.
+        Not a chat thread. Mavéa turns one question into a shared room of charts, timelines and
+        evidence. Point at what matters, hold two ideas together, change an assumption — the answer
+        re-composes without starting over.
       </p>
 
       <form
@@ -147,33 +148,38 @@ export function Hero({
           )}
         </div>
         <div className="fl-composer-actions">
-          <button
-            type="button"
-            className="fl-composer-btn"
-            onClick={() => onEnterLive(value.trim() || undefined)}
-            title="Say it in Live"
-            aria-label="Say it in Live"
-          >
-            <MicIcon />
-          </button>
           <button type="submit" className="fl-composer-btn primary" title="Send" aria-label="Send">
             <SendIcon />
           </button>
         </div>
       </form>
+      <p className="fl-privacy-line">
+        Fully usable with keyboard and pointer. No camera. Voice is optional and starts only when
+        you explicitly turn it on in Live.
+      </p>
 
       {showTourInvite ? (
         <div className="fl-tour-invite" role="note">
           <p className="fl-tour-invite-text">
-            Watch Mavéa work — a 2-minute guided tour on the real app. No keys, no setup.
+            See one question become a room you can point at, connect and interrogate. No key, no
+            setup, no device permissions.
           </p>
           <div className="fl-tour-invite-actions">
-            <button type="button" className="fl-tour-invite-play" onClick={onPlayTour}>
+            <button
+              type="button"
+              className="fl-tour-invite-play"
+              onClick={onPlayRoomDemo ?? onPlayTour}
+            >
               <span className="fl-hero-watch-glyph" aria-hidden="true">
                 ▶
               </span>
-              Play the tour
+              Watch the Room
             </button>
+            {onPlayTour && (
+              <button type="button" className="fl-tour-invite-world" onClick={onPlayTour}>
+                Take the full tour
+              </button>
+            )}
             {onViewWorld && (
               <button
                 type="button"
@@ -195,15 +201,14 @@ export function Hero({
           type="button"
           className="fl-hero-watch"
           onClick={() => {
-            stashTourMode();
-            onEnterLive();
+            onPlayRoomDemo?.();
           }}
         >
           <span className="fl-hero-watch-glyph" aria-hidden="true">
             ▶
           </span>
-          Watch it work
-          <span className="fl-hero-watch-time">2 min, no key needed</span>
+          Watch the Room
+          <span className="fl-hero-watch-time">key-free fictional replay</span>
         </button>
       )}
 

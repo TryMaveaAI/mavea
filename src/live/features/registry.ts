@@ -333,6 +333,14 @@ export const FEATURES: Feature[] = [
     keywords: ['pdf', 'print', 'save', 'download', 'deck', 'slides', 'presentation', 'document'],
   },
   {
+    id: 'room',
+    label: 'Conversation Room',
+    blurb: 'Pull an answer into one shared scene — point, connect, rearrange',
+    group: 'This session',
+    surface: 'live',
+    keywords: ['room', 'spatial', 'connect', 'compare these', 'shared attention', 'rearrange'],
+  },
+  {
     id: 'board',
     label: 'Board view',
     blurb: "Spread this answer's cards on a spatial board you can wander",

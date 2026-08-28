@@ -7,6 +7,9 @@
 // finish), never from step entry — beats decorate the answer, they don't talk over it.
 
 export type DemoBeat =
+  /** Enter Room, move shared attention across real objects, and optionally hold the first few
+   *  together — the spatial "these" gesture, performed through the production selection seam. */
+  | { kind: 'room'; atMs: number; connect?: number }
   /** Pin the answer's first card via its Ask affordance (the point-and-ask gesture). */
   | { kind: 'pin'; atMs: number }
   /** Drag the answer's bend-it dial — every derived number recomputes live. Skipped (and

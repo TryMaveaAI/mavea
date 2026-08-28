@@ -12,7 +12,7 @@ import { ExploreNav } from './ExploreNav';
 import { isTourSeen, markTourSeen } from '../tour/tourSeen';
 import { stashTourMode, stashTourChapter, stashTourSolo } from '../tour/tourEntry';
 import { stashDemoPersona } from '../demo/demoEntry';
-import type { DemoCastMember } from '../demo/cast';
+import { castMember, type DemoCastMember } from '../demo/cast';
 import { stashSeedQuery } from '../live/seedQuery';
 import { useScrollDock } from '../app/useScrollDock';
 import { usePresenceColor } from '../app/usePresenceColor';
@@ -78,6 +78,13 @@ export function FlagshipHost(): ReactElement {
     stashDemoPersona(p.id);
     window.location.hash = '#/live';
   }, []);
+
+  const playRoomDemo = useCallback(() => {
+    const roomDemo = castMember('cfo');
+    if (!roomDemo) return;
+    retireTourInvite();
+    playDemo(roomDemo);
+  }, [playDemo, retireTourInvite]);
 
   // Enter the real product. An optional seed (the hero composer's typed question) is stashed
   // for LiveApp to run (or to forward through the setup wizard first).
@@ -168,6 +175,7 @@ export function FlagshipHost(): ReactElement {
       <div ref={homeStageRef} className="presence-stage stage flagship" data-active="1">
         <FlagshipLanding
           onPlay={playDemo}
+          onPlayRoomDemo={playRoomDemo}
           onEnterLive={enterLive}
           onWarm={warmLive}
           onDemoIntent={warmLive}

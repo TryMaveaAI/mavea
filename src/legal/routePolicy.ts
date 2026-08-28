@@ -9,6 +9,12 @@ const DEV_ONLY_PREFIXES = [
   '#/synlab',
   '#/pageviewlab',
   '#/whylab',
+  // The world and mind labs were the two the list forgot. Both are dev-only harnesses over
+  // AUTHORED fixtures — they call no model and send nothing anywhere — so gating them behind the
+  // connected-features acknowledgement asked the reader to accept terms about data leaving the
+  // device in order to look at a scenario baked into the bundle.
+  '#/worldlab',
+  '#/mindlab',
 ];
 
 /** Public reading surfaces and prerecorded examples do not send the visitor's data to a model. */

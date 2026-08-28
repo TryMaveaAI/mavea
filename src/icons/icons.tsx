@@ -212,6 +212,9 @@ export const Icon = {
     </>,
   ),
   x: I(<path d="M6 6l12 12M18 6 6 18" />),
+  // Four corner brackets — the conventional "take the whole screen" glyph, and its inverse.
+  expand: I(<path d="M9 4H4v5M20 9V4h-5M15 20h5v-5M4 15v5h5" />),
+  collapse: I(<path d="M4 9h5V4M20 9h-5V4M15 20v-5h5M9 20v-5H4" />),
   plus: I(<path d="M12 5v14M5 12h14" />),
   mail: I(
     <>

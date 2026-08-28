@@ -16,6 +16,7 @@ import { SrsReview } from '../src/live/srs/SrsReview';
 import { ReadyShelf } from '../src/live/welcome/ReadyShelf';
 import { LiveApp } from '../src/live/LiveApp';
 import { resetLiveConfig } from '../src/live/useLiveConfig';
+import { setViewMode } from '../src/canvas/focus/useFocusMode';
 import { saveSession, clearSession } from '../src/live/session/store';
 import { useStudyableCount } from '../src/live/srs/useStudy';
 import { SCHEDULING_WORDS, studyCopy } from '../src/live/srs/copy';
@@ -733,7 +734,9 @@ describe('the study invitation', () => {
     saveSession(history, [frame]);
   }
 
-  /** Save cards off the answer the way a user does: the block's "Cards" pill, then Save. */
+  /** Save cards off the answer the way a user does: the block's "Cards" pill, then Save.
+   *  The pill lives on the answer GRID — the Room is a surface for looking at one object, not for
+   *  working on it, so it deliberately carries no per-object controls. Hence the explicit view. */
   async function saveCardsFromBlock(container: HTMLElement): Promise<void> {
     // The block library loads in per-family chunks, so the first mount in a run pays for that.
     const cards = await waitFor(
@@ -754,6 +757,8 @@ describe('the study invitation', () => {
     sessionStorage.clear();
     __resetSrsCacheForTests();
     resetLiveConfig();
+    // localStorage.clear() above wipes the remembered view, which then defaults to the Room.
+    setViewMode('everything');
     clearSession();
     priorSession();
   });

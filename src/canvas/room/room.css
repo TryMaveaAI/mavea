@@ -1,0 +1,1040 @@
+.room-stage {
+  /* The room sizes its own contents. `cqi` is a fraction of THIS element's width, so one set of
+     rules covers the inline stage and the full-screen one — no class, no media query, no second
+     set of numbers to keep in sync. Every scale is a clamp: the floor keeps type above the 9px
+     legibility floor on a small stage, the ceiling stops a 2560px screen inflating a card into a
+     poster. */
+  container-type: inline-size;
+  container-name: room;
+  --room-actor-w: clamp(166px, 13cqi, 268px);
+  position: relative;
+  /* MEASURED, not guessed: on a 819px viewport the stage sits at y=309 with the dock at y=688,
+     so it has 379px — and a 573px stage overflowed it by 194, dropping the object and its aside
+     below the fold. The subtrahend is the answer header + dock the room always sits between. */
+  min-height: min(460px, calc(100dvh - 440px));
+  padding: 18px 18px 14px;
+  overflow: clip;
+  border: 1px solid color-mix(in oklab, var(--presence) 20%, var(--line-soft));
+  border-radius: calc(var(--r-xl) + 4px);
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in oklab, var(--presence) 11%, transparent),
+      transparent 37%
+    ),
+    linear-gradient(
+      150deg,
+      color-mix(in oklab, var(--surface-elevated) 82%, transparent),
+      var(--surface-glass)
+    );
+  box-shadow:
+    inset 0 1px color-mix(in oklab, var(--text-primary) 9%, transparent),
+    0 30px 90px color-mix(in oklab, var(--text-primary) 8%, transparent);
+  isolation: isolate;
+}
+
+.room-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.45;
+  background-image: radial-gradient(circle, var(--grid-line) 0.7px, transparent 0.8px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, transparent, black 24%, black 76%, transparent);
+  pointer-events: none;
+}
+
+.room-field {
+  --room-foreground-w: min(calc(100% - (var(--room-actor-w) + 34px) * 2), 760px);
+  position: relative;
+  z-index: 2;
+  /* Tall enough to compose in, never taller than the page can show. 570px flat pushed a centred
+     composition below the fold on a laptop — the object and its aside were simply off-screen — and
+     a room you have to scroll to see the middle of is not a room. Full screen lifts the cap. */
+  min-height: min(400px, calc(100dvh - 470px));
+}
+
+.room-foreground {
+  position: relative;
+  z-index: 3;
+  /* Derived, not chosen: the foreground may take whatever the two actor columns and their gutters
+     do not need. A percentage looked fine at one width and cut the corner cards at every other —
+     the same class of bug as reserving a card's authored height instead of its real footprint. */
+  width: var(--room-foreground-w);
+  /* Dead centre of the field, on the same point the actors ring. The old 90px top margin left the
+     object high and the room bottom-heavy at any height it was not tuned for. */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+
+.room-hero-shell {
+  position: relative;
+  padding: 10px;
+  border-radius: calc(var(--r-xl) + 2px);
+  background: color-mix(in oklab, var(--surface-elevated) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--presence) 26%, transparent),
+    0 24px 70px color-mix(in oklab, var(--text-primary) 13%, transparent),
+    0 0 64px color-mix(in oklab, var(--presence) 13%, transparent);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+}
+
+.room-hero {
+  position: relative;
+  min-width: 0;
+}
+
+.room-hero > .card,
+.room-hero > .fit-box {
+  width: 100%;
+}
+
+.room-hero .card.spotlight,
+.room-hero .card.dimmed {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+.room-caption {
+  max-width: 680px;
+  margin: 27px auto 0;
+  text-align: center;
+  text-wrap: balance;
+  font: 450 14.5px/1.55 var(--font);
+  color: var(--text-secondary);
+}
+
+.room-actor {
+  position: absolute;
+  z-index: 2;
+  width: var(--room-actor-w);
+  /* Every object is placed as a POINT in the field (a percentage, so it scales with the room) and
+     then centred on that point. The slots used to be hard pixels — `top: 44px`, `top: 346px` —
+     measured against one card width, so at any other size the composition came apart into
+     scattered cards with voids between them. Nothing here is a measured constant. */
+  translate: calc(-50% + var(--room-dx)) calc(-50% + var(--room-dy));
+  transition:
+    top var(--m-expressive) var(--ease-out),
+    left var(--m-expressive) var(--ease-out),
+    opacity var(--m-fast) var(--ease-out),
+    filter var(--m-fast) var(--ease-out),
+    box-shadow var(--m-fast) var(--ease-out);
+}
+
+/* Four points around the foreground, as fractions of the field. Slightly wider than tall because
+   a room is wider than tall, and offset from the centre line so the corners read as a ring around
+   the object rather than a cross through it. */
+.room-actor-0 {
+  top: 27%;
+  left: 13%;
+}
+
+.room-actor-1 {
+  top: 27%;
+  left: 87%;
+}
+
+.room-actor-2 {
+  top: 73%;
+  left: 13%;
+}
+
+.room-actor-3 {
+  top: 73%;
+  left: 87%;
+}
+
+.room-actor-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 0.7cqi, 12px);
+  min-height: clamp(92px, 7.4cqi, 148px);
+  padding: clamp(13px, 1.1cqi, 20px) clamp(14px, 1.2cqi, 22px);
+  border: 1px solid color-mix(in oklab, var(--presence) 18%, var(--line-soft));
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--surface-elevated) 82%, transparent);
+  box-shadow: 0 12px 36px color-mix(in oklab, var(--text-primary) 9%, transparent);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.room-actor-pick:active {
+  cursor: grabbing;
+}
+
+.room-actor:hover,
+.room-actor:focus-within,
+.room-actor.is-context {
+  z-index: 4;
+  filter: none;
+}
+
+.room-actor-pick:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 3px;
+}
+
+.room-actor.is-context .room-actor-pick {
+  border-color: color-mix(in oklab, var(--presence) 58%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--presence) 10%, transparent),
+    0 12px 36px color-mix(in oklab, var(--text-primary) 9%, transparent);
+}
+
+/* Every line here is read at its authored size — nothing in the room is shrunk below the 9px
+   legibility floor to imply detail it cannot actually show. */
+.room-actor-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.room-actor-kind {
+  font: 650 clamp(9.5px, 0.78cqi, 12px) / 1 var(--font);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--presence);
+}
+
+.room-actor-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  font: 600 clamp(13px, 1.05cqi, 17px) / 1.32 var(--font);
+  color: var(--text-primary);
+}
+
+.room-actor-note {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font: 450 clamp(11.5px, 0.92cqi, 15px) / 1.4 var(--font);
+  color: var(--text-secondary);
+}
+
+.room-actor-park {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+  color: var(--text-muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--m-fast) var(--ease-out);
+}
+
+.room-actor-park svg {
+  width: 10px;
+  height: 10px;
+}
+
+.room-actor:hover .room-actor-park,
+.room-actor:focus-within .room-actor-park {
+  opacity: 1;
+}
+
+.room-horizon {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 10px 2px 2px;
+  border-top: 1px solid var(--line-soft);
+  scrollbar-width: thin;
+}
+
+.room-horizon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  max-width: 230px;
+  padding: 7px 11px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: var(--surface-glass);
+  font: 500 11px/1 var(--font);
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.room-horizon-chip:hover,
+.room-horizon-chip:focus-visible {
+  border-color: color-mix(in oklab, var(--presence) 34%, var(--line-soft));
+}
+
+.room-horizon-chip > span {
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.room-horizon-chip.is-parked {
+  border-style: dashed;
+  opacity: 0.76;
+}
+
+.room-horizon-chip b {
+  color: var(--presence);
+}
+
+.intensity-immersive .room-actor-2,
+.intensity-immersive .room-actor-3 {
+  filter: saturate(0.82) opacity(0.88);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .room-hero {
+    animation: roomHeroArrive var(--m-expressive) var(--ease-out) both;
+  }
+
+  .room-actor {
+    animation: roomActorArrive 620ms var(--ease-out) both;
+    animation-delay: calc(var(--room-slot) * 55ms);
+  }
+}
+
+@keyframes roomHeroArrive {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes roomActorArrive {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes roomSpeak {
+  from {
+    scale: 1 0.4;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@keyframes roomAttention {
+  0%,
+  100% {
+    opacity: 0.45;
+    scale: 1 0.86;
+  }
+  50% {
+    opacity: 1;
+    scale: 1 1;
+  }
+}
+
+@media (max-width: 1120px) {
+  .room-stage {
+    --room-actor-w: 142px;
+  }
+
+  .room-field {
+    --room-foreground-w: min(66%, 680px);
+  }
+}
+
+@media (max-width: 820px) {
+  .room-stage {
+    min-height: auto;
+    padding: 14px;
+    overflow: hidden;
+  }
+
+  .room-field {
+    --room-foreground-w: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .room-foreground {
+    position: relative;
+    top: auto;
+    left: auto;
+    translate: none;
+    order: -1;
+    width: 100%;
+    margin: 24px 0 22px;
+  }
+
+  .room-actor {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    translate: none;
+  }
+
+  .room-actor + .room-actor {
+    margin-top: 8px;
+  }
+
+  .room-actor-pick {
+    flex-direction: row;
+    align-items: center;
+    cursor: pointer;
+    touch-action: auto;
+  }
+
+  .room-actor-park {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: -37px 11px 0 auto;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .room-stage {
+    margin-inline: -8px;
+    border-radius: var(--r-lg);
+  }
+
+  .room-hero-shell {
+    padding: 5px;
+  }
+
+  .room-caption {
+    margin-top: 14px;
+    text-align: left;
+  }
+}
+
+/* A written lesson is a three-part composition: nearby objects on the left, the subject in the
+   middle, and the note on the right. Two actor columns plus two empty note gutters crushed the
+   subject into a narrow strip on ordinary laptop widths. */
+.room-stage[data-note-gutter] {
+  padding-inline: 18px;
+}
+
+.room-stage[data-note-gutter] .room-field {
+  --room-foreground-w: min(58%, 680px);
+}
+
+.room-stage[data-note-gutter] .room-actor-0,
+.room-stage[data-note-gutter] .room-actor-2 {
+  left: 10%;
+}
+
+.room-stage[data-note-gutter] .room-actor-1,
+.room-stage[data-note-gutter] .room-actor-3 {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  /* Below this the two columns would each be narrower than a readable note, and a note clipped
+     to three words is worse than a note the reader scrolls to. The rail measures the padding and
+     stands down on its own. */
+  .room-stage[data-note-gutter] {
+    padding-inline: 18px;
+  }
+
+  .room-stage[data-note-gutter] .room-field {
+    --room-foreground-w: min(66%, 680px);
+  }
+}
+
+/* ── Fill the screen ─────────────────────────────────────────────────────────────────────────
+   The room's one piece of chrome, parked in the corner of the stage rather than in the app's
+   menus — it acts on THIS surface, so it belongs on it. Ghost at rest so the room stays just the
+   objects; it comes up when the pointer is anywhere in the room, and on keyboard focus. */
+.room-fullscreen {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--surface-elevated) 70%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out);
+}
+
+.room-stage:hover .room-fullscreen,
+.room-fullscreen:focus-visible {
+  opacity: 1;
+}
+
+.room-fullscreen:hover {
+  color: var(--presence);
+  border-color: color-mix(in oklab, var(--presence) 45%, var(--line-soft));
+}
+
+.room-fullscreen svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Touch has no hover — a hover-only reveal would leave the control undiscoverable rather than
+   just unobtrusive (the .block-actions precedent). */
+@media (hover: none) {
+  .room-fullscreen {
+    opacity: 1;
+  }
+}
+
+/* ── The room, filling the screen ────────────────────────────────────────────────────────────
+   `:fullscreen` is the element's own state, so this needs no class plumbing. The frame comes off
+   (a bordered, rounded panel is a card ON a page; full screen it IS the page) and the stage takes
+   the viewport it was only ever imitating. A full-screen element gets a black backdrop by
+   default, so the background is stated explicitly rather than inherited. */
+.room-stage:is(:fullscreen, .is-fullscreen) {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: 24px 28px 18px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--app-bg, var(--surface-glass));
+}
+
+/* Full screen has the whole viewport, so the composition gets its full ring back. */
+.room-stage:is(:fullscreen, .is-fullscreen) .room-field {
+  min-height: 0;
+  height: 100%;
+}
+
+/* Full screen only widens what the object may take — it is already centred by the base rule.
+   The cap is generous rather than absent: past ~1200px a card stops reading as an object you are
+   being shown and starts reading as a page, and the line length goes with it. */
+.room-stage:is(:fullscreen, .is-fullscreen) .room-foreground {
+  width: var(--room-foreground-w);
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen) .room-field {
+  --room-foreground-w: min(calc(100% - (var(--room-actor-w) + 64px) * 2), 1180px);
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-field {
+  --room-foreground-w: min(56%, 920px);
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] {
+  padding-inline: 28px;
+}
+
+/* A written lesson gets a real three-zone room in the expanded view: an object shelf, the thing
+   being examined, and the teaching note. The inline view intentionally hides the right actors to
+   protect the subject; expanded mode has room to bring the whole cast back without covering it. */
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-foreground {
+  left: 51%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor {
+  display: block;
+  left: 10%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-0 {
+  top: 18%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-1 {
+  top: 39%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-2 {
+  top: 61%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-3 {
+  top: 82%;
+}
+
+.room-stage:is(:fullscreen, .is-fullscreen) .room-aside {
+  position: absolute;
+  right: 28px;
+  width: clamp(220px, 18cqi, 320px);
+  max-width: none;
+  margin: 0;
+}
+
+/* ── The aside ───────────────────────────────────────────────────────────────────────────────
+   What Mavéa has written about the object being held up, parked in the margin the stage reserved.
+   One slot, always in the same place: the room re-casts constantly, and a note that moved or
+   re-measured on every re-cast read as a glitch. Only the WORDS change — React's key swaps the
+   element, so the text cross-fades in place and the box never jumps. */
+.room-aside {
+  --room-note-accent: var(--presence);
+  box-sizing: border-box;
+  position: absolute;
+  /* Placed by measurement (useRoomMargin): level with the object it is about, in the gutter on
+     that object's own side so the arrow is short and crosses nothing. The 50% here is only the
+     pre-measurement resting place — it is overwritten on the first frame. */
+  top: 50%;
+  z-index: 5;
+  width: clamp(178px, 14cqi, 280px);
+  padding: clamp(13px, 1.1cqi, 20px) clamp(15px, 1.3cqi, 24px);
+  border: 1px solid color-mix(in oklab, var(--room-note-accent) 24%, var(--line-soft));
+  border-left: 3px solid color-mix(in oklab, var(--room-note-accent) 72%, transparent);
+  border-radius: 4px var(--r-md) var(--r-md) 4px;
+  background: color-mix(in oklab, var(--surface-elevated) 78%, transparent);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  animation: roomAsideIn 420ms var(--ease-out) both;
+}
+
+/* An admission, not a claim — warmer edge, so "I can't back this" doesn't read the same as the
+   figures she stands behind. */
+.room-aside.side-left {
+  left: 20px;
+}
+
+.room-aside.side-right {
+  right: 20px;
+}
+
+.room-aside.kind-insight {
+  --room-note-accent: var(--insight);
+}
+
+.room-aside.kind-evidence {
+  --room-note-accent: var(--presence);
+}
+
+.room-aside.kind-caution {
+  --room-note-accent: var(--warning);
+}
+
+.room-aside.kind-question {
+  --room-note-accent: var(--presence-soft);
+}
+
+.room-aside.kind-takeaway {
+  --room-note-accent: var(--text-secondary);
+}
+
+.room-note-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: var(--room-note-accent);
+  font: 700 clamp(10px, 0.78cqi, 12px) / 1 var(--font);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.room-note-kicker svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.room-note-copy {
+  margin: 0;
+  font: italic 450 clamp(13px, 1.05cqi, 17px) / 1.55 var(--font-hand, var(--font));
+  color: var(--text-secondary);
+}
+
+.room-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklab, var(--room-note-accent) 16%, var(--line-soft));
+  color: var(--text-muted);
+  font: 650 10px/1 var(--font-mono, var(--font));
+  letter-spacing: 0.08em;
+}
+
+.room-note-nav {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.room-note-nav button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--surface-elevated) 76%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast) var(--ease-out),
+    color var(--m-fast) var(--ease-out),
+    background var(--m-fast) var(--ease-out);
+}
+
+.room-note-nav button:hover,
+.room-note-nav button:focus-visible {
+  border-color: color-mix(in oklab, var(--room-note-accent) 56%, var(--line-soft));
+  background: color-mix(in oklab, var(--room-note-accent) 10%, var(--surface-elevated));
+  color: var(--room-note-accent);
+}
+
+.room-note-nav button:focus-visible {
+  outline: 2px solid var(--room-note-accent);
+  outline-offset: 2px;
+}
+
+.room-note-nav svg {
+  width: 13px;
+  height: 13px;
+}
+
+@keyframes roomAsideIn {
+  from {
+    opacity: 0;
+    translate: -6px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-aside {
+    animation: none;
+  }
+}
+
+/* Below the two-column width the stage stands its gutters down, so the aside returns to the flow
+   under the object rather than overlapping it. */
+@media (max-width: 1180px) {
+  .room-stage[data-note-gutter] .room-field {
+    --room-foreground-w: min(66%, 680px);
+  }
+
+  .room-aside {
+    position: static;
+    translate: none;
+    width: auto;
+    max-width: 46ch;
+    margin: 0 auto 14px;
+  }
+}
+
+@media (max-width: 820px) {
+  .room-stage:is(:fullscreen, .is-fullscreen) {
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .room-stage[data-note-gutter] .room-field,
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-field {
+    --room-foreground-w: 100%;
+  }
+
+  .room-stage:is(:fullscreen, .is-fullscreen) .room-field {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+  }
+
+  /* On a phone the typed note and the object it teaches already fill the useful viewport. The
+     nearby ring otherwise becomes a second full-width stack — and its note-gutter offsets win the
+     cascade, pushing those rows past the right edge. The lesson arrows still visit every object,
+     while the horizon keeps the rest of the answer directly reachable. */
+  .room-stage[data-note-gutter] .room-actor,
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor {
+    display: none;
+  }
+
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-foreground {
+    position: relative;
+    left: auto;
+    translate: none;
+    margin: 10px 0 0;
+  }
+
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-aside {
+    position: static;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 46ch;
+    margin: 0 auto 14px;
+  }
+}
+
+/* ── A short room holds fewer neighbours ─────────────────────────────────────────────────────
+   The ring needs vertical room the inline page does not have on a laptop: at ~380px the object and
+   both rows of neighbours want the same band, and they simply collide. Rather than shrink
+   everything below the legibility floor, the lower pair stands down — those objects are still in
+   the room, one click away on the horizon rail, which is what the rail is for.
+
+   Scoped away from :fullscreen, where the same viewport height buys a much taller stage. */
+@media (max-height: 940px) {
+  .room-stage:not(:fullscreen):not(.is-fullscreen) .room-actor-2,
+  .room-stage:not(:fullscreen):not(.is-fullscreen) .room-actor-3 {
+    display: none;
+  }
+
+  /* With one row of neighbours the ring is a shoulder, not a circle — lift them clear of the
+     object rather than leaving them level with its middle. */
+  .room-stage:not(:fullscreen):not(.is-fullscreen) .room-actor-0,
+  .room-stage:not(:fullscreen):not(.is-fullscreen) .room-actor-1 {
+    top: 22%;
+  }
+}
+
+/* Short expanded windows cannot fit four readable shelf objects. Keep the first pair available
+   and let the lesson navigator visit the rest; never shrink their type below the legibility floor. */
+@media (max-height: 700px) {
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-0 {
+    top: 30%;
+  }
+
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-1 {
+    top: 70%;
+  }
+
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-2,
+  .room-stage:is(:fullscreen, .is-fullscreen)[data-note-gutter] .room-actor-3 {
+    display: none;
+  }
+}
+
+/* ── The arrow ───────────────────────────────────────────────────────────────────────────────
+   What joins the aside to the object it is about. A remark in the margin with nothing drawn to
+   the page is a caption that happens to sit off to one side; the line is the pointing.
+
+   An <svg>, not a div: `.live-voice .card-grid > div` makes every div child a positioning context
+   and grid div children carry a transform transition, so a div overlay drifts under the spotlight
+   choreography — the same reason ConnectInk and MarginNoteRail are svg/aside. */
+.room-tether {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.room-tether-line,
+.room-tether-head {
+  fill: none;
+  stroke: color-mix(in oklab, var(--presence) 62%, transparent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* An admission points in the same warmer hand its aside is written in. */
+.room-tether.kind-caution .room-tether-line,
+.room-tether.kind-caution .room-tether-head {
+  stroke: color-mix(in oklab, var(--warning) 68%, transparent);
+}
+
+.room-tether.kind-insight .room-tether-line,
+.room-tether.kind-insight .room-tether-head {
+  stroke: color-mix(in oklab, var(--insight) 68%, transparent);
+}
+
+/* Drawn, not faded in — the line should read as having been made by a hand moving across the
+   room, which is the whole difference between a pointer and a border. */
+@media (prefers-reduced-motion: no-preference) {
+  .room-tether-line {
+    stroke-dasharray: 420;
+    stroke-dashoffset: 420;
+    animation: roomTetherDraw 620ms var(--ease-out) 120ms forwards;
+  }
+
+  .room-tether-head {
+    opacity: 0;
+    animation: roomTetherHead 200ms var(--ease-out) 700ms forwards;
+  }
+}
+
+@keyframes roomTetherDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes roomTetherHead {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Below the two-column width the aside sits in the flow under the object — there is no gap left
+   to draw across, and a line looping back on itself explains nothing. */
+@media (max-width: 1180px) {
+  .room-tether {
+    display: none;
+  }
+}
+
+/* ═══ DEPTH ══════════════════════════════════════════════════════════════════════════════════
+   Until now every object in the room was lit identically and the foreground was simply the bigger
+   box — so the room read as a flat page with one card enlarged, not as a space with something held
+   up in it. Distance is what makes a room a room.
+
+   Three cues, all cheap, none of them blur: blur destroys the legibility the background objects
+   need in order to be worth picking, and picking them is the whole point of the ring.
+
+   IMPORTANT: the recede uses the independent `scale` property, never `transform`. `.room-actor`
+   already carries its drag on `translate` and its travel animates `transform` on the inner
+   `.room-actor-pick` — three separate channels, so depth can never fight either. */
+.room-actor {
+  scale: 0.94;
+  opacity: 0.72;
+  filter: saturate(0.88);
+  transition:
+    top var(--m-expressive) var(--ease-out),
+    left var(--m-expressive) var(--ease-out),
+    scale var(--m-expressive) var(--ease-out),
+    opacity var(--m-expressive) var(--ease-out),
+    filter var(--m-expressive) var(--ease-out);
+}
+
+/* Reaching for one brings it forward before you have even picked it. */
+.room-actor:hover,
+.room-actor:focus-within {
+  scale: 1;
+  opacity: 1;
+  filter: none;
+}
+
+.room-actor-pick {
+  /* A near object casts a shorter, tighter shadow than the one held up — the shadow is most of
+     what says "further away" once the sizes are close. */
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--text-primary) 7%, transparent);
+  transition:
+    box-shadow var(--m-expressive) var(--ease-out),
+    border-color var(--m-fast) var(--ease-out);
+}
+
+.room-actor:hover .room-actor-pick,
+.room-actor:focus-within .room-actor-pick {
+  box-shadow: 0 14px 40px color-mix(in oklab, var(--text-primary) 11%, transparent);
+}
+
+/* ── The light ───────────────────────────────────────────────────────────────────────────────
+   A pool centred where the object is, so the foreground is LIT rather than merely larger. Painted
+   on the stage's own ::before at a negative z so it sits under every object and never intercepts a
+   pointer. It breathes — slowly enough to read as a room being alive rather than as an animation
+   asking for attention. */
+.room-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    58% 46% at 50% 50%,
+    color-mix(in oklab, var(--surface-elevated) 92%, transparent),
+    transparent 72%
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .room-stage::before {
+    animation: roomLightBreathe 11s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes roomLightBreathe {
+  from {
+    opacity: 0.78;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The object being held up sits IN that light: a longer, softer shadow than anything around it,
+   which is what separates "in front" from "bigger". */
+.room-hero {
+  position: relative;
+  z-index: 3;
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 2px 6px color-mix(in oklab, var(--text-primary) 5%, transparent),
+    0 26px 64px color-mix(in oklab, var(--text-primary) 13%, transparent);
+  transition: box-shadow var(--m-expressive) var(--ease-out);
+}
+
+/* ── Life at rest ────────────────────────────────────────────────────────────────────────────
+   Between interactions the room used to be a still page. A slow drift — a few pixels over many
+   seconds, each object on its own phase off `--room-slot` so they never move in lockstep — reads
+   as air in the space. Deliberately on `rotate`, the one channel `translate` (drag) and
+   `transform` (travel) both leave free. */
+@media (prefers-reduced-motion: no-preference) {
+  .room-actor-pick {
+    animation: roomDrift 15s ease-in-out infinite alternate;
+    animation-delay: calc(var(--room-slot, 0) * -3.7s);
+  }
+
+  .room-actor:hover .room-actor-pick,
+  .room-actor:focus-within .room-actor-pick {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes roomDrift {
+  from {
+    rotate: -0.22deg;
+  }
+  to {
+    rotate: 0.22deg;
+  }
+}
