@@ -233,7 +233,8 @@
   left: var(--sx);
   top: var(--sy);
   box-sizing: border-box;
-  transform: translate(-50%, -50%) translateZ(var(--sz)) rotateY(var(--sry)) scale(var(--ss));
+  transform: translate(-50%, var(--say, -50%)) translateZ(var(--sz)) rotateY(var(--sry))
+    scale(var(--ss));
   border: 1px solid var(--study-card-border);
   border-radius: var(--r-md);
   background: var(--study-card);
@@ -250,6 +251,12 @@
 
 .study-card.is-front {
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  /* Real blocks are any height. Past this the face scrolls inside the card — the desk never
+     clips an object against its own frame, and picking cards of different heights cannot
+     bounce the composition (the top edge is the anchor). */
+  max-height: 560px;
 }
 
 .study-card.is-back {
@@ -296,6 +303,13 @@
 
 .study-card-face {
   padding: 12px 28px 20px;
+}
+
+.study-card.is-front .study-card-face {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 /* A block on the desk keeps its own anatomy but sheds its app chrome: the Study's card IS the

@@ -42,8 +42,11 @@ export interface DeskSlot {
   s: number;
 }
 
-/** The object being held up: dead ahead, full size, lifted toward the reader. */
-export const FRONT_SLOT: DeskSlot = { x: 590, y: 400, z: 70, ry: 0, s: 1 };
+/** The object being held up: dead ahead, full size, lifted toward the reader. Unlike the arc
+ *  slots (centred — their cards are uniform scenery), the front slot pins the card's TOP edge:
+ *  real blocks vary wildly in height, and a centred tall card walks both edges off the desk
+ *  while successive picks of different heights bounce the whole composition. */
+export const FRONT_SLOT: DeskSlot = { x: 590, y: 120, z: 70, ry: 0, s: 1 };
 
 /** The arc behind the desk, left to right. Five, because a sixth either crowds the note card or
  *  falls off the stage — anything past the arc stays reachable through the beat bar. */

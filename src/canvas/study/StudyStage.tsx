@@ -64,6 +64,7 @@ const NOTE_GLYPHS: Record<StudyNoteKind, string> = {
 function slotStyle(
   slot: { x: number; y: number; z: number; ry: number; s: number },
   order: number,
+  anchorTop = false,
 ): CSSProperties {
   return {
     '--sx': `${slot.x}px`,
@@ -72,6 +73,7 @@ function slotStyle(
     '--sry': `${slot.ry}deg`,
     '--ss': slot.s,
     '--sd': `${order * 55}ms`,
+    '--say': anchorTop ? '0%' : '-50%',
   } as CSSProperties;
 }
 
@@ -204,7 +206,7 @@ export function StudyStage({
   // across a promotion and the slot change rides a CSS transition instead of a remount. Zone and
   // slot are looked up per id; membership only changes when the horizon rotates in.
   const slotById = new Map<string, CSSProperties>();
-  if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0));
+  if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0, true));
   for (const actor of scene.nearby) {
     const slot = BACK_SLOTS[actor.slot];
     if (slot) slotById.set(actor.id, slotStyle(slot, actor.slot + 1));
