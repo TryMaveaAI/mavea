@@ -88,7 +88,9 @@ export function asideFor(graph: ContentGraph, blockIndex: number): Aside | null 
   }
 
   return {
-    text: `${listOf(grounded)} I can point to in your sources. ${listOf(unbacked)} I can't — that one's illustrative.`,
+    text: `${listOf(grounded)} I can point to in your sources. ${listOf(unbacked)} I can't — ${
+      unbacked.length === 1 ? "that one's" : 'those are'
+    } illustrative.`,
     flagged: true,
   };
 }

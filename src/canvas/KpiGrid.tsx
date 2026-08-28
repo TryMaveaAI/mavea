@@ -43,7 +43,7 @@ export function KpiGrid({
           <div key={i} className="kpi">
             {/* the lead stat is the one Mavéa's drawn gesture underlines */}
             <div
-              className="kpi-val tab-num"
+              className={'kpi-val tab-num' + (String(k.val).length > 8 ? ' kpi-val--long' : '')}
               data-mark={i === 0 ? 'underline' : undefined}
               style={k.color ? { color: k.color } : undefined}
             >

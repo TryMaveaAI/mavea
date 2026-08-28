@@ -1399,6 +1399,7 @@ export function LiveApp(): ReactElement {
       delayMs?: number;
       badgeMs?: number;
       noteText?: string;
+      studySeed?: boolean;
     })[]
   >([]);
   // Which of those gestures actually LANDED. The track is a record of what Mavéa drew, so a
@@ -1494,6 +1495,7 @@ export function LiveApp(): ReactElement {
       badgeMs?: number,
       stepNumber?: number,
       noteText?: string,
+      studySeed?: boolean,
     ) => {
       if (spot) {
         setInked((cur) => {
@@ -1533,6 +1535,7 @@ export function LiveApp(): ReactElement {
             stepNumber?: number;
             toSpot?: string;
             noteText?: string;
+            studySeed?: boolean;
           } = {
             spot,
             line: line ?? (fallback ? blockLabel(fallback) : undefined),
@@ -1549,6 +1552,7 @@ export function LiveApp(): ReactElement {
             ...(stepNumber ? { stepNumber } : {}),
             ...(toSpot ? { toSpot } : {}),
             ...(noteText ? { noteText } : {}),
+            ...(studySeed ? { studySeed } : {}),
           };
           return [...cur, entry];
         });
@@ -1626,6 +1630,12 @@ export function LiveApp(): ReactElement {
     const root = stageRef.current;
     const el = root?.querySelector<HTMLElement>(`[data-spot-id="${CSS.escape(spot)}"]`);
     if (!el) return;
+    if (el.closest('.study-stage')) {
+      // On the desk, "jump to" means "bring it to the desk" — the stage holds still.
+      el.classList.add('ink-jump-glow');
+      window.setTimeout(() => el.classList.remove('ink-jump-glow'), 800);
+      return;
+    }
     const toEl = toSpot
       ? root?.querySelector<HTMLElement>(`[data-spot-id="${CSS.escape(toSpot)}"]`)
       : null;
@@ -1698,7 +1708,12 @@ export function LiveApp(): ReactElement {
   // the Study is the view; the strokes themselves draw exactly as everywhere else.
   const inkSpots = useMemo(() => {
     const visible = hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked;
-    return viewMode === 'study' ? visible.filter((s) => s.noteText === undefined) : visible;
+    // The Study has no margin rail (its written asides live in the session-notes crib), and its
+    // opening seed cascade is desk theater — on the grid those same generous marks would land as
+    // a wall of unexplained ink the reader never asked for.
+    return viewMode === 'study'
+      ? visible.filter((s) => s.noteText === undefined)
+      : visible.filter((s) => !s.studySeed);
   }, [inked, hiddenSpots, viewMode]);
 
   // What Mavéa writes beside the object the study is holding up.
@@ -1712,14 +1727,18 @@ export function LiveApp(): ReactElement {
   // diagram): silence there would be right, but the block's summary is better than nothing and is
   // what the study showed before.
   const studyContent = useMemo(() => {
-    const spec = turn.spec;
+    const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return null;
     const corpus = (spec.sources ?? [])
       .map((src) => src.snippet ?? '')
       .filter(Boolean)
       .join('\n');
+    // Nothing to ground against: the trust voice would stamp every figure-bearing card with
+    // the same wholesale disclaimer, which says nothing the reader can use. The observation
+    // and prompt voices carry the desk instead.
+    if (!corpus) return null;
     return answerToContent(spec, corpus);
-  }, [viewMode, turn.spec]);
+  }, [viewMode, turn.viewSpec, turn.spec]);
 
   // One note per object, written once for the answer. Ordered by how much each actually POINTS:
   //   1. What the block's own structure says but never spells out — which option took the most
@@ -1730,7 +1749,9 @@ export function LiveApp(): ReactElement {
   // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
   // emphasised — never the set, which is what made the old rail tear down on every move.
   const studyAsides = useMemo(() => {
-    const spec = turn.spec;
+    // The spec the canvas is SHOWING — block ids repeat across turns, so notes derived from
+    // the live spec would file the current answer's remarks onto a scrubbed older frame.
+    const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
     const out: Record<string, StudyAside> = {};
     spec.blocks.forEach((block, index) => {
@@ -1757,7 +1778,7 @@ export function LiveApp(): ReactElement {
         out[block.id] = {
           text: notable.text,
           kind: notable.kind ?? 'insight',
-          quip: condenseForNote(studyPromptIn(block).text, 64) || undefined,
+          quip: 'What would have to change for this to stop being true?',
         };
         return;
       }
@@ -1772,7 +1793,7 @@ export function LiveApp(): ReactElement {
       out[block.id] = { text: prompt.text, kind: prompt.kind ?? 'question' };
     });
     return out;
-  }, [studyContent, turn.spec, viewMode]);
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode]);
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
@@ -1810,7 +1831,17 @@ export function LiveApp(): ReactElement {
     let step = 0;
     for (const b of spec.blocks) {
       if (!b.id) continue;
-      ink(b.id, b.note ?? undefined, undefined, true, step * STUDY_INK_STEP_MS);
+      ink(
+        b.id,
+        b.note ?? undefined,
+        undefined,
+        true,
+        step * STUDY_INK_STEP_MS,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      );
       step++;
     }
   }, [viewMode, turn.spec, ink]);
@@ -1820,6 +1851,15 @@ export function LiveApp(): ReactElement {
   if (prevViewModeRef.current !== viewMode) {
     prevViewModeRef.current = viewMode;
     setCanvasRevision((g) => g + 1);
+  }
+  // The Study re-stamps data-spot-id as the desk re-casts (front card only), so every
+  // promotion is a host CHANGE the portals cannot see on their own — same render-phase
+  // pattern as the view-mode bump above.
+  const prevStudySpotRef = useRef<string | null>(null);
+  const studySpotNow = viewMode === 'study' ? (turn.spot ?? null) : null;
+  if (prevStudySpotRef.current !== studySpotNow) {
+    prevStudySpotRef.current = studySpotNow;
+    if (viewMode === 'study') setCanvasRevision((g) => g + 1);
   }
 
   const restorePenConfig = useCallback(() => {
@@ -2655,6 +2695,9 @@ export function LiveApp(): ReactElement {
       const cont = scrollRef.current;
       if (!cont) return;
       const el = cont.querySelector('.spotlit');
+      // The Study choreographs its own camera: the spotlit card is ALWAYS at the desk's front
+      // slot, so centering it just drags the beat bar below the fold on every stop.
+      if (el?.closest('.study-stage')) return;
       if (!el) {
         // ~1.1s of retries — past that the card isn't coming (wrong view, dropped block).
         if (++tries < 12) id = window.setTimeout(attempt, 90);
@@ -5933,6 +5976,10 @@ export function LiveApp(): ReactElement {
                     viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn
                   }
                   walkNotes={viewingLive ? walkNotes : undefined}
+                  voiceLine={spokenNow ?? null}
+                  speaking={speakingSticky && !voicePreparing}
+                  lead={turn.narration ?? undefined}
+                  studyIntro={tourMode.current ? 'skip' : 'full'}
                   blankFill={
                     // The Blank Space wiring — only the live head (never a scrubbed/past frame).
                     viewingLive

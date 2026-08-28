@@ -38,6 +38,35 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(scene).toMatch(/STUDY_FIT_FLOOR = 9 \/ 11/);
     expect(css).toMatch(/9\/11 of authored size|STUDY_FIT_FLOOR/);
   });
+
+  it('derives the stage-height floor the same way — below it the frame slices cards', () => {
+    // 534 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border. A 390px floor let 1366×768
+    // crop 266 design px into the composition — the front card's top edge left the stage.
+    expect(css).toMatch(/height:\s*clamp\(534px/);
+  });
+
+  it('keeps the compact breakpoint at the width where the note card is last whole', () => {
+    // Between 880 and 980 the floored desk crops Mavéa's note card — real reading content —
+    // off the right edge; 1280×800 laptops land exactly there.
+    expect(css).toMatch(/@container study \(max-width: 980px\)/);
+  });
+
+  it('quiets card transitions during a live window resize', () => {
+    // The shallow flag and slot maths retune per RO tick; 0.9s eased moves compounding per
+    // frame read as the layout falling apart while dragging the window edge.
+    expect(css).toMatch(/:root\[data-resizing\][^{]*\.study-card[\s\S]{0,80}transition:\s*none/);
+  });
+
+  it('reflows the voice bubble into the compact column instead of floating it', () => {
+    const compact = /@container study \(max-width: \d+px\)[\s\S]*$/.exec(css)?.[0] ?? '';
+    expect(compact).toMatch(/\.study-voice\s*\{[^}]*position:\s*static/);
+  });
+
+  it('clamps the voice bubble left of the front card at every scale', () => {
+    // The card's left edge is 50cqw − 428.8px·scale (the translateZ projection); a fixed-width
+    // bubble sat on the card's header on every laptop.
+    expect(css).toMatch(/\.study-voice\s*\{[\s\S]{0,700}var\(--study-scale/);
+  });
 });
 
 describe('tour transport — 21 chapter dots must not blow out the panel on a phone', () => {

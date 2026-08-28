@@ -293,6 +293,12 @@ interface Props {
    *  them as its clickable trail column ("Mavéa's notes"); the grid renders them via the
    *  annotation layer's rail instead. Absent/empty → no column. */
   walkNotes?: readonly { spot: string; text: string }[];
+  /** Study only: the line the voice is on, whether it is audible, the answer's lead, and
+   *  whether the per-answer intro plays — see StudyStage's props. */
+  voiceLine?: string | null;
+  speaking?: boolean;
+  lead?: string;
+  studyIntro?: 'full' | 'skip';
   /** Live-only: the answer's one draggable number (spec.bend) — renders a BendStrip under
    *  its block. Absent (the Demo, clips) → nothing renders. */
   bend?: BendSpec;
@@ -335,6 +341,10 @@ export function TopicCanvas({
   muted,
   noteGutter,
   walkNotes,
+  voiceLine,
+  speaking,
+  lead,
+  studyIntro,
   bend,
   onAddToFlashcard,
   flashedIds,
@@ -725,6 +735,10 @@ export function TopicCanvas({
           narratingId={narratingId}
           muted={muted}
           walkNotes={walkNotes}
+          voiceLine={voiceLine}
+          speaking={speaking}
+          lead={lead}
+          intro={studyIntro}
         />
       ) : familiesLoaded && focused ? (
         <FocusStage

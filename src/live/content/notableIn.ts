@@ -49,7 +49,19 @@ export function notableIn(block: Block): Notable | null {
       const { stat, delta, summary, conf } = block.props;
       if (!stat && !delta) return null;
       const assumption = firstFigure(summary);
+      // A WHOLE-stat figure test, anchored: "$15.1M" is a scenario output, "Pocket Wi-Fi" and
+      // "7 Hills Trail" are names — calling a name "a scenario output, not an observed result"
+      // is the wrong register on every non-numeric answer.
+      const isFigure = (value: string | undefined): boolean =>
+        !!value && /^(?:[$€£]\s*)?[+-]?\d[\d,.]*\s*(?:%|[KMBT])?$/i.test(value.trim());
       if (conf && conf !== 'strong') {
+        if (!delta && !isFigure(stat)) {
+          return {
+            text: `${stat} is marked ${conf} — a read to double-check, not a measurement.`,
+            kind: 'caution',
+            at: stat,
+          };
+        }
         const dependency =
           delta && assumption
             ? ` The ${delta} move already depends on the ${assumption} assumption beneath it.`
@@ -106,7 +118,12 @@ export function notableIn(block: Block): Notable | null {
       if (rows.length < 2) return null;
       const top = rows.reduce((a, b) => (b.pct > a.pct ? b : a));
       const rest = rows.length - 1;
-      if (top.pct >= 50) {
+      // pct doubles as bar SCALE on many real answers (longest bar = 100). Share language —
+      // "X alone is 62%" — is only honest when the rows genuinely sum to a whole; otherwise
+      // say what the bars draw (who leads) and print no fabricated share.
+      const sum = rows.reduce((a, r) => a + r.pct, 0);
+      const shareLike = Math.abs(sum - 100) <= 2;
+      if (shareLike && top.pct >= 50) {
         return {
           text: `${top.name} alone is ${pct(top.pct)} — the other ${rest} together are the minority.`,
           at: top.val || top.name,
@@ -119,7 +136,9 @@ export function notableIn(block: Block): Notable | null {
           at: top.val || top.name,
         };
       }
-      return { text: `${top.name} leads at ${pct(top.pct)}.`, at: top.val || top.name };
+      return shareLike
+        ? { text: `${top.name} leads at ${pct(top.pct)}.`, at: top.val || top.name }
+        : { text: `${top.name} leads the field here.`, at: top.val || top.name };
     }
 
     case 'chart': {
@@ -146,12 +165,14 @@ export function notableIn(block: Block): Notable | null {
     case 'kpi': {
       const kpis = block.props.kpis;
       if (kpis.length < 2) return null;
-      // A KPI grid states no relationship between its tiles; naming the one the answer led with is
-      // the honest observation, since order here is the model's own ranking.
       const lead = kpis[0];
       if (!lead?.label || !lead.val) return null;
+      // Word-tiles ("Pocket Wi-Fi", "Easy", "Today") are a checklist, not a scoreboard — the
+      // scoreboard framing reads absurd there, so stay silent and let the pressure-test prompt
+      // speak. For genuinely numeric grids, ask the question a grid cannot answer about itself.
+      if (!kpis.some((k) => /\d/.test(k.val))) return null;
       return {
-        text: `This is a scoreboard, not an explanation: ${lead.label} leads, but its driver has to come from a nearby object.`,
+        text: `Which of these ${kpis.length} actually changes what you do next?`,
         kind: 'question',
         at: lead.val,
       };
@@ -194,7 +215,7 @@ export function notableIn(block: Block): Notable | null {
       if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return null;
       return {
         text: `${value} is ${pct((value / max) * 100)} of this dial's range${band ? ` and already sits in “${band}”` : ''}. Watch the threshold, not the decoration.`,
-        kind: band?.toLowerCase().includes('warn') ? 'caution' : 'insight',
+        kind: 'insight',
         at: String(value),
       };
     }
@@ -217,7 +238,7 @@ export function notableIn(block: Block): Notable | null {
       if (failed > 0) {
         return {
           text: `${failed} check${failed === 1 ? '' : 's'} failed while ${passed} passed. The failures, not the score, set the next move.`,
-          kind: 'caution',
+          kind: 'takeaway',
         };
       }
       if (passed > 0) {
@@ -250,9 +271,13 @@ export function studyPromptIn(block: Block): Notable {
   const title =
     'title' in props && typeof props.title === 'string' && props.title.trim()
       ? props.title.trim()
-      : block.type.replaceAll('_', ' ');
+      : null;
   return {
-    text: `What would have to change for “${title}” to stop being true? Pull a nearby object forward to test it.`,
+    // A title-less block gets the pointer phrasing, never its raw type token in quotes —
+    // “What would have to change for "datatable" to stop being true” reads as a bug.
+    text: title
+      ? `What would have to change for “${title}” to stop being true? Pull a nearby object forward to test it.`
+      : 'What would have to change for this to stop being true? Pull a nearby object forward to test it.',
     kind: 'question',
   };
 }

@@ -29,6 +29,7 @@ import {
   readSaidText,
   saidRect,
   saidRects,
+  reachable,
   rowOf,
   type SaidText,
 } from './saidTarget';
@@ -166,9 +167,11 @@ function findTarget(
       }
       const t = withSpan(saidBox, mark, said);
       t.el = m.node.parentElement ?? undefined;
-      // A highlight over a phrase that wraps re-touches each rendered line — collect every
-      // line box so the marker never smears one fat band across the whole wrap.
-      if (mark.kind === 'highlight') {
+      // A phrase that WRAPS reports one box per rendered line. Every glyph-hugging kind needs
+      // them: a highlight re-touches each row, and an underline or circle drawn from the first
+      // line's box alone strikes straight through its own wrapped words (the 'Pocket Wi-Fi'
+      // bug — the range's bounding box spans both rows).
+      if (mark.kind === 'highlight' || mark.kind === 'underline' || mark.kind === 'circle') {
         const rows = saidRects(m);
         if (rows.length > 1) t.rects = rows;
       }
@@ -196,7 +199,10 @@ function findTarget(
   }
   const stamped = host.querySelector<HTMLElement>('[data-mark]');
   const kind = gestureOf(stamped?.getAttribute('data-mark'));
-  if (stamped && kind) {
+  // reachable(): a card behind the Study's intro gate sits at opacity 0 and scale 0.22 — a
+  // mark measured there draws ~4× oversized the moment the desk assembles. The said-text path
+  // already refuses unreachable nodes inside saidRect; the stamped path must match it.
+  if (stamped && kind && reachable(stamped)) {
     const r = stamped.getBoundingClientRect();
     if (r.width > 0) return { rect: r, kind, el: stamped };
   }
@@ -495,7 +501,10 @@ function SpotInk({
       (p) => p.host,
       setPlaced,
     );
-  }, [spot, line, mark, generous, within, revision, stepNumber]);
+    // `residue` flips exactly when the walk's live spot arrives on (or leaves) this block —
+    // which on the Study is the moment its card travels to the desk. Re-measuring then is what
+    // lets a mark whose earlier poll gave up (its card was scenery) finally land.
+  }, [spot, line, mark, generous, within, revision, stepNumber, residue]);
 
   // Report the first landing, once. The track lists drawn marks, not intended ones.
   const reportedRef = useRef(false);

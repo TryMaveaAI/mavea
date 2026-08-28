@@ -14,8 +14,9 @@ import { Icon } from '../../icons/icons';
 import { BlockBoundary } from '../BlockBoundary';
 import { FallbackCard } from '../FallbackCard';
 import { blockLabel } from '../blockLabel';
+import { condenseForNote } from '../../live/annotate/marginNote';
 import { deriveStudyScene } from './scene';
-import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT } from './slots';
+import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
 import type { StudyAside, StudyNoteKind } from './types';
 import { useStudyScale } from './useStudyScale';
 import { useStudyParallax } from './useStudyParallax';
@@ -40,7 +41,22 @@ interface Props {
    *  to a handwritten note. The one about the object on the desk is written beside it (the
    *  mockup's margin quip); all of them collect in the session-notes crib. */
   walkNotes?: readonly { spot: string; text: string }[];
+  /** The line the voice is on right now (the walk caption, else the opener) — typed into the
+   *  desk's voice bubble. */
+  voiceLine?: string | null;
+  /** Whether Mavéa is audibly speaking — runs the bubble's equalizer and caret. */
+  speaking?: boolean;
+  /** The answer's lead line, spoken by the intro overlay's speech card. */
+  lead?: string;
+  /** 'full' plays the per-answer intro (THE ANSWER → the desk assembles); 'skip' — the default,
+   *  and what the tour passes — opens straight onto the settled desk. */
+  intro?: 'full' | 'skip';
 }
+
+/** Whether the intro gate has played this session, surviving remounts. v3's rule: the overlay
+ *  is a first-arrival beat — later answers (and Study → Focus → Study flips) skip the gate and
+ *  simply reassemble in place. Session-local by design. */
+let introPlayed = false;
 
 /** The kicker Mavéa's note wears, in the desk's own vocabulary. */
 const NOTE_LABELS: Record<StudyNoteKind, string> = {
@@ -89,10 +105,24 @@ export function StudyStage({
   narratingId,
   muted,
   walkNotes,
+  voiceLine,
+  speaking,
+  lead,
+  intro = 'skip',
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
-  const [visitedIds, setVisitedIds] = useState<readonly string[]>([]);
+  const [visitedIds, setVisitedIds] = useState<readonly string[]>(() => {
+    const seen: string[] = [];
+    for (const note of walkNotes ?? []) if (!seen.includes(note.spot)) seen.push(note.spot);
+    return seen;
+  });
+  // Whether this mount is still behind the intro gate. The overlay shows until the reader
+  // clicks (or the 3.4s auto-enter lands); entering releases the gathered cards to fan out.
+  const [entered, setEntered] = useState(introPlayed);
+  // The assembly window: cards carry their fan-out stagger ONLY while it is open, so a later
+  // promotion or re-cast responds instantly instead of waiting out the entrance delays.
+  const [assembling, setAssembling] = useState(false);
   const stageRef = useRef<HTMLElement | null>(null);
   const beatsRowRef = useRef<HTMLDivElement | null>(null);
 
@@ -101,6 +131,51 @@ export function StudyStage({
     setCribOpen(false);
     setVisitedIds([]);
   }, [data.id]);
+
+  const reducedMotion =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const gathered = intro === 'full' && !reducedMotion && !entered;
+  const enter = useCallback(() => {
+    introPlayed = true;
+    setEntered(true);
+    setAssembling(true);
+  }, []);
+
+  // The assembly stagger outlives the fan-out just long enough to cover the last slot's delay.
+  useEffect(() => {
+    if (!assembling) return;
+    const timer = window.setTimeout(() => setAssembling(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [assembling]);
+
+  // v3: a NEW answer after the gate has played reassembles in place — the cards gather for one
+  // frame and fan back out, no overlay. (The first answer is handled by the gate itself.)
+  const reassembleRef = useRef(data.id);
+  useEffect(() => {
+    if (reassembleRef.current === data.id) return;
+    reassembleRef.current = data.id;
+    if (intro !== 'full' || reducedMotion || !introPlayed) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.setAttribute('data-gathered', '');
+    setAssembling(true);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => stage.removeAttribute('data-gathered'));
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      stage.removeAttribute('data-gathered');
+    };
+  }, [data.id, intro, reducedMotion]);
+
+  // The intro never traps: click anywhere or just wait — 3.4s and the desk assembles on its
+  // own. No Escape shortcut: the demo driver owns that key, and v3 reads Escape as "leave",
+  // never "enter". Reduced motion skips the whole beat (no gate, no fan-out).
+  useEffect(() => {
+    if (!gathered) return;
+    const timer = window.setTimeout(enter, 3400);
+    return () => window.clearTimeout(timer);
+  }, [gathered, enter]);
 
   // The desk is a single composition — arriving with its beat bar under the fold reads as a
   // missing control, not a scrollable page. On each new answer the stage aligns its own bottom
@@ -151,6 +226,7 @@ export function StudyStage({
   useEffect(() => {
     const row = beatsRowRef.current;
     if (!row) return;
+    if (row.matches(':hover')) return;
     const chip = row.querySelector<HTMLElement>('.study-beat.is-now');
     if (!chip) return;
     const target = chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2;
@@ -193,7 +269,10 @@ export function StudyStage({
 
   // Which object the narration is on, as a data attribute rather than a label: the fact has to
   // reach CSS (the speaking ring, later the equalizer) without becoming copy.
-  const speakingId = !muted && narratingId && active.id === narratingId ? narratingId : undefined;
+  const speakingId =
+    !muted && ((narratingId && active.id === narratingId) || (speaking && spot === active.id))
+      ? active.id
+      : undefined;
   const lessonBlocks = blocks.filter((block) => block.id);
   const lessonIndex = lessonBlocks.findIndex((block) => block.id === active.id);
   const moveLesson = (delta: -1 | 1): void => {
@@ -208,18 +287,19 @@ export function StudyStage({
   const slotById = new Map<string, CSSProperties>();
   if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0, true));
   for (const actor of scene.nearby) {
-    const slot = BACK_SLOTS[actor.slot];
+    const slot = BACK_SLOTS[SLOT_ORDER[actor.slot] ?? actor.slot];
     if (slot) slotById.set(actor.id, slotStyle(slot, actor.slot + 1));
   }
   const cast = lessonBlocks.filter((block) => block.id && slotById.has(block.id));
 
-  // The takeaway is the block's own one-line note — the desk restates nothing and invents
-  // nothing. An object without one simply has no takeaway line.
-  const takeaway = active.note ?? null;
+  // The takeaway is the block's own note, condensed to the aphorism length the design sized
+  // its slot for — the full sentence stays reachable on the line's title.
+  const takeaway = active.note ? condenseForNote(active.note, 96) || null : null;
   const noteCount = asides ? Object.keys(asides).length : 0;
 
-  // The pen's margin quip beside the object: a live walk's own written line when one exists
-  // (the latest wins — a stop revisited says the newer thing), else the aside's second voice.
+  // The pen's margin quip beside the object: the aside's second voice leads — the walk's line
+  // already lives in the voice bubble and the crib, and writing it twice at 140 chars is what
+  // buried the desk. A block with no quip falls back to its walk line, cut to desk length.
   let walkNote: string | null = null;
   if (walkNotes) {
     for (let i = walkNotes.length - 1; i >= 0; i -= 1) {
@@ -229,7 +309,7 @@ export function StudyStage({
       }
     }
   }
-  const deskNote = walkNote ?? activeAside?.quip ?? null;
+  const deskNote = activeAside?.quip ?? (walkNote ? condenseForNote(walkNote, 64) || null : null);
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -260,6 +340,8 @@ export function StudyStage({
       data-study-active={active.id}
       data-study-speaking={speakingId}
       data-study-note-kind={activeAside?.kind}
+      data-gathered={gathered || undefined}
+      data-assembling={assembling || undefined}
     >
       <div className="study-desk">
         <div className="study-canvas">
@@ -298,27 +380,26 @@ export function StudyStage({
                     </BlockBoundary>
                   </div>
                   <div className="study-card-mute" aria-hidden="true" />
+                  {front && deskNote && (
+                    <div key={`margin-${id}`} className="study-margin-wrap" aria-hidden="true">
+                      <div className="study-margin-note">{deskNote}</div>
+                      <svg
+                        className="study-margin-arrow"
+                        viewBox="0 0 90 70"
+                        width="90"
+                        height="70"
+                        aria-hidden="true"
+                      >
+                        <path className="study-margin-line" d="M8,14 C34,24 56,38 76,52" />
+                        <path className="study-margin-head" d="M76,52 L62,48 M76,52 L66,62" />
+                      </svg>
+                    </div>
+                  )}
                 </article>
               );
             })}
 
-            {deskNote && (
-              <div key={`margin-${active.id}`} className="study-margin-wrap">
-                <div className="study-margin-note">{deskNote}</div>
-                <svg
-                  className="study-margin-arrow"
-                  viewBox="0 0 90 70"
-                  width="90"
-                  height="70"
-                  aria-hidden="true"
-                >
-                  <path className="study-margin-line" d="M8,14 C34,24 56,38 76,52" />
-                  <path className="study-margin-head" d="M76,52 L62,48 M76,52 L66,62" />
-                </svg>
-              </div>
-            )}
-
-            {activeAside && (
+            {activeAside && !cribOpen && (
               <>
                 <svg
                   key={`connect-${active.id}`}
@@ -328,8 +409,8 @@ export function StudyStage({
                   height={CONNECT_SLOT.h}
                   aria-hidden="true"
                 >
-                  <path className="study-connect-line" d="M146,20 C112,44 64,48 14,34" />
-                  <path className="study-connect-head" d="M14,34 L30,26 M14,34 L28,44" />
+                  <path className="study-connect-line" d="M146,170 C118,128 66,78 16,44" />
+                  <path className="study-connect-head" d="M16,44 L32,40 M16,44 L28,56" />
                 </svg>
                 <div className="study-note-wrap">
                   <div className="study-note-layer" aria-hidden="true">
@@ -392,7 +473,9 @@ export function StudyStage({
       {takeaway && (
         <div key={`take-${active.id}`} className="study-takeaway">
           <span className="study-takeaway-kicker">Takeaway</span>
-          <span className="study-takeaway-line">{takeaway}</span>
+          <span className="study-takeaway-line" title={active.note ?? undefined}>
+            {takeaway}
+          </span>
           <svg
             className="study-takeaway-stroke"
             viewBox="0 0 210 9"
@@ -402,6 +485,49 @@ export function StudyStage({
           >
             <path d="M3,5 C34,1 66,8 105,5 C144,2 176,8 207,4" />
           </svg>
+        </div>
+      )}
+
+      {voiceLine && !gathered && (
+        <div className="study-voice" aria-hidden="true">
+          {speaking && (
+            <span className="study-voice-eq">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          )}
+          <span
+            key={voiceLine}
+            className="study-voice-text"
+            style={{ '--tw-ms': `${Math.min(1600, voiceLine.length * 8)}ms` } as CSSProperties}
+          >
+            {voiceLine}
+            {speaking && <b className="study-voice-caret">▌</b>}
+          </span>
+        </div>
+      )}
+
+      {gathered && (
+        <div className="study-intro" role="status">
+          {/* The whole layer is a click target, as a REAL button stretched under the copy — a
+              div with a click handler is a target only a mouse can find. */}
+          <button
+            type="button"
+            className="study-intro-skip"
+            aria-label="Enter the Study now"
+            onClick={enter}
+          />
+          <span className="study-intro-kicker">The answer</span>
+          <div className="study-intro-card">
+            <p>{lead || data.opener || data.sub || data.title}</p>
+          </div>
+          <span className="study-intro-watch">Watch it become the Study</span>
+          <button type="button" className="study-intro-enter" onClick={enter}>
+            Enter the Study →
+          </button>
         </div>
       )}
 

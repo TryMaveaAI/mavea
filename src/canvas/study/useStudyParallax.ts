@@ -20,27 +20,36 @@ export function useStudyParallax(stageRef: RefObject<HTMLElement | null>): void 
     }
 
     let frame = 0;
-    let mx = 0;
-    let my = 0;
+    let px = 0;
+    let py = 0;
+    let reset = false;
 
     const paint = (): void => {
       frame = 0;
+      if (reset) {
+        reset = false;
+        stage.style.setProperty('--study-ry', '0deg');
+        stage.style.setProperty('--study-rx', '0deg');
+        return;
+      }
+      // The one layout read lives inside the frame, after the event storm has settled.
+      const box = stage.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      const mx = (px - box.left) / box.width - 0.5;
+      const my = (py - box.top) / box.height - 0.5;
       stage.style.setProperty('--study-ry', `${(mx * TILT_X).toFixed(2)}deg`);
       stage.style.setProperty('--study-rx', `${(my * TILT_Y).toFixed(2)}deg`);
     };
 
     const move = (event: PointerEvent): void => {
       if (document.visibilityState === 'hidden') return;
-      const box = stage.getBoundingClientRect();
-      if (!box.width || !box.height) return;
-      mx = (event.clientX - box.left) / box.width - 0.5;
-      my = (event.clientY - box.top) / box.height - 0.5;
+      px = event.clientX;
+      py = event.clientY;
       if (!frame) frame = requestAnimationFrame(paint);
     };
 
     const leave = (): void => {
-      mx = 0;
-      my = 0;
+      reset = true;
       if (!frame) frame = requestAnimationFrame(paint);
     };
 

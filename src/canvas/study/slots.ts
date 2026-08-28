@@ -60,6 +60,12 @@ export const BACK_SLOTS: readonly DeskSlot[] = [
 
 export const BACK_CAP = BACK_SLOTS.length;
 
+/** Fill order for the arc. The front card is top-pinned and up to 560 design px wide, so the
+ *  inner slots sit largely BEHIND it — the far ends are the genuinely visible ones. Filling
+ *  ends-first keeps a two- or three-object answer balanced instead of huddled on the left,
+ *  with the far-left slot first to counterweight the note card on the right. */
+export const SLOT_ORDER = [0, 4, 3, 1, 2] as const;
+
 /** Where a card waits before the answer assembles: the centre of the desk, tiny. */
 export const GATHER_SLOT: DeskSlot = { x: 590, y: 420, z: 70, ry: 0, s: 0.22 };
 
@@ -70,8 +76,9 @@ export const CARD_W = 560;
 /** Mavéa's note, on the desk beside the front card. */
 export const NOTE_SLOT = { x: 1165, y: 392, z: 75, w: 302 } as const;
 
-/** The connector arrow's frame (its curve points from the note toward the front card). */
-export const CONNECT_SLOT = { x: 872, y: 358, z: 72, w: 150, h: 70 } as const;
+/** The connector arrow's frame. Tall on purpose: its curve starts at the note's edge and lands
+ *  HIGH on the front card's flank, so a short card is still genuinely pointed at. */
+export const CONNECT_SLOT = { x: 872, y: 208, z: 72, w: 150, h: 220 } as const;
 
 /** The handwritten takeaway under the front card. */
 export const TAKEAWAY_SLOT = { x: 590, y: 648, w: 600 } as const;

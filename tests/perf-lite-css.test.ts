@@ -80,6 +80,8 @@ const REACTIVE: { name: string; source: string; file: string }[] = [
   { name: 'dotpulse', source: stageLayout, file: 'stage-layout.css (thinking dot)' },
   { name: 'dash-refresh-spin', source: dashboards, file: 'dashboards.css' },
   { name: 'study-pulse', source: studyCss, file: 'study.css (narrated-object ring)' },
+  { name: 'study-eq', source: studyCss, file: 'study.css (voice bubble bars)' },
+  { name: 'study-blink', source: studyCss, file: 'study.css (voice bubble caret)' },
 ];
 
 /** Grab the declaration block that contains the first `animation:` shorthand naming `keyframe`. */

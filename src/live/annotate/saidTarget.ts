@@ -242,7 +242,7 @@ export function rowOf(match: SaidMatch, host: Element): Element | null {
 const clips = (cs: CSSStyleDeclaration): boolean =>
   [cs.overflow, cs.overflowX, cs.overflowY].some((v) => v !== '' && v !== 'visible');
 
-function reachable(node: Node): boolean {
+export function reachable(node: Node): boolean {
   const start = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   for (let el = start; el; el = el.parentElement) {
     const cs = getComputedStyle(el);
