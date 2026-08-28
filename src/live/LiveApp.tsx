@@ -1693,6 +1693,14 @@ export function LiveApp(): ReactElement {
 
   const [viewMode, setViewMode] = useViewMode();
 
+  // What the pen may draw right now. The Study has no margin rail — the walk's written asides
+  // land in its session-notes crib instead — so their requests never reach MarginNoteRail while
+  // the Study is the view; the strokes themselves draw exactly as everywhere else.
+  const inkSpots = useMemo(() => {
+    const visible = hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked;
+    return viewMode === 'study' ? visible.filter((s) => s.noteText === undefined) : visible;
+  }, [inked, hiddenSpots, viewMode]);
+
   // What Mavéa writes beside the object the study is holding up.
   //
   // Her read, not the card's: `asideFor` reports which of the block's figures a source sentence
@@ -1728,11 +1736,31 @@ export function LiveApp(): ReactElement {
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
       const notable = notableIn(block);
-      if (notable) {
-        out[block.id] = { text: notable.text, kind: notable.kind ?? 'insight' };
+      const honest = studyContent ? asideFor(studyContent, index) : null;
+      // Two hands write on the desk, and they never say the same thing twice. The note card
+      // takes the fuller voice; the pen's margin quip beside the object takes the OTHER one,
+      // condensed to a line a hand would actually write:
+      //   · trust read + structural observation → the read on the card, the observation in
+      //     the margin;
+      //   · observation alone → it takes the card, and the margin carries the pressure-test
+      //     question's core — a challenge scribbled beside the object;
+      //   · trust read alone → the margin stays clean; there is nothing else honest to write.
+      if (notable && honest) {
+        out[block.id] = {
+          text: honest.text,
+          kind: honest.flagged ? 'caution' : 'evidence',
+          quip: condenseForNote(notable.text, 64) || undefined,
+        };
         return;
       }
-      const honest = studyContent ? asideFor(studyContent, index) : null;
+      if (notable) {
+        out[block.id] = {
+          text: notable.text,
+          kind: notable.kind ?? 'insight',
+          quip: condenseForNote(studyPromptIn(block).text, 64) || undefined,
+        };
+        return;
+      }
       if (honest) {
         out[block.id] = {
           text: honest.text,
@@ -5996,9 +6024,7 @@ export function LiveApp(): ReactElement {
                   does the same for one commit around a canvas restore/replace — see restoreCanvas. */}
               {viewingLive && !mindActive && !inkSuppressed && (
                 <AnnotationLayer
-                  spots={
-                    hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked
-                  }
+                  spots={inkSpots}
                   revision={canvasRevision}
                   onPlaced={notePlaced}
                   liveSpot={turn.spot}

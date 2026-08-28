@@ -724,6 +724,7 @@ export function TopicCanvas({
           onNarrate={onNarrate}
           narratingId={narratingId}
           muted={muted}
+          walkNotes={walkNotes}
         />
       ) : familiesLoaded && focused ? (
         <FocusStage
