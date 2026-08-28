@@ -489,6 +489,7 @@ function SpotInk({
       (p) => p.stroke.d + (p.chip ? `|${Math.round(p.chip.x)},${Math.round(p.chip.y)}` : ''),
       (p) => p.host,
       setPlaced,
+      () => setPlaced(null),
     );
   }, [spot, line, mark, generous, within, revision, stepNumber]);
 
@@ -708,6 +709,7 @@ function ConnectInk({
       (p) => p.stroke.d,
       (p) => p.grid,
       setPlaced,
+      () => setPlaced(null),
     );
   }, [spot, toSpot, mark, within, revision]);
 

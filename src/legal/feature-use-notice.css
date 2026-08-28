@@ -38,6 +38,11 @@
 }
 
 .feature-use-notice a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   color: var(--text-secondary);
   font-weight: 700;
   text-decoration: none;
@@ -88,6 +93,7 @@
   .feature-use-notice-actions {
     grid-column: 2;
     justify-content: flex-end;
+    margin-block: -8px;
   }
 
   .feature-use-notice-dismiss {

@@ -61,6 +61,38 @@ describe('pollUntilSettled — content mutations re-arm the measurement', () => 
     stop();
     host.remove();
   });
+
+  it('clears a placed mark when its target stays unavailable, then redraws when it returns', async () => {
+    const host = document.createElement('div');
+    const panel = document.createElement('div');
+    host.appendChild(panel);
+    document.body.appendChild(host);
+    let available = true;
+    const onResult = vi.fn();
+    const onMissing = vi.fn();
+    const stop = pollUntilSettled(
+      () => (available ? { host } : null),
+      () => 'stable',
+      (result) => result.host,
+      onResult,
+      onMissing,
+    );
+
+    await vi.advanceTimersByTimeAsync(400);
+    expect(onResult).toHaveBeenCalled();
+
+    available = false;
+    panel.className = 'closed';
+    await vi.advanceTimersByTimeAsync(700);
+    expect(onMissing).toHaveBeenCalledTimes(1);
+
+    available = true;
+    panel.className = 'open';
+    await vi.advanceTimersByTimeAsync(700);
+    expect(onResult.mock.calls.length).toBeGreaterThan(2);
+    stop();
+    host.remove();
+  });
 });
 
 // What made this the streaming path's quietest tax: a mark re-armed on every content mutation, and

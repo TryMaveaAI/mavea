@@ -240,6 +240,13 @@
   .live-voice .voice-strip {
     padding: 8px 12px;
     gap: 6px;
+    justify-content: flex-end;
+  }
+  /* The current spoken line is already rendered immediately above the dock. In the status row it
+     collapsed to a few orphaned letters between four fixed controls on phones, which looked like
+     broken input. Keep the desktop glanceable transcript and give mobile chrome a clean row. */
+  .live-voice .vc-transcript {
+    display: none;
   }
   .live-voice .voice-switch-label {
     display: none;
@@ -259,6 +266,13 @@
    even though every button technically fit. The dock measures its rendered height, so the canvas
    and the mobile session sheet automatically clear this taller two-row capsule. */
 @media (max-width: 420px) {
+  /* Four labelled settings cannot share a 280px status row. Keep every control, but remove the
+     repeated noun from the explanation-level chip; its accessible name remains explicit and the
+     visible value (Standard / In-depth / Simple) is the information that changes. */
+  .live-voice .explain-chip-tag {
+    display: none;
+  }
+
   .live-voice .voice-capsule .composer {
     display: grid;
     grid-template-columns: 44px 38px 38px 38px 44px;

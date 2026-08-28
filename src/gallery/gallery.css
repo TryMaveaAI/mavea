@@ -48,6 +48,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   font: 13px/1 var(--font);
+  min-height: 44px;
   padding: 7px var(--s-md);
   transition:
     border-color var(--m-fast),
@@ -86,6 +87,7 @@
 
 .vlib-search {
   flex: 1 1 220px;
+  min-height: 44px;
   padding: var(--s-sm) var(--s-md);
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -119,6 +121,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: 12px/1 var(--font);
+  min-height: 44px;
   padding: 8px 10px;
   border-radius: var(--r-sm);
   cursor: pointer;
@@ -359,8 +362,13 @@
     flex-basis: 100%;
   }
   .vlib-variants {
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: space-between;
+  }
+  .vlib-theme {
+    width: 44px;
+    height: 44px;
   }
   .vlib-tile-head {
     flex-direction: column;

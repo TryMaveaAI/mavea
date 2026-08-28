@@ -3072,10 +3072,10 @@
     max-width: 880px;
   }
   .fl-hero-orbspace {
-    height: clamp(170px, 20vh, 230px);
+    height: clamp(170px, 16dvh, 230px);
   }
   .fl-hero-title {
-    font-size: clamp(92px, 5vw, 116px);
+    font-size: clamp(92px, min(5vw, 10dvh), 116px);
   }
   .fl-hero-lede {
     font-size: 19px;
@@ -3094,6 +3094,52 @@
   }
   .fl-window-body {
     grid-template-columns: 190px 1fr;
+  }
+}
+
+/* Laptop screens lose much more usable room to browser and OS chrome than their width suggests.
+   Width-only hero scaling made a 1024×600 or 1366×768 window render desktop-size display type,
+   pushing the page's primary input below the first screen. Keep the face's reserved slot intact,
+   then compress the surrounding rhythm and let the headline respond to BOTH axes. */
+@media (min-width: 761px) and (max-height: 900px) {
+  .fl-hero {
+    padding-top: 40px;
+  }
+  .fl-hero-orbspace {
+    height: 150px;
+  }
+  .fl-hero-title {
+    font-size: clamp(50px, min(6vw, 9dvh), 72px);
+  }
+  .fl-hero-lede {
+    margin-top: 16px;
+    font-size: 16.5px;
+    line-height: 1.48;
+  }
+  .fl-composer {
+    margin-top: 22px;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 650px) {
+  .fl-hero {
+    padding-top: 32px;
+  }
+  .fl-hero-orbspace {
+    /* The face ends around 220px in this tier; this reserve keeps its trailing curtains clear of
+       the first line while the smaller headline still recovers enough height for the composer. */
+    height: 162px;
+  }
+  .fl-hero-title {
+    font-size: clamp(46px, min(5.6vw, 9dvh), 58px);
+  }
+  .fl-hero-lede {
+    margin-top: 14px;
+    font-size: 16px;
+    line-height: 1.42;
+  }
+  .fl-composer {
+    margin-top: 20px;
   }
 }
 

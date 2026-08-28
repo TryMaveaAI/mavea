@@ -69,6 +69,40 @@ describe('gallery family chips — a sticky filter bar must never out-grow the v
   });
 });
 
+describe('gallery controls — phone layouts keep the density switch and theme control together', () => {
+  const css = read('src/gallery/gallery.css');
+  const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+
+  it('lets the segmented control share the row instead of forcing the theme button below it', () => {
+    expect(phone).toMatch(/\.vlib-variants\s*\{[^}]*flex:\s*1 1 0[^}]*min-width:\s*0/s);
+    expect(phone).not.toMatch(/\.vlib-variants\s*\{[^}]*width:\s*100%/s);
+  });
+
+  it('keeps every toolbar action at the 44px touch-target floor', () => {
+    expect(css).toMatch(/\.vlib-back\s*\{[^}]*min-height:\s*44px/s);
+    expect(css).toMatch(/\.vlib-search\s*\{[^}]*min-height:\s*44px/s);
+    expect(css).toMatch(/\.vlib-variant\s*\{[^}]*min-height:\s*44px/s);
+    expect(phone).toMatch(/\.vlib-theme\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s);
+  });
+});
+
+describe('phone utility controls — every icon-only action remains thumb-sized', () => {
+  it('keeps setup search, provider chevron, legal details, and treemap crumbs at 44px', () => {
+    expect(read('src/styles/setup-wizard.css')).toMatch(
+      /@media \(max-width:\s*430px\)[\s\S]*\.setup-nav \.topbar-search-btn\s*\{[^}]*height:\s*44px[^}]*width:\s*44px/,
+    );
+    expect(read('src/live/setup/drop-select.css')).toMatch(
+      /\.drop-select-chevron\s*\{[^}]*width:\s*44px/s,
+    );
+    expect(read('src/legal/feature-use-notice.css')).toMatch(
+      /\.feature-use-notice a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/s,
+    );
+    expect(read('src/canvas/blocks/charts1/styles.css')).toMatch(
+      /@media \(pointer:\s*coarse\)[\s\S]*\.c1-crumb\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/,
+    );
+  });
+});
+
 describe('flagship mobile nav — the compact Explore items must actually win the cascade', () => {
   const css = read('src/flagship/flagship.css');
 
@@ -94,6 +128,30 @@ describe('landing captions — reading text stays on the 9px legibility floor', 
     const size = /font-size:\s*([\d.]+)px/.exec(body)?.[1];
     expect(size, `${sel} declares no font-size`).toBeDefined();
     expect(Number(size)).toBeGreaterThanOrEqual(9);
+  });
+});
+
+describe('landing hero — short laptop windows keep the primary input in the opening composition', () => {
+  const css = read('src/flagship/flagship.css');
+
+  it('uses height-aware laptop tiers instead of scaling the hero from width alone', () => {
+    expect(css).toMatch(/@media \(min-width:\s*761px\) and \(max-height:\s*900px\)/);
+    expect(css).toMatch(/@media \(min-width:\s*761px\) and \(max-height:\s*650px\)/);
+    expect(css).toMatch(/font-size:\s*clamp\(50px,\s*min\(6vw,\s*9dvh\),\s*72px\)/);
+  });
+
+  it('also bounds ultrawide hero scaling by viewport height', () => {
+    const wide = css.slice(css.indexOf('@media (min-width: 1920px)'));
+    expect(wide).toMatch(/height:\s*clamp\(170px,\s*16dvh,\s*230px\)/);
+    expect(wide).toMatch(/font-size:\s*clamp\(92px,\s*min\(5vw,\s*10dvh\),\s*116px\)/);
+  });
+});
+
+describe('shared topbar — dark mode never inherits the browser default ink', () => {
+  it('sets its own theme-aware foreground for the wordmark and inherited controls', () => {
+    const css = read('src/styles/top-bar.css');
+    const topbar = /\.topbar\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(topbar).toMatch(/color:\s*var\(--text-primary\)/);
   });
 });
 

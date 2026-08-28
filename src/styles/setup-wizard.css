@@ -1182,6 +1182,7 @@
    only the decorative connector rhythm so the constellation remains centered without overflow. */
 @media (max-width: 430px) {
   .setup-nav {
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
     padding-inline: 12px;
   }
@@ -1197,13 +1198,13 @@
     font-size: 16px;
   }
   .const-track {
-    gap: 2px;
+    gap: 0;
   }
   .const-step {
-    gap: 4px;
+    gap: 2px;
   }
   .const-step + .const-step::before {
-    width: 8px;
+    width: 4px;
   }
 }
 
@@ -1250,10 +1251,10 @@
      has to clear 420px, and a labelled button overran it by ~10px — which showed up as the
      constellation and the flank overlapping rather than as a scrollbar. */
   .setup-nav .topbar-search-btn {
-    height: 30px;
+    height: 44px;
     padding: 0;
     place-items: center;
-    width: 30px;
+    width: 44px;
   }
   .setup-nav .topbar-search-label,
   .setup-nav .topbar-search-kbd {

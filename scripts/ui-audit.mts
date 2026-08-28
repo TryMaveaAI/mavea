@@ -292,7 +292,7 @@ async function auditLiveTemplates(
           );
           await page.goto(`${baseUrl}/#/live`, { waitUntil: 'load' });
           await page.waitForSelector('.mavea-app', { timeout: 30_000 });
-          const appearanceTrigger = page.locator('.appearance-trigger');
+          const appearanceTrigger = page.locator('.appearance-trigger:visible').first();
           await appearanceTrigger.waitFor({ state: 'attached', timeout: 30_000 });
           if (!(await appearanceTrigger.isVisible())) {
             const chain = await appearanceTrigger.evaluate((element) => {
@@ -347,7 +347,12 @@ async function auditLiveTemplates(
                   out.push('appearance option below 44px target');
               }
 
-              const trigger = document.querySelector<HTMLElement>('.appearance-trigger');
+              const trigger = Array.from(
+                document.querySelectorAll<HTMLElement>('.appearance-trigger'),
+              ).find((element) => {
+                const rect = element.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+              });
               if (trigger) {
                 const rect = trigger.getBoundingClientRect();
                 const minimum = viewportWidth <= 720 ? 44 : 40;

@@ -10,6 +10,7 @@ const SLOW_POLL_MS = 500; // …and once a region has proven it does not come to
 const MAX_FAST_POLLS = 18; // ~1.8s at the fast cadence — generous for a reveal or a takeover's entrance
 const MAX_SLOW_POLLS = 12; // then ~6s of slow follow-up before a moving region is left where it is
 const STABLE_STREAK = 2; // this many identical reads in a row reads as "stopped moving"
+const MISSING_STREAK = 2; // two empty reads hide stale ink without blinking on a one-frame swap
 
 /** Chrome the pen itself renders (or the badge state it stamps on the host) — mutations there
  *  are our own echo, never a reason to re-measure. Without this filter every placement would
@@ -22,10 +23,10 @@ function isInkNode(n: Node): boolean {
 }
 
 /** Measure until the result's geometry (per `fingerprint`) stops changing for `STABLE_STREAK` reads
- *  in a row, reporting every successful read along the way via `onResult`, never a null. That's the
- *  core of the contract: a caller's placed result is only ever REPLACED by a fresh, real placement,
- *  never cleared just because one attempt found nothing yet (a card mid-reveal, a host not mounted
- *  this tick).
+ *  in a row, reporting every successful read along the way via `onResult`. One missing read is
+ *  treated as transient (a card mid-reveal or a host swapping this frame); two consecutive misses
+ *  call `onMissing`, because an accordion/tab that closed must not leave its old stroke floating
+ *  over blank space. Observers stay armed, so reopening the target redraws it in the new geometry.
  *
  *  Once settled, further reads are EVENT-DRIVEN: the resolved host's own resize (a card that grows
  *  from streamed content), a window resize, the host's transitions landing, and any real content
@@ -48,6 +49,7 @@ export function pollUntilSettled<T>(
   fingerprint: (result: T) => string,
   hostOf: (result: T) => HTMLElement,
   onResult: (result: T) => void,
+  onMissing?: () => void,
 ): () => void {
   let cancelled = false;
   let timer: number | undefined;
@@ -56,6 +58,8 @@ export function pollUntilSettled<T>(
   let attempts = 0;
   let lastKey: string | null = null;
   let streak = 0;
+  let missingStreak = 0;
+  let missingReported = false;
   let ro: ResizeObserver | undefined;
   let transitionHost: HTMLElement | undefined;
   let mo: MutationObserver | undefined;
@@ -108,6 +112,8 @@ export function pollUntilSettled<T>(
     if (cancelled) return;
     const result = measure();
     if (result) {
+      missingStreak = 0;
+      missingReported = false;
       armHost(hostOf(result));
       const key = fingerprint(result);
       streak = key === lastKey ? streak + 1 : 1;
@@ -117,6 +123,12 @@ export function pollUntilSettled<T>(
         attempts = 0; // at rest: the region earns its fast budget back for the next real move
         return; // settled — a later resize/mutation re-arms us
       }
+    } else if (lastKey !== null) {
+      missingStreak++;
+      if (missingStreak >= MISSING_STREAK && !missingReported) {
+        missingReported = true;
+        onMissing?.();
+      }
     }
     attempts++;
     // Nothing has ever landed here: the old ceiling stands. A target that hasn't resolved in ~1.8s
@@ -124,7 +136,7 @@ export function pollUntilSettled<T>(
     // will never answer is pure cost. Once something IS placed, a still-moving region is followed
     // at the slow cadence for a while longer before we leave the mark where it is.
     const ceiling = lastKey === null ? MAX_FAST_POLLS : MAX_FAST_POLLS + MAX_SLOW_POLLS;
-    if (attempts >= ceiling) return; // give up cleanly; whatever's already placed stays placed
+    if (attempts >= ceiling) return; // stop polling; an armed observer can still re-measure later
     timer = window.setTimeout(tick, nextDelay());
   };
 

@@ -8,6 +8,16 @@
   display: none;
 }
 
+/* Compact laptops still keep the session rail, leaving less horizontal room than their viewport
+   number implies. The current answer title is already the first thing in the canvas; repeating it
+   in the bar can push Search and Appearance beyond the clipped right edge at 1024px. */
+@media (min-width: 769px) and (max-width: 1120px) {
+  .with-rail .topbar .workspace-name,
+  .with-rail .topbar .brand-sep {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   /* every `left: var(--rail-w)` offset (topbar, stages, presence, scrubber,
      center caption) collapses to full width in one move */

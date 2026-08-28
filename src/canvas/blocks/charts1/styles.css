@@ -159,6 +159,12 @@
   color: var(--presence-soft);
   font-weight: 600;
 }
+@media (pointer: coarse) {
+  .c1-crumb {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
 .c1-crumb-sep {
   width: 13px;
   height: 13px;

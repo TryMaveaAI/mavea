@@ -38,13 +38,25 @@ describe('composer — narrow-viewport control sizing', () => {
     expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 44px/);
     expect(phone).toMatch(/grid-column:\s*1 \/ -1/);
     expect(phone).toMatch(/\.mark-toggle-label\s*\{[^}]*display:\s*none/s);
+    expect(phone).toMatch(/\.explain-chip-tag\s*\{[^}]*display:\s*none/s);
   });
 
   it('makes the model label width-constrained before hiding it on the narrowest phones', () => {
     const compact = dockCss.slice(dockCss.indexOf('@media (max-width: 560px)'));
+    expect(compact).toMatch(/\.vc-transcript\s*\{[^}]*display:\s*none/s);
     expect(compact).toMatch(/\.chip-model\s*\{[^}]*display:\s*block[^}]*max-width:\s*64px/s);
     expect(compact).toMatch(
       /@media \(max-width:\s*360px\)[\s\S]*\.chip-model\s*\{[^}]*display:\s*none/,
+    );
+  });
+});
+
+describe('Live topbar — compact laptops keep every primary control reachable', () => {
+  it('drops the duplicated canvas title before the standing menus clip', () => {
+    const css = read('src/styles/mobile.css');
+    expect(css).toMatch(/@media \(min-width:\s*769px\) and \(max-width:\s*1120px\)/);
+    expect(css).toMatch(
+      /\.with-rail \.topbar \.workspace-name,[\s\S]*\.with-rail \.topbar \.brand-sep\s*\{[^}]*display:\s*none/,
     );
   });
 });

@@ -265,7 +265,7 @@ describe('template persona and local-font manifest', () => {
       /@media \(max-width: 430px\)[\s\S]*\.setup-back\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s,
     );
     expect(setupWizardCss).toMatch(
-      /@media \(max-width: 430px\)[\s\S]*\.const-step \+ \.const-step::before\s*\{[^}]*width:\s*8px/s,
+      /@media \(max-width: 430px\)[\s\S]*\.const-step \+ \.const-step::before\s*\{[^}]*width:\s*4px/s,
     );
   });
 });

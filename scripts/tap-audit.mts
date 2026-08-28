@@ -40,6 +40,9 @@ const SURFACES: { name: string; path: string; ready: string }[] = [
   { name: 'ripple', path: '/#/ripple', ready: '.ripple-panel' },
 ];
 
+const urlArg = process.argv.find((value) => value.startsWith('--url='));
+const baseUrl = (urlArg?.slice('--url='.length) || 'http://127.0.0.1:5173').replace(/\/$/, '');
+
 // Runs in the page. Does NOT measure the element's own box — that is the mistake. A control can be
 // visually 32px and still be perfectly tappable if it projects a larger hit area (which is exactly
 // how you fix this without redesigning anything). So this asks the only question that matters: if a
@@ -130,7 +133,16 @@ async function main(): Promise<void> {
       isMobile: true,
     });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5173' + s.path, { waitUntil: 'load' });
+    await page.goto(baseUrl + s.path, { waitUntil: 'load' });
+    try {
+      await page.waitForSelector('.legal-gate input[type="checkbox"]', { timeout: 1500 });
+      for (const checkbox of await page.locator('.legal-gate input[type="checkbox"]').all()) {
+        await checkbox.check();
+      }
+      await page.click('.legal-gate button:has-text("Continue to Mavéa")');
+    } catch {
+      // Landing and Gallery intentionally bypass acknowledgement.
+    }
     try {
       await page.waitForSelector(s.ready, { timeout: 20_000 });
     } catch {
