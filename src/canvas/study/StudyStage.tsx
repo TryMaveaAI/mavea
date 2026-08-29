@@ -211,14 +211,18 @@ export function StudyStage({
     return () => cancelAnimationFrame(frame);
   }, [data.id]);
 
+  // The desk holds things to LOOK at. A world preview is a doorway to another surface, not an
+  // object to examine — on the desk it takes a slot, a beat and a set of notes to say only
+  // "there is more elsewhere". It stays on the grid, where a doorway belongs.
+  const deskBlocks = useMemo(() => blocks.filter((block) => block.type !== 'world'), [blocks]);
   const eligibleIds = useMemo(
-    () => new Set(blocks.flatMap((block) => (block.id ? [block.id] : []))),
-    [blocks],
+    () => new Set(deskBlocks.flatMap((block) => (block.id ? [block.id] : []))),
+    [deskBlocks],
   );
   const activeId = (pinnedId && eligibleIds.has(pinnedId) ? pinnedId : null) ?? spot;
   const scene = useMemo(
-    () => deriveStudyScene(blocks, activeId, selectedBlockIds),
-    [blocks, activeId, selectedBlockIds],
+    () => deriveStudyScene(deskBlocks, activeId, selectedBlockIds),
+    [deskBlocks, activeId, selectedBlockIds],
   );
 
   // Scoped to the stage element, so filling the screen gives the screen to the STUDY — not to the
@@ -296,7 +300,7 @@ export function StudyStage({
   // and re-armed cleanly whenever the desk, the voice, or the reader's own pick moves it.
   const guideRef = useRef<{ blocks: Block[]; id: string | null }>({ blocks: [], id: null });
   guideRef.current = {
-    blocks: blocks.filter((block) => block.id),
+    blocks: deskBlocks.filter((block) => block.id),
     id: scene.active?.id ?? null,
   };
   useEffect(() => {
@@ -324,7 +328,7 @@ export function StudyStage({
     !muted && ((narratingId && active.id === narratingId) || (speaking && spot === active.id))
       ? active.id
       : undefined;
-  const lessonBlocks = blocks.filter((block) => block.id);
+  const lessonBlocks = deskBlocks.filter((block) => block.id);
   const lessonIndex = lessonBlocks.findIndex((block) => block.id === active.id);
   const moveLesson = (delta: -1 | 1): void => {
     if (lessonBlocks.length < 2 || lessonIndex < 0) return;

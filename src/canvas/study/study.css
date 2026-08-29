@@ -294,13 +294,6 @@
   pointer-events: none;
 }
 
-/* The desk holds ONE surface at a time: a card's own doorway into another surface (the living
-   answer's board) would take the reader off the desk mid-lesson, and the world has its own
-   route from the view segments. The card keeps its whole reading face; only the exit goes. */
-.study-card .wp-open {
-  display: none;
-}
-
 /* ── The cards ───────────────────────────────────────────────────────────────────────────── */
 
 .study-card {

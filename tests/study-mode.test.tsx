@@ -137,6 +137,28 @@ describe('StudyStage', () => {
     expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Revenue');
   });
 
+  it('keeps doorways off the desk — a world preview is not an object to examine', () => {
+    // The world card's whole content is "there is more elsewhere". On the desk it would take a
+    // slot, a beat and four notes to say it; on the grid it is a doorway, which is what it is.
+    const world = {
+      type: 'world',
+      id: 'w',
+      col: 12,
+      num: 'w',
+      props: { title: 'Teach me about regimes' },
+    } as unknown as Block;
+    const { container } = render(
+      <StudyStage
+        data={spec([...blocks, world])}
+        blocks={[...blocks, world]}
+        spot="a"
+        renderBlock={renderBlock}
+      />,
+    );
+    expect(container.querySelector('[data-study-actor="w"]')).toBeNull();
+    expect(container.querySelectorAll('.study-beat')).toHaveLength(blocks.length);
+  });
+
   it('contains no capture controls or permission-triggering media inputs', () => {
     const { container } = render(
       <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
