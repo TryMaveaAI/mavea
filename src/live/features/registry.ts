@@ -335,6 +335,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'study',
     label: 'The Study',
+    tourChapter: 'study',
     blurb:
       'Pull an answer onto one desk — cards, notes in the margin, and a guided walk through what holds up',
     group: 'This session',

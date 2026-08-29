@@ -94,7 +94,6 @@ const NOTE_GLYPHS: Record<StudyNoteKind, string> = {
 function slotStyle(
   slot: { x: number; y: number; z: number; ry: number; s: number },
   order: number,
-  anchorTop = false,
 ): CSSProperties {
   return {
     '--sx': `${slot.x}px`,
@@ -103,7 +102,6 @@ function slotStyle(
     '--sry': `${slot.ry}deg`,
     '--ss': slot.s,
     '--sd': `${order * 55}ms`,
-    '--say': anchorTop ? '0%' : '-50%',
   } as CSSProperties;
 }
 
@@ -133,6 +131,11 @@ export function StudyStage({
   // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
   // pick stops it), and stops itself at the last object rather than looping forever.
   const [guiding, setGuiding] = useState(false);
+  // Marking density, the design's own control. Expressive is the desk with its whole hand on
+  // it; Essential keeps only the marks that state a claim — the structural remark and its
+  // arrow — and drops the asides and the question. A reader who finds the desk busy needs a
+  // dial, not a binary "pen off".
+  const [density, setDensity] = useState<'expressive' | 'essential'>('expressive');
   const [visitedIds, setVisitedIds] = useState<readonly string[]>(() => {
     const seen: string[] = [];
     for (const note of walkNotes ?? []) if (!seen.includes(note.spot)) seen.push(note.spot);
@@ -338,7 +341,7 @@ export function StudyStage({
   // across a promotion and the slot change rides a CSS transition instead of a remount. Zone and
   // slot are looked up per id; membership only changes when the horizon rotates in.
   const slotById = new Map<string, CSSProperties>();
-  if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0, true));
+  if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0));
   for (const actor of scene.nearby) {
     const slot = BACK_SLOTS[SLOT_ORDER[actor.slot] ?? actor.slot];
     if (slot) slotById.set(actor.id, slotStyle(slot, actor.slot + 1));
@@ -365,12 +368,15 @@ export function StudyStage({
   // (it is what she just SAID about this object); the structural marks fill the rest.
   const structural = activeNotes[0]?.marks ?? [];
   const walkMark = walkNote ? condenseForNote(walkNote, 46) : '';
-  const deskMarks: PenMark[] = walkMark
+  const allMarks: PenMark[] = walkMark
     ? [
         { text: walkMark, slot: 'left' as const },
         ...structural.filter((mark) => mark.slot !== 'left'),
       ]
     : [...structural];
+  // Essential keeps the one mark that points AT something (the left slot, with its arrow); the
+  // bottom aside and the shoulder question are the decoration it removes.
+  const deskMarks = density === 'essential' ? allMarks.filter((m) => m.slot === 'left') : allMarks;
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -403,6 +409,7 @@ export function StudyStage({
       data-study-note-kind={activeAside?.kind}
       data-gathered={gathered || undefined}
       data-assembling={assembling || undefined}
+      data-density={density}
     >
       <div className="study-desk">
         <div className="study-canvas">
@@ -535,12 +542,14 @@ export function StudyStage({
           </span>
           <svg
             className="study-takeaway-stroke"
-            viewBox="0 0 210 9"
+            viewBox="0 0 210 14"
             width="210"
-            height="9"
+            height="14"
             aria-hidden="true"
           >
             <path d="M3,5 C34,1 66,8 105,5 C144,2 176,8 207,4" />
+            {/* A hand underlines twice — the second pass shorter, lighter, offset. */}
+            <path className="is-second" d="M22,11 C56,8 92,13 150,10" />
           </svg>
         </div>
       )}
@@ -609,6 +618,19 @@ export function StudyStage({
           >
             {guiding ? '❚❚ Pause' : '▶ Guide me'}
           </button>
+          <button
+            type="button"
+            className="study-density"
+            aria-pressed={density === 'essential'}
+            title={
+              density === 'expressive'
+                ? 'Keep only the marks that state a claim'
+                : 'Let the pen write freely again'
+            }
+            onClick={() => setDensity((now) => (now === 'expressive' ? 'essential' : 'expressive'))}
+          >
+            {density === 'expressive' ? '✦ Expressive' : '✦ Essential'}
+          </button>
           <div className="study-beats-row" ref={beatsRowRef}>
             {lessonBlocks.map((block, index) => {
               const now = block.id === active.id;
@@ -650,6 +672,7 @@ export function StudyStage({
 
       {cribOpen && cribNotes.length > 0 && (
         <div className="study-crib" role="note" aria-label="Session notes">
+          <span className="study-crib-tape" aria-hidden="true" />
           <button
             type="button"
             className="study-crib-close"

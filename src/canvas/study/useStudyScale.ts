@@ -31,10 +31,13 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       const fitted = Math.min(w / FIT_W, h / FIT_H);
       const scale = Math.min(SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
       stage.style.setProperty('--study-scale', scale.toFixed(4));
-      // The tallest the front card may stand HERE, in design px: its top projects at desk
-      // y≈120·1.046 (translateZ(70) magnification), and the beat bar + takeaway keep the last
-      // ~90 stage px. Published as a custom property so CSS caps the card without a guess.
-      const frontMax = Math.max(240, Math.min(560, 246 + (h / 2 - 90) / (1.046 * scale)));
+      // The tallest the front card may stand HERE, in design px. The card is CENTRED on desk
+      // y=330 and lifted to z=70 (a 1.046 magnification), so its lower edge lands at
+      //   stageH/2 + (330 + H/2 − 370) · scale · 1.046
+      // and the beat bar plus takeaway keep the last ~90 stage px. Solving for H is what stops
+      // a tall card from growing into the HUD, without pinning short ones to the top of an
+      // empty desk. Published as a custom property so CSS caps the card without a guess.
+      const frontMax = Math.max(240, Math.min(560, 80 + (2 * (h / 2 - 90)) / (1.046 * scale)));
       stage.style.setProperty('--study-front-max', `${frontMax.toFixed(0)}px`);
       // How much of the authored desk the floored scale pushes out of the box, in design px.
       // Hysteresis: the flag releases 26px below its trip point, so dragging a window edge

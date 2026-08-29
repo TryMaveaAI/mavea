@@ -253,6 +253,19 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     hook: 'See the visual range',
   },
   {
+    id: 'study',
+    title: 'The Study',
+    mode: 'explain',
+    coach: 'The Study puts one object on a desk, with my notes in the margin beside it.',
+    spotlight: '.focus-toggle',
+    action: { kind: 'showcase', featureId: 'study' },
+    // The seeded answer (0.9s), the desk's own entrance — a 3.4s intro gate and a 0.9s fan-out
+    // — then long enough to read one object and the note beside it.
+    durationMs: 12000,
+    glyph: '✦',
+    hook: 'One object on a desk, notes in the margin',
+  },
+  {
     id: 'focus',
     title: 'One card at a time',
     mode: 'explain',

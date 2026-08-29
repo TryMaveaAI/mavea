@@ -48,11 +48,12 @@ export interface DeskSlot {
   s: number;
 }
 
-/** The object being held up: dead ahead, full size, lifted toward the reader. Unlike the arc
- *  slots (centred — their cards are uniform scenery), the front slot pins the card's TOP edge:
- *  real blocks vary wildly in height, and a centred tall card walks both edges off the desk
- *  while successive picks of different heights bounce the whole composition. */
-export const FRONT_SLOT: DeskSlot = { x: 590, y: 120, z: 70, ry: 0, s: 1 };
+/** The object being held up: dead ahead, full size, lifted toward the reader, and CENTRED on a
+ *  point just above the desk's midline (370) — a card is the thing you are looking at, so it
+ *  belongs where the eye already is, not floating at the top with a field of empty desk beneath
+ *  it. Real blocks vary wildly in height; what keeps a tall one from walking off both edges is
+ *  the measured height cap (useStudyScale's --study-front-max), not a top-pin. */
+export const FRONT_SLOT: DeskSlot = { x: 590, y: 330, z: 70, ry: 0, s: 1 };
 
 /** The arc behind the desk, left to right. Five, because a sixth either crowds the note card or
  *  falls off the stage — anything past the arc stays reachable through the beat bar. */

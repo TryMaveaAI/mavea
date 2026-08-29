@@ -504,7 +504,13 @@ export function useTourDriver(opts: {
     } else if (a.kind === 'showcase') {
       // Session-context features (recap, chapter view) summarize a conversation, so seed a few turns
       // silently first — otherwise they'd open on an empty session. Everything else just opens.
-      if (a.featureId === 'recap' || a.featureId === 'zoom-deck') {
+      if (a.featureId === 'study') {
+        // The desk is a view OF an answer: opening it on an empty session shows an empty desk.
+        // One seeded turn, then the view — and the seed lands before the Study's own entrance.
+        const frame = tourFrame('money');
+        if (frame) after(0, () => showSilent(frame));
+        after(900, () => o.showcaseFeature(a.featureId));
+      } else if (a.featureId === 'recap' || a.featureId === 'zoom-deck') {
         ['money', 'space', 'travel'].forEach((id, i) => {
           const f = tourFrame(id);
           if (f) after(i * 200, () => showSilent(f));

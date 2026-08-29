@@ -105,6 +105,13 @@
   color: var(--study-ink);
   font-family: var(--study-serif);
   isolation: isolate;
+  /* A page resting on a small stack, lit from above: two offset edges below and a hairline of
+     light along the top. Shadows only — no extra elements, nothing to lay out. */
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent),
+    0 2px 0 -1px var(--study-frame),
+    0 6px 0 -3px color-mix(in oklab, var(--study-frame) 60%, transparent),
+    0 18px 40px -22px var(--study-shadow-deep);
 }
 
 /* The approved design, verbatim: the lamplit parchment desk. */
@@ -209,6 +216,71 @@
   --study-beat-num: var(--study-src-ink-muted);
 }
 
+/* ── The bar the desk introduces itself in ───────────────────────────────────────────────── */
+
+/* The canvas header lays its children out as flex COLUMNS (`.canvas-header > div`, a selector
+   that also outranks a lone class) — which is what stacked the mark above the room name. The
+   brand is one line or nothing, so it states both the direction and its own specificity. */
+.canvas-header.is-study .study-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex: none;
+  gap: 11px;
+  white-space: nowrap;
+}
+
+/* The bar is a flex row; without this the brand is free to wrap under its own dot. */
+.canvas-header.is-study {
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+
+.study-brand-dot {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in oklab, var(--presence) 45%, #fff),
+    var(--presence)
+  );
+  animation: study-brand-pulse 3.2s ease-in-out infinite;
+  animation-play-state: var(--ambient-play, running);
+}
+
+.study-brand-name {
+  font: italic 600 18px/1 var(--font);
+  color: var(--text-primary);
+}
+
+.study-brand-rule {
+  width: 1px;
+  height: 16px;
+  flex: none;
+  background: var(--line-soft);
+}
+
+.study-brand-room {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@keyframes study-brand-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 38%, transparent);
+  }
+  55% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
 /* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
 
 .study-desk {
@@ -301,8 +373,7 @@
   left: var(--sx);
   top: var(--sy);
   box-sizing: border-box;
-  transform: translate(-50%, var(--say, -50%)) translateZ(var(--sz)) rotateY(var(--sry))
-    scale(var(--ss));
+  transform: translate(-50%, -50%) translateZ(var(--sz)) rotateY(var(--sry)) scale(var(--ss));
   border: 1px solid var(--study-card-border);
   border-radius: var(--r-md);
   background: var(--study-card);
@@ -493,7 +564,13 @@
   font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
 }
 
+/* The note is written ON ruled paper: faint lines on the handwriting's own 28px rhythm, so the
+   hand sits on them rather than floating over a blank card. */
 .study-note-copy {
+  background-image: repeating-linear-gradient(
+    transparent 0 27px,
+    color-mix(in oklab, var(--study-pen) 16%, transparent) 27px 28px
+  );
   margin: 10px 0 0;
   font-weight: 500;
   font-size: 21px;
@@ -619,6 +696,11 @@
   opacity: 0.65;
 }
 
+.study-takeaway-stroke path.is-second {
+  stroke-width: 1.2;
+  opacity: 0.32;
+}
+
 /* ── The beat bar: the answer's spine, walkable ──────────────────────────────────────────── */
 
 .study-beats {
@@ -655,6 +737,35 @@
 .study-guide.is-on {
   background: var(--study-green);
   color: var(--study-card);
+}
+
+.study-density {
+  flex: none;
+  padding: 8px 13px;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: transparent;
+  font: 400 12.5px/1 var(--study-serif);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-density[aria-pressed='true'] {
+  border-color: var(--study-amber);
+  background: var(--study-highlight);
+  color: var(--study-amber-deep);
+}
+
+/* Essential also calms the desk's own flourishes: the note stops drifting and the takeaway
+   keeps its words without the drawn underline. */
+.study-stage[data-density='essential'] .study-note,
+.study-stage[data-density='essential'] .study-takeaway-line {
+  animation: none;
+}
+
+.study-stage[data-density='essential'] .study-takeaway-stroke {
+  display: none;
 }
 
 .study-beats-row {
@@ -784,9 +895,12 @@
 }
 
 .study-mark.slot-bottom {
-  left: 26px;
-  bottom: -62px;
-  width: 200px;
+  /* Hangs off the card's lower-left, not under its middle: the takeaway is centred beneath the
+     desk, and two hands writing on the same line is a collision by construction. */
+  left: -150px;
+  bottom: -34px;
+  width: 176px;
+  text-align: right;
   transform: rotate(-1.5deg);
 }
 
@@ -795,8 +909,8 @@
 }
 
 .study-mark.slot-bottom .study-mark-arrow {
-  right: -78px;
-  bottom: 4px;
+  right: -74px;
+  bottom: 10px;
 }
 
 .study-mark.slot-top {
@@ -860,6 +974,19 @@
   border-radius: 4px;
   background: var(--study-crib);
   box-shadow: 0 24px 50px var(--study-shadow-deep);
+}
+
+/* A strip of tape holding the pad to the desk. */
+.study-crib-tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 74px;
+  height: 18px;
+  transform: translateX(-50%) rotate(-1.6deg);
+  border-left: 1px solid color-mix(in oklab, var(--study-ink) 8%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--study-ink) 8%, transparent);
+  background: color-mix(in oklab, var(--study-ink) 7%, transparent);
 }
 
 .study-crib-close {
@@ -1247,6 +1374,10 @@
     animation: study-draw 0.7s 0.7s ease forwards;
   }
 
+  .study-takeaway-stroke path.is-second {
+    animation-delay: 1.15s;
+  }
+
   .study-mark-text {
     animation:
       study-sway 5.2s 1.6s ease-in-out infinite,
@@ -1513,6 +1644,35 @@
   .study-guide.is-on {
     background: var(--study-green);
     color: var(--study-card);
+  }
+
+  .study-density {
+    flex: none;
+    padding: 8px 13px;
+    border: 1px solid var(--study-glass-line);
+    border-radius: var(--r-full);
+    background: transparent;
+    font: 400 12.5px/1 var(--study-serif);
+    color: var(--study-ink-soft);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .study-density[aria-pressed='true'] {
+    border-color: var(--study-amber);
+    background: var(--study-highlight);
+    color: var(--study-amber-deep);
+  }
+
+  /* Essential also calms the desk's own flourishes: the note stops drifting and the takeaway
+   keeps its words without the drawn underline. */
+  .study-stage[data-density='essential'] .study-note,
+  .study-stage[data-density='essential'] .study-takeaway-line {
+    animation: none;
+  }
+
+  .study-stage[data-density='essential'] .study-takeaway-stroke {
+    display: none;
   }
 
   .study-beats-row {

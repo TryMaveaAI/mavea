@@ -31,9 +31,13 @@ export function runBeat(
     case 'study': {
       const ids = blockIds(frame, 3);
       after(b.atMs, () => o.setViewMode('study'));
-      ids.forEach((id, i) => after(b.atMs + 500 + i * 1050, () => o.setSpot(id)));
+      // The desk gathers behind its intro for 3.4s and fans out over ~0.9s, so the first stop
+      // waits out the entrance — a spotlight moving under the overlay teaches nothing.
+      ids.forEach((id, i) => after(b.atMs + STUDY_ENTRANCE_MS + i * 1050, () => o.setSpot(id)));
       if (b.connect) {
-        after(b.atMs + 500 + ids.length * 1050, () => o.pinFirstBlocks(b.connect ?? 2));
+        after(b.atMs + STUDY_ENTRANCE_MS + ids.length * 1050, () =>
+          o.pinFirstBlocks(b.connect ?? 2),
+        );
       }
       after(b.atMs + 1500 + ids.length * 1050, () => o.setSpot(null));
       break;
@@ -96,10 +100,14 @@ export function runBeat(
 
 /** How long a beat's choreography runs past its atMs — used to size the step's hold so the
  *  auto-advance never cuts a flight or an overlay short. Estimates on the generous side. */
+/** The desk's own entrance: the intro gate's 3.4s auto-enter plus the cards' 0.9s fan-out,
+ *  with a beat of air. A demo stop scheduled inside this window lands under the overlay. */
+const STUDY_ENTRANCE_MS = 4500;
+
 export function beatDurationMs(b: DemoBeat): number {
   switch (b.kind) {
     case 'study':
-      return 1500 + 3 * 1050;
+      return STUDY_ENTRANCE_MS + 3 * 1050 + 1000;
     case 'canvas':
       return FLY_SETTLE_MS + 3 * FLY_STEP_MS + 1600;
     case 'focus':
