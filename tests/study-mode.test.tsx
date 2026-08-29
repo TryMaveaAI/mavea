@@ -157,7 +157,9 @@ describe('StudyStage', () => {
         renderBlock={renderBlock}
         asides={{
           a: [
+            { text: 'This rests on the summary beneath it.', kind: 'caution' },
             { text: 'Revenue is the lead signal.', kind: 'insight' },
+            { text: 'No sources are attached to this answer.', kind: 'evidence' },
             { text: 'What would have to change for this to stop being true?', kind: 'question' },
           ],
           b: [{ text: 'This figure traces to the source.', kind: 'evidence' }],
@@ -167,12 +169,13 @@ describe('StudyStage', () => {
     );
 
     expect(container.querySelector('.presence')).toBeNull();
-    expect(screen.getByText('Pattern')).toBeTruthy();
-    expect(screen.getByText('Revenue is the lead signal.')).toBeTruthy();
+    expect(screen.getByText('Assumption')).toBeTruthy();
 
-    // Several voices about ONE object page in place — one chip per note, wearing its own kind,
-    // so the reader picks what they want to hear rather than paging blindly.
-    expect(container.querySelector('.study-note-footer')?.textContent).toContain('01 / 02');
+    // Four voices about ONE object, paged in place — one chip per note, wearing its own kind,
+    // so the reader picks what they want to hear rather than paging blindly. The set is FIXED
+    // (assumption · pattern · evidence · pressure-test), so the chips are a row you learn.
+    expect(container.querySelector('.study-note-footer')?.textContent).toContain('01 / 04');
+    expect(container.querySelectorAll('.study-note-nav button')).toHaveLength(4);
     fireEvent.click(screen.getByRole('button', { name: 'Pressure-test' }));
     expect(screen.getByText('Pressure-test')).toBeTruthy();
     expect(container.querySelector('.study-note-nav .is-now')?.textContent).toBe('?');

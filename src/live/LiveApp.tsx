@@ -175,7 +175,7 @@ import { isTeachAsk } from './annotate/teach';
 import { condenseForNote } from './annotate/marginNote';
 import { answerToContent } from './content/fromAnswer';
 import { asideFor } from './content/asideFor';
-import { notableIn, studyPromptIn } from './content/notableIn';
+import { assumptionIn, notableIn, studyPromptIn } from './content/notableIn';
 import { penMarks } from './content/penQuip';
 
 /** How far apart the study's opening marks land — a quick cascade that reads as a hand
@@ -1761,23 +1761,32 @@ export function LiveApp(): ReactElement {
     const out: Record<string, StudyAside[]> = {};
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
-      const notes: StudyAside[] = [];
       const notable = notableIn(block);
       const honest = studyContent ? asideFor(studyContent, index) : null;
-      const prompt = studyPromptIn(block);
-      if (notable) notes.push({ text: notable.text, kind: notable.kind ?? 'insight' });
-      if (honest) {
-        notes.push({ text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' });
-      }
-      if (notable?.kind !== 'question') {
-        notes.push({ text: prompt.text, kind: prompt.kind ?? 'question' });
-      }
-      if (block.note) notes.push({ text: block.note, kind: 'takeaway' });
-      if (notes.length === 0) notes.push({ text: prompt.text, kind: prompt.kind ?? 'question' });
-      // The margin quip is the block's OWN scrawl, read from its structure (penQuip) — never a
+      // FOUR voices, always, in the design's own order — △ assumption · ◈ pattern · ✓ evidence
+      // · ? pressure-test — so the note card's chips are a fixed set the reader learns rather
+      // than a count that changes per card. Each is READ from the object (or from the turn's
+      // sources), never invented; where a voice has nothing to point at it says so plainly,
+      // which is itself the honest answer — "no sources are attached" is a real evidence check.
+      const notes: StudyAside[] = [
+        { text: assumptionIn(block).text, kind: 'caution' },
+        {
+          text:
+            notable?.text ??
+            'Nothing in this object states a relationship on its own — the nearby ones carry it.',
+          kind: 'insight',
+        },
+        honest
+          ? { text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' }
+          : {
+              text: 'No sources are attached to this answer, so nothing here is checked against one yet.',
+              kind: 'evidence',
+            },
+        { text: studyPromptIn(block).text, kind: 'question' },
+      ];
+      // The margin quip is the block's OWN scrawl, read from its structure (penMarks) — never a
       // stock line: the same words beside every object are wallpaper, not a remark. The block's
-      // index seeds the phrasing so three lists in one answer do not repeat themselves. A block
-      // with nothing structural to say keeps a clean margin.
+      // index seeds the phrasing so three lists in one answer do not repeat themselves.
       const marks = penMarks(block, index);
       if (marks.length) notes[0] = { ...notes[0], marks };
       out[block.id] = notes;

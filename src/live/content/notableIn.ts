@@ -281,3 +281,70 @@ export function studyPromptIn(block: Block): Notable {
     kind: 'question',
   };
 }
+
+/**
+ * What this object takes for GRANTED — the △ ASSUMPTION voice, and the one thing a card is
+ * least able to say about itself. Read from the block's own shape (a projection assumes its
+ * inputs hold; a share assumes the categories are complete), never invented, and never a figure
+ * the block does not display. Every object has one: a card always rests on something.
+ */
+export function assumptionIn(block: Block): Notable {
+  const props = block.props;
+  const conf = 'conf' in props ? props.conf : undefined;
+  if (conf && conf !== 'strong') {
+    return {
+      text: 'This is marked inferred — a modelled read, not an observed measurement.',
+      kind: 'caution',
+    };
+  }
+  switch (block.type) {
+    case 'insight':
+      return {
+        text: 'The headline holds only while the summary beneath it does — read them together.',
+        kind: 'caution',
+      };
+    case 'chart':
+      return {
+        text: 'The line assumes the pattern continues as drawn; nothing here models a shock.',
+        kind: 'caution',
+      };
+    case 'breakdown':
+    case 'donut':
+      return {
+        text: 'The split assumes these categories are the whole of it — anything unassigned hides.',
+        kind: 'caution',
+      };
+    case 'kpi':
+      return {
+        text: 'Each tile is measured its own way; the grid states no relationship between them.',
+        kind: 'caution',
+      };
+    case 'compare':
+      return {
+        text: 'The rows are weighted equally here — your own priorities are not in the scoring.',
+        kind: 'caution',
+      };
+    case 'timeline':
+      return { text: 'The order assumes each step lands before the next begins.', kind: 'caution' };
+    case 'checks':
+      return {
+        text: 'A checklist only covers what someone thought to check — absence is not a pass.',
+        kind: 'caution',
+      };
+    case 'datatable':
+      return {
+        text: 'The rows are taken as given; nothing here reconciles them against a source.',
+        kind: 'caution',
+      };
+    case 'list':
+      return {
+        text: 'The items are presented as a set, with no order or weight implied.',
+        kind: 'caution',
+      };
+    default:
+      return {
+        text: 'This is one framing of the answer — a different cut of the same facts is possible.',
+        kind: 'caution',
+      };
+  }
+}
