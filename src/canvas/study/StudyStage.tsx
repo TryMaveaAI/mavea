@@ -269,8 +269,12 @@ export function StudyStage({
     if (row.matches(':hover')) return;
     const chip = row.querySelector<HTMLElement>('.study-beat.is-now');
     if (!chip) return;
+    // Centre it, but never past the ends — and when the row does not scroll at all, leave it be.
     const target = chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2;
-    if (typeof row.scrollTo === 'function') row.scrollTo({ left: Math.max(0, target) });
+    const max = Math.max(0, row.scrollWidth - row.clientWidth);
+    if (typeof row.scrollTo === 'function') {
+      row.scrollTo({ left: Math.min(max, Math.max(0, target)) });
+    }
   }, [foregroundId]);
 
   const choose = useCallback(

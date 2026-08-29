@@ -294,6 +294,18 @@
   pointer-events: none;
 }
 
+/* The disclosure marks cut text with `cursor: help` elsewhere in the app. On the desk the whole
+   surface is something you point at and pick up, so a question-mark pointer drifting over the
+   object reads as a different tool in your hand. The affordance stays (hover, tap, keyboard
+   still open the full text) — only the cursor goes back to the ordinary one. */
+.study-stage [data-text-disclosure] {
+  cursor: default;
+}
+
+.study-stage .study-card.is-back [data-text-disclosure] {
+  cursor: pointer;
+}
+
 /* ── The cards ───────────────────────────────────────────────────────────────────────────── */
 
 .study-card {
@@ -680,11 +692,11 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  /* A clipped chip must read as "more this way", not as a defect — and the ACTIVE chip must
-     never be the one under the fade, so the row keeps a lane of clear space at each end for
-     the centring scroll to land in. */
-  scroll-padding-inline: 28px;
-  mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
+  /* No edge fade. It was meant to say "more this way", but the first and last chips cannot be
+     scrolled away from the ends — centring clamps at 0 — so the fade sat permanently over a
+     real, clickable label. The row's own end padding keeps a chip off the pill's rounded edge,
+     and overflow says the rest of the sentence better than a gradient that eats it. */
+  padding-inline: 2px;
 }
 
 .study-beats-row::-webkit-scrollbar {
