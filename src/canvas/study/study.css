@@ -454,7 +454,6 @@
 }
 
 .study-note {
-  transform: rotate(0.6deg);
   border: 1px solid var(--study-note-border);
   border-left: 4px solid var(--study-pen);
   border-radius: 6px var(--r-md) var(--r-md) 6px;
@@ -486,7 +485,7 @@
 .study-stage .study-note-copy,
 .study-stage .study-note-sig,
 .study-stage .study-takeaway-line,
-.study-stage .study-margin-note,
+.study-stage .study-mark-text,
 .study-stage .study-crib .study-crib-line {
   /* The crib line needs the extra ancestor: it is a BUTTON, and the template layer's
      `:root[data-template] :is(button, …, .topbar)` rule weighs (0,2,1) — the :is() list's class
@@ -537,7 +536,12 @@
   border-radius: 50%;
   background: var(--study-inner);
   color: var(--study-ink-muted);
+  font: 500 12px/1 var(--study-mono);
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .study-note-nav button:hover {
@@ -545,9 +549,10 @@
   color: var(--study-amber-deep);
 }
 
-.study-note-nav button svg {
-  width: 13px;
-  height: 13px;
+.study-note-nav button.is-now {
+  border: 1.5px solid var(--study-amber);
+  background: var(--study-highlight);
+  color: var(--study-amber-deep);
 }
 
 /* The arrow that makes the note POINT: from the note's edge toward the front card. */
@@ -721,45 +726,94 @@
 
 /* ── The pen's margin quip, beside the object on the desk ────────────────────────────────── */
 
-/* Anchored to the front CARD (a child of the article), the way the design draws it — so the
-   arrow always aims at the object no matter the card's height, and the note travels with it.
-   It sits beside the card's UPPER body: every card owns that region (the shortest are ~120px),
-   so the arrow's tip always lands inside the box — beside the metric zone, where the mockup's
-   own left-hand quips point. */
-.study-margin-wrap {
+/* ── The pen's scrawls, around the card the way a hand actually writes ────────────────────────
+   Anchored to the front CARD (children of the article), at the design's own three positions:
+   the structural remark on the left pointing in, a second angle below, a question over the
+   shoulder. Card-relative, so they travel with the object and their arrows always find it no
+   matter how tall the card is. */
+.study-mark {
   position: absolute;
-  left: -168px;
-  top: 24px;
-  width: 150px;
-  transform: rotate(-4deg);
+  z-index: 6;
   pointer-events: none;
 }
 
-.study-margin-note {
+.study-mark-text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 4;
   overflow: hidden;
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
   font-weight: 500;
-  font-size: 21px;
   line-height: 1.2;
   color: var(--study-pen);
   text-wrap: balance;
 }
 
-.study-margin-arrow {
+.study-mark-arrow {
   position: absolute;
-  right: -32px;
-  top: 40px;
+  width: 90px;
+  height: 70px;
   overflow: visible;
 }
 
-.study-margin-line,
-.study-margin-head {
+.study-mark-line,
+.study-mark-head {
   fill: none;
   stroke: var(--study-pen);
   stroke-width: 2;
   stroke-linecap: round;
+}
+
+/* The design's slots, in card space: left of the metric zone, under the foot, over the top
+   right shoulder. Each carries its own hand-tilt and its own type size — a scrawl written at
+   arm's length is bigger than one squeezed above the card. */
+.study-mark.slot-left {
+  left: -168px;
+  top: 24px;
+  width: 150px;
+  transform: rotate(-4deg);
+}
+
+.study-mark.slot-left .study-mark-text {
+  font-size: 21px;
+}
+
+.study-mark.slot-left .study-mark-arrow {
+  right: -32px;
+  top: 40px;
+}
+
+.study-mark.slot-bottom {
+  left: 26px;
+  bottom: -62px;
+  width: 200px;
+  transform: rotate(-1.5deg);
+}
+
+.study-mark.slot-bottom .study-mark-text {
+  font-size: 19px;
+}
+
+.study-mark.slot-bottom .study-mark-arrow {
+  right: -78px;
+  bottom: 4px;
+}
+
+.study-mark.slot-top {
+  right: -132px;
+  top: -46px;
+  width: 150px;
+  text-align: right;
+  transform: rotate(2deg);
+}
+
+.study-mark.slot-top .study-mark-text {
+  font-size: 18px;
+}
+
+.study-mark.slot-top .study-mark-arrow {
+  left: -74px;
+  top: 26px;
 }
 
 /* ── Session notes: the legal pad that remembers the walk ────────────────────────────────── */
@@ -1058,7 +1112,7 @@
 
 .study-stage[data-gathered] .study-note-wrap,
 .study-stage[data-gathered] .study-connect,
-.study-stage[data-gathered] .study-margin-wrap,
+.study-stage[data-gathered] .study-mark,
 .study-stage[data-gathered] .study-takeaway,
 .study-stage[data-gathered] .study-beats {
   visibility: hidden;
@@ -1193,23 +1247,47 @@
     animation: study-draw 0.7s 0.7s ease forwards;
   }
 
-  .study-margin-note {
+  .study-mark-text {
     animation:
       study-sway 5.2s 1.6s ease-in-out infinite,
       study-write 0.8s 0.3s ease-out backwards;
     animation-play-state: var(--ambient-play, running), running;
   }
 
-  .study-margin-line {
+  .study-mark.slot-bottom .study-mark-text {
+    animation-delay: 2.5s, 0.95s;
+  }
+
+  .study-mark.slot-top .study-mark-text {
+    animation-delay: 3.4s, 1.6s;
+  }
+
+  .study-mark-line {
     stroke-dasharray: 120;
     stroke-dashoffset: 120;
     animation: study-draw 0.5s 0.8s ease forwards;
   }
 
-  .study-margin-head {
+  .study-mark-head {
     stroke-dasharray: 40;
     stroke-dashoffset: 40;
     animation: study-draw 0.3s 1.2s ease forwards;
+  }
+
+  .study-mark.slot-bottom .study-mark-line {
+    animation-delay: 1.45s;
+  }
+
+  .study-mark.slot-bottom .study-mark-head {
+    animation-delay: 1.85s;
+  }
+
+  .study-mark.slot-top .study-mark-line {
+    animation-delay: 2.1s;
+  }
+
+  .study-mark.slot-top .study-mark-head {
+    animation-delay: 2.5s;
   }
 
   .study-crib {
@@ -1217,7 +1295,8 @@
   }
 
   .study-voice-text {
-    display: inline-block;
+    /* Keep the -webkit-box display the clamp above needs: overriding it to inline-block here
+       silently dropped the three-line cap and let a long opener grow a nine-line ribbon. */
     animation: study-type var(--tw-ms, 1.4s) steps(40) 0.1s both;
   }
 
@@ -1371,7 +1450,7 @@
   .study-vignette,
   .study-grain,
   .study-connect,
-  .study-margin-wrap,
+  .study-mark,
   .study-card.is-back,
   .study-card-mute {
     display: none;

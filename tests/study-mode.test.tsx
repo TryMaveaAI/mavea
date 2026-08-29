@@ -170,10 +170,12 @@ describe('StudyStage', () => {
     expect(screen.getByText('Pattern')).toBeTruthy();
     expect(screen.getByText('Revenue is the lead signal.')).toBeTruthy();
 
-    // Several voices about ONE object page in place — the pager walks the notes, not the desk.
+    // Several voices about ONE object page in place — one chip per note, wearing its own kind,
+    // so the reader picks what they want to hear rather than paging blindly.
     expect(container.querySelector('.study-note-footer')?.textContent).toContain('01 / 02');
-    fireEvent.click(screen.getByRole('button', { name: 'Next note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pressure-test' }));
     expect(screen.getByText('Pressure-test')).toBeTruthy();
+    expect(container.querySelector('.study-note-nav .is-now')?.textContent).toBe('?');
     expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Revenue');
 
     // Moving the desk swaps the whole note set and starts its pages over.

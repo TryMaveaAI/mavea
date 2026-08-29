@@ -18,6 +18,7 @@ import { condenseForNote } from '../../live/annotate/marginNote';
 import { deriveStudyScene } from './scene';
 import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
 import type { StudyAside, StudyNoteKind } from './types';
+import type { PenMark, PenSlot } from '../../live/content/penQuip';
 import { useStudyScale } from './useStudyScale';
 import { useStudyParallax } from './useStudyParallax';
 import { useFullscreen } from '../../lib/useFullscreen';
@@ -52,6 +53,15 @@ interface Props {
    *  and what the tour passes — opens straight onto the settled desk. */
   intro?: 'full' | 'skip';
 }
+
+/** The arrow each scrawl points with, in its own 90×70 frame — the design's own curves: the
+ *  left mark reaches right into the card, the bottom one sweeps up into it, the top one comes
+ *  down over its shoulder. */
+const MARK_ARROWS: Record<PenSlot, { line: string; head: string }> = {
+  left: { line: 'M6,10 C34,16 58,26 78,36', head: 'M78,36 L64,33 M78,36 L68,46' },
+  bottom: { line: 'M12,58 C40,50 64,34 80,12', head: 'M80,12 L66,16 M80,12 L78,26' },
+  top: { line: 'M78,8 C60,22 40,38 14,52', head: 'M14,52 L28,48 M14,52 L22,62' },
+};
 
 /** How long each object holds the desk under "Guide me" — long enough to read a card and its
  *  note, short enough that the walk still feels like it is going somewhere. */
@@ -318,13 +328,6 @@ export function StudyStage({
       : undefined;
   const lessonBlocks = blocks.filter((block) => block.id);
   const lessonIndex = lessonBlocks.findIndex((block) => block.id === active.id);
-  const moveNote = (delta: -1 | 1): void => {
-    if (activeNotes.length < 2) return;
-    setNotePage((current) => {
-      const at = Math.min(current, activeNotes.length - 1);
-      return (at + delta + activeNotes.length) % activeNotes.length;
-    });
-  };
   const moveLesson = (delta: -1 | 1): void => {
     if (lessonBlocks.length < 2 || lessonIndex < 0) return;
     const next = lessonBlocks[(lessonIndex + delta + lessonBlocks.length) % lessonBlocks.length];
@@ -358,8 +361,16 @@ export function StudyStage({
       }
     }
   }
-  const deskNote =
-    activeNotes[0]?.quip ?? (walkNote ? condenseForNote(walkNote, 64) || null : null);
+  // The card's scrawls. A live walk's own written line, when there is one, takes the left slot
+  // (it is what she just SAID about this object); the structural marks fill the rest.
+  const structural = activeNotes[0]?.marks ?? [];
+  const walkMark = walkNote ? condenseForNote(walkNote, 46) : '';
+  const deskMarks: PenMark[] = walkMark
+    ? [
+        { text: walkMark, slot: 'left' as const },
+        ...structural.filter((mark) => mark.slot !== 'left'),
+      ]
+    : [...structural];
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -430,21 +441,20 @@ export function StudyStage({
                     </BlockBoundary>
                   </div>
                   <div className="study-card-mute" aria-hidden="true" />
-                  {front && deskNote && (
-                    <div key={`margin-${id}`} className="study-margin-wrap" aria-hidden="true">
-                      <div className="study-margin-note">{deskNote}</div>
-                      <svg
-                        className="study-margin-arrow"
-                        viewBox="0 0 90 70"
-                        width="90"
-                        height="70"
+                  {front &&
+                    deskMarks.map((mark) => (
+                      <div
+                        key={`${id}-${mark.slot}`}
+                        className={`study-mark slot-${mark.slot}`}
                         aria-hidden="true"
                       >
-                        <path className="study-margin-line" d="M6,10 C34,16 58,26 78,36" />
-                        <path className="study-margin-head" d="M78,36 L64,33 M78,36 L68,46" />
-                      </svg>
-                    </div>
-                  )}
+                        <span className="study-mark-text">{mark.text}</span>
+                        <svg className="study-mark-arrow" viewBox="0 0 90 70" aria-hidden="true">
+                          <path className="study-mark-line" d={MARK_ARROWS[mark.slot].line} />
+                          <path className="study-mark-head" d={MARK_ARROWS[mark.slot].head} />
+                        </svg>
+                      </div>
+                    ))}
                 </article>
               );
             })}
@@ -485,23 +495,22 @@ export function StudyStage({
                           {String(pageIndex + 1).padStart(2, '0')} /{' '}
                           {String(activeNotes.length).padStart(2, '0')}
                         </span>
+                        {/* One chip per note, wearing that note's own glyph — the reader picks
+                            the KIND of thing they want to hear rather than paging blindly. */}
                         <span className="study-note-nav">
-                          <button
-                            type="button"
-                            onClick={() => moveNote(-1)}
-                            aria-label="Previous note"
-                            title="Previous note"
-                          >
-                            <Icon.chevL />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveNote(1)}
-                            aria-label="Next note"
-                            title="Next note"
-                          >
-                            <Icon.chevR />
-                          </button>
+                          {activeNotes.map((note, index) => (
+                            <button
+                              key={`${note.kind}-${index}`}
+                              type="button"
+                              className={index === pageIndex ? 'is-now' : undefined}
+                              aria-current={index === pageIndex ? 'true' : undefined}
+                              onClick={() => setNotePage(index)}
+                              aria-label={NOTE_LABELS[note.kind]}
+                              title={NOTE_LABELS[note.kind]}
+                            >
+                              {NOTE_GLYPHS[note.kind]}
+                            </button>
+                          ))}
                         </span>
                       </footer>
                     )}

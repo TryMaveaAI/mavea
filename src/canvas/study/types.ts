@@ -1,9 +1,11 @@
+import type { PenMark } from '../../live/content/penQuip';
+
 export type StudyNoteKind = 'insight' | 'evidence' | 'caution' | 'question' | 'takeaway';
 
 export interface StudyAside {
   text: string;
   kind: StudyNoteKind;
-  /** The pen's short margin quip beside the object — a DIFFERENT register from the note card,
-   *  condensed to a line a hand would actually write. Carried on a block's FIRST note. */
-  quip?: string;
+  /** The pen's scrawls around the object — up to three, in the design's own slots. Carried on a
+   *  block's FIRST note; they belong to the card, not to any one page of the note stack. */
+  marks?: readonly PenMark[];
 }

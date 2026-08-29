@@ -176,6 +176,7 @@ import { condenseForNote } from './annotate/marginNote';
 import { answerToContent } from './content/fromAnswer';
 import { asideFor } from './content/asideFor';
 import { notableIn, studyPromptIn } from './content/notableIn';
+import { penMarks } from './content/penQuip';
 
 /** How far apart the study's opening marks land — a quick cascade that reads as a hand
  *  moving across the board, not a batch that appears all at once. CSS delay, not a wait. */
@@ -1773,12 +1774,12 @@ export function LiveApp(): ReactElement {
       }
       if (block.note) notes.push({ text: block.note, kind: 'takeaway' });
       if (notes.length === 0) notes.push({ text: prompt.text, kind: prompt.kind ?? 'question' });
-      notes[0] = {
-        ...notes[0],
-        quip: notable
-          ? condenseForNote(notable.text, 64) || undefined
-          : 'What would have to change for this to stop being true?',
-      };
+      // The margin quip is the block's OWN scrawl, read from its structure (penQuip) — never a
+      // stock line: the same words beside every object are wallpaper, not a remark. The block's
+      // index seeds the phrasing so three lists in one answer do not repeat themselves. A block
+      // with nothing structural to say keeps a clean margin.
+      const marks = penMarks(block, index);
+      if (marks.length) notes[0] = { ...notes[0], marks };
       out[block.id] = notes;
     });
     return out;
