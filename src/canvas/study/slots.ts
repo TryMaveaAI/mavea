@@ -28,6 +28,12 @@ export const SCALE_MAX = 1.12;
  *  number changes, this moves — recompute it, never tune it. */
 export const STUDY_FIT_FLOOR = 9 / 11;
 
+/** The width at which the 3-D desk stands down for the flat reading column: below it the floored
+ *  desk crops Mavéa's note card — real reading content — off the right edge. Shared with
+ *  study.css's container query, which handles the descendants; the stage's own box is driven by
+ *  the `data-compact` attribute the scale hook publishes (a container cannot query itself). */
+export const COMPACT_W = 980;
+
 /** Vertical crop (in design px) the stage will absorb before it declares itself shallow and
  *  study.css collapses the floor-grid band instead of cropping into the cards. */
 export const SHALLOW_CROP = 90;

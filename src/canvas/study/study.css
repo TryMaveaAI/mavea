@@ -287,6 +287,13 @@
   pointer-events: none;
 }
 
+/* The desk holds ONE surface at a time: a card's own doorway into another surface (the living
+   answer's board) would take the reader off the desk mid-lesson, and the world has its own
+   route from the view segments. The card keeps its whole reading face; only the exit goes. */
+.study-card .wp-open {
+  display: none;
+}
+
 /* ── The cards ───────────────────────────────────────────────────────────────────────────── */
 
 .study-card {
@@ -628,6 +635,23 @@
   box-shadow: 0 14px 34px var(--study-shadow-soft);
 }
 
+.study-guide {
+  flex: none;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--study-highlight);
+  color: var(--study-amber-deep);
+  font: 600 13px/1 var(--study-serif);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-guide.is-on {
+  background: var(--study-green);
+  color: var(--study-card);
+}
+
 .study-beats-row {
   display: flex;
   align-items: center;
@@ -698,11 +722,14 @@
 /* ── The pen's margin quip, beside the object on the desk ────────────────────────────────── */
 
 /* Anchored to the front CARD (a child of the article), the way the design draws it — so the
-   arrow always aims at the object no matter the card's height, and the note travels with it. */
+   arrow always aims at the object no matter the card's height, and the note travels with it.
+   It sits beside the card's UPPER body: every card owns that region (the shortest are ~120px),
+   so the arrow's tip always lands inside the box — beside the metric zone, where the mockup's
+   own left-hand quips point. */
 .study-margin-wrap {
   position: absolute;
   left: -168px;
-  top: 88px;
+  top: 24px;
   width: 150px;
   transform: rotate(-4deg);
   pointer-events: none;
@@ -722,8 +749,8 @@
 
 .study-margin-arrow {
   position: absolute;
-  right: -26px;
-  top: 30px;
+  right: -32px;
+  top: 40px;
   overflow: visible;
 }
 
@@ -867,7 +894,7 @@
      bubble inset plus the parallax swing. On a wide stage the bubble hugs the desk's own edge
      rather than floating in the dead parchment. */
   left: max(22px, calc(50% - var(--study-scale, 1) * 720px + 16px));
-  max-width: clamp(150px, calc(50cqw - 428.8px * var(--study-scale, 1) - 64px), 340px);
+  max-width: clamp(190px, calc(50cqw - 428.8px * var(--study-scale, 1) - 64px), 340px);
   padding: 9px 14px 10px;
   border: 1px solid var(--study-glass-line);
   border-radius: var(--r-md);
@@ -915,6 +942,12 @@
 }
 
 .study-voice-text {
+  /* Three lines, like the design's bubble. A long line is not lost — it is spoken, and the dock
+     carries the full transcript — so a squeezed column is worse than an honest tail. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
   font-style: italic;
   font-size: 16px;
   line-height: 1.55;
@@ -1311,11 +1344,14 @@
    reflows to a flat reading column — the front card full-width, Mavéa's note beneath it, the
    beat bar as the whole navigator. Background objects keep their NAMES (the beat chips), never
    an unreadable miniature. */
-@container study (max-width: 980px) {
-  .study-stage {
-    height: auto;
-  }
+/* The stage's OWN box in compact — driven by the attribute useStudyScale publishes, because a
+   container query only ever reaches a container's descendants, never the container itself. */
+.study-stage[data-compact] {
+  height: auto;
+  padding: 14px;
+}
 
+@container study (max-width: 980px) {
   .study-desk {
     position: static;
     background: var(--study-bg);
@@ -1383,11 +1419,24 @@
     margin: 0 0 14px;
   }
 
-  .study-beats-row {
-    flex-wrap: wrap;
+  .study-guide {
+    flex: none;
+    padding: 8px 15px;
+    border: 0;
+    border-radius: var(--r-full);
+    background: var(--study-highlight);
+    color: var(--study-amber-deep);
+    font: 600 13px/1 var(--study-serif);
+    cursor: pointer;
+    white-space: nowrap;
   }
 
-  .study-stage {
-    padding: 14px;
+  .study-guide.is-on {
+    background: var(--study-green);
+    color: var(--study-card);
+  }
+
+  .study-beats-row {
+    flex-wrap: wrap;
   }
 }

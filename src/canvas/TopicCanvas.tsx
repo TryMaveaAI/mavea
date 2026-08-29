@@ -272,7 +272,7 @@ interface Props {
   /** Ids of blocks the user has pinned, so they read as visibly selected on the canvas. */
   selectedBlockIds?: ReadonlySet<string>;
   /** What Mavéa has written about each object in the Study, keyed by block id. */
-  studyAsides?: Readonly<Record<string, StudyAside>>;
+  studyAsides?: Readonly<Record<string, readonly StudyAside[]>>;
   /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
    *  remembered preference). Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */

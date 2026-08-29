@@ -5,7 +5,7 @@
 // The mockup polled the box on an interval; an observer is the same measurement without the idle
 // cost, and it disconnects with the stage.
 import { useEffect, type RefObject } from 'react';
-import { DESK_H, FIT_H, FIT_W, SCALE_MAX, SHALLOW_CROP, STUDY_FIT_FLOOR } from './slots';
+import { COMPACT_W, DESK_H, FIT_H, FIT_W, SCALE_MAX, SHALLOW_CROP, STUDY_FIT_FLOOR } from './slots';
 
 /**
  * Keeps `--study-scale` on the stage equal to the desk's fitted scale, clamped to
@@ -22,6 +22,12 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
 
     const apply = (w: number, h: number): void => {
       if (!w || !h) return;
+      // A container query cannot style its OWN container, so the stage's compact box (height,
+      // padding) can never come from `@container study` — its children reflowed while the stage
+      // itself kept a desk-sized height, leaving a page of empty parchment underneath. The
+      // observer already measures this box; publishing the state as an attribute is what lets
+      // the stage restyle itself.
+      stage.toggleAttribute('data-compact', w <= COMPACT_W);
       const fitted = Math.min(w / FIT_W, h / FIT_H);
       const scale = Math.min(SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
       stage.style.setProperty('--study-scale', scale.toFixed(4));

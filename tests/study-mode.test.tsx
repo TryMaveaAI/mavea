@@ -156,8 +156,11 @@ describe('StudyStage', () => {
         spot="a"
         renderBlock={renderBlock}
         asides={{
-          a: { text: 'Revenue is the lead signal.', kind: 'insight' },
-          b: { text: 'This figure traces to the source.', kind: 'evidence' },
+          a: [
+            { text: 'Revenue is the lead signal.', kind: 'insight' },
+            { text: 'What would have to change for this to stop being true?', kind: 'question' },
+          ],
+          b: [{ text: 'This figure traces to the source.', kind: 'evidence' }],
         }}
         onNarrate={onNarrate}
       />,
@@ -167,7 +170,14 @@ describe('StudyStage', () => {
     expect(screen.getByText('Pattern')).toBeTruthy();
     expect(screen.getByText('Revenue is the lead signal.')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Next teaching point' }));
+    // Several voices about ONE object page in place — the pager walks the notes, not the desk.
+    expect(container.querySelector('.study-note-footer')?.textContent).toContain('01 / 02');
+    fireEvent.click(screen.getByRole('button', { name: 'Next note' }));
+    expect(screen.getByText('Pressure-test')).toBeTruthy();
+    expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Revenue');
+
+    // Moving the desk swaps the whole note set and starts its pages over.
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Retention forward' }));
     expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Retention');
     expect(screen.getByText('Evidence check')).toBeTruthy();
     expect(onNarrate).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));

@@ -32,7 +32,7 @@ interface Props {
   /** What Mavéa has written about each object, keyed by block id. The SET is stable for an answer
    *  — what changes as the study re-casts is only which note is on the desk, which is a key swap
    *  on the note card alone, so nothing else tears down as the desk moves. */
-  asides?: Readonly<Record<string, StudyAside>>;
+  asides?: Readonly<Record<string, readonly StudyAside[]>>;
   selectedBlockIds?: ReadonlySet<string>;
   onNarrate?: (block: Block) => void;
   narratingId?: string | null;
@@ -52,6 +52,10 @@ interface Props {
    *  and what the tour passes — opens straight onto the settled desk. */
   intro?: 'full' | 'skip';
 }
+
+/** How long each object holds the desk under "Guide me" — long enough to read a card and its
+ *  note, short enough that the walk still feels like it is going somewhere. */
+const GUIDE_MS = 9000;
 
 /** Whether the intro gate has played this session, surviving remounts. v3's rule: the overlay
  *  is a first-arrival beat — later answers (and Study → Focus → Study flips) skip the gate and
@@ -112,6 +116,13 @@ export function StudyStage({
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
+  // Which of the active object's notes is face-up. Reset per object: the pages belong to the
+  // thing on the desk, not to the reader's place in some global list.
+  const [notePage, setNotePage] = useState(0);
+  // "Guide me": the desk walks itself, one object every GUIDE_MS. It never talks over the
+  // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
+  // pick stops it), and stops itself at the last object rather than looping forever.
+  const [guiding, setGuiding] = useState(false);
   const [visitedIds, setVisitedIds] = useState<readonly string[]>(() => {
     const seen: string[] = [];
     for (const note of walkNotes ?? []) if (!seen.includes(note.spot)) seen.push(note.spot);
@@ -130,6 +141,7 @@ export function StudyStage({
     setPinnedId(null);
     setCribOpen(false);
     setVisitedIds([]);
+    setGuiding(false);
   }, [data.id]);
 
   const reducedMotion =
@@ -208,9 +220,13 @@ export function StudyStage({
   useStudyScale(stageRef);
   useStudyParallax(stageRef);
 
-  // What Mavéa has written about the object on the desk.
+  // What Mavéa has written about the object on the desk — several notes per object, paged.
   const foregroundId = scene.active?.id ?? null;
-  const activeAside = foregroundId ? (asides?.[foregroundId] ?? null) : null;
+  const activeNotes = (foregroundId ? asides?.[foregroundId] : undefined) ?? [];
+  const pageIndex = activeNotes.length ? Math.min(notePage, activeNotes.length - 1) : 0;
+  const activeAside = activeNotes[pageIndex] ?? null;
+
+  useEffect(() => setNotePage(0), [foregroundId]);
 
   // Which beats the reader has actually seen, in first-visit order — the session notes' spine.
   useEffect(() => {
@@ -236,6 +252,8 @@ export function StudyStage({
   const choose = useCallback(
     (block: Block, keepContext = false) => {
       if (!block.id) return;
+      // The reader's own pick ends the guided walk — one hand on the wheel at a time.
+      setGuiding(false);
       // Holding an object in context must not disturb the desk — it is an addition, not a recast.
       if (keepContext) {
         onAskBlock?.(block);
@@ -265,6 +283,31 @@ export function StudyStage({
   );
 
   const active = scene.active?.block;
+
+  // The guide's clock. Held in an effect (not a timer chain) so it is torn down with the stage
+  // and re-armed cleanly whenever the desk, the voice, or the reader's own pick moves it.
+  const guideRef = useRef<{ blocks: Block[]; id: string | null }>({ blocks: [], id: null });
+  guideRef.current = {
+    blocks: blocks.filter((block) => block.id),
+    id: scene.active?.id ?? null,
+  };
+  useEffect(() => {
+    if (!guiding) return;
+    if (speaking) return; // never talk over her — the tick waits for the line to land
+    const timer = window.setTimeout(() => {
+      const { blocks: cast, id } = guideRef.current;
+      const at = cast.findIndex((block) => block.id === id);
+      const next = cast[at + 1];
+      if (!next) {
+        setGuiding(false);
+        return;
+      }
+      setPinnedId(next.id ?? null);
+      onNarrate?.(next);
+    }, GUIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [guiding, speaking, foregroundId, onNarrate]);
+
   if (!active) return null;
 
   // Which object the narration is on, as a data attribute rather than a label: the fact has to
@@ -275,6 +318,13 @@ export function StudyStage({
       : undefined;
   const lessonBlocks = blocks.filter((block) => block.id);
   const lessonIndex = lessonBlocks.findIndex((block) => block.id === active.id);
+  const moveNote = (delta: -1 | 1): void => {
+    if (activeNotes.length < 2) return;
+    setNotePage((current) => {
+      const at = Math.min(current, activeNotes.length - 1);
+      return (at + delta + activeNotes.length) % activeNotes.length;
+    });
+  };
   const moveLesson = (delta: -1 | 1): void => {
     if (lessonBlocks.length < 2 || lessonIndex < 0) return;
     const next = lessonBlocks[(lessonIndex + delta + lessonBlocks.length) % lessonBlocks.length];
@@ -295,7 +345,6 @@ export function StudyStage({
   // The takeaway is the block's own note, condensed to the aphorism length the design sized
   // its slot for — the full sentence stays reachable on the line's title.
   const takeaway = active.note ? condenseForNote(active.note, 96) || null : null;
-  const noteCount = asides ? Object.keys(asides).length : 0;
 
   // The pen's margin quip beside the object: the aside's second voice leads — the walk's line
   // already lives in the voice bubble and the crib, and writing it twice at 140 chars is what
@@ -309,7 +358,8 @@ export function StudyStage({
       }
     }
   }
-  const deskNote = activeAside?.quip ?? (walkNote ? condenseForNote(walkNote, 64) || null : null);
+  const deskNote =
+    activeNotes[0]?.quip ?? (walkNote ? condenseForNote(walkNote, 64) || null : null);
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -390,8 +440,8 @@ export function StudyStage({
                         height="70"
                         aria-hidden="true"
                       >
-                        <path className="study-margin-line" d="M8,14 C34,24 56,38 76,52" />
-                        <path className="study-margin-head" d="M76,52 L62,48 M76,52 L66,62" />
+                        <path className="study-margin-line" d="M6,10 C34,16 58,26 78,36" />
+                        <path className="study-margin-head" d="M78,36 L64,33 M78,36 L68,46" />
                       </svg>
                     </div>
                   )}
@@ -414,10 +464,10 @@ export function StudyStage({
                 </svg>
                 <div className="study-note-wrap">
                   <div className="study-note-layer" aria-hidden="true">
-                    MAVÉA'S LAYER · {String(Math.max(noteCount, 1)).padStart(2, '0')} NOTES
+                    MAVÉA'S LAYER · {String(activeNotes.length).padStart(2, '0')} NOTES
                   </div>
                   <div
-                    key={active.id}
+                    key={`${active.id}-${pageIndex}`}
                     className={`study-note kind-${activeAside.kind}`}
                     aria-live="polite"
                   >
@@ -429,28 +479,26 @@ export function StudyStage({
                     <div className="study-note-sig" aria-hidden="true">
                       — mavéa
                     </div>
-                    {lessonBlocks.length > 1 && (
+                    {activeNotes.length > 1 && (
                       <footer className="study-note-footer">
-                        <span
-                          aria-label={`Teaching point ${lessonIndex + 1} of ${lessonBlocks.length}`}
-                        >
-                          {String(lessonIndex + 1).padStart(2, '0')} /{' '}
-                          {String(lessonBlocks.length).padStart(2, '0')}
+                        <span aria-label={`Note ${pageIndex + 1} of ${activeNotes.length}`}>
+                          {String(pageIndex + 1).padStart(2, '0')} /{' '}
+                          {String(activeNotes.length).padStart(2, '0')}
                         </span>
                         <span className="study-note-nav">
                           <button
                             type="button"
-                            onClick={() => moveLesson(-1)}
-                            aria-label="Previous teaching point"
-                            title="Previous teaching point"
+                            onClick={() => moveNote(-1)}
+                            aria-label="Previous note"
+                            title="Previous note"
                           >
                             <Icon.chevL />
                           </button>
                           <button
                             type="button"
-                            onClick={() => moveLesson(1)}
-                            aria-label="Next teaching point"
-                            title="Next teaching point"
+                            onClick={() => moveNote(1)}
+                            aria-label="Next note"
+                            title="Next note"
                           >
                             <Icon.chevR />
                           </button>
@@ -544,6 +592,14 @@ export function StudyStage({
 
       {lessonBlocks.length > 1 && (
         <div className="study-beats" role="group" aria-label="Beats">
+          <button
+            type="button"
+            className={`study-guide${guiding ? ' is-on' : ''}`}
+            aria-pressed={guiding}
+            onClick={() => setGuiding((on) => !on)}
+          >
+            {guiding ? '❚❚ Pause' : '▶ Guide me'}
+          </button>
           <div className="study-beats-row" ref={beatsRowRef}>
             {lessonBlocks.map((block, index) => {
               const now = block.id === active.id;

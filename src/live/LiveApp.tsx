@@ -1753,44 +1753,33 @@ export function LiveApp(): ReactElement {
     // the live spec would file the current answer's remarks onto a scrubbed older frame.
     const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
-    const out: Record<string, StudyAside> = {};
+    // EVERY honest voice becomes a page on the note card, the way the design pages four notes
+    // per object: the structural observation, the trust read, the pressure-test, and the
+    // block's own line as the decision cue. The pen's margin quip rides the first note —
+    // condensed observation when there is one, the question's core otherwise.
+    const out: Record<string, StudyAside[]> = {};
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
+      const notes: StudyAside[] = [];
       const notable = notableIn(block);
       const honest = studyContent ? asideFor(studyContent, index) : null;
-      // Two hands write on the desk, and they never say the same thing twice. The note card
-      // takes the fuller voice; the pen's margin quip beside the object takes the OTHER one,
-      // condensed to a line a hand would actually write:
-      //   · trust read + structural observation → the read on the card, the observation in
-      //     the margin;
-      //   · observation alone → it takes the card, and the margin carries the pressure-test
-      //     question's core — a challenge scribbled beside the object;
-      //   · trust read alone → the margin stays clean; there is nothing else honest to write.
-      if (notable && honest) {
-        out[block.id] = {
-          text: honest.text,
-          kind: honest.flagged ? 'caution' : 'evidence',
-          quip: condenseForNote(notable.text, 64) || undefined,
-        };
-        return;
-      }
-      if (notable) {
-        out[block.id] = {
-          text: notable.text,
-          kind: notable.kind ?? 'insight',
-          quip: 'What would have to change for this to stop being true?',
-        };
-        return;
-      }
-      if (honest) {
-        out[block.id] = {
-          text: honest.text,
-          kind: honest.flagged ? 'caution' : 'evidence',
-        };
-        return;
-      }
       const prompt = studyPromptIn(block);
-      out[block.id] = { text: prompt.text, kind: prompt.kind ?? 'question' };
+      if (notable) notes.push({ text: notable.text, kind: notable.kind ?? 'insight' });
+      if (honest) {
+        notes.push({ text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' });
+      }
+      if (notable?.kind !== 'question') {
+        notes.push({ text: prompt.text, kind: prompt.kind ?? 'question' });
+      }
+      if (block.note) notes.push({ text: block.note, kind: 'takeaway' });
+      if (notes.length === 0) notes.push({ text: prompt.text, kind: prompt.kind ?? 'question' });
+      notes[0] = {
+        ...notes[0],
+        quip: notable
+          ? condenseForNote(notable.text, 64) || undefined
+          : 'What would have to change for this to stop being true?',
+      };
+      out[block.id] = notes;
     });
     return out;
   }, [studyContent, turn.viewSpec, turn.spec, viewMode]);
