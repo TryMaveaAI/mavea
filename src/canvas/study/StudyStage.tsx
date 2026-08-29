@@ -378,9 +378,11 @@ export function StudyStage({
   }
   const cast = lessonBlocks.filter((block) => block.id && slotById.has(block.id));
 
-  // The takeaway is the block's own note, condensed to the aphorism length the design sized
-  // its slot for — the full sentence stays reachable on the line's title.
-  const takeaway = active.note ? condenseForNote(active.note, 96) || null : null;
+  // The block's own note, WHOLE. It was condensed to the design's aphorism length, but the
+  // design's own takeaways are short because its demo copy is — a real answer's line is 90-160
+  // characters, and an ellipsis on the one sentence meant to be carried away is the opposite of
+  // a takeaway. It wraps instead, and the desk reserves the room for it.
+  const takeaway = active.note ?? null;
 
   // The pen's margin quip beside the object: the aside's second voice leads — the walk's line
   // already lives in the voice bubble and the crib, and writing it twice at 140 chars is what
@@ -569,9 +571,7 @@ export function StudyStage({
       {takeaway && (
         <div key={`take-${active.id}`} className="study-takeaway">
           <span className="study-takeaway-kicker">Takeaway</span>
-          <span className="study-takeaway-line" title={active.note ?? undefined}>
-            {takeaway}
-          </span>
+          <span className="study-takeaway-line">{takeaway}</span>
           <svg
             className="study-takeaway-stroke"
             viewBox="0 0 210 14"

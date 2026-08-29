@@ -52,7 +52,10 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       // and the beat bar plus takeaway keep the last ~90 stage px. Solving for H is what stops
       // a tall card from growing into the HUD, without pinning short ones to the top of an
       // empty desk. Published as a custom property so CSS caps the card without a guess.
-      const frontMax = Math.max(240, Math.min(560, 80 + (2 * (h / 2 - 90)) / (1.046 * scale)));
+      // 150px of stage, not 90: the beat bar (~59) plus a takeaway that may run to three
+      // handwritten lines. The takeaway is never truncated, so the room it might need is
+      // reserved rather than discovered by collision.
+      const frontMax = Math.max(240, Math.min(560, 80 + (2 * (h / 2 - 150)) / (1.046 * scale)));
       stage.style.setProperty('--study-front-max', `${frontMax.toFixed(0)}px`);
       // How much of the authored desk the floored scale pushes out of the box, in design px.
       // Hysteresis: the flag releases 26px below its trip point, so dragging a window edge

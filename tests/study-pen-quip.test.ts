@@ -114,3 +114,60 @@ describe('the pen quip is about the object, not about nothing', () => {
     expect(penQuip(block('chart', { labels: ['Q1'], series: [] }), 0)).toBeNull();
   });
 });
+
+describe('the quip states the finding, not the shape of the card', () => {
+  it('a clearance grid names the row that came out clean', () => {
+    const block = {
+      type: 'clearancematrix',
+      id: 'cm',
+      col: 12,
+      num: '1',
+      props: {
+        title: 'Fiber vs. copper',
+        rows: ['Fiber Optic', 'Copper Cable'],
+        columns: ['Interference', 'Distance', 'Speed'],
+        cells: [
+          { row: 'Fiber Optic', col: 'Interference', level: 'safe' },
+          { row: 'Fiber Optic', col: 'Distance', level: 'safe' },
+          { row: 'Fiber Optic', col: 'Speed', level: 'safe' },
+          { row: 'Copper Cable', col: 'Interference', level: 'avoid' },
+          { row: 'Copper Cable', col: 'Distance', level: 'caution' },
+          { row: 'Copper Cable', col: 'Speed', level: 'caution' },
+        ],
+      },
+    } as unknown as Block;
+    expect(penQuip(block, 0)).toBe('Fiber Optic: clear on all 3');
+  });
+
+  it('a comparison matrix adds up the wins the grid never totals', () => {
+    const block = {
+      type: 'comparematrix',
+      id: 'x',
+      col: 12,
+      num: '1',
+      props: {
+        title: 'Schools of ethics',
+        cols: ['Deontology', 'Utilitarianism'],
+        rows: [
+          { label: 'Predictability', cells: [{}, {}], best: 0 },
+          { label: 'Flexibility', cells: [{}, {}], best: 1 },
+          { label: 'Simplicity', cells: [{}, {}], best: 0 },
+        ],
+      },
+    } as unknown as Block;
+    expect(penQuip(block, 0)).toBe('Deontology: 2/3 rows');
+  });
+
+  it('a timeline says where it lands, not how many boxes it drew', () => {
+    const block = {
+      type: 'timeline',
+      id: 't',
+      col: 12,
+      num: '1',
+      props: {
+        events: [{ title: 'Draft' }, { title: 'Review' }, { title: 'Ship it' }],
+      },
+    } as unknown as Block;
+    expect(penQuip(block, 0)).toBe('3 steps → Ship it');
+  });
+});

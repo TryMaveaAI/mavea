@@ -47,7 +47,10 @@ export function penQuip(block: Block, seed = 0): string | null {
     case 'kpi': {
       const kpis = block.props.kpis;
       if (kpis.length < 2) return null;
-      return pick(['which one changes what you do?', 'a scoreboard, not a reason']);
+      const lead = shortLabel(kpis[0]?.label, 18);
+      // Name the tile the answer led with, and the fact a grid never states about itself:
+      // these are measured separately, so none of them explains another.
+      return lead ? fits(`${lead} leads — none explains another`) : null;
     }
 
     case 'breakdown': {
@@ -107,10 +110,10 @@ export function penQuip(block: Block, seed = 0): string | null {
     case 'timeline': {
       const events = block.props.events;
       if (events.length < 2) return null;
-      return pick([
-        `${events.length} steps — which is hardest?`,
-        'which handoff is least reversible?',
-      ]);
+      // Where it ENDS is what gets carried away; the steps before it are already on the card.
+      const last = shortLabel(events[events.length - 1]?.title, 20);
+      if (last) return fits(`${events.length} steps → ${last}`);
+      return `${events.length} steps — order is the argument`;
     }
 
     case 'checks': {
@@ -133,6 +136,52 @@ export function penQuip(block: Block, seed = 0): string | null {
     case 'datatable': {
       if (block.props.rows.length < 2) return null;
       return pick(['the receipt — make it reconcile', 'which row moves the answer?']);
+    }
+
+    // ── Matrices: the note a student writes beside a grid is the VERDICT it adds up to —
+    //    which row came out clean, which column keeps winning — not that a grid is present.
+    case 'clearancematrix': {
+      const cells = block.props.cells;
+      const rows = block.props.rows;
+      if (!Array.isArray(cells) || !Array.isArray(rows) || rows.length < 2) return null;
+      const cols = new Set(cells.map((c) => String(c.col).toLowerCase()));
+      const tally = (row: string, level: string): number =>
+        cells.filter((c) => String(c.row).toLowerCase() === row.toLowerCase() && c.level === level)
+          .length;
+      const clean = rows.find((r) => cols.size > 1 && tally(String(r), 'safe') === cols.size);
+      if (clean) {
+        const name = shortLabel(String(clean), 18);
+        if (name) return fits(`${name}: clear on all ${cols.size}`);
+      }
+      const worst = rows
+        .map((r) => ({
+          r: String(r),
+          bad: tally(String(r), 'avoid') + tally(String(r), 'caution'),
+        }))
+        .sort((a, b) => b.bad - a.bad)[0];
+      if (worst && worst.bad > 0) {
+        const name = shortLabel(worst.r, 16);
+        if (name) return fits(`${name}: ${worst.bad} to watch`);
+      }
+      return null;
+    }
+
+    case 'comparematrix': {
+      const rows = block.props.rows;
+      const cols = block.props.cols;
+      if (!Array.isArray(rows) || !Array.isArray(cols) || cols.length < 2) return null;
+      // `best` names the winning column per attribute — the one thing the grid states but never
+      // adds up. Which column wins the most rows IS the finding.
+      const wins = cols.map(
+        (_, i) => rows.filter((r) => typeof r.best === 'number' && r.best === i).length,
+      );
+      const top = Math.max(...wins);
+      if (top === 0) return fits(`${rows.length} attributes, no clear winner`);
+      const best = shortLabel(String(cols[wins.indexOf(top)]), 18);
+      if (!best) return null;
+      return fits(
+        top === rows.length ? `${best} wins every row` : `${best}: ${top}/${rows.length} rows`,
+      );
     }
 
     // ── The shapes real answers reach for beyond the core set ───────────────────────────────

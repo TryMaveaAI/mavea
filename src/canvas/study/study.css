@@ -399,7 +399,9 @@
 
 .study-card.is-front .study-card-face {
   min-height: 0;
-  overflow-y: auto;
+  /* BOTH axes. A wide table's own minimum column widths can exceed the card, and a block cut
+     off at the card's edge is unreadable in the one direction the reader cannot fix. */
+  overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
@@ -597,8 +599,9 @@
   bottom: calc(74px * var(--study-hud, 1));
   left: 50%;
   z-index: 10;
-  width: max-content;
-  max-width: min(84%, calc(var(--study-scale, 1) * 700px));
+  /* Wraps rather than truncates — a takeaway with an ellipsis is not one. `max-content` would
+     force a single runaway line, so it takes a real measure and balances across it. */
+  max-width: min(84%, calc(var(--study-scale, 1) * 760px));
   transform: translateX(-50%) scale(var(--study-hud, 1));
   transform-origin: bottom center;
   text-align: center;
@@ -615,6 +618,8 @@
 }
 
 .study-takeaway-line {
+  /* inline-block, not inline: the hand's sway and write-on are transforms, which an inline box
+     ignores. With the wrapper's max-content gone it wraps inside its measure just the same. */
   display: inline-block;
   font-weight: 500;
   /* Tracks the desk's scale so the handwriting cannot out-shout the object it summarizes;
@@ -768,10 +773,8 @@
 }
 
 .study-mark-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
+  /* No clamp: a scrawl is capped at 46 characters where it is written (penQuip), so the only
+     thing a line limit could add here is an ellipsis on handwriting. */
   font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
   font-weight: 500;
   line-height: 1.2;
@@ -1045,12 +1048,8 @@
 }
 
 .study-voice-text {
-  /* Three lines, like the design's bubble. A long line is not lost — it is spoken, and the dock
-     carries the full transcript — so a squeezed column is worse than an honest tail. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+  /* No clamp. This is one spoken line, and a line cut with an ellipsis is unreadable exactly
+     where it matters — the bubble grows instead, over scenery it can afford to cover. */
   font-style: italic;
   font-size: 16px;
   line-height: 1.55;
