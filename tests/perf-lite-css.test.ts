@@ -57,7 +57,6 @@ const AMBIENT: { name: string; source: string; file: string }[] = [
   { name: 'dlgPulse', source: delegateCss, file: 'delegate.css (rounds dot)' },
   { name: 'live-pulse', source: stageLayout, file: 'stage-layout.css (live badge)' },
   { name: 'dashPulse', source: dashboards, file: 'dashboards.css' },
-  { name: 'study-sway', source: studyCss, file: 'study.css (note + takeaway drift)' },
 ];
 
 // Reaction loops: feedback for something actually happening (listening bars, composing dots,

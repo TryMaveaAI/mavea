@@ -20,7 +20,7 @@ import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slot
 import type { StudyAside, StudyNoteKind } from './types';
 import type { PenMark, PenSlot } from '../../live/content/penQuip';
 import { useStudyScale } from './useStudyScale';
-import { useStudyParallax } from './useStudyParallax';
+import { useAmbientPause } from '../../hooks/useInView';
 import { useTruncatedTextDisclosures } from '../hooks/useTruncatedTextDisclosures';
 import { useFullscreen } from '../../lib/useFullscreen';
 import '../layout/textDisclosure.css';
@@ -238,11 +238,13 @@ export function StudyStage({
   // two components that would both have to be told which element they meant.
   const fullscreen = useFullscreen();
   useStudyScale(stageRef);
-  useStudyParallax(stageRef);
   // Truncation without a way back to the words is just lost text. The canvas grid gets this
   // treatment already; the desk renders its cards outside that grid, so it asks for its own —
   // re-scanned whenever the desk re-casts, since the object on it changes.
   useTruncatedTextDisclosures(stageRef, `${data.id}:${scene.active?.id ?? ''}`);
+  // Scrolled out of view, the desk stops animating entirely — the equalizer and the narrated
+  // card's ring are the only loops left, and neither is worth a frame nobody is looking at.
+  const idleRef = useAmbientPause<HTMLElement>();
 
   // What Mavéa has written about the object on the desk — several notes per object, paged.
   const foregroundId = scene.active?.id ?? null;
@@ -449,7 +451,10 @@ export function StudyStage({
 
   return (
     <section
-      ref={stageRef}
+      ref={(node) => {
+        stageRef.current = node;
+        idleRef.current = node;
+      }}
       className={`study-stage intensity-${scene.intensity}${fullscreen.active ? ' is-fullscreen' : ''}`}
       aria-label="The Study"
       data-study-active={active.id}

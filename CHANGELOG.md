@@ -6,6 +6,33 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **The Study** — a new way to read an answer, and now the default view. One object sits on a
+  lamplit desk with the rest of the answer in a shallow arc behind it; clicking a card brings it
+  forward, and a beat bar walks every object in the answer (never truncated, however large the
+  answer). Mavéa writes in the margin beside the object and keeps four notes on it — what it
+  assumes, the pattern in it, what can and cannot be backed against your sources, and a
+  pressure-test — every one of them read from that object's own data and phrased at your Explain
+  level. **Guide me** walks and narrates the answer; the session-notes pad keeps what was said.
+  The desk adds **no model calls**, no new storage and no network access: everything on it is
+  derived from the answer already on screen.
+- The Study follows the reader's theme and template: the parchment desk is the paper template's
+  own face in light and dark, and every other template re-dresses it from its own tokens.
+
+### Changed
+
+- The canvas view toggle is now **Study / Focus / Everything**, with the Study as the default. A
+  saved preference of `room` (the surface's former name) is read as `study`; the storage key is
+  unchanged.
+
+### Fixed
+
+- A comparison matrix whose cells are all empty now says so instead of painting a header over a
+  field of dashes. Its cells are positional, so the existing keyed-row judgement could not see
+  them.
+- Long values in a KPI grid drop a size rather than wrapping mid-word.
+
 ## [2.2.1] - 2026-08-22
 
 ### Fixed

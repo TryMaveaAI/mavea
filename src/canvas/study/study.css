@@ -245,7 +245,9 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(var(--study-rx, 0deg)) rotateY(var(--study-ry, 0deg));
+  /* No pointer tilt. Rotating this subtree re-composites five blurred cards on every mouse
+     move — the most expensive thing on the surface, spent on a three-degree lean. The desk's
+     depth comes from the arc's own perspective, which costs nothing after first paint. */
 }
 
 /* The floor: a perspective grid receding from under the cards. Decorative; the first thing to
@@ -288,8 +290,10 @@
   position: absolute;
   inset: 0;
   z-index: 9;
+  /* No blend mode: blending over a 3-D stacking context forces a full read-back of the stage
+     on every frame anything moves. Plain alpha reads the same at these opacities and costs
+     nothing. */
   opacity: var(--study-grain-opacity);
-  mix-blend-mode: var(--study-grain-blend);
   background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   pointer-events: none;
 }
@@ -348,7 +352,7 @@
 .study-card.is-back {
   z-index: 2;
   opacity: 0.55;
-  filter: blur(2.5px) saturate(0.75);
+  filter: blur(1.4px) saturate(0.82);
   cursor: pointer;
 }
 
@@ -360,7 +364,7 @@
 
 .study-card.is-back:hover {
   opacity: 0.78;
-  filter: blur(1.4px) saturate(0.9);
+  filter: blur(0.8px) saturate(0.92);
   box-shadow:
     0 30px 70px var(--study-shadow-deep),
     0 0 0 2px color-mix(in oklab, var(--study-amber) 35%, transparent);
@@ -435,7 +439,16 @@
 
 /* The narrated object wears the lamp: a slow amber ring while the voice is on it. Reaction to
    something audibly happening — never pausable by the lite tier, only by the visibility layer. */
-.study-stage[data-study-speaking] .study-card.is-front {
+/* The narrated object wears the lamp. Drawn on a pseudo-element and animated with opacity and
+   scale ONLY: the same ring as a box-shadow keyframe, without repainting the card and all its
+   contents on every frame of a loop that runs for as long as she is speaking. */
+.study-stage[data-study-speaking] .study-card.is-front::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--study-amber) 42%, transparent);
+  pointer-events: none;
   animation: study-pulse 3.2s ease-in-out infinite;
   animation-play-state: var(--reactive-play, running);
 }
@@ -1266,17 +1279,11 @@
   /* Per-animation play-states, ambient first: the entrance must finish even when the lite tier
      pauses the ambient sway, or a paused declaration freezes the note at opacity 0. */
   .study-note {
-    animation:
-      study-sway 5.6s 2s ease-in-out infinite,
-      study-fade-up 0.4s ease both;
-    animation-play-state: var(--ambient-play, running), running;
+    animation: study-fade-up 0.4s ease both;
   }
 
   .study-takeaway-line {
-    animation:
-      study-sway 6s 3s ease-in-out infinite,
-      study-write 0.9s 0.5s ease-out backwards;
-    animation-play-state: var(--ambient-play, running), running;
+    animation: study-write 0.9s 0.5s ease-out backwards;
   }
 
   .study-connect-line {
@@ -1302,10 +1309,7 @@
   }
 
   .study-mark-text {
-    animation:
-      study-sway 5.2s 1.6s ease-in-out infinite,
-      study-write 0.8s 0.3s ease-out backwards;
-    animation-play-state: var(--ambient-play, running), running;
+    animation: study-write 0.8s 0.3s ease-out backwards;
   }
 
   .study-mark.slot-bottom .study-mark-text {
@@ -1417,16 +1421,6 @@
   }
 }
 
-@keyframes study-sway {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-2.5px) rotate(-0.7deg);
-  }
-}
-
 @keyframes study-eq {
   0%,
   100% {
@@ -1446,15 +1440,35 @@
 @keyframes study-pulse {
   0%,
   100% {
-    box-shadow:
-      0 30px 70px var(--study-shadow-deep),
-      0 0 0 0 color-mix(in oklab, var(--study-amber) 38%, transparent);
+    opacity: 0.85;
+    transform: scale(1);
   }
   55% {
-    box-shadow:
-      0 30px 70px var(--study-shadow-deep),
-      0 0 0 12px transparent;
+    opacity: 0;
+    transform: scale(1.035);
   }
+}
+
+/* Scrolled off screen, the stage's own observer sets --ambient-play; the desk's reaction loops
+   honour it too, since a bar bouncing where nobody can see it is pure cost. The canonical
+   --reactive-play contract above still governs the lite tier. */
+.study-stage[style*='--ambient-play'] .study-voice-eq i,
+.study-stage[style*='--ambient-play'] .study-voice-caret,
+.study-stage[style*='--ambient-play'] .study-card.is-front::after {
+  animation-play-state: paused;
+}
+
+/* The lite tier (a weak GPU, or a machine the probe found struggling) drops the depth of field
+   and the paper grain outright: five blurred layers and a full-stage texture are exactly the
+   costs that tier exists to remove. The composition still reads — the arc is dimmed and scaled,
+   which is what says "behind". */
+:root[data-perf='lite'] .study-card.is-back {
+  filter: saturate(0.8);
+}
+
+:root[data-perf='lite'] .study-grain,
+:root[data-perf='lite'] .study-floor {
+  display: none;
 }
 
 /* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
