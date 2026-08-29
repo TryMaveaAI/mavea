@@ -277,84 +277,210 @@ export function notableIn(block: Block): Notable | null {
 /** A Study-only prompt for objects with no structural observation or source receipt. It never
  * repeats the block's narration: it turns the object into a question the nearby objects can test. */
 export function studyPromptIn(block: Block): Notable {
-  const props = block.props;
-  const title =
-    'title' in props && typeof props.title === 'string' && props.title.trim()
-      ? props.title.trim()
-      : null;
-  return {
-    // A title-less block gets the pointer phrasing, never its raw type token in quotes —
-    // “What would have to change for "datatable" to stop being true” reads as a bug.
-    text: title
+  const props = block.props as Record<string, unknown>;
+  const ask = (text: string): Notable => ({ text, kind: 'question' });
+  const name = (value: unknown): string | null => {
+    const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+    return text && text.length <= 30 ? text : null;
+  };
+  const title = name(props.title);
+
+  // A pressure-test is only worth asking if it names the thing being tested. Each of these
+  // points at something the object actually shows, so the question differs card to card the
+  // way a reader's would.
+  switch (block.type) {
+    case 'insight': {
+      const { stat, delta } = block.props;
+      if (stat || delta) return ask(`What would have to be true for ${stat ?? delta} to be wrong?`);
+      break;
+    }
+    case 'chart': {
+      const first = block.props.series[0];
+      if (first) return ask(`What would bend ${first.name} off this line?`);
+      break;
+    }
+    case 'breakdown':
+    case 'donut': {
+      const rows = block.props.rows as { name?: string; label?: string }[];
+      const top = name(rows[0]?.name ?? rows[0]?.label);
+      if (top) return ask(`What happens to the rest if ${top} moves?`);
+      break;
+    }
+    case 'compare': {
+      const winner = name(block.props.options[0]?.name);
+      if (winner) return ask(`Which row would have to flip for ${winner} to lose?`);
+      break;
+    }
+    case 'kpi': {
+      const lead = name(block.props.kpis[0]?.label);
+      if (lead) return ask(`What is driving ${lead} — and is it on this desk?`);
+      break;
+    }
+    case 'timeline': {
+      const events = block.props.events;
+      const last = name(events[events.length - 1]?.title);
+      if (last) return ask(`Which step here is the one that delays ${last}?`);
+      break;
+    }
+    case 'checks': {
+      const failed = block.props.items.filter((i) => i.status === 'fail').length;
+      if (failed > 0) return ask(`What has to change to clear those ${failed}?`);
+      return ask('What is not on this checklist that should be?');
+    }
+    case 'list': {
+      const items = block.props.items;
+      if (items.length > 2) return ask(`Which of these ${items.length} would you test first?`);
+      break;
+    }
+    default:
+      break;
+  }
+  // The generic case keeps the instruction the specific ones do not need: they already name
+  // the thing to test, while this one has to tell the reader where to look.
+  return ask(
+    title
       ? `What would have to change for “${title}” to stop being true? Pull a nearby object forward to test it.`
       : 'What would have to change for this to stop being true? Pull a nearby object forward to test it.',
-    kind: 'question',
-  };
+  );
 }
 
-/**
- * What this object takes for GRANTED — the △ ASSUMPTION voice, and the one thing a card is
- * least able to say about itself. Read from the block's own shape (a projection assumes its
- * inputs hold; a share assumes the categories are complete), never invented, and never a figure
- * the block does not display. Every object has one: a card always rests on something.
- */
-export function assumptionIn(block: Block): Notable {
-  const props = block.props;
-  const conf = 'conf' in props ? props.conf : undefined;
-  if (conf && conf !== 'strong') {
-    return {
-      text: 'This is marked inferred — a modelled read, not an observed measurement.',
-      kind: 'caution',
-    };
-  }
+/** How plainly the desk's notes speak — the reader's own Explain setting. `simple` keeps the
+ *  same fact in fewer, shorter words; `deep` adds the mechanism a specialist would want. The
+ *  FACT never changes with the level, only how much is said about it. */
+export type NoteLevel = 'simple' | 'standard' | 'deep';
+
+/** Pick the phrasing for the reader's level, falling back to standard. */
+function atLevel(level: NoteLevel, plain: string, standard: string, deep: string): string {
+  if (level === 'simple') return plain;
+  if (level === 'deep') return deep;
+  return standard;
+}
+
+export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notable {
+  const props = block.props as Record<string, unknown>;
+  const conf = typeof props.conf === 'string' ? props.conf : undefined;
+  const say = (text: string): Notable => ({ text, kind: 'caution' });
+  const name = (value: unknown): string | null => {
+    const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+    return text && text.length <= 34 ? text : null;
+  };
+
   switch (block.type) {
-    case 'insight':
-      return {
-        text: 'The headline holds only while the summary beneath it does — read them together.',
-        kind: 'caution',
-      };
-    case 'chart':
-      return {
-        text: 'The line assumes the pattern continues as drawn; nothing here models a shock.',
-        kind: 'caution',
-      };
+    case 'insight': {
+      const { stat, delta, summary } = block.props;
+      const figure = firstFigure(summary);
+      if (conf && conf !== 'strong' && (stat || delta)) {
+        return say(
+          atLevel(
+            level,
+            `${stat ?? delta} is an estimate, not a measurement.`,
+            `${stat ?? delta} is marked ${conf} — modelled, not measured.`,
+            `${stat ?? delta} is marked ${conf}: a model output, so its error bars are the model's assumptions, not sampling noise.`,
+          ),
+        );
+      }
+      if (figure && stat) {
+        return say(
+          atLevel(
+            level,
+            `${stat} depends on the ${figure} under it.`,
+            `${stat} rests on the ${figure} beneath it; change that and this moves.`,
+            `${stat} is downstream of the ${figure} beneath it — the sensitivity runs one way, so test that input first.`,
+          ),
+        );
+      }
+      return say(
+        atLevel(
+          level,
+          `${stat ?? delta} is given without its working.`,
+          `${stat ?? delta} is stated without the working that produced it.`,
+          `${stat ?? delta} is stated without its derivation, so it cannot be re-computed or audited from this card alone.`,
+        ),
+      );
+    }
+
+    case 'chart': {
+      const { labels, series } = block.props;
+      const first = series[0];
+      const last = name(labels[labels.length - 1]);
+      if (first && last) {
+        return say(
+          atLevel(
+            level,
+            `After ${last}, this assumes ${first.name} keeps going the same way.`,
+            `Past ${last} this assumes ${first.name} keeps doing what it just did.`,
+            `Past ${last} the series is extrapolated, not observed: the trend is carried forward with no shock, seasonality or mean reversion modelled.`,
+          ),
+        );
+      }
+      return say('The line assumes the pattern continues as drawn; no shock is modelled.');
+    }
+
     case 'breakdown':
-    case 'donut':
-      return {
-        text: 'The split assumes these categories are the whole of it — anything unassigned hides.',
-        kind: 'caution',
-      };
-    case 'kpi':
-      return {
-        text: 'Each tile is measured its own way; the grid states no relationship between them.',
-        kind: 'caution',
-      };
-    case 'compare':
-      return {
-        text: 'The rows are weighted equally here — your own priorities are not in the scoring.',
-        kind: 'caution',
-      };
-    case 'timeline':
-      return { text: 'The order assumes each step lands before the next begins.', kind: 'caution' };
-    case 'checks':
-      return {
-        text: 'A checklist only covers what someone thought to check — absence is not a pass.',
-        kind: 'caution',
-      };
-    case 'datatable':
-      return {
-        text: 'The rows are taken as given; nothing here reconciles them against a source.',
-        kind: 'caution',
-      };
-    case 'list':
-      return {
-        text: 'The items are presented as a set, with no order or weight implied.',
-        kind: 'caution',
-      };
-    default:
-      return {
-        text: 'This is one framing of the answer — a different cut of the same facts is possible.',
-        kind: 'caution',
-      };
+    case 'donut': {
+      const rows = block.props.rows as { name?: string; label?: string }[];
+      const top = name(rows[0]?.name ?? rows[0]?.label);
+      return say(
+        top
+          ? `These ${rows.length} categories are treated as the whole of it — starting with ${top}.`
+          : `These ${rows.length} categories are treated as the whole of it; anything unassigned hides.`,
+      );
+    }
+
+    case 'kpi': {
+      const kpis = block.props.kpis;
+      const lead = name(kpis[0]?.label);
+      return say(
+        lead
+          ? `${lead} and the other ${kpis.length - 1} are each measured their own way, over their own window.`
+          : `Each of these ${kpis.length} is measured its own way, over its own window.`,
+      );
+    }
+
+    case 'compare': {
+      const { options, criteria } = block.props;
+      const winner = name(options[0]?.name);
+      return say(
+        `All ${criteria.length} rows count equally here${winner ? `, including for ${winner}` : ''} — your own priorities are not in the scoring.`,
+      );
+    }
+
+    case 'timeline': {
+      const events = block.props.events;
+      const first = name(events[0]?.title);
+      return say(
+        first
+          ? `Each step assumes the one before it landed — starting with ${first}.`
+          : 'Each step assumes the one before it landed.',
+      );
+    }
+
+    case 'checks': {
+      const items = block.props.items;
+      return say(
+        `These ${items.length} checks are treated as the whole risk; what nobody thought to check is not here.`,
+      );
+    }
+
+    case 'datatable': {
+      const rows = block.props.rows;
+      return say(
+        `The ${rows.length} rows are taken as given — nothing here reconciles them against a source.`,
+      );
+    }
+
+    case 'list': {
+      const items = block.props.items;
+      return say(`These ${items.length} are a set, not a ranking — the order implies nothing.`);
+    }
+
+    default: {
+      const title = name(props.title);
+      return say(
+        title
+          ? `“${title}” is one framing of this; a different cut of the same facts is possible.`
+          : 'This is one framing of the answer — a different cut of the same facts is possible.',
+      );
+    }
   }
 }

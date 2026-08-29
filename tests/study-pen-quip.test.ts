@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../src/data/conversation';
 import { penQuip } from '../src/live/content/penQuip';
+import { assumptionIn, studyPromptIn } from '../src/live/content/notableIn';
 
 const MARGIN_CAP = 46;
 
@@ -169,5 +170,102 @@ describe('the quip states the finding, not the shape of the card', () => {
       },
     } as unknown as Block;
     expect(penQuip(block, 0)).toBe('3 steps → Ship it');
+  });
+});
+
+describe('the note voices read the slide, not a template', () => {
+  const chart = {
+    type: 'chart',
+    id: 'c',
+    col: 12,
+    num: '1',
+    props: {
+      title: 'ARR trajectory',
+      labels: ['Q1', 'Q2', 'Q3'],
+      series: [{ name: 'ARR', data: [12, 13, 15] }],
+    },
+  } as unknown as Block;
+  const split = {
+    type: 'breakdown',
+    id: 'b',
+    col: 12,
+    num: '2',
+    props: {
+      title: 'Burn',
+      rows: [
+        { name: 'Payroll', pct: 62 },
+        { name: 'Infra', pct: 21 },
+        { name: 'GTM', pct: 17 },
+      ],
+    },
+  } as unknown as Block;
+  const list = {
+    type: 'list',
+    id: 'l',
+    col: 12,
+    num: '3',
+    props: { title: 'Moves', items: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] },
+  } as unknown as Block;
+
+  it('names what THIS object assumes, not what its kind assumes', () => {
+    const a = assumptionIn(chart).text;
+    const b = assumptionIn(split).text;
+    const c = assumptionIn(list).text;
+    expect(new Set([a, b, c]).size).toBe(3);
+    // Each cites something the card actually renders.
+    expect(a).toContain('ARR');
+    expect(a).toContain('Q3');
+    expect(b).toContain('Payroll');
+    expect(c).toContain('3');
+  });
+
+  it('asks a pressure-test about the thing on the card', () => {
+    const a = studyPromptIn(chart).text;
+    const b = studyPromptIn(split).text;
+    const c = studyPromptIn(list).text;
+    expect(new Set([a, b, c]).size).toBe(3);
+    expect(a).toContain('ARR');
+    expect(b).toContain('Payroll');
+    expect(c).toContain('3');
+  });
+
+  it('never repeats one sentence across the objects of an answer', () => {
+    const answer = [chart, split, list];
+    const lines = answer.flatMap((b, i) => [
+      assumptionIn(b).text,
+      studyPromptIn(b).text,
+      penQuip(b, i) ?? '',
+    ]);
+    expect(new Set(lines).size).toBe(lines.length);
+  });
+});
+
+describe('the notes speak at the reader’s level', () => {
+  const inferred = {
+    type: 'insight',
+    id: 'i',
+    col: 12,
+    num: '1',
+    props: {
+      title: 'ARR',
+      stat: '$15.1M',
+      delta: '+21.8%',
+      summary: 'from $12.4M',
+      conf: 'inferred',
+    },
+  } as unknown as Block;
+
+  it('says the same FACT three ways, never a different fact', () => {
+    const simple = assumptionIn(inferred, 'simple').text;
+    const standard = assumptionIn(inferred, 'standard').text;
+    const deep = assumptionIn(inferred, 'deep').text;
+    expect(new Set([simple, standard, deep]).size).toBe(3);
+    // The claim under discussion is the same in all three; only the explaining changes.
+    for (const line of [simple, standard, deep]) expect(line).toContain('$15.1M');
+    expect(simple.length).toBeLessThan(deep.length);
+  });
+
+  it('defaults to standard when no level is given', () => {
+    expect(assumptionIn(inferred)).toEqual(assumptionIn(inferred, 'standard'));
   });
 });

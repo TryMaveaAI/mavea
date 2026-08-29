@@ -1769,7 +1769,7 @@ export function LiveApp(): ReactElement {
       // sources), never invented; where a voice has nothing to point at it says so plainly,
       // which is itself the honest answer — "no sources are attached" is a real evidence check.
       const notes: StudyAside[] = [
-        { text: assumptionIn(block).text, kind: 'caution' },
+        { text: assumptionIn(block, cfg.explainLevel).text, kind: 'caution' },
         {
           text:
             notable?.text ??
@@ -1779,7 +1779,16 @@ export function LiveApp(): ReactElement {
         honest
           ? { text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' }
           : {
-              text: 'No sources are attached to this answer, so nothing here is checked against one yet.',
+              // Names what is unverified ON THIS CARD rather than repeating one disclaimer down
+              // the whole answer: the reader is deciding how much weight to put on THIS object.
+              text: (() => {
+                const notableAt = notable?.at;
+                if (notableAt) {
+                  return `Nothing here backs ${notableAt} — no sources are attached to this answer.`;
+                }
+                const label = blockLabel(block);
+                return `Nothing in “${label}” is checked against a source — none are attached to this answer.`;
+              })(),
               kind: 'evidence',
             },
         { text: studyPromptIn(block).text, kind: 'question' },
@@ -1792,7 +1801,7 @@ export function LiveApp(): ReactElement {
       out[block.id] = notes;
     });
     return out;
-  }, [studyContent, turn.viewSpec, turn.spec, viewMode]);
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel]);
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
@@ -1844,6 +1853,16 @@ export function LiveApp(): ReactElement {
       step++;
     }
   }, [viewMode, turn.spec, ink]);
+
+  // Switching view is switching page: whatever was being said described a surface that is no
+  // longer on screen, so it stops. Without this the outgoing view's line kept playing while the
+  // incoming one started its own — two voices, neither of them about what you were looking at.
+  const spokenViewRef = useRef(viewMode);
+  useEffect(() => {
+    if (spokenViewRef.current === viewMode) return;
+    spokenViewRef.current = viewMode;
+    cancelSpeech();
+  }, [viewMode]);
 
   const [canvasRevision, setCanvasRevision] = useState(0);
   const prevViewModeRef = useRef(viewMode);

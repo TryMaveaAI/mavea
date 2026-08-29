@@ -362,13 +362,9 @@ export function penMarks(block: Block, seed = 0): PenMark[] {
   if (second && second !== primary && second.length <= MAX) {
     marks.push({ text: second, slot: 'bottom' });
   }
-  // The question only earns the third slot when the card already carries two statements — a
-  // question alone beside a bare card is the stock line this file exists to avoid.
-  if (marks.length === 2) {
-    const props = block.props as { title?: unknown };
-    const title = typeof props.title === 'string' ? props.title.trim() : '';
-    if (title && title.length <= 24) marks.push({ text: `why “${title}”?`, slot: 'top' });
-    else marks.push({ text: 'what breaks this?', slot: 'top' });
-  }
+  // No third mark. It was a question the file could not derive from the object — "what breaks
+  // this?" beside every card in the answer — which is the stock line this whole file exists to
+  // avoid. The pressure-test still gets asked, in Mavéa's note card, where it is one of four
+  // voices rather than a phrase repeated across the desk.
   return marks;
 }

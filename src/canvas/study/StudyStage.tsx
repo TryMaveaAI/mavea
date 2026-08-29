@@ -321,6 +321,10 @@ export function StudyStage({
     blocks: deskBlocks.filter((block) => block.id),
     id: scene.active?.id ?? null,
   };
+  // The object the guide itself last moved to. Anything else moving the desk — above all the
+  // turn's own spoken walk — means someone else is driving, and two narrators is two voices
+  // over each other.
+  const guideMovedTo = useRef<string | null>(null);
   const guideStep = useCallback(
     (fromStart: boolean) => {
       const { blocks: cast, id } = guideRef.current;
@@ -331,11 +335,21 @@ export function StudyStage({
         setGuiding(false);
         return;
       }
+      guideMovedTo.current = next.id ?? null;
       setPinnedId(next.id ?? null);
       onNarrate?.(next);
     },
     [onNarrate],
   );
+
+  // A spot change the guide did not cause hands the wheel back: the walk is speaking, and the
+  // guide must not speak over it.
+  useEffect(() => {
+    if (!guiding) return;
+    if (foregroundId && guideMovedTo.current && foregroundId !== guideMovedTo.current) {
+      setGuiding(false);
+    }
+  }, [guiding, foregroundId]);
   useEffect(() => {
     if (!guiding) return;
     // Never talk over her: while a line is audible the guide simply waits for it.
@@ -597,11 +611,7 @@ export function StudyStage({
               <i />
             </span>
           )}
-          <span
-            key={voiceLine}
-            className="study-voice-text"
-            style={{ '--tw-ms': `${Math.min(1600, voiceLine.length * 8)}ms` } as CSSProperties}
-          >
+          <span key={voiceLine} className="study-voice-text">
             {voiceLine}
             {speaking && <b className="study-voice-caret">▌</b>}
           </span>
@@ -648,7 +658,10 @@ export function StudyStage({
             aria-pressed={guiding}
             onClick={() =>
               setGuiding((on) => {
-                if (!on) guideStartRef.current = true;
+                if (!on) {
+                  guideStartRef.current = true;
+                  guideMovedTo.current = null;
+                }
                 return !on;
               })
             }

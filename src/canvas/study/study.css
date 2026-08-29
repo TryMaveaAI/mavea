@@ -1049,8 +1049,9 @@
 }
 
 .study-voice-text {
-  /* No clamp. This is one spoken line, and a line cut with an ellipsis is unreadable exactly
-     where it matters — the bubble grows instead, over scenery it can afford to cover. */
+  /* No clamp and no typewriter clip. A clip that restarts on every line update never finishes,
+     which left the spoken line permanently cut mid-word; the equalizer already says she is
+     talking, so the words simply arrive. */
   font-style: italic;
   font-size: 16px;
   line-height: 1.55;
@@ -1347,12 +1348,6 @@
     animation: study-pop 0.3s ease both;
   }
 
-  .study-voice-text {
-    /* Keep the -webkit-box display the clamp above needs: overriding it to inline-block here
-       silently dropped the three-line cap and let a long opener grow a nine-line ribbon. */
-    animation: study-type var(--tw-ms, 1.4s) steps(40) 0.1s both;
-  }
-
   .study-intro-kicker,
   .study-intro-watch,
   .study-intro-enter {
@@ -1445,15 +1440,6 @@
 @keyframes study-blink {
   50% {
     opacity: 0;
-  }
-}
-
-@keyframes study-type {
-  from {
-    clip-path: inset(-20% 100% -20% 0);
-  }
-  to {
-    clip-path: inset(-20% -2% -20% 0);
   }
 }
 
