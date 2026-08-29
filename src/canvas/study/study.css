@@ -739,9 +739,10 @@
 }
 
 .study-beat-label {
-  max-width: 15ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Whole names. A beat chip IS the object's name — clipped to 15 characters, three cards in a
+     row read as "The Physics of …", "Fiber vs. Copp…", which is no name at all. The row
+     scrolls and keeps the active chip centred, so length costs nothing but scroll. */
+  white-space: nowrap;
 }
 
 .study-beat-next {
