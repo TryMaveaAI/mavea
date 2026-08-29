@@ -1,0 +1,1557 @@
+/* study.css — The Study: one answer laid out on a lamplit desk.
+
+   The desk is AUTHORED at a fixed 1440×740 (slots.ts) and scaled to the stage like a piece of
+   print, so the composition cannot come apart at an unanticipated size — the scale clamps at
+   STUDY_FIT_FLOOR (9px rendered ÷ 11px authored) and the stage crops rather than shrinking type
+   past legibility. The palette is the Study's own identity (the approved design, verbatim in
+   light), scoped as custom properties on the stage: dark is the same room after dark — warm
+   umber, the same amber lamp — never a grey inversion. Blocks rendered on the desk harmonize by
+   TOKEN REBINDING only; no block component is touched.
+
+   Legibility contract: reading surfaces (the front card, Mavéa's note, the beat bar, the
+   takeaway) author no persistent type below 11px, because the desk may legally shrink to
+   9/11 of authored size. Back-arc cards are deliberately illegible — blurred, dimmed scenery
+   whose accessible name lives on the card button and whose readable name lives in the beat
+   bar — and are exempt by construction, the way the world's faded decoration is. */
+
+.study-stage {
+  /* ── The Study's palette — dark base ("the study after dark") ─────────────────────────── */
+  --study-bg: #171209;
+  --study-glow-1: #2a2214;
+  --study-glow-2: #1f1910;
+  --study-glow-3: #131008;
+  --study-frame: #3b3220;
+  --study-card: #201a10;
+  --study-card-border: #3b3220;
+  --study-inner: #261f12;
+  --study-inner-border: #463a24;
+  --study-ink: #ede4d0;
+  --study-ink-soft: #bfb299;
+  --study-ink-muted: #8c8069;
+  --study-ink-faint: #6e6350;
+  --study-green: #93a671;
+  --study-green-deep: #7c9459;
+  --study-amber: #d98f45;
+  --study-amber-deep: #c08a50;
+  --study-amber-press: #b06018;
+  --study-highlight: #4a3b1e;
+  --study-red: #d26b50;
+  --study-note-bg: #251e11;
+  --study-note-border: #463a24;
+  --study-crib: #2b2413;
+  --study-hand-ink: #d8c9a8;
+  --study-pen: #c08a50;
+  --study-shadow-soft: rgba(0, 0, 0, 0.4);
+  --study-shadow-deep: rgba(0, 0, 0, 0.65);
+  --study-glass: rgba(30, 24, 14, 0.62);
+  --study-glass-line: rgba(70, 58, 36, 0.8);
+  --study-mute: rgba(23, 18, 9, 0.6);
+  --study-vignette: rgba(0, 0, 0, 0.5);
+  --study-scrim: rgba(10, 8, 4, 0.6);
+  --study-floor-line: rgba(216, 201, 168, 0.1);
+  --study-pool: rgba(255, 236, 200, 0.07);
+  --study-grain-opacity: 0.04;
+  --study-grain-blend: soft-light;
+  --study-chip-active: #ede4d0;
+  --study-chip-active-ink: #171209;
+  --study-beat-num: #8c6a3f;
+  --study-crib-rule: rgba(216, 201, 168, 0.14);
+
+  /* ── Type. The families ship in public/fonts (OFL, provenance documented). ───────────── */
+  --study-serif: 'Source Serif 4', Georgia, serif;
+  --study-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* ── What the blocks on the desk inherit. A rendered block reads tokens, not colors, so
+        rebinding the small shared set here is how a chart, a table or a KPI row arrives already
+        in the room's light — with no block component knowing the Study exists. ─────────── */
+  --surface-elevated: var(--study-card);
+  --surface-glass: var(--study-inner);
+  --text-primary: var(--study-ink);
+  --text-secondary: var(--study-ink-soft);
+  --text-muted: var(--study-ink-muted);
+  --line-soft: var(--study-card-border);
+  --grid-line: color-mix(in oklab, var(--study-ink) 12%, transparent);
+  --grid-strong: color-mix(in oklab, var(--study-ink) 20%, transparent);
+  --track: color-mix(in oklab, var(--study-ink) 10%, transparent);
+  --hover-line: color-mix(in oklab, var(--study-ink) 26%, transparent);
+  --cell-empty: color-mix(in oklab, var(--study-ink) 6%, transparent);
+  --presence: var(--study-amber);
+  --font: var(--study-serif);
+  --mono: var(--study-mono);
+  /* Mavéa's gesture ink takes the desk's pen brown; the reader's draw-back ink keeps its own
+     blue — two hands, two colors, same as everywhere else in the app. */
+  --ink-gesture: var(--study-pen);
+  /* The template layer restyles every button through these (templates.css's
+     `:root[data-template] :is(button, …)` rule); rebinding them here is what keeps the desk's
+     own controls in the desk's serif under any template skin. */
+  --font-ui: var(--study-serif);
+  --font-body: var(--study-serif);
+
+  container-type: inline-size;
+  container-name: study;
+  position: relative;
+  /* MEASURED, not guessed: the canvas scroll column is the viewport minus ~350px of standing
+     chrome (top bar + dock + composer), so this is the tallest stage whose beat bar still clears
+     the dock once the lead scrolls away. The floor is DERIVED, not chosen: below 534px the
+     floored desk must crop deeper than its decorative band can absorb and the frame starts
+     slicing cards — 534 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border (slots.ts). A
+     short window scrolls to a whole desk (the stage aligns its own bottom edge per answer)
+     instead of showing a beheaded one; fullscreen lifts the cap to the viewport itself. */
+  height: clamp(534px, calc(100dvh - 380px), 820px);
+  overflow: clip;
+  border: 1px solid var(--study-frame);
+  border-radius: 26px;
+  background: var(--study-bg);
+  color: var(--study-ink);
+  font-family: var(--study-serif);
+  isolation: isolate;
+  /* A page resting on a small stack, lit from above: two offset edges below and a hairline of
+     light along the top. Shadows only — no extra elements, nothing to lay out. */
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent),
+    0 2px 0 -1px var(--study-frame),
+    0 6px 0 -3px color-mix(in oklab, var(--study-frame) 60%, transparent),
+    0 18px 40px -22px var(--study-shadow-deep);
+}
+
+/* The approved design, verbatim: the lamplit parchment desk. */
+:root[data-theme='light'] .study-stage {
+  --study-bg: #efe7d6;
+  --study-glow-1: #faf3e3;
+  --study-glow-2: #efe1c4;
+  --study-glow-3: #dcc59b;
+  --study-frame: #d9c9a8;
+  --study-card: #fcf8ed;
+  --study-card-border: #e6dcc4;
+  --study-inner: #faf5e6;
+  --study-inner-border: #e0d5b8;
+  --study-ink: #26231c;
+  --study-ink-soft: #4a4438;
+  --study-ink-muted: #8a8272;
+  --study-ink-faint: #9a8e76;
+  --study-green: #56673f;
+  --study-green-deep: #3e5230;
+  --study-amber: #b06018;
+  --study-amber-deep: #8a5a2b;
+  --study-amber-press: #8a4b14;
+  --study-highlight: #f2e4c6;
+  --study-red: #a8402a;
+  --study-note-bg: #fbf4e1;
+  --study-note-border: #e3d6b8;
+  --study-crib: #fffbea;
+  --study-hand-ink: #4a3b22;
+  --study-pen: #8a5a2b;
+  --study-shadow-soft: rgba(96, 74, 40, 0.16);
+  --study-shadow-deep: rgba(96, 74, 40, 0.2);
+  --study-glass: rgba(250, 243, 227, 0.72);
+  --study-glass-line: rgba(201, 188, 159, 0.7);
+  --study-mute: rgba(247, 240, 226, 0.6);
+  --study-vignette: rgba(80, 58, 30, 0.26);
+  --study-scrim: rgba(239, 231, 214, 0.55);
+  --study-floor-line: rgba(138, 90, 43, 0.13);
+  --study-pool: rgba(255, 250, 234, 0.6);
+  --study-grain-opacity: 0.05;
+  --study-grain-blend: multiply;
+  --study-chip-active: #26231c;
+  --study-chip-active-ink: #fcf8ed;
+  --study-beat-num: #a79878;
+  --study-crib-rule: rgba(138, 90, 43, 0.18);
+}
+
+/* ── Following the reader's theme ─────────────────────────────────────────────────────────────
+   The parchment above is the Study's own face for the default (paper) template, light and dark.
+   Every OTHER template re-dresses the desk from its own token contract, so a Console study is a
+   console and an Ink study is ink — in both light and dark, with nothing hand-tuned per skin.
+   The template's values are captured at :root (where nothing shadows them — the stage itself
+   rebinds --surface-elevated and friends for the blocks it hosts, so reading them ON the stage
+   would cycle) and consumed here as --study-src-*. */
+:root[data-template]:not([data-template='paper']) {
+  --study-src-bg: var(--app-bg);
+  --study-src-card: var(--surface-elevated);
+  --study-src-inner: var(--surface-glass);
+  --study-src-ink: var(--text-primary);
+  --study-src-ink-soft: var(--text-secondary);
+  --study-src-ink-muted: var(--text-muted);
+  --study-src-line: var(--line-soft);
+  --study-src-accent: var(--presence);
+  --study-src-warn: var(--warning);
+}
+
+:root[data-template]:not([data-template='paper']) .study-stage {
+  --study-bg: var(--study-src-bg);
+  --study-glow-1: color-mix(in oklab, var(--study-src-accent) 10%, var(--study-src-bg));
+  --study-glow-2: color-mix(in oklab, var(--study-src-accent) 4%, var(--study-src-bg));
+  --study-glow-3: var(--study-src-bg);
+  --study-frame: var(--study-src-line);
+  --study-card: var(--study-src-card);
+  --study-card-border: var(--study-src-line);
+  --study-inner: var(--study-src-inner);
+  --study-inner-border: var(--study-src-line);
+  --study-ink: var(--study-src-ink);
+  --study-ink-soft: var(--study-src-ink-soft);
+  --study-ink-muted: var(--study-src-ink-muted);
+  --study-ink-faint: var(--study-src-ink-muted);
+  --study-green: color-mix(in oklab, var(--study-src-accent) 55%, var(--study-src-ink-soft));
+  --study-green-deep: color-mix(in oklab, var(--study-src-accent) 45%, var(--study-src-ink-soft));
+  --study-amber: var(--study-src-accent);
+  --study-amber-deep: color-mix(in oklab, var(--study-src-accent) 78%, var(--study-src-ink));
+  --study-amber-press: color-mix(in oklab, var(--study-src-accent) 85%, #000);
+  --study-highlight: color-mix(in oklab, var(--study-src-accent) 22%, var(--study-src-card));
+  --study-red: var(--study-src-warn);
+  --study-note-bg: var(--study-src-inner);
+  --study-note-border: var(--study-src-line);
+  --study-crib: var(--study-src-card);
+  --study-crib-rule: color-mix(in oklab, var(--study-src-ink) 14%, transparent);
+  --study-hand-ink: var(--study-src-ink-soft);
+  --study-pen: var(--study-src-accent);
+  --study-glass: color-mix(in oklab, var(--study-src-card) 74%, transparent);
+  --study-glass-line: var(--study-src-line);
+  --study-mute: color-mix(in oklab, var(--study-src-bg) 60%, transparent);
+  --study-vignette: color-mix(in oklab, #000 35%, transparent);
+  --study-scrim: color-mix(in oklab, var(--study-src-bg) 62%, transparent);
+  --study-floor-line: color-mix(in oklab, var(--study-src-ink) 10%, transparent);
+  --study-pool: color-mix(in oklab, var(--study-src-accent) 8%, transparent);
+  --study-chip-active: var(--study-src-ink);
+  --study-chip-active-ink: var(--study-src-bg);
+  --study-beat-num: var(--study-src-ink-muted);
+}
+
+/* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
+
+.study-desk {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    90% 97% at 50% 24%,
+    var(--study-glow-1) 0%,
+    var(--study-glow-2) 55%,
+    var(--study-glow-3) 100%
+  );
+}
+
+.study-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1440px;
+  height: 740px;
+  transform: translate(-50%, -50%) scale(var(--study-scale, 1));
+  transform-style: preserve-3d;
+  perspective: 1600px;
+  perspective-origin: 50% 38%;
+}
+
+.study-scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* No pointer tilt. Rotating this subtree re-composites five blurred cards on every mouse
+     move — the most expensive thing on the surface, spent on a three-degree lean. The desk's
+     depth comes from the arc's own perspective, which costs nothing after first paint. */
+}
+
+/* The floor: a perspective grid receding from under the cards. Decorative; the first thing to
+   go on a shallow stage. */
+.study-floor {
+  position: absolute;
+  inset: 64% -20% -130% -20%;
+  height: 130%;
+  transform: rotateX(76deg);
+  transform-origin: top center;
+  background-image:
+    repeating-linear-gradient(90deg, var(--study-floor-line) 0 1.5px, transparent 1.5px 64px),
+    repeating-linear-gradient(0deg, var(--study-floor-line) 0 1.5px, transparent 1.5px 64px);
+  mask-image: linear-gradient(rgba(0, 0, 0, 0.85), transparent 72%);
+  pointer-events: none;
+}
+
+.study-pool {
+  position: absolute;
+  top: 190px;
+  left: 240px;
+  width: 700px;
+  height: 470px;
+  background: radial-gradient(closest-side, var(--study-pool), transparent);
+  pointer-events: none;
+}
+
+/* Unscaled atmosphere over the whole stage. The vignette is what makes the light read as a lamp;
+   the grain is what makes the surface read as paper. Both are pure backgrounds — no filters, no
+   per-frame work. */
+.study-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: radial-gradient(1100px 640px at 50% 36%, transparent 55%, var(--study-vignette) 100%);
+  pointer-events: none;
+}
+
+.study-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  /* No blend mode: blending over a 3-D stacking context forces a full read-back of the stage
+     on every frame anything moves. Plain alpha reads the same at these opacities and costs
+     nothing. */
+  opacity: var(--study-grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* The disclosure marks cut text with `cursor: help` elsewhere in the app. On the desk the whole
+   surface is something you point at and pick up, so a question-mark pointer drifting over the
+   object reads as a different tool in your hand. The affordance stays (hover, tap, keyboard
+   still open the full text) — only the cursor goes back to the ordinary one. */
+.study-stage [data-text-disclosure] {
+  cursor: default;
+}
+
+.study-stage .study-card.is-back [data-text-disclosure] {
+  cursor: pointer;
+}
+
+/* ── The cards ───────────────────────────────────────────────────────────────────────────── */
+
+.study-card {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  box-sizing: border-box;
+  transform: translate(-50%, -50%) translateZ(var(--sz)) rotateY(var(--sry)) scale(var(--ss));
+  border: 1px solid var(--study-card-border);
+  border-radius: var(--r-md);
+  background: var(--study-card);
+  box-shadow: 0 30px 70px var(--study-shadow-deep);
+  transition:
+    left 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.9s ease,
+    opacity 0.7s ease,
+    box-shadow 0.3s ease;
+}
+
+/* The fan-out stagger belongs to the ENTRANCE alone: while the desk assembles each card waits
+   its slot's beat, but a later promotion or re-cast answers the hand immediately. */
+.study-stage[data-assembling] .study-card,
+.study-stage[data-gathered] .study-card {
+  transition-delay: var(--sd, 0ms);
+}
+
+.study-card.is-front {
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  /* Real blocks are any height. Past this the face scrolls inside the card — the desk never
+     clips an object against its own frame, and picking cards of different heights cannot
+     bounce the composition (the top edge is the anchor). The cap is MEASURED per stage by
+     useStudyScale (room above the beat bar at the current scale), never a guess. */
+  max-height: var(--study-front-max, 560px);
+}
+
+.study-card.is-back {
+  z-index: 2;
+  opacity: 0.55;
+  filter: blur(1.4px) saturate(0.82);
+  cursor: pointer;
+}
+
+/* A retired card keeps its marks (the portal survives), but blurred scenery must not shout
+   through the mute veil — the ink shows again the moment the card retakes the desk. */
+.study-card.is-back .ink-layer {
+  display: none;
+}
+
+.study-card.is-back:hover {
+  opacity: 0.78;
+  filter: blur(0.8px) saturate(0.92);
+  box-shadow:
+    0 30px 70px var(--study-shadow-deep),
+    0 0 0 2px color-mix(in oklab, var(--study-amber) 35%, transparent);
+}
+
+.study-card.is-back:focus-visible {
+  outline: 2px solid var(--study-amber);
+  outline-offset: 3px;
+}
+
+.study-card.is-context {
+  box-shadow:
+    0 30px 70px var(--study-shadow-deep),
+    0 0 0 2px color-mix(in oklab, var(--study-amber) 45%, transparent);
+}
+
+/* The parchment mute over a background card — the desk's depth-of-field, faded out the moment
+   the card takes the desk. */
+.study-card-mute {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  background: var(--study-mute);
+  opacity: 1;
+  transition: opacity 0.85s ease;
+  pointer-events: none;
+}
+
+.study-card.is-front .study-card-mute {
+  opacity: 0;
+}
+
+.study-card-face {
+  padding: 12px 28px 20px;
+}
+
+.study-card.is-front .study-card-face {
+  min-height: 0;
+  /* BOTH axes. A wide table's own minimum column widths can exceed the card, and a block cut
+     off at the card's edge is unreadable in the one direction the reader cannot fix. */
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* A block on the desk keeps its own anatomy but sheds its app chrome: the Study's card IS the
+   card. Tokens (rebound above) carry the palette in; these strip the double frame. */
+.study-card-face > * {
+  min-width: 0;
+}
+
+.study-card-face .card,
+.study-card-face .fit-box {
+  width: 100%;
+}
+
+.study-card-face .card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* The walk's spotlight choreography dims non-narrated cards on the grid; on the desk that job
+   belongs to the arc, so the embedded card never dims or drifts. */
+.study-card-face .card.spotlight,
+.study-card-face .card.dimmed {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+/* The narrated object wears the lamp: a slow amber ring while the voice is on it. Reaction to
+   something audibly happening — never pausable by the lite tier, only by the visibility layer. */
+/* The narrated object wears the lamp. Drawn on a pseudo-element and animated with opacity and
+   scale ONLY: the same ring as a box-shadow keyframe, without repainting the card and all its
+   contents on every frame of a loop that runs for as long as she is speaking. */
+.study-stage[data-study-speaking] .study-card.is-front::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--study-amber) 42%, transparent);
+  pointer-events: none;
+  animation: study-pulse 3.2s ease-in-out infinite;
+  animation-play-state: var(--reactive-play, running);
+}
+
+/* A live window resize must not ripple the desk: the shallow flag and slot maths retune per
+   frame, and 0.9s eased card moves compounding per RO tick read as the layout falling apart.
+   The app's global resize-quiet driver stamps :root[data-resizing] for exactly this. */
+:root[data-resizing] .study-card,
+:root[data-resizing] .study-card-mute {
+  transition: none;
+}
+
+/* ── Mavéa's note, on the desk beside the object ─────────────────────────────────────────── */
+
+.study-note-wrap {
+  position: absolute;
+  left: 1165px;
+  top: 392px;
+  width: 302px;
+  z-index: 11;
+  transform: translate(-50%, -50%) translateZ(75px);
+}
+
+.study-note-layer {
+  margin: 0 0 7px 4px;
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.18em;
+  color: var(--study-ink-faint);
+}
+
+.study-note {
+  border: 1px solid var(--study-note-border);
+  border-left: 4px solid var(--study-pen);
+  border-radius: 6px var(--r-md) var(--r-md) 6px;
+  background: var(--study-note-bg);
+  padding: 17px 18px 13px;
+  box-shadow: 0 24px 50px var(--study-shadow-deep);
+}
+
+.study-note-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 11px/1 var(--study-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--study-amber-deep);
+}
+
+.study-note-kicker b {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Mavéa's written hand is the SHIPPED face (see ink-hand-font.test.ts) — named first, so the
+   note never renders in a borrowed OS cursive. */
+/* Stage-prefixed on purpose: the template layer's button rule (`:root[data-template]
+   :is(button, …)`, specificity 0,1,1) would otherwise take the crib's handwritten lines —
+   which are buttons — back to the UI face. */
+.study-stage .study-note-copy,
+.study-stage .study-note-sig,
+.study-stage .study-takeaway-line,
+.study-stage .study-mark-text,
+.study-stage .study-crib .study-crib-line {
+  /* The crib line needs the extra ancestor: it is a BUTTON, and the template layer's
+     `:root[data-template] :is(button, …, .topbar)` rule weighs (0,2,1) — the :is() list's class
+     arguments price every button match at class strength. */
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
+}
+
+/* The note is written ON ruled paper: faint lines on the handwriting's own 28px rhythm, so the
+   hand sits on them rather than floating over a blank card. */
+.study-note-copy {
+  background-image: repeating-linear-gradient(
+    transparent 0 27px,
+    color-mix(in oklab, var(--study-pen) 16%, transparent) 27px 28px
+  );
+  margin: 10px 0 0;
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--study-hand-ink);
+  text-wrap: pretty;
+}
+
+.study-note-sig {
+  margin-top: 6px;
+  text-align: right;
+  transform: rotate(-1.5deg);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--study-ink-faint);
+}
+
+.study-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  font: 500 11px/1 var(--study-mono);
+  color: var(--study-ink-muted);
+}
+
+.study-note-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.study-note-nav button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid var(--study-inner-border);
+  border-radius: 50%;
+  background: var(--study-inner);
+  color: var(--study-ink-muted);
+  font: 500 12px/1 var(--study-mono);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.study-note-nav button:hover {
+  border-color: var(--study-amber);
+  color: var(--study-amber-deep);
+}
+
+.study-note-nav button.is-now {
+  border: 1.5px solid var(--study-amber);
+  background: var(--study-highlight);
+  color: var(--study-amber-deep);
+}
+
+/* The arrow that makes the note POINT: from the note's edge toward the front card. */
+.study-connect {
+  position: absolute;
+  left: 872px;
+  top: 208px;
+  z-index: 11;
+  transform: translateZ(72px);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.study-connect path {
+  fill: none;
+  stroke: var(--study-pen);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* ── The takeaway, handwritten under the object ──────────────────────────────────────────── */
+
+.study-takeaway {
+  position: absolute;
+  bottom: calc(74px * var(--study-hud, 1));
+  left: 50%;
+  z-index: 10;
+  /* Wraps rather than truncates — a takeaway with an ellipsis is not one. `max-content` would
+     force a single runaway line, so it takes a real measure and balances across it. */
+  max-width: min(84%, calc(var(--study-scale, 1) * 760px));
+  transform: translateX(-50%) scale(var(--study-hud, 1));
+  transform-origin: bottom center;
+  text-align: center;
+  text-wrap: balance;
+  pointer-events: none;
+}
+
+.study-takeaway-kicker {
+  margin-right: 12px;
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--study-ink-faint);
+}
+
+.study-takeaway-line {
+  /* inline-block, not inline: the hand's sway and write-on are transforms, which an inline box
+     ignores. With the wrapper's max-content gone it wraps inside its measure just the same. */
+  display: inline-block;
+  font-weight: 500;
+  /* Tracks the desk's scale so the handwriting cannot out-shout the object it summarizes;
+     ≥17.2px at the 9/11 floor, comfortably above the legibility line. */
+  font-size: calc(21px * var(--study-scale, 1));
+  line-height: 1.3;
+  color: var(--study-hand-ink);
+}
+
+.study-takeaway-stroke {
+  display: block;
+  margin: 3px auto 0;
+}
+
+.study-takeaway-stroke path {
+  fill: none;
+  stroke: var(--study-pen);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0.65;
+}
+
+.study-takeaway-stroke path.is-second {
+  stroke-width: 1.2;
+  opacity: 0.32;
+}
+
+/* ── The beat bar: the answer's spine, walkable ──────────────────────────────────────────── */
+
+.study-beats {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  /* The HUD keeps its authored size on a normal stage (that is what protects legibility when
+     the desk shrinks) and grows WITH the desk in full screen, where there is room to spare and
+     a fixed-size control row would read as a toy bar under a huge composition. */
+  transform: translateX(-50%) scale(var(--study-hud, 1));
+  transform-origin: bottom center;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92%, 1080px);
+  padding: 7px 10px;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: var(--study-glass);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  box-shadow: 0 14px 34px var(--study-shadow-soft);
+}
+
+.study-guide {
+  flex: none;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--study-highlight);
+  color: var(--study-amber-deep);
+  font: 600 13px/1 var(--study-serif);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-guide.is-on {
+  background: var(--study-green);
+  color: var(--study-card);
+}
+
+.study-beats-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* No edge fade. It was meant to say "more this way", but the first and last chips cannot be
+     scrolled away from the ends — centring clamps at 0 — so the fade sat permanently over a
+     real, clickable label. The row's own end padding keeps a chip off the pill's rounded edge,
+     and overflow says the rest of the sentence better than a gradient that eats it. */
+  padding-inline: 2px;
+}
+
+.study-beats-row::-webkit-scrollbar {
+  display: none;
+}
+
+.study-beat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  font: 400 12.5px/1 var(--study-serif);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-beat.is-now {
+  background: var(--study-chip-active);
+  color: var(--study-chip-active-ink);
+  font-weight: 600;
+}
+
+.study-beat-num {
+  font: 600 11px/1 var(--study-mono);
+  color: var(--study-beat-num);
+}
+
+.study-beat.is-now .study-beat-num {
+  color: #e8b87a;
+}
+
+.study-beat-label {
+  /* Whole names. A beat chip IS the object's name — clipped to 15 characters, three cards in a
+     row read as "The Physics of …", "Fiber vs. Copp…", which is no name at all. The row
+     scrolls and keeps the active chip centred, so length costs nothing but scroll. */
+  white-space: nowrap;
+}
+
+.study-beat-next {
+  flex: none;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--study-amber);
+  color: #fcf8ed;
+  font: 500 13px/1 var(--study-serif);
+  cursor: pointer;
+}
+
+.study-beat-next:hover {
+  background: var(--study-amber-press);
+}
+
+/* ── The pen's margin quip, beside the object on the desk ────────────────────────────────── */
+
+/* ── The pen's scrawls, around the card the way a hand actually writes ────────────────────────
+   Anchored to the front CARD (children of the article), at the design's own three positions:
+   the structural remark on the left pointing in, a second angle below, a question over the
+   shoulder. Card-relative, so they travel with the object and their arrows always find it no
+   matter how tall the card is. */
+.study-mark {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.study-mark-text {
+  /* No clamp: a scrawl is capped at 46 characters where it is written (penQuip), so the only
+     thing a line limit could add here is an ellipsis on handwriting. */
+  font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--study-pen);
+  text-wrap: balance;
+}
+
+.study-mark-arrow {
+  position: absolute;
+  width: 90px;
+  height: 70px;
+  overflow: visible;
+}
+
+.study-mark-line,
+.study-mark-head {
+  fill: none;
+  stroke: var(--study-pen);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* The design's slots, in card space: left of the metric zone, under the foot, over the top
+   right shoulder. Each carries its own hand-tilt and its own type size — a scrawl written at
+   arm's length is bigger than one squeezed above the card. */
+.study-mark.slot-left {
+  left: -168px;
+  top: 24px;
+  width: 150px;
+  transform: rotate(-4deg);
+}
+
+.study-mark.slot-left .study-mark-text {
+  font-size: 21px;
+}
+
+.study-mark.slot-left .study-mark-arrow {
+  right: -32px;
+  top: 40px;
+}
+
+.study-mark.slot-bottom {
+  /* Hangs off the card's lower-left, not under its middle: the takeaway is centred beneath the
+     desk, and two hands writing on the same line is a collision by construction. */
+  left: -150px;
+  bottom: -34px;
+  width: 176px;
+  text-align: right;
+  transform: rotate(-1.5deg);
+}
+
+.study-mark.slot-bottom .study-mark-text {
+  font-size: 19px;
+}
+
+.study-mark.slot-bottom .study-mark-arrow {
+  right: -74px;
+  bottom: 10px;
+}
+
+.study-mark.slot-top {
+  right: -132px;
+  top: -46px;
+  width: 150px;
+  text-align: right;
+  transform: rotate(2deg);
+}
+
+.study-mark.slot-top .study-mark-text {
+  font-size: 18px;
+}
+
+.study-mark.slot-top .study-mark-arrow {
+  left: -74px;
+  top: 26px;
+}
+
+/* ── Session notes: the legal pad that remembers the walk ────────────────────────────────── */
+
+.study-beats-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--study-glass-line);
+  flex: none;
+}
+
+.study-crib-toggle {
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: transparent;
+  font: 400 12.5px/1 var(--study-serif);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.study-crib-toggle.is-open {
+  background: var(--study-chip-active);
+  border-color: var(--study-chip-active);
+  color: var(--study-chip-active-ink);
+}
+
+.study-crib {
+  position: absolute;
+  right: max(26px, calc(50% - var(--study-scale, 1) * 720px + 10px));
+  bottom: 74px;
+  z-index: 12;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 314px;
+  max-height: calc(100% - 96px);
+  padding: 14px 14px 22px 0;
+  transform: rotate(1.2deg) scale(var(--study-hud, 1));
+  transform-origin: bottom right;
+  border: 1px solid var(--study-note-border);
+  border-radius: 4px;
+  background: var(--study-crib);
+  box-shadow: 0 24px 50px var(--study-shadow-deep);
+}
+
+/* A strip of tape holding the pad to the desk. */
+.study-crib-tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 74px;
+  height: 18px;
+  transform: translateX(-50%) rotate(-1.6deg);
+  border-left: 1px solid color-mix(in oklab, var(--study-ink) 8%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--study-ink) 8%, transparent);
+  background: color-mix(in oklab, var(--study-ink) 7%, transparent);
+}
+
+.study-crib-close {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  padding: 3px 6px;
+  border: 0;
+  background: transparent;
+  font: 500 12px/1 var(--study-mono);
+  color: var(--study-ink-faint);
+  cursor: pointer;
+}
+
+.study-crib-close:hover {
+  color: var(--study-ink-soft);
+}
+
+.study-crib-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 26px 0 30px;
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--study-ink-faint);
+}
+
+.study-crib-lines {
+  min-height: 110px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin-top: 6px;
+  padding: 0 10px 0 30px;
+  /* Ruled every 27px — the entries' own line-height — plus the pad's vertical margin rule. */
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 20px,
+      color-mix(in oklab, var(--study-red) 34%, transparent) 20px 21px,
+      transparent 21px
+    ),
+    repeating-linear-gradient(transparent 0 26px, var(--study-crib-rule) 26px 27px);
+  background-attachment: local;
+}
+
+.study-crib-line {
+  display: block;
+  width: 100%;
+  /* A blank ruled line between entries — separation that keeps the 27px writing rhythm. */
+  margin: 0 0 27px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font:
+    500 18.5px/27px 'Caveat',
+    'Bradley Hand',
+    'Segoe Print',
+    cursive;
+  color: var(--study-hand-ink);
+  cursor: pointer;
+}
+
+.study-crib-line:last-child {
+  margin-bottom: 0;
+}
+
+.study-crib-line:hover {
+  color: var(--study-amber-deep);
+}
+
+/* ── The voice bubble: what Mavéa is saying, written as she says it ──────────────────────── */
+
+.study-voice {
+  position: absolute;
+  top: 18px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* One walk line at a time (never the opener paragraph), clamped so it ends left of the
+     front card's edge at EVERY scale: the card's left edge sits at 50cqw − 428.8px·scale
+     (410 desk px half-offset × the translateZ(70) projection 1600/1530), and 64px absorbs the
+     bubble inset plus the parallax swing. On a wide stage the bubble hugs the desk's own edge
+     rather than floating in the dead parchment. */
+  left: max(22px, calc(50% - var(--study-scale, 1) * 720px + 16px));
+  max-width: clamp(190px, calc(50cqw - 428.8px * var(--study-scale, 1) - 64px), 340px);
+  padding: 9px 14px 10px;
+  transform: scale(var(--study-hud, 1));
+  transform-origin: top left;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-md);
+  background: var(--study-glass);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  pointer-events: none;
+}
+
+.study-voice-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 12px;
+}
+
+.study-voice-eq i {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--study-amber);
+  transform-origin: bottom;
+  animation: study-eq 0.5s ease-in-out infinite;
+  animation-play-state: var(--reactive-play, running);
+}
+
+.study-voice-eq i:nth-child(2) {
+  animation-duration: 0.63s;
+  animation-delay: 0.09s;
+}
+
+.study-voice-eq i:nth-child(3) {
+  animation-duration: 0.76s;
+  animation-delay: 0.18s;
+}
+
+.study-voice-eq i:nth-child(4) {
+  animation-duration: 0.89s;
+  animation-delay: 0.27s;
+}
+
+.study-voice-eq i:nth-child(5) {
+  animation-duration: 1.02s;
+  animation-delay: 0.36s;
+}
+
+.study-voice-text {
+  /* No clamp and no typewriter clip. A clip that restarts on every line update never finishes,
+     which left the spoken line permanently cut mid-word; the equalizer already says she is
+     talking, so the words simply arrive. */
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--study-ink-soft);
+}
+
+.study-voice-caret {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--study-amber);
+  animation: study-blink 1s step-end infinite;
+  animation-play-state: var(--reactive-play, running);
+}
+
+/* ── The intro: the answer arrives, then becomes the desk ────────────────────────────────── */
+
+.study-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--study-scrim);
+  backdrop-filter: var(--glass-blur, blur(7px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(7px));
+  cursor: pointer;
+}
+
+.study-intro-skip {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.study-intro > :not(.study-intro-skip) {
+  pointer-events: none;
+}
+
+.study-intro .study-intro-enter {
+  pointer-events: auto;
+}
+
+.study-intro-kicker {
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--study-ink-faint);
+}
+
+.study-intro-card {
+  max-width: min(620px, 84%);
+  padding: 22px 26px;
+  border: 1px solid var(--study-card-border);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--study-card);
+  box-shadow: 0 30px 70px var(--study-shadow-deep);
+}
+
+.study-intro-card p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--study-ink-soft);
+  text-wrap: pretty;
+}
+
+.study-intro-watch {
+  font: 500 11px/1 var(--study-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--study-ink-faint);
+}
+
+.study-intro-enter {
+  padding: 11px 22px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--study-amber);
+  color: #fcf8ed;
+  font: 500 14.5px/1 var(--study-serif);
+  cursor: pointer;
+  box-shadow: 0 12px 26px color-mix(in oklab, var(--study-amber) 35%, transparent);
+}
+
+.study-intro-enter:hover {
+  background: var(--study-amber-press);
+}
+
+/* While gathered, every card waits at the centre of the desk, tiny and unlit; entering removes
+   the attribute and the ordinary slot transitions fan the cast out — the mockup's assembly. */
+.study-stage[data-gathered] .study-card {
+  left: 590px;
+  top: 420px;
+  transform: translate(-50%, -50%) translateZ(70px) scale(0.22);
+  opacity: 0;
+  transition: none;
+}
+
+.study-stage[data-gathered] .study-fullscreen {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.study-stage[data-gathered] .study-note-wrap,
+.study-stage[data-gathered] .study-connect,
+.study-stage[data-gathered] .study-mark,
+.study-stage[data-gathered] .study-takeaway,
+.study-stage[data-gathered] .study-beats {
+  visibility: hidden;
+}
+
+/* ── The fullscreen control ──────────────────────────────────────────────────────────────── */
+
+.study-fullscreen {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--study-glass-line);
+  border-radius: var(--r-full);
+  background: var(--study-glass);
+  backdrop-filter: var(--glass-blur-soft);
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  color: var(--study-ink-soft);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.study-stage:hover .study-fullscreen,
+.study-fullscreen:focus-visible,
+.study-stage:is(:fullscreen, .is-fullscreen) .study-fullscreen {
+  opacity: 1;
+}
+
+.study-fullscreen:hover {
+  color: var(--study-ink);
+  border-color: var(--study-amber);
+}
+
+.study-fullscreen svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: none) {
+  .study-fullscreen {
+    opacity: 1;
+  }
+}
+
+/* Fullscreening a flat reading column adds nothing on a small window — gate by WINDOW width
+   (the fullscreen state itself changes the container width, so a container query would
+   flip the control off mid-use). */
+@media (max-width: 880px) {
+  .study-fullscreen {
+    display: none;
+  }
+}
+
+/* ── Filling the screen ──────────────────────────────────────────────────────────────────────
+   `:fullscreen` is the element's own state, so this needs no class plumbing. The frame comes off
+   (a bordered, rounded panel is a card ON a page; full screen it IS the page). A full-screen
+   element gets a black backdrop by default, so the background is stated explicitly. */
+.study-stage:is(:fullscreen, .is-fullscreen) {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--study-bg);
+}
+
+/* ── A shallow stage: protect the cards, sacrifice the floor ─────────────────────────────────
+   Set by useStudyScale when the clamped scale would crop deeper than the desk's decorative band.
+   The floor-grid band collapses and the whole composition lifts, so the crop lands on empty
+   parchment rather than on the arc. */
+.study-stage[data-shallow] .study-floor {
+  display: none;
+}
+
+.study-stage[data-shallow] .study-card.is-back {
+  top: calc(var(--sy) - 34px);
+}
+
+/* ── One-shot entrances (draw-on ink, the note writing itself) ───────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .study-note-copy {
+    animation: study-write 0.9s 0.15s ease-out backwards;
+  }
+
+  .study-note-sig {
+    animation: study-write 0.5s 1s ease-out backwards;
+  }
+
+  /* Per-animation play-states, ambient first: the entrance must finish even when the lite tier
+     pauses the ambient sway, or a paused declaration freezes the note at opacity 0. */
+  .study-note {
+    animation: study-fade-up 0.4s ease both;
+  }
+
+  .study-takeaway-line {
+    animation: study-write 0.9s 0.5s ease-out backwards;
+  }
+
+  .study-connect-line {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+    animation: study-draw 0.8s 0.3s ease forwards;
+  }
+
+  .study-connect-head {
+    stroke-dasharray: 44;
+    stroke-dashoffset: 44;
+    animation: study-draw 0.3s 1s ease forwards;
+  }
+
+  .study-takeaway-stroke path {
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: study-draw 0.7s 0.7s ease forwards;
+  }
+
+  .study-takeaway-stroke path.is-second {
+    animation-delay: 1.15s;
+  }
+
+  .study-mark-text {
+    animation: study-write 0.8s 0.3s ease-out backwards;
+  }
+
+  .study-mark.slot-bottom .study-mark-text {
+    animation-delay: 2.5s, 0.95s;
+  }
+
+  .study-mark.slot-top .study-mark-text {
+    animation-delay: 3.4s, 1.6s;
+  }
+
+  .study-mark-line {
+    stroke-dasharray: 120;
+    stroke-dashoffset: 120;
+    animation: study-draw 0.5s 0.8s ease forwards;
+  }
+
+  .study-mark-head {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: study-draw 0.3s 1.2s ease forwards;
+  }
+
+  .study-mark.slot-bottom .study-mark-line {
+    animation-delay: 1.45s;
+  }
+
+  .study-mark.slot-bottom .study-mark-head {
+    animation-delay: 1.85s;
+  }
+
+  .study-mark.slot-top .study-mark-line {
+    animation-delay: 2.1s;
+  }
+
+  .study-mark.slot-top .study-mark-head {
+    animation-delay: 2.5s;
+  }
+
+  .study-crib {
+    animation: study-pop 0.3s ease both;
+  }
+
+  .study-intro-kicker,
+  .study-intro-watch,
+  .study-intro-enter {
+    animation: study-fade-up 0.5s ease both;
+  }
+
+  .study-intro-watch {
+    animation-delay: 0.35s;
+  }
+
+  .study-intro-enter {
+    animation-delay: 0.5s;
+  }
+
+  .study-intro-card {
+    animation: study-pop 0.45s 0.1s ease both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-card,
+  .study-card-mute {
+    transition: none;
+  }
+
+  .study-voice-eq i,
+  .study-voice-caret,
+  .study-stage[data-study-speaking] .study-card.is-front {
+    animation: none;
+  }
+}
+
+@keyframes study-pop {
+  from {
+    opacity: 0;
+    transform: rotate(1.2deg) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(1.2deg) scale(1);
+  }
+}
+
+@keyframes study-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes study-write {
+  from {
+    clip-path: inset(-20% 105% -25% -5%);
+  }
+  to {
+    clip-path: inset(-20% -8% -25% -5%);
+  }
+}
+
+@keyframes study-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes study-eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes study-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes study-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  55% {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+}
+
+/* Scrolled off screen, the stage's own observer sets --ambient-play; the desk's reaction loops
+   honour it too, since a bar bouncing where nobody can see it is pure cost. The canonical
+   --reactive-play contract above still governs the lite tier. */
+.study-stage[style*='--ambient-play'] .study-voice-eq i,
+.study-stage[style*='--ambient-play'] .study-voice-caret,
+.study-stage[style*='--ambient-play'] .study-card.is-front::after {
+  animation-play-state: paused;
+}
+
+/* The lite tier (a weak GPU, or a machine the probe found struggling) drops the depth of field
+   and the paper grain outright: five blurred layers and a full-stage texture are exactly the
+   costs that tier exists to remove. The composition still reads — the arc is dimmed and scaled,
+   which is what says "behind". */
+:root[data-perf='lite'] .study-card.is-back {
+  filter: saturate(0.8);
+}
+
+:root[data-perf='lite'] .study-grain,
+:root[data-perf='lite'] .study-floor {
+  display: none;
+}
+
+/* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
+   Under ~880px of container the 3-D composition has nothing to offer but squinting; the Study
+   reflows to a flat reading column — the front card full-width, Mavéa's note beneath it, the
+   beat bar as the whole navigator. Background objects keep their NAMES (the beat chips), never
+   an unreadable miniature. */
+/* The stage's OWN box in compact — driven by the attribute useStudyScale publishes, because a
+   container query only ever reaches a container's descendants, never the container itself. */
+.study-stage[data-compact] {
+  height: auto;
+  padding: 14px;
+}
+
+@container study (max-width: 980px) {
+  .study-desk {
+    position: static;
+    background: var(--study-bg);
+  }
+
+  .study-canvas,
+  .study-scene {
+    position: static;
+    width: auto;
+    height: auto;
+    transform: none;
+    perspective: none;
+  }
+
+  .study-floor,
+  .study-pool,
+  .study-vignette,
+  .study-grain,
+  .study-connect,
+  .study-mark,
+  .study-card.is-back,
+  .study-card-mute {
+    display: none;
+  }
+
+  .study-crib {
+    position: static;
+    width: auto;
+    margin: 0 0 14px;
+    transform: none;
+  }
+
+  .study-card.is-front {
+    position: static;
+    width: 100% !important;
+    transform: none;
+    margin: 0 0 14px;
+  }
+
+  .study-note-wrap {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0 0 14px;
+  }
+
+  .study-takeaway {
+    position: static;
+    width: auto;
+    transform: none;
+    margin: 0 0 14px;
+  }
+
+  .study-beats {
+    position: static;
+    transform: none;
+    max-width: none;
+    flex-wrap: wrap;
+    border-radius: 18px;
+  }
+
+  .study-voice {
+    position: static;
+    max-width: none;
+    margin: 0 0 14px;
+  }
+
+  .study-beats-row {
+    flex-wrap: wrap;
+  }
+}

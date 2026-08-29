@@ -87,7 +87,7 @@ import { Icon, ICON_KEYS, type IconKey } from '../icons/icons';
 import { completedBlocks as recoverBlocks, extractStringField } from '../live/streamParse';
 import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.generated';
 import { enumValuesFromHint } from '../canvas/blocks/catalog/propHints';
-import { resolvesKeyedRows, resolvesTextItems } from '../canvas/lib/empty';
+import { resolvesCellMatrix, resolvesKeyedRows, resolvesTextItems } from '../canvas/lib/empty';
 import {
   trimToSentence,
   collapseRepeatedValues,
@@ -1758,6 +1758,7 @@ function coerceGeneric(
   // check above — length 5, nothing null — and renders as a header over blank lines. Drop it here,
   // the same as any other block whose data cannot be shown.
   if (!resolvesKeyedRows(meta.type, repaired)) return null;
+  if (!resolvesCellMatrix(meta.type, repaired)) return null;
   // The same defect where the items are a plain list rather than keyed rows: an entry whose text is
   // blank (or is markup that paints nothing) still counts, and still draws its own furniture.
   if (!resolvesTextItems(meta.type, repaired)) return null;

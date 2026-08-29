@@ -21,6 +21,7 @@ const HAND_SITES = [
   'src/live/annotate/annotate.css', // the pen's notes + the "?" glyph on the Live canvas
   'src/live/prism/prism.css', // the same hand over a document page
   'src/clip/reel/templates/finishes/documentMarkup.tsx', // ...and in the rasterized reel
+  'src/canvas/study/study.css', // Mavéa's note and the takeaway on the Study's desk
 ];
 
 describe("the pen's hand is shipped, not borrowed from the OS", () => {

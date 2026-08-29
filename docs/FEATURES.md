@@ -18,6 +18,12 @@ index, or open the **Explore** menu in the top bar.
   one on the fly — a freeform diagram, or a custom layout arranged from existing blocks — rendered
   with the same design tokens and safety boundary. This is on by default; disabling it removes those
   contracts from the model menu.
+- 📖 **The Study** — the default way an answer arrives: one object on a lamplit desk, the rest of
+  the answer waiting in a shallow arc behind it, and Mavéa's notes in the margin beside it. Four
+  notes per object — what it assumes, the pattern in it, what can and cannot be backed, and a
+  pressure-test — each read from that object's own data, and each written at your Explain level.
+  A guided walk narrates the answer object by object; the session notes keep what was said.
+  Nothing here costs a model call.
 - 🎯 **Focus mode & Present mode** — flip any answer to a single hero card on a center stage with a
   live-thumbnail filmstrip, or go full theater: **Present** drops the chrome entirely, puts one slide
   on a dark stage with prev/next nav, and keeps the mic live so questions from the room become new

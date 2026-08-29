@@ -29,6 +29,7 @@ import {
   readSaidText,
   saidRect,
   saidRects,
+  reachable,
   rowOf,
   type SaidText,
 } from './saidTarget';
@@ -166,9 +167,11 @@ function findTarget(
       }
       const t = withSpan(saidBox, mark, said);
       t.el = m.node.parentElement ?? undefined;
-      // A highlight over a phrase that wraps re-touches each rendered line — collect every
-      // line box so the marker never smears one fat band across the whole wrap.
-      if (mark.kind === 'highlight') {
+      // A phrase that WRAPS reports one box per rendered line. Every glyph-hugging kind needs
+      // them: a highlight re-touches each row, and an underline or circle drawn from the first
+      // line's box alone strikes straight through its own wrapped words (the 'Pocket Wi-Fi'
+      // bug — the range's bounding box spans both rows).
+      if (mark.kind === 'highlight' || mark.kind === 'underline' || mark.kind === 'circle') {
         const rows = saidRects(m);
         if (rows.length > 1) t.rects = rows;
       }
@@ -196,7 +199,10 @@ function findTarget(
   }
   const stamped = host.querySelector<HTMLElement>('[data-mark]');
   const kind = gestureOf(stamped?.getAttribute('data-mark'));
-  if (stamped && kind) {
+  // reachable(): a card behind the Study's intro gate sits at opacity 0 and scale 0.22 — a
+  // mark measured there draws ~4× oversized the moment the desk assembles. The said-text path
+  // already refuses unreachable nodes inside saidRect; the stamped path must match it.
+  if (stamped && kind && reachable(stamped)) {
     const r = stamped.getBoundingClientRect();
     if (r.width > 0) return { rect: r, kind, el: stamped };
   }
@@ -448,6 +454,7 @@ function SpotInk({
   mark,
   generous,
   within,
+  residue,
   delayMs,
   badgeMs,
   revision,
@@ -463,6 +470,10 @@ function SpotInk({
   onPlaced?: () => void;
   /** Scopes host lookup to one surface — see AnnotationLayer's own doc. */
   within?: HTMLElement | null;
+  /** True once the voice has moved on from this block: the stroke keeps its exact geometry and
+   *  drops to residue weight, so the page accumulates into a marked-up artifact instead of a wall
+   *  of equally-loud ink. */
+  residue?: boolean;
   /** CSS animation delay in ms — for sequential multi-mark reveals. */
   delayMs?: number;
   /** How long to keep the "MAVÉA IS DRAWING" badge on the host. */
@@ -491,7 +502,10 @@ function SpotInk({
       setPlaced,
       () => setPlaced(null),
     );
-  }, [spot, line, mark, generous, within, revision, stepNumber]);
+    // `residue` flips exactly when the walk's live spot arrives on (or leaves) this block —
+    // which on the Study is the moment its card travels to the desk. Re-measuring then is what
+    // lets a mark whose earlier poll gave up (its card was scenery) finally land.
+  }, [spot, line, mark, generous, within, revision, stepNumber, residue]);
 
   // Report the first landing, once. The track lists drawn marks, not intended ones.
   const reportedRef = useRef(false);
@@ -562,7 +576,7 @@ function SpotInk({
     // viewBox = the container's size; the element fills it (the card, or the full scroll content).
     // Together they map visual-space geometry back onto the exact on-screen pixels. See measure().
     <svg
-      className="ink-layer"
+      className={'ink-layer' + (residue ? ' is-residue' : '')}
       aria-hidden="true"
       style={inkStyle}
       viewBox={`0 0 ${Math.max(1, Math.round(view.w))} ${Math.max(1, Math.round(view.h))}`}
@@ -687,6 +701,7 @@ function ConnectInk({
   toSpot,
   mark,
   within,
+  residue,
   delayMs,
   revision,
   onPlaced,
@@ -695,6 +710,10 @@ function ConnectInk({
   toSpot: string;
   mark: TourMark;
   within?: HTMLElement | null;
+  /** True once the voice has moved on from this block: the stroke keeps its exact geometry and
+   *  drops to residue weight, so the page accumulates into a marked-up artifact instead of a wall
+   *  of equally-loud ink. */
+  residue?: boolean;
   delayMs?: number;
   revision?: number;
   /** See SpotInk's `onPlaced`. */
@@ -731,7 +750,11 @@ function ConnectInk({
   const colorAttr = mark.color && mark.color !== 'warm' ? mark.color : undefined;
   const inkDelay = delayMs ? ({ '--ink-delay': `${delayMs}ms` } as React.CSSProperties) : undefined;
   return createPortal(
-    <svg className="ink-connect-layer" aria-hidden="true" style={inkDelay}>
+    <svg
+      className={'ink-connect-layer' + (residue ? ' is-residue' : '')}
+      aria-hidden="true"
+      style={inkDelay}
+    >
       <path
         className="ink-halo"
         d={stroke.d}
@@ -798,6 +821,7 @@ export function AnnotationLayer({
   within,
   revision,
   onPlaced,
+  liveSpot,
 }: {
   spots: InkRequest[];
   within?: HTMLElement | null;
@@ -805,6 +829,12 @@ export function AnnotationLayer({
   /** Called with a request the first time its mark actually lands, so the caller can show a
    *  gesture track of what was DRAWN rather than what was attempted. */
   onPlaced?: (request: InkRequest) => void;
+  /** The block the voice is on RIGHT NOW, when a walk is running. Marks on any other block are
+   *  drawn as residue — still there, still the artifact, just no longer shouting. Without this
+   *  every mark a walk ever drew stays at full weight, so by the sixth stop the page is a wall of
+   *  equally-loud ink and none of it reads as "look here". Absent (or null) means no walk is
+   *  running and nothing is residue: a finished page is read flat, all marks equal. */
+  liveSpot?: string | null;
 }): ReactElement | null {
   if (spots.length === 0) return null;
   warmHand();
@@ -835,6 +865,7 @@ export function AnnotationLayer({
               spot={s.spot}
               toSpot={s.toSpot}
               mark={s.mark}
+              residue={!!liveSpot && s.spot !== liveSpot}
               within={within}
               delayMs={s.delayMs}
               revision={revision}
@@ -849,6 +880,7 @@ export function AnnotationLayer({
             line={s.line}
             mark={s.mark}
             generous={s.generous}
+            residue={!!liveSpot && s.spot !== liveSpot}
             within={within}
             delayMs={s.delayMs}
             badgeMs={s.badgeMs}

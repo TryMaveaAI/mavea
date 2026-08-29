@@ -28,12 +28,23 @@ function blk(type: string, id?: string, props: Record<string, unknown> = {}): Bl
 describe('useFocusMode store', () => {
   beforeEach(() => {
     localStorage.clear();
-    setViewMode('everything'); // reset the in-session cache to the default
+    setViewMode('study'); // reset the in-session cache to the default
     localStorage.clear();
   });
 
-  it('defaults to the full grid (everything)', () => {
-    expect(getViewMode()).toBe('everything');
+  it('defaults to the Study', () => {
+    expect(getViewMode()).toBe('study');
+  });
+
+  it("migrates a stored pre-rename 'room' preference to 'study' on read", async () => {
+    localStorage.setItem('mavea-view-mode', 'room');
+    // A fresh module instance, so the read really comes from storage rather than the
+    // in-session cache the beforeEach just seeded.
+    vi.resetModules();
+    const fresh = await import('../src/canvas/focus/useFocusMode');
+    expect(fresh.getViewMode()).toBe('study');
+    // Migrated on read only — the stored value is never rewritten behind the user's back.
+    expect(localStorage.getItem('mavea-view-mode')).toBe('room');
   });
 
   it('persists the chosen mode to localStorage under the shared key', () => {
@@ -190,7 +201,7 @@ describe('TopicCanvas — Focus mode', () => {
     expect(container.querySelectorAll('.filmstrip-entry')).toHaveLength(3);
   });
 
-  it('falls back to the grid (and hides the toggle) when only one card can hold the stage', () => {
+  it('falls back to the grid but still offers Study when only one card can hold a stage', () => {
     const oneId: Block[] = [
       insight('a1', 'Alpha'),
       { type: 'list', col: 12, props: { title: 'Notes', items: ['x'] } } as Block,
@@ -207,7 +218,8 @@ describe('TopicCanvas — Focus mode', () => {
     );
     expect(container.querySelector('.focus-stage')).toBeNull();
     expect(container.querySelector('.card-grid')).not.toBeNull();
-    expect(container.querySelector('.focus-toggle')).toBeNull();
+    expect(container.querySelector('.focus-toggle')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Focus"]')).toBeNull();
   });
 
   it('rests on the lead insight, then follows the conversation as spot moves', () => {

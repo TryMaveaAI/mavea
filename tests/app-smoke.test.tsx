@@ -47,7 +47,7 @@ describe('FlagshipHost (the landing) — mounts and shows the marketing home', (
     // The old behavior stashed tour mode and hopped to #/live the instant the home mounted —
     // the landing must now stay put and offer the tour instead of forcing it.
     expect(window.location.hash).not.toBe('#/live');
-    expect(screen.getByText(/2-minute guided tour/i)).toBeInTheDocument();
+    expect(screen.getByText(/one question become a study/i)).toBeInTheDocument();
   });
 
   it('dismissing the tour invite retires it without navigating away', () => {
@@ -55,20 +55,20 @@ describe('FlagshipHost (the landing) — mounts and shows the marketing home', (
     render(<FlagshipHost />);
     fireEvent.click(screen.getByText(/I'll explore on my own/i));
     expect(window.location.hash).not.toBe('#/live');
-    expect(screen.queryByText(/2-minute guided tour/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/one question become a study/i)).not.toBeInTheDocument();
   });
 
-  it('a returning visitor (tour already seen) gets the plain "Watch it work" link', () => {
+  it('a returning visitor gets the plain key-free Study replay link', () => {
     localStorage.setItem('mavea-tour-seen-v1', '1');
     render(<FlagshipHost />);
-    expect(screen.getByText(/Watch it work/i)).toBeInTheDocument();
-    expect(screen.queryByText(/2-minute guided tour/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/^Watch the Study$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/one question become a study/i)).not.toBeInTheDocument();
   });
 
   it('shows the flagship hero and the entry into Live', () => {
     render(<FlagshipHost />);
     // the flagship hero headline (also echoed in the closing CTA, hence getAllByText).
-    expect(screen.getAllByText(/See what it means/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/come alive around you/i).length).toBeGreaterThanOrEqual(1);
     // the "Open Mavéa" call-to-action that hops to the Live surface — the one consistent label
     // used everywhere on the page (nav + the closing CTA both read it, hence getAllByRole).
     expect(screen.getAllByRole('button', { name: /Open Mavéa/i }).length).toBeGreaterThanOrEqual(1);

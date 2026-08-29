@@ -93,6 +93,14 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
   },
   share: { notice: 'publishing', reviewed: ['public distribution', 'rights and accuracy'] },
   export: { notice: 'publishing', reviewed: ['document distribution', 'rights and accuracy'] },
+  study: {
+    notice: 'generated',
+    reviewed: [
+      'AI output presentation',
+      'pointer and keyboard only',
+      'no additional device access',
+    ],
+  },
   board: { notice: 'generated', reviewed: ['AI output presentation'] },
   focus: { notice: 'generated', reviewed: ['AI output presentation'] },
   ink: { notice: 'generated', reviewed: ['AI follow-up output'] },

@@ -189,10 +189,14 @@ export async function awaitFirstPaint(
       // WAIT for the first card rather than checking once: on the opening turn the stage itself
       // has not mounted yet when the first sentence forms, so a single look would find nothing and
       // wave the voice through on exactly the turn this exists for. `bounded` owns the ceiling.
-      let card = host()?.querySelector(cardSelector) ?? null;
+      // A card behind the Study's intro gate ([data-gathered]) is mounted but invisible —
+      // waving the voice through against it starts the walk under the overlay.
+      const visible = (el: Element | null): Element | null =>
+        el && !el.closest('[data-gathered]') ? el : null;
+      let card = visible(host()?.querySelector(cardSelector) ?? null);
       while (!card) {
         await nextFrame();
-        card = host()?.querySelector(cardSelector) ?? null;
+        card = visible(host()?.querySelector(cardSelector) ?? null);
       }
       // Poll a frame at a time rather than listening: a card's entrance is a TRANSITION whose
       // `transitionend` never fires if it had already finished when we looked, and several

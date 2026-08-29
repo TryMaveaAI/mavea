@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fitScale } from '../src/canvas/spatial/camera';
 import { layoutGraph } from '../src/canvas/spatial/morph/layouts/graphLayout';
+import { COUNTER_MAX } from '../src/canvas/spatial/morph/layouts/lanes';
 import type { MorphLayout, WorldData } from '../src/canvas/spatial/morph/types';
 
 // Opening a breakdown changes the composition, not just what is drawn: an open card becomes a
@@ -49,6 +50,24 @@ function chainWithBreakdown(children: number): WorldData {
 const open = (world: WorldData, ...ids: string[]): MorphLayout =>
   layoutGraph(world, { viewport: HINT, expandedIds: new Set(ids) });
 
+/** A placed box grown to the footprint the reader can actually SEE.
+ *
+ *  The counter-scale blows a face up by as much as COUNTER_MAX as the camera pulls back, around
+ *  its own centre — so `w`/`h` are what the card is authored at, never what it occupies. Comparing
+ *  the authored boxes is why this file did not catch the bug it exists to catch: children stood
+ *  CARD_W + 4 = 204 from their parent, which clears a 200-wide box by 4px and runs 76px into a
+ *  280-wide one. Measured in a browser at the camera's floor, every card rendered 280 × 90.
+ *
+ *  This is the same rule the file's own header states for heights ("the geometry was correct for
+ *  boxes nobody was rendering"), applied to the other axis. */
+const grown = (b: { x: number; y: number; w: number; h: number }) => {
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  const hw = (b.w * COUNTER_MAX) / 2;
+  const hh = (b.h * COUNTER_MAX) / 2;
+  return { left: cx - hw, right: cx + hw, top: cy - hh, bottom: cy + hh };
+};
+
 const overlaps = (layout: MorphLayout): string[] => {
   const placed = [...layout.positions.entries()];
   const bad: string[] = [];
@@ -58,7 +77,9 @@ const overlaps = (layout: MorphLayout): string[] => {
       const [bId, b] = placed[j];
       // A folded breakdown is coincident with its parent by design.
       if (a.x === b.x && a.y === b.y) continue;
-      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) {
+      const A = grown(a);
+      const B = grown(b);
+      if (A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom) {
         bad.push(`${aId} overlaps ${bId}`);
       }
     }

@@ -46,6 +46,8 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
         ask: 'Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M.',
         bakeAsk:
           'Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M. Build the full picture, including growth, the churn drift, and how the regions stack up.',
+        beats: [{ kind: 'study', atMs: 650, connect: 2 }],
+        note: 'One question becomes a study. Renata holds two objects together. Now “these” has meaning.',
         expect: { minBlocks: 4, suggests: true },
       },
       {

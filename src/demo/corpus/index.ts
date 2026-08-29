@@ -5,7 +5,7 @@
 // Live mount pays nothing for demos it never plays. The double cast below is deliberate — TS
 // infers a giant readonly literal from the JSON that doesn't structurally match our unions
 // (e.g. `mode: string` vs the `Mode` union), so we assert the shape the baker generated.
-import { resolvesKeyedRows, resolvesTextItems } from '../../canvas/lib/empty';
+import { resolvesCellMatrix, resolvesKeyedRows, resolvesTextItems } from '../../canvas/lib/empty';
 import type { DemoConversation } from './types';
 
 const SHARDS = import.meta.glob('./*.generated.json');
@@ -23,7 +23,10 @@ function usableFrames(convo: DemoConversation): DemoConversation {
   const frames = convo.frames.map((frame) => {
     const blocks = frame.spec.blocks;
     const keep = blocks.map(
-      (b) => resolvesKeyedRows(b.type, b.props) && resolvesTextItems(b.type, b.props),
+      (b) =>
+        resolvesKeyedRows(b.type, b.props) &&
+        resolvesCellMatrix(b.type, b.props) &&
+        resolvesTextItems(b.type, b.props),
     );
     if (keep.every(Boolean)) return frame;
     changed = true;

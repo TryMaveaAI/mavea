@@ -21,6 +21,7 @@ import type { DemoConversation } from './corpus/types';
 import { syncDemoUrl } from './demoEntry';
 import type { TurnFrame } from '../live/history';
 import { naturalGuidedCopy, naturalizeGuidedFrame } from '../tour/guidedCopy';
+import { savedViewMode } from '../canvas/focus/useFocusMode';
 
 /** Default breath a turn step holds after its walk + beats before auto-advance. */
 const STEP_HOLD_MS = 4500;
@@ -110,6 +111,7 @@ export function useDemoDriver(opts: {
   const [note, setNote] = useState<string | null>(null);
   const opsRef = useRef(opts.ops);
   opsRef.current = opts.ops;
+  const viewRestoreRef = useRef(savedViewMode());
   // The moment (ms epoch) the current step is allowed to auto-advance: set once its walk went
   // quiet and its beats were scheduled (quiet + beats tail + hold). Null while still revealing.
   const stepReadyAtRef = useRef<number | null>(null);
@@ -157,6 +159,9 @@ export function useDemoDriver(opts: {
     stepReadyAtRef.current = null;
 
     resetTriggers();
+    // Curated replays lead with the product's defining surface even when this browser previously
+    // chose a grid. The visitor's standing preference is restored when the replay unmounts.
+    o.setViewMode('study');
     o.setMuted(userMutedRef.current);
 
     const rawFrame = frameFor(script.steps, index, convo);
@@ -257,7 +262,13 @@ export function useDemoDriver(opts: {
   }, [index, token, active, started, done, playing, total, loadState, resetTriggers]);
 
   // Clean up on unmount so no feature is left open.
-  useEffect(() => () => resetTriggers(), [resetTriggers]);
+  useEffect(
+    () => () => {
+      resetTriggers();
+      opsRef.current.setViewMode(viewRestoreRef.current);
+    },
+    [resetTriggers],
+  );
 
   const start = useCallback(() => {
     unlockAudio();

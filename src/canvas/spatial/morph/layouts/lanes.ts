@@ -59,6 +59,16 @@ export const COUNTER_MAX = 1.4;
  * cards in one column, touching. Reserve these, not the authored numbers.
  */
 export const CARD_SLOT_H = CARD_H_MAX * COUNTER_MAX;
+/** The same arithmetic ACROSS a card, and the half of this rule that was missing. Heights got their
+ *  slot and entries got their width, but a card's width never did — so anything spacing cards
+ *  horizontally by `CARD_W` was reserving 200 for a box that stands 280 at full counter.
+ *
+ *  It hid because the graph's columns clear it by construction (COL_W 300 ≥ CARD_W × 1.5), and a
+ *  FOLDED composition is nothing but columns. Open a breakdown and the offset that stands children
+ *  beside their parent was authored-width — measured in the browser at the camera's floor, the
+ *  children began 76px INSIDE the parent's own right edge and ran 80px into the next column, which
+ *  is exactly the "blocks overlap when you break down" report. */
+export const CARD_SLOT_W = CARD_W * COUNTER_MAX;
 export const ENTRY_SLOT_W = ENTRY_W * COUNTER_MAX;
 /** A HELD-ASIDE chip is narrower than a placed entry: it carries a name and nothing else — no date,
  *  no figure — and it is the one thing on the surface competing for room with the view it was

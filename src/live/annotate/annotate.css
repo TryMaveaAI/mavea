@@ -694,3 +694,23 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* ── Residue ─────────────────────────────────────────────────────────────────────────────────
+   A mark the voice has moved past. It keeps its geometry — it is still part of the artifact the
+   reader takes away — but stops competing with the beat that is live. Without this, a six-stop
+   walk ends with six equally-loud strokes and none of them reads as "look HERE".
+
+   Weight only: no transform, no re-draw. The stroke was measured against its host once and must
+   not move, or a residue mark would drift off the words it was drawn on. */
+.ink-layer.is-residue,
+.ink-connect-layer.is-residue {
+  opacity: 0.34;
+  transition: opacity var(--m-expressive, 420ms) var(--ease-out, ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-layer.is-residue,
+  .ink-connect-layer.is-residue {
+    transition: none;
+  }
+}

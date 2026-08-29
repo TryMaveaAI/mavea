@@ -1,0 +1,370 @@
+// penQuip.ts — the short line Mavéa scrawls in the margin beside an object.
+//
+// Not the note card's voice. The note card explains; the margin is where a hand jots the one
+// thing worth remembering, in five or six words — "wants ≠ needs. be honest", "boring is the
+// strategy". So this reads the block's OWN structure and writes about THAT object: a quip that
+// could be about any card is the failure mode (a generic "what would have to change for this to
+// stop being true?" beside every object is wallpaper, not a remark).
+//
+// Everything here is READ, never invented — the same rule notableIn works under. No model call:
+// a BYOK reader pays per token, and a scrawl is not worth one. Returns null when the block has
+// no structure worth a remark; the margin simply stays clean, which is always allowed.
+import type { Block } from '../../data/conversation';
+
+/** The margin is ~150px of handwriting: past this a quip stops reading as a scrawl. */
+const MAX = 46;
+
+const fits = (text: string): string | null => (text.length <= MAX ? text : null);
+
+/** Rounded the way a person says a share out loud. */
+const pct = (n: number): string => `${Math.round(n)}%`;
+
+/** Trim a label down to something a hand would actually write. */
+function shortLabel(value: string | undefined, cap = 22): string | null {
+  if (!value) return null;
+  const text = value.replace(/\s+/g, ' ').trim();
+  if (!text || text.length > cap) return null;
+  return text;
+}
+
+/**
+ * One handwritten remark for this block, or null. `seed` (the block's position) picks between
+ * equally-true phrasings so an answer carrying three lists does not scrawl the same words three
+ * times — variety without invention.
+ */
+export function penQuip(block: Block, seed = 0): string | null {
+  const pick = <T>(options: readonly T[]): T => options[seed % options.length];
+
+  switch (block.type) {
+    case 'insight': {
+      const { stat, delta, conf } = block.props;
+      if (delta && stat) return fits(pick([`${delta} is the move`, `read ${stat} with ${delta}`]));
+      if (conf && conf !== 'strong' && stat) return fits(`${stat} — worth double-checking`);
+      if (stat) return fits(`carry ${stat} forward`);
+      return null;
+    }
+
+    case 'kpi': {
+      const kpis = block.props.kpis;
+      if (kpis.length < 2) return null;
+      const lead = shortLabel(kpis[0]?.label, 18);
+      // Name the tile the answer led with, and the fact a grid never states about itself:
+      // these are measured separately, so none of them explains another.
+      return lead ? fits(`${lead} leads — none explains another`) : null;
+    }
+
+    case 'breakdown': {
+      const rows = block.props.rows.filter((r) => Number.isFinite(r.pct));
+      if (rows.length < 2) return null;
+      const top = rows.reduce((a, b) => (b.pct > a.pct ? b : a));
+      const sum = rows.reduce((a, r) => a + r.pct, 0);
+      const shareLike = Math.abs(sum - 100) <= 2;
+      const name = shortLabel(top.name);
+      if (!name) return pick(['the top row carries this', 'watch the leader here']);
+      const spread = top.pct - rows.reduce((a, b) => (b.pct < a.pct ? b : a)).pct;
+      if (spread < 8) return fits(`near-even — nothing carries it`);
+      return fits(shareLike ? `${name} is ${pct(top.pct)} of it` : `${name} leads the field`);
+    }
+
+    case 'donut': {
+      const rows = block.props.rows.filter((row) => Number.isFinite(row.pct));
+      if (rows.length < 2) return null;
+      const ordered = [...rows].sort((a, b) => b.pct - a.pct);
+      const name = shortLabel(ordered[0]?.label);
+      const gap = Math.round((ordered[0]?.pct ?? 0) - (ordered[1]?.pct ?? 0));
+      if (!name) return null;
+      return fits(gap >= 5 ? `${name} by ${gap} points` : `${name} — but it's close`);
+    }
+
+    case 'chart': {
+      const { labels, series } = block.props;
+      const first = series[0];
+      if (!first || first.data.length < 2) return null;
+      const start = first.data[0];
+      const end = first.data[first.data.length - 1];
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start === 0) return null;
+      const move = ((end - start) / Math.abs(start)) * 100;
+      const to = shortLabel(labels[labels.length - 1], 12);
+      if (Math.abs(move) < 2) return fits(`flat — that IS the finding`);
+      const dir = move > 0 ? 'up' : 'down';
+      return fits(
+        to ? `${dir} ${pct(Math.abs(move))} by ${to}` : `${dir} ${pct(Math.abs(move))} end to end`,
+      );
+    }
+
+    case 'compare': {
+      const { options, criteria } = block.props;
+      if (options.length < 2 || criteria.length === 0) return null;
+      const wins = options.map((_, i) => criteria.filter((c) => c.cells[i]?.win).length);
+      const best = wins.indexOf(Math.max(...wins));
+      const top = wins[best];
+      if (!top) return null;
+      const name = shortLabel(options[best]?.name, 16);
+      if (wins.filter((w) => w === top).length > 1) return `no clear winner — split`;
+      if (!name) return fits(`one option takes ${top} of ${criteria.length}`);
+      return fits(
+        top === criteria.length ? `${name} takes every row` : `${name}: ${top}/${criteria.length}`,
+      );
+    }
+
+    case 'timeline': {
+      const events = block.props.events;
+      if (events.length < 2) return null;
+      // Where it ENDS is what gets carried away; the steps before it are already on the card.
+      const last = shortLabel(events[events.length - 1]?.title, 20);
+      if (last) return fits(`${events.length} steps → ${last}`);
+      return `${events.length} steps — order is the argument`;
+    }
+
+    case 'checks': {
+      const failed = block.props.items.filter((i) => i.status === 'fail').length;
+      if (failed > 0) return fits(`${failed} failed — start there`);
+      const passed = block.props.items.filter((i) => i.status === 'pass').length;
+      return passed > 0 ? `all clear — risk sits outside` : null;
+    }
+
+    case 'list': {
+      const items = block.props.items;
+      if (items.length < 3) return null;
+      return pick([
+        `pick ONE. today.`,
+        `${items.length} items — not a ranking`,
+        'which do you test first?',
+      ]);
+    }
+
+    case 'datatable': {
+      if (block.props.rows.length < 2) return null;
+      return pick(['the receipt — make it reconcile', 'which row moves the answer?']);
+    }
+
+    // ── Matrices: the note a student writes beside a grid is the VERDICT it adds up to —
+    //    which row came out clean, which column keeps winning — not that a grid is present.
+    case 'clearancematrix': {
+      const cells = block.props.cells;
+      const rows = block.props.rows;
+      if (!Array.isArray(cells) || !Array.isArray(rows) || rows.length < 2) return null;
+      const cols = new Set(cells.map((c) => String(c.col).toLowerCase()));
+      const tally = (row: string, level: string): number =>
+        cells.filter((c) => String(c.row).toLowerCase() === row.toLowerCase() && c.level === level)
+          .length;
+      const clean = rows.find((r) => cols.size > 1 && tally(String(r), 'safe') === cols.size);
+      if (clean) {
+        const name = shortLabel(String(clean), 18);
+        if (name) return fits(`${name}: clear on all ${cols.size}`);
+      }
+      const worst = rows
+        .map((r) => ({
+          r: String(r),
+          bad: tally(String(r), 'avoid') + tally(String(r), 'caution'),
+        }))
+        .sort((a, b) => b.bad - a.bad)[0];
+      if (worst && worst.bad > 0) {
+        const name = shortLabel(worst.r, 16);
+        if (name) return fits(`${name}: ${worst.bad} to watch`);
+      }
+      return null;
+    }
+
+    case 'comparematrix': {
+      const rows = block.props.rows;
+      const cols = block.props.cols;
+      if (!Array.isArray(rows) || !Array.isArray(cols) || cols.length < 2) return null;
+      // `best` names the winning column per attribute — the one thing the grid states but never
+      // adds up. Which column wins the most rows IS the finding.
+      const wins = cols.map(
+        (_, i) => rows.filter((r) => typeof r.best === 'number' && r.best === i).length,
+      );
+      const top = Math.max(...wins);
+      if (top === 0) return fits(`${rows.length} attributes, no clear winner`);
+      const best = shortLabel(String(cols[wins.indexOf(top)]), 18);
+      if (!best) return null;
+      return fits(
+        top === rows.length ? `${best} wins every row` : `${best}: ${top}/${rows.length} rows`,
+      );
+    }
+
+    // ── The shapes real answers reach for beyond the core set ───────────────────────────────
+    case 'howtosteps': {
+      const steps = block.props.steps;
+      if (!Array.isArray(steps) || steps.length < 2) return null;
+      return pick([`${steps.length} steps — order matters`, 'step one is the commitment']);
+    }
+
+    case 'checklist': {
+      const rows = block.props.rows;
+      if (!Array.isArray(rows) || rows.length < 2) return null;
+      return pick([`${rows.length} to clear`, 'do the top one first']);
+    }
+
+    case 'maproute': {
+      const stops = block.props.waypoints;
+      if (!Array.isArray(stops) || stops.length < 2) return null;
+      return pick([`${stops.length} stops — mind the gaps`, 'the route is the argument']);
+    }
+
+    case 'cohortgrid': {
+      const cohorts = block.props.cohorts;
+      if (!Array.isArray(cohorts) || cohorts.length < 2) return null;
+      return pick(['read DOWN a column, not across', 'the newest row tells the truth']);
+    }
+
+    case 'stack': {
+      const segments = block.props.segments;
+      if (!Array.isArray(segments) || segments.length < 2) return null;
+      return pick([
+        `${segments.length} parts — where's the bulk?`,
+        'the biggest block sets the rest',
+      ]);
+    }
+
+    case 'gauge': {
+      const { value, max = 100 } = block.props;
+      if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return null;
+      return fits(`${pct((value / max) * 100)} of the dial`);
+    }
+
+    default:
+      return null;
+  }
+}
+
+/** Where a scrawl sits relative to the card, in the design's own three positions. */
+export type PenSlot = 'left' | 'bottom' | 'top';
+
+export interface PenMark {
+  text: string;
+  slot: PenSlot;
+}
+
+/**
+ * A SECOND remark about the same object, from a different angle than `penQuip` — the design
+ * scatters two or three marks around a card, and two sentences about the same figure read as a
+ * stutter. Null when the block has nothing else honest to say.
+ */
+function secondRemark(block: Block, seed: number): string | null {
+  const pick = <T>(options: readonly T[]): T => options[seed % options.length];
+  switch (block.type) {
+    case 'insight': {
+      const { conf } = block.props;
+      return conf && conf !== 'strong'
+        ? pick(['a read, not a receipt', 'check this one first'])
+        : pick(['carry this one forward', 'this is the anchor']);
+    }
+    case 'kpi':
+      return pick(['each tile needs a driver', 'no relationship stated here']);
+    case 'breakdown': {
+      const rows = block.props.rows.filter((r) => Number.isFinite(r.pct));
+      if (rows.length < 3) return null;
+      return pick(['the tail is where slack hides', 'the leader sets the ceiling']);
+    }
+    case 'chart':
+      return pick(['the slope IS the claim', 'ends matter, middles wander']);
+    case 'compare':
+      return pick(['rows won ≠ right choice', 'which row do you weigh most?']);
+    case 'timeline':
+      return pick(['order is the argument', 'one slip moves everything']);
+    case 'checks':
+      return pick(['failures set the next move', 'the score hides the detail']);
+    case 'list':
+      return pick(['a set, not a ranking', 'order here means nothing']);
+    case 'datatable':
+      return pick(['every headline traces here', 'the rows are the proof']);
+    case 'donut':
+      return pick(['shares, not amounts', 'the gap is the point']);
+    case 'howtosteps':
+      return pick(['skip one and the rest slips', 'where does this usually fail?']);
+    case 'checklist':
+      return pick(['what is NOT on this list?', 'unticked ≠ unimportant']);
+    case 'maproute':
+      return pick(['time between stops is the cost', 'the last leg is the tiring one']);
+    case 'cohortgrid':
+      return pick(['later cohorts, thinner rows', 'the drop shows up in month one']);
+    case 'stack':
+      return pick(['each layer trusts the one below', 'the seam is where it breaks']);
+    default:
+      return null;
+  }
+}
+
+/** What a collection of this name IS, in the words a hand would use. */
+const COLLECTION_NOUN: Record<string, string> = {
+  rows: 'rows',
+  items: 'items',
+  steps: 'steps',
+  options: 'options',
+  criteria: 'rows',
+  events: 'moments',
+  series: 'series',
+  kpis: 'tiles',
+  waypoints: 'stops',
+  cohorts: 'cohorts',
+  segments: 'parts',
+  columns: 'columns',
+  entries: 'entries',
+  nodes: 'nodes',
+  layers: 'layers',
+  points: 'points',
+  stops: 'stops',
+  tasks: 'tasks',
+  fields: 'fields',
+  cards: 'cards',
+  lanes: 'lanes',
+  metrics: 'metrics',
+  tools: 'tools',
+};
+
+/**
+ * A remark for a block this file has no bespoke reading of — and there are hundreds of block
+ * types. It counts the largest collection the block actually renders and says what that means
+ * to read, which is true of any shape without knowing the shape. Null only when a block has no
+ * countable structure at all (a paragraph, an image).
+ */
+function genericQuip(block: Block, seed: number): string | null {
+  const props = block.props as Record<string, unknown>;
+  let best: { key: string; n: number } | null = null;
+  for (const [key, value] of Object.entries(props)) {
+    if (!Array.isArray(value) || value.length < 2) continue;
+    const noun = COLLECTION_NOUN[key];
+    if (!noun) continue;
+    if (!best || value.length > best.n) best = { key: noun, n: value.length };
+  }
+  if (!best) return null;
+  const options = [
+    `${best.n} ${best.key} — which one decides it?`,
+    `${best.n} ${best.key}. read the odd one out`,
+    `compare across, not down`,
+  ];
+  return options[seed % options.length];
+}
+
+/** The same, for the second slot: a different angle on an unfamiliar shape. */
+function genericSecond(seed: number): string {
+  return ['what is NOT shown here?', 'the shape is the argument', 'read it once, then question it'][
+    seed % 3
+  ];
+}
+
+/**
+ * Every scrawl around one object, in the design's slots: the structural remark on the left (the
+ * one the arrow points with), a second angle below, and — when the object is a claim worth
+ * testing — a pressure-test above. Two or three marks is the design's own density; one is a
+ * lonely card and four is graffiti over the thing you are trying to read.
+ */
+export function penMarks(block: Block, seed = 0): PenMark[] {
+  const marks: PenMark[] = [];
+  // A bespoke reading where this file has one; otherwise a count of whatever the block actually
+  // renders. The library is hundreds of types deep, and a desk where most objects carry no hand
+  // at all is not the surface the design describes.
+  const primary = penQuip(block, seed) ?? genericQuip(block, seed);
+  if (primary) marks.push({ text: primary, slot: 'left' });
+  const second = secondRemark(block, seed) ?? (primary ? genericSecond(seed) : null);
+  if (second && second !== primary && second.length <= MAX) {
+    marks.push({ text: second, slot: 'bottom' });
+  }
+  // No third mark. It was a question the file could not derive from the object — "what breaks
+  // this?" beside every card in the answer — which is the stock line this whole file exists to
+  // avoid. The pressure-test still gets asked, in Mavéa's note card, where it is one of four
+  // voices rather than a phrase repeated across the desk.
+  return marks;
+}

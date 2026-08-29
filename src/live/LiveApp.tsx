@@ -39,7 +39,9 @@ const TopicCanvas = lazy(() =>
   import('../canvas/TopicCanvas').then((m) => ({ default: m.TopicCanvas })),
 );
 import { useTapNarration } from '../canvas/focus/useTapNarration';
-import { savedViewMode, useViewMode } from '../canvas/focus/useFocusMode';
+import { savedViewMode, useViewMode, type ViewMode } from '../canvas/focus/useFocusMode';
+import type { StudyAside } from '../canvas/study/types';
+
 import { blockLabel, speakableLine } from '../canvas/blockLabel';
 import { CommandComposer } from '../components/CommandComposer';
 import { takeSeedQuery } from './seedQuery';
@@ -170,6 +172,15 @@ import { AnnotationLayer, BADGE_MS, MARK_STEP_MS } from './annotate/AnnotationLa
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
+import { condenseForNote } from './annotate/marginNote';
+import { answerToContent } from './content/fromAnswer';
+import { asideFor } from './content/asideFor';
+import { assumptionIn, notableIn, studyPromptIn } from './content/notableIn';
+import { penMarks } from './content/penQuip';
+
+/** How far apart the study's opening marks land — a quick cascade that reads as a hand
+ *  moving across the board, not a batch that appears all at once. CSS delay, not a wait. */
+const STUDY_INK_STEP_MS = 190;
 import { UserInkLayer } from './annotate/UserInkLayer';
 import { useInkIntent } from './annotate/useInkIntent';
 import { InkBar } from './annotate/InkBar';
@@ -764,6 +775,7 @@ export function LiveApp(): ReactElement {
     };
     void presentationDeckLoad.preload().then(enter, enter);
   }, []);
+
   useEffect(
     () => () => {
       presentationRequestRef.current += 1;
@@ -1309,6 +1321,9 @@ export function LiveApp(): ReactElement {
   // tour loop checks this flag each beat, so dismissing stops the walk AND clears the spot
   // instead of the next scheduled beat re-lighting a block. Reset at the start of each turn.
   const tourDismissed = useRef(false);
+  /** True when the walk stopped because the reader picked an object, not because it was dismissed
+   *  — see takeWheel and bail(). One-shot: the teardown that honours it clears it. */
+  const readerTookOver = useRef(false);
   // The turn whose reveal tour has already played, so the walk runs exactly once per turn even
   // if the effect re-fires for the SAME turn. In dev a hot-module reload (Fast Refresh) re-runs
   // effects against the canvas already on screen — without this guard the spotlight walk replays
@@ -1385,6 +1400,7 @@ export function LiveApp(): ReactElement {
       delayMs?: number;
       badgeMs?: number;
       noteText?: string;
+      studySeed?: boolean;
     })[]
   >([]);
   // Which of those gestures actually LANDED. The track is a record of what Mavéa drew, so a
@@ -1480,6 +1496,7 @@ export function LiveApp(): ReactElement {
       badgeMs?: number,
       stepNumber?: number,
       noteText?: string,
+      studySeed?: boolean,
     ) => {
       if (spot) {
         setInked((cur) => {
@@ -1519,6 +1536,7 @@ export function LiveApp(): ReactElement {
             stepNumber?: number;
             toSpot?: string;
             noteText?: string;
+            studySeed?: boolean;
           } = {
             spot,
             line: line ?? (fallback ? blockLabel(fallback) : undefined),
@@ -1535,6 +1553,7 @@ export function LiveApp(): ReactElement {
             ...(stepNumber ? { stepNumber } : {}),
             ...(toSpot ? { toSpot } : {}),
             ...(noteText ? { noteText } : {}),
+            ...(studySeed ? { studySeed } : {}),
           };
           return [...cur, entry];
         });
@@ -1545,6 +1564,12 @@ export function LiveApp(): ReactElement {
   // Teach mode widens the pen to every spoken stop — from the setting, or just by asking
   // ("teach me…", "walk me through…").
   const teachTurn = cfg.teachMode || isTeachAsk(lastAsk);
+  // The Study is a teaching surface by construction — it exists to hold one object up and talk
+  // about it — so it points generously without waiting for the reader to say "walk me through".
+  // Generosity costs no model call: with no model-authored mark for a stop, `revealInkPlan`
+  // falls through to the component's OWN stamped salient node (BarChart's tallest bar,
+  // BreakdownCard's largest row, Donut's biggest slice), which is already there in the DOM.
+  const teachSurface = teachTurn || savedViewMode() === 'study';
   // A ref so the tour loop (which runs once per turn) always reads the live toggle value.
   const annotationsEnabledRef = useRef(cfg.annotationsEnabled);
   annotationsEnabledRef.current = cfg.annotationsEnabled;
@@ -1606,6 +1631,12 @@ export function LiveApp(): ReactElement {
     const root = stageRef.current;
     const el = root?.querySelector<HTMLElement>(`[data-spot-id="${CSS.escape(spot)}"]`);
     if (!el) return;
+    if (el.closest('.study-stage')) {
+      // On the desk, "jump to" means "bring it to the desk" — the stage holds still.
+      el.classList.add('ink-jump-glow');
+      window.setTimeout(() => el.classList.remove('ink-jump-glow'), 800);
+      return;
+    }
     const toEl = toSpot
       ? root?.querySelector<HTMLElement>(`[data-spot-id="${CSS.escape(toSpot)}"]`)
       : null;
@@ -1672,6 +1703,106 @@ export function LiveApp(): ReactElement {
   }, []);
 
   const [viewMode, setViewMode] = useViewMode();
+
+  // What the pen may draw right now. The Study has no margin rail — the walk's written asides
+  // land in its session-notes crib instead — so their requests never reach MarginNoteRail while
+  // the Study is the view; the strokes themselves draw exactly as everywhere else.
+  const inkSpots = useMemo(() => {
+    const visible = hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked;
+    // The Study has no margin rail (its written asides live in the session-notes crib), and its
+    // opening seed cascade is desk theater — on the grid those same generous marks would land as
+    // a wall of unexplained ink the reader never asked for.
+    return viewMode === 'study'
+      ? visible.filter((s) => s.noteText === undefined)
+      : visible.filter((s) => !s.studySeed);
+  }, [inked, hiddenSpots, viewMode]);
+
+  // What Mavéa writes beside the object the study is holding up.
+  //
+  // Her read, not the card's: `asideFor` reports which of the block's figures a source sentence
+  // actually states and which are the model's shape — the one thing she knows that a card cannot
+  // say about itself. Grounded against the turn's OWN sources, so nothing is fetched and no model
+  // is called; an answer with no sources honestly yields "I'm illustrating, not measuring".
+  //
+  // Falls back to the block's own words when it carries no readable figures (prose, a list, a
+  // diagram): silence there would be right, but the block's summary is better than nothing and is
+  // what the study showed before.
+  const studyContent = useMemo(() => {
+    const spec = turn.viewSpec ?? turn.spec;
+    if (viewMode !== 'study' || !spec) return null;
+    const corpus = (spec.sources ?? [])
+      .map((src) => src.snippet ?? '')
+      .filter(Boolean)
+      .join('\n');
+    // Nothing to ground against: the trust voice would stamp every figure-bearing card with
+    // the same wholesale disclaimer, which says nothing the reader can use. The observation
+    // and prompt voices carry the desk instead.
+    if (!corpus) return null;
+    return answerToContent(spec, corpus);
+  }, [viewMode, turn.viewSpec, turn.spec]);
+
+  // One note per object, written once for the answer. Ordered by how much each actually POINTS:
+  //   1. What the block's own structure says but never spells out — which option took the most
+  //      rows, how far the series really moved. Specific, checkable, and not a paraphrase.
+  //   2. What Mavéa can and cannot back. Only speaks on an answer carrying figures.
+  //   3. A Study-only pressure-test prompt. It asks the reader to use the nearby objects rather
+  //      than recycling the spoken tour or the card's own note.
+  // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
+  // emphasised — never the set, which is what made the old rail tear down on every move.
+  const studyAsides = useMemo(() => {
+    // The spec the canvas is SHOWING — block ids repeat across turns, so notes derived from
+    // the live spec would file the current answer's remarks onto a scrubbed older frame.
+    const spec = turn.viewSpec ?? turn.spec;
+    if (viewMode !== 'study' || !spec) return undefined;
+    // EVERY honest voice becomes a page on the note card, the way the design pages four notes
+    // per object: the structural observation, the trust read, the pressure-test, and the
+    // block's own line as the decision cue. The pen's margin quip rides the first note —
+    // condensed observation when there is one, the question's core otherwise.
+    const out: Record<string, StudyAside[]> = {};
+    spec.blocks.forEach((block, index) => {
+      if (!block.id) return;
+      const notable = notableIn(block);
+      const honest = studyContent ? asideFor(studyContent, index) : null;
+      // FOUR voices, always, in the design's own order — △ assumption · ◈ pattern · ✓ evidence
+      // · ? pressure-test — so the note card's chips are a fixed set the reader learns rather
+      // than a count that changes per card. Each is READ from the object (or from the turn's
+      // sources), never invented; where a voice has nothing to point at it says so plainly,
+      // which is itself the honest answer — "no sources are attached" is a real evidence check.
+      const notes: StudyAside[] = [
+        { text: assumptionIn(block, cfg.explainLevel).text, kind: 'caution' },
+        {
+          text:
+            notable?.text ??
+            'Nothing in this object states a relationship on its own — the nearby ones carry it.',
+          kind: 'insight',
+        },
+        honest
+          ? { text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' }
+          : {
+              // Names what is unverified ON THIS CARD rather than repeating one disclaimer down
+              // the whole answer: the reader is deciding how much weight to put on THIS object.
+              text: (() => {
+                const notableAt = notable?.at;
+                if (notableAt) {
+                  return `Nothing here backs ${notableAt} — no sources are attached to this answer.`;
+                }
+                const label = blockLabel(block);
+                return `Nothing in “${label}” is checked against a source — none are attached to this answer.`;
+              })(),
+              kind: 'evidence',
+            },
+        { text: studyPromptIn(block).text, kind: 'question' },
+      ];
+      // The margin quip is the block's OWN scrawl, read from its structure (penMarks) — never a
+      // stock line: the same words beside every object are wallpaper, not a remark. The block's
+      // index seeds the phrasing so three lists in one answer do not repeat themselves.
+      const marks = penMarks(block, index);
+      if (marks.length) notes[0] = { ...notes[0], marks };
+      out[block.id] = notes;
+    });
+    return out;
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel]);
+
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
   // Focus is theirs to pick. What mute changes is the FEEL (calm face, a centred reading caption),
@@ -1681,11 +1812,72 @@ export function LiveApp(): ReactElement {
   // exactly when the layout really swapped — never as a side effect of some unrelated re-render
   // landing on the same on/off value twice in a row. Set during render (the officially-sanctioned
   // "adjust state from a prop/state change" pattern) so it's ready on the very render that changed.
+  // ── The study opens already marked up ────────────────────────────────────────────────────────
+  // Everywhere else the pen is a WALK artefact: marks land as the voice reaches each stop, so an
+  // answer you scroll back to — or a study you switch into after the walk finished — is a clean,
+  // silent page. That is right for a canvas you are reading and wrong for the study, whose whole
+  // premise is that Mavea has been working through this with you. A teacher's board still has the
+  // working on it when you look up.
+  //
+  // Deterministic and free: no mark is invented here. `generous` resolves each block against the
+  // component's OWN stamped salient node (BarChart's tallest bar, BreakdownCard's largest row,
+  // Donut's biggest slice), and the aside is condensed from text the block already carries. A
+  // block that stamps nothing simply gets no ink — the hand only points at things really there.
+  // Zero model calls, which is the rule on a BYOK turn path.
+  //
+  // Marks only — no margin notes. The study's aside is a LIVE slot that follows the foreground
+  // (see `studyAside` below), not a rail entry: routed through MarginNoteRail it re-measured and
+  // re-tethered on every re-cast, so the note visibly tore down and rebuilt each time the study
+  // moved. `ink()` dedupes per (block, gesture), so re-entry cannot stack duplicates.
+  const studyInkedFor = useRef<string | null>(null);
+  useEffect(() => {
+    const spec = turn.spec;
+    if (viewMode !== 'study' || !spec || !annotationsEnabledRef.current) return;
+    // Once per answer. Re-entering the study on the SAME answer must not re-run the cascade.
+    if (studyInkedFor.current === spec.id) return;
+    studyInkedFor.current = spec.id;
+    let step = 0;
+    for (const b of spec.blocks) {
+      if (!b.id) continue;
+      ink(
+        b.id,
+        b.note ?? undefined,
+        undefined,
+        true,
+        step * STUDY_INK_STEP_MS,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      );
+      step++;
+    }
+  }, [viewMode, turn.spec, ink]);
+
+  // Switching view is switching page: whatever was being said described a surface that is no
+  // longer on screen, so it stops. Without this the outgoing view's line kept playing while the
+  // incoming one started its own — two voices, neither of them about what you were looking at.
+  const spokenViewRef = useRef(viewMode);
+  useEffect(() => {
+    if (spokenViewRef.current === viewMode) return;
+    spokenViewRef.current = viewMode;
+    cancelSpeech();
+  }, [viewMode]);
+
   const [canvasRevision, setCanvasRevision] = useState(0);
   const prevViewModeRef = useRef(viewMode);
   if (prevViewModeRef.current !== viewMode) {
     prevViewModeRef.current = viewMode;
     setCanvasRevision((g) => g + 1);
+  }
+  // The Study re-stamps data-spot-id as the desk re-casts (front card only), so every
+  // promotion is a host CHANGE the portals cannot see on their own — same render-phase
+  // pattern as the view-mode bump above.
+  const prevStudySpotRef = useRef<string | null>(null);
+  const studySpotNow = viewMode === 'study' ? (turn.spot ?? null) : null;
+  if (prevStudySpotRef.current !== studySpotNow) {
+    prevStudySpotRef.current = studySpotNow;
+    if (viewMode === 'study') setCanvasRevision((g) => g + 1);
   }
 
   const restorePenConfig = useCallback(() => {
@@ -2046,6 +2238,12 @@ export function LiveApp(): ReactElement {
     {
       takeWheel: () => {
         tourDismissed.current = true;
+        // The reader did not dismiss the walk, they REPLACED its subject — so the walk must stop
+        // without clearing the spotlight they just set. Without this, `bail()` runs a tick or two
+        // later, when the dismissed walk's current await resolves, and does `setSpot(null)` —
+        // the object the reader handed over goes dark immediately after being picked, which is
+        // exactly the "it ignored me" shape. Cleared by the walk teardown that honours it.
+        readerTookOver.current = true;
       },
       hush: cancelSpeech,
       // A tapped card is its own reason — the user asked about it, so Mavéa draws as it
@@ -2153,7 +2351,7 @@ export function LiveApp(): ReactElement {
         blockCount: spec.blocks.length,
         mode: turn.mode,
         hasModelTour: false,
-        teach: teachTurn,
+        teach: teachSurface,
       })
     ) {
       // Spotlight only the FEW lead blocks (the most important ones come first), then release
@@ -2182,7 +2380,14 @@ export function LiveApp(): ReactElement {
     // Latched here — before the first stop — and held for the turn: the gutter reserves once
     // (cards tile around it from the start), so a later mute flip changes only what's inked
     // next, never the layout. Only a turn that ARRIVED muted with a spoken tour gets one.
-    const withNotes = mutedRef.current && spokenWalk && annotationsEnabledRef.current;
+    // A muted turn gets notes because there is no voice to carry the asides. The Study gets them
+    // for the opposite reason: it is a teaching surface, and a lesson that leaves nothing written
+    // down is a lecture you cannot re-read. Latched here — before the first stop — and held for
+    // the turn, so the gutter reserves once and a later mute flip changes only what is inked next.
+    const withNotes =
+      (mutedRef.current || savedViewMode() === 'study') &&
+      spokenWalk &&
+      annotationsEnabledRef.current;
     setNoteGutterTurn(withNotes);
     // Both paths below read stops off the same reduced beat list.
     const stops = beats.map((beat) => ({
@@ -2198,7 +2403,7 @@ export function LiveApp(): ReactElement {
           stops,
           spokenWalk,
           withNotes,
-          teach: teachTurn,
+          teach: teachSurface,
           marksById: tourMarksById,
         });
         for (const c of plan) {
@@ -2242,7 +2447,11 @@ export function LiveApp(): ReactElement {
       if (cancelled) return true;
       if (tourDismissed.current) {
         finish();
-        turn.setSpot(null);
+        // A walk dismissed OUTRIGHT (Escape, mute, "show me everything") leaves the canvas at
+        // rest. A walk the reader took the wheel of has already been re-pointed at the object
+        // they chose, and clearing it here would undo their own gesture.
+        if (readerTookOver.current) readerTookOver.current = false;
+        else turn.setSpot(null);
         return true;
       }
       return false;
@@ -2250,7 +2459,11 @@ export function LiveApp(): ReactElement {
     // Light one stop — spotlight, caption, and its pen marks. The visual half of a beat, kept
     // separate from the pacing so a spoken stop can apply it at the exact moment its own audio
     // starts (never before — lighting on enqueue is how the spotlight used to outrun the voice).
-    const applyStop = (spot: string | null | undefined, line: string | undefined): void => {
+    const applyStop = (
+      spot: string | null | undefined,
+      line: string | undefined,
+      idx?: number,
+    ): void => {
       if (spot !== undefined) turn.setSpot(spot ?? null);
       // The speak strip follows the walk — always the SHOWN caption; the voice twin
       // ("five thousand dollars") is for the TTS engine only, never the screen.
@@ -2258,6 +2471,14 @@ export function LiveApp(): ReactElement {
       // The whiteboard hand needs a reason: a stop the model deliberately marked always
       // draws, and in teach mode (or a "teach me…" ask) EVERY walk stop takes the pen —
       // including the silent derived walk, where the user asked to be shown around.
+      // The written aside, at the moment it is said. A voiced walk used to leave nothing behind:
+      // notes were emitted only by the muted planner, so a lesson you LISTENED to could not be
+      // re-read. Stop 0 is skipped — it is the opener, already permanent in the answer hero.
+      if (spot && withNotes && line && idx !== undefined && idx > 0) {
+        const noteText = condenseForNote(line);
+        if (noteText)
+          ink(spot, line, undefined, undefined, undefined, undefined, undefined, noteText);
+      }
       if (spot && annotationsEnabledRef.current) {
         // Draw EVERY gesture this stop calls out on its block (a circle here, an underline there),
         // so the pen teaches multiple points as the line is spoken — not just one per block.
@@ -2278,14 +2499,14 @@ export function LiveApp(): ReactElement {
               spot,
               line,
               stopMarks[mi],
-              teachTurn,
+              teachSurface,
               delayMs,
               badgeMs,
               sequence ? mi + 1 : undefined,
             );
           }
-        } else if (teachTurn) {
-          ink(spot, line, undefined, teachTurn);
+        } else if (teachSurface) {
+          ink(spot, line, undefined, teachSurface);
         }
       }
     };
@@ -2356,7 +2577,7 @@ export function LiveApp(): ReactElement {
       // streamed — never double-speak it. Light it now and hold until the queue drains, so
       // the walk starts moving exactly when the opener stops talking.
       if (idx === 0 || !spokenLine) {
-        applyStop(spot, line);
+        applyStop(spot, line, idx);
         primeNextSpoken(idx);
         await waitQueueQuiet({ floorMs: MIN_STOP_MS, capMs: finishCapMs(estimateMs) });
         if (bail()) return;
@@ -2366,7 +2587,7 @@ export function LiveApp(): ReactElement {
       const handle = speak(spokenLine);
       const heard = await waitLineStart(handle);
       if (bail()) return;
-      applyStop(spot, line);
+      applyStop(spot, line, idx);
       // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
       // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
       // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
@@ -2403,7 +2624,7 @@ export function LiveApp(): ReactElement {
         void runSpokenStop(beat, idx, spot, line, spokenLine);
       } else {
         // The silent derived walk has no audio to track — its fixed dwell is the pacing.
-        applyStop(spot, line);
+        applyStop(spot, line, idx);
         timer = setTimeout(step, beat.ms ?? 0);
       }
     };
@@ -2421,7 +2642,7 @@ export function LiveApp(): ReactElement {
           from: i,
           spokenWalk,
           withNotes: false,
-          teach: teachTurn,
+          teach: teachSurface,
           marksById: tourMarksById,
         });
         for (const c of plan) {
@@ -2492,6 +2713,9 @@ export function LiveApp(): ReactElement {
       const cont = scrollRef.current;
       if (!cont) return;
       const el = cont.querySelector('.spotlit');
+      // The Study choreographs its own camera: the spotlit card is ALWAYS at the desk's front
+      // slot, so centering it just drags the beat bar below the fold on every stop.
+      if (el?.closest('.study-stage')) return;
       if (!el) {
         // ~1.1s of retries — past that the card isn't coming (wrong view, dropped block).
         if (++tries < 12) id = window.setTimeout(attempt, 90);
@@ -3127,10 +3351,14 @@ export function LiveApp(): ReactElement {
   // go fullscreen best-effort, and let Esc end the show. The mic stays however it was.
   const viewModeRef = useRef(viewMode);
   viewModeRef.current = viewMode;
+  // Entering and leaving the show. The view to hand back is captured ONCE here rather than read at
+  // cleanup, because by then the presented view is the current one — and it is captured in this
+  // effect rather than the surface effect below so that switching surfaces mid-show cannot be
+  // mistaken for an exit (which would drop fullscreen and remember the wrong view).
+  const restoreViewRef = useRef<ViewMode>('everything');
   useEffect(() => {
     if (!presenting) return;
-    const before = viewModeRef.current;
-    setViewMode('focus');
+    restoreViewRef.current = viewModeRef.current;
     void document.documentElement.requestFullscreen?.().catch(() => {});
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setPresenting(false);
@@ -3138,9 +3366,15 @@ export function LiveApp(): ReactElement {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      setViewMode(before);
+      setViewMode(restoreViewRef.current);
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
+  }, [presenting, setViewMode]);
+
+  // The deck covers the canvas, so it parks the answer in Focus underneath while it runs.
+  useEffect(() => {
+    if (!presenting) return;
+    setViewMode('focus');
   }, [presenting, setViewMode]);
 
   // Frames born while presenting are questions from the room — remember which, so the
@@ -3703,6 +3937,7 @@ export function LiveApp(): ReactElement {
     );
     app.style.setProperty('--home-scale', ((Math.max(d.width, 12) * 1.3) / 150).toFixed(3));
   }, []);
+
   useLayoutEffect(() => {
     measureHome();
     window.addEventListener('resize', measureHome);
@@ -3715,8 +3950,8 @@ export function LiveApp(): ReactElement {
     measureHome();
   }, [railCollapsed, measureHome]);
 
-  // The face sits at the brand at rest, and flies to centre for the cold-open opener OR an aside.
-  const inCorner = !!turn.spec && !(introHold || interjecting);
+  const settled = !!turn.spec && !(introHold || interjecting);
+  const inCorner = settled;
   // The output capsule (status strip + composer) stays mounted for the WHOLE conversation, not just
   // while an answer is on screen. A fresh ask briefly clears turn.spec AND raises introHold (the
   // centred-face opener beat) for ~1.1s; gating the dock on either made it collapse to the plain
@@ -4221,7 +4456,7 @@ export function LiveApp(): ReactElement {
     present: {
       available: !!turn.spec,
       reason: 'Once there is an answer',
-      run: openPresentation,
+      run: () => openPresentation(),
       preload: presentationDeckLoad.preload,
     },
     track: {
@@ -4243,6 +4478,11 @@ export function LiveApp(): ReactElement {
       reason: 'Once there is an answer to export',
       run: () => setExportOpen(true),
       preload: exportModalLoad.preload,
+    },
+    study: {
+      available: !!turn.spec,
+      reason: 'Once there is an answer',
+      run: () => setViewMode('study'),
     },
     focus: {
       available: !!turn.spec,
@@ -5741,6 +5981,7 @@ export function LiveApp(): ReactElement {
                   onNarrate={narrateBlock}
                   narratingId={narratingId}
                   muted={muted}
+                  studyAsides={studyAsides}
                   viewMode={viewMode}
                   onViewMode={setViewMode}
                   presenting={presenting}
@@ -5753,6 +5994,10 @@ export function LiveApp(): ReactElement {
                     viewingLive && cfg.annotationsEnabled && noteRailFits && noteGutterTurn
                   }
                   walkNotes={viewingLive ? walkNotes : undefined}
+                  voiceLine={spokenNow ?? null}
+                  speaking={speakingSticky && !voicePreparing}
+                  lead={turn.narration ?? undefined}
+                  studyIntro={tourMode.current ? 'skip' : 'full'}
                   blankFill={
                     // The Blank Space wiring — only the live head (never a scrubbed/past frame).
                     viewingLive
@@ -5775,7 +6020,11 @@ export function LiveApp(): ReactElement {
                   onAddToFlashcard={addToFlashcard}
                   flashedIds={flashedIds}
                   belowHeaderSlot={
-                    hero && viewedAudio ? (
+                    // The scrubber belongs to the FLAT views, where the voice is the only thing
+                    // moving. The Study paces itself — Guide me walks the desk and the beat bar
+                    // is the transport — so a second, wider transport above it competes with the
+                    // one control that actually drives the lesson.
+                    hero && viewedAudio && viewMode !== 'study' ? (
                       <VoiceScrubber audio={viewedAudio} t={scrubT} onSeek={onScrub} />
                     ) : undefined
                   }
@@ -5844,11 +6093,10 @@ export function LiveApp(): ReactElement {
                   does the same for one commit around a canvas restore/replace — see restoreCanvas. */}
               {viewingLive && !mindActive && !inkSuppressed && (
                 <AnnotationLayer
-                  spots={
-                    hiddenSpots.size > 0 ? inked.filter((s) => !hiddenSpots.has(s.spot)) : inked
-                  }
+                  spots={inkSpots}
                   revision={canvasRevision}
                   onPlaced={notePlaced}
+                  liveSpot={turn.spot}
                 />
               )}
               {turn.busy && viewingLive && (

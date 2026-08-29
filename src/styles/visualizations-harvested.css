@@ -325,6 +325,13 @@
   grid-template-columns: repeat(var(--kpi-cols, 2), 1fr);
   gap: 15px;
 }
+/* A long WORD value ("Pocket Wi-Fi") drops a size rather than wrapping mid-word under the
+   grid's column width — numbers keep the full size, names stay whole. */
+.kpi-val--long {
+  font-size: 18px;
+  line-height: 1.15;
+}
+
 .kpi-val {
   font-size: 25px;
   font-weight: 750;

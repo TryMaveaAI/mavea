@@ -750,8 +750,10 @@ Each entry carries the real answer plus an honest `lead` face derived from the c
 delta** — a client-only app can't passively re-measure anything, so a change number would be
 fabricated. Tapping a card re-opens it via `useLiveTurn`'s `restore` action (no model call).
 
-The **view mode** (`canvas/focus/useFocusMode.ts`) is the Focus / Everything canvas toggle, shared
-across the Demo and Live (one key); `everything` (the full grid) is the default.
+The **view mode** (`canvas/focus/useFocusMode.ts`) is the Study / Focus / Everything canvas
+toggle, shared across the Demo and Live (one key); `study` — the desk, one object at a time — is
+the default, and a preference saved as `room` (the surface's former name) is read as `study`.
+`canvas` and `world` are per-answer takeovers and are never written to the key.
 
 ### `mavea-live-v2` shape
 

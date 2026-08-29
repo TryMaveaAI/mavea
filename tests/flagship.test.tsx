@@ -4,15 +4,20 @@ import { heroCast } from '../src/demo/cast';
 
 function setup() {
   const onPlay = vi.fn();
+  const onPlayStudyDemo = vi.fn();
   const onEnterLive = vi.fn();
-  const utils = render(<FlagshipLanding onPlay={onPlay} onEnterLive={onEnterLive} />);
-  return { onPlay, onEnterLive, ...utils };
+  const utils = render(
+    <FlagshipLanding onPlay={onPlay} onPlayStudyDemo={onPlayStudyDemo} onEnterLive={onEnterLive} />,
+  );
+  return { onPlay, onPlayStudyDemo, onEnterLive, ...utils };
 }
 
 describe('FlagshipLanding', () => {
   it('renders the hero headline and the demo anchor', () => {
     const { container } = setup();
-    expect(container.querySelector('.fl-hero-title')?.textContent).toContain('See what it means.');
+    expect(container.querySelector('.fl-hero-title')?.textContent).toContain(
+      'come alive around you.',
+    );
     expect(container.querySelector('#flagship-demo')).toBeTruthy();
   });
 
@@ -79,29 +84,31 @@ describe('FlagshipLanding', () => {
     }
   });
 
-  it('shows the plain "Watch it work" link when no tour invite is passed', () => {
-    const { getByText, queryByText } = setup();
-    expect(getByText(/Watch it work/i)).toBeTruthy();
-    expect(queryByText(/Play the tour/i)).toBeNull();
+  it('shows the key-free Study replay when no invite is passed', () => {
+    const { getByText, queryByText, onPlayStudyDemo } = setup();
+    fireEvent.click(getByText(/^Watch the Study$/i));
+    expect(onPlayStudyDemo).toHaveBeenCalledTimes(1);
+    expect(queryByText(/Take the full tour/i)).toBeNull();
   });
 
   it('shows the dismissible tour invite instead, when asked to', () => {
     const onPlayTour = vi.fn();
     const onDismissTourInvite = vi.fn();
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <FlagshipLanding
         onPlay={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={onPlayTour}
         onDismissTourInvite={onDismissTourInvite}
       />,
     );
-    // The invite replaces the plain link in the same spot — never both at once.
-    expect(queryByText(/^Watch it work$/i)).toBeNull();
-    expect(getByText(/2-minute guided tour/i)).toBeTruthy();
+    // The invite promotes the same Study replay into its primary action — never duplicates it.
+    expect(getByText(/^Watch the Study$/i)).toBeTruthy();
+    expect(getByText(/one question become a study/i)).toBeTruthy();
 
-    fireEvent.click(getByText('Play the tour'));
+    fireEvent.click(getByText('Take the full tour'));
     expect(onPlayTour).toHaveBeenCalledTimes(1);
 
     fireEvent.click(getByText(/I'll explore on my own/i));
@@ -112,6 +119,7 @@ describe('FlagshipLanding', () => {
     const { queryByText, rerender } = render(
       <FlagshipLanding
         onPlay={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={vi.fn()}
@@ -124,6 +132,7 @@ describe('FlagshipLanding', () => {
     rerender(
       <FlagshipLanding
         onPlay={vi.fn()}
+        onPlayStudyDemo={vi.fn()}
         onEnterLive={vi.fn()}
         showTourInvite
         onPlayTour={vi.fn()}

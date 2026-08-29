@@ -27,6 +27,7 @@ const livedock = strip(read('src/live/livedock.css'));
 const turnstate = strip(read('src/live/turnstate/turnstate.css'));
 const stageLayout = strip(read('src/styles/stage-layout.css'));
 const dashboards = strip(read('src/live/dashboards/dashboards.css'));
+const studyCss = strip(read('src/canvas/study/study.css'));
 
 // The ambient loops that MUST be pausable by lite (idle, always-on GPU cost). Each is keyed by the
 // keyframe name its declaration uses; the declaration must carry the --ambient-play longhand so a
@@ -77,6 +78,9 @@ const REACTIVE: { name: string; source: string; file: string }[] = [
   { name: 'dlgBounce', source: delegateCss, file: 'delegate.css' },
   { name: 'dotpulse', source: stageLayout, file: 'stage-layout.css (thinking dot)' },
   { name: 'dash-refresh-spin', source: dashboards, file: 'dashboards.css' },
+  { name: 'study-pulse', source: studyCss, file: 'study.css (narrated-object ring)' },
+  { name: 'study-eq', source: studyCss, file: 'study.css (voice bubble bars)' },
+  { name: 'study-blink', source: studyCss, file: 'study.css (voice bubble caret)' },
 ];
 
 /** Grab the declaration block that contains the first `animation:` shorthand naming `keyframe`. */

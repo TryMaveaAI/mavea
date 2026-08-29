@@ -27,7 +27,16 @@ import type {
   PlacedNode,
   WorldData,
 } from '../types';
-import { CARD_H, CARD_SLOT_H, CARD_W, DEFAULT_VIEWPORT, PAD, px, relClass } from './lanes';
+import {
+  CARD_H,
+  CARD_SLOT_H,
+  CARD_SLOT_W,
+  CARD_W,
+  DEFAULT_VIEWPORT,
+  PAD,
+  px,
+  relClass,
+} from './lanes';
 import { separateRects, type SeparableRect } from './separate';
 
 // COL_W/CARD_W (1.5) is also the ceiling on morph.css's counter-scale: a card may be blown up by
@@ -50,13 +59,20 @@ const CARD_GAP = 4;
 /** Siblings in an open breakdown stack vertically, so their pitch has to clear the tallest a card
  *  can be, not the shortest — and match the gap the relaxation will enforce anyway. */
 const CHILD_ROW_H = CARD_SLOT_H + CARD_GAP;
-/** Air between two columns, whatever the blocks either side of it are worth. */
+/** Air between two columns, whatever the blocks either side of it are worth. Authored-width, and
+ *  correctly so: the counter-scale grows a card around its own CENTRE, so a column pitch of
+ *  CARD_W + GUTTER (= COL_W = CARD_W × 1.5) already absorbs the 1.4 either side. */
 const GUTTER = COL_W - CARD_W;
-/** How far right of its parent an unfolded breakdown stands. Clear of the parent's own card: at
- *  three quarters of a card width the middle child landed ON its parent, and the relaxation shoved
- *  the pair apart to exactly this offset anyway — but AFTER the composition had been budgeted,
- *  which is how an open breakdown used to grow the web past the size it had planned for. */
-const CHILD_DX = CARD_W + CARD_GAP;
+/** How far right of its parent an unfolded breakdown stands.
+ *
+ *  The SLOT width, not the authored one. A card is drawn 200 wide and stands 280 at full counter
+ *  (COUNTER_MAX 1.4, grown around its own centre), so an offset of CARD_W + 4 cleared a box nobody
+ *  renders and put every child 76px inside its own parent — and, past it, 80px into the next
+ *  column. Measured in the browser at the camera's floor: every card 280 × 90.
+ *
+ *  The column PITCH needs no such correction — COL_W is CARD_W × 1.5, which already absorbs the
+ *  1.4 either side of the gutter. This offset is inside a column, where nothing was absorbing it. */
+const CHILD_DX = CARD_SLOT_W + CARD_GAP;
 /** Air between two reading bands. The wrapped edge crosses back down the middle of it. */
 const BAND_GAP = 96;
 /** How far past the content a wrapped edge swings on its way down. Under PAD, so the return path
@@ -565,7 +581,17 @@ function place(world: WorldData, opts: LayoutOpts | undefined): Omit<MorphLayout
         : (previous?.get(n.id)?.y ?? i * ROW_H);
       return { n, bary, rank: order.get(n.id)! };
     });
-    keyed.sort((a, b) => a.rank - b.rank || a.bary - b.bary || a.n.id.localeCompare(b.n.id));
+    // The planner reserves the widest open blocks in a depth's earliest columns. Within one
+    // causal rank, put those blocks in the slots budgeted for them before barycenter tie-breaking;
+    // causal rank remains first, so a cause in this depth can never move to the right of its
+    // effect merely because one of them unfolds.
+    keyed.sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        blockOf(b.n.id).reach - blockOf(a.n.id).reach ||
+        a.bary - b.bary ||
+        a.n.id.localeCompare(b.n.id),
+    );
     const start = plan.startOf.get(d)!;
     const perColumn = plan.splitOf.get(d)!;
     // Where each block starts inside its column and how tall the column ends up. A block is

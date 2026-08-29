@@ -287,12 +287,12 @@
   text-align: center;
   max-width: 760px;
   margin: 0 auto;
-  padding-top: 64px;
+  padding-top: 30px;
 }
 /* Room for the hero mascot — she's the opening statement now (the old eyebrow line repeated
    the H1), so give the full jelly, trailing curtains included, space to hang. */
 .fl-hero-orbspace {
-  height: clamp(150px, 20vh, 195px);
+  height: clamp(118px, 16vh, 154px);
 }
 .fl-hero-title {
   font-family: var(--font-voice);
@@ -300,11 +300,16 @@
   /* 34px floor (not 42) so the balanced title still fits two lines at ~360px without
      forcing a horizontal scroll. */
   font-size: clamp(34px, 7vw, 92px);
-  line-height: 1;
+  line-height: 0.98;
   letter-spacing: -0.022em;
-  max-width: 15ch;
+  max-width: 19ch;
   text-wrap: balance;
   color: var(--text-primary);
+}
+@media (min-width: 900px) {
+  .fl-hero-title {
+    font-size: clamp(52px, 5.6vw, 72px);
+  }
 }
 .fl-hero-title em {
   font-style: italic;
@@ -319,10 +324,10 @@
   -webkit-text-fill-color: transparent;
 }
 .fl-hero-lede {
-  margin-top: 22px;
-  max-width: 54ch;
-  font-size: 18px;
-  line-height: 1.6;
+  margin-top: 16px;
+  max-width: 60ch;
+  font-size: 16.5px;
+  line-height: 1.52;
   color: var(--text-secondary);
   text-wrap: pretty;
 }
@@ -333,7 +338,7 @@
      of section gutter and near-full-bleeds at 320px. */
   width: min(680px, 94vw);
   max-width: 100%;
-  margin-top: 34px;
+  margin-top: 22px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -427,6 +432,13 @@
 }
 .fl-composer-btn.primary:hover {
   transform: scale(1.06);
+}
+.fl-privacy-line {
+  max-width: 62ch;
+  margin: 10px 0 0;
+  font: 500 11.5px/1.45 var(--font);
+  color: var(--text-faint);
+  text-wrap: balance;
 }
 .fl-hero-hint {
   font-family: var(--font-data);

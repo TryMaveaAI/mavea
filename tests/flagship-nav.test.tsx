@@ -116,14 +116,14 @@ describe('flagship — the first-run tour invite retires wherever the tour start
   it('retires when the walkthrough is taken from the topbar, not just from the invite', () => {
     render(<FlagshipHost />);
     // A first-time visitor sees the invite in the hero.
-    expect(screen.getByText('Play the tour')).toBeInTheDocument();
+    expect(screen.getByText('Watch the Study')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Take the tour' }));
     expect(window.location.hash).toBe('#/live');
     // Coming back to the landing after touring must not re-offer the tour.
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Play the tour')).toBeNull();
-    expect(screen.getByText(/Watch it work/i)).toBeInTheDocument();
+    expect(screen.queryByText('Take the full tour')).toBeNull();
+    expect(screen.getByText(/Watch the Study/i)).toBeInTheDocument();
   });
 
   it('retires when the Explore shortcut starts the walkthrough', () => {
@@ -132,12 +132,12 @@ describe('flagship — the first-run tour invite retires wherever the tour start
     const menu = screen.getByRole('menu', { name: /explore features/i });
     fireEvent.click(within(menu).getByText('Take the tour'));
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Play the tour')).toBeNull();
+    expect(screen.queryByText('Take the full tour')).toBeNull();
   });
 
   it('still retires from the invite’s own two answers', () => {
     const { unmount } = render(<FlagshipHost />);
-    fireEvent.click(screen.getByText('Play the tour'));
+    fireEvent.click(screen.getByText('Take the full tour'));
     expect(isTourSeen()).toBe(true);
     unmount();
 
@@ -145,7 +145,7 @@ describe('flagship — the first-run tour invite retires wherever the tour start
     render(<FlagshipHost />);
     fireEvent.click(screen.getByText(/I'll explore on my own/i));
     expect(isTourSeen()).toBe(true);
-    expect(screen.queryByText('Play the tour')).toBeNull();
+    expect(screen.queryByText('Take the full tour')).toBeNull();
   });
 });
 

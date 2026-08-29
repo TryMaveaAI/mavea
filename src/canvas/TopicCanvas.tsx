@@ -19,6 +19,7 @@ import { FIT_TYPES } from './layout/fitPolicy';
 import { useBloomMode } from './reveal/useBloomMode';
 import { CanvasTakeover } from './focus/CanvasView';
 import { boardCapable } from './focus/canvasGate';
+import type { StudyAside } from './study/types';
 import { InsightCard } from './InsightCard';
 import { TrendChart } from './TrendChart';
 import { BreakdownCard } from './BreakdownCard';
@@ -76,7 +77,8 @@ import { BlankFillContext, type BlankFillState } from './lib';
 import { useCardDrag } from './dnd/useCardDrag';
 import { FocusStage } from './focus/FocusStage';
 import { FocusToggle } from './focus/FocusToggle';
-import type { ViewMode } from './focus/useFocusMode';
+import { savedViewMode, type ViewMode } from './focus/useFocusMode';
+import { StudyStage } from './study/StudyStage';
 import type {
   Block,
   BendSpec,
@@ -269,7 +271,9 @@ interface Props {
   onAddToDashboard?: (b: Block) => void;
   /** Ids of blocks the user has pinned, so they read as visibly selected on the canvas. */
   selectedBlockIds?: ReadonlySet<string>;
-  /** When set, the canvas offers a Focus/Everything view toggle (the surface owns the
+  /** What Mavéa has written about each object in the Study, keyed by block id. */
+  studyAsides?: Readonly<Record<string, readonly StudyAside[]>>;
+  /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
    *  remembered preference). Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
   viewMode?: ViewMode;
@@ -289,6 +293,12 @@ interface Props {
    *  them as its clickable trail column ("Mavéa's notes"); the grid renders them via the
    *  annotation layer's rail instead. Absent/empty → no column. */
   walkNotes?: readonly { spot: string; text: string }[];
+  /** Study only: the line the voice is on, whether it is audible, the answer's lead, and
+   *  whether the per-answer intro plays — see StudyStage's props. */
+  voiceLine?: string | null;
+  speaking?: boolean;
+  lead?: string;
+  studyIntro?: 'full' | 'skip';
   /** Live-only: the answer's one draggable number (spec.bend) — renders a BendStrip under
    *  its block. Absent (the Demo, clips) → nothing renders. */
   bend?: BendSpec;
@@ -323,6 +333,7 @@ export function TopicCanvas({
   onAskBlock,
   onAddToDashboard,
   selectedBlockIds,
+  studyAsides,
   viewMode,
   onViewMode,
   onNarrate,
@@ -330,6 +341,10 @@ export function TopicCanvas({
   muted,
   noteGutter,
   walkNotes,
+  voiceLine,
+  speaking,
+  lead,
+  studyIntro,
   bend,
   onAddToFlashcard,
   flashedIds,
@@ -394,23 +409,27 @@ export function TopicCanvas({
   const previewBlock = data.blocks.find((b) => b.type === 'preview');
   const previewProps = previewBlock ? (previewBlock.props as PreviewProps) : null;
 
-  // Focus mode is offered only when the surface opts in (viewMode set) AND there are at least two
+  // Study mode needs one addressable object. Focus is offered only when the surface opts in AND
+  // there are at least two
   // id-bearing cards to page through — a single card has nothing to focus, so it stays a plain
-  // grid and the toggle is hidden (without disturbing the remembered preference).
-  const focusCapable = viewMode !== undefined && displayBlocks.filter((b) => !!b.id).length >= 2;
+  // Study. Neither mode disturbs the remembered preference if a particular answer cannot use it.
+  const addressableCount = displayBlocks.filter((b) => !!b.id).length;
+  const studyCapable = viewMode !== undefined && addressableCount >= 1;
+  const focusCapable = viewMode !== undefined && addressableCount >= 2;
+  const inStudy = studyCapable && viewMode === 'study';
   const focused = focusCapable && viewMode === 'focus';
   // The spatial "Canvas" board is offered only when the answer is genuinely board-shaped. Gate on
   // data.blocks (not the responsive-trimmed set) so the offer is stable as the container resizes.
   const canvasCapable = viewMode !== undefined && boardCapable(data);
   const canvasView = canvasCapable && viewMode === 'canvas';
   // Canvas is a per-answer view, never a sticky mode: when a NEW answer arrives, fall back to the
-  // normal view so the board can't hijack the next reply (voice + spotlight run in the normal view,
+  // standing view so the board can't hijack the next reply (voice + spotlight run there,
   // and the page scrolls normally). Read viewMode via a ref so this fires only on the answer change,
   // not the moment the user opens the canvas.
   const viewModeRef = useRef(viewMode);
   viewModeRef.current = viewMode;
   useEffect(() => {
-    if (viewModeRef.current === 'canvas') onViewMode?.('everything');
+    if (viewModeRef.current === 'canvas') onViewMode?.(savedViewMode());
   }, [data.id, onViewMode]);
 
   // The Blank Space: card-into-hole drag is offered only in Live (blankFill present) and only when
@@ -634,13 +653,13 @@ export function TopicCanvas({
             <button
               type="button"
               className="canvas-exit"
-              onClick={() => onViewMode?.('everything')}
+              onClick={() => onViewMode?.(savedViewMode())}
             >
               <span aria-hidden>←</span> Back to answer
             </button>
           ) : (
             <>
-              {useSections && hasDeeper && !focused && (
+              {useSections && hasDeeper && !focused && !inStudy && (
                 <button
                   type="button"
                   className={'depth-reading-toggle' + (readingMode ? ' is-reading' : '')}
@@ -653,8 +672,12 @@ export function TopicCanvas({
                   {readingMode ? 'Collapse sections' : 'Expand sections'}
                 </button>
               )}
-              {focusCapable && onViewMode && (
-                <FocusToggle value={focused ? 'focus' : 'everything'} onChange={onViewMode} />
+              {studyCapable && onViewMode && (
+                <FocusToggle
+                  value={inStudy ? 'study' : focused ? 'focus' : 'everything'}
+                  onChange={onViewMode}
+                  focusCapable={focusCapable}
+                />
               )}
               {viewSlot}
               {/* Canvas is an OPT-IN alternate view of this one answer, not a sticky mode: a button
@@ -697,7 +720,25 @@ export function TopicCanvas({
           renderBlock={renderBlock}
           onAskBlock={onAskBlock}
           selectedBlockIds={selectedBlockIds}
-          onExit={() => onViewMode?.('everything')}
+          onExit={() => onViewMode?.(savedViewMode())}
+        />
+      ) : familiesLoaded && inStudy ? (
+        <StudyStage
+          data={data}
+          blocks={displayBlocks}
+          spot={spot}
+          renderBlock={renderBlock}
+          onAskBlock={onAskBlock}
+          asides={studyAsides}
+          selectedBlockIds={selectedBlockIds}
+          onNarrate={onNarrate}
+          narratingId={narratingId}
+          muted={muted}
+          walkNotes={walkNotes}
+          voiceLine={voiceLine}
+          speaking={speaking}
+          lead={lead}
+          intro={studyIntro}
         />
       ) : familiesLoaded && focused ? (
         <FocusStage
