@@ -216,71 +216,6 @@
   --study-beat-num: var(--study-src-ink-muted);
 }
 
-/* ── The bar the desk introduces itself in ───────────────────────────────────────────────── */
-
-/* The canvas header lays its children out as flex COLUMNS (`.canvas-header > div`, a selector
-   that also outranks a lone class) — which is what stacked the mark above the room name. The
-   brand is one line or nothing, so it states both the direction and its own specificity. */
-.canvas-header.is-study .study-brand {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: nowrap;
-  flex: none;
-  gap: 11px;
-  white-space: nowrap;
-}
-
-/* The bar is a flex row; without this the brand is free to wrap under its own dot. */
-.canvas-header.is-study {
-  flex-wrap: nowrap;
-  gap: 16px;
-}
-
-.study-brand-dot {
-  width: 11px;
-  height: 11px;
-  flex: none;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 35% 30%,
-    color-mix(in oklab, var(--presence) 45%, #fff),
-    var(--presence)
-  );
-  animation: study-brand-pulse 3.2s ease-in-out infinite;
-  animation-play-state: var(--ambient-play, running);
-}
-
-.study-brand-name {
-  font: italic 600 18px/1 var(--font);
-  color: var(--text-primary);
-}
-
-.study-brand-rule {
-  width: 1px;
-  height: 16px;
-  flex: none;
-  background: var(--line-soft);
-}
-
-.study-brand-room {
-  font: 500 11px/1 var(--mono);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-@keyframes study-brand-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--presence) 38%, transparent);
-  }
-  55% {
-    box-shadow: 0 0 0 12px transparent;
-  }
-}
-
 /* ── The desk: authored space, scaled to fit ─────────────────────────────────────────────── */
 
 .study-desk {
@@ -737,35 +672,6 @@
 .study-guide.is-on {
   background: var(--study-green);
   color: var(--study-card);
-}
-
-.study-density {
-  flex: none;
-  padding: 8px 13px;
-  border: 1px solid var(--study-glass-line);
-  border-radius: var(--r-full);
-  background: transparent;
-  font: 400 12.5px/1 var(--study-serif);
-  color: var(--study-ink-soft);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.study-density[aria-pressed='true'] {
-  border-color: var(--study-amber);
-  background: var(--study-highlight);
-  color: var(--study-amber-deep);
-}
-
-/* Essential also calms the desk's own flourishes: the note stops drifting and the takeaway
-   keeps its words without the drawn underline. */
-.study-stage[data-density='essential'] .study-note,
-.study-stage[data-density='essential'] .study-takeaway-line {
-  animation: none;
-}
-
-.study-stage[data-density='essential'] .study-takeaway-stroke {
-  display: none;
 }
 
 .study-beats-row {
@@ -1627,52 +1533,6 @@
     position: static;
     max-width: none;
     margin: 0 0 14px;
-  }
-
-  .study-guide {
-    flex: none;
-    padding: 8px 15px;
-    border: 0;
-    border-radius: var(--r-full);
-    background: var(--study-highlight);
-    color: var(--study-amber-deep);
-    font: 600 13px/1 var(--study-serif);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .study-guide.is-on {
-    background: var(--study-green);
-    color: var(--study-card);
-  }
-
-  .study-density {
-    flex: none;
-    padding: 8px 13px;
-    border: 1px solid var(--study-glass-line);
-    border-radius: var(--r-full);
-    background: transparent;
-    font: 400 12.5px/1 var(--study-serif);
-    color: var(--study-ink-soft);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .study-density[aria-pressed='true'] {
-    border-color: var(--study-amber);
-    background: var(--study-highlight);
-    color: var(--study-amber-deep);
-  }
-
-  /* Essential also calms the desk's own flourishes: the note stops drifting and the takeaway
-   keeps its words without the drawn underline. */
-  .study-stage[data-density='essential'] .study-note,
-  .study-stage[data-density='essential'] .study-takeaway-line {
-    animation: none;
-  }
-
-  .study-stage[data-density='essential'] .study-takeaway-stroke {
-    display: none;
   }
 
   .study-beats-row {

@@ -131,11 +131,6 @@ export function StudyStage({
   // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
   // pick stops it), and stops itself at the last object rather than looping forever.
   const [guiding, setGuiding] = useState(false);
-  // Marking density, the design's own control. Expressive is the desk with its whole hand on
-  // it; Essential keeps only the marks that state a claim — the structural remark and its
-  // arrow — and drops the asides and the question. A reader who finds the desk busy needs a
-  // dial, not a binary "pen off".
-  const [density, setDensity] = useState<'expressive' | 'essential'>('expressive');
   const [visitedIds, setVisitedIds] = useState<readonly string[]>(() => {
     const seen: string[] = [];
     for (const note of walkNotes ?? []) if (!seen.includes(note.spot)) seen.push(note.spot);
@@ -374,9 +369,7 @@ export function StudyStage({
         ...structural.filter((mark) => mark.slot !== 'left'),
       ]
     : [...structural];
-  // Essential keeps the one mark that points AT something (the left slot, with its arrow); the
-  // bottom aside and the shoulder question are the decoration it removes.
-  const deskMarks = density === 'essential' ? allMarks.filter((m) => m.slot === 'left') : allMarks;
+  const deskMarks = allMarks;
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -413,7 +406,6 @@ export function StudyStage({
       data-study-note-kind={activeAside?.kind}
       data-gathered={gathered || undefined}
       data-assembling={assembling || undefined}
-      data-density={density}
     >
       <div className="study-desk">
         <div className="study-canvas">
@@ -621,19 +613,6 @@ export function StudyStage({
             onClick={() => setGuiding((on) => !on)}
           >
             {guiding ? '❚❚ Pause' : '▶ Guide me'}
-          </button>
-          <button
-            type="button"
-            className="study-density"
-            aria-pressed={density === 'essential'}
-            title={
-              density === 'expressive'
-                ? 'Keep only the marks that state a claim'
-                : 'Let the pen write freely again'
-            }
-            onClick={() => setDensity((now) => (now === 'expressive' ? 'essential' : 'expressive'))}
-          >
-            {density === 'expressive' ? '✦ Expressive' : '✦ Essential'}
           </button>
           <div className="study-beats-row" ref={beatsRowRef}>
             {lessonBlocks.map((block, index) => {

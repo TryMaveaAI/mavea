@@ -642,23 +642,11 @@ export function TopicCanvas({
     // is equivalent to no provider — the slot then keeps its own local state.
     <BlankFillContext.Provider value={blankFill ?? null}>
       {cardDrag.ghost}
-      <div className={'canvas-header' + (inStudy ? ' is-study' : '')}>
-        {inStudy ? (
-          // The desk names itself, the way the design does: the mark, then the room. The
-          // answer's own title is on the object in front of the reader — repeating it here
-          // just crowds the bar the controls live in.
-          <div className="study-brand">
-            <span className="study-brand-dot" aria-hidden="true" />
-            <span className="study-brand-name">Mavéa</span>
-            <span className="study-brand-rule" aria-hidden="true" />
-            <span className="study-brand-room">The Study</span>
-          </div>
-        ) : (
-          <div>
-            <div className="canvas-title">{data.title}</div>
-            <div className="canvas-sub">{data.sub}</div>
-          </div>
-        )}
+      <div className="canvas-header">
+        <div>
+          <div className="canvas-title">{data.title}</div>
+          <div className="canvas-sub">{data.sub}</div>
+        </div>
         <div className="canvas-header-actions">
           {headerSlot}
           {canvasView ? (
