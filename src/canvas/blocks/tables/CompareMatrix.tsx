@@ -1,5 +1,7 @@
 import { Fragment } from 'react';
 import type { CSSProperties } from 'react';
+import { BlockEmpty } from '../../lib/BlockEmpty';
+import { resolvesCellMatrix } from '../../lib/empty';
 import { Icon } from '../../../icons/icons';
 import type { CompareMatrixProps, CompareCell, CompareCellKind } from './types';
 import { richInnerHtml } from '../../../lib/richText';
@@ -99,6 +101,25 @@ export function CompareMatrix({
   // crushing the columns.
   const gridCols = `minmax(${ATTR_MIN_W}px, 1.3fr) repeat(${ncols}, minmax(${COL_MIN_W}px, 1fr))`;
   const legendKinds = usedKinds(rows);
+
+  // Cells are POSITIONAL, so a row whose cells are absent (or carry no value under the default
+  // 'text' kind) still counts as a row and paints a dash in every column: a header over a field
+  // of dashes, which reads as a broken table rather than as "nothing to compare". Say so
+  // instead, the way DataTable does — and the replay path needs this, since a baked frame is
+  // never re-validated.
+  if (!resolvesCellMatrix('comparematrix', { rows })) {
+    return (
+      <div
+        className="card reveal"
+        style={{ ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties}
+      >
+        <div className="card-eyebrow">
+          <Ic className="ic" style={{ color: iconColor }} /> {title}
+        </div>
+        <BlockEmpty message="No comparison to show" />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -6001,7 +6001,11 @@ export function LiveApp(): ReactElement {
                   onAddToFlashcard={addToFlashcard}
                   flashedIds={flashedIds}
                   belowHeaderSlot={
-                    hero && viewedAudio ? (
+                    // The scrubber belongs to the FLAT views, where the voice is the only thing
+                    // moving. The Study paces itself — Guide me walks the desk and the beat bar
+                    // is the transport — so a second, wider transport above it competes with the
+                    // one control that actually drives the lesson.
+                    hero && viewedAudio && viewMode !== 'study' ? (
                       <VoiceScrubber audio={viewedAudio} t={scrubT} onSeek={onScrub} />
                     ) : undefined
                   }

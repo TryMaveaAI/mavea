@@ -96,6 +96,41 @@ export function resolvesKeyedRows(type: string, props: unknown): boolean {
 }
 
 /**
+ * Matrix types whose cells are POSITIONAL (one per column, in order) rather than keyed by a
+ * column id — the keyed judgement above cannot see them, so an all-empty grid used to render as
+ * a header over a field of dashes.
+ */
+const CELL_MATRIX_TYPES: Record<string, { rows: string; cells: string }> = {
+  comparematrix: { rows: 'rows', cells: 'cells' },
+  // NOT clearancematrix: its rows are plain label strings and its cells hang off the block, each
+  // naming its own row and column. A different shape needs its own reading, not this one.
+};
+
+/** A cell shows something when it carries text, a finite number, or a glyph kind that means
+ *  yes/no/partial on its own. A bare `{}` — or a 'text' cell with no value — paints a dash. */
+function cellShows(cell: unknown): boolean {
+  const c = asRecord(cell);
+  const kind = typeof c.kind === 'string' ? c.kind : 'text';
+  if (kind === 'yes' || kind === 'no' || kind === 'partial') return true;
+  const value = c.value;
+  if (typeof value === 'number') return Number.isFinite(value);
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+/**
+ * False when a positional-cell matrix would render every cell empty. Same contract as its keyed
+ * sibling: unknown types and absent structure answer TRUE, so this refuses only on positive
+ * evidence that the grid has nothing in it.
+ */
+export function resolvesCellMatrix(type: string, props: unknown): boolean {
+  const shape = CELL_MATRIX_TYPES[type];
+  if (!shape) return true;
+  const rows = asArray(asRecord(props)[shape.rows]).map(asRecord);
+  if (rows.length === 0) return true;
+  return rows.some((row) => asArray(row[shape.cells]).some(cellShows));
+}
+
+/**
  * False when a block of `type` would render a list of items none of which show anything. Mirrors
  * resolvesKeyedRows: unknown types and unreadable shapes answer TRUE, and absence is left to the
  * validator's requires-check, so this refuses only on positive evidence.

@@ -24,6 +24,11 @@ export const FIT_H = 765;
 /** How far past its authored size the desk may grow on a large screen. */
 export const SCALE_MAX = 1.12;
 
+/** …and in full screen, where the reader has asked for the whole viewport and the HUD scales
+ *  with the desk, so the surface grows as one piece rather than as a fixed frame around a
+ *  slightly larger picture. */
+export const SCALE_MAX_FULL = 1.6;
+
 /** 9px app legibility floor ÷ 11px smallest persistent reading type on the desk. If either
  *  number changes, this moves — recompute it, never tune it. */
 export const STUDY_FIT_FLOOR = 9 / 11;

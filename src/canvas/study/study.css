@@ -582,12 +582,13 @@
 
 .study-takeaway {
   position: absolute;
-  bottom: 74px;
+  bottom: calc(74px * var(--study-hud, 1));
   left: 50%;
   z-index: 10;
   width: max-content;
   max-width: min(84%, calc(var(--study-scale, 1) * 700px));
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--study-hud, 1));
+  transform-origin: bottom center;
   text-align: center;
   text-wrap: balance;
   pointer-events: none;
@@ -635,7 +636,11 @@
   position: absolute;
   bottom: 14px;
   left: 50%;
-  transform: translateX(-50%);
+  /* The HUD keeps its authored size on a normal stage (that is what protects legibility when
+     the desk shrinks) and grows WITH the desk in full screen, where there is room to spare and
+     a fixed-size control row would read as a toy bar under a huge composition. */
+  transform: translateX(-50%) scale(var(--study-hud, 1));
+  transform-origin: bottom center;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -675,8 +680,11 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  /* A clipped chip must read as "more this way", not as a defect. */
-  mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  /* A clipped chip must read as "more this way", not as a defect — and the ACTIVE chip must
+     never be the one under the fade, so the row keeps a lane of clear space at each end for
+     the centring scroll to land in. */
+  scroll-padding-inline: 28px;
+  mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
 }
 
 .study-beats-row::-webkit-scrollbar {
@@ -868,7 +876,8 @@
   width: 314px;
   max-height: calc(100% - 96px);
   padding: 14px 14px 22px 0;
-  transform: rotate(1.2deg);
+  transform: rotate(1.2deg) scale(var(--study-hud, 1));
+  transform-origin: bottom right;
   border: 1px solid var(--study-note-border);
   border-radius: 4px;
   background: var(--study-crib);
@@ -976,6 +985,8 @@
   left: max(22px, calc(50% - var(--study-scale, 1) * 720px + 16px));
   max-width: clamp(190px, calc(50cqw - 428.8px * var(--study-scale, 1) - 64px), 340px);
   padding: 9px 14px 10px;
+  transform: scale(var(--study-hud, 1));
+  transform-origin: top left;
   border: 1px solid var(--study-glass-line);
   border-radius: var(--r-md);
   background: var(--study-glass);

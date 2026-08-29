@@ -238,6 +238,64 @@ function secondRemark(block: Block, seed: number): string | null {
   }
 }
 
+/** What a collection of this name IS, in the words a hand would use. */
+const COLLECTION_NOUN: Record<string, string> = {
+  rows: 'rows',
+  items: 'items',
+  steps: 'steps',
+  options: 'options',
+  criteria: 'rows',
+  events: 'moments',
+  series: 'series',
+  kpis: 'tiles',
+  waypoints: 'stops',
+  cohorts: 'cohorts',
+  segments: 'parts',
+  columns: 'columns',
+  entries: 'entries',
+  nodes: 'nodes',
+  layers: 'layers',
+  points: 'points',
+  stops: 'stops',
+  tasks: 'tasks',
+  fields: 'fields',
+  cards: 'cards',
+  lanes: 'lanes',
+  metrics: 'metrics',
+  tools: 'tools',
+};
+
+/**
+ * A remark for a block this file has no bespoke reading of — and there are hundreds of block
+ * types. It counts the largest collection the block actually renders and says what that means
+ * to read, which is true of any shape without knowing the shape. Null only when a block has no
+ * countable structure at all (a paragraph, an image).
+ */
+function genericQuip(block: Block, seed: number): string | null {
+  const props = block.props as Record<string, unknown>;
+  let best: { key: string; n: number } | null = null;
+  for (const [key, value] of Object.entries(props)) {
+    if (!Array.isArray(value) || value.length < 2) continue;
+    const noun = COLLECTION_NOUN[key];
+    if (!noun) continue;
+    if (!best || value.length > best.n) best = { key: noun, n: value.length };
+  }
+  if (!best) return null;
+  const options = [
+    `${best.n} ${best.key} — which one decides it?`,
+    `${best.n} ${best.key}. read the odd one out`,
+    `compare across, not down`,
+  ];
+  return options[seed % options.length];
+}
+
+/** The same, for the second slot: a different angle on an unfamiliar shape. */
+function genericSecond(seed: number): string {
+  return ['what is NOT shown here?', 'the shape is the argument', 'read it once, then question it'][
+    seed % 3
+  ];
+}
+
 /**
  * Every scrawl around one object, in the design's slots: the structural remark on the left (the
  * one the arrow points with), a second angle below, and — when the object is a claim worth
@@ -246,9 +304,12 @@ function secondRemark(block: Block, seed: number): string | null {
  */
 export function penMarks(block: Block, seed = 0): PenMark[] {
   const marks: PenMark[] = [];
-  const primary = penQuip(block, seed);
+  // A bespoke reading where this file has one; otherwise a count of whatever the block actually
+  // renders. The library is hundreds of types deep, and a desk where most objects carry no hand
+  // at all is not the surface the design describes.
+  const primary = penQuip(block, seed) ?? genericQuip(block, seed);
   if (primary) marks.push({ text: primary, slot: 'left' });
-  const second = secondRemark(block, seed);
+  const second = secondRemark(block, seed) ?? (primary ? genericSecond(seed) : null);
   if (second && second !== primary && second.length <= MAX) {
     marks.push({ text: second, slot: 'bottom' });
   }

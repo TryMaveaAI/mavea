@@ -21,7 +21,9 @@ import type { StudyAside, StudyNoteKind } from './types';
 import type { PenMark, PenSlot } from '../../live/content/penQuip';
 import { useStudyScale } from './useStudyScale';
 import { useStudyParallax } from './useStudyParallax';
+import { useTruncatedTextDisclosures } from '../hooks/useTruncatedTextDisclosures';
 import { useFullscreen } from '../../lib/useFullscreen';
+import '../layout/textDisclosure.css';
 import './study.css';
 
 interface Props {
@@ -58,14 +60,18 @@ interface Props {
  *  left mark reaches right into the card, the bottom one sweeps up into it, the top one comes
  *  down over its shoulder. */
 const MARK_ARROWS: Record<PenSlot, { line: string; head: string }> = {
-  left: { line: 'M6,10 C34,16 58,26 78,36', head: 'M78,36 L64,33 M78,36 L68,46' },
-  bottom: { line: 'M12,58 C40,50 64,34 80,12', head: 'M80,12 L66,16 M80,12 L78,26' },
-  top: { line: 'M78,8 C60,22 40,38 14,52', head: 'M14,52 L28,48 M14,52 L22,62' },
+  // Each head is DERIVED from the curve it ends: two barbs 24° either side of the direction the
+  // line actually arrives from, 13 units long. Hand-picked endpoints put barbs on the wrong
+  // side of the tip, which is what made these read as bent pipes rather than arrows.
+  left: { line: 'M6,10 C34,16 58,26 78,36', head: 'M78,36 L70,26 M78,36 L65,35' },
+  bottom: { line: 'M12,58 C40,50 64,34 80,12', head: 'M80,12 L69,18 M80,12 L77,25' },
+  top: { line: 'M78,8 C60,22 40,38 14,52', head: 'M14,52 L27,51 M14,52 L22,42' },
 };
 
-/** How long each object holds the desk under "Guide me" — long enough to read a card and its
- *  note, short enough that the walk still feels like it is going somewhere. */
-const GUIDE_MS = 9000;
+/** The pause between one object's line ending and the next taking the desk. Long enough to let
+ *  a card settle and be read, short enough that the walk still feels like it is going
+ *  somewhere. The guide is paced by the VOICE, not by a clock — this is only the air between. */
+const GUIDE_GAP_MS = 2600;
 
 /** Whether the intro gate has played this session, surviving remounts. v3's rule: the overlay
  *  is a first-arrival beat — later answers (and Study → Focus → Study flips) skip the gate and
@@ -131,6 +137,8 @@ export function StudyStage({
   // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
   // pick stops it), and stops itself at the last object rather than looping forever.
   const [guiding, setGuiding] = useState(false);
+  // True for the first step after pressing play, so it fires immediately instead of waiting.
+  const guideStartRef = useRef(false);
   const [visitedIds, setVisitedIds] = useState<readonly string[]>(() => {
     const seen: string[] = [];
     for (const note of walkNotes ?? []) if (!seen.includes(note.spot)) seen.push(note.spot);
@@ -231,6 +239,10 @@ export function StudyStage({
   const fullscreen = useFullscreen();
   useStudyScale(stageRef);
   useStudyParallax(stageRef);
+  // Truncation without a way back to the words is just lost text. The canvas grid gets this
+  // treatment already; the desk renders its cards outside that grid, so it asks for its own —
+  // re-scanned whenever the desk re-casts, since the object on it changes.
+  useTruncatedTextDisclosures(stageRef, `${data.id}:${scene.active?.id ?? ''}`);
 
   // What Mavéa has written about the object on the desk — several notes per object, paged.
   const foregroundId = scene.active?.id ?? null;
@@ -296,29 +308,44 @@ export function StudyStage({
 
   const active = scene.active?.block;
 
-  // The guide's clock. Held in an effect (not a timer chain) so it is torn down with the stage
-  // and re-armed cleanly whenever the desk, the voice, or the reader's own pick moves it.
+  // The guide walks the desk and TALKS: each object takes the desk and is narrated (the same
+  // path a tap uses), and the next one waits for that line to finish rather than for a clock.
+  // Held in an effect, not a timer chain, so it tears down with the stage and re-arms cleanly
+  // whenever the desk, the voice, or the reader's own pick moves it.
   const guideRef = useRef<{ blocks: Block[]; id: string | null }>({ blocks: [], id: null });
   guideRef.current = {
     blocks: deskBlocks.filter((block) => block.id),
     id: scene.active?.id ?? null,
   };
-  useEffect(() => {
-    if (!guiding) return;
-    if (speaking) return; // never talk over her — the tick waits for the line to land
-    const timer = window.setTimeout(() => {
+  const guideStep = useCallback(
+    (fromStart: boolean) => {
       const { blocks: cast, id } = guideRef.current;
       const at = cast.findIndex((block) => block.id === id);
-      const next = cast[at + 1];
+      // Starting ON an object narrates it where it stands; every later step moves along.
+      const next = fromStart && at >= 0 ? cast[at] : cast[at + 1];
       if (!next) {
         setGuiding(false);
         return;
       }
       setPinnedId(next.id ?? null);
       onNarrate?.(next);
-    }, GUIDE_MS);
+    },
+    [onNarrate],
+  );
+  useEffect(() => {
+    if (!guiding) return;
+    // Never talk over her: while a line is audible the guide simply waits for it.
+    if (speaking) return;
+    // The first step lands at once — a control that does nothing for nine seconds reads as
+    // broken — and each later one after a beat of air once the voice has stopped.
+    const delay = guideStartRef.current ? 0 : GUIDE_GAP_MS;
+    const timer = window.setTimeout(() => {
+      const fromStart = guideStartRef.current;
+      guideStartRef.current = false;
+      guideStep(fromStart);
+    }, delay);
     return () => window.clearTimeout(timer);
-  }, [guiding, speaking, foregroundId, onNarrate]);
+  }, [guiding, speaking, foregroundId, guideStep]);
 
   if (!active) return null;
 
@@ -477,7 +504,8 @@ export function StudyStage({
                   aria-hidden="true"
                 >
                   <path className="study-connect-line" d="M146,170 C118,128 66,78 16,44" />
-                  <path className="study-connect-head" d="M16,44 L32,40 M16,44 L28,56" />
+                  {/* Barbs derived from the curve's arrival direction, like the desk's marks. */}
+                  <path className="study-connect-head" d="M16,44 L23,55 M16,44 L29,46" />
                 </svg>
                 <div className="study-note-wrap">
                   <div className="study-note-layer" aria-hidden="true">
@@ -614,7 +642,12 @@ export function StudyStage({
             type="button"
             className={`study-guide${guiding ? ' is-on' : ''}`}
             aria-pressed={guiding}
-            onClick={() => setGuiding((on) => !on)}
+            onClick={() =>
+              setGuiding((on) => {
+                if (!on) guideStartRef.current = true;
+                return !on;
+              })
+            }
           >
             {guiding ? '❚❚ Pause' : '▶ Guide me'}
           </button>
@@ -628,6 +661,8 @@ export function StudyStage({
                   className={`study-beat${now ? ' is-now' : ''}`}
                   aria-current={now ? 'step' : undefined}
                   aria-label={`Beat ${index + 1} of ${lessonBlocks.length}: ${blockLabel(block)}`}
+                  // A chip is an ellipsis by design; the whole name has to stay reachable.
+                  title={blockLabel(block)}
                   onClick={(event) => choose(block, event.shiftKey)}
                 >
                   <span className="study-beat-num" aria-hidden="true">

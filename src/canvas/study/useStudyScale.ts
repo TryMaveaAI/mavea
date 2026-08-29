@@ -5,7 +5,16 @@
 // The mockup polled the box on an interval; an observer is the same measurement without the idle
 // cost, and it disconnects with the stage.
 import { useEffect, type RefObject } from 'react';
-import { COMPACT_W, DESK_H, FIT_H, FIT_W, SCALE_MAX, SHALLOW_CROP, STUDY_FIT_FLOOR } from './slots';
+import {
+  COMPACT_W,
+  DESK_H,
+  FIT_H,
+  FIT_W,
+  SCALE_MAX,
+  SCALE_MAX_FULL,
+  SHALLOW_CROP,
+  STUDY_FIT_FLOOR,
+} from './slots';
 
 /**
  * Keeps `--study-scale` on the stage equal to the desk's fitted scale, clamped to
@@ -28,9 +37,15 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       // observer already measures this box; publishing the state as an attribute is what lets
       // the stage restyle itself.
       stage.toggleAttribute('data-compact', w <= COMPACT_W);
+      // Full screen is the one place the desk may grow past its authored size: the reader asked
+      // for the whole viewport, and a 1440-wide composition marooned in the middle of a 27-inch
+      // display is not what they asked for. The HUD grows with it there (and only there) so the
+      // whole surface scales as one piece.
+      const full = stage.matches(':fullscreen') || stage.classList.contains('is-fullscreen');
       const fitted = Math.min(w / FIT_W, h / FIT_H);
-      const scale = Math.min(SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
+      const scale = Math.min(full ? SCALE_MAX_FULL : SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
       stage.style.setProperty('--study-scale', scale.toFixed(4));
+      stage.style.setProperty('--study-hud', full ? Math.max(1, scale).toFixed(4) : '1');
       // The tallest the front card may stand HERE, in design px. The card is CENTRED on desk
       // y=330 and lifted to z=70 (a 1.046 magnification), so its lower edge lands at
       //   stageH/2 + (330 + H/2 − 370) · scale · 1.046
