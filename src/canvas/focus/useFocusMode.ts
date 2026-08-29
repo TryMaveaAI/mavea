@@ -1,7 +1,7 @@
 // useFocusMode.ts — the canvas view mode, remembered across sessions.
 //
-// 'study' is the shared-attention stage: one foreground object, nearby evidence, and a quiet
-// horizon. 'everything' is the full adaptive grid. 'focus' pages one card at a time. 'canvas'
+// 'everything' (the full adaptive grid) is the default — the answer, entire, with nothing
+// staged. 'study' is the desk: one object at a time with Mavéa's notes beside it. 'focus' pages one card at a time. 'canvas'
 // spreads THIS answer's cards on a board, and 'world' opens the causal web behind it. The choice is
 // a single shared preference (one key, both surfaces) so flipping it in the Demo carries into Live.
 //
@@ -15,7 +15,12 @@ export type ViewMode = 'study' | 'focus' | 'everything' | 'canvas' | 'world';
 const STORAGE_KEY = 'mavea-view-mode';
 /** Broadcast on every write so live views re-read (same key, so it's self-describing). */
 export const VIEW_MODE_EVENT = STORAGE_KEY;
-const DEFAULT: ViewMode = 'study';
+// The first duty of an answer surface is to deliver the answer, so a reader who has expressed
+// no preference gets the whole of it at once. The Study is the better SECOND move — it shows one
+// object at a time behind an entrance, and its notes are most useful once you have taken the
+// answer in — and it is one click away in the view toggle, the palette and the walkthrough.
+// A choice, once made, is kept: setViewMode persists it and every later session reads it back.
+const DEFAULT: ViewMode = 'everything';
 
 /**
  * The views that belong to ONE answer rather than to the reader's standing preference: the spatial

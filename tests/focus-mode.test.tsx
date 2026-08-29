@@ -28,12 +28,12 @@ function blk(type: string, id?: string, props: Record<string, unknown> = {}): Bl
 describe('useFocusMode store', () => {
   beforeEach(() => {
     localStorage.clear();
-    setViewMode('study'); // reset the in-session cache to the default
+    setViewMode('everything'); // reset the in-session cache to the default
     localStorage.clear();
   });
 
-  it('defaults to the Study', () => {
-    expect(getViewMode()).toBe('study');
+  it('defaults to Everything — a reader with no preference gets the whole answer', () => {
+    expect(getViewMode()).toBe('everything');
   });
 
   it("migrates a stored pre-rename 'room' preference to 'study' on read", async () => {
@@ -494,5 +494,30 @@ describe('Focus swap — outgoing overlay stays out of flow (no half-width slide
     // …and never the bare `.focus-hero-card` (which would tie .focus-out{position:absolute} on
     // specificity and win by cascade order, forcing the overlay in-flow → the half-width flash).
     expect(annotateCss).not.toMatch(/\.live-voice\s+\.focus-hero-card\s*[,{]/);
+  });
+});
+
+describe('a chosen view is kept — forever, not for the session', () => {
+  it('survives a full reload: the choice is read back from storage, not re-defaulted', async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const first = await import('../src/canvas/focus/useFocusMode');
+    expect(first.getViewMode()).toBe('everything');
+    first.setViewMode('study');
+
+    // A new session reads the same storage with an empty in-session cache.
+    vi.resetModules();
+    const later = await import('../src/canvas/focus/useFocusMode');
+    expect(later.getViewMode()).toBe('study');
+  });
+
+  it('never persists a per-answer takeover over that standing choice', async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const m = await import('../src/canvas/focus/useFocusMode');
+    m.setViewMode('focus');
+    m.setViewMode('canvas'); // opening a board is about ONE answer
+    expect(localStorage.getItem('mavea-view-mode')).toBe('focus');
+    expect(m.savedViewMode()).toBe('focus');
   });
 });

@@ -18,7 +18,7 @@ index, or open the **Explore** menu in the top bar.
   one on the fly — a freeform diagram, or a custom layout arranged from existing blocks — rendered
   with the same design tokens and safety boundary. This is on by default; disabling it removes those
   contracts from the model menu.
-- 📖 **The Study** — the default way an answer arrives: one object on a lamplit desk, the rest of
+- 📖 **The Study** — one object on a lamplit desk, the rest of
   the answer waiting in a shallow arc behind it, and Mavéa's notes in the margin beside it. Four
   notes per object — what it assumes, the pattern in it, what can and cannot be backed, and a
   pressure-test — each read from that object's own data, and each written at your Explain level.

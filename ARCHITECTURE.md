@@ -751,9 +751,12 @@ delta** — a client-only app can't passively re-measure anything, so a change n
 fabricated. Tapping a card re-opens it via `useLiveTurn`'s `restore` action (no model call).
 
 The **view mode** (`canvas/focus/useFocusMode.ts`) is the Study / Focus / Everything canvas
-toggle, shared across the Demo and Live (one key); `study` — the desk, one object at a time — is
-the default, and a preference saved as `room` (the surface's former name) is read as `study`.
-`canvas` and `world` are per-answer takeovers and are never written to the key.
+toggle, shared across the Demo and Live (one key); `everything` (the full grid) is the default —
+a reader who has expressed no preference gets the whole answer at once, and the Study is the
+better second move. A choice is kept FOREVER, not for the session: it is written to the key and
+read back by every later session. A preference saved as `room` (the surface's former name) is
+read as `study`. `canvas` and `world` are per-answer takeovers and are never written to the key,
+so opening a board cannot clobber the standing choice.
 
 ### `mavea-live-v2` shape
 

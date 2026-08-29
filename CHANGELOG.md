@@ -22,8 +22,11 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ### Changed
 
-- The canvas view toggle is now **Study / Focus / Everything**, with the Study as the default. A
-  saved preference of `room` (the surface's former name) is read as `study`; the storage key is
+- The canvas view toggle is now **Study / Focus / Everything**. `Everything` remains the default —
+  the first duty of an answer surface is to deliver the answer, and the Study's notes are most
+  useful once you have taken that answer in — with the Study one click away in the toggle, the
+  command palette and the walkthrough. Your choice is kept for good, not for the session. A saved
+  preference of `room` (the surface's former name) is read as `study`; the storage key is
   unchanged.
 
 ### Fixed
