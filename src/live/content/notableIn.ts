@@ -102,10 +102,8 @@ export function notableIn(block: Block): Notable | null {
       }
       const tied = wins.filter((w) => w === top).length > 1;
       if (tied) {
-        return {
-          text: `No clear winner — the top options split the rows ${top} apiece.`,
-          at: name,
-        };
+        // No `at`: pointing the pen at ONE of the tied options contradicts the sentence.
+        return { text: `No clear winner — the top options split the rows ${top} apiece.` };
       }
       return {
         text: `${name} takes ${top} of the ${criteria.length} rows. That is the whole case for it.`,
@@ -150,7 +148,10 @@ export function notableIn(block: Block): Notable | null {
       if (!Number.isFinite(start) || !Number.isFinite(end) || start === 0) return null;
       const move = ((end - start) / Math.abs(start)) * 100;
       const from = labels[0];
-      const to = labels[labels.length - 1];
+      // The series may be SHORTER than the axis (a forecast that stops early): its last point
+      // belongs to its own last label, not to the end of the axis, or the sentence names a
+      // period the line never reached.
+      const to = labels[Math.min(first.data.length, labels.length) - 1];
       if (Math.abs(move) < 2) {
         return { text: `${first.name} is essentially flat from ${from} to ${to}.`, at: to };
       }
@@ -204,8 +205,17 @@ export function notableIn(block: Block): Notable | null {
       const first = ordered[0];
       const second = ordered[1];
       if (!first || !second) return null;
+      const lead = Math.round(first.pct - second.pct);
+      // A rounded lead of zero is a TIE, and "0 points ahead" reads as a bug rather than a
+      // finding — say what a tie actually means for the reader instead.
+      if (lead <= 0) {
+        return {
+          text: `${first.label} and ${second.label} are level here — nothing separates them.`,
+          at: first.label,
+        };
+      }
       return {
-        text: `${first.label} is ${pct(first.pct)}, ${Math.round(first.pct - second.pct)} points ahead of ${second.label}.`,
+        text: `${first.label} is ${pct(first.pct)}, ${lead} point${lead === 1 ? '' : 's'} ahead of ${second.label}.`,
         at: first.label,
       };
     }

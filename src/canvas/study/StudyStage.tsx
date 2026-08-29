@@ -391,7 +391,11 @@ export function StudyStage({
   const cribNotes = visitedIds.flatMap((spot) => {
     const block = lessonBlocks.find((item) => item.id === spot);
     if (!block) return [];
-    const text = latestWalkNote(spot) ?? block.note;
+    // The walk's own written line first. A beat the reader jumped to without a spoken line
+    // falls back to the block's note — but not for the object ON the desk, whose note is
+    // already the takeaway inches away; the pad would just say it twice.
+    const walked = latestWalkNote(spot);
+    const text = walked ?? (spot === active.id ? null : block.note);
     return text ? [{ spot, text }] : [];
   });
   const beatNumberFor = (spot: string): string => {
