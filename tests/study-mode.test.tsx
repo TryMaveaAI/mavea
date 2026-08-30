@@ -520,3 +520,45 @@ describe('a streaming answer deals the desk once, not once per card', () => {
     expect(beats()).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('a REPLACE answer takes the desk whole — ids collide, types tell the truth', () => {
+  // A live spec's id is the constant 'live', and a replace restarts its block ids at live-1.
+  // Compared by id alone the new answer's cards collided with the old answer's, so the desk
+  // held the PREVIOUS answer through the whole stream and the reader's pin/visited state
+  // survived onto cards that no longer existed.
+  const oldAnswer = [block('live-1', 'Old lead'), block('live-2', 'Old detail')];
+  const newAnswer = [
+    {
+      type: 'timeline',
+      id: 'live-1',
+      col: 8,
+      props: { events: [{ time: 'Now', title: 'New answer' }] },
+    } as unknown as Block,
+    block('live-2', 'New detail'),
+  ];
+
+  function desk(blocks: Block[], spot: string | null, streaming: boolean) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot={spot}
+        streaming={streaming}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title ?? 'timeline-card'}</div>}
+      />
+    );
+  }
+
+  it('shows the new answer during its stream instead of holding the old one', () => {
+    const { rerender } = render(desk(oldAnswer, 'live-2', false));
+    expect(document.querySelector('.study-card.is-front')?.textContent).toContain('Old detail');
+    // The replace streams in: first partial carries ONE new block whose id collides.
+    rerender(desk([newAnswer[0]], 'live-2', true));
+    const front = document.querySelector('.study-card.is-front')?.textContent ?? '';
+    expect(front).toContain('timeline-card');
+    expect(front).not.toContain('Old');
+    // Settle with the full new cast.
+    rerender(desk(newAnswer, 'live-1', false));
+    expect(document.querySelectorAll('.study-card').length).toBe(2);
+  });
+});

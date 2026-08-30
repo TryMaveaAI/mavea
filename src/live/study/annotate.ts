@@ -16,7 +16,7 @@ import type { Block, BlockStudy, ConversationSpec } from '../../data/conversatio
 
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers';
-import { cacheGet, cachePut, rippleCacheKey } from '../ripple/cache';
+import { cacheGet, cachePut, fnv1a, rippleCacheKey } from '../ripple/cache';
 import { coerceStudyNotes, STUDY_NOTES_DIRECTIVE } from '../../engine/liveSchema';
 import { recordUsage } from '../usage/ledger';
 import { studyLevelNote } from '../select/simpleLevel';
@@ -120,12 +120,16 @@ export function studyNotesFor(
   cfg: ModelConfig,
   level: ExplainLevel = 'standard',
 ): Promise<Map<string, BlockStudy> | null> {
-  const signature = spec.blocks
-    .map((b) => `${b.id}:${b.type}`)
-    .join('|')
-    .slice(0, 600);
-  // The level is part of the key: a note written for Simple is not the note for In-depth.
-  const key = rippleCacheKey(`live-study:${level}:${spec.id}\0${signature}`, cfg.provider);
+  // Content-addressed on the DIGEST the notes are written about, never on ids: a live spec's
+  // id is the constant 'live', and block ids restart at live-1 on every replace — keyed on
+  // those, a later answer with the same silhouette (chart+kpi+list) would have been served the
+  // PREVIOUS answer's notes, figures and all. The digest carries the blocks' actual props, so
+  // different content can never share a key. The level rides too: a note written for Simple is
+  // not the note for In-depth.
+  const key = rippleCacheKey(
+    `live-study:${level}:${fnv1a(blockDigest(spec.blocks))}`,
+    cfg.provider,
+  );
   const already = inFlight.get(key);
   if (already) return already;
   const started = fetchNotes(key, spec, ask, cfg, level);

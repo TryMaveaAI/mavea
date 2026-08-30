@@ -221,3 +221,49 @@ describe('kpi — a grid of em-dashes is not a populated card', () => {
     }
   });
 });
+
+// Seen live a THIRD time, through yet another door: a `compare` whose cells the model wrote as
+// {value} (or bare strings) coerced every cell to v:'' — headers and row labels rendered, the
+// grid between them empty. compare has a bespoke coercer, so none of the itemShapes machinery
+// covered it; its cells are its content, and the guard belongs in the builder itself.
+describe('compare — a grid is its cells', () => {
+  function compare(criteria: unknown) {
+    return validateLiveResponse({
+      title: 'T',
+      narration: 'n',
+      blocks: [
+        {
+          type: 'compare',
+          props: {
+            options: [
+              { name: 'Spatial Computing', sub: 'Blended reality' },
+              { name: 'Virtual Reality', sub: 'Total immersion' },
+            ],
+            criteria,
+          },
+        },
+      ],
+    })?.blocks.find((b) => b.type === 'compare');
+  }
+
+  it('reads cells written as {value}, {text}, or bare strings', () => {
+    const block = compare([
+      { label: 'Environment', cells: [{ value: 'Digital overlays' }, { text: 'Fully virtual' }] },
+      { label: 'Primary Use', cells: ['Work', 'Gaming'] },
+    ]);
+    expect(block).toBeDefined();
+    const crits = (block!.props as { criteria: { cells: { v: string }[] }[] }).criteria;
+    expect(crits[0].cells.map((c) => c.v)).toEqual(['Digital overlays', 'Fully virtual']);
+    expect(crits[1].cells.map((c) => c.v)).toEqual(['Work', 'Gaming']);
+  });
+
+  it('drops a row whose cells are all blank, and the block when none survive', () => {
+    const partial = compare([
+      { label: 'Environment', cells: [{}, {}] },
+      { label: 'Primary Use', cells: [{ v: 'Work' }, { v: 'Gaming' }] },
+    ]);
+    const crits = (partial!.props as { criteria: { label: string }[] }).criteria;
+    expect(crits.map((c) => c.label)).toEqual(['Primary Use']);
+    expect(compare([{ label: 'Environment', cells: [{}, {}] }])).toBeUndefined();
+  });
+});

@@ -250,15 +250,32 @@ export function StudyStage({
   // While the turn streams, the desk composes from the last SETTLED set plus the newest card —
   // the reader gets the answer's first object immediately and a still desk behind it, then one
   // re-deal with the full cast when the stream ends.
+  //
+  // Identity is id:type, never id alone. A live spec's id is the constant 'live' and a REPLACE
+  // answer restarts its block ids at live-1 — compared by id only, the new answer's first card
+  // collided with the old answer's and the desk held the PREVIOUS answer's cards for the whole
+  // stream. A broken prefix (same position, different type) is a new answer: the settled set is
+  // dropped on the spot and the new cast takes the desk.
+  const blockSig = (block: Block): string => `${block.id ?? ''}:${block.type}`;
   const settledRef = useRef(liveBlocks);
-  if (!streaming) settledRef.current = liveBlocks;
+  const replaced =
+    streaming &&
+    liveBlocks.length > 0 &&
+    settledRef.current.length > 0 &&
+    liveBlocks.some((block, i) => {
+      const prior = settledRef.current[i];
+      return !!prior && blockSig(prior) !== blockSig(block);
+    });
+  if (!streaming || replaced) settledRef.current = liveBlocks;
   const deskBlocks = useMemo(() => {
     if (!streaming) return liveBlocks;
     const settled = settledRef.current;
-    const held = new Set(settled.map((block) => block.id));
-    const fresh = liveBlocks.find((block) => block.id && !held.has(block.id));
+    const held = new Set(settled.map(blockSig));
+    const fresh = liveBlocks.find((block) => block.id && !held.has(blockSig(block)));
     return fresh ? [...settled, fresh] : settled;
-  }, [streaming, liveBlocks]);
+    // `replaced` mutates settledRef in render, so the memo must recompute on the same tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streaming, liveBlocks, replaced]);
 
   // A follow-UP answers IN PLACE: continuity 'augment' keeps the spec id and appends blocks, so
   // none of the data.id resets above fire — and the desk sat on the previous answer's card, with
@@ -275,12 +292,29 @@ export function StudyStage({
   const spotAtRecast = useRef<string | null>(null);
   const deskIdsRef = useRef<string | null>(null);
   useEffect(() => {
-    const key = deskBlocks.map((block) => block.id ?? '').join('|');
+    const key = deskBlocks.map((block) => `${block.id ?? ''}:${block.type}`).join('|');
     const previous = deskIdsRef.current;
     deskIdsRef.current = key;
     if (previous === null || previous === key) return;
-    const before = new Set(previous.split('|'));
-    const fresh = deskBlocks.find((block) => block.id && !before.has(block.id));
+    const beforeList = previous.split('|');
+    const before = new Set(beforeList);
+    // A REPLACE restarts block ids, so the change shows as the same position wearing a
+    // different id:type — not as an appended tail. That is a NEW ANSWER: everything the reader
+    // held on the old one (pin, visited beats, open crib) belongs to cards that no longer
+    // exist, so the desk resets whole rather than recasting in place.
+    const currentList = key.split('|');
+    const isReplace = currentList.some((sig, i) => !!beforeList[i] && beforeList[i] !== sig);
+    if (isReplace) {
+      setPinnedId(null);
+      setVisitedIds([]);
+      setRecastId(deskBlocks[0]?.id ?? null);
+      spotAtRecast.current = spot;
+      setNotePage(0);
+      setCribOpen(false);
+      setGuiding(false);
+      return;
+    }
+    const fresh = deskBlocks.find((block) => block.id && !before.has(`${block.id}:${block.type}`));
     if (!fresh?.id) return;
     // ONCE PER BURST, not once per card. A streamed answer appends its blocks one partial at a
     // time, and recasting on each appended card re-dealt the whole desk over and over while the

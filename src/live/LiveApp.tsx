@@ -1338,6 +1338,12 @@ export function LiveApp(): ReactElement {
   // True while the reveal walk is stepping blocks — the first-run walkthrough reads it (via its
   // isBusy op) so a chapter never auto-advances mid-walk and chops the narration.
   const walkActive = useRef(false);
+  /** Whether the running walk is a SPOKEN one — only those can park under a barge-in (the
+   *  silent derived walk paces on timers no gate can hold, and would keep stepping). */
+  const walkSpokenRef = useRef(false);
+  /** Whether a claimed diagram is currently driving (its own step lines don't run through the
+   *  pause loops, so parking would leave a gate nobody consumes). */
+  const diagramDrivingRef = useRef(false);
   // ── The walk PAUSE gate ─────────────────────────────────────────────────────────────────────
   // Armed when the user interrupts a running walk (barge-in, or a mic tap). The walk parks at
   // its next boundary and waits for the verdict: 'replay' (it was filler, noise, or the user
@@ -1353,18 +1359,40 @@ export function LiveApp(): ReactElement {
   // Mirrors the gate for RENDER (the status pill says "Paused — listening" so the interrupt is
   // acknowledged on screen through the transcription wait, instead of seconds of dead silence).
   const [walkPaused, setWalkPaused] = useState(false);
+  const walkPauseTimerRef = useRef<number | null>(null);
+  const settleWalkPause = useCallback((v: 'replay' | 'abort'): void => {
+    if (walkPauseTimerRef.current !== null) {
+      window.clearTimeout(walkPauseTimerRef.current);
+      walkPauseTimerRef.current = null;
+    }
+    // Resolve, but DON'T null the ref: the CONSUMER clears it (pauseVerdict, in the walk).
+    // Settling used to null it here, so a verdict that landed while the walk was still inside
+    // waitLineEnd was read back as null at the next boundary — the walk marched on as if the
+    // interruption never happened. The resolved promise IS the latch; awaiting it a moment
+    // later still delivers the verdict.
+    walkPauseRef.current?.resolve(v);
+    setWalkPaused(false);
+  }, []);
+  /** Hard-clear the gate when NO consumer is coming (the walk is being flushed/unmounted). */
+  const dropWalkPause = useCallback((): void => {
+    settleWalkPause('abort');
+    walkPauseRef.current = null;
+  }, [settleWalkPause]);
   const armWalkPause = useCallback((): void => {
     if (walkPauseRef.current) return;
     let resolve!: (v: 'replay' | 'abort') => void;
     const promise = new Promise<'replay' | 'abort'>((r) => (resolve = r));
     walkPauseRef.current = { promise, resolve };
     setWalkPaused(true);
-  }, []);
-  const settleWalkPause = useCallback((v: 'replay' | 'abort'): void => {
-    walkPauseRef.current?.resolve(v);
-    walkPauseRef.current = null;
-    setWalkPaused(false);
-  }, []);
+    // A verdict normally arrives from onResult — but a misfire, a whisper failure, or /stt
+    // being down produces NO result at all, and a gate with no verdict parked the walk forever
+    // behind a pill still claiming to listen. Long enough to cover a slow transcription; if
+    // nothing arrives, the honest default is that it was noise: resume.
+    walkPauseTimerRef.current = window.setTimeout(() => {
+      walkPauseTimerRef.current = null;
+      settleWalkPause('replay');
+    }, 15_000);
+  }, [settleWalkPause]);
   // The last few lines Mavéa actually spoke, so a transcript that is her own voice leaking
   // through AEC is recognised and never submitted as the user's question — on speaker setups
   // she could cancel herself and bill a model call to answer her own words.
@@ -1824,14 +1852,20 @@ export function LiveApp(): ReactElement {
     notes: Map<string, BlockStudy>;
   } | null>(null);
   const studySpec = turn.viewSpec ?? turn.spec;
-  // Keyed on the BLOCK SET, not the spec id alone: a follow-up with continuity 'augment' keeps
-  // the id and appends blocks, and notes fetched for the old set would leave every new card
-  // running on the derived voices forever.
+  // THE answer's identity, everywhere the Study needs one. A live spec's id is the constant
+  // 'live' for the whole session (generateLive), so anything keyed on it alone is keyed on
+  // nothing: resets never fired, one session's third answer read as the first. The block set's
+  // ids ALSO collide across answers (a replace restarts at live-1), so the signature carries
+  // id:type pairs — a replace changes the types at the same positions even when the ids repeat.
   const studySpecId = studySpec
-    ? `${studySpec.id}|${studySpec.blocks.map((b) => b.id ?? '').join(',')}`
+    ? `${studySpec.id}|${studySpec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`
     : null;
   useEffect(() => {
     if (viewMode !== 'study' || !studySpec || !studySpecId) return;
+    // Never buy notes for an answer still streaming: every partial would be its own "answer"
+    // (the signature grows per block) and each would bill a full annotate call — measured as
+    // one paid generation per streamed block. The settled answer buys once.
+    if (turn.busy) return;
     // Already have them, or the answer carries them inline (an older turn, a baked demo).
     if (studyNotes?.specId === studySpecId) return;
     if (studySpec.blocks.some((b) => b.study)) return;
@@ -1852,7 +1886,7 @@ export function LiveApp(): ReactElement {
     // `studyNotes` is deliberately absent: it is the RESULT of this effect, and reading it here
     // would re-run the moment it lands. The guard above uses a ref-free early return instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, studySpec, studySpecId, lastAsk, cfg]);
+  }, [viewMode, studySpec, studySpecId, lastAsk, cfg, turn.busy]);
 
   // Four notes per object, written once for the answer — see `studyVoices` for who authors each.
   // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
@@ -1863,7 +1897,10 @@ export function LiveApp(): ReactElement {
     const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
     const out: Record<string, StudyAside[]> = {};
-    const written = studyNotes?.specId === spec.id ? studyNotes.notes : undefined;
+    // Same composite identity the fetch stored — comparing against the bare spec.id ('live',
+    // always) meant every note set was bought on the user's key and then never displayed.
+    const sig = `${spec.id}|${spec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`;
+    const written = studyNotes?.specId === sig ? studyNotes.notes : undefined;
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
       // The model's notes for THIS answer, when the desk has bought them; otherwise the block's
@@ -1906,8 +1943,11 @@ export function LiveApp(): ReactElement {
     const spec = turn.spec;
     if (viewMode !== 'study' || !spec || !annotationsEnabledRef.current) return;
     // Once per answer. Re-entering the study on the SAME answer must not re-run the cascade.
-    if (studyInkedFor.current === spec.id) return;
-    studyInkedFor.current = spec.id;
+    // spec.id is 'live' on every live turn — keyed on it alone this ran once per SESSION, so
+    // from the second answer on the desk opened with no ink at all.
+    const inkKey = `${spec.id}|${spec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`;
+    if (studyInkedFor.current === inkKey) return;
+    studyInkedFor.current = inkKey;
     let step = 0;
     for (const b of spec.blocks) {
       if (!b.id) continue;
@@ -2475,6 +2515,7 @@ export function LiveApp(): ReactElement {
     // canvas aloud and each block lights up exactly while its line is spoken. The derived
     // reading-order walk only has block titles, so it stays silent on a fixed dwell.
     const spokenWalk = modelTour.length > 0;
+    walkSpokenRef.current = spokenWalk;
     // Latched here — before the first stop — and held for the turn: the gutter reserves once
     // (cards tile around it from the start), so a later mute flip changes only what's inked
     // next, never the layout. Only a turn that ARRIVED muted with a spoken tour gets one.
@@ -2525,6 +2566,7 @@ export function LiveApp(): ReactElement {
     // with nobody driving it.
     let activeDiagramRelease: (() => void) | null = null;
     const releaseActiveDiagram = (): void => {
+      diagramDrivingRef.current = false;
       if (activeDiagramRelease) {
         activeDiagramRelease();
         activeDiagramRelease = null;
@@ -2624,8 +2666,15 @@ export function LiveApp(): ReactElement {
     // figure with no steps to walk.
     // If the user interrupted, park here until the transcript decides. 'replay' re-speaks the
     // interrupted stop; 'abort' ends the walk (the aborting side flushes). null = no interrupt.
-    const pauseVerdict = async (): Promise<'replay' | 'abort' | null> =>
-      walkPauseRef.current ? await walkPauseRef.current.promise : null;
+    const pauseVerdict = async (): Promise<'replay' | 'abort' | null> => {
+      const gate = walkPauseRef.current;
+      if (!gate) return null;
+      const v = await gate.promise;
+      // Consumer clears — see settleWalkPause: the resolved promise is the latch that survives
+      // the race between a fast verdict and a walk still finishing its cut line.
+      if (walkPauseRef.current === gate) walkPauseRef.current = null;
+      return v;
+    };
     // One stop's mark cadence: spread `count` strokes so the last completes as the line ends,
     // never tighter than the hand's own MARK_STEP_MS floor.
     const markStepFor = (lineText: string | undefined, count: number): number =>
@@ -2640,6 +2689,7 @@ export function LiveApp(): ReactElement {
         return;
       }
       activeDiagramRelease = claimed.release;
+      diagramDrivingRef.current = true;
       runDiagramWalk(
         claimed,
         {
@@ -2709,6 +2759,15 @@ export function LiveApp(): ReactElement {
           capMs: finishCapMs(spokenMsUncapped(line ?? '')),
         });
         if (bail()) return;
+        // A barge-in DURING the opener parks here too: the opener was cut (that queue is now
+        // quiet, which is why the wait resolved), and speaking stop 0's line over the still-
+        // talking user would be exactly the fault the gate exists to prevent. 'replay' resumes
+        // from stop 0's own line — the natural continuation of a cut opener.
+        {
+          const verdict = await pauseVerdict();
+          if (verdict === 'abort') return;
+        }
+        if (bail()) return;
         if (!ownLine) {
           advance(spot);
           return;
@@ -2741,6 +2800,11 @@ export function LiveApp(): ReactElement {
         applyStop(spot, line, idx);
         primeNextSpoken(idx);
         await waitQueueQuiet({ floorMs: MIN_STOP_MS, capMs: finishCapMs(estimateMs) });
+        if (bail()) return;
+        {
+          const verdict = await pauseVerdict();
+          if (verdict === 'abort') return;
+        }
         if (bail()) return;
         advance(spot);
         return;
@@ -2809,7 +2873,7 @@ export function LiveApp(): ReactElement {
       cancelled = true;
       // A parked pause must not outlive the walk it parked — resolve it as an abort so the
       // awaiting stop returns instead of leaking a pending promise into a finished turn.
-      settleWalkPause('abort');
+      dropWalkPause();
       if (timer) clearTimeout(timer);
       releaseActiveDiagram();
       cancelSpeech();
@@ -2865,9 +2929,11 @@ export function LiveApp(): ReactElement {
       cancelled = true;
       // A pause parked against THIS walk must not survive it: resolve as abort so the awaiting
       // stop returns (and bails on `cancelled`) instead of leaking a pending promise.
-      settleWalkPause('abort');
+      dropWalkPause();
       flushWalkRef.current = null;
       walkActive.current = false;
+      walkSpokenRef.current = false;
+      diagramDrivingRef.current = false;
       if (timer) clearTimeout(timer);
       if (cueTimer) clearTimeout(cueTimer);
       setWalkPreparing(false);
@@ -3118,6 +3184,13 @@ export function LiveApp(): ReactElement {
     // `disabled={turn.busy}` at the UI level, so they never get here busy.
     (text: string, force = false) => {
       const t = text.trim();
+      // A typed question while the walk is parked IS the verdict: the reader moved on. Without
+      // this, a slow transcription could resolve 'replay' seconds later and re-speak the old
+      // stop's line into the NEW turn's audio, re-lighting a spot on a replaced canvas.
+      if (walkPauseRef.current) {
+        dropWalkPause();
+        showAll();
+      }
       // Watch Me Think: the main composer doubles as the typed-thought input — a submitted line
       // banks into the live map instead of starting a turn. No second text box needed.
       if (watchThinkingRef.current && t) {
@@ -3197,6 +3270,8 @@ export function LiveApp(): ReactElement {
     // here only to satisfy exhaustive-deps now that they cross the hook boundary.
     [
       turn,
+      dropWalkPause,
+      showAll,
       attached,
       pinned,
       userInk,
@@ -3578,7 +3653,7 @@ export function LiveApp(): ReactElement {
       // cut the line so the interruption feels instant, park the walk at its boundary, and let
       // the transcript decide (filler resumes the stop; a real question aborts and submits).
       // Outside a walk there is nothing paced to preserve: the old flush is exactly right.
-      if (walkActive.current) {
+      if (walkActive.current && walkSpokenRef.current && !diagramDrivingRef.current) {
         cancelSpeech();
         armWalkPause();
       } else {
@@ -3596,6 +3671,13 @@ export function LiveApp(): ReactElement {
 
       if (r.lowConfidence && text) {
         bargedInRef.current = false;
+        // A probable-question draft while the walk is parked: end the walk loudly rather than
+        // returning with the gate armed and nobody obligated to resolve it. The reader is about
+        // to edit and submit — replaying a stop under their typing would be noise.
+        if (walkPauseRef.current) {
+          dropWalkPause();
+          showAll();
+        }
         setHeard(null);
         setValue(text);
         setVoiceNotice(LOW_CONFIDENCE_VOICE_MSG);
@@ -3731,7 +3813,15 @@ export function LiveApp(): ReactElement {
       // empty result), which would leave bargedInRef stuck true and mis-route the NEXT real utterance
       // through the barge path (re-speaking stale narration or force-submitting). Clear it on idle —
       // onResult already cleared it first on a normal barge, so this is a harmless no-op there.
-      if (e.phase === 'idle') bargedInRef.current = false;
+      if (e.phase === 'idle') {
+        bargedInRef.current = false;
+        // A barge whose utterance produced NO result (empty transcript, a misfire after the
+        // mic-tap park, a failed /stt) emits idle without ever reaching onResult — the gate
+        // would sit armed behind a pill claiming to listen while the mic is closed. Idle with
+        // the gate still armed means the verdict died in flight: treat it as noise and resume.
+        // On a normal barge, onResult settled first and this is a no-op on a cleared gate.
+        if (walkPauseRef.current) settleWalkPause('replay');
+      }
       if (e.phase === 'listening') {
         // The mic is genuinely open — any earlier failure notice is stale.
         setVoiceNotice(null);
@@ -3988,7 +4078,7 @@ export function LiveApp(): ReactElement {
     } else if (listening) {
       // A second tap is an explicit completion action, never a discard.
       voice.forceStop();
-    } else if (walkActive.current) {
+    } else if (walkActive.current && walkSpokenRef.current && !diagramDrivingRef.current) {
       // A mic tap mid-walk is an interjection, not a demolition: hush her and PARK the walk —
       // exactly the barge-in path — so saying nothing (or a false start) resumes the tour where
       // it stood instead of leaving a dumped canvas and a dead room. A real question aborts and

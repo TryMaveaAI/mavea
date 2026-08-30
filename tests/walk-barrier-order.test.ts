@@ -105,7 +105,9 @@ describe('a barge-in PAUSES the walk; only a real question ends it', () => {
   });
 
   it('a mic tap mid-walk takes the same pause path as a barge-in', () => {
-    const at = src.indexOf('} else if (walkActive.current) {');
+    const at = src.indexOf(
+      '} else if (walkActive.current && walkSpokenRef.current && !diagramDrivingRef.current) {',
+    );
     expect(at).toBeGreaterThan(-1);
     const body = src.slice(at, at + 700);
     expect(body).toContain('cancelSpeech()');
@@ -113,15 +115,18 @@ describe('a barge-in PAUSES the walk; only a real question ends it', () => {
     expect(body).toContain('voice.start(');
   });
 
-  it('the walk consumes the verdict at its stop boundary, and every teardown settles it', () => {
+  it('the walk consumes the verdict at its stop boundary, and every teardown drops the gate', () => {
     expect(src).toContain('const verdict = await pauseVerdict()');
-    // Both the flush hatch and the effect cleanup resolve a parked pause — a pending promise
-    // must never outlive the walk that parked it.
+    // Teardowns use dropWalkPause (settle + hard-clear): the consumer-clears latch means a bare
+    // settle leaves the ref for pauseVerdict to collect — right mid-walk, wrong when the walk is
+    // being flushed/unmounted and no consumer is coming.
     const flushAt = src.indexOf('flushWalkRef.current = () => {');
-    expect(src.slice(flushAt, flushAt + 400)).toContain("settleWalkPause('abort')");
-    // Two null-assignments exist (an early-exit path and the effect cleanup) — the cleanup is
-    // the LAST one, and it must settle before it lets go of the hatch.
+    expect(src.slice(flushAt, flushAt + 400)).toContain('dropWalkPause()');
     const cleanupAt = src.lastIndexOf('flushWalkRef.current = null;');
-    expect(src.slice(cleanupAt - 400, cleanupAt)).toContain("settleWalkPause('abort')");
+    expect(src.slice(cleanupAt - 400, cleanupAt)).toContain('dropWalkPause()');
+    // And a barge that dies without a verdict (empty transcript → idle, misfire, /stt down)
+    // resumes rather than parking forever behind a lying pill.
+    const idleAt = src.indexOf("if (e.phase === 'idle') {");
+    expect(src.slice(idleAt, idleAt + 700)).toContain("settleWalkPause('replay')");
   });
 });
