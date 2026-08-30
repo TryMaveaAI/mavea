@@ -75,3 +75,53 @@ describe('barge-in flushes the walk, not just the line', () => {
     expect(handler).toMatch(/bargedInRef\.current = true/);
   });
 });
+
+describe('a barge-in PAUSES the walk; only a real question ends it', () => {
+  // The old behavior destroyed the walk before knowing what was said: an "uh huh" dumped every
+  // card at once, killed the spotlight, then re-read the whole narration over a canvas that no
+  // longer tracked it. Same inspection style as above — the wiring needs live audio to mount.
+  const src = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
+
+  it('onBargeIn inside a walk parks it instead of flushing it', () => {
+    const at = src.indexOf('onBargeIn: () => {');
+    const body = src.slice(at, src.indexOf('},', at));
+    expect(body).toContain('walkActive.current');
+    expect(body).toContain('cancelSpeech()');
+    expect(body).toContain('armWalkPause()');
+    // The flush survives only for the no-walk case.
+    expect(body.indexOf('armWalkPause()')).toBeLessThan(body.indexOf('showAll()'));
+  });
+
+  it('filler and self-echo resume the parked stop; a real question aborts and submits', () => {
+    const at = src.indexOf('if (bargedInRef.current) {');
+    const body = src.slice(at, at + 1600);
+    // Her own leaked words never become a paid model call.
+    expect(body).toContain('isRecentlySpoken(text)');
+    expect(body).toMatch(/isRecentlySpoken\(text\)\)\s*\{\s*settleWalkPause\('replay'\)/);
+    // Filler resumes the stop, never re-reads the whole narration over a parked walk.
+    expect(body).toMatch(/walkPauseRef\.current\)\s*\{[\s\S]{0,400}settleWalkPause\('replay'\)/);
+    // A real question ends the walk before submitting.
+    expect(body).toMatch(/settleWalkPause\('abort'\);\s*showAll\(\)/);
+  });
+
+  it('a mic tap mid-walk takes the same pause path as a barge-in', () => {
+    const at = src.indexOf('} else if (walkActive.current) {');
+    expect(at).toBeGreaterThan(-1);
+    const body = src.slice(at, at + 700);
+    expect(body).toContain('cancelSpeech()');
+    expect(body).toContain('armWalkPause()');
+    expect(body).toContain('voice.start(');
+  });
+
+  it('the walk consumes the verdict at its stop boundary, and every teardown settles it', () => {
+    expect(src).toContain('const verdict = await pauseVerdict()');
+    // Both the flush hatch and the effect cleanup resolve a parked pause — a pending promise
+    // must never outlive the walk that parked it.
+    const flushAt = src.indexOf('flushWalkRef.current = () => {');
+    expect(src.slice(flushAt, flushAt + 400)).toContain("settleWalkPause('abort')");
+    // Two null-assignments exist (an early-exit path and the effect cleanup) — the cleanup is
+    // the LAST one, and it must settle before it lets go of the hatch.
+    const cleanupAt = src.lastIndexOf('flushWalkRef.current = null;');
+    expect(src.slice(cleanupAt - 400, cleanupAt)).toContain("settleWalkPause('abort')");
+  });
+});

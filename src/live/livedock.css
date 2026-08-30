@@ -120,6 +120,20 @@
   height: 7px;
   opacity: 0.75;
 }
+/* "Paused — listening": the walk is parked under a barge-in while the mic captures. Same held
+   orb as Preparing (nothing is audible), its own class so the source-scan that anchors the
+   Preparing pill to the walk barrier keeps meaning exactly that. */
+.live-voice .vc-status.vc-paused {
+  cursor: default;
+}
+.live-voice .vc-status.vc-paused:hover {
+  background: color-mix(in oklab, var(--presence) 12%, transparent);
+}
+.live-voice .vc-paused .vc-orb i {
+  animation: none;
+  height: 7px;
+  opacity: 0.75;
+}
 /* The recurring per-stop synthesis beat: the same held, halo-breathing orb with NO words — the
    barrier pill above explains itself once per turn; text repeated at every stop would nag. */
 .live-voice .vc-status.vc-quiet {

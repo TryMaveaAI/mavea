@@ -1039,6 +1039,11 @@ export function LiveApp(): ReactElement {
       voiceRef.current?.setMaveaSpeaking(true);
     }
     const startsBurst = !isSpeaking();
+    // Remember what she said (bounded, recent): the self-echo guard in onResult compares
+    // transcripts against this, so her own words can never come back as a "question".
+    const ring = recentlySpokenRef.current;
+    ring.push({ text, at: Date.now() });
+    if (ring.length > 6) ring.shift();
     const line = speakLineTwoVoice(text, 'mavea');
     if (startsBurst) burstLineRef.current = line;
     return line;
@@ -1333,6 +1338,62 @@ export function LiveApp(): ReactElement {
   // True while the reveal walk is stepping blocks — the first-run walkthrough reads it (via its
   // isBusy op) so a chapter never auto-advances mid-walk and chops the narration.
   const walkActive = useRef(false);
+  // ── The walk PAUSE gate ─────────────────────────────────────────────────────────────────────
+  // Armed when the user interrupts a running walk (barge-in, or a mic tap). The walk parks at
+  // its next boundary and waits for the verdict: 'replay' (it was filler, noise, or the user
+  // changed their mind — re-speak the interrupted stop's line and carry on) or 'abort' (a real
+  // question — the walk ends and the question submits). This replaces the old behavior, which
+  // DESTROYED the walk before knowing what was said: an "uh huh" dumped every card at once,
+  // killed the spotlight, then re-read the whole narration over a canvas that no longer tracked
+  // it — both reported confusions in one move.
+  const walkPauseRef = useRef<{
+    promise: Promise<'replay' | 'abort'>;
+    resolve: (v: 'replay' | 'abort') => void;
+  } | null>(null);
+  // Mirrors the gate for RENDER (the status pill says "Paused — listening" so the interrupt is
+  // acknowledged on screen through the transcription wait, instead of seconds of dead silence).
+  const [walkPaused, setWalkPaused] = useState(false);
+  const armWalkPause = useCallback((): void => {
+    if (walkPauseRef.current) return;
+    let resolve!: (v: 'replay' | 'abort') => void;
+    const promise = new Promise<'replay' | 'abort'>((r) => (resolve = r));
+    walkPauseRef.current = { promise, resolve };
+    setWalkPaused(true);
+  }, []);
+  const settleWalkPause = useCallback((v: 'replay' | 'abort'): void => {
+    walkPauseRef.current?.resolve(v);
+    walkPauseRef.current = null;
+    setWalkPaused(false);
+  }, []);
+  // The last few lines Mavéa actually spoke, so a transcript that is her own voice leaking
+  // through AEC is recognised and never submitted as the user's question — on speaker setups
+  // she could cancel herself and bill a model call to answer her own words.
+  const recentlySpokenRef = useRef<{ text: string; at: number }[]>([]);
+  /** True when a transcript is mostly words Mavéa herself said in the last few seconds. Token
+   *  overlap, not equality: Whisper drops and mangles words, so an 80%-matching transcript of a
+   *  20-second-old line is her, not the user. Short utterances are exempt — "yes", "wait", "no
+   *  stop" legitimately reuse her words, and they are handled as filler/continue anyway. */
+  const isRecentlySpoken = useCallback((transcript: string): boolean => {
+    const tokens = transcript
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .split(/\s+/)
+      .filter(Boolean);
+    if (tokens.length < 4) return false;
+    const now = Date.now();
+    for (const said of recentlySpokenRef.current) {
+      if (now - said.at > 30_000) continue;
+      const spokenTokens = new Set(
+        said.text
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, '')
+          .split(/\s+/),
+      );
+      const hits = tokens.filter((t) => spokenTokens.has(t)).length;
+      if (hits / tokens.length >= 0.7) return true;
+    }
+    return false;
+  }, []);
   // Set by a running voiced walk to its own early-exit; a mute mid-walk calls it (see the
   // [muted] effect below) so the remaining stops' pen marks land at once instead of the walk
   // outrunning the reader. Null outside a walk — there's nothing to flush.
@@ -2561,6 +2622,10 @@ export function LiveApp(): ReactElement {
     // fall through to the normal step(). Voice must actually be live to bother: muted has
     // nothing to sync to, and reduced motion means the diagram already shows its finished
     // figure with no steps to walk.
+    // If the user interrupted, park here until the transcript decides. 'replay' re-speaks the
+    // interrupted stop; 'abort' ends the walk (the aborting side flushes). null = no interrupt.
+    const pauseVerdict = async (): Promise<'replay' | 'abort' | null> =>
+      walkPauseRef.current ? await walkPauseRef.current.promise : null;
     // One stop's mark cadence: spread `count` strokes so the last completes as the line ends,
     // never tighter than the hand's own MARK_STEP_MS floor.
     const markStepFor = (lineText: string | undefined, count: number): number =>
@@ -2649,15 +2714,24 @@ export function LiveApp(): ReactElement {
           return;
         }
         const shown = spot ? tourShownById.get(spot) : undefined;
-        const handle = speak(ownLine);
-        const heard = await waitLineStart(handle);
-        if (bail()) return;
-        applyStop(spot, shown ?? ownLine, idx);
-        primeNextSpoken(idx);
-        if (heard) {
-          await waitLineEnd(handle, spokenMs(ownLine));
-        } else {
-          await delay(spokenMs(ownLine));
+        for (;;) {
+          const handle = speak(ownLine);
+          const heard = await waitLineStart(handle);
+          if (bail()) return;
+          applyStop(spot, shown ?? ownLine, idx);
+          primeNextSpoken(idx);
+          if (heard) {
+            await waitLineEnd(handle, spokenMs(ownLine));
+          } else {
+            await delay(spokenMs(ownLine));
+          }
+          const verdict = await pauseVerdict();
+          if (verdict === 'abort') return;
+          if (verdict === 'replay') {
+            if (bail()) return;
+            continue;
+          }
+          break;
         }
         if (bail()) return;
         advance(spot);
@@ -2671,20 +2745,33 @@ export function LiveApp(): ReactElement {
         advance(spot);
         return;
       }
-      const handle = speak(spokenLine);
-      const heard = await waitLineStart(handle);
-      if (bail()) return;
-      applyStop(spot, line, idx);
-      // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
-      // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
-      // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
-      primeNextSpoken(idx);
-      if (heard) {
-        await waitLineEnd(handle, estimateMs);
-      } else {
-        // This line will never be heard (voice down, or hard-stopped) — dwell for the
-        // caption's own reading length instead of sprinting through the remaining stops.
-        await delay(estimateMs);
+      for (;;) {
+        const handle = speak(spokenLine);
+        const heard = await waitLineStart(handle);
+        if (bail()) return;
+        // Re-applying on a replay is safe by design: ink() dedupes per (block, gesture).
+        applyStop(spot, line, idx);
+        // Announce the NEXT stop's line while this one plays: its synthesis then hides behind
+        // this stop's audio instead of becoming dead-air between the two (voice/tts primeLine —
+        // the queue itself holds one walk line at a time, so the voice layer can't see ahead).
+        primeNextSpoken(idx);
+        if (heard) {
+          await waitLineEnd(handle, estimateMs);
+        } else {
+          // This line will never be heard (voice down, or hard-stopped) — dwell for the
+          // caption's own reading length instead of sprinting through the remaining stops.
+          await delay(estimateMs);
+        }
+        // A barge-in parks the walk HERE — mid-answer position intact, spotlight still on this
+        // stop — until the transcript decides. Filler re-speaks this stop's line (its PCM is
+        // cached, so the replay is instant and free); a real question ends the walk.
+        const verdict = await pauseVerdict();
+        if (verdict === 'abort') return;
+        if (verdict === 'replay') {
+          if (bail()) return;
+          continue;
+        }
+        break;
       }
       if (bail()) return;
       advance(spot);
@@ -2720,6 +2807,9 @@ export function LiveApp(): ReactElement {
     // margin notes don't, since the gutter was never reserved for a walk that arrived voiced.
     flushWalkRef.current = () => {
       cancelled = true;
+      // A parked pause must not outlive the walk it parked — resolve it as an abort so the
+      // awaiting stop returns instead of leaking a pending promise into a finished turn.
+      settleWalkPause('abort');
       if (timer) clearTimeout(timer);
       releaseActiveDiagram();
       cancelSpeech();
@@ -2773,6 +2863,9 @@ export function LiveApp(): ReactElement {
     void beginWalk();
     return () => {
       cancelled = true;
+      // A pause parked against THIS walk must not survive it: resolve as abort so the awaiting
+      // stop returns (and bails on `cancelled`) instead of leaking a pending promise.
+      settleWalkPause('abort');
       flushWalkRef.current = null;
       walkActive.current = false;
       if (timer) clearTimeout(timer);
@@ -3481,12 +3574,16 @@ export function LiveApp(): ReactElement {
   const voice = useVoiceController({
     mode: 'vad',
     onBargeIn: () => {
-      // VAD detected the user speaking mid-playback — cut everything paced immediately so the
-      // interruption feels instant: not just the TTS line, but the reveal walk it was pacing
-      // (showAll flushes the walk — remaining pen marks land at once, spotlight releases — and
-      // cancels the speech inside; outside a walk it's exactly the old cancel). A walk left
-      // running would keep stepping spotlights over the user's own question.
-      showAll();
+      // VAD confirmed the user speaking mid-playback. Inside a walk: PAUSE, don't destroy —
+      // cut the line so the interruption feels instant, park the walk at its boundary, and let
+      // the transcript decide (filler resumes the stop; a real question aborts and submits).
+      // Outside a walk there is nothing paced to preserve: the old flush is exactly right.
+      if (walkActive.current) {
+        cancelSpeech();
+        armWalkPause();
+      } else {
+        showAll();
+      }
       bargedInRef.current = true;
     },
     onResult: (r) => {
@@ -3527,11 +3624,31 @@ export function LiveApp(): ReactElement {
       if (bargedInRef.current) {
         bargedInRef.current = false;
         const narration = narrationRef.current;
-        if (!text || isContinuePhrase(text)) {
-          if (narration) speak(narration);
+        // Her own words, leaked through AEC on a speaker setup, must never become a question —
+        // that was a paid model call to answer herself. Resume as if it were noise.
+        if (text && isRecentlySpoken(text)) {
+          settleWalkPause('replay');
           return;
         }
-        // Real question — fall through and submit it below.
+        if (!text || isContinuePhrase(text)) {
+          if (walkPauseRef.current) {
+            // The walk is parked mid-stop: 'replay' re-speaks the interrupted stop's own line
+            // and carries on — never the whole narration over a canvas that no longer tracks
+            // it, which was itself a desync generator.
+            settleWalkPause('replay');
+            return;
+          }
+          // Outside a walk, only an explicit "keep going" earns a re-read; plain noise stays
+          // silent over the already-revealed answer.
+          if (narration && isContinuePhrase(text)) speak(narration);
+          return;
+        }
+        // Real question — the walk ends (its remaining ink lands at once) and the question
+        // submits below.
+        if (walkPauseRef.current) {
+          settleWalkPause('abort');
+          showAll();
+        }
       }
 
       if (!text) return;
@@ -3871,13 +3988,22 @@ export function LiveApp(): ReactElement {
     } else if (listening) {
       // A second tap is an explicit completion action, never a discard.
       voice.forceStop();
+    } else if (walkActive.current) {
+      // A mic tap mid-walk is an interjection, not a demolition: hush her and PARK the walk —
+      // exactly the barge-in path — so saying nothing (or a false start) resumes the tour where
+      // it stood instead of leaving a dumped canvas and a dead room. A real question aborts and
+      // submits via the same verdict in onResult.
+      cancelSpeech();
+      armWalkPause();
+      bargedInRef.current = true;
+      voice.start({ inCanvas: !!turn.spec });
     } else {
       // Hush Mavéa before opening the mic — otherwise the recognizer can transcribe Mavéa's own
       // playback as if it were the user (a feedback loop), and the interruption doesn't feel real.
       showAll();
       voice.start({ inCanvas: !!turn.spec });
     }
-  }, [sttOk, alwaysOn, alwaysPaused, listening, voice, turn.spec, showAll]);
+  }, [sttOk, alwaysOn, alwaysPaused, listening, voice, turn.spec, showAll, armWalkPause]);
 
   // Speak-then-show choreography: on EVERY turn the face comes to centre and speaks its opening
   // line for a short beat — "Mavéa appears and says a sentence," the way the scripted demo does —
@@ -5685,7 +5811,19 @@ export function LiveApp(): ReactElement {
                   still worth reading, and the row's width is already reserved). The pulsing
                   "Speaking" pill earns its place ONLY while she's actually voicing; the settings on
                   the right (voice, model) stay anchored regardless. Clicking the pill interrupts. */}
-              {speakingSticky && !voicePreparing ? (
+              {walkPaused ? (
+                /* The interrupt is acknowledged ON SCREEN through the whole listen +
+                   transcription wait — without this, barging in meant she stopped dead and
+                   nothing happened for seconds, indistinguishable from a crash. */
+                <div className="vc-status vc-paused" role="status">
+                  <span className="vc-orb" aria-hidden="true">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                  </span>
+                  <span className="vc-status-label">Paused — listening</span>
+                </div>
+              ) : speakingSticky && !voicePreparing ? (
                 <button
                   type="button"
                   className="vc-status"
