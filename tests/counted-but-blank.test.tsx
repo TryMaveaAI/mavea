@@ -301,3 +301,129 @@ describe('ComparisonMatrix — a restored empty grid refuses to draw', () => {
     expect(screen.queryByText('Empty row')).toBeNull();
   });
 });
+
+// The sweep's remaining doors, all the same class: a bespoke builder read one terse key, a
+// model wrote the natural synonym, and the card rendered its furniture with nothing inside.
+describe('every bespoke builder survives the natural authoring', () => {
+  const one = (block: unknown) =>
+    validateLiveResponse(
+      { title: 'T', narration: 'n', blocks: [block] },
+      new Set(['ring', 'donut', 'bars', 'chart', 'diagramflow']),
+      1,
+    )?.blocks[0];
+
+  it('ring: reads value/percent, normalizes the 0-100 scale, drops arc-less rings', () => {
+    const b = one({
+      type: 'ring',
+      props: { title: 'Progress', rings: [{ name: 'Done', value: 72 }] },
+    });
+    const rings = (b?.props as { rings: { pct: number }[] }).rings;
+    expect(rings[0].pct).toBeCloseTo(0.72);
+    // An honest 1.0 (6 of 6) is not "100 on the wrong scale".
+    const full = one({ type: 'ring', props: { title: 'P', rings: [{ label: 'All', pct: 1 }] } });
+    expect((full?.props as { rings: { pct: number }[] }).rings[0].pct).toBe(1);
+    // No share and no display → no arc to draw → no ring; none left → no block.
+    expect(one({ type: 'ring', props: { title: 'P', rings: [{ label: 'X' }] } })).toBeUndefined();
+  });
+
+  it('donut: reads value/percent, scales fractional shares, refuses an all-zero ring', () => {
+    const b = one({
+      type: 'donut',
+      props: {
+        title: 'Share',
+        rows: [
+          { label: 'Chrome', value: 0.65 },
+          { label: 'Safari', value: 0.2 },
+        ],
+      },
+    });
+    const rows = (b?.props as { rows: { pct: number }[] }).rows;
+    expect(rows.map((r) => r.pct)).toEqual([65, 20]);
+    expect(
+      one({ type: 'donut', props: { title: 'S', rows: [{ label: 'A' }, { label: 'B' }] } }),
+    ).toBeUndefined();
+  });
+
+  it('bars: reads val/figure, and drops a chart where no bar carried any number', () => {
+    const b = one({
+      type: 'bars',
+      props: {
+        title: 'Q',
+        bars: [
+          { label: 'Q1', val: '4.2' },
+          { label: 'Q2', val: 5 },
+        ],
+      },
+    });
+    expect((b?.props as { bars: { value: number }[] }).bars.map((x) => x.value)).toEqual([4.2, 5]);
+    // Genuinely all-zero data resolves its keys and STAYS…
+    expect(
+      one({ type: 'bars', props: { title: 'Q', bars: [{ label: 'Q1', value: 0 }] } }),
+    ).toBeDefined();
+    // …but labels with no numeric key anywhere is an axis over nothing.
+    expect(
+      one({ type: 'bars', props: { title: 'Q', bars: [{ label: 'Q1' }, { label: 'Q2' }] } }),
+    ).toBeUndefined();
+  });
+
+  it('chart: reads {x,y} points and pairs; entries resolving nothing drop the series closed', () => {
+    const b = one({
+      type: 'chart',
+      props: {
+        title: 'Trend',
+        labels: ['Jan', 'Feb'],
+        series: [{ name: 'Rev', data: [{ x: 'Jan', y: 12 }, [1, 14]] }],
+      },
+    });
+    expect((b?.props as { series: { data: number[] }[] }).series[0].data).toEqual([12, 14]);
+    expect(
+      one({
+        type: 'chart',
+        props: { title: 'T', labels: ['a'], series: [{ name: 'S', data: [{ x: 'a' }] }] },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('diagramflow: resolves edges by label when unambiguous, drops a flow whose flow died', () => {
+    const props = {
+      title: 'Pipeline',
+      nodes: [
+        { id: 'e1', label: 'Extract' },
+        { id: 'e2', label: 'Transform' },
+      ],
+      edges: [{ from: 'Extract', to: 'transform' }],
+    };
+    const b = one({ type: 'diagramflow', props });
+    const edges = (b?.props as { edges: { from: string; to: string }[] }).edges;
+    expect(edges).toEqual([{ from: 'e1', to: 'e2' }]);
+    // Authored edges, none resolvable: unconnected ellipses under a flow title is a broken card.
+    expect(
+      one({
+        type: 'diagramflow',
+        props: { ...props, edges: [{ from: 'Load', to: 'Ship' }] },
+      }),
+    ).toBeUndefined();
+  });
+
+  it('compare: a cell echoing its own criterion label is not a value', () => {
+    const b = one({ type: 'compare', props: {} });
+    void b; // compare is exercised above; the echo rule rides the same builder:
+    const r = validateLiveResponse({
+      title: 'T',
+      narration: 'n',
+      blocks: [
+        {
+          type: 'compare',
+          props: {
+            options: [{ name: 'A' }, { name: 'B' }],
+            criteria: [
+              { label: 'Price', cells: [{ label: 'Price', score: '$99' }, { score: '$120' }] },
+            ],
+          },
+        },
+      ],
+    })?.blocks.find((x) => x.type === 'compare');
+    const cells = (r!.props as { criteria: { cells: { v: string }[] }[] }).criteria[0].cells;
+    expect(cells.map((c) => c.v)).toEqual(['$99', '$120']);
+  });
+});

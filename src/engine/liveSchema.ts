@@ -987,7 +987,24 @@ function buildChart(p: Record<string, Json>, grounded: boolean): ChartProps | nu
   const series: ChartSeries[] = rawSeries
     .map((s): ChartSeries | null => {
       const so = asObj(s);
-      const data = asArr(so.data).map((d) => Math.round(asNum(d) * 100) / 100);
+      // A point authored as {x, y} (or a [x, y] pair) used to coerce to 0 through asNum while
+      // keeping its slot — a flat line along the axis claiming a trend. Entries that resolve no
+      // finite number DROP instead, so the length guard below fails the series closed.
+      const data = asArr(so.data)
+        .map((d): number | null => {
+          if (typeof d === 'number' || typeof d === 'string') {
+            const n = asNum(d, Number.NaN);
+            return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+          }
+          if (Array.isArray(d) && d.length >= 2) {
+            const n = asNum(d[1], Number.NaN);
+            return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+          }
+          const eo = asObj(d);
+          const n = asNum(eo.y ?? eo.value ?? eo.v ?? eo.val, Number.NaN);
+          return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+        })
+        .filter((n): n is number => n !== null);
       if (!data.length) return null;
       return {
         name: asStr(so.name, 'Series'),
@@ -1017,10 +1034,14 @@ function buildBreakdown(p: Record<string, Json>, grounded: boolean): BreakdownPr
       const ro = asObj(r);
       const name = alias(ro, 'name', 'label', 'category', 'item');
       if (!name) return null;
+      // `percentage` — the natural LONG synonym — was unread while `percent` was; and a share
+      // authored as a 0..1 fraction rounded to a 1% sliver. Fractions scale below, over the
+      // whole row set, so a mixed authoring can't half-scale.
+      const rawPct = asNum(ro.pct ?? ro.percent ?? ro.percentage ?? ro.share ?? ro.proportion);
       const row: BreakdownRow = {
         name,
         val: alias(ro, 'val', 'value', 'amount', 'display'),
-        pct: clamp(Math.round(asNum(ro.pct ?? ro.percent ?? ro.share)), 0, 100),
+        pct: rawPct,
       };
       const hot = asBool(ro.hot);
       if (hot) row.hot = true;
@@ -1033,6 +1054,14 @@ function buildBreakdown(p: Record<string, Json>, grounded: boolean): BreakdownPr
     })
     .filter((r): r is BreakdownRow => r !== null);
   if (!title || !rows.length) return null;
+  // Fractional shares (they sum to ~1) read up to percentages, THEN clamp/round.
+  const pctSum = rows.reduce((n, r) => n + r.pct, 0);
+  for (const r of rows) {
+    r.pct = clamp(Math.round(pctSum > 0 && pctSum <= 1.5 ? r.pct * 100 : r.pct), 0, 100);
+  }
+  // Names over empty value spans and 0%-width tracks is a list wearing a chart's clothes —
+  // at least one row must carry a value or a real share for the block to draw.
+  if (!rows.some((r) => r.val.trim() !== '' || r.pct > 0)) return null;
   const out: BreakdownProps = { title, rows };
   const icon = coerceIcon(p.icon);
   if (icon) out.icon = icon;
@@ -1126,7 +1155,13 @@ function buildCompare(p: Record<string, Json>): CompareProps | null {
           return { v: String(cell) };
         }
         const ce = asObj(cell);
-        const out: CmpCell = { v: asStr(ce.v) || alias(ce, 'value', 'text', 'val', 'label') };
+        // Score-ish keys outrank `label`: a flattened cell often carries the real value under
+        // score/rating beside an ECHO of the row's own label — filing the echo as the value
+        // would render a populated-LOOKING grid where every cell repeats its criterion.
+        let v =
+          asStr(ce.v) || alias(ce, 'value', 'text', 'val', 'score', 'rating', 'level', 'label');
+        if (v === label) v = '';
+        const out: CmpCell = { v };
         if (asBool(ce.win)) out.win = true;
         return out;
       });
@@ -1210,17 +1245,31 @@ function buildKpi(p: Record<string, Json>, grounded: boolean): KpiGridProps | nu
 }
 
 function buildRing(p: Record<string, Json>): RingStatProps | null {
-  const title = asStr(p.title);
-  const rings: RingSpec[] = asArr(p.rings)
+  const title = alias(p, 'title', 'heading', 'header');
+  // A ring grid is its ARCS. This builder had no alias tolerance at all — and the core schema
+  // itself teaches `pct` on two scales (a donut row's 65, a ring's 0.62), so a model pattern-
+  // matching `pct` wrote 72 and clamp(72, 0, 1) pegged every arc full around a fabricated 100%.
+  // The two halves below are load-bearing TOGETHER: aliasing value onto pct without the scale
+  // normalization would just convert the empty-arc drift into the pegged-full drift.
+  const rings: RingSpec[] = asArr(p.rings ?? p.items ?? p.data ?? p.stats)
     .map((r): RingSpec | null => {
       const ro = asObj(r);
-      const label = asStr(ro.label);
+      const label = alias(ro, 'label', 'name', 'title');
       if (!label) return null;
-      const pct = clamp(asNum(ro.pct), 0, 1);
+      const raw = ro.pct ?? ro.percent ?? ro.percentage ?? ro.value ?? ro.share;
+      const display = dropToken(asStr(ro.display, ''));
+      // Neither a share nor an authored display: the arc would be a fabricated 0% — drop the
+      // ring rather than draw an empty circle under a real label.
+      if (raw === undefined && !display) return null;
+      const n = asNum(raw);
+      // 0-100 scale (a bare 72, or "72%") normalizes down; an honest 1.0 (6 of 6) stays, and a
+      // slight 0..1 overshoot (1.5, a 150% value) clamps rather than reading as one-point-five
+      // PERCENT — percent-scale authoring arrives as 62, not 1.5.
+      const pct = clamp(Number.isFinite(n) && n > 1.5 && n <= 100 ? n / 100 : n, 0, 1);
       return {
         label,
         pct,
-        display: dropToken(asStr(ro.display, '')) || `${Math.round(pct * 100)}%`,
+        display: display || `${Math.round(pct * 100)}%`,
         ...(optStr(ro.hint) ? { hint: asStr(ro.hint) } : {}),
       };
     })
@@ -1232,6 +1281,7 @@ function buildRing(p: Record<string, Json>): RingStatProps | null {
 /* ---- frontier cousins (exposed only to stronger models) ---- */
 function buildBars(p: Record<string, Json>, grounded: boolean): BarChartProps | null {
   const title = alias(p, 'title', 'heading', 'header');
+  let resolvedValues = 0;
   // Models commonly emit `data`/`items`/`values` for the bar array — accept the synonyms so
   // a correctly-conceived block isn't dropped over a key name (the menu still teaches `bars`).
   const bars: BarSpec[] = aliasArr(p, 'bars', 'data', 'items', 'values', 'rows')
@@ -1239,7 +1289,13 @@ function buildBars(p: Record<string, Json>, grounded: boolean): BarChartProps | 
       const bo = asObj(b);
       const label = alias(bo, 'label', 'name', 'category');
       if (!label) return null;
-      const bar: BarSpec = { value: asNum(bo.value ?? bo.amount ?? bo.count), label };
+      // `val` is what the prompt itself teaches as breakdown's row key, so it is the likeliest
+      // same-response drift; figure/number/total follow. Resolution is tracked so the guard
+      // below can tell "every bar is genuinely zero" (legal) from "no bar carried a number".
+      const rawValue =
+        bo.value ?? bo.amount ?? bo.count ?? bo.val ?? bo.figure ?? bo.number ?? bo.total;
+      if (rawValue !== undefined) resolvedValues += 1;
+      const bar: BarSpec = { value: asNum(rawValue), label };
       const label2 = optStr(bo.label2);
       if (label2) bar.label2 = label2;
       if (bo.color !== undefined) bar.color = coerceColor(bo.color);
@@ -1248,6 +1304,9 @@ function buildBars(p: Record<string, Json>, grounded: boolean): BarChartProps | 
     })
     .filter((b): b is BarSpec => b !== null);
   if (!title || !bars.length) return null;
+  // No bar carried ANY recognized numeric key: a full axis of labels over zero-height fills,
+  // each with a fabricated '0'. A genuine all-zero dataset resolves its keys and stays.
+  if (resolvedValues === 0) return null;
   const out: BarChartProps = { title, bars };
   const unit = optStr(p.unit);
   if (unit) out.unit = unit;
@@ -1297,12 +1356,21 @@ function buildDonut(p: Record<string, Json>, grounded: boolean): DonutProps | nu
   const rows: DonutRow[] = asArr(p.rows)
     .map((r): DonutRow | null => {
       const ro = asObj(r);
-      const label = asStr(ro.label);
+      const label = alias(ro, 'label', 'name', 'title');
       if (!label) return null;
-      return { label, pct: clamp(asNum(ro.pct), 0, 100), color: coerceColor(ro.color) };
+      // The natural authoring is {label, value: 65} or {label, percent} — anything but the
+      // terse `pct` used to coerce to 0, and the card painted only its grey track beside a
+      // legend confidently listing every label at 0%.
+      const raw = asNum(ro.pct ?? ro.percent ?? ro.percentage ?? ro.share ?? ro.value ?? ro.val);
+      return { label, pct: clamp(raw, 0, 100), color: coerceColor(ro.color) };
     })
     .filter((r): r is DonutRow => r !== null);
   if (!title || !rows.length) return null;
+  // Shares authored as fractions (0.72) sum to ~1 — read them up to percentages.
+  const sum = rows.reduce((n, r) => n + r.pct, 0);
+  if (sum > 0 && sum <= 1.5) for (const r of rows) r.pct = Math.round(r.pct * 100);
+  // A donut IS its shares: every slice at zero is a grey ring, not a chart.
+  if (!rows.some((r) => r.pct > 0)) return null;
   const out: DonutProps = { title, rows };
   const footer = optStr(p.footer);
   if (footer) out.footer = footer;
@@ -1975,12 +2043,34 @@ function buildDiagramFlow(p: Record<string, Json>): DiagramFlowProps | null {
   if (uniqueNodes.length < 2) return null;
 
   const ids = new Set(uniqueNodes.map((n) => n.id));
-  const edges: DiagramEdge[] = asArr(p.edges)
+  // Edge endpoints resolve leniently: exact id first, then case/whitespace drift, then a node's
+  // LABEL when it is unambiguous — models routinely write {from:'Extract', to:'Transform'}
+  // against ids e1/e2. Exact-id-only silently dropped every such edge, and a flow diagram whose
+  // flow is gone still LOOKED intact: title, nodes, no arrows.
+  const byLoose = new Map<string, string>();
+  for (const n of uniqueNodes) {
+    const loose = n.id.trim().toLowerCase();
+    if (!byLoose.has(loose)) byLoose.set(loose, n.id);
+  }
+  const byLabel = new Map<string, string | null>();
+  for (const n of uniqueNodes) {
+    const key = n.label.trim().toLowerCase();
+    // Ambiguous labels (a decision diagram's repeated "Yes"/"No") resolve to nothing.
+    byLabel.set(key, byLabel.has(key) ? null : n.id);
+  }
+  const resolveEnd = (raw: string): string | null => {
+    if (ids.has(raw)) return raw;
+    const loose = byLoose.get(raw.trim().toLowerCase());
+    if (loose) return loose;
+    return byLabel.get(raw.trim().toLowerCase()) ?? null;
+  };
+  const rawEdges = asArr(p.edges);
+  const edges: DiagramEdge[] = rawEdges
     .map((e): DiagramEdge | null => {
       const eo = asObj(e);
-      const from = (alias(eo, 'from', 'source', 'start') || '').trim();
-      const to = (alias(eo, 'to', 'target', 'end') || '').trim();
-      if (!ids.has(from) || !ids.has(to)) return null;
+      const from = resolveEnd((alias(eo, 'from', 'source', 'start') || '').trim());
+      const to = resolveEnd((alias(eo, 'to', 'target', 'end') || '').trim());
+      if (!from || !to) return null;
       const edge: DiagramEdge = { from, to };
       const label = optStr(eo.label);
       if (label) edge.label = label;
@@ -1991,6 +2081,9 @@ function buildDiagramFlow(p: Record<string, Json>): DiagramFlowProps | null {
       return edge;
     })
     .filter((e): e is DiagramEdge => e !== null);
+  // Edges were AUTHORED and none survived: the flow is the diagram's entire content, and a
+  // grid of unconnected ellipses under a flow title is a broken card, not a sparse one.
+  if (rawEdges.length > 0 && edges.length === 0) return null;
 
   const result: DiagramFlowProps = { title, nodes: uniqueNodes, edges };
   const icon = coerceIcon(p.icon);
