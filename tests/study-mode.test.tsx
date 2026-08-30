@@ -417,6 +417,27 @@ describe('a follow-up answers IN PLACE, and the desk shows it', () => {
     expect(frontTitle()).toContain('Old detail');
   });
 
+  it('recasts ONCE per burst while an answer streams in card by card', () => {
+    // A streamed answer appends blocks one partial at a time. Recasting per appended card
+    // re-dealt the desk over and over while the answer arrived — the reader watched the cards
+    // gather and fan for every block.
+    const { rerender } = render(desk(two, 'a'));
+    rerender(desk(three, 'a'));
+    expect(frontTitle()).toContain('The follow-up answer');
+    // More cards stream in behind it: the desk holds the burst's first card.
+    const four = [...three, block('d', 'Later detail')];
+    const five = [...four, block('e', 'Even later')];
+    rerender(desk(four, 'a'));
+    expect(frontTitle()).toContain('The follow-up answer');
+    rerender(desk(five, 'a'));
+    expect(frontTitle()).toContain('The follow-up answer');
+    // The walk moving on ends the burst — and a NEXT follow-up recasts afresh.
+    rerender(desk(five, 'd'));
+    expect(frontTitle()).toContain('Later detail');
+    rerender(desk([...five, block('f', 'Second follow-up')], 'd'));
+    expect(frontTitle()).toContain('Second follow-up');
+  });
+
   it('does not disturb a desk whose blocks did not change', () => {
     const { rerender } = render(desk(three, 'b'));
     rerender(desk(three, 'b'));
@@ -464,5 +485,38 @@ describe('a block built for width gets the wide desk', () => {
 
   it('keeps the standard desk for an ordinary block', () => {
     expect(frontWidth([narrow, wideBlock], 'n')).toBe('560px');
+  });
+});
+
+describe('a streaming answer deals the desk once, not once per card', () => {
+  // Watching the arc reshuffle and the beat bar grow for every arriving card read as the desk
+  // re-rendering over and over. While the turn streams, the desk shows the answer's FIRST card
+  // and holds still; the full cast deals once, when the stream settles.
+  const beats = (): number => document.querySelectorAll('.study-beat').length;
+
+  function desk(blocks: Block[], spot: string | null, streaming: boolean) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'stream-turn')}
+        blocks={blocks}
+        spot={spot}
+        streaming={streaming}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  it('holds the arc still while cards stream, then deals the full cast on settle', () => {
+    const a = block('a', 'First');
+    const stream = [a, block('b', 'Second'), block('c', 'Third'), block('d', 'Fourth')];
+    const { rerender } = render(desk([a], 'a', true));
+    const before = document.querySelectorAll('.study-card').length;
+    // Three more cards arrive while streaming: the desk does not grow past the held set + one.
+    rerender(desk(stream, 'a', true));
+    expect(document.querySelectorAll('.study-card').length).toBeLessThanOrEqual(before + 1);
+    // Settle: the whole cast deals.
+    rerender(desk(stream, 'a', false));
+    expect(document.querySelectorAll('.study-card').length).toBe(4);
+    expect(beats()).toBeGreaterThanOrEqual(4);
   });
 });

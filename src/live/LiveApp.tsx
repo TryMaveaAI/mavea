@@ -6005,6 +6005,7 @@ export function LiveApp(): ReactElement {
                   narratingId={narratingId}
                   muted={muted}
                   studyAsides={studyAsides}
+                  studyStreaming={turn.busy}
                   viewMode={viewMode}
                   onViewMode={setViewMode}
                   presenting={presenting}

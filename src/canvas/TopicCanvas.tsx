@@ -273,6 +273,8 @@ interface Props {
   selectedBlockIds?: ReadonlySet<string>;
   /** What Mavéa has written about each object in the Study, keyed by block id. */
   studyAsides?: Readonly<Record<string, readonly StudyAside[]>>;
+  /** The turn is still streaming blocks in — the Study holds its desk still and deals once. */
+  studyStreaming?: boolean;
   /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
    *  remembered preference). Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
@@ -334,6 +336,7 @@ export function TopicCanvas({
   onAddToDashboard,
   selectedBlockIds,
   studyAsides,
+  studyStreaming,
   viewMode,
   onViewMode,
   onNarrate,
@@ -739,6 +742,7 @@ export function TopicCanvas({
           speaking={speaking}
           lead={lead}
           intro={studyIntro}
+          streaming={studyStreaming}
         />
       ) : familiesLoaded && focused ? (
         <FocusStage

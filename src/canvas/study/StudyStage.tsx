@@ -70,6 +70,11 @@ interface Props {
   /** 'full' plays the per-answer intro (THE ANSWER → the desk assembles); 'skip' — the default,
    *  and what the tour passes — opens straight onto the settled desk. */
   intro?: 'full' | 'skip';
+  /** The turn is still streaming blocks in. The desk shows the answer's FIRST card the moment it
+   *  exists and then holds still — arc and beat bar frozen — dealing the complete cast once when
+   *  the stream settles. Watching the arc reshuffle and the beat bar grow for every arriving
+   *  card read as the desk re-rendering over and over. */
+  streaming?: boolean;
 }
 
 /** The arrow each scrawl points with, in its own 90×70 frame — the design's own curves: the
@@ -145,6 +150,7 @@ export function StudyStage({
   speaking,
   lead,
   intro = 'skip',
+  streaming,
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
@@ -240,7 +246,19 @@ export function StudyStage({
   // The desk holds things to LOOK at. A world preview is a doorway to another surface, not an
   // object to examine — on the desk it takes a slot, a beat and a set of notes to say only
   // "there is more elsewhere". It stays on the grid, where a doorway belongs.
-  const deskBlocks = useMemo(() => blocks.filter((block) => block.type !== 'world'), [blocks]);
+  const liveBlocks = useMemo(() => blocks.filter((block) => block.type !== 'world'), [blocks]);
+  // While the turn streams, the desk composes from the last SETTLED set plus the newest card —
+  // the reader gets the answer's first object immediately and a still desk behind it, then one
+  // re-deal with the full cast when the stream ends.
+  const settledRef = useRef(liveBlocks);
+  if (!streaming) settledRef.current = liveBlocks;
+  const deskBlocks = useMemo(() => {
+    if (!streaming) return liveBlocks;
+    const settled = settledRef.current;
+    const held = new Set(settled.map((block) => block.id));
+    const fresh = liveBlocks.find((block) => block.id && !held.has(block.id));
+    return fresh ? [...settled, fresh] : settled;
+  }, [streaming, liveBlocks]);
 
   // A follow-UP answers IN PLACE: continuity 'augment' keeps the spec id and appends blocks, so
   // none of the data.id resets above fire — and the desk sat on the previous answer's card, with
@@ -264,6 +282,12 @@ export function StudyStage({
     const before = new Set(previous.split('|'));
     const fresh = deskBlocks.find((block) => block.id && !before.has(block.id));
     if (!fresh?.id) return;
+    // ONCE PER BURST, not once per card. A streamed answer appends its blocks one partial at a
+    // time, and recasting on each appended card re-dealt the whole desk over and over while the
+    // answer arrived — the reader watched the cards gather and fan for every block. While a
+    // recast is still holding (the walk has not moved the spot since), later arrivals just take
+    // their place in the arc; the desk stays on the burst's first card.
+    if (recastId !== null && spot === spotAtRecast.current) return;
     setRecastId(fresh.id);
     spotAtRecast.current = spot;
     setPinnedId(null);
@@ -283,7 +307,7 @@ export function StudyStage({
     };
     // `spot` is read into the ref, not reacted to — the effect is about the BLOCK SET changing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deskBlocks, reducedMotion]);
+  }, [deskBlocks, reducedMotion, recastId]);
   // The walk moving on is the recast's end: the voice is now talking about a different object,
   // and the desk follows the voice.
   useEffect(() => {
