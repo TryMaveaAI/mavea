@@ -11,7 +11,7 @@ import {
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
 import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
-import { STUDY_INK_MAX, STUDY_MARKS_MAX } from '../src/engine/liveSchema';
+import { STUDY_INK_MAX, STUDY_MARKS_MAX, STUDY_VOICE_MAX } from '../src/engine/liveSchema';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -63,7 +63,7 @@ describe('validateLiveResponse — coercion & repair', () => {
           props: { title: 'A' },
           study: {
             assumes: '  The 5% return assumes a full-market index.  ',
-            pattern: 'P'.repeat(300),
+            pattern: 'P'.repeat(STUDY_VOICE_MAX + 1),
             test: 'Does the 48% rent share hold once utilities are bundled?',
           },
         },
@@ -77,9 +77,20 @@ describe('validateLiveResponse — coercion & repair', () => {
     const study = r!.blocks[0].study;
     expect(study?.assumes).toBe('The 5% return assumes a full-market index.');
     expect(study?.test).toBe('Does the 48% rent share hold once utilities are bundled?');
-    expect(study!.pattern!.length).toBeLessThanOrEqual(200);
+    // An over-long voice is DROPPED, never ellipsised: handwriting that trails off reads as a
+    // defect, and the Study has a whole derived line to fall back on.
+    expect(study?.pattern).toBeUndefined();
     expect(r!.blocks[1].study).toBeUndefined();
     expect(r!.blocks[2].study).toBeUndefined();
+  });
+  it('keeps a voice that sits exactly on the limit', () => {
+    // The boundary matters: the prompt states this number, so a model writing to it must land.
+    const exact = 'A'.repeat(STUDY_VOICE_MAX);
+    const r = validateLiveResponse({
+      title: 'T',
+      blocks: [{ type: 'insight', props: { title: 'A' }, study: { pattern: exact } }],
+    });
+    expect(r!.blocks[0].study?.pattern).toBe(exact);
   });
   it('resolves a [[shown|said]] annotation in a margin voice to its SHOWN side', () => {
     // The margin voices are read, never spoken, so a respelling written for the synthesizer must
@@ -1386,5 +1397,39 @@ describe('a block draws its own gestures, held to the tour-mark gate', () => {
       at: i % 2 ? '$15.1M' : '$12.4M',
     }));
     expect(marked(many).length).toBeLessThanOrEqual(STUDY_MARKS_MAX);
+  });
+});
+
+describe('the prompt states every limit the validator enforces', () => {
+  // A cap the model cannot see is a cap it can only guess at, and every guess it gets wrong is
+  // output the user paid for that the validator then discards. So each constant below has to
+  // appear in the prompt by VALUE — if one is changed here without changing the text, this
+  // fails rather than silently reintroducing the guessing.
+  const prompt = LIVE_SYSTEM_PROMPT;
+  const limits: [string, number][] = [
+    ['margin voice length', STUDY_VOICE_MAX],
+    ['scrawls per block', PEN_SLOTS.length],
+    ['scrawl length', PEN_MARK_MAX],
+    ['marks per block', STUDY_MARKS_MAX],
+    ['total ink per block', STUDY_INK_MAX],
+  ];
+
+  it.each(limits)('states the %s limit (%i)', (_name, value) => {
+    expect(prompt).toContain(String(value));
+  });
+
+  it('names the rarity caps rather than dropping those marks silently', () => {
+    const section = prompt.slice(prompt.indexOf('HARD LIMITS'), prompt.indexOf('THE BALANCE'));
+    for (const kind of ['star', 'question', 'strike', 'connect']) {
+      expect(section, `${kind} cap`).toContain(`"${kind}"`);
+    }
+    // And says what happens, not merely that a limit exists.
+    expect(section).toMatch(/discard|drop/i);
+  });
+
+  it('tells the model an over-long scrawl is lost, not shortened', () => {
+    // The two failures look identical in the output and are completely different to write for:
+    // a shortened scrawl still says most of it, a dropped one says nothing at all.
+    expect(prompt).toMatch(/DROPPED WHOLE, not shortened/);
   });
 });

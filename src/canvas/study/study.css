@@ -818,6 +818,11 @@
   left: -168px;
   top: 24px;
   width: 150px;
+  /* Hug the side the ARROW is on. The box is a fixed width so long remarks wrap in place, which
+     means a short one has to be pushed to the arrow's end or it floats out in the parchment with
+     a gap the arrow never crosses — the "predictable" defect, which was this rule inverted on
+     slot-top. Left-margin slots point rightward, so their text ends at the arrow. */
+  text-align: right;
   transform: rotate(-4deg);
 }
 
@@ -853,7 +858,9 @@
   right: -132px;
   top: -46px;
   width: 150px;
-  text-align: right;
+  /* Its arrow comes down-left INTO the card from the box's left edge, so the text starts there —
+     right-aligned, a short scrawl sat 80px past the arrowhead with nothing joining them. */
+  text-align: left;
   transform: rotate(2deg);
 }
 

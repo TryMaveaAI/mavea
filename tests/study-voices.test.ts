@@ -124,6 +124,28 @@ describe('the desk draws every slot the scrawls can land in', () => {
     expect(css).toContain(`.study-mark.slot-${slot} .study-mark-arrow {`);
   });
 
+  it('aligns every scrawl toward the side its own arrow is on', () => {
+    // The box is a fixed width so a long remark wraps in place. That means a SHORT one has to be
+    // pushed to the arrow's end, or it floats out in the parchment with a gap the arrow never
+    // crosses — measured at ~80px on slot-top, where "predictable" sat right-aligned while its
+    // arrow started at the box's left edge.
+    const rule = (slot: string): string => {
+      const at = css.indexOf(`.study-mark.slot-${slot} {`);
+      return css.slice(at, css.indexOf('}', at));
+    };
+    const arrowRule = (slot: string): string => {
+      const at = css.indexOf(`.study-mark.slot-${slot} .study-mark-arrow {`);
+      return css.slice(at, css.indexOf('}', at));
+    };
+    for (const slot of PEN_SLOTS) {
+      // An arrow pinned by `left` reaches rightward from the box's left edge, so the words start
+      // there; one pinned by `right` reaches leftward, so the words end there.
+      const arrowOnLeft = /left:\s*-/.test(arrowRule(slot));
+      const align = /text-align:\s*(\w+)/.exec(rule(slot))?.[1] ?? 'left';
+      expect(align, `${slot} hugs its arrow`).toBe(arrowOnLeft ? 'left' : 'right');
+    }
+  });
+
   it('places the two later slots by PERCENTAGE, so they hold at any card height', () => {
     // A card is sized by its content, so a fixed offset is only ever right for one card. These
     // two sit between the fixed three; measured, a third hand down the LEFT margin collides with

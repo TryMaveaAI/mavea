@@ -18,7 +18,13 @@ import { condenseForNote } from '../../live/annotate/marginNote';
 import { deriveStudyScene } from './scene';
 import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
 import type { StudyAside, StudyNoteKind } from './types';
-import { PEN_MARK_MAX, PEN_SLOTS, type PenMark, type PenSlot } from '../../live/content/penQuip';
+import {
+  PEN_MARK_MAX,
+  PEN_SLOTS,
+  RIGHT_GUTTER_SLOTS,
+  type PenMark,
+  type PenSlot,
+} from '../../live/content/penQuip';
 import { fitVoiceLine } from './voiceFit';
 import { useStudyScale } from './useStudyScale';
 import { useAmbientPause } from '../../hooks/useInView';
@@ -440,6 +446,8 @@ export function StudyStage({
     ];
   }
   const deskMarks = allMarks;
+  // Which of the desk's slots sit in the strip between the card and Mavéa's note.
+  const usesRightGutter = deskMarks.some((mark) => RIGHT_GUTTER_SLOTS.has(mark.slot));
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line
   // where the walk wrote one, else the block's own takeaway. A lesson that leaves nothing
@@ -537,18 +545,25 @@ export function StudyStage({
 
             {activeAside && !cribOpen && (
               <>
-                <svg
-                  key={`connect-${active.id}`}
-                  className="study-connect"
-                  viewBox={`0 0 ${CONNECT_SLOT.w} ${CONNECT_SLOT.h}`}
-                  width={CONNECT_SLOT.w}
-                  height={CONNECT_SLOT.h}
-                  aria-hidden="true"
-                >
-                  <path className="study-connect-line" d="M146,170 C118,128 66,78 16,44" />
-                  {/* Barbs derived from the curve's arrival direction, like the desk's marks. */}
-                  <path className="study-connect-head" d="M16,44 L23,55 M16,44 L29,46" />
-                </svg>
+                {/* The connector spans the WHOLE right gutter — measured, x 1397-1557 against a
+                    card ending at 1394 — which is the same strip the right-hand scrawls live in,
+                    so with both drawn the reader gets two arrows crossing each other and the
+                    words. The gutter holds one or the other, and a scrawl carrying a real remark
+                    beats an arrow restating an adjacency the eye already made. */}
+                {!usesRightGutter && (
+                  <svg
+                    key={`connect-${active.id}`}
+                    className="study-connect"
+                    viewBox={`0 0 ${CONNECT_SLOT.w} ${CONNECT_SLOT.h}`}
+                    width={CONNECT_SLOT.w}
+                    height={CONNECT_SLOT.h}
+                    aria-hidden="true"
+                  >
+                    <path className="study-connect-line" d="M146,170 C118,128 66,78 16,44" />
+                    {/* Barbs derived from the curve's arrival direction, like the desk's marks. */}
+                    <path className="study-connect-head" d="M16,44 L23,55 M16,44 L29,46" />
+                  </svg>
+                )}
                 <div className="study-note-wrap">
                   <div className="study-note-layer" aria-hidden="true">
                     MAVÉA'S LAYER · {String(activeNotes.length).padStart(2, '0')} NOTES

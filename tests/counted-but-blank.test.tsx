@@ -188,3 +188,36 @@ describe('checklist — a row the model spelled differently still shows its word
     }
   });
 });
+
+// A KPI grid is its NUMBERS. Every tile carries a label, so the counted-but-blank guards see a
+// populated block — but with no value resolved on any tile the card renders as a header over a
+// row of em-dashes ("FUTURE & SAVINGS ($1,200)" over EMERGENCY FUND / RETIREMENT / DEBT PAYOFF,
+// each showing a bare dash), which reads as broken.
+describe('kpi — a grid of em-dashes is not a populated card', () => {
+  function kpi(items: unknown) {
+    return validateLiveResponse({
+      title: 'Budget',
+      narration: 'Here it is.',
+      blocks: [{ type: 'kpi', props: { title: 'Future & savings', items } }],
+    })?.blocks.find((b) => b.type === 'kpi');
+  }
+
+  it('drops a grid where no tile resolved a value', () => {
+    expect(kpi([{ label: 'Emergency fund' }, { label: 'Retirement' }])).toBeUndefined();
+    expect(kpi([{ label: 'Emergency fund', value: '' }])).toBeUndefined();
+  });
+
+  it('keeps the grid as soon as one tile has a real figure', () => {
+    const block = kpi([{ label: 'Emergency fund', value: '$600' }, { label: 'Retirement' }]);
+    expect(block).toBeDefined();
+    const kpis = (block!.props as { kpis: { val: string; label: string }[] }).kpis;
+    expect(kpis[0].val).toBe('$600');
+  });
+
+  it('reads the figure from the names a model actually uses', () => {
+    for (const key of ['value', 'val', 'stat', 'amount', 'figure', 'number', 'total', 'target']) {
+      const block = kpi([{ label: 'Emergency fund', [key]: '$600' }]);
+      expect(block, `items[].${key}`).toBeDefined();
+    }
+  });
+});

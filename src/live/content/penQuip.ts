@@ -243,6 +243,10 @@ export type PenSlot = 'left' | 'bottom' | 'top' | 'right' | 'rightlow';
  *  A scrawl beyond the fifth has nowhere to go that is not already someone else's ink. */
 export const PEN_SLOTS: readonly PenSlot[] = ['left', 'bottom', 'top', 'right', 'rightlow'];
 
+/** The slots that sit in the strip between the card and Mavéa's note — the same strip the note's
+ *  connector arrow sweeps through, so the desk draws one or the other, never both. */
+export const RIGHT_GUTTER_SLOTS: ReadonlySet<PenSlot> = new Set<PenSlot>(['right', 'rightlow']);
+
 export interface PenMark {
   text: string;
   slot: PenSlot;

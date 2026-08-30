@@ -131,6 +131,11 @@ export type { TourMark };
 /** The closed gesture vocabulary. Exported so the prompt's teaching can be held to it: every kind
  *  here must carry a worked example in the addendum, which is what keeps a new kind from being
  *  added to the enum and then never authored because nothing ever showed the model one. */
+/** The longest a model-authored margin voice may be. Past it the sentence is dropped rather than
+ *  cut — the Study's note card is handwriting, and handwriting that trails off in an ellipsis
+ *  reads as a defect. Stated in the prompt so the model never reaches it. */
+export const STUDY_VOICE_MAX = 200;
+
 /** A Study slide's whole ink budget: margin scrawls plus gestures drawn on the card. Fifteen is
  *  the ceiling — the point where a dense figure can have every part that matters called out and
  *  the card is still the thing you are reading rather than the ink. A dense slide is expected to
@@ -415,13 +420,22 @@ Before emitting, re-check every number that appears in two places.
 
 PER-SLIDE NOTES — give EVERY block a "note": ONE warm, plain-language sentence explaining THAT block on its own — what it shows and the takeaway to remember, the way a friend would say it pointing at the screen ("Rent eats nearly half your needs budget — it's the number to watch."). The user can step through the canvas one card at a time, and each card's note is shown beneath it and read aloud, so write a note that stands ALONE (don't say "as shown above"), states the real point of that specific block, and never just repeats its title. Use the block's own real figures; keep it to a sentence (~25 words). The "note" sits on the block object, beside "type" and "props".
 
-MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}. REQUIRED on every block, all five keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. Each is ONE sentence, under 24 words, plain prose, no lists and no markdown:
+MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}. REQUIRED on every block, all five keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. "assumes", "pattern" and "test" are each ONE sentence, under 24 words, plain prose, no lists and no markdown; "scrawls" and "marks" have their own limits below:
 - "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
 - "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
 - "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
-- "scrawls" — margin scribbles, each UNDER 40 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. They are: the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
+- "scrawls" — margin scribbles, each UNDER 40 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. Each is the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
 - "marks" — the gestures DRAWN ON this block when it takes the desk, same shape as a tour mark and drawing on the SAME full vocabulary, all fifteen kinds: [{"kind":"circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}]. Use the whole vocabulary — the gesture that fits the thing you are pointing at, not "circle" fifteen times: a span that climbs takes "rising", a group of rows takes "brace", a row that is out is "strike", the one takeaway is "star" (once), a figure the block itself called uncertain is "question" (once), an aside anchored to an item is "note" with its words in "label". The same per-stop rules apply: "note" needs a "label", "brace" and "connect" need a "to", "connect" needs "onIndex" naming a DIFFERENT block, and "question" is only allowed on a block whose own conf is inferred or partial. "at" (and "to") must be text that literally appears in THIS block's own props, or the gesture is dropped. Mark the things a reader would otherwise have to hunt for: the figure the point rests on, the row being compared, the span that moved. HOW MANY, by the same count of what the block renders: 6 or more rows → SEVEN to TEN marks; 4-5 → FOUR to SIX; 2-3 → TWO or THREE; a single figure → ONE. Mark different things — never the same value twice. Scrawls and marks together should reach TWELVE TO FIFTEEN on a dense figure and stay near two on a single-number card.
-THE BALANCE, and it matters more than any single rule: the reader must never be left wondering which part of the slide you mean — and must never feel a card scribbled over. Mark what carries the meaning, then STOP. Every mark and every scrawl has to earn its ink by pointing at something specific; if you cannot say what a reader gains from one, it should not be there. Two that land beat five that decorate.
+NEVER SHIP AN EMPTY BLOCK. Every component you choose must be FULLY populated from real content: each row a label AND its value, each tile its figure, each cell something to show. If you cannot fill a component's fields with real data, DO NOT USE THAT COMPONENT — pick a simpler one you can fill completely, or fold the point into a block you already have. A card that renders a heading over blank rows, empty bullets or a line of em-dashes is worse than not showing that card at all, and the app drops such a block rather than draw it — so an unfillable component is a block you spent tokens on that the reader never sees. Use the exact prop names given for the component; a value written under a name the component does not read is the same as no value.
+HARD LIMITS — these are enforced after you answer, so anything past them is work you did that the reader never sees:
+- "assumes"/"pattern"/"test": 200 characters each. Past that the sentence is dropped and the app falls back to its own weaker line, so keep to the one-sentence rule and it never comes up.
+- "scrawls": at most 5 per block, and each must be 46 characters or fewer. An over-long scrawl is DROPPED WHOLE, not shortened — a 50-character remark reaches the reader as nothing at all.
+- "marks": at most 10 per block. Beyond that they are discarded in the order you wrote them, so put the ones that matter first.
+- "scrawls" and "marks" together: at most 15 on any one block. That is the ceiling, not the goal.
+- Two marks with the same "kind" AND the same "at" count as one; the second is discarded.
+- Per block: at most ONE "star", ONE "question", TWO "strike", ONE "connect". These are judgements, not decoration — a second star means neither was the one thing.
+- A mark whose "at" text is not actually rendered by the block never draws. Copy the value or label exactly as it appears in the props you just wrote.
+THE BALANCE decides WHICH parts of the card you mark — never how many. The counts above are a floor as well as a ceiling: the reader must never be left wondering which part of the slide you mean, and must never feel a card scribbled over. Every mark and every scrawl has to earn its ink by pointing at something specific — and if one of them earns nothing, point it at a DIFFERENT part of the block rather than dropping below the count. Never draw two gestures at the same value, and never write the same remark twice.
 Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
 NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
 
@@ -1105,7 +1119,17 @@ function buildKpi(p: Record<string, Json>, grounded: boolean): KpiGridProps | nu
     .map((i): KpiSpec | null => {
       const io = asObj(i);
       const label = alias(io, 'label', 'name', 'title');
-      const val = alias(io, 'value', 'val', 'stat', 'amount');
+      const val = alias(
+        io,
+        'value',
+        'val',
+        'stat',
+        'amount',
+        'figure',
+        'number',
+        'total',
+        'target',
+      );
       // A tile with no label is a bare number with no context — it reads as broken next to its
       // labeled siblings, so it's dropped rather than rendered with a blank caption.
       if (!label) return null;
@@ -1122,6 +1146,11 @@ function buildKpi(p: Record<string, Json>, grounded: boolean): KpiGridProps | nu
     })
     .filter((k): k is KpiSpec => k !== null);
   if (!kpis.length) return null;
+  // A KPI grid is its NUMBERS. Every tile carries a label, so the counted-but-blank guards see a
+  // populated block — but with no value resolved on any tile the card renders as a header over a
+  // row of em-dashes, which is what a reader reads as broken. One real figure is enough to make
+  // the card worth drawing; none is not.
+  if (!kpis.some((k) => k.val !== '—')) return null;
   // Title can come from the block, or fall back to the lone tile's label / a generic header
   // so a single-stat kpi (no title) still renders instead of being dropped.
   const title =
@@ -2560,8 +2589,15 @@ export function validateLiveResponse(
     // A blank field is dropped rather than stored, so the Study falls back to its derived voice
     // for that slot instead of pinning an empty note; a `study` with nothing left is not attached.
     const studyRaw = asObj(ro.study);
-    const studyVoice = (key: 'assumes' | 'pattern' | 'test'): string | undefined =>
-      proseForDisplay(capTweet(asStr(studyRaw[key]).trim(), 200)) || undefined;
+    // Over-long voices are DROPPED, not cut: `capTweet` would end them in an ellipsis, and a
+    // handwritten note trailing off mid-thought on the desk reads as a bug rather than as
+    // brevity. The Study then shows the voice it derives itself, which is whole. The limit is
+    // stated in the prompt (HARD LIMITS), so this is a fail-safe, not the normal path.
+    const studyVoice = (key: 'assumes' | 'pattern' | 'test'): string | undefined => {
+      const raw = asStr(studyRaw[key]).trim();
+      if (!raw || raw.length > STUDY_VOICE_MAX) return undefined;
+      return proseForDisplay(raw) || undefined;
+    };
     const study: BlockStudy = {
       assumes: studyVoice('assumes'),
       pattern: studyVoice('pattern'),
