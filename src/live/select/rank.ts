@@ -838,7 +838,10 @@ export async function selectComponents(input: SelectionInput): Promise<Selection
       if (fa !== fb) return fb - fa;
       return b.wowWeight - a.wowWeight;
     })
-    .slice(0, LEAD_DENSE)
+    // +2 margin: buildMenu re-sorts AFTER catalogMeta has filtered, so if a lead's family chunk
+    // failed to load the trio shifts down — the margin keeps the replacements' examples resident
+    // rather than rendering a lead thin. Two extra shards is the whole cost.
+    .slice(0, LEAD_DENSE + 2)
     .map((m) => m.type);
   // One catalog round-trip, not two: the caller's statically-known extras (tier standards,
   // synthesis/generative types) ride the same fetch as the menu's families, so generateLive no

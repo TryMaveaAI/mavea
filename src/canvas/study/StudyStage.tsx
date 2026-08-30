@@ -232,11 +232,62 @@ export function StudyStage({
   // object to examine — on the desk it takes a slot, a beat and a set of notes to say only
   // "there is more elsewhere". It stays on the grid, where a doorway belongs.
   const deskBlocks = useMemo(() => blocks.filter((block) => block.type !== 'world'), [blocks]);
+
+  // A follow-UP answers IN PLACE: continuity 'augment' keeps the spec id and appends blocks, so
+  // none of the data.id resets above fire — and the desk sat on the previous answer's card, with
+  // its old beat lit, while the title bar already named the new one. Stale content on a surface
+  // whose whole premise is "the thing we are talking about is on the desk" reads as the app
+  // ignoring the question.
+  //
+  // When new blocks land in an existing answer, RECAST the desk to the first new one. A recast
+  // is deliberately weaker than a pin: a pin is the reader's own hand and holds against the
+  // walk, while the recast only bridges the gap until the walk's narration next moves the spot —
+  // then the walk has the wheel exactly as it always did. Session notes survive: it is the same
+  // session, and the crib is its running spine.
+  const [recastId, setRecastId] = useState<string | null>(null);
+  const spotAtRecast = useRef<string | null>(null);
+  const deskIdsRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = deskBlocks.map((block) => block.id ?? '').join('|');
+    const previous = deskIdsRef.current;
+    deskIdsRef.current = key;
+    if (previous === null || previous === key) return;
+    const before = new Set(previous.split('|'));
+    const fresh = deskBlocks.find((block) => block.id && !before.has(block.id));
+    if (!fresh?.id) return;
+    setRecastId(fresh.id);
+    spotAtRecast.current = spot;
+    setPinnedId(null);
+    setNotePage(0);
+    setCribOpen(false);
+    setGuiding(false);
+    // Gather the cards for a frame so the change reads as a re-deal, not a jump-cut.
+    const stage = stageRef.current;
+    if (!stage || reducedMotion) return;
+    stage.setAttribute('data-gathered', '');
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => stage.removeAttribute('data-gathered'));
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      stage.removeAttribute('data-gathered');
+    };
+    // `spot` is read into the ref, not reacted to — the effect is about the BLOCK SET changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deskBlocks, reducedMotion]);
+  // The walk moving on is the recast's end: the voice is now talking about a different object,
+  // and the desk follows the voice.
+  useEffect(() => {
+    if (recastId && spot !== spotAtRecast.current) setRecastId(null);
+  }, [spot, recastId]);
   const eligibleIds = useMemo(
     () => new Set(deskBlocks.flatMap((block) => (block.id ? [block.id] : []))),
     [deskBlocks],
   );
-  const activeId = (pinnedId && eligibleIds.has(pinnedId) ? pinnedId : null) ?? spot;
+  const activeId =
+    (pinnedId && eligibleIds.has(pinnedId) ? pinnedId : null) ??
+    (recastId && eligibleIds.has(recastId) ? recastId : null) ??
+    spot;
   const scene = useMemo(
     () => deriveStudyScene(deskBlocks, activeId, selectedBlockIds),
     [deskBlocks, activeId, selectedBlockIds],

@@ -375,3 +375,49 @@ describe('the walk note joins the margin without costing a scrawl', () => {
     for (const scrawl of scrawled[0].study!.scrawls!) expect(texts).toContain(scrawl);
   });
 });
+
+describe('a follow-up answers IN PLACE, and the desk shows it', () => {
+  // Continuity 'augment' keeps the spec id and appends blocks, so none of the per-answer resets
+  // fire — measured live, the desk sat on the previous answer's card with its old beat lit while
+  // the title bar already named the new question. The desk must bring the first NEW block
+  // forward the moment it lands, and hand the wheel back the moment the walk moves on.
+  const two = [block('a', 'Old lead'), block('b', 'Old detail')];
+  const three = [...two, block('c', 'The follow-up answer')];
+
+  function desk(blocks: Block[], spot: string | null) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'same-turn')}
+        blocks={blocks}
+        spot={spot}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  const frontTitle = (): string | null =>
+    document.querySelector('.study-card.is-front')?.textContent?.replace(/\s+/g, ' ').trim() ??
+    null;
+
+  it('brings the first new block to the desk when blocks land under the same id', () => {
+    const { rerender } = render(desk(two, 'a'));
+    expect(frontTitle()).toContain('Old lead');
+    rerender(desk(three, 'a'));
+    expect(frontTitle()).toContain('The follow-up answer');
+  });
+
+  it('yields to the walk the moment the spot next moves', () => {
+    const { rerender } = render(desk(two, 'a'));
+    rerender(desk(three, 'a'));
+    expect(frontTitle()).toContain('The follow-up answer');
+    // The walk starts narrating the new content: the desk follows the voice, not the recast.
+    rerender(desk(three, 'b'));
+    expect(frontTitle()).toContain('Old detail');
+  });
+
+  it('does not disturb a desk whose blocks did not change', () => {
+    const { rerender } = render(desk(three, 'b'));
+    rerender(desk(three, 'b'));
+    expect(frontTitle()).toContain('Old detail');
+  });
+});

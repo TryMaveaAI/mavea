@@ -31,14 +31,14 @@ const BATTERY = [
 const TIER = 'mid' as const;
 const specialized = (types: string[]) => types.filter((t) => !FRONTIER_BLOCK_TYPES.has(t));
 
-function run(): void {
+async function run(): Promise<void> {
   console.log(`selection coverage over ${BATTERY.length} questions (tier=${TIER})\n`);
 
   // independent: each question cold.
   const indep = new Set<string>();
   let indepPerTurn = 0;
   for (let i = 0; i < BATTERY.length; i++) {
-    const sel = selectComponents({
+    const sel = await selectComponents({
       userText: BATTERY[i],
       tier: TIER,
       complexity: classifyAsk(BATTERY[i]),
@@ -53,7 +53,7 @@ function run(): void {
   const used = new Set<string>();
   const cumWords: string[][] = [];
   for (let i = 0; i < BATTERY.length; i++) {
-    const sel = selectComponents({
+    const sel = await selectComponents({
       userText: BATTERY[i],
       tier: TIER,
       complexity: classifyAsk(BATTERY[i]),
@@ -78,4 +78,4 @@ function run(): void {
   );
 }
 
-run();
+void run();

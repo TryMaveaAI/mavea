@@ -1749,7 +1749,12 @@ export function LiveApp(): ReactElement {
     notes: Map<string, BlockStudy>;
   } | null>(null);
   const studySpec = turn.viewSpec ?? turn.spec;
-  const studySpecId = studySpec?.id ?? null;
+  // Keyed on the BLOCK SET, not the spec id alone: a follow-up with continuity 'augment' keeps
+  // the id and appends blocks, and notes fetched for the old set would leave every new card
+  // running on the derived voices forever.
+  const studySpecId = studySpec
+    ? `${studySpec.id}|${studySpec.blocks.map((b) => b.id ?? '').join(',')}`
+    : null;
   useEffect(() => {
     if (viewMode !== 'study' || !studySpec || !studySpecId) return;
     // Already have them, or the answer carries them inline (an older turn, a baked demo).
