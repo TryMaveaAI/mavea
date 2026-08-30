@@ -85,6 +85,18 @@ export const GATHER_SLOT: DeskSlot = { x: 590, y: 420, z: 70, ry: 0, s: 0.22 };
  *  same face everywhere and travel is pure transform. */
 export const CARD_W = 560;
 
+/** The wide desk, for blocks whose catalog span says they are built for 8+ grid columns — a
+ *  twelve-column table at 560px truncates every cell ("Retail & E-co…"), which is the one thing
+ *  the desk must never do to the object it is presenting. The numbers are the desk's own
+ *  geometry: at 700 wide centred on 570 the card spans 220..920, the left scrawls (168px
+ *  reach) still start at 52, and the right edge leaves the note card's flank (1014) a 94px
+ *  gutter — enough for the connector's arrow, not enough for the right-gutter scrawls, which
+ *  stand down on a wide card (the data beats a fourth remark). */
+export const WIDE_CARD_W = 700;
+export const WIDE_FRONT_SLOT: DeskSlot = { x: 570, y: 330, z: 70, ry: 0, s: 1 };
+/** The connector's frame shifts with the wide card's edge so its curve still lands on the flank. */
+export const WIDE_CONNECT_SLOT = { x: 922, y: 208, z: 72, w: 150, h: 220 } as const;
+
 /** Mavéa's note, on the desk beside the front card. */
 export const NOTE_SLOT = { x: 1165, y: 392, z: 75, w: 302 } as const;
 

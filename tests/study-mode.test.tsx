@@ -421,3 +421,46 @@ describe('a follow-up answers IN PLACE, and the desk shows it', () => {
     expect(frontTitle()).toContain('Old detail');
   });
 });
+
+describe('a block built for width gets the wide desk', () => {
+  // At the standard 560px a twelve-column table truncated every cell ("Retail & E-co…") while
+  // dead parchment sat either side — truncation is the one thing the desk must never do to the
+  // object it is presenting. The judgment is the block's own catalog span, not a kept list.
+  const wideBlock = {
+    type: 'datatable',
+    id: 'w',
+    col: 12,
+    props: {
+      title: 'Entrants',
+      columns: [
+        { key: 'sector', label: 'Sector' },
+        { key: 'strategy', label: 'Entry strategy' },
+      ],
+      rows: [{ sector: 'Retail & E-commerce', strategy: 'Virtual try-on experiences' }],
+    },
+  } as unknown as Block;
+  const narrow = block('n', 'One figure');
+
+  function frontWidth(blocks: Block[], spot: string): string {
+    render(
+      <StudyStage
+        data={spec(blocks)}
+        blocks={blocks}
+        spot={spot}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />,
+    );
+    const front = document.querySelector<HTMLElement>('.study-card.is-front')!;
+    return front.style.width;
+  }
+
+  it('widens the desk for a wide-span block, and only the front card', () => {
+    expect(frontWidth([wideBlock, narrow], 'w')).toBe('700px');
+    const back = document.querySelector<HTMLElement>('.study-card.is-back')!;
+    expect(back.style.width).toBe('560px');
+  });
+
+  it('keeps the standard desk for an ordinary block', () => {
+    expect(frontWidth([narrow, wideBlock], 'n')).toBe('560px');
+  });
+});

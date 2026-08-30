@@ -16,7 +16,19 @@ import { FallbackCard } from '../FallbackCard';
 import { blockLabel } from '../blockLabel';
 import { condenseForNote } from '../../live/annotate/marginNote';
 import { deriveStudyScene } from './scene';
-import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
+import {
+  BACK_SLOTS,
+  CARD_W,
+  CONNECT_SLOT,
+  FRONT_SLOT,
+  SLOT_ORDER,
+  WIDE_CARD_W,
+  WIDE_CONNECT_SLOT,
+  WIDE_FRONT_SLOT,
+} from './slots';
+// Direct module import, not the select barrel: the barrel re-exports the whole selection
+// engine, and this file rides the eager canvas chunk.
+import { catalogSpan } from '../../live/select/catalog';
 import type { StudyAside, StudyNoteKind } from './types';
 import {
   PEN_MARK_MAX,
@@ -446,8 +458,16 @@ export function StudyStage({
   // The desk's cast in a STABLE order (answer order), so React keeps each card's element alive
   // across a promotion and the slot change rides a CSS transition instead of a remount. Zone and
   // slot are looked up per id; membership only changes when the horizon rotates in.
+  // A block built for 8+ grid columns gets the wide desk — its own catalog span is the
+  // judgment, not a hand-kept list of types. At the standard 560px a twelve-column table
+  // truncates every cell, and truncation is the one thing the desk must never do to the object
+  // it is presenting. The right-gutter scrawls stand down to make the room (see slots.ts for
+  // the geometry); the note card and everything else hold still.
+  const wide = !!scene.active && (catalogSpan(scene.active.block.type)?.pref ?? 0) >= 8;
+  const frontW = wide ? WIDE_CARD_W : CARD_W;
   const slotById = new Map<string, CSSProperties>();
-  if (scene.active) slotById.set(scene.active.id, slotStyle(FRONT_SLOT, 0));
+  if (scene.active)
+    slotById.set(scene.active.id, slotStyle(wide ? WIDE_FRONT_SLOT : FRONT_SLOT, 0));
   for (const actor of scene.nearby) {
     const slot = BACK_SLOTS[SLOT_ORDER[actor.slot] ?? actor.slot];
     if (slot) slotById.set(actor.id, slotStyle(slot, actor.slot + 1));
@@ -496,7 +516,13 @@ export function StudyStage({
       ...(displaced && free ? [{ ...displaced, slot: free }] : []),
     ];
   }
-  const deskMarks = allMarks;
+  // A wide card takes the strip the right-gutter scrawls lived in — that room is what pays for
+  // the width, and the data beats a fourth remark. `deskWide` mirrors the slot decision below
+  // (it must, or a scrawl would draw under the widened card).
+  const deskWide = (catalogSpan(active?.type ?? '')?.pref ?? 0) >= 8;
+  const deskMarks = deskWide
+    ? allMarks.filter((mark) => !RIGHT_GUTTER_SLOTS.has(mark.slot))
+    : allMarks;
   // Which of the desk's slots sit in the strip between the card and Mavéa's note.
   const usesRightGutter = deskMarks.some((mark) => RIGHT_GUTTER_SLOTS.has(mark.slot));
 
@@ -555,7 +581,7 @@ export function StudyStage({
                   className={`study-card${front ? ' is-front' : ' is-back'}${
                     selected ? ' is-context' : ''
                   }${front && spot === id ? ' spotlit' : ''}`}
-                  style={{ ...slotById.get(id), width: `${CARD_W}px` }}
+                  style={{ ...slotById.get(id), width: `${front ? frontW : CARD_W}px` }}
                   data-study-actor={id}
                   // The pen resolves its targets by data-spot-id alone (AnnotationLayer's host
                   // lookup), and its rect math assumes an unscaled host: a back card lives behind
@@ -608,6 +634,9 @@ export function StudyStage({
                     viewBox={`0 0 ${CONNECT_SLOT.w} ${CONNECT_SLOT.h}`}
                     width={CONNECT_SLOT.w}
                     height={CONNECT_SLOT.h}
+                    // The wide desk moves the card's right flank; the arrow moves with it so
+                    // its curve still lands ON the card rather than in the parchment beside it.
+                    style={{ left: `${(wide ? WIDE_CONNECT_SLOT : CONNECT_SLOT).x}px` }}
                     aria-hidden="true"
                   >
                     <path className="study-connect-line" d="M146,170 C118,128 66,78 16,44" />
