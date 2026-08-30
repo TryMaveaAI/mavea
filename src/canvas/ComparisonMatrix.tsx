@@ -4,11 +4,19 @@ import { Fragment } from 'react';
 import { richInnerHtml } from '../lib/richText';
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
+import { BlockEmpty } from './lib/BlockEmpty';
 import type { CompareProps } from '../data/conversation';
 
 type Props = CompareProps & { delay?: number };
 
 export function ComparisonMatrix({ eyebrow, options, criteria, recommendation, delay }: Props) {
+  // The validator repairs and refuses empty grids on the way in — but an answer RESTORED from
+  // disk (a persisted session, a baked frame) was validated by whatever shipped when it was
+  // saved, and replay never re-validates. The renderer is the one layer every path passes, so
+  // the same judgement lives here: a row whose cells are all blank paints nothing between its
+  // label and the headers, and a comparison with no such rows is a header over an empty grid.
+  const filled = criteria.filter((c) => c.cells.some((cell) => cell.v.trim() !== ''));
+  if (filled.length === 0) return <BlockEmpty message="No comparison to show" />;
   return (
     <div className="card reveal" style={{ '--delay': (delay || 0) + 'ms' } as CSSProperties}>
       <div className="card-eyebrow">
@@ -38,7 +46,7 @@ export function ComparisonMatrix({ eyebrow, options, criteria, recommendation, d
             )}
           </div>
         ))}
-        {criteria.map((c, ci) => (
+        {filled.map((c, ci) => (
           <Fragment key={ci}>
             <div className="cmp-crit">{c.label}</div>
             {c.cells.map((cell, i) => (

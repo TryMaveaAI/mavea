@@ -11,6 +11,7 @@ import { render, screen } from '@testing-library/react';
 import { validateLiveResponse } from '../src/engine/liveSchema';
 import { ensureDetails } from '../src/canvas/blocks/catalog';
 import { DataTable } from '../src/canvas/blocks/tables/DataTable';
+import { ComparisonMatrix } from '../src/canvas/ComparisonMatrix';
 import { hasKeyedRows, resolvesKeyedRows } from '../src/canvas/lib/empty';
 
 const COLUMNS = [
@@ -265,5 +266,38 @@ describe('compare — a grid is its cells', () => {
     const crits = (partial!.props as { criteria: { label: string }[] }).criteria;
     expect(crits.map((c) => c.label)).toEqual(['Primary Use']);
     expect(compare([{ label: 'Environment', cells: [{}, {}] }])).toBeUndefined();
+  });
+});
+
+// And at the RENDERER, because a persisted answer validated by an older build replays without
+// ever meeting the validator again — the user restored a session and the pre-fix empty grid
+// came back. The renderer is the one layer every path passes.
+describe('ComparisonMatrix — a restored empty grid refuses to draw', () => {
+  it('drops blank rows and shows the calm placeholder when none survive', () => {
+    render(
+      <ComparisonMatrix
+        options={[{ name: 'Spatial Computing' }, { name: 'Virtual Reality' }]}
+        criteria={[
+          { label: 'Environment', cells: [{ v: '' }, { v: '' }] },
+          { label: 'Primary Use', cells: [{ v: '' }, { v: '' }] },
+        ]}
+      />,
+    );
+    expect(screen.getByText('No comparison to show')).toBeTruthy();
+    expect(screen.queryByText('Environment')).toBeNull();
+  });
+
+  it('keeps the rows that carry cells, drops the one that does not', () => {
+    render(
+      <ComparisonMatrix
+        options={[{ name: 'A' }, { name: 'B' }]}
+        criteria={[
+          { label: 'Empty row', cells: [{ v: '' }, { v: ' ' }] },
+          { label: 'Real row', cells: [{ v: 'High' }, { v: 'Low' }] },
+        ]}
+      />,
+    );
+    expect(screen.getByText('Real row')).toBeTruthy();
+    expect(screen.queryByText('Empty row')).toBeNull();
   });
 });
