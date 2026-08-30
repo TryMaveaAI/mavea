@@ -116,7 +116,9 @@ const RULES: Rule[] = [
   {
     shape: 'code',
     weight: 1.1,
-    test: /\b(code|coding|programming|software|function|algorithm\w*|recursi\w*|data structures?|linked lists?|binary (?:tree|search)|hash\s?(?:map|table)|big-?o|time complexity|syntax|compil\w*|debug\w*|refactor\w*|regex|sql|snippet|pseudo\s?code|api)\b/,
+    // "…between two versions of the/a/this file" is diff intent said without the word "diff" —
+    // it reached a code component only by luck of the menu draw until the phrasing was named.
+    test: /\b(code|coding|programming|software|function|algorithm\w*|recursi\w*|data structures?|linked lists?|binary (?:tree|search)|hash\s?(?:map|table)|big-?o|time complexity|syntax|compil\w*|debug\w*|refactor\w*|regex|sql|snippet|pseudo\s?code|api|diff\w*|versions? of (?:the|a|this|that) file)\b/,
   },
   {
     shape: 'scalar',

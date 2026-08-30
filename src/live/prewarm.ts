@@ -51,6 +51,11 @@ export function prewarmLive(opts: { force?: boolean } = {}): void {
     /* config/adapter unavailable — warming is best-effort */
   }
 
+  // Pull the turn engine itself while the user is still typing. The first submit used to fetch
+  // and evaluate this 364KB chunk (16 modules) SERIALLY, before a single prompt byte was
+  // assembled — a cost paid exactly once per session, at the one moment the user is watching.
+  void import('./generateLive').catch(() => {});
+
   // Wake the local TTS service in parallel so the first spoken line isn't delayed by a cold start.
   try {
     const ctrl = new AbortController();

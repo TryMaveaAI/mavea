@@ -917,8 +917,9 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
     await generateLive('derive the quadratic formula step by step', [], cfg, undefined, {
       caps: { quality: 'balanced' },
     });
-    // hard ask (low) + balanced (+1) → medium
-    expect(fake.lastReq?.thinkingLevel).toBe('medium');
+    // hard ask → one real rung; the default dial no longer buys a medium pass the reader waits
+    // through (only the explicit Thorough dial goes deeper).
+    expect(fake.lastReq?.thinkingLevel).toBe('low');
   });
 
   it('recovers a grounded turn from a 429 by retrying ungrounded, clearing the activity indicator exactly once', async () => {

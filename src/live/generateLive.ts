@@ -907,9 +907,18 @@ export async function generateLive(
   // isn't warm (cold start, a weak device, the node eval, or assets not built), so this adds zero
   // latency until the ~7MB model has loaded — then it's a sub-ms worker round-trip. Advisory only:
   // the selector folds it in as a bounded additive boost, never an override.
-  const semantic = await semanticFit(userText);
+  // Advisory and instant when cold (resolves null before the embedder is warm) — but when warm it
+  // was a serial await ahead of selection for no reason; they only join at the selector input.
+  const semanticPromise = semanticFit(userText);
+  const semantic = await semanticPromise;
   const selection = await selectComponents({
     userText,
+    // Every statically-known type the turn will allow beyond the menu's own picks — the tier
+    // standards plus the conditional extras — so the selector's ONE catalog round-trip covers
+    // them and no second ensureDetails stands between selection and the request. Loading a
+    // detail shard for a type a later gate withholds (synthesis not firing) is one tiny cached
+    // fetch; a second serial round-trip on every turn was the expensive side of that trade.
+    alsoLoad: [...blockTypesForTier(tier), 'action', COMPOSITE_BLOCK_TYPE, 'svgblock'],
     history,
     tier,
     recent: opts.recentTypes,
@@ -976,12 +985,11 @@ export async function generateLive(
   const blockTypes = [
     ...new Set([...selection.types, ...tierStandard, ...extras, ...synthExtra, ...genExtra]),
   ];
-  // The validator coerces whatever the model emits from that block's catalog DETAILS (its required
-  // props, item shapes, prop hints), and it runs synchronously while the response streams. Load the
-  // details for every allowed type BEFORE the first token arrives, or a block whose family was never
-  // fetched would fail to coerce and vanish from the canvas. `selectComponents` already warmed the
-  // menu's families; this covers the tier standards and the synthesis/generative extras it can't know
-  // about. Families already resident cost nothing.
+  // The validator coerces whatever the model emits from that block's catalog DETAILS, and it runs
+  // synchronously while the response streams — so every allowed type's details must be resident
+  // BEFORE the first token arrives. `selectComponents` loaded them all in its one round-trip
+  // (`alsoLoad` above names the ones it couldn't know); this is the belt-and-braces re-check and
+  // resolves instantly when nothing is missing.
   await ensureDetails(blockTypes);
   // Whether the svg escape hatch is on the table this turn — drives the teaching fragment below,
   // so any tier that's offered svgblock is also told exactly how to format it.
@@ -1830,6 +1838,10 @@ Emit ONLY the standard lesson — every block here is one the learner sees first
           user: repairInstruction(issues, unusedHeroes),
           tools: undefined,
           attachments: undefined,
+          // A repair is a mechanical restructure of JSON it is handed verbatim — inheriting the
+          // turn's reasoning level paid a hidden thinking pass (seconds, plus billed tokens) to
+          // NOT think. Every other mechanical caller already pins this.
+          thinkingLevel: 'minimal',
         },
         cfg,
       );

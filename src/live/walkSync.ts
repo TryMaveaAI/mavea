@@ -46,9 +46,12 @@ export const PREPARE_CUE_DELAY_MS = 600;
 export const SHOWFRAME_REVEAL_CAP_MS = 3_000;
 /** Ceiling on holding the turn's FIRST spoken line for the answer's first card to appear. Past
  *  this the voice goes ahead regardless: a slow renderer, an answer with no blocks at all, or a
- *  backgrounded tab must never leave a turn silent. Comfortably longer than a card's entrance
- *  (`--m-expressive`, 550ms) plus the commit that precedes it. */
-export const FIRST_PAINT_CAP_MS = 1_800;
+ *  backgrounded tab must never leave a turn silent. A skeleton counts as a card (it carries
+ *  `.card`), so on a streamed turn this resolves the moment the first pending block registers —
+ *  the cap only binds before even that, where narration IS already on screen as the streaming
+ *  lead text. Holding a voice 1.8s against words the reader can see was dead air, not sync:
+ *  900ms still covers a card entrance (`--m-expressive`, 550ms) plus its commit. */
+export const FIRST_PAINT_CAP_MS = 900;
 
 /** Failure-only ceiling on "line finished": double the word-count estimate (0.5× voice speed is
  *  the slowest a user can pick) plus synthesis slack. Real lines resolve `finished` themselves —

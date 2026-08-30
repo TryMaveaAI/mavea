@@ -68,14 +68,22 @@ export function thinkingLevelFor(
   quality: QualityPref = 'fast',
 ): ThinkingLevel {
   const hard = isHardAsk(userText);
-  // A trivial/lean ask that isn't a hard problem never benefits from more reasoning, so pin it
-  // at minimal regardless of the quality dial — the dial raises effort for substantive asks, not
-  // for "what is 1+1". Without this, the default (balanced, +1) bumped every lean ask to 'low',
-  // spending reasoning tokens on the cheapest, most common turns (the headline cost path on Gemini).
-  if (complexity === 'lean' && !hard) return 'minimal';
+  // An ask that isn't a hard problem never benefits from more reasoning, so pin it at minimal
+  // regardless of the quality dial — the dial raises effort for hard asks, not for composition.
+  // This used to guard only `lean`, so at the DEFAULT dial (balanced, +1) every ordinary rich ask
+  // ran at 'low' and every "why does…" / "compare…" at 'medium' — hundreds to thousands of hidden
+  // reasoning tokens generated BEFORE the first visible one, which was the single largest slice
+  // of a measured 3.2s first-token wait. A canvas is composition, not derivation: the model is
+  // arranging an answer it already knows into blocks, and reasoning about the arrangement is time
+  // the reader spends staring at a blank screen.
+  if (!hard) return 'minimal';
+  // A genuinely hard ask climbs from 'low'. But HARD matches everyday phrasings — "why does…",
+  // "compare A vs B", "plan a trip" — so at the default dial it is clamped to 'low': one rung of
+  // real reasoning, never a medium/high pass the reader waits through unasked. Only the explicit
+  // Thorough dial buys the deeper rungs, because that user chose to trade time for it.
   const base = baseLevel(complexity, hard);
-  const steps = quality === 'thorough' ? 2 : quality === 'balanced' ? 1 : 0;
-  return bump(base, steps);
+  if (quality !== 'thorough') return base;
+  return bump(base, 2);
 }
 
 // Temperature operating points. We deliberately move only the two TAILS that the default

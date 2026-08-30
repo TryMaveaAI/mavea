@@ -53,7 +53,15 @@ export interface SelectionResult {
 // How many RICH components to draw on top of the always-present base floor. A rich ask
 // gets a generous, varied menu (the model picks the fitting few); a lean ask (trivial
 // fact / arithmetic) gets a small focused one so a one-line answer isn't padded out.
-const K_BY_TIER: Record<ModelTier, number> = { small: 8, mid: 24, frontier: 30 };
+//
+// SIZED BY MEASUREMENT, not generosity. At 30 heroes the menu ran 25-31k chars — over half the
+// entire request, all of it OUTSIDE the provider's cached prefix, so every turn re-paid ~7k
+// tokens of prompt processing for lines the model read once and mostly ignored (a canvas builds
+// ~9 blocks). 16 keeps the variety mandate real — the base floor rides on top, pins and strong
+// fits are unaffected — while cutting the single largest slice of time-to-first-token.
+// mid keeps its proven 24: the reachability suite shows 18 stops the battery from ever surfacing
+// the quieter status/display visuals, and mid models are not the latency path measured above.
+const K_BY_TIER: Record<ModelTier, number> = { small: 8, mid: 24, frontier: 18 };
 const LEAN_K = 3;
 /** Keep the menu broad across the library: at most this many picks from any one family… */
 const FAMILY_CAP = 2;
@@ -441,11 +449,25 @@ function propHintsClause(m: ComponentMeta): string {
   return ` · hints: ${entries.map(([k, v]) => `${k}=${v}`).join(', ')}`;
 }
 
+/** How many heroes carry the full `hints:` clause. Measured at 30 heroes, hints were 8.8k
+ *  chars/turn — the largest clause on the menu — with 76% of it on ranks the model rarely picks.
+ *  The leads keep every hint (the canvas is built around them); the tail keeps the contracts
+ *  that prevent a broken card (`needs`, item shapes, required paths) and sheds the guidance. */
+const TEACH_HINTS = 6;
+
 function requiredPathsClause(m: ComponentMeta): string {
   return m.requiredPaths?.length ? ` · required nested: ${m.requiredPaths.join(', ')}` : '';
 }
 
-function describe(m: ComponentMeta, withExample = false, dense = false): string {
+/** A blurb clipped to its first sentence — for menu lines past the lead group, where the full
+ *  ~270-char blurb was prose the model paid to skim. Never cuts mid-word: a sentence boundary or
+ *  the whole blurb. */
+function shortBlurb(blurb: string): string {
+  const end = blurb.indexOf('. ');
+  return end > 20 ? blurb.slice(0, end + 1) : blurb;
+}
+
+function describe(m: ComponentMeta, withExample = false, dense = false, lead = true): string {
   const needs = m.requires.length ? m.requires.join(', ') : '—';
   // A concrete, demo-sourced example is the most reliable thing an LLM can copy, so when one
   // exists we lead with it (it conveys the exact nested shape + token idioms a name list
@@ -459,7 +481,9 @@ function describe(m: ComponentMeta, withExample = false, dense = false): string 
     return `- ${m.type} — ${m.blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${propHintsClause(m)} · example: ${ex}`;
   const extra = m.optional.slice(0, TEACH_OPTIONAL);
   const richer = extra.length ? ` · richer with: ${extra.join(', ')}` : '';
-  return `- ${m.type} — ${m.blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${propHintsClause(m)}${richer}`;
+  const blurb = lead ? m.blurb : shortBlurb(m.blurb);
+  const hints = lead ? propHintsClause(m) : '';
+  return `- ${m.type} — ${blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${hints}${richer}`;
 }
 
 /** The always-present common blocks (the base floor), with their fields taught too, so the
@@ -495,7 +519,7 @@ function buildMenu(chosen: ComponentFacts[], fitOf: ReadonlyMap<string, number>)
     return b.wowWeight - a.wowWeight;
   });
   // Only the leads carry an example (see LEAD_DENSE above); the rest teach shape + hints, thin.
-  const heroLines = cool.map((m, i) => describe(m, i < LEAD_DENSE, true));
+  const heroLines = cool.map((m, i) => describe(m, i < LEAD_DENSE, true, i < TEACH_HINTS));
   const out: string[] = [];
   if (heroLines.length) {
     out.push(
@@ -535,6 +559,9 @@ export interface Choice {
 
 /** The turn's selection input. */
 export interface SelectionInput {
+  /** Types the caller already knows the turn will allow (tier standards, synthesis extras) —
+   *  loaded in the same catalog round-trip as the menu's own families. */
+  alsoLoad?: readonly string[];
   userText: string;
   history?: ChatMessage[];
   tier: ModelTier;
@@ -800,12 +827,25 @@ export function menuFor(choice: Choice): string {
  */
 export async function selectComponents(input: SelectionInput): Promise<SelectionResult> {
   const choice = chooseComponents(input);
-  // Examples are only ever shown for catalog hero picks (buildMenu's LEAD_DENSE heroes), never the
-  // base floor, so choice.types alone is the exact set worth fetching — run both shard fetches
-  // together rather than back to back.
+  // Only the LEAD_DENSE heroes ever render an example (buildMenu), and their order is computed
+  // from the always-resident facts (fit + wow) — so fetch exactly those shards, not one per
+  // offered type. At a 30-type menu this was ~26 shard round-trips on the critical path ahead of
+  // the first request byte, to render three examples.
+  const leads = [...choice.chosen]
+    .sort((a, b) => {
+      const fa = (choice.fitOf.get(a.type) ?? 0) > 0 ? 1 : 0;
+      const fb = (choice.fitOf.get(b.type) ?? 0) > 0 ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return b.wowWeight - a.wowWeight;
+    })
+    .slice(0, LEAD_DENSE)
+    .map((m) => m.type);
+  // One catalog round-trip, not two: the caller's statically-known extras (tier standards,
+  // synthesis/generative types) ride the same fetch as the menu's families, so generateLive no
+  // longer needs a second `ensureDetails` between selection and the request.
   await Promise.all([
-    ensureDetails([...choice.types, ...BASE_FLOOR]),
-    ensureExamples(choice.types),
+    ensureDetails([...choice.types, ...BASE_FLOOR, ...(input.alsoLoad ?? [])]),
+    ensureExamples(leads),
   ]);
   return {
     types: choice.types,

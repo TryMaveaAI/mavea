@@ -31,11 +31,20 @@ describe('thinkingLevelFor — cheapest effort that fits the ask', () => {
     expect(thinkingLevelFor('rich', 'what is the root cause of this outage')).toBe('low');
   });
 
-  it("respects the user's quality dial — balanced +1, thorough +2", () => {
+  it('spends reasoning only where it helps — never on composition, deeper only on Thorough', () => {
+    // A canvas is composition, not derivation: at ANY dial an ordinary ask stays minimal.
+    // The old policy bumped every rich ask one rung per dial notch, which put hundreds of hidden
+    // reasoning tokens ahead of the first visible one on the most common turns — the single
+    // largest slice of a measured 3.2s first-token wait.
     expect(thinkingLevelFor('rich', 'tell me about jazz', 'fast')).toBe('minimal');
-    expect(thinkingLevelFor('rich', 'tell me about jazz', 'balanced')).toBe('low');
-    expect(thinkingLevelFor('rich', 'tell me about jazz', 'thorough')).toBe('medium');
-    // A hard ask on the top dial saturates near the ceiling.
+    expect(thinkingLevelFor('rich', 'tell me about jazz', 'balanced')).toBe('minimal');
+    expect(thinkingLevelFor('rich', 'tell me about jazz', 'thorough')).toBe('minimal');
+    // A hard ask earns one real rung — and HARD matches everyday phrasings ("why does…",
+    // "compare A vs B"), so the default dial is clamped there. Only the explicit Thorough dial
+    // buys the deeper pass, because that user chose to trade time for it.
+    expect(thinkingLevelFor('rich', 'why does inflation happen', 'balanced')).toBe('low');
+    expect(thinkingLevelFor('rich', 'prove this theorem', 'fast')).toBe('low');
+    expect(thinkingLevelFor('rich', 'prove this theorem', 'balanced')).toBe('low');
     expect(thinkingLevelFor('rich', 'prove this theorem', 'thorough')).toBe('high');
   });
 });
