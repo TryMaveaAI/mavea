@@ -331,6 +331,23 @@ const COLLECTION_NOUN: Record<string, string> = {
  * to read, which is true of any shape without knowing the shape. Null only when a block has no
  * countable structure at all (a paragraph, an image).
  */
+/**
+ * How many things the block actually renders — the largest named collection in its props.
+ *
+ * The Study uses it to decide how much ink a slide has EARNED, independent of how much the model
+ * chose to write: measured on live turns, a small model settles on two scrawls whatever it is
+ * looking at, so a four-row breakdown and a one-figure card came out annotated identically.
+ */
+export function collectionSize(block: Block): number {
+  const props = block.props as Record<string, unknown>;
+  let most = 0;
+  for (const [key, value] of Object.entries(props)) {
+    if (!Array.isArray(value) || !COLLECTION_NOUN[key]) continue;
+    most = Math.max(most, value.length);
+  }
+  return most;
+}
+
 function genericQuip(block: Block, seed: number): string | null {
   const props = block.props as Record<string, unknown>;
   let best: { key: string; n: number } | null = null;

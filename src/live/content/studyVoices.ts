@@ -22,7 +22,7 @@ import type { StudyAside } from '../../canvas/study/types';
 import { blockLabel } from '../../canvas/blockLabel';
 import { asideFor } from './asideFor';
 import { assumptionIn, notableIn, studyPromptIn, type NoteLevel } from './notableIn';
-import { penMarks, PEN_MARK_MAX, PEN_SLOTS, type PenMark } from './penQuip';
+import { collectionSize, penMarks, PEN_MARK_MAX, PEN_SLOTS, type PenMark } from './penQuip';
 import type { ContentGraph } from './types';
 
 /**
@@ -69,8 +69,28 @@ export function studyVoices(
   // it contains. Over-long scrawls are dropped rather than truncated: the margin is a fixed
   // width, and half a remark is not a remark.
   const authored = (block.study?.scrawls ?? []).filter((t) => t.length <= PEN_MARK_MAX);
-  const marks: PenMark[] = authored.length
-    ? authored.slice(0, PEN_SLOTS.length).map((text, i) => ({ text, slot: PEN_SLOTS[i] }))
+  // How much ink the slide has EARNED, from what it actually renders. The prompt asks for this
+  // count, but asking is not enough: measured on live turns a small model settles on two scrawls
+  // whatever it is looking at, so a four-row breakdown came out annotated exactly like a
+  // one-figure card. Below the floor the derived readings top it up — they are read from the
+  // block's own structure, so they name real rows rather than repeating a stock phrase, and they
+  // only ever appear on a slide the model under-marked. The floor is a TARGET, not a promise —
+  // there are two derived readings per block, and inventing a third to hit a number is exactly
+  // the stock-phrase failure this file exists to avoid.
+  const size = collectionSize(block);
+  const floor = size >= 6 ? 4 : size >= 4 ? 3 : authored.length;
+  const texts = [...authored];
+  if (texts.length < floor) {
+    const seen = new Set(texts.map((t) => t.toLowerCase()));
+    for (const derived of penMarks(block, index)) {
+      if (texts.length >= floor) break;
+      if (seen.has(derived.text.toLowerCase())) continue;
+      seen.add(derived.text.toLowerCase());
+      texts.push(derived.text);
+    }
+  }
+  const marks: PenMark[] = texts.length
+    ? texts.slice(0, PEN_SLOTS.length).map((text, i) => ({ text, slot: PEN_SLOTS[i] }))
     : penMarks(block, index);
   if (marks.length) notes[0] = { ...notes[0], marks };
   return notes;

@@ -134,3 +134,57 @@ describe('the desk draws every slot the scrawls can land in', () => {
     }
   });
 });
+
+describe('a dense slide gets the ink it earned, whatever the model wrote', () => {
+  // The prompt asks for a count keyed to the block's density, but asking is not enough: measured
+  // on live turns a small model settles on two scrawls whatever it is looking at, so a four-row
+  // breakdown came out annotated exactly like a one-figure card.
+  function rows(n: number, scrawls?: string[]): Block {
+    return {
+      type: 'breakdown',
+      id: 'live-1',
+      col: 6,
+      props: {
+        title: 'Needs',
+        rows: Array.from({ length: n }, (_, i) => ({
+          name: `Row ${i + 1}`,
+          val: `$${i + 1}00`,
+          pct: 10,
+        })),
+      },
+      ...(scrawls ? { study: { scrawls } } : {}),
+    } as Block;
+  }
+
+  it('tops a four-row block up to three scrawls when the model wrote two', () => {
+    const marks = studyVoices(rows(4, ['a', 'b']), 0, null, 'standard')[0].marks ?? [];
+    expect(marks).toHaveLength(3);
+    expect(marks.slice(0, 2).map((m) => m.text)).toEqual(['a', 'b']);
+  });
+
+  it('tops up as far as the block can honestly be read', () => {
+    // The floor is a target, not a promise: the derived readings are bespoke per block type and
+    // there are two of them, so a six-row block the model gave one scrawl reaches three, not
+    // four. Inventing a third to hit a number is the stock-phrase failure this file exists to
+    // avoid — better a slide with three real remarks than four where one says nothing.
+    expect(studyVoices(rows(6, ['a']), 0, null, 'standard')[0].marks).toHaveLength(3);
+    expect(studyVoices(rows(6, ['a', 'b']), 0, null, 'standard')[0].marks).toHaveLength(4);
+  });
+
+  it('leaves a sparse block at the count the model chose', () => {
+    // Two rows earn two remarks; topping THAT up is the annoying end of the trade.
+    expect(studyVoices(rows(2, ['a']), 0, null, 'standard')[0].marks).toHaveLength(1);
+  });
+
+  it('never repeats a remark the model already wrote', () => {
+    const derived = studyVoices(rows(6), 0, null, 'standard')[0].marks ?? [];
+    const authored = studyVoices(rows(6, [derived[0].text]), 0, null, 'standard')[0].marks ?? [];
+    const texts = authored.map((m) => m.text.toLowerCase());
+    expect(new Set(texts).size).toBe(texts.length);
+  });
+
+  it('never fills more slots than the desk draws', () => {
+    const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    expect(studyVoices(rows(9, many), 0, null, 'standard')[0].marks).toHaveLength(PEN_SLOTS.length);
+  });
+});
