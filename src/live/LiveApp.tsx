@@ -25,7 +25,7 @@ import {
 import { flushSync } from 'react-dom';
 import { loadFamilies, familiesFor } from '../canvas/blocks/loader';
 import type { WorldSpec } from './world/types';
-import type { Block, Blank } from '../data/conversation';
+import type { Block, Blank, BlockStudy } from '../data/conversation';
 import { routeBlankVoice } from './blankVoice';
 import { micShouldBeOpen } from '../voice/alwaysOnGate';
 import { useAlwaysOnVisibility } from '../voice/useAlwaysOnVisibility';
@@ -1739,6 +1739,41 @@ export function LiveApp(): ReactElement {
     return answerToContent(spec, corpus);
   }, [viewMode, turn.viewSpec, turn.spec]);
 
+  // The Study's model-written notes for the answer on screen, fetched the first time the reader
+  // actually opens the desk. Never blocking: the derived voices paint immediately and these
+  // replace them when they land, because a desk that sits empty waiting for a second call is a
+  // worse surface than one annotated by Mavéa's own reading. Keyed by spec so a scrubbed older
+  // frame can never wear the current answer's notes.
+  const [studyNotes, setStudyNotes] = useState<{
+    specId: string;
+    notes: Map<string, BlockStudy>;
+  } | null>(null);
+  const studySpec = turn.viewSpec ?? turn.spec;
+  const studySpecId = studySpec?.id ?? null;
+  useEffect(() => {
+    if (viewMode !== 'study' || !studySpec || !studySpecId) return;
+    // Already have them, or the answer carries them inline (an older turn, a baked demo).
+    if (studyNotes?.specId === studySpecId) return;
+    if (studySpec.blocks.some((b) => b.study)) return;
+    let alive = true;
+    void import('./study/annotate')
+      .then(({ studyNotesFor }) =>
+        studyNotesFor(studySpec, lastAsk ?? studySpec.title, toModelConfig(cfg), cfg.explainLevel),
+      )
+      .then((notes) => {
+        if (alive && notes) setStudyNotes({ specId: studySpecId, notes });
+      })
+      .catch(() => {
+        /* the derived voices are already on the desk; nothing to say */
+      });
+    return () => {
+      alive = false;
+    };
+    // `studyNotes` is deliberately absent: it is the RESULT of this effect, and reading it here
+    // would re-run the moment it lands. The guard above uses a ref-free early return instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, studySpec, studySpecId, lastAsk, cfg]);
+
   // Four notes per object, written once for the answer — see `studyVoices` for who authors each.
   // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
   // emphasised — never the set, which is what made the old rail tear down on every move.
@@ -1748,11 +1783,17 @@ export function LiveApp(): ReactElement {
     const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
     const out: Record<string, StudyAside[]> = {};
+    const written = studyNotes?.specId === spec.id ? studyNotes.notes : undefined;
     spec.blocks.forEach((block, index) => {
-      if (block.id) out[block.id] = studyVoices(block, index, studyContent, cfg.explainLevel);
+      if (!block.id) return;
+      // The model's notes for THIS answer, when the desk has bought them; otherwise the block's
+      // own (which an older answer may carry inline), and failing both, Mavéa's derived reading.
+      const authored = written?.get(block.id);
+      const source = authored ? ({ ...block, study: authored } as typeof block) : block;
+      out[block.id] = studyVoices(source, index, studyContent, cfg.explainLevel);
     });
     return out;
-  }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel]);
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel, studyNotes]);
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and

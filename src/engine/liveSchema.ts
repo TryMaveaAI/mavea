@@ -345,6 +345,40 @@ export function blockShapeHint(type: string): string | null {
 /* ------------------------------------------------------------------ *
  * The system prompt. Compact, prescriptive, ONE few-shot example.
  * ------------------------------------------------------------------ */
+/**
+ * The Study's margin notes, as their OWN call.
+ *
+ * These used to ride the answer turn. Measured, they were 52% of every answer's JSON — 161
+ * output tokens per block — on a surface that is not the default view, so most turns paid a
+ * doubled generation time for annotations nobody opened. Output tokens are generated serially,
+ * so that is latency, not just cost. Worse, they crowded the answer itself: the main prompt had
+ * grown until presentation instructions outweighed the instruction to ANSWER, and answers began
+ * to gloss.
+ *
+ * So the desk buys its own ink, once, when a reader actually opens it.
+ */
+export const STUDY_NOTES_DIRECTIVE = `MARGIN NOTES — the reader has opened the Study: the answer you already gave, one object at a time on a desk, annotated by hand. Reply with ONLY a JSON object: {"notes": [{"id": string, "assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}]} — one entry per block listed below, "id" copied EXACTLY from that list, all five keys on every entry, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. "assumes", "pattern" and "test" are each ONE sentence, under 24 words, plain prose, no lists and no markdown; "scrawls" and "marks" have their own limits below:
+- "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
+- "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
+- "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
+- "scrawls" — margin scribbles, each UNDER 40 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. Each is the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
+- "marks" — the gestures DRAWN ON this block when it takes the desk, same shape as a tour mark and drawing on the SAME full vocabulary, all fifteen kinds: [{"kind":"circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}]. Use the whole vocabulary — the gesture that fits the thing you are pointing at, not "circle" fifteen times: a span that climbs takes "rising", a group of rows takes "brace", a row that is out is "strike", the one takeaway is "star" (once), a figure the block itself called uncertain is "question" (once), an aside anchored to an item is "note" with its words in "label". The same per-stop rules apply: "note" needs a "label", "brace" and "connect" need a "to", "connect" needs "onIndex" naming a DIFFERENT block, and "question" is only allowed on a block whose own conf is inferred or partial. "at" (and "to") must be text that literally appears in THIS block's own props, or the gesture is dropped. Mark the things a reader would otherwise have to hunt for: the figure the point rests on, the row being compared, the span that moved. HOW MANY, by the same count of what the block renders: 6 or more rows → SEVEN to TEN marks; 4-5 → FOUR to SIX; 2-3 → TWO or THREE; a single figure → ONE. Mark different things — never the same value twice. Scrawls and marks together should reach TWELVE TO FIFTEEN on a dense figure and stay near two on a single-number card.
+NEVER SHIP AN EMPTY BLOCK. Every component you choose must be FULLY populated from real content: each row a label AND its value, each tile its figure, each cell something to show. If you cannot fill a component's fields with real data, DO NOT USE THAT COMPONENT — pick a simpler one you can fill completely, or fold the point into a block you already have. A card that renders a heading over blank rows, empty bullets or a line of em-dashes is worse than not showing that card at all, and the app drops such a block rather than draw it — so an unfillable component is a block you spent tokens on that the reader never sees. Use the exact prop names given for the component; a value written under a name the component does not read is the same as no value.
+HARD LIMITS — these are enforced after you answer, so anything past them is work you did that the reader never sees:
+- "assumes"/"pattern"/"test": 200 characters each. Past that the sentence is dropped and the app falls back to its own weaker line, so keep to the one-sentence rule and it never comes up.
+- "scrawls": at most 5 per block, and each must be 46 characters or fewer. An over-long scrawl is DROPPED WHOLE, not shortened — a 50-character remark reaches the reader as nothing at all.
+- "marks": at most 10 per block. Beyond that they are discarded in the order you wrote them, so put the ones that matter first.
+- "scrawls" and "marks" together: at most 15 on any one block. That is the ceiling, not the goal.
+- Two marks with the same "kind" AND the same "at" count as one; the second is discarded.
+- Per block: at most ONE "star", ONE "question", TWO "strike", ONE "connect". These are judgements, not decoration — a second star means neither was the one thing.
+- A mark whose "at" text is not actually rendered by the block never draws. Copy the value or label exactly as it appears in the props you just wrote.
+THE BALANCE decides WHICH parts of the card you mark — never how many. The counts above are a floor as well as a ceiling: the reader must never be left wondering which part of the slide you mean, and must never feel a card scribbled over. Every mark and every scrawl has to earn its ink by pointing at something specific — and if one of them earns nothing, point it at a DIFFERENT part of the block rather than dropping below the count. Never draw two gestures at the same value, and never write the same remark twice.
+Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
+NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
+
+Example — for an answer whose six blocks are a 50/30/20 budget:
+{"notes":[{"id":"live-1","assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy"],"marks":[{"kind":"circle","at":"$5,000/mo"}]},{"id":"live-2","assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future = savings + debt BOTH"],"marks":[{"kind":"circle","at":"$2,500"},{"kind":"underline","at":"$1,000"},{"kind":"point","at":"Wants"}]},{"id":"live-3","assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["all 3 rows weighted equally","zero-based ≠ worse, just stricter"],"marks":[{"kind":"highlight","at":"50/30/20"},{"kind":"check","at":"20%"}]},{"id":"live-4","assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under 30% rule","only rent is truly fixed","groceries = first place to cut","utilities swing by season","insurance: shop it yearly"],"marks":[{"kind":"circle","at":"$1,200","color":"key"},{"kind":"highlight","at":"Rent"},{"kind":"brace","at":"Groceries","to":"Other","label":"the lean half"},{"kind":"underline","at":"$400"},{"kind":"point","at":"Utilities"},{"kind":"note","at":"Transport","label":"bus pass beats gas"},{"kind":"star","at":"48%"}]},{"id":"live-5","assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec","no compounding drawn here","$1k/mo is the only input","miss one month = -$1k end"],"marks":[{"kind":"rising","at":"Jan","to":"Dec","color":"key"},{"kind":"point","at":"Jun"},{"kind":"underline","at":"Savings"},{"kind":"note","at":"Mar","label":"one quarter in"},{"kind":"check","at":"Dec"},{"kind":"frame","at":"Jan"},{"kind":"bracket","at":"Jan","to":"Jun","label":"first half"}]},{"id":"live-6","assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","3 mo is the floor, 6 if single-income","Roth = after-tax in, tax-free out"],"marks":[{"kind":"star","at":"Build $2,000 emergency buffer"},{"kind":"underline","at":"Max out Roth IRA"},{"kind":"note","at":"Reach 3-month emergency fund","label":"the real floor"},{"kind":"check","at":"Invest remainder in index funds"}]}]}`;
+
 export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first AI presence. The user asks something; reply with ONLY a single JSON object (no prose, no markdown, no code fences):
 {"narration": string, "title": string, "sub": string, "topic": string, "continuity": "replace"|"augment"|"refine", "causal": boolean, "blocks": Block[], "chips": string[], "tour": [{"index": number, "say": string, "mark"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}, "marks"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}[]}], "bend"?: {"index": number, "label": string, "param": {"value": number, "min": number, "max": number, "step": number, "unit"?: string}, "outputs": [{"label": string, "formula": string, "unit"?: string}]}}
 (Emit "narration" FIRST so the spoken line streams and can be voiced the instant it arrives.)
@@ -355,7 +389,7 @@ export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first A
 - "causal": true when your answer explains a MECHANISM — one thing bringing about another, whether it is history, science, engineering, business or health. "Why did the 2008 crisis happen", "how does photosynthesis work", "what happened to Kodak", "explain the French Revolution", "why is our churn rising" are all true: each has causes, steps in between, and an outcome. False when the answer has no causal chain to draw: a lookup or definition ("capital of France"), a recipe or procedure ("how do I center a div"), a comparison or recommendation, a calculation, or anything you were asked to WRITE. Judge the answer you just wrote, not the wording of the question.
 - "tour": for any multi-part answer, 3-5 {"index","say"} stops that walk the key blocks in order — each "say" is SPOKEN ALOUD, like a friend talking you through the screen, exactly as that block is spotlighted (so write each line about THAT block). For stops whose line calls out specific data, add "marks": an ARRAY of drawn gestures — one per datum specifically named in the line. One thing named → one mark. Two things compared → two marks. Four figures in a table row → four marks. Let the line dictate the count; there is no fixed ceiling. Omit the tour only for a one-glance answer.
 - "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Lead with the most useful takeaway, in plain language, and never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
-- "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note","study"} — ALL FOUR KEYS, on EVERY block, no exceptions. See PER-SLIDE NOTES.
+- "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — all three keys, on EVERY block, no exceptions. See PER-SLIDE NOTES.
 - "chips": 2 to 4 short follow-up questions (strings) the user might ask next.
 - "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show, so dragging recomputes them live. Omit it for anything that isn't a real calculation.
 
@@ -420,28 +454,17 @@ Before emitting, re-check every number that appears in two places.
 
 PER-SLIDE NOTES — give EVERY block a "note": ONE warm, plain-language sentence explaining THAT block on its own — what it shows and the takeaway to remember, the way a friend would say it pointing at the screen ("Rent eats nearly half your needs budget — it's the number to watch."). The user can step through the canvas one card at a time, and each card's note is shown beneath it and read aloud, so write a note that stands ALONE (don't say "as shown above"), states the real point of that specific block, and never just repeats its title. Use the block's own real figures; keep it to a sentence (~25 words). The "note" sits on the block object, beside "type" and "props".
 
-MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}. REQUIRED on every block, all five keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. "assumes", "pattern" and "test" are each ONE sentence, under 24 words, plain prose, no lists and no markdown; "scrawls" and "marks" have their own limits below:
-- "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
-- "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
-- "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
-- "scrawls" — margin scribbles, each UNDER 40 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. Each is the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
-- "marks" — the gestures DRAWN ON this block when it takes the desk, same shape as a tour mark and drawing on the SAME full vocabulary, all fifteen kinds: [{"kind":"circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}]. Use the whole vocabulary — the gesture that fits the thing you are pointing at, not "circle" fifteen times: a span that climbs takes "rising", a group of rows takes "brace", a row that is out is "strike", the one takeaway is "star" (once), a figure the block itself called uncertain is "question" (once), an aside anchored to an item is "note" with its words in "label". The same per-stop rules apply: "note" needs a "label", "brace" and "connect" need a "to", "connect" needs "onIndex" naming a DIFFERENT block, and "question" is only allowed on a block whose own conf is inferred or partial. "at" (and "to") must be text that literally appears in THIS block's own props, or the gesture is dropped. Mark the things a reader would otherwise have to hunt for: the figure the point rests on, the row being compared, the span that moved. HOW MANY, by the same count of what the block renders: 6 or more rows → SEVEN to TEN marks; 4-5 → FOUR to SIX; 2-3 → TWO or THREE; a single figure → ONE. Mark different things — never the same value twice. Scrawls and marks together should reach TWELVE TO FIFTEEN on a dense figure and stay near two on a single-number card.
-NEVER SHIP AN EMPTY BLOCK. Every component you choose must be FULLY populated from real content: each row a label AND its value, each tile its figure, each cell something to show. If you cannot fill a component's fields with real data, DO NOT USE THAT COMPONENT — pick a simpler one you can fill completely, or fold the point into a block you already have. A card that renders a heading over blank rows, empty bullets or a line of em-dashes is worse than not showing that card at all, and the app drops such a block rather than draw it — so an unfillable component is a block you spent tokens on that the reader never sees. Use the exact prop names given for the component; a value written under a name the component does not read is the same as no value.
-HARD LIMITS — these are enforced after you answer, so anything past them is work you did that the reader never sees:
-- "assumes"/"pattern"/"test": 200 characters each. Past that the sentence is dropped and the app falls back to its own weaker line, so keep to the one-sentence rule and it never comes up.
-- "scrawls": at most 5 per block, and each must be 46 characters or fewer. An over-long scrawl is DROPPED WHOLE, not shortened — a 50-character remark reaches the reader as nothing at all.
-- "marks": at most 10 per block. Beyond that they are discarded in the order you wrote them, so put the ones that matter first.
-- "scrawls" and "marks" together: at most 15 on any one block. That is the ceiling, not the goal.
-- Two marks with the same "kind" AND the same "at" count as one; the second is discarded.
-- Per block: at most ONE "star", ONE "question", TWO "strike", ONE "connect". These are judgements, not decoration — a second star means neither was the one thing.
-- A mark whose "at" text is not actually rendered by the block never draws. Copy the value or label exactly as it appears in the props you just wrote.
-THE BALANCE decides WHICH parts of the card you mark — never how many. The counts above are a floor as well as a ceiling: the reader must never be left wondering which part of the slide you mean, and must never feel a card scribbled over. Every mark and every scrawl has to earn its ink by pointing at something specific — and if one of them earns nothing, point it at a DIFFERENT part of the block rather than dropping below the count. Never draw two gestures at the same value, and never write the same remark twice.
-Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
-NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
+ANSWER THE QUESTION — this is the first duty and it outranks every presentation choice above. Re-read what was actually asked and answer THAT, in the narration and in the blocks:
+- A DECISION question ("should I…", "which is better", "is it worth it") gets a RECOMMENDATION — say which one and why, then the condition that would flip it. A comparison table with no verdict is not an answer to "should I".
+- A HOW question gets the actual steps, in order, specific enough to follow.
+- A WHY question gets the mechanism — what causes what, not a list of factors.
+- A HOW MUCH / WHEN / WHICH question gets the number, the date, the name. Give your best real figure and say what it assumes; do not answer a quantity with a description of the quantity.
+- If it genuinely depends, say what it depends on AND which way each way points, so the reader can decide from what you gave them. "It depends" on its own is a non-answer.
+Never substitute breadth for an answer: covering the topic around the question, listing considerations, or restating the question as a heading are all ways of not answering. Lead the narration with the answer itself, then support it. The canvas illustrates the answer — it never stands in for having one.
 
 Example (aim for this density and variety):
 User: How should I budget a $5000 monthly income?
-{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it.","study":{"assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy"],"marks":[{"kind":"circle","at":"$5,000/mo"}]}},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from.","study":{"assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future = savings + debt BOTH"],"marks":[{"kind":"circle","at":"$2,500"},{"kind":"underline","at":"$1,000"},{"kind":"point","at":"Wants"}]}},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting.","study":{"assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["all 3 rows weighted equally","zero-based ≠ worse, just stricter"],"marks":[{"kind":"highlight","at":"50/30/20"},{"kind":"check","at":"20%"}]}},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean.","study":{"assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under 30% rule","only rent is truly fixed","groceries = first place to cut","utilities swing by season","insurance: shop it yearly"],"marks":[{"kind":"circle","at":"$1,200","color":"key"},{"kind":"highlight","at":"Rent"},{"kind":"brace","at":"Groceries","to":"Other","label":"the lean half"},{"kind":"underline","at":"$400"},{"kind":"point","at":"Utilities"},{"kind":"note","at":"Transport","label":"bus pass beats gas"},{"kind":"star","at":"48%"}]}},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month.","study":{"assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec","no compounding drawn here","$1k/mo is the only input","miss one month = -$1k end"],"marks":[{"kind":"rising","at":"Jan","to":"Dec","color":"key"},{"kind":"point","at":"Jun"},{"kind":"underline","at":"Savings"},{"kind":"note","at":"Mar","label":"one quarter in"},{"kind":"check","at":"Dec"},{"kind":"frame","at":"Jan"},{"kind":"bracket","at":"Jan","to":"Jun","label":"first half"}]}},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth.","study":{"assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","3 mo is the floor, 6 if single-income","Roth = after-tax in, tax-free out"],"marks":[{"kind":"star","at":"Build $2,000 emergency buffer"},{"kind":"underline","at":"Max out Roth IRA"},{"kind":"note","at":"Reach 3-month emergency fund","label":"the real floor"},{"kind":"check","at":"Invest remainder in index funds"}]}}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
+{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it."},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from."},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting."},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean."},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month."},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth."}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
 
 /** Extra block types exposed to frontier models, appended to the base prompt. */
 /** The frontier cousins' block shapes + THE BLANK SPACE — always relevant once a model is
@@ -2467,6 +2490,136 @@ function coerceDepth(raw: unknown): number | undefined {
  *
  * Returns null only when there is nothing salvageable (no title AND no usable block).
  */
+/** Coerce one gesture against the answer it is drawn on. Module-level rather than a closure so
+ *  the Study's own call is held to exactly the gate a tour stop is held to — same vocabulary,
+ *  same honesty rule on "question", same two-distinct-blocks rule on "connect". */
+function coerceMark(raw: Json, blocks: Block[], stopIndex: number): TourMark | undefined {
+  const mo = asObj(raw);
+  const kindRaw = optStr(mo.kind) ?? '';
+  const at = optStr(mo.at);
+  const kind: TourMark['kind'] | undefined = MARK_KINDS.has(kindRaw)
+    ? (kindRaw as TourMark['kind'])
+    : undefined;
+  if (!kind || !at) return undefined;
+  // "note" is nothing without its words; drop a label-less one rather than draw a bare tick.
+  const label = forDisplay(optStr(mo.label) ?? '').slice(0, 28);
+  if (kind === 'note' && !label) return undefined;
+  const toRaw = forDisplay(optStr(mo.to) ?? '').slice(0, 80);
+  // "question" may only doubt what the answer itself declared uncertain: the ? rides a block
+  // whose own conf is an estimate. On a confident block it's hedging theater — the cheapest
+  // possible hedge a model could sprinkle — so the gate is enforced here, not just taught.
+  if (kind === 'question') {
+    const conf = (blocks[stopIndex] as { props?: { conf?: unknown } }).props?.conf;
+    if (conf !== 'inferred' && conf !== 'partial') return undefined;
+  }
+  // A brace over ONE row isn't a group — like connect's far end, the last row is required.
+  if (kind === 'brace' && !toRaw) return undefined;
+  const colorRaw = optStr(mo.color);
+  // "star" is definitionally the key mark (the one takeaway), whatever the model sent;
+  // "strike" reads as rejection, so colorless ones default to the cool/negative ink.
+  const color: TourMark['color'] | undefined =
+    kind === 'star'
+      ? 'key'
+      : colorRaw === 'warm' || colorRaw === 'key' || colorRaw === 'cool'
+        ? colorRaw
+        : kind === 'strike'
+          ? 'cool'
+          : undefined;
+  // "connect" needs a real OTHER block to land on — no target, no connector (never guess one).
+  let onIndex: number | undefined;
+  if (kind === 'connect') {
+    const n = Math.round(asNum(mo.onIndex, -1));
+    if (n >= 0 && n < blocks.length && n !== stopIndex) onIndex = n;
+    if (!toRaw || onIndex === undefined) return undefined;
+  }
+  // `to`/`label` only mean something to the span/note/connect gestures — keep the point marks
+  // lean.
+  const span = kind === 'rising' || kind === 'falling' || kind === 'bracket' || kind === 'brace';
+  return {
+    kind,
+    at: forDisplay(at).slice(0, 80),
+    ...((span || kind === 'connect') && toRaw ? { to: toRaw } : {}),
+    ...((kind === 'note' || kind === 'bracket' || kind === 'brace') && label ? { label } : {}),
+    ...(color ? { color } : {}),
+    ...(typeof onIndex === 'number' ? { onIndex } : {}),
+  };
+}
+
+/**
+ * The Study's written voices, coerced from one raw `study` object. Shared by the answer path
+ * (a response that carries them inline still works) and by the on-demand Study call.
+ *
+ * Over-long voices are DROPPED, not cut: `capTweet` would end them in an ellipsis, and
+ * handwriting that trails off mid-thought on the desk reads as a bug rather than as brevity —
+ * the Study has a whole derived line to show instead. The limit is stated in the prompt, so this
+ * is a fail-safe, not the normal path.
+ */
+function studyFieldsFrom(studyRaw: Record<string, Json>): BlockStudy | undefined {
+  const voice = (key: 'assumes' | 'pattern' | 'test'): string | undefined => {
+    const raw = asStr(studyRaw[key]).trim();
+    if (!raw || raw.length > STUDY_VOICE_MAX) return undefined;
+    return proseForDisplay(raw) || undefined;
+  };
+  const study: BlockStudy = {
+    assumes: voice('assumes'),
+    pattern: voice('pattern'),
+    test: voice('test'),
+  };
+  // The length rule that decides whether a scrawl FITS the margin belongs to the surface that
+  // draws it; this only bounds the count to the slots the desk has.
+  const scrawls = asArr(studyRaw.scrawls)
+    .map((s) => proseForDisplay(asStr(s).trim().slice(0, 80)))
+    .filter(Boolean)
+    .slice(0, PEN_SLOTS.length);
+  if (scrawls.length) study.scrawls = scrawls;
+  return study.assumes || study.pattern || study.test || study.scrawls ? study : undefined;
+}
+
+/**
+ * Coerce the on-demand Study call's reply into per-block notes, keyed by block id.
+ *
+ * The reply is `{"notes":[{"id","assumes","pattern","test","scrawls","marks"}]}`. Gestures go
+ * through `coerceMark` against the ANSWER's blocks, so a note authored in its own call is held
+ * to exactly the gate a tour stop is — it cannot draw a kind the tour could not, doubt a figure
+ * the answer called certain, or connect two blocks that are the same block.
+ */
+export function coerceStudyNotes(raw: Json, blocks: Block[]): Map<string, BlockStudy> {
+  const out = new Map<string, BlockStudy>();
+  const byId = new Map(blocks.map((b, i) => [b.id, i] as const));
+  // Same tolerance the answer path has: a bare object, or one wrapped in prose/code fences.
+  let parsed: Json = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const m = /\{[\s\S]*\}/.exec(raw);
+      if (!m) return out;
+      try {
+        parsed = JSON.parse(m[0]);
+      } catch {
+        return out;
+      }
+    }
+  }
+  for (const entry of asArr(asObj(parsed).notes)) {
+    const eo = asObj(entry);
+    const id = asStr(eo.id).trim();
+    const index = byId.get(id);
+    if (index === undefined) continue;
+    const study = studyFieldsFrom(eo) ?? {};
+    const marks = asArr(eo.marks)
+      .map((m) => coerceMark(m, blocks, index))
+      .filter((m): m is TourMark => !!m)
+      .filter((m, i, a) => a.findIndex((x) => x.kind === m.kind && x.at === m.at) === i)
+      .slice(0, STUDY_MARKS_MAX);
+    if (marks.length) study.marks = marks;
+    if (study.assumes || study.pattern || study.test || study.scrawls || study.marks) {
+      out.set(id, study);
+    }
+  }
+  return out;
+}
+
 export function validateLiveResponse(
   raw: unknown,
   allowed: ReadonlySet<string> = ALLOWED_BLOCK_TYPES,
@@ -2589,32 +2742,8 @@ export function validateLiveResponse(
     // A blank field is dropped rather than stored, so the Study falls back to its derived voice
     // for that slot instead of pinning an empty note; a `study` with nothing left is not attached.
     const studyRaw = asObj(ro.study);
-    // Over-long voices are DROPPED, not cut: `capTweet` would end them in an ellipsis, and a
-    // handwritten note trailing off mid-thought on the desk reads as a bug rather than as
-    // brevity. The Study then shows the voice it derives itself, which is whole. The limit is
-    // stated in the prompt (HARD LIMITS), so this is a fail-safe, not the normal path.
-    const studyVoice = (key: 'assumes' | 'pattern' | 'test'): string | undefined => {
-      const raw = asStr(studyRaw[key]).trim();
-      if (!raw || raw.length > STUDY_VOICE_MAX) return undefined;
-      return proseForDisplay(raw) || undefined;
-    };
-    const study: BlockStudy = {
-      assumes: studyVoice('assumes'),
-      pattern: studyVoice('pattern'),
-      test: studyVoice('test'),
-    };
-    // The margin scrawls, coerced like any shown string. How MANY a slide carries is the model's
-    // call — a dense figure earns more ink than a single number — bounded here only by the three
-    // slots the desk actually draws. The length rule that decides whether one FITS the margin
-    // belongs to the surface that draws it, not here.
-    const scrawls = asArr(studyRaw.scrawls)
-      .map((s) => proseForDisplay(asStr(s).trim().slice(0, 80)))
-      .filter(Boolean)
-      .slice(0, PEN_SLOTS.length);
-    if (scrawls.length) study.scrawls = scrawls;
-    if (study.assumes || study.pattern || study.test || study.scrawls) {
-      (block as { study?: BlockStudy }).study = study;
-    }
+    const study = studyFieldsFrom(studyRaw);
+    if (study) (block as { study?: BlockStudy }).study = study;
     // The block's own gestures can only be coerced once EVERY block exists — the same gate the
     // tour's marks go through checks a "connect" against the other blocks and a "question"
     // against this block's own confidence. Stashed by index, resolved in one pass below.
@@ -2670,57 +2799,6 @@ export function validateLiveResponse(
   // [[shown|said]] annotation in `at` could never match the on-screen text). `stopIndex` is the
   // CURRENT stop's own block index, so a "connect" mark's `onIndex` can be checked against it
   // and against `blocks.length` (both only known here, not inside a bare per-mark coercion).
-  const coerceTourMark = (raw: Json, stopIndex: number): TourMark | undefined => {
-    const mo = asObj(raw);
-    const kindRaw = optStr(mo.kind) ?? '';
-    const at = optStr(mo.at);
-    const kind: TourMark['kind'] | undefined = MARK_KINDS.has(kindRaw)
-      ? (kindRaw as TourMark['kind'])
-      : undefined;
-    if (!kind || !at) return undefined;
-    // "note" is nothing without its words; drop a label-less one rather than draw a bare tick.
-    const label = forDisplay(optStr(mo.label) ?? '').slice(0, 28);
-    if (kind === 'note' && !label) return undefined;
-    const toRaw = forDisplay(optStr(mo.to) ?? '').slice(0, 80);
-    // "question" may only doubt what the answer itself declared uncertain: the ? rides a block
-    // whose own conf is an estimate. On a confident block it's hedging theater — the cheapest
-    // possible hedge a model could sprinkle — so the gate is enforced here, not just taught.
-    if (kind === 'question') {
-      const conf = (blocks[stopIndex] as { props?: { conf?: unknown } }).props?.conf;
-      if (conf !== 'inferred' && conf !== 'partial') return undefined;
-    }
-    // A brace over ONE row isn't a group — like connect's far end, the last row is required.
-    if (kind === 'brace' && !toRaw) return undefined;
-    const colorRaw = optStr(mo.color);
-    // "star" is definitionally the key mark (the one takeaway), whatever the model sent;
-    // "strike" reads as rejection, so colorless ones default to the cool/negative ink.
-    const color: TourMark['color'] | undefined =
-      kind === 'star'
-        ? 'key'
-        : colorRaw === 'warm' || colorRaw === 'key' || colorRaw === 'cool'
-          ? colorRaw
-          : kind === 'strike'
-            ? 'cool'
-            : undefined;
-    // "connect" needs a real OTHER block to land on — no target, no connector (never guess one).
-    let onIndex: number | undefined;
-    if (kind === 'connect') {
-      const n = Math.round(asNum(mo.onIndex, -1));
-      if (n >= 0 && n < blocks.length && n !== stopIndex) onIndex = n;
-      if (!toRaw || onIndex === undefined) return undefined;
-    }
-    // `to`/`label` only mean something to the span/note/connect gestures — keep the point marks
-    // lean.
-    const span = kind === 'rising' || kind === 'falling' || kind === 'bracket' || kind === 'brace';
-    return {
-      kind,
-      at: forDisplay(at).slice(0, 80),
-      ...((span || kind === 'connect') && toRaw ? { to: toRaw } : {}),
-      ...((kind === 'note' || kind === 'bracket' || kind === 'brace') && label ? { label } : {}),
-      ...(color ? { color } : {}),
-      ...(typeof onIndex === 'number' ? { onIndex } : {}),
-    };
-  };
   // ── The Study's per-block gestures ─────────────────────────────────────────────────────────
   // Every block gets its own ink, not just the 3-5 the tour stops at, because the Study shows
   // every block one at a time — a slide with no gesture leaves the reader to find the point
@@ -2738,7 +2816,7 @@ export function validateLiveResponse(
     const seen = { star: 0, question: 0, strike: 0, connect: 0 } as Record<string, number>;
     const RARE: Record<string, number> = { star: 1, question: 1, strike: 2, connect: 1 };
     const marks = raw
-      .map((m) => coerceTourMark(m, idx))
+      .map((m) => coerceMark(m, blocks, idx))
       .filter((m): m is TourMark => !!m)
       .filter((m, i, a) => a.findIndex((x) => x.kind === m.kind && x.at === m.at) === i)
       .filter((m) => {
@@ -2772,7 +2850,7 @@ export function validateLiveResponse(
     const rawMarks = asArr(to.marks);
     let sawConnect = false;
     const marks = (rawMarks.length ? rawMarks : [to.mark])
-      .map((m) => coerceTourMark(m, index))
+      .map((m) => coerceMark(m, blocks, index))
       .filter((m): m is TourMark => !!m)
       .filter((m, i, a) => a.findIndex((x) => x.kind === m.kind && x.at === m.at) === i)
       .slice(0, 6)

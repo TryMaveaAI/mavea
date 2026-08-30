@@ -11,7 +11,12 @@ import {
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
 import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
-import { STUDY_INK_MAX, STUDY_MARKS_MAX, STUDY_VOICE_MAX } from '../src/engine/liveSchema';
+import {
+  STUDY_INK_MAX,
+  STUDY_MARKS_MAX,
+  STUDY_NOTES_DIRECTIVE,
+  STUDY_VOICE_MAX,
+} from '../src/engine/liveSchema';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -1273,84 +1278,35 @@ describe('hasRenderableImage — the "real image or drop the block" guardrail', 
   });
 });
 
-describe('the few-shot example obeys the contract it teaches', () => {
-  // The example is the strongest instruction in the prompt: whatever it shows on every block is
-  // what the model reliably emits. It is also a hand-maintained JSON literal inside a template
-  // string, where a stray quote is invisible until a live turn fails — so parse it here.
-  type ExampleBlock = { type: string; note?: string; study?: Record<string, string> };
-  function example(): { blocks: ExampleBlock[] } {
+describe('the answer example carries the answer, and nothing else', () => {
+  // The margin notes moved to their own call: measured, they were 52% of every answer's JSON,
+  // on a surface that is not the default view. Whatever is left in THIS example is what every
+  // turn pays for, so it has to be the answer.
+  function example(): { blocks: { type: string; note?: string; study?: unknown }[] } {
     const line = LIVE_SYSTEM_PROMPT.split('\n').find(
       (l) => l.startsWith('{"title":') && l.trimEnd().endsWith('}'),
     );
     if (!line) throw new Error('the prompt no longer carries a one-line example object');
-    return JSON.parse(line) as { blocks: ExampleBlock[] };
+    return JSON.parse(line) as { blocks: { type: string; note?: string; study?: unknown }[] };
   }
 
-  it('parses, and gives EVERY block a note and all three margin voices', () => {
+  it('parses, and gives every block a note', () => {
     const blocks = example().blocks;
     expect(blocks.length).toBeGreaterThan(3);
-    for (const b of blocks) {
-      expect(b.note, `${b.type} note`).toBeTruthy();
-      for (const voice of ['assumes', 'pattern', 'test'] as const) {
-        expect(b.study?.[voice], `${b.type} study.${voice}`).toBeTruthy();
-      }
-      // Every slide is drawn on, so no reader has to hunt for the part being talked about.
-      const marks = (b.study as unknown as { marks?: { at?: string }[] })?.marks ?? [];
-      expect(marks.length, `${b.type} study.marks`).toBeGreaterThanOrEqual(1);
-      expect(marks.length, `${b.type} study.marks`).toBeLessThanOrEqual(STUDY_MARKS_MAX);
-      // One to five scrawls — as many as the slide earns — each narrow enough for the margin.
-      const scrawls = (b.study as unknown as { scrawls?: string[] })?.scrawls ?? [];
-      expect(scrawls.length, `${b.type} study.scrawls`).toBeGreaterThanOrEqual(1);
-      expect(scrawls.length, `${b.type} study.scrawls`).toBeLessThanOrEqual(PEN_SLOTS.length);
-      for (const scrawl of scrawls) expect(scrawl.length).toBeLessThanOrEqual(PEN_MARK_MAX);
-      // The margin fact has to TEACH — an exemplar that merely restated its own note would
-      // train exactly the restatement the prompt forbids.
-      expect(b.study!.pattern).not.toBe(b.note);
-      expect(b.study!.test.endsWith('?'), `${b.type} study.test is a question`).toBe(true);
-    }
+    for (const b of blocks) expect(b.note, `${b.type} note`).toBeTruthy();
   });
 
-  it('survives the real validator with its voices intact', () => {
-    const parsed = example();
-    const r = validateLiveResponse(parsed);
-    expect(r).not.toBeNull();
-    expect(r!.blocks).toHaveLength(parsed.blocks.length);
-    for (const b of r!.blocks) {
-      expect(b.study?.assumes).toBeTruthy();
-      expect(b.study?.pattern).toBeTruthy();
-      expect(b.study?.test).toBeTruthy();
-      // The gestures survive the gate too — an example whose "at" named text the block does not
-      // carry would teach the model to author marks that are silently dropped.
-      expect(b.study?.marks?.length, `${b.type} marks survived coercion`).toBeGreaterThanOrEqual(1);
-    }
+  it('carries no Study payload, and the answer prompt never asks for one', () => {
+    for (const b of example().blocks) expect(b.study, `${b.type} study`).toBeUndefined();
+    expect(LIVE_SYSTEM_PROMPT).not.toContain('MARGIN NOTES');
+    expect(LIVE_SYSTEM_PROMPT).not.toContain('scrawls');
   });
 
-  it('scales its ink with the block, so the example teaches the rule not a fixed number', () => {
-    // The example is the strongest instruction in the prompt: a model copies the density it
-    // sees far more reliably than the density it is told. So the example has to obey the count
-    // rule it states — dense blocks near the ceiling, a single-figure card nowhere near it.
-    const ink = example().blocks.map((b) => {
-      const st = b.study as unknown as { scrawls?: string[]; marks?: unknown[] };
-      return { type: b.type, scrawls: (st?.scrawls ?? []).length, marks: (st?.marks ?? []).length };
-    });
-    const total = ink.map((i) => i.scrawls + i.marks);
-    expect(new Set(total).size, `totals were ${total.join(',')}`).toBeGreaterThan(2);
-    // Nothing exceeds the budget, and the densest block actually approaches it.
-    for (const i of ink) expect(i.scrawls + i.marks, i.type).toBeLessThanOrEqual(STUDY_INK_MAX);
-    expect(Math.max(...total)).toBeGreaterThanOrEqual(STUDY_INK_MAX - 3);
-    // A six-row breakdown fills every margin slot; a one-figure insight uses one of each.
-    const dense = ink.find((i) => i.type === 'breakdown')!;
-    expect(dense.scrawls).toBe(PEN_SLOTS.length);
-    expect(dense.marks).toBeGreaterThanOrEqual(7);
-    const sparse = ink.find((i) => i.type === 'insight')!;
-    expect(sparse.scrawls + sparse.marks).toBeLessThanOrEqual(3);
-  });
-
-  it('states the requirement in the prompt body, not only by example', () => {
-    expect(LIVE_SYSTEM_PROMPT).toContain('{"type","props","note","study"}');
-    expect(LIVE_SYSTEM_PROMPT).toContain('"assumes"');
-    expect(LIVE_SYSTEM_PROMPT).toContain('"pattern"');
-    expect(LIVE_SYSTEM_PROMPT).toContain('"test"');
+  it('closes on answering the question, which is the slot the notes used to hold', () => {
+    // The prompt's last instruction before the example is its strongest; margin notes held that
+    // slot while answers were glossing. Answering holds it now.
+    const tail = LIVE_SYSTEM_PROMPT.slice(0, LIVE_SYSTEM_PROMPT.indexOf('Example (aim for this'));
+    expect(tail.slice(-1400)).toContain('ANSWER THE QUESTION');
   });
 });
 
@@ -1400,36 +1356,67 @@ describe('a block draws its own gestures, held to the tour-mark gate', () => {
   });
 });
 
-describe('the prompt states every limit the validator enforces', () => {
-  // A cap the model cannot see is a cap it can only guess at, and every guess it gets wrong is
-  // output the user paid for that the validator then discards. So each constant below has to
-  // appear in the prompt by VALUE — if one is changed here without changing the text, this
-  // fails rather than silently reintroducing the guessing.
-  const prompt = LIVE_SYSTEM_PROMPT;
-  const limits: [string, number][] = [
-    ['margin voice length', STUDY_VOICE_MAX],
-    ['scrawls per block', PEN_SLOTS.length],
-    ['scrawl length', PEN_MARK_MAX],
-    ['marks per block', STUDY_MARKS_MAX],
-    ['total ink per block', STUDY_INK_MAX],
-  ];
+describe('the Study call teaches its own contract, in full', () => {
+  const directive = STUDY_NOTES_DIRECTIVE;
 
-  it.each(limits)('states the %s limit (%i)', (_name, value) => {
-    expect(prompt).toContain(String(value));
-  });
+  function example(): { notes: Record<string, unknown>[] } {
+    const line = directive.split('\n').find((l) => l.startsWith('{"notes":'));
+    if (!line) throw new Error('the directive no longer carries a worked example');
+    return JSON.parse(line) as { notes: Record<string, unknown>[] };
+  }
 
-  it('names the rarity caps rather than dropping those marks silently', () => {
-    const section = prompt.slice(prompt.indexOf('HARD LIMITS'), prompt.indexOf('THE BALANCE'));
-    for (const kind of ['star', 'question', 'strike', 'connect']) {
-      expect(section, `${kind} cap`).toContain(`"${kind}"`);
+  it('asks for the shape it will be given back', () => {
+    expect(directive).toContain('"notes"');
+    for (const key of ['assumes', 'pattern', 'test', 'scrawls', 'marks']) {
+      expect(directive, key).toContain(`"${key}"`);
     }
-    // And says what happens, not merely that a limit exists.
-    expect(section).toMatch(/discard|drop/i);
   });
 
-  it('tells the model an over-long scrawl is lost, not shortened', () => {
-    // The two failures look identical in the output and are completely different to write for:
-    // a shortened scrawl still says most of it, a dropped one says nothing at all.
-    expect(prompt).toMatch(/DROPPED WHOLE, not shortened/);
+  it('states every limit the coercer enforces', () => {
+    // A cap the model cannot see is a cap it can only guess at, and each wrong guess is output
+    // the reader paid for and the coercer discards.
+    for (const value of [
+      STUDY_VOICE_MAX,
+      PEN_SLOTS.length,
+      PEN_MARK_MAX,
+      STUDY_MARKS_MAX,
+      STUDY_INK_MAX,
+    ]) {
+      expect(directive, String(value)).toContain(String(value));
+    }
+    const limits = directive.slice(
+      directive.indexOf('HARD LIMITS'),
+      directive.indexOf('THE BALANCE'),
+    );
+    for (const kind of ['star', 'question', 'strike', 'connect']) {
+      expect(limits, `${kind} cap`).toContain(`"${kind}"`);
+    }
+    expect(directive).toMatch(/DROPPED WHOLE, not shortened/);
+  });
+
+  it('shows a worked example that obeys its own count rule', () => {
+    const notes = example().notes;
+    expect(notes.length).toBeGreaterThan(3);
+    const totals: number[] = [];
+    for (const n of notes) {
+      for (const key of ['assumes', 'pattern', 'test'] as const) expect(n[key], key).toBeTruthy();
+      const scrawls = (n.scrawls ?? []) as string[];
+      const marks = (n.marks ?? []) as unknown[];
+      expect(scrawls.length).toBeGreaterThanOrEqual(1);
+      expect(scrawls.length).toBeLessThanOrEqual(PEN_SLOTS.length);
+      for (const s of scrawls) expect(s.length).toBeLessThanOrEqual(PEN_MARK_MAX);
+      expect(marks.length).toBeGreaterThanOrEqual(1);
+      totals.push(scrawls.length + marks.length);
+    }
+    for (const t of totals) expect(t).toBeLessThanOrEqual(STUDY_INK_MAX);
+    // It teaches a RULE, not a number: the densest entry approaches the ceiling, the sparsest
+    // sits near the floor.
+    expect(new Set(totals).size, `totals were ${totals.join(',')}`).toBeGreaterThan(2);
+    expect(Math.max(...totals)).toBeGreaterThanOrEqual(STUDY_INK_MAX - 3);
+    expect(Math.min(...totals)).toBeLessThanOrEqual(3);
+  });
+
+  it('every id in the example is one the coercer can key on', () => {
+    for (const n of example().notes) expect(String(n.id)).toMatch(/^live-\d+$/);
   });
 });
