@@ -26,9 +26,6 @@ import {
   WIDE_CONNECT_SLOT,
   WIDE_FRONT_SLOT,
 } from './slots';
-// Direct module import, not the select barrel: the barrel re-exports the whole selection
-// engine, and this file rides the eager canvas chunk.
-import { catalogSpan } from '../../live/select/catalog';
 import type { StudyAside, StudyNoteKind } from './types';
 import {
   PEN_MARK_MAX,
@@ -463,7 +460,11 @@ export function StudyStage({
   // truncates every cell, and truncation is the one thing the desk must never do to the object
   // it is presenting. The right-gutter scrawls stand down to make the room (see slots.ts for
   // the geometry); the note card and everything else hold still.
-  const wide = !!scene.active && (catalogSpan(scene.active.block.type)?.pref ?? 0) >= 8;
+  // `col` is the span the validator stamped from the block's own catalog entry — the same
+  // number the answer grid lays it out by — already ON the block, so judging wideness costs no
+  // import. (catalogSpan from live/select was tried first and dragged the whole facts index
+  // into the eager canvas chunk: the course-lesson route blew its 140KB gzip budget by 8.5KB.)
+  const wide = (scene.active?.block.col ?? 0) >= 8;
   const frontW = wide ? WIDE_CARD_W : CARD_W;
   const slotById = new Map<string, CSSProperties>();
   if (scene.active)
@@ -519,7 +520,7 @@ export function StudyStage({
   // A wide card takes the strip the right-gutter scrawls lived in — that room is what pays for
   // the width, and the data beats a fourth remark. `deskWide` mirrors the slot decision below
   // (it must, or a scrawl would draw under the widened card).
-  const deskWide = (catalogSpan(active?.type ?? '')?.pref ?? 0) >= 8;
+  const deskWide = (scene.active?.block.col ?? 0) >= 8;
   const deskMarks = deskWide
     ? allMarks.filter((mark) => !RIGHT_GUTTER_SLOTS.has(mark.slot))
     : allMarks;

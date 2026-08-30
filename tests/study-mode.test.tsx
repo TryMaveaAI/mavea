@@ -11,7 +11,9 @@ function block(id: string, title: string): Block {
   return {
     type: 'insight',
     id,
-    col: 12,
+    // The validator stamps a real insight col 4 (COL_BY_TYPE) — and the desk now READS col to
+    // judge wideness, so the fixture has to carry a realistic one.
+    col: 4,
     num: id,
     props: { title, summary: `${title} summary`, conf: 'inferred' },
   } as Block;
