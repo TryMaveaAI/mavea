@@ -998,9 +998,24 @@ export async function generateLive(
   // defaulting to the generic dozen — concrete targets reinforce the variety mandate against the
   // pull of the (generic) worked example in the base prompt.
   const heroPicks = selection.types.filter((t) => !FRONTIER_BLOCK_TYPES.has(t)).slice(0, 3);
+  // Everything keyed ONLY on (tier, complexity) is byte-identical turn to turn, so it belongs
+  // INSIDE the cached prefix the adapters split on (systemBase → Anthropic's cache block,
+  // Gemini's systemInstruction, the Responses `instructions`). These five used to ride the
+  // uncached per-turn tail — ~1.6k chars of prompt processing re-paid every turn for text that
+  // never changed. The model reads the same words; the provider stops re-billing them.
+  const stableDirectives = [
+    NARRATION_FIRST_LINE,
+    spokenLineDirective(complexity),
+    complexity === 'rich' ? rhythmDirective() : '',
+    documentLine(),
+    complexity === 'rich' && tier !== 'small' ? conceptSectionsDirective() : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  const cachedBase = `${liveSystemPrompt(tier, complexity)}\n\n${stableDirectives}`;
   const baseSystem = selection.promptSnippet
-    ? `${liveSystemPrompt(tier, complexity)}\n\n${selection.promptSnippet}`
-    : liveSystemPrompt(tier, complexity);
+    ? `${cachedBase}\n\n${selection.promptSnippet}`
+    : cachedBase;
   const codeAuditLine = codeReviewAccuracyDirective(userText, opts.selectedBlocks);
   // Density scales with the ask: a rich question fills THIS viewport (a big monitor needs
   // more than a laptop); a trivial one stays to a few focused blocks.
@@ -1040,8 +1055,6 @@ export async function generateLive(
   // Both directives live in effort.ts (shared with the eval harness) so the ONE real per-turn
   // narration-length rule can't drift out of sync between what production sends and what an
   // eval scores against.
-  const narrationFirst = NARRATION_FIRST_LINE;
-  const spokenLine = spokenLineDirective(complexity);
   // Memory (opt-in): let the model surface durable user facts to remember, in this same
   // turn (no extra call). The surface persists them locally; we never write storage here.
   // Gated on relevance too: a creative/ephemeral ask ("make a funny poem") neither reads from
@@ -1241,14 +1254,6 @@ export async function generateLive(
   // The drawers themselves are NOT requested here: depth≥2 content is authored on the first
   // open (see depth/deepen), so the eager turn no longer pays output tokens for drawers
   // nobody opens — this asks only for the grouping tags.
-  const sectionLine =
-    complexity === 'rich' && tier !== 'small'
-      ? `CONCEPT SECTIONS — tag EVERY block with these two fields so the canvas can group it into concept sections:
-- "section": a short concept label, shared by all blocks in that concept (e.g. "What it is", "The TCP handshake", "Flow control"). ≤ 5 words. Every block in the same concept uses the EXACT same string.
-- "order": 1-based integer — the display order of this section (all blocks in the same section share the same order number). First concept = 1, second = 2, and so on.
-Emit ONLY the standard lesson — every block here is one the learner sees first, and together they must already form the complete answer. Each section's "Go deeper" drawer is authored later, on demand, when a learner actually opens it — do not write drawer content now.`
-      : '';
-
   const system = [
     baseSystem,
     codeAuditLine,
@@ -1256,10 +1261,8 @@ Emit ONLY the standard lesson — every block here is one the learner sees first
     // Course Lessons — additive, layered on top of (never replacing) the teaching-arc shaping
     // depthLine just produced. See GenerateLiveOpts.lesson / course/lessonSpine.ts.
     opts.lesson?.directive ?? '',
-    sectionLine,
     topicLockLine,
     dateLine,
-    documentLine(),
     actionMenu,
     countLine,
     explicitCountLine,
@@ -1270,7 +1273,6 @@ Emit ONLY the standard lesson — every block here is one the learner sees first
     planningDepthLine,
     levelLine,
     arc.directive,
-    complexity === 'rich' ? rhythmDirective() : '',
     complexity === 'rich' && heroPicks.length >= 2
       ? `HERO PICKS — build the canvas AROUND these specialized components, chosen from the library for THIS exact question: ${heroPicks.join(', ')}. Use at least TWO of them; don't collapse to a wall of the common types.`
       : '',
@@ -1278,8 +1280,6 @@ Emit ONLY the standard lesson — every block here is one the learner sees first
     groundedSourcesLine,
     liveStatusLine,
     searchDateLine,
-    narrationFirst,
-    spokenLine,
     recentLine,
     memoryLine,
     personalLine,
@@ -1568,7 +1568,7 @@ Emit ONLY the standard lesson — every block here is one the learner sees first
   // system into a cached first block + uncached per-turn suffix (see anthropic.ts).
   const baseReq: Omit<LiveRequest, 'user'> = {
     system,
-    systemBase: liveSystemPrompt(tier, complexity),
+    systemBase: cachedBase,
     history: sendHistory,
     blockTypes,
     complexity,
@@ -2074,6 +2074,15 @@ function worldBlock(props: WorldPreviewProps, index: number): Block {
 }
 
 /** Remote pictures are deliberately absent: a model cannot clear rights in a particular file. */
+/** The concept-sections tagging contract — fixed text, gated by the call site's own
+ *  (tier, complexity), so it rides the cached prefix. */
+function conceptSectionsDirective(): string {
+  return `CONCEPT SECTIONS — tag EVERY block with these two fields so the canvas can group it into concept sections:
+- "section": a short concept label, shared by all blocks in that concept (e.g. "What it is", "The TCP handshake", "Flow control"). ≤ 5 words. Every block in the same concept uses the EXACT same string.
+- "order": 1-based integer — the display order of this section (all blocks in the same section share the same order number). First concept = 1, second = 2, and so on.
+Emit ONLY the standard lesson — every block here is one the learner sees first, and together they must already form the complete answer. Each section's "Go deeper" drawer is authored later, on demand, when a learner actually opens it — do not write drawer content now.`;
+}
+
 function documentLine(): string {
   return 'DOCUMENTS — when the user asks to SEE a paper / document / PDF, use a "pdfreader" block with the real PDF URL in "file" (a known, stable https .pdf — e.g. the canonical source; never invent a URL). A same-origin PDF opens in the reader; a verified external URL is shown as an explicit open-in-new-tab link.';
 }

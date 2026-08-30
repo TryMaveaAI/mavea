@@ -176,7 +176,10 @@ describe('generateLive — when a repair IS bought, the request is slim', () => 
     expect(repair.systemBase).toBe(first.systemBase);
     expect(repair.system).toBe(repair.systemBase);
     expect(repair.system).not.toContain('BLOCK COUNT');
-    expect(repair.system).not.toContain('CONCEPT SECTIONS');
+    // CONCEPT SECTIONS now lives INSIDE the cached prefix (it is fixed text keyed only on
+    // tier+complexity), so its presence here is a cache hit, not a re-billed suffix — the thing
+    // this test guards is that no PER-TURN text rides the repair, which the menu check pins.
+    expect(repair.system).not.toContain('HERO COMPONENTS for THIS answer');
     // No re-billed search, no resent files — the prior JSON already carries the answer.
     expect(repair.tools).toBeUndefined();
     expect(repair.attachments).toBeUndefined();
