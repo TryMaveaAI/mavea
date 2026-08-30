@@ -232,7 +232,16 @@ export function penQuip(block: Block, seed = 0): string | null {
 }
 
 /** Where a scrawl sits relative to the card, in the design's own three positions. */
-export type PenSlot = 'left' | 'bottom' | 'top';
+export type PenSlot = 'left' | 'bottom' | 'top' | 'right' | 'rightlow';
+
+/** The slots the desk draws, in the order a hand fills them: the remark the arrow points with,
+ *  then the aside under the foot, the one squeezed over the top shoulder, two down the gutter
+ *  beside the card. The two later slots are placed as a PERCENTAGE of the card's height, so they
+ *  keep their spacing at any card size — and they go in the RIGHT gutter rather than stacking a
+ *  third hand down the left margin, which is measurably too short to hold one below about 200px
+ *  of card. Height there is free; a fixed offset only ever holds for one card size.
+ *  A scrawl beyond the fifth has nowhere to go that is not already someone else's ink. */
+export const PEN_SLOTS: readonly PenSlot[] = ['left', 'bottom', 'top', 'right', 'rightlow'];
 
 export interface PenMark {
   text: string;

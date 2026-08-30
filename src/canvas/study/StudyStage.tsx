@@ -19,6 +19,7 @@ import { deriveStudyScene } from './scene';
 import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
 import type { StudyAside, StudyNoteKind } from './types';
 import type { PenMark, PenSlot } from '../../live/content/penQuip';
+import { fitVoiceLine } from './voiceFit';
 import { useStudyScale } from './useStudyScale';
 import { useAmbientPause } from '../../hooks/useInView';
 import { useTruncatedTextDisclosures } from '../hooks/useTruncatedTextDisclosures';
@@ -66,6 +67,8 @@ const MARK_ARROWS: Record<PenSlot, { line: string; head: string }> = {
   left: { line: 'M6,10 C34,16 58,26 78,36', head: 'M78,36 L70,26 M78,36 L65,35' },
   bottom: { line: 'M12,58 C40,50 64,34 80,12', head: 'M80,12 L69,18 M80,12 L77,25' },
   top: { line: 'M78,8 C60,22 40,38 14,52', head: 'M14,52 L27,51 M14,52 L22,42' },
+  right: { line: 'M84,34 C60,30 38,24 12,18', head: 'M12,18 L25,16 M12,18 L22,26' },
+  rightlow: { line: 'M84,50 C60,44 38,32 12,18', head: 'M12,18 L25,17 M12,18 L21,27' },
 };
 
 /** The pause between one object's line ending and the next taking the desk. Long enough to let
@@ -616,10 +619,19 @@ export function StudyStage({
               <i />
             </span>
           )}
-          <span key={voiceLine} className="study-voice-text">
-            {voiceLine}
-            {speaking && <b className="study-voice-caret">▌</b>}
-          </span>
+          {(() => {
+            const { text, size } = fitVoiceLine(voiceLine);
+            return (
+              <span
+                key={voiceLine}
+                className="study-voice-text"
+                style={{ '--study-voice-size': `${size}px` } as CSSProperties}
+              >
+                {text}
+                {speaking && <b className="study-voice-caret">▌</b>}
+              </span>
+            );
+          })()}
         </div>
       )}
 

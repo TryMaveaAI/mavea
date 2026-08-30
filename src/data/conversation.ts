@@ -653,6 +653,46 @@ export interface BlockBase {
   study?: BlockStudy;
 }
 
+/** One drawn gesture: a kind, and the on-block text it aims at. Authored by the model on a
+ *  tour stop and, in the Study, on a block's own `study.marks`. Lives here rather than with
+ *  the validator because it is part of the ANSWER's shape, which a block now carries.
+ */
+export interface TourMark {
+  kind:
+    | 'circle'
+    | 'underline'
+    | 'point'
+    | 'highlight'
+    | 'rising'
+    | 'falling'
+    | 'bracket'
+    | 'note'
+    | 'connect'
+    | 'strike'
+    | 'question'
+    | 'star'
+    | 'check'
+    | 'frame'
+    | 'brace';
+  /** The exact text of the value or label to mark — must appear in the block's own data.
+   *  For a span gesture it's the START of the span; for "note" it's the item the aside hangs off. */
+  at: string;
+  /** The far end of a span gesture (the value the trend climbs TO, the right side of a bracket).
+   *  Must also appear in the block's data. Optional for "rising"/"falling" (then it glosses the
+   *  whole chart); required for "connect" (searched in `onIndex`'s block, not this stop's own);
+   *  ignored by the point gestures. */
+  to?: string;
+  /** The handwritten words for a "note", or a "bracket"'s delta caption ("+38%", "vs. last year"). */
+  label?: string;
+  /** Optional ink tone: "key" = presence purple (the single most important mark of the tour),
+   *  "cool" = blue (negative / contrast / lower-than-expected). Default is warm orange. */
+  color?: 'warm' | 'key' | 'cool';
+  /** "connect" only: the 0-based index (same numbering as `tour[].index`) of the OTHER block
+   *  `to` lives in. Omitted, or equal to this stop's own index, is meaningless for "connect"
+   *  and gets dropped — a connector needs two distinct blocks. */
+  onIndex?: number;
+}
+
 /** The three notes Mavéa pins beside a block in the Study. The fourth voice — the evidence check —
  *  is deliberately NOT here: it is Mavéa's own reading of the turn's real sources, and a
  *  model-authored receipt would be a fabricated one. */
@@ -665,11 +705,16 @@ export interface BlockStudy {
   pattern?: string;
   /** One sharp question that would test this block, naming the specific datum it would test. */
   test?: string;
-  /** Up to two margin scrawls — the few words a reader actually pencils beside a slide. Derived
-   *  scrawls can only count what the block renders ("3 steps — which one decides it?"), which is
-   *  the same remark beside every list; these carry the substance that makes a margin worth
-   *  reading. Over-long ones are dropped at the surface, not truncated. */
+  /** The margin scrawls — the few words a reader actually pencils beside a slide, one per slot
+   *  the desk draws. Derived scrawls can only count what the block renders ("3 steps — which one
+   *  decides it?"), which is the same remark beside every list; these carry the substance that
+   *  makes a margin worth reading. Over-long ones are dropped at the surface, not truncated. */
   scrawls?: string[];
+  /** Gestures drawn ON this block when it takes the desk — a circle round the figure that
+   *  matters, a highlight over the row being discussed, a bracket across the span. Without these
+   *  the Study can only place ONE generic mark per block, resolved from whatever the component
+   *  stamps as salient, so every slide is annotated the same way regardless of what it says. */
+  marks?: TourMark[];
 }
 export type Block =
   | (BlockBase & { type: 'insight'; id: string; num: string; prove?: boolean; props: InsightProps })

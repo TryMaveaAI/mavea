@@ -1790,6 +1790,32 @@ export function LiveApp(): ReactElement {
     let step = 0;
     for (const b of spec.blocks) {
       if (!b.id) continue;
+      // The model's own gestures for THIS block when it wrote them — a circle round the figure
+      // that carries the point, a highlight over the row being discussed. They went through the
+      // tour-mark gate, so each one names text that is really on the block.
+      //
+      // `generous` is the fallback, not the preference: it resolves ONE mark against whatever the
+      // component stamps as salient, so it annotates every slide the same way whatever the slide
+      // says. It stays for demo replays, older answers, and any block the model left unmarked —
+      // a slide with no ink at all is the worse failure.
+      const marks = b.study?.marks ?? [];
+      if (marks.length) {
+        for (const mark of marks) {
+          ink(
+            b.id,
+            b.note ?? undefined,
+            mark,
+            false,
+            step * STUDY_INK_STEP_MS,
+            undefined,
+            undefined,
+            undefined,
+            true,
+          );
+          step++;
+        }
+        continue;
+      }
       ink(
         b.id,
         b.note ?? undefined,

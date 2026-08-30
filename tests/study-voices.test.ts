@@ -1,7 +1,9 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../src/data/conversation';
 import { studyVoices } from '../src/live/content/studyVoices';
-import { PEN_MARK_MAX } from '../src/live/content/penQuip';
+import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
 
 // The Study pins four notes beside each object, and each has two possible authors: the model
 // (in `block.study`, written in the same call as the answer) or Mavéa's own read of the object.
@@ -108,5 +110,27 @@ describe('studyVoices — the model speaks first, Mavéa is the floor', () => {
     // must not then rewrite it underneath.
     expect(studyVoices(block(FULL), 0, null, 'simple')[0].text).toBe(FULL.assumes);
     expect(studyVoices(block(FULL), 0, null, 'deep')[0].text).toBe(FULL.assumes);
+  });
+});
+
+describe('the desk draws every slot the scrawls can land in', () => {
+  // PEN_SLOTS is the only list; the CSS positions are the other half of the same contract, and
+  // TypeScript cannot see a stylesheet. A slot added to the union without a rule renders at the
+  // card's top-left corner, on top of whatever is already there.
+  const css = readFileSync(join(__dirname, '..', 'src/canvas/study/study.css'), 'utf8');
+
+  it.each(PEN_SLOTS)('positions .slot-%s', (slot) => {
+    expect(css).toContain(`.study-mark.slot-${slot} {`);
+    expect(css).toContain(`.study-mark.slot-${slot} .study-mark-arrow {`);
+  });
+
+  it('places the two later slots by PERCENTAGE, so they hold at any card height', () => {
+    // A card is sized by its content, so a fixed offset is only ever right for one card. These
+    // two sit between the fixed three; measured, a third hand down the LEFT margin collides with
+    // slot-bottom below ~200px of card, which is why both of these are in the right gutter.
+    for (const slot of ['right', 'rightlow'] as const) {
+      const rule = css.slice(css.indexOf(`.study-mark.slot-${slot} {`));
+      expect(rule.slice(0, rule.indexOf('}'))).toMatch(/top:\s*\d+%/);
+    }
   });
 });

@@ -22,7 +22,7 @@ import type { StudyAside } from '../../canvas/study/types';
 import { blockLabel } from '../../canvas/blockLabel';
 import { asideFor } from './asideFor';
 import { assumptionIn, notableIn, studyPromptIn, type NoteLevel } from './notableIn';
-import { penMarks, PEN_MARK_MAX, type PenMark } from './penQuip';
+import { penMarks, PEN_MARK_MAX, PEN_SLOTS, type PenMark } from './penQuip';
 import type { ContentGraph } from './types';
 
 /**
@@ -70,7 +70,7 @@ export function studyVoices(
   // width, and half a remark is not a remark.
   const authored = (block.study?.scrawls ?? []).filter((t) => t.length <= PEN_MARK_MAX);
   const marks: PenMark[] = authored.length
-    ? authored.slice(0, 2).map((text, i) => ({ text, slot: i === 0 ? 'left' : 'bottom' }))
+    ? authored.slice(0, PEN_SLOTS.length).map((text, i) => ({ text, slot: PEN_SLOTS[i] }))
     : penMarks(block, index);
   if (marks.length) notes[0] = { ...notes[0], marks };
   return notes;

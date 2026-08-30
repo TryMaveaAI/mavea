@@ -10,7 +10,8 @@ import {
   IMAGE_REQUIRED_TYPES,
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
-import { PEN_MARK_MAX } from '../src/live/content/penQuip';
+import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
+import { STUDY_MARKS_MAX } from '../src/engine/liveSchema';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -1282,9 +1283,14 @@ describe('the few-shot example obeys the contract it teaches', () => {
       for (const voice of ['assumes', 'pattern', 'test'] as const) {
         expect(b.study?.[voice], `${b.type} study.${voice}`).toBeTruthy();
       }
-      // Two scrawls, each narrow enough to sit in the margin the Study draws.
+      // Every slide is drawn on, so no reader has to hunt for the part being talked about.
+      const marks = (b.study as unknown as { marks?: { at?: string }[] })?.marks ?? [];
+      expect(marks.length, `${b.type} study.marks`).toBeGreaterThanOrEqual(1);
+      expect(marks.length, `${b.type} study.marks`).toBeLessThanOrEqual(STUDY_MARKS_MAX);
+      // One to five scrawls — as many as the slide earns — each narrow enough for the margin.
       const scrawls = (b.study as unknown as { scrawls?: string[] })?.scrawls ?? [];
-      expect(scrawls, `${b.type} study.scrawls`).toHaveLength(2);
+      expect(scrawls.length, `${b.type} study.scrawls`).toBeGreaterThanOrEqual(1);
+      expect(scrawls.length, `${b.type} study.scrawls`).toBeLessThanOrEqual(PEN_SLOTS.length);
       for (const scrawl of scrawls) expect(scrawl.length).toBeLessThanOrEqual(PEN_MARK_MAX);
       // The margin fact has to TEACH — an exemplar that merely restated its own note would
       // train exactly the restatement the prompt forbids.
@@ -1302,7 +1308,19 @@ describe('the few-shot example obeys the contract it teaches', () => {
       expect(b.study?.assumes).toBeTruthy();
       expect(b.study?.pattern).toBeTruthy();
       expect(b.study?.test).toBeTruthy();
+      // The gestures survive the gate too — an example whose "at" named text the block does not
+      // carry would teach the model to author marks that are silently dropped.
+      expect(b.study?.marks?.length, `${b.type} marks survived coercion`).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('shows a VARYING scrawl count, so the example teaches judgement not a fixed number', () => {
+    const counts = example().blocks.map(
+      (b) => ((b.study as unknown as { scrawls?: string[] })?.scrawls ?? []).length,
+    );
+    expect(new Set(counts).size, `counts were ${counts.join(',')}`).toBeGreaterThan(2);
+    expect(Math.min(...counts)).toBe(1);
+    expect(Math.max(...counts)).toBe(PEN_SLOTS.length);
   });
 
   it('states the requirement in the prompt body, not only by example', () => {
@@ -1310,5 +1328,51 @@ describe('the few-shot example obeys the contract it teaches', () => {
     expect(LIVE_SYSTEM_PROMPT).toContain('"assumes"');
     expect(LIVE_SYSTEM_PROMPT).toContain('"pattern"');
     expect(LIVE_SYSTEM_PROMPT).toContain('"test"');
+  });
+});
+
+describe('a block draws its own gestures, held to the tour-mark gate', () => {
+  function marked(marks: unknown, props?: Record<string, unknown>) {
+    const r = validateLiveResponse({
+      title: 'T',
+      narration: 'n',
+      blocks: [
+        {
+          type: 'insight',
+          props: { title: 'ARR', stat: '$15.1M', summary: 'Up from $12.4M.', ...props },
+          study: { assumes: 'a', pattern: 'p', test: 't?', marks },
+        },
+      ],
+    });
+    return r!.blocks[0].study?.marks ?? [];
+  }
+
+  it('keeps a gesture whose target really is on the block', () => {
+    expect(marked([{ kind: 'circle', at: '$15.1M' }])).toEqual([{ kind: 'circle', at: '$15.1M' }]);
+  });
+
+  it('drops an unknown kind, a target-less mark, and a duplicate', () => {
+    expect(marked([{ kind: 'sparkle', at: '$15.1M' }])).toHaveLength(0);
+    expect(marked([{ kind: 'circle' }])).toHaveLength(0);
+    expect(
+      marked([
+        { kind: 'circle', at: '$15.1M' },
+        { kind: 'circle', at: '$15.1M' },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it('holds a "question" to the same honesty gate a tour stop is held to', () => {
+    // The pen may only doubt a figure the answer itself called uncertain.
+    expect(marked([{ kind: 'question', at: '$15.1M' }])).toHaveLength(0);
+    expect(marked([{ kind: 'question', at: '$15.1M' }], { conf: 'inferred' })).toHaveLength(1);
+  });
+
+  it('caps how much pen one slide can wear', () => {
+    const many = Array.from({ length: STUDY_MARKS_MAX + 4 }, (_, i) => ({
+      kind: 'point',
+      at: i % 2 ? '$15.1M' : '$12.4M',
+    }));
+    expect(marked(many).length).toBeLessThanOrEqual(STUDY_MARKS_MAX);
   });
 });

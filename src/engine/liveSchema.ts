@@ -15,6 +15,7 @@ import type {
   AccentVar,
   Block,
   BlockStudy,
+  TourMark,
   InsightProps,
   ChartProps,
   ChartSeries,
@@ -68,6 +69,7 @@ import type { TeachDiagramProps, TeachStep } from '../canvas/blocks/learn/types'
 import { catalogMeta, type ComponentMeta, type ItemSpec } from '../canvas/blocks/catalog';
 import { CATALOG_FACTS, catalogFacts } from '../canvas/blocks/catalog/facts';
 import { isValidBendFormula } from '../lib/bend';
+import { PEN_SLOTS } from '../live/content/penQuip';
 import { validateAnnotations, type AnnotationSurface } from '../canvas/lib/annotations';
 import {
   ALLOWED_BLOCK_TYPES,
@@ -123,46 +125,16 @@ function recoverStringField(buf: string, name: string): string {
  *  "connect" is the one cross-block gesture: it draws from `at` (in THIS stop's own block) to
  *  `to` (in the block named by `onIndex`), for a line that's genuinely about how two rendered
  *  blocks relate — everything else stays scoped to the stop's own block. */
-export interface TourMark {
-  kind:
-    | 'circle'
-    | 'underline'
-    | 'point'
-    | 'highlight'
-    | 'rising'
-    | 'falling'
-    | 'bracket'
-    | 'note'
-    | 'connect'
-    | 'strike'
-    | 'question'
-    | 'star'
-    | 'check'
-    | 'frame'
-    | 'brace';
-  /** The exact text of the value or label to mark — must appear in the block's own data.
-   *  For a span gesture it's the START of the span; for "note" it's the item the aside hangs off. */
-  at: string;
-  /** The far end of a span gesture (the value the trend climbs TO, the right side of a bracket).
-   *  Must also appear in the block's data. Optional for "rising"/"falling" (then it glosses the
-   *  whole chart); required for "connect" (searched in `onIndex`'s block, not this stop's own);
-   *  ignored by the point gestures. */
-  to?: string;
-  /** The handwritten words for a "note", or a "bracket"'s delta caption ("+38%", "vs. last year"). */
-  label?: string;
-  /** Optional ink tone: "key" = presence purple (the single most important mark of the tour),
-   *  "cool" = blue (negative / contrast / lower-than-expected). Default is warm orange. */
-  color?: 'warm' | 'key' | 'cool';
-  /** "connect" only: the 0-based index (same numbering as `tour[].index`) of the OTHER block
-   *  `to` lives in. Omitted, or equal to this stop's own index, is meaningless for "connect"
-   *  and gets dropped — a connector needs two distinct blocks. */
-  onIndex?: number;
-}
+export type { TourMark };
 
 /** Every drawn-gesture kind the model may author — the validator drops anything else. */
 /** The closed gesture vocabulary. Exported so the prompt's teaching can be held to it: every kind
  *  here must carry a worked example in the addendum, which is what keeps a new kind from being
  *  added to the enum and then never authored because nothing ever showed the model one. */
+/** The most gestures one Study slide may wear. Enough that a dense figure can call out each
+ *  thing that matters; few enough that the card is still the thing you are reading. */
+export const STUDY_MARKS_MAX = 5;
+
 export const MARK_KINDS: ReadonlySet<string> = new Set<TourMark['kind']>([
   'circle',
   'underline',
@@ -438,17 +410,19 @@ Before emitting, re-check every number that appears in two places.
 
 PER-SLIDE NOTES — give EVERY block a "note": ONE warm, plain-language sentence explaining THAT block on its own — what it shows and the takeaway to remember, the way a friend would say it pointing at the screen ("Rent eats nearly half your needs budget — it's the number to watch."). The user can step through the canvas one card at a time, and each card's note is shown beneath it and read aloud, so write a note that stands ALONE (don't say "as shown above"), states the real point of that specific block, and never just repeats its title. Use the block's own real figures; keep it to a sentence (~25 words). The "note" sits on the block object, beside "type" and "props".
 
-MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": [string, string]}. REQUIRED on every block, all four keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. Each is ONE sentence, under 24 words, plain prose, no lists and no markdown:
+MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}. REQUIRED on every block, all five keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. Each is ONE sentence, under 24 words, plain prose, no lists and no markdown:
 - "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
 - "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
 - "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
-- "scrawls" — EXACTLY TWO margin scribbles, each UNDER 40 CHARACTERS: the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
+- "scrawls" — ONE to FIVE margin scribbles, each UNDER 40 CHARACTERS. The COUNT is your judgement and it must be earned: write one per thing on this slide that genuinely needs a word in the margin, and stop. A single headline number usually wants one; a dense table, a multi-series chart or a five-step process can carry four or five, because each one lands beside a different part. Never pad to a number — five scrawls that repeat each other are worse than one that lands. They are: the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
+- "marks" — the gestures DRAWN ON this block when it takes the desk, same shape as a tour mark: [{"kind":"circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"strike"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool"}]. "at" (and "to") must be text that literally appears in THIS block's own props, or the gesture is dropped. Mark the things a reader would otherwise have to hunt for: the figure the point rests on, the row being compared, the span that moved. ONE to FOUR — a single-number card needs one, a twelve-row table can carry four.
+THE BALANCE, and it matters more than any single rule: the reader must never be left wondering which part of the slide you mean — and must never feel a card scribbled over. Mark what carries the meaning, then STOP. Every mark and every scrawl has to earn its ink by pointing at something specific; if you cannot say what a reader gains from one, it should not be there. Two that land beat five that decorate.
 Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
 NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
 
 Example (aim for this density and variety):
 User: How should I budget a $5000 monthly income?
-{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it.","study":{"assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy","50% is a ceiling, not a target"]}},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from.","study":{"assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future bucket = savings + debt BOTH"]}},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting.","study":{"assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["flexibility is unweighted here","zero-based ≠ worse, just stricter"]}},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean.","study":{"assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under the 30% rule","only rent is really fixed"]}},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month.","study":{"assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec"]}},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth.","study":{"assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","Roth = after-tax in, tax-free out"]}}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
+{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it.","study":{"assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy"],"marks":[{"kind":"circle","at":"$5,000/mo"}]}},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from.","study":{"assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","30% is the flex, cut here first","future = savings + debt BOTH"],"marks":[{"kind":"circle","at":"$2,500"},{"kind":"underline","at":"$1,000"}]}},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting.","study":{"assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["all 3 rows weighted equally","zero-based ≠ worse, just stricter"],"marks":[{"kind":"highlight","at":"50/30/20"},{"kind":"check","at":"20%"}]}},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean.","study":{"assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under 30% rule","only rent is truly fixed","groceries = first place to cut","utilities swing by season","insurance: shop it yearly"],"marks":[{"kind":"circle","at":"$1,200","color":"key"},{"kind":"highlight","at":"Rent"},{"kind":"bracket","at":"Groceries","to":"Other","label":"the lean half"}]}},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month.","study":{"assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec","gap widens after yr 1"],"marks":[{"kind":"rising","at":"Jan","to":"Dec","color":"key"},{"kind":"point","at":"Dec"}]}},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth.","study":{"assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","3 mo is the floor, 6 if single-income","Roth = after-tax in, tax-free out"],"marks":[{"kind":"star","at":"Build $2,000 emergency buffer"},{"kind":"underline","at":"Max out Roth IRA"}]}}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
 
 /** Extra block types exposed to frontier models, appended to the base prompt. */
 /** The frontier cousins' block shapes + THE BLANK SPACE — always relevant once a model is
@@ -2534,6 +2508,8 @@ export function validateLiveResponse(
   const blocks: Block[] = [];
   let insightSeq = 1;
   let blockSeq = 1;
+  /** Raw `study.marks` per placed block index — coerced after the loop (see below). */
+  const studyMarksRaw = new Map<number, Json[]>();
   for (const rawBlock of asArr(obj.blocks)) {
     if (blocks.length >= maxBlocks) break;
     const idx = blocks.length;
@@ -2586,16 +2562,22 @@ export function validateLiveResponse(
       pattern: studyVoice('pattern'),
       test: studyVoice('test'),
     };
-    // The margin scrawls: at most two, coerced like any shown string. The length rule that
-    // decides whether one FITS the margin belongs to the surface that draws it, not here.
+    // The margin scrawls, coerced like any shown string. How MANY a slide carries is the model's
+    // call — a dense figure earns more ink than a single number — bounded here only by the three
+    // slots the desk actually draws. The length rule that decides whether one FITS the margin
+    // belongs to the surface that draws it, not here.
     const scrawls = asArr(studyRaw.scrawls)
       .map((s) => proseForDisplay(asStr(s).trim().slice(0, 80)))
       .filter(Boolean)
-      .slice(0, 2);
+      .slice(0, PEN_SLOTS.length);
     if (scrawls.length) study.scrawls = scrawls;
     if (study.assumes || study.pattern || study.test || study.scrawls) {
       (block as { study?: BlockStudy }).study = study;
     }
+    // The block's own gestures can only be coerced once EVERY block exists — the same gate the
+    // tour's marks go through checks a "connect" against the other blocks and a "question"
+    // against this block's own confidence. Stashed by index, resolved in one pass below.
+    studyMarksRaw.set(idx, asArr(ro.marks ?? studyRaw.marks));
     // Coerce concept-section fields (the "Go Deeper" depth lens).
     // `section`: trim to a short label; omit empty.
     const sectionStr = asStr(ro.section).trim().slice(0, 60);
@@ -2698,6 +2680,27 @@ export function validateLiveResponse(
       ...(typeof onIndex === 'number' ? { onIndex } : {}),
     };
   };
+  // ── The Study's per-block gestures ─────────────────────────────────────────────────────────
+  // Every block gets its own ink, not just the 3-5 the tour stops at, because the Study shows
+  // every block one at a time — a slide with no gesture leaves the reader to find the point
+  // themselves. They go through the SAME gate as a tour mark (the kind vocabulary, the "at" must
+  // name real on-block text, "question" only on a block that admitted uncertainty), so a block
+  // cannot draw what a tour stop could not.
+  //
+  // Capped at STUDY_MARKS_MAX: past that the card is wearing more pen than content, which is the
+  // failure mode on the other side of drawing nothing at all.
+  for (const [idx, raw] of studyMarksRaw) {
+    const block = blocks[idx];
+    if (!block || !raw.length) continue;
+    const marks = raw
+      .map((m) => coerceTourMark(m, idx))
+      .filter((m): m is TourMark => !!m)
+      .filter((m, i, a) => a.findIndex((x) => x.kind === m.kind && x.at === m.at) === i)
+      .slice(0, STUDY_MARKS_MAX);
+    if (!marks.length) continue;
+    const study = ((block as { study?: BlockStudy }).study ??= {});
+    study.marks = marks;
+  }
   // "connect" is a rare, high-value callout, not a default — capped tighter than the general
   // per-stop mark cap below, and across the whole turn so it can't turn into a web of arrows.
   let connectCount = 0;

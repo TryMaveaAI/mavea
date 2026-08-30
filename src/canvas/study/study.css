@@ -866,6 +866,45 @@
   top: 26px;
 }
 
+/* Two more hands, in the gutters the first three leave free: one beside the card on the right
+   (between its edge and Mavéa's note, which starts 144 desk px out — hence the narrower box),
+   and one below it. Both are placed as a PERCENTAGE of the card's height, so they hold their
+   spacing at any card size; a fixed offset would only be right for one. Both go RIGHT rather
+   than stacking a third hand down the left margin: measured, slot-left + a mid-left mark +
+   slot-bottom touch below about 200px of card, and a card is sized by its content, so that is
+   not a window the layout could have ruled out. */
+.study-mark.slot-right {
+  right: -136px;
+  top: 38%;
+  width: 124px;
+  transform: rotate(1.5deg);
+}
+
+.study-mark.slot-right .study-mark-text {
+  font-size: 18px;
+}
+
+.study-mark.slot-right .study-mark-arrow {
+  left: -74px;
+  top: 22px;
+}
+
+.study-mark.slot-rightlow {
+  right: -136px;
+  top: 74%;
+  width: 124px;
+  transform: rotate(-1deg);
+}
+
+.study-mark.slot-rightlow .study-mark-text {
+  font-size: 18px;
+}
+
+.study-mark.slot-rightlow .study-mark-arrow {
+  left: -74px;
+  top: 26px;
+}
+
 /* ── Session notes: the legal pad that remembers the walk ────────────────────────────────── */
 
 .study-beats-divider {
@@ -1066,23 +1105,17 @@
      which left the spoken line permanently cut mid-word; the equalizer already says she is
      talking, so the words simply arrive. */
   font-style: italic;
-  font-size: 16px;
+  /* The pacer gathers several sentences into one breath-sized utterance, so this can run long —
+     and the bubble is HUD-scaled while the desk shrinks beneath it, which is how a long line
+     grew down across the back arc. `fitVoiceLine` steps the TYPE down instead of clipping the
+     words, so the line is always whole; the floor it stops at is the Study's own 11px. The
+     max-height is a last-resort brake for a pathological single sentence, deliberately generous
+     and NOT a clamp — it never trims a line the sizing already fitted. */
+  font-size: var(--study-voice-size, 16px);
   line-height: 1.55;
   color: var(--study-ink-soft);
-  /* The pacer gathers several sentences into one breath-sized utterance, so this can be a whole
-     paragraph — and the bubble is HUD-scaled while the desk shrinks beneath it, which is how a
-     long line grew down across the back arc. Bounded to a whole number of LINES: the clip lands
-     exactly on a line boundary, so no word is ever shown cut and no ellipsis is drawn. The
-     column-reverse anchors the overflow at the end, so the words being spoken now are the ones
-     in view, and the complete line is in the caption strip below either way. */
-  display: flex;
-  flex-direction: column-reverse;
-  max-height: calc(var(--study-voice-lines, 3) * 1.55em);
+  max-height: calc(7 * 1.55em);
   overflow: hidden;
-}
-/* A short stage lifts the back arc toward the bubble — take a line back so it still clears. */
-.study-stage[data-shallow] .study-voice-text {
-  --study-voice-lines: 2;
 }
 
 .study-voice-caret {
