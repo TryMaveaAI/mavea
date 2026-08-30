@@ -14,6 +14,7 @@
 import type {
   AccentVar,
   Block,
+  BlockStudy,
   InsightProps,
   ChartProps,
   ChartSeries,
@@ -87,7 +88,12 @@ import { Icon, ICON_KEYS, type IconKey } from '../icons/icons';
 import { completedBlocks as recoverBlocks, extractStringField } from '../live/streamParse';
 import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.generated';
 import { enumValuesFromHint } from '../canvas/blocks/catalog/propHints';
-import { resolvesCellMatrix, resolvesKeyedRows, resolvesTextItems } from '../canvas/lib/empty';
+import {
+  resolvesCellMatrix,
+  resolvesDeclaredItems,
+  resolvesKeyedRows,
+  resolvesTextItems,
+} from '../canvas/lib/empty';
 import {
   trimToSentence,
   collapseRepeatedValues,
@@ -367,7 +373,7 @@ export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first A
 - "causal": true when your answer explains a MECHANISM — one thing bringing about another, whether it is history, science, engineering, business or health. "Why did the 2008 crisis happen", "how does photosynthesis work", "what happened to Kodak", "explain the French Revolution", "why is our churn rising" are all true: each has causes, steps in between, and an outcome. False when the answer has no causal chain to draw: a lookup or definition ("capital of France"), a recipe or procedure ("how do I center a div"), a comparison or recommendation, a calculation, or anything you were asked to WRITE. Judge the answer you just wrote, not the wording of the question.
 - "tour": for any multi-part answer, 3-5 {"index","say"} stops that walk the key blocks in order — each "say" is SPOKEN ALOUD, like a friend talking you through the screen, exactly as that block is spotlighted (so write each line about THAT block). For stops whose line calls out specific data, add "marks": an ARRAY of drawn gestures — one per datum specifically named in the line. One thing named → one mark. Two things compared → two marks. Four figures in a table row → four marks. Let the line dictate the count; there is no fixed ceiling. Omit the tour only for a one-glance answer.
 - "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Lead with the most useful takeaway, in plain language, and never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
-- "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — see PER-SLIDE NOTES.
+- "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note","study"} — ALL FOUR KEYS, on EVERY block, no exceptions. See PER-SLIDE NOTES.
 - "chips": 2 to 4 short follow-up questions (strings) the user might ask next.
 - "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show, so dragging recomputes them live. Omit it for anything that isn't a real calculation.
 
@@ -432,9 +438,17 @@ Before emitting, re-check every number that appears in two places.
 
 PER-SLIDE NOTES — give EVERY block a "note": ONE warm, plain-language sentence explaining THAT block on its own — what it shows and the takeaway to remember, the way a friend would say it pointing at the screen ("Rent eats nearly half your needs budget — it's the number to watch."). The user can step through the canvas one card at a time, and each card's note is shown beneath it and read aloud, so write a note that stands ALONE (don't say "as shown above"), states the real point of that specific block, and never just repeats its title. Use the block's own real figures; keep it to a sentence (~25 words). The "note" sits on the block object, beside "type" and "props".
 
+MARGIN NOTES — give EVERY block a "study": {"assumes": string, "pattern": string, "test": string, "scrawls": [string, string]}. REQUIRED on every block, all four keys, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. Each is ONE sentence, under 24 words, plain prose, no lists and no markdown:
+- "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
+- "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
+- "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
+- "scrawls" — EXACTLY TWO margin scribbles, each UNDER 40 CHARACTERS: the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
+Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
+NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
+
 Example (aim for this density and variety):
 User: How should I budget a $5000 monthly income?
-{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it."},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from."},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting."},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean."},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month."},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$500/month for 3 months hits the $6,500 annual limit."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth."}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
+{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it.","study":{"assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy","50% is a ceiling, not a target"]}},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from.","study":{"assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future bucket = savings + debt BOTH"]}},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting.","study":{"assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["flexibility is unweighted here","zero-based ≠ worse, just stricter"]}},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean.","study":{"assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under the 30% rule","only rent is really fixed"]}},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month.","study":{"assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec"]}},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth.","study":{"assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","Roth = after-tax in, tax-free out"]}}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
 
 /** Extra block types exposed to frontier models, appended to the base prompt. */
 /** The frontier cousins' block shapes + THE BLANK SPACE — always relevant once a model is
@@ -1117,6 +1131,12 @@ function buildKpi(p: Record<string, Json>, grounded: boolean): KpiGridProps | nu
       // labeled siblings, so it's dropped rather than rendered with a blank caption.
       if (!label) return null;
       const kpi: KpiSpec = { val: val || '—', label };
+      // The qualifier under the number — the share, window or target the tile is measured
+      // against. The prompt has always asked for it and the example has always shown it; it was
+      // simply dropped here, so every answer paid for words that never reached the screen.
+      // Capped like a caption: a tile is not the place for a sentence.
+      const sub = alias(io, 'sub', 'subtitle', 'caption', 'detail', 'note').slice(0, 48).trim();
+      if (sub && sub !== label && sub !== kpi.val) kpi.sub = sub;
       // A per-tile accent makes the grid read like a dashboard, not a plain table.
       if (io.color !== undefined) kpi.color = coerceColor(io.color);
       return kpi;
@@ -1616,7 +1636,11 @@ function coerceToReferenceShape(
     for (const key of requiredCanonicalFields) {
       if (key in input && !(key in out)) out[key] = input[key];
     }
-    return out;
+    // An object that resolved NO field carries nothing any renderer can draw. Left in, a `{}`
+    // survives every later filter with the item COUNT intact — which is how a list of three
+    // rows reached the screen as three empty bullets under a heading. The open-record branch
+    // above has always refused this; the fixed-key branch never did.
+    return Object.keys(out).length ? out : INVALID_STRUCTURE;
   }
   return INVALID_STRUCTURE;
 }
@@ -1762,6 +1786,10 @@ function coerceGeneric(
   // The same defect where the items are a plain list rather than keyed rows: an entry whose text is
   // blank (or is markup that paints nothing) still counts, and still draws its own furniture.
   if (!resolvesTextItems(meta.type, repaired)) return null;
+  // And the general case, which needs no per-type entry at all: the component's own `itemShapes`
+  // already name its item array and the field carrying the reader's text, so every component that
+  // declares one is covered — rather than the four the allowlists above happen to list.
+  if (!resolvesDeclaredItems(repaired, meta.itemShapes ?? [])) return null;
   const raw = RAW_TEXT_PROPS[meta.type];
   const out: Record<string, Json> = {};
   for (const key of [...meta.requires, ...meta.optional]) {
@@ -2544,6 +2572,29 @@ export function validateLiveResponse(
       const noteSpoken = proseForSpeech(noteRaw);
       if (noteSpoken && noteSpoken !== note)
         (block as { noteSpoken?: string }).noteSpoken = noteSpoken;
+    }
+    // The Study's three margin voices, written in this same call. Display-only — they are pinned
+    // beside the card and never spoken, so each is coerced through `proseForDisplay` alone (an
+    // inline [[shown|said]] annotation resolves to its shown side and never reaches the voice).
+    // A blank field is dropped rather than stored, so the Study falls back to its derived voice
+    // for that slot instead of pinning an empty note; a `study` with nothing left is not attached.
+    const studyRaw = asObj(ro.study);
+    const studyVoice = (key: 'assumes' | 'pattern' | 'test'): string | undefined =>
+      proseForDisplay(capTweet(asStr(studyRaw[key]).trim(), 200)) || undefined;
+    const study: BlockStudy = {
+      assumes: studyVoice('assumes'),
+      pattern: studyVoice('pattern'),
+      test: studyVoice('test'),
+    };
+    // The margin scrawls: at most two, coerced like any shown string. The length rule that
+    // decides whether one FITS the margin belongs to the surface that draws it, not here.
+    const scrawls = asArr(studyRaw.scrawls)
+      .map((s) => proseForDisplay(asStr(s).trim().slice(0, 80)))
+      .filter(Boolean)
+      .slice(0, 2);
+    if (scrawls.length) study.scrawls = scrawls;
+    if (study.assumes || study.pattern || study.test || study.scrawls) {
+      (block as { study?: BlockStudy }).study = study;
     }
     // Coerce concept-section fields (the "Go Deeper" depth lens).
     // `section`: trim to a short label; omit empty.

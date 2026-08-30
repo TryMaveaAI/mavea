@@ -474,6 +474,10 @@ export interface PipelineProps {
 export interface KpiSpec {
   val: string;
   label: string;
+  /** The tile's qualifier — what the number is a share OF, the window it covers, the target it
+   *  is measured against ("50% — non-negotiable", "vs. $2.1M last quarter"). The model has always
+   *  written these; a tile without one simply renders the two lines it always did. */
+  sub?: string;
   color?: AccentVar;
 }
 export interface KpiGridProps {
@@ -642,6 +646,30 @@ export interface BlockBase {
   /** Role of a depth≥2 block: "example" | "derivation" | "edge" | "analogy" | "history" | "check".
    *  Used for facet organisation inside the drawer (P1). Omit on depth≤1 blocks. */
   facet?: string;
+  /** The Study's margin voices for this block, written by the model in the SAME call that wrote
+   *  the answer — so they cost no extra request and can say things the card does not contain.
+   *  Absent on demo/baked blocks and whenever the model omits one; the Study then falls back to
+   *  the voices it derives from the block itself, which can only ever RE-READ what is on screen. */
+  study?: BlockStudy;
+}
+
+/** The three notes Mavéa pins beside a block in the Study. The fourth voice — the evidence check —
+ *  is deliberately NOT here: it is Mavéa's own reading of the turn's real sources, and a
+ *  model-authored receipt would be a fabricated one. */
+export interface BlockStudy {
+  /** The load-bearing assumption: what has to be true for this block to hold, naming the real
+   *  figure, term or step it rests on. */
+  assumes?: string;
+  /** The margin fact — context, a comparison, a rule of thumb or a consequence that is NOT on the
+   *  card. This is the one that has to teach; a restatement of the card is worse than nothing. */
+  pattern?: string;
+  /** One sharp question that would test this block, naming the specific datum it would test. */
+  test?: string;
+  /** Up to two margin scrawls — the few words a reader actually pencils beside a slide. Derived
+   *  scrawls can only count what the block renders ("3 steps — which one decides it?"), which is
+   *  the same remark beside every list; these carry the substance that makes a margin worth
+   *  reading. Over-long ones are dropped at the surface, not truncated. */
+  scrawls?: string[];
 }
 export type Block =
   | (BlockBase & { type: 'insight'; id: string; num: string; prove?: boolean; props: InsightProps })

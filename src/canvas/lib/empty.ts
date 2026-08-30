@@ -142,3 +142,42 @@ export function resolvesTextItems(type: string, props: unknown): boolean {
   if (items.length === 0) return true;
   return items.some((item) => readableText(item[shape.textField]));
 }
+
+/** The half of an ItemSpec this file needs: which array, and which field on an entry carries the
+ *  words a reader sees. Declared per component in the catalog — repeated here as a structural type
+ *  so the guard stays a pure function with no catalog import. */
+export interface ItemTextShape {
+  prop: string;
+  text?: string;
+  textAliases?: readonly string[];
+}
+
+/**
+ * False when a block would render a declared list of items, none of which show any text.
+ *
+ * The three guards above are hand-maintained allowlists — four types between them, out of 625 —
+ * so every other component fails open and a list of blank rows reaches the screen counted and
+ * captioned. This one asks the CATALOG instead: a component's `itemShapes` already names its item
+ * array and the field carrying its visible text, which is precisely the judgement needed, so any
+ * component that declares one is covered without being named here.
+ *
+ * Deliberately tolerant, like its siblings: shapes with no declared text field are skipped (their
+ * items draw geometry, not words), an absent or empty array is someone else's call, and ONE entry
+ * with readable text is enough for the whole array. It refuses only on positive evidence that a
+ * list has nothing in it to read.
+ */
+export function resolvesDeclaredItems(props: unknown, shapes: readonly ItemTextShape[]): boolean {
+  const p = asRecord(props);
+  for (const shape of shapes) {
+    if (!shape.text) continue;
+    const items = asArray(p[shape.prop]).map(asRecord);
+    if (items.length === 0) continue;
+    const fields = [shape.text, ...(shape.textAliases ?? [])];
+    // A declared text field is not always a string: a tree node's `value` is the number painted
+    // on it, and refusing that would drop a perfectly readable diagram.
+    const shows = (v: unknown): boolean =>
+      typeof v === 'number' ? Number.isFinite(v) : readableText(v);
+    if (!items.some((item) => fields.some((f) => shows(item[f])))) return false;
+  }
+  return true;
+}

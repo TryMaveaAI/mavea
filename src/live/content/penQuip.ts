@@ -12,7 +12,9 @@
 import type { Block } from '../../data/conversation';
 
 /** The margin is ~150px of handwriting: past this a quip stops reading as a scrawl. */
-const MAX = 46;
+/** The widest a scrawl can be and still sit in the margin without wrapping over the card. */
+export const PEN_MARK_MAX = 46;
+const MAX = PEN_MARK_MAX;
 
 const fits = (text: string): string | null => (text.length <= MAX ? text : null);
 
@@ -333,16 +335,8 @@ function genericQuip(block: Block, seed: number): string | null {
   const options = [
     `${best.n} ${best.key} — which one decides it?`,
     `${best.n} ${best.key}. read the odd one out`,
-    `compare across, not down`,
   ];
   return options[seed % options.length];
-}
-
-/** The same, for the second slot: a different angle on an unfamiliar shape. */
-function genericSecond(seed: number): string {
-  return ['what is NOT shown here?', 'the shape is the argument', 'read it once, then question it'][
-    seed % 3
-  ];
 }
 
 /**
@@ -358,7 +352,10 @@ export function penMarks(block: Block, seed = 0): PenMark[] {
   // at all is not the surface the design describes.
   const primary = penQuip(block, seed) ?? genericQuip(block, seed);
   if (primary) marks.push({ text: primary, slot: 'left' });
-  const second = secondRemark(block, seed) ?? (primary ? genericSecond(seed) : null);
+  // No stock second mark. Where this file has no bespoke reading of the shape, the honest output
+  // is ONE remark — a second line of "what is NOT shown here?" beside every unfamiliar object is
+  // the wallpaper the whole file exists to avoid, and it reads as filler because it is.
+  const second = secondRemark(block, seed);
   if (second && second !== primary && second.length <= MAX) {
     marks.push({ text: second, slot: 'bottom' });
   }

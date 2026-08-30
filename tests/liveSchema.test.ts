@@ -1,6 +1,7 @@
 import { RAW_CATALOG } from '../src/canvas/blocks/catalog/catalog.data';
 import {
   validateLiveResponse,
+  LIVE_SYSTEM_PROMPT,
   ALLOWED_BLOCK_TYPES,
   FRONTIER_BLOCK_TYPES,
   blockTypesForTier,
@@ -9,6 +10,7 @@ import {
   IMAGE_REQUIRED_TYPES,
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
+import { PEN_MARK_MAX } from '../src/live/content/penQuip';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -50,6 +52,48 @@ describe('validateLiveResponse — coercion & repair', () => {
     expect(r!.blocks[1].note!.endsWith('…')).toBe(true);
     // a block the model didn't annotate stays note-free (so Focus shows no caption for it).
     expect(r!.blocks[2].note).toBeUndefined();
+  });
+  it('carries the Study margin voices, drops blank ones, and caps an over-long one', () => {
+    const r = validateLiveResponse({
+      title: 'T',
+      blocks: [
+        {
+          type: 'insight',
+          props: { title: 'A' },
+          study: {
+            assumes: '  The 5% return assumes a full-market index.  ',
+            pattern: 'P'.repeat(300),
+            test: 'Does the 48% rent share hold once utilities are bundled?',
+          },
+        },
+        // A model that answers with empty strings must leave NO study behind — the Study then
+        // falls back to the voice it derives, rather than pinning a blank note card.
+        { type: 'kpi', props: { items: [{ label: 'X', value: '1' }] }, study: { assumes: '   ' } },
+        { type: 'list', props: { title: 'L', items: ['x', 'y'] } }, // no study at all
+      ],
+    });
+    expect(r).not.toBeNull();
+    const study = r!.blocks[0].study;
+    expect(study?.assumes).toBe('The 5% return assumes a full-market index.');
+    expect(study?.test).toBe('Does the 48% rent share hold once utilities are bundled?');
+    expect(study!.pattern!.length).toBeLessThanOrEqual(200);
+    expect(r!.blocks[1].study).toBeUndefined();
+    expect(r!.blocks[2].study).toBeUndefined();
+  });
+  it('resolves a [[shown|said]] annotation in a margin voice to its SHOWN side', () => {
+    // The margin voices are read, never spoken, so a respelling written for the synthesizer must
+    // not survive onto the note card — the same rule every displayed model string follows.
+    const r = validateLiveResponse({
+      title: 'T',
+      blocks: [
+        {
+          type: 'insight',
+          props: { title: 'A' },
+          study: { pattern: 'Most of it runs on [[CUDA|C-U-D-A]] rather than the CPU.' },
+        },
+      ],
+    });
+    expect(r!.blocks[0].study?.pattern).toBe('Most of it runs on CUDA rather than the CPU.');
   });
   it('neutralizes HTML in HAND-BUILT block footers (model markup never reaches a raw renderer)', () => {
     // Custom builders (chart/kpi/insight/…) extract footer via optStr and several renderers
@@ -1214,5 +1258,57 @@ describe('hasRenderableImage — the "real image or drop the block" guardrail', 
     expect(hasRenderableImage('imagecallouts', { image: { src: good } })).toBe(true);
     expect(hasRenderableImage('mediacard', { cover: { src: good } })).toBe(true);
     expect(hasRenderableImage('moodboard', { tiles: [{}, { src: good }] })).toBe(true);
+  });
+});
+
+describe('the few-shot example obeys the contract it teaches', () => {
+  // The example is the strongest instruction in the prompt: whatever it shows on every block is
+  // what the model reliably emits. It is also a hand-maintained JSON literal inside a template
+  // string, where a stray quote is invisible until a live turn fails — so parse it here.
+  type ExampleBlock = { type: string; note?: string; study?: Record<string, string> };
+  function example(): { blocks: ExampleBlock[] } {
+    const line = LIVE_SYSTEM_PROMPT.split('\n').find(
+      (l) => l.startsWith('{"title":') && l.trimEnd().endsWith('}'),
+    );
+    if (!line) throw new Error('the prompt no longer carries a one-line example object');
+    return JSON.parse(line) as { blocks: ExampleBlock[] };
+  }
+
+  it('parses, and gives EVERY block a note and all three margin voices', () => {
+    const blocks = example().blocks;
+    expect(blocks.length).toBeGreaterThan(3);
+    for (const b of blocks) {
+      expect(b.note, `${b.type} note`).toBeTruthy();
+      for (const voice of ['assumes', 'pattern', 'test'] as const) {
+        expect(b.study?.[voice], `${b.type} study.${voice}`).toBeTruthy();
+      }
+      // Two scrawls, each narrow enough to sit in the margin the Study draws.
+      const scrawls = (b.study as unknown as { scrawls?: string[] })?.scrawls ?? [];
+      expect(scrawls, `${b.type} study.scrawls`).toHaveLength(2);
+      for (const scrawl of scrawls) expect(scrawl.length).toBeLessThanOrEqual(PEN_MARK_MAX);
+      // The margin fact has to TEACH — an exemplar that merely restated its own note would
+      // train exactly the restatement the prompt forbids.
+      expect(b.study!.pattern).not.toBe(b.note);
+      expect(b.study!.test.endsWith('?'), `${b.type} study.test is a question`).toBe(true);
+    }
+  });
+
+  it('survives the real validator with its voices intact', () => {
+    const parsed = example();
+    const r = validateLiveResponse(parsed);
+    expect(r).not.toBeNull();
+    expect(r!.blocks).toHaveLength(parsed.blocks.length);
+    for (const b of r!.blocks) {
+      expect(b.study?.assumes).toBeTruthy();
+      expect(b.study?.pattern).toBeTruthy();
+      expect(b.study?.test).toBeTruthy();
+    }
+  });
+
+  it('states the requirement in the prompt body, not only by example', () => {
+    expect(LIVE_SYSTEM_PROMPT).toContain('{"type","props","note","study"}');
+    expect(LIVE_SYSTEM_PROMPT).toContain('"assumes"');
+    expect(LIVE_SYSTEM_PROMPT).toContain('"pattern"');
+    expect(LIVE_SYSTEM_PROMPT).toContain('"test"');
   });
 });

@@ -52,6 +52,11 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
   }, []);
 
   const deeper = section.deeper.length > 0 ? section.deeper : (fetched ?? []);
+  // The prompt asks the model to tag its quiz blocks `"facet":"check"` so they land in the
+  // drawer's recall group — this is that group. Recall belongs AFTER the reading: a quiz above
+  // the material it tests gives the answer away. Everything else keeps its authored order.
+  const recall = deeper.filter((b) => b.facet === 'check');
+  const reading = recall.length ? deeper.filter((b) => b.facet !== 'check') : deeper;
   // On-demand authoring is offered only when the drawer arrived empty AND this section's cards
   // match the live turn that parked a deepen context (deepenStore) — content addressing, so a
   // baked demo/tour/restored spec matches nothing and keeps today's exact behavior.
@@ -129,9 +134,19 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
               {pending && deeper.length === 0 ? (
                 <CanvasSkeleton blocks={DRAWER_SKELETON} />
               ) : (
-                deeper.map((b, i) => renderCard(b, section.standard.length + i))
+                reading.map((b, i) => renderCard(b, section.standard.length + i))
               )}
             </div>
+            {recall.length > 0 && (
+              <>
+                <h4 className="depth-recall-label">Check yourself</h4>
+                <div className="card-grid depth-drawer-grid">
+                  {recall.map((b, i) =>
+                    renderCard(b, section.standard.length + reading.length + i),
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

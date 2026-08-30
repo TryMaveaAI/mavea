@@ -50,6 +50,7 @@ export function KpiGrid({
               {k.val}
             </div>
             <div className="kpi-label">{k.label}</div>
+            {k.sub && <div className="kpi-sub">{k.sub}</div>}
           </div>
         ))}
       </div>

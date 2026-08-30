@@ -1151,7 +1151,7 @@ export async function generateLive(
     !!adapter.capabilities.nativeWebSearch &&
     (needsFreshInfo(userText) || needsLiveData(userText));
   const groundedSourcesLine = mayGround
-    ? 'CITE YOUR SOURCES — REQUIRED, not optional, whenever you used web-search results: include the exact source URLs you actually relied on as a top-level "sources": [{"title": string, "url": string}] array, every single time you ground an answer in search — an answer that used search but arrives with no "sources" array is an incomplete answer, the same as a missing required field. Only real URLs from the search results — never invent one.'
+    ? 'CITE YOUR SOURCES — REQUIRED, not optional, whenever you used web-search results: include the exact source URLs you actually relied on as a top-level "sources": [{"title": string, "url": string, "snippet": string}] array, every single time you ground an answer in search — an answer that used search but arrives with no "sources" array is an incomplete answer, the same as a missing required field. Only real URLs from the search results — never invent one. "snippet" is REQUIRED on every source and must be VERBATIM text copied from that page — one or two sentences carrying the figures you took from it, word for word, digits and units exactly as written. It is what lets Mavéa show the reader the receipt behind a number; a paraphrase cannot be matched against the answer and is worth nothing here.'
     : '';
 
   // A genuinely volatile ask (live score, breaking news) with a live path still risks landing

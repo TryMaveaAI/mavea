@@ -6,6 +6,14 @@ import type { ProgressChecklistProps } from '../data/conversation';
 
 type Props = ProgressChecklistProps & { delay?: number };
 
+/** A row's state, read leniently. `st` is the schema's key, but only its TEXT can be repaired
+ *  from a synonym, so a model that wrote `status: 'complete'` arrives here with `st` missing —
+ *  which is a row still worth drawing. Anything unrecognised reads as 'todo': an empty circle is
+ *  the honest default, and it is what an unticked item looks like anyway. */
+function status(st: unknown): 'done' | 'doing' | 'todo' {
+  return st === 'done' || st === 'doing' ? st : 'todo';
+}
+
 export function ProgressChecklist({
   title = 'Plan',
   icon = 'check',
@@ -28,11 +36,15 @@ export function ProgressChecklist({
       </div>
       <ul className="plan-list">
         {rows.map((p, i) => (
-          <li key={i} className={'plan-row st-' + p.st} style={{ '--ti': i } as CSSProperties}>
+          <li
+            key={i}
+            className={'plan-row st-' + status(p.st)}
+            style={{ '--ti': i } as CSSProperties}
+          >
             <span className="plan-check" data-mark={i === salientIdx ? 'circle' : undefined}>
-              {p.st === 'done' ? (
+              {status(p.st) === 'done' ? (
                 <Icon.check style={{ width: 12, height: 12 }} />
-              ) : p.st === 'doing' ? (
+              ) : status(p.st) === 'doing' ? (
                 <span className="plan-dot" />
               ) : null}
             </span>

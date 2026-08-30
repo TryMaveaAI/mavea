@@ -174,9 +174,7 @@ import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
 import { condenseForNote } from './annotate/marginNote';
 import { answerToContent } from './content/fromAnswer';
-import { asideFor } from './content/asideFor';
-import { assumptionIn, notableIn, studyPromptIn } from './content/notableIn';
-import { penMarks } from './content/penQuip';
+import { studyVoices } from './content/studyVoices';
 
 /** How far apart the study's opening marks land — a quick cascade that reads as a hand
  *  moving across the board, not a batch that appears all at once. CSS delay, not a wait. */
@@ -1741,12 +1739,7 @@ export function LiveApp(): ReactElement {
     return answerToContent(spec, corpus);
   }, [viewMode, turn.viewSpec, turn.spec]);
 
-  // One note per object, written once for the answer. Ordered by how much each actually POINTS:
-  //   1. What the block's own structure says but never spells out — which option took the most
-  //      rows, how far the series really moved. Specific, checkable, and not a paraphrase.
-  //   2. What Mavéa can and cannot back. Only speaks on an answer carrying figures.
-  //   3. A Study-only pressure-test prompt. It asks the reader to use the nearby objects rather
-  //      than recycling the spoken tour or the card's own note.
+  // Four notes per object, written once for the answer — see `studyVoices` for who authors each.
   // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
   // emphasised — never the set, which is what made the old rail tear down on every move.
   const studyAsides = useMemo(() => {
@@ -1754,51 +1747,9 @@ export function LiveApp(): ReactElement {
     // the live spec would file the current answer's remarks onto a scrubbed older frame.
     const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
-    // EVERY honest voice becomes a page on the note card, the way the design pages four notes
-    // per object: the structural observation, the trust read, the pressure-test, and the
-    // block's own line as the decision cue. The pen's margin quip rides the first note —
-    // condensed observation when there is one, the question's core otherwise.
     const out: Record<string, StudyAside[]> = {};
     spec.blocks.forEach((block, index) => {
-      if (!block.id) return;
-      const notable = notableIn(block);
-      const honest = studyContent ? asideFor(studyContent, index) : null;
-      // FOUR voices, always, in the design's own order — △ assumption · ◈ pattern · ✓ evidence
-      // · ? pressure-test — so the note card's chips are a fixed set the reader learns rather
-      // than a count that changes per card. Each is READ from the object (or from the turn's
-      // sources), never invented; where a voice has nothing to point at it says so plainly,
-      // which is itself the honest answer — "no sources are attached" is a real evidence check.
-      const notes: StudyAside[] = [
-        { text: assumptionIn(block, cfg.explainLevel).text, kind: 'caution' },
-        {
-          text:
-            notable?.text ??
-            'Nothing in this object states a relationship on its own — the nearby ones carry it.',
-          kind: 'insight',
-        },
-        honest
-          ? { text: honest.text, kind: honest.flagged ? 'caution' : 'evidence' }
-          : {
-              // Names what is unverified ON THIS CARD rather than repeating one disclaimer down
-              // the whole answer: the reader is deciding how much weight to put on THIS object.
-              text: (() => {
-                const notableAt = notable?.at;
-                if (notableAt) {
-                  return `Nothing here backs ${notableAt} — no sources are attached to this answer.`;
-                }
-                const label = blockLabel(block);
-                return `Nothing in “${label}” is checked against a source — none are attached to this answer.`;
-              })(),
-              kind: 'evidence',
-            },
-        { text: studyPromptIn(block).text, kind: 'question' },
-      ];
-      // The margin quip is the block's OWN scrawl, read from its structure (penMarks) — never a
-      // stock line: the same words beside every object are wallpaper, not a remark. The block's
-      // index seeds the phrasing so three lists in one answer do not repeat themselves.
-      const marks = penMarks(block, index);
-      if (marks.length) notes[0] = { ...notes[0], marks };
-      out[block.id] = notes;
+      if (block.id) out[block.id] = studyVoices(block, index, studyContent, cfg.explainLevel);
     });
     return out;
   }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel]);

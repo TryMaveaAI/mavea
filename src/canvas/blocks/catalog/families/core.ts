@@ -337,6 +337,23 @@ export const CATALOG_CORE: ComponentCatalog = [
     colMin: 5,
     coercer: 'generic',
     blurb: 'A progress checklist with done/doing/todo items.',
+    // `t` and `st` are the tersest field names in the schema, so they are the two a model is
+    // likeliest to write as `label`/`status` — and with no itemShapes to repair the alias, each
+    // row coerced to `{}` and painted an empty bullet under the heading.
+    itemShapes: [
+      {
+        prop: 'rows',
+        text: 't',
+        textAliases: ['label', 'text', 'item', 'name', 'task', 'step', 'title'],
+        // `st` is deliberately NOT required: ItemSpec repairs aliases for `text` only, so
+        // requiring it would drop every row whose status the model spelled `status` or `done`
+        // — losing the words too. An unrecognised status simply reads as 'todo'.
+      },
+    ],
+    propHints: {
+      'rows[].t': 'the item’s text',
+      'rows[].st': "'done' | 'doing' | 'todo'",
+    },
   }),
   createMeta('understand', {
     family: 'core',

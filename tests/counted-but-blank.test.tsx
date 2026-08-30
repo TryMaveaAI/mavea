@@ -6,9 +6,10 @@
 // Two guards, because they catch it at different moments: the validator drops such a block before
 // it reaches the canvas, and the renderer refuses it outright — which is the one that also covers
 // a baked demo frame, since replay never revisits the validator.
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { validateLiveResponse } from '../src/engine/liveSchema';
+import { ensureDetails } from '../src/canvas/blocks/catalog';
 import { DataTable } from '../src/canvas/blocks/tables/DataTable';
 import { hasKeyedRows, resolvesKeyedRows } from '../src/canvas/lib/empty';
 
@@ -139,6 +140,51 @@ describe('a baked demo frame cannot paint one either', () => {
         expect(stop.index).toBeGreaterThanOrEqual(0);
         expect(stop.index).toBeLessThan(frame.spec.blocks.length);
       }
+    }
+  });
+});
+
+// The same defect, reached a different way and seen in the wild: a `checklist` whose rows the
+// model wrote as {label, done} rather than the schema's terse {t, st}. With no itemShapes to
+// repair the alias, every row coerced to `{}` — three rows survived with the count intact and
+// the card drew three empty circles under "WAYS TO PAY".
+describe('checklist — a row the model spelled differently still shows its words', () => {
+  // Alias repair reads the component's itemShapes, and those live in the catalog's detail shards
+  // — fetched per turn in the app (generateLive awaits this before validating), so the test has
+  // to load them too or it would be pinning the fails-closed path instead of the real one.
+  beforeAll(async () => {
+    await ensureDetails(['checklist']);
+  });
+
+  function checklist(rows: unknown) {
+    return validateLiveResponse(
+      {
+        title: 'Paying',
+        narration: 'Here is how to pay.',
+        blocks: [{ type: 'checklist', props: { title: 'Ways to pay', rows } }],
+      },
+      new Set(['checklist']),
+      1,
+    );
+  }
+
+  it('repairs the aliased text field instead of blanking the row', () => {
+    const r = checklist([
+      { label: 'Credit card', status: 'done' },
+      { label: 'Bank transfer', status: 'todo' },
+    ]);
+    const block = r?.blocks.find((b) => b.type === 'checklist');
+    expect(block, 'the block survives rather than being dropped').toBeDefined();
+    const shown = (block!.props as { rows: { t?: string }[] }).rows.map((row) => row.t);
+    expect(shown).toEqual(['Credit card', 'Bank transfer']);
+  });
+
+  it('drops a checklist whose rows carry no readable text at all', () => {
+    // Nothing to repair and nothing to draw — a heading over three empty bullets is worse than
+    // no card, so the block must not reach the canvas.
+    for (const rows of [[{}, {}, {}], [{ st: 'todo' }, { st: 'done' }], [{ label: '   ' }]]) {
+      const r = checklist(rows);
+      expect(r?.blocks.some((b) => b.type === 'checklist')).toBe(false);
     }
   });
 });

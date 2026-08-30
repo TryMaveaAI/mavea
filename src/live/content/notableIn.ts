@@ -421,9 +421,18 @@ export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notab
       const rows = block.props.rows as { name?: string; label?: string }[];
       const top = name(rows[0]?.name ?? rows[0]?.label);
       return say(
-        top
-          ? `These ${rows.length} categories are treated as the whole of it — starting with ${top}.`
-          : `These ${rows.length} categories are treated as the whole of it; anything unassigned hides.`,
+        atLevel(
+          level,
+          top
+            ? `These ${rows.length} slices are treated as all of it — starting with ${top}.`
+            : `These ${rows.length} slices are treated as all of it; anything left out just hides.`,
+          top
+            ? `These ${rows.length} categories are treated as the whole of it — starting with ${top}.`
+            : `These ${rows.length} categories are treated as the whole of it; anything unassigned hides.`,
+          top
+            ? `These ${rows.length} categories are treated as exhaustive and mutually exclusive — an unassigned residual would have to hide inside one of them, most likely ${top}.`
+            : `These ${rows.length} categories are treated as exhaustive and mutually exclusive; any unassigned residual is invisible here.`,
+        ),
       );
     }
 
@@ -431,9 +440,18 @@ export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notab
       const kpis = block.props.kpis;
       const lead = name(kpis[0]?.label);
       return say(
-        lead
-          ? `${lead} and the other ${kpis.length - 1} are each measured their own way, over their own window.`
-          : `Each of these ${kpis.length} is measured its own way, over its own window.`,
+        atLevel(
+          level,
+          lead
+            ? `${lead} and the other ${kpis.length - 1} are each counted a different way.`
+            : `Each of these ${kpis.length} is counted a different way.`,
+          lead
+            ? `${lead} and the other ${kpis.length - 1} are each measured their own way, over their own window.`
+            : `Each of these ${kpis.length} is measured its own way, over its own window.`,
+          lead
+            ? `${lead} and the other ${kpis.length - 1} each carry their own definition, window and denominator — so they do not sum, and they are not comparable side by side as printed.`
+            : `These ${kpis.length} each carry their own definition, window and denominator — so they do not sum, and they are not comparable side by side as printed.`,
+        ),
       );
     }
 
@@ -441,7 +459,12 @@ export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notab
       const { options, criteria } = block.props;
       const winner = name(options[0]?.name);
       return say(
-        `All ${criteria.length} rows count equally here${winner ? `, including for ${winner}` : ''} — your own priorities are not in the scoring.`,
+        atLevel(
+          level,
+          `All ${criteria.length} rows count the same here — what matters most to you is not in the scoring.`,
+          `All ${criteria.length} rows count equally here${winner ? `, including for ${winner}` : ''} — your own priorities are not in the scoring.`,
+          `The ${criteria.length} criteria are unweighted${winner ? `, ${winner} included` : ''}, so the ranking only holds if each one genuinely matters to you equally — weight them and it can invert.`,
+        ),
       );
     }
 
@@ -449,37 +472,72 @@ export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notab
       const events = block.props.events;
       const first = name(events[0]?.title);
       return say(
-        first
-          ? `Each step assumes the one before it landed — starting with ${first}.`
-          : 'Each step assumes the one before it landed.',
+        atLevel(
+          level,
+          first
+            ? `Each step assumes the one before it worked — starting with ${first}.`
+            : 'Each step assumes the one before it worked.',
+          first
+            ? `Each step assumes the one before it landed — starting with ${first}.`
+            : 'Each step assumes the one before it landed.',
+          first
+            ? `The sequence assumes no step slips or overlaps: a delay in ${first} shifts everything after it, and nothing here models that.`
+            : 'The sequence assumes no step slips or overlaps, and nothing here models what a delay does to the steps after it.',
+        ),
       );
     }
 
     case 'checks': {
       const items = block.props.items;
       return say(
-        `These ${items.length} checks are treated as the whole risk; what nobody thought to check is not here.`,
+        atLevel(
+          level,
+          `These ${items.length} checks are treated as the whole risk — whatever nobody thought of is not here.`,
+          `These ${items.length} checks are treated as the whole risk; what nobody thought to check is not here.`,
+          `These ${items.length} checks bound the risk only as far as the list's own coverage: unknown failure modes, and failures correlated across several items at once, sit outside it.`,
+        ),
       );
     }
 
     case 'datatable': {
       const rows = block.props.rows;
       return say(
-        `The ${rows.length} rows are taken as given — nothing here reconciles them against a source.`,
+        atLevel(
+          level,
+          `The ${rows.length} rows are taken as given — nothing here checks them.`,
+          `The ${rows.length} rows are taken as given — nothing here reconciles them against a source.`,
+          `The ${rows.length} rows are taken as given: no reconciliation, no provenance, and no cross-foot against a source happens on this card.`,
+        ),
       );
     }
 
     case 'list': {
       const items = block.props.items;
-      return say(`These ${items.length} are a set, not a ranking — the order implies nothing.`);
+      return say(
+        atLevel(
+          level,
+          `These ${items.length} are a set, not a ranking — the order means nothing.`,
+          `These ${items.length} are a set, not a ranking — the order implies nothing.`,
+          `These ${items.length} are an unordered set; reading the sequence as priority or chronology imports a claim the card never makes.`,
+        ),
+      );
     }
 
     default: {
       const title = name(props.title);
       return say(
-        title
-          ? `“${title}” is one framing of this; a different cut of the same facts is possible.`
-          : 'This is one framing of the answer — a different cut of the same facts is possible.',
+        atLevel(
+          level,
+          title
+            ? `“${title}” is one way to look at this; the same facts cut another way look different.`
+            : 'This is one way to look at the answer; the same facts cut another way look different.',
+          title
+            ? `“${title}” is one framing of this; a different cut of the same facts is possible.`
+            : 'This is one framing of the answer — a different cut of the same facts is possible.',
+          title
+            ? `“${title}” is a framing choice, and the framing does work here: the same underlying facts grouped on a different axis can support a different conclusion.`
+            : 'The framing is doing work here: the same underlying facts grouped on a different axis can support a different conclusion.',
+        ),
       );
     }
   }

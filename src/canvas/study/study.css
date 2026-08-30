@@ -1069,6 +1069,20 @@
   font-size: 16px;
   line-height: 1.55;
   color: var(--study-ink-soft);
+  /* The pacer gathers several sentences into one breath-sized utterance, so this can be a whole
+     paragraph — and the bubble is HUD-scaled while the desk shrinks beneath it, which is how a
+     long line grew down across the back arc. Bounded to a whole number of LINES: the clip lands
+     exactly on a line boundary, so no word is ever shown cut and no ellipsis is drawn. The
+     column-reverse anchors the overflow at the end, so the words being spoken now are the ones
+     in view, and the complete line is in the caption strip below either way. */
+  display: flex;
+  flex-direction: column-reverse;
+  max-height: calc(var(--study-voice-lines, 3) * 1.55em);
+  overflow: hidden;
+}
+/* A short stage lifts the back arc toward the bubble — take a line back so it still clears. */
+.study-stage[data-shallow] .study-voice-text {
+  --study-voice-lines: 2;
 }
 
 .study-voice-caret {
@@ -1549,6 +1563,14 @@
     position: static;
     max-width: none;
     margin: 0 0 14px;
+  }
+
+  /* The 3-D stage has stood down to the flat column, so there is no back arc left to collide
+     with and no reason to hold the spoken line to a few lines — it flows in full. */
+  .study-voice-text {
+    display: block;
+    max-height: none;
+    overflow: visible;
   }
 
   .study-beats-row {

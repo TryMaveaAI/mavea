@@ -56,7 +56,8 @@ export function simpleLevelMenu(): string {
     'EXPLANATION LEVEL — SIMPLE: explain this as you would to a curious beginner. ' +
     'WORDS: short sentences, everyday words, and a concrete real-world analogy for any hard idea; ' +
     'spell out jargon the first time or avoid it. The "narration", every tour "say", and every ' +
-    'block "note" follow this — warm and plain, never a lecture. ' +
+    'block "note" and "study" margin note follow this — warm and plain, never a lecture. A ' +
+    'simple "study" still teaches: keep the outside fact in "pattern", just say it in plain words. ' +
     'VISUALS: prefer FEWER, SIMPLER blocks over dense or specialized ones — reach for kpi, list, ' +
     'timeline, breakdown, a single labelled diagram, or one clear chart rather than stacking ' +
     'advanced components; cap any one figure to a handful of parts. Give EVERY block a one-line ' +
@@ -73,7 +74,9 @@ export function deepLevelMenu(): string {
     'motivated reader after the real mechanics, not a survey. ' +
     'WORDS: name the actual mechanisms, formulas, trade-offs, edge cases, and failure modes; ' +
     'quantify wherever you honestly can; use the precise domain terms (define one once in ' +
-    'passing, then use it freely). ' +
+    'passing, then use it freely). Every block "study" carries that rigor too — a real ' +
+    'assumption an expert would challenge, a "pattern" that adds the mechanism or the benchmark ' +
+    'behind the number, and a "test" a practitioner would actually run. ' +
     'VISUALS: reach for the substantive specialized components when they carry the detail ' +
     'better than the simple ones, and let the canvas run toward the larger end of the block ' +
     'budget when the topic genuinely warrants it. Depth is EXTRA rigor and coverage on top of ' +

@@ -347,6 +347,17 @@
   letter-spacing: 0.05em;
   margin-top: 3px;
 }
+/* The tile's qualifier. Sentence case at a normal weight so it reads as a caption beneath the
+   uppercase label rather than competing with it — 11px, on the legibility floor's right side. */
+.kpi-sub {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--text-muted) 78%, transparent);
+  letter-spacing: 0;
+  margin-top: 2px;
+  text-wrap: balance;
+}
 
 /* ---------- QuoteBlock ---------- */
 .quote-list {
