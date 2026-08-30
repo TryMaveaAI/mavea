@@ -34,6 +34,7 @@ import {
   str,
   arr,
   num,
+  noteRateLimited,
 } from './http';
 import { openaiResponsesUserContent } from './parts';
 import { isReasoningModel, isMinimalGlimpse, inBandErrorMessage } from './openaiCompatible';
@@ -313,6 +314,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           req.signal,
         );
         if (res.ok) break;
+        noteRateLimited(res.status);
         if (res.status === 429 && rlAttempt < RATE_LIMIT_RETRIES && !req.signal?.aborted) {
           await sleepAbortable(retryAfterMs(res, rlAttempt), req.signal);
           continue;

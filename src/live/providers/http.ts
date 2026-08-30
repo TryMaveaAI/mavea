@@ -47,6 +47,14 @@ export function recentlyRateLimited(windowMs = 60_000): boolean {
   return Date.now() - rateLimitedAt < windowMs;
 }
 
+/** Note a 429 seen OUTSIDE providerErrorDetail. The Gemini and Responses adapters retry 429s
+ *  inside their own loops and only reach an error-detail call on the FINAL failure — so a
+ *  retried-then-recovered rate limit (the common shape) never told the guard anything, and the
+ *  guard was inert on exactly the providers it was built for. */
+export function noteRateLimited(status: number): void {
+  if (status === 429) rateLimitedAt = Date.now();
+}
+
 export async function providerErrorDetail(res: Response): Promise<string> {
   if (res.status === 429) rateLimitedAt = Date.now();
   try {

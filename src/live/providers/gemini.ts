@@ -41,6 +41,7 @@ import {
   str,
   arr,
   num,
+  noteRateLimited,
 } from './http';
 import { geminiUserParts } from './parts';
 
@@ -238,6 +239,9 @@ export const geminiAdapter: ProviderAdapter = {
           for (let tries = 0; ; tries++) {
             res = await fetchWithTimeout(url, requestInit, GEN_TIMEOUT_MS, signal);
             if (res.ok) break;
+            // Even a retried-and-recovered 429 must reach the guard: speculative work checks
+            // recentlyRateLimited() before spending, and quota contention is per-minute.
+            noteRateLimited(res.status);
             if (RETRY_STATUSES.has(res.status) && tries < TRANSIENT_RETRIES && !signal.aborted) {
               await sleepAbortable(retryAfterMs(res, tries), signal);
               continue;
