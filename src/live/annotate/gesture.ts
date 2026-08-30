@@ -69,6 +69,8 @@ export interface MarkExtra {
    *  underline tucks close and flattens its sag, and the lasso shrinks its breathing room,
    *  so the stroke never runs through the words around the target. */
   tight?: boolean;
+  /** A neighbour sits inside even the tight loop's sideways reach — no honest circle exists. */
+  crowded?: boolean;
   /** Every line box of a wrapped highlight target — one marker band per line, the way a real
    *  highlighter re-touches each row. Absent (or a single box) keeps the one-band behavior. */
   rects?: Rect[];
@@ -743,7 +745,12 @@ export function strokeFor(
     // either spans most of the card OR is long enough to be a line of text rather than a label.
     const aspect = r.width / Math.max(r.height, 1);
     const isRow = aspect > 5 && (r.width > host.width * 0.6 || aspect > 12);
-    if (isRow) return { d: underline(r, host, rnd, extra?.tight), kind: 'underline' };
+    // Crowded: a neighbour sits inside even the TIGHT loop's sideways reach (the layer measured
+    // it against the card's real text), so no honest circle exists here — three lassos on
+    // adjacent table headers crossing each other is how this looks when forced. An underline
+    // stays inside the target's own width by construction.
+    if (isRow || extra?.crowded)
+      return { d: underline(r, host, rnd, extra?.tight), kind: 'underline' };
     return { d: circle(r, host, rnd, extra?.tight), kind };
   }
   if (kind === 'underline') return { d: underline(r, host, rnd, extra?.tight), kind };

@@ -502,3 +502,28 @@ describe('AnnotationLayer — the guard in the real measurement path', () => {
     }
   });
 });
+
+describe('circle — no honest loop exists beside a close neighbour', () => {
+  // Three lassos on adjacent table headers (Apple · Meta · Google) crossed each other and the
+  // neighbouring words: a circle swells sideways past its target, and the single-mark rules
+  // could not see the neighbour. The layer measures the card's real text and sets `crowded`
+  // when something sits inside even the tight loop's reach; the stroke then degrades to an
+  // underline, which stays inside the target's own width by construction.
+  const m = rect(150, 140, 40, 18);
+
+  it('degrades a crowded circle to an underline', () => {
+    const s = strokeFor('circle', m, HOST, 'seed', { crowded: true })!;
+    expect(s.kind).toBe('underline');
+    // Inside the target's own horizontal extent (plus hand wobble), so it cannot reach the
+    // neighbour that made the loop dishonest.
+    for (const { x } of coords(s.d)) {
+      expect(x).toBeGreaterThan(150 - 8);
+      expect(x).toBeLessThan(150 + 40 + 8);
+    }
+  });
+
+  it('still loops when nothing is beside it', () => {
+    expect(strokeFor('circle', m, HOST, 'seed')!.kind).toBe('circle');
+    expect(strokeFor('circle', m, HOST, 'seed', { tight: true })!.kind).toBe('circle');
+  });
+});

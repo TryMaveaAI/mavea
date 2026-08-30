@@ -1290,6 +1290,16 @@ describe('the answer example carries the answer, and nothing else', () => {
     return JSON.parse(line) as { blocks: { type: string; note?: string; study?: unknown }[] };
   }
 
+  it('makes the first note the answer, not a description of the card', () => {
+    // The Study reads the first block's note as the opening takeaway — the first thing a reader
+    // studying one card at a time sees. A first note that describes the card ("This table
+    // compares…") leaves the question unanswered on the surface built for studying the answer.
+    expect(LIVE_SYSTEM_PROMPT).toContain("THE FIRST BLOCK'S NOTE IS THE ANSWER");
+    const first = example().blocks[0].note ?? '';
+    // The exemplar's own first note states the plan, not the card.
+    expect(first).toMatch(/whole plan in one line/);
+  });
+
   it('parses, and gives every block a note', () => {
     const blocks = example().blocks;
     expect(blocks.length).toBeGreaterThan(3);

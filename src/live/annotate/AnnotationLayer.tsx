@@ -399,6 +399,33 @@ function measure(
     };
     if (occupied().some((o) => intersects(band, o, 0))) extra.tight = true;
   }
+  // A lasso swells SIDEWAYS too, and the below-band check cannot see that: on a table's header
+  // row three circles on adjacent cells crossed each other and the neighbouring words. The
+  // numbers are the circle's own geometry, not taste: at full swell the loop reaches up to
+  // padX(8) + the minRx floor's overshoot ≈ 14px past a narrow label's end, plus ~3px of hand
+  // wobble — so a neighbour inside 18px forces tight. Tight still reaches ~9px + wobble, so a
+  // neighbour inside 12px cannot be circled honestly at all and the mark degrades to an
+  // underline, which stays inside the target's own width by construction.
+  if (target.kind === 'circle') {
+    const others = occupied().filter((o) => !intersects(o, local, 0));
+    const besideWithin = (gap: number): boolean => {
+      const leftBand: Rect = {
+        left: local.left - gap,
+        top: local.top,
+        width: gap,
+        height: local.height,
+      };
+      const rightBand: Rect = {
+        left: local.left + local.width,
+        top: local.top,
+        width: gap,
+        height: local.height,
+      };
+      return others.some((o) => intersects(leftBand, o, 0) || intersects(rightBand, o, 0));
+    };
+    if (besideWithin(18)) extra.tight = true;
+    if (besideWithin(12)) extra.crowded = true;
+  }
   const stroke = strokeFor(target.kind, local, hostBox, spot, extra);
   if (!stroke) return null;
   // The numbered step chip is opaque UI, so it obeys the same law as written words: it sits in
