@@ -336,18 +336,36 @@ const COLLECTION_NOUN: Record<string, string> = {
  * countable structure at all (a paragraph, an image).
  */
 /**
- * How many things the block actually renders — the largest named collection in its props.
+ * How many things the block actually renders — the largest collection anywhere in its props.
  *
  * The Study uses it to decide how much ink a slide has EARNED, independent of how much the model
  * chose to write: measured on live turns, a small model settles on two scrawls whatever it is
  * looking at, so a four-row breakdown and a one-figure card came out annotated identically.
+ *
+ * Deliberately NOT keyed off `COLLECTION_NOUN`. That map exists to give a collection a NAME in a
+ * sentence and covers 26 prop names out of a library of 625 components whose arrays are called
+ * `bars`, `slices`, `phases`, `holders`, `rungs`, `flows` and a hundred other things — so sizing
+ * through it reported ZERO for most of the library and the floor never fired. Counting is not
+ * naming: any array counts, and one level of nesting counts too, because a single-series chart
+ * carries its twelve points one level down.
  */
 export function collectionSize(block: Block): number {
-  const props = block.props as Record<string, unknown>;
+  const widest = (value: unknown, depth: number): number => {
+    if (!Array.isArray(value)) return 0;
+    let most = value.length;
+    if (depth > 0) {
+      for (const entry of value) {
+        if (!entry || typeof entry !== 'object') continue;
+        for (const inner of Object.values(entry as Record<string, unknown>)) {
+          most = Math.max(most, widest(inner, depth - 1));
+        }
+      }
+    }
+    return most;
+  };
   let most = 0;
-  for (const [key, value] of Object.entries(props)) {
-    if (!Array.isArray(value) || !COLLECTION_NOUN[key]) continue;
-    most = Math.max(most, value.length);
+  for (const value of Object.values(block.props as Record<string, unknown>)) {
+    most = Math.max(most, widest(value, 1));
   }
   return most;
 }
@@ -357,8 +375,13 @@ function genericQuip(block: Block, seed: number): string | null {
   let best: { key: string; n: number } | null = null;
   for (const [key, value] of Object.entries(props)) {
     if (!Array.isArray(value) || value.length < 2) continue;
-    const noun = COLLECTION_NOUN[key];
-    if (!noun) continue;
+    // A numeric pair is a domain or a range, not a collection the reader counts.
+    if (value.every((entry) => typeof entry === 'number')) continue;
+    // The map NAMES a collection; it does not decide whether there is one. It covers 26 prop
+    // names against a library whose arrays are also called `bars`, `slices`, `phases` and a
+    // hundred other things, so gating on it left most of the library with no remark at all —
+    // and, once the Study started topping up sparse slides from here, nothing to top up with.
+    const noun = COLLECTION_NOUN[key] ?? 'parts';
     if (!best || value.length > best.n) best = { key: noun, n: value.length };
   }
   if (!best) return null;

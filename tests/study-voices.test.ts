@@ -3,7 +3,7 @@ import { join } from 'path';
 import { describe, expect, it } from 'vitest';
 import type { Block } from '../src/data/conversation';
 import { studyVoices } from '../src/live/content/studyVoices';
-import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
+import { collectionSize, PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
 
 // The Study pins four notes beside each object, and each has two possible authors: the model
 // (in `block.study`, written in the same call as the answer) or Mavéa's own read of the object.
@@ -208,5 +208,43 @@ describe('a dense slide gets the ink it earned, whatever the model wrote', () =>
   it('never fills more slots than the desk draws', () => {
     const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
     expect(studyVoices(rows(9, many), 0, null, 'standard')[0].marks).toHaveLength(PEN_SLOTS.length);
+  });
+});
+
+describe('collectionSize counts what the block renders, not what the prop is called', () => {
+  // The noun map it used to read covers 26 prop names against a library of 625 components, so
+  // sizing through it reported ZERO for most of them and the density floor silently never fired
+  // — the same hand-maintained-allowlist failure the blank-content guard had.
+  const size = (props: Record<string, unknown>): number =>
+    collectionSize({ type: 'x', col: 6, props } as unknown as Block);
+
+  it('counts an array whatever it is named', () => {
+    const five = Array.from({ length: 5 }, (_, i) => ({ label: `${i}` }));
+    for (const key of ['rows', 'bars', 'slices', 'phases', 'holders', 'rungs', 'flows']) {
+      expect(size({ [key]: five }), key).toBe(5);
+    }
+  });
+
+  it('reaches one level down, where a single-series chart keeps its points', () => {
+    expect(size({ series: [{ name: 'Savings', data: [1, 2, 3, 4, 5, 6, 7, 8] }] })).toBe(8);
+  });
+
+  it('is zero for a block that renders no collection at all', () => {
+    expect(size({ title: 'ARR', stat: '$15.1M' })).toBe(0);
+  });
+
+  it('drives the floor for a block the noun map never knew about', () => {
+    const block = {
+      type: 'comparematrix',
+      id: 'live-1',
+      col: 12,
+      props: {
+        title: 'VR vs spatial',
+        // `bars` is not one of the 26 names the noun map knows — which is the whole point.
+        bars: Array.from({ length: 6 }, (_, i) => ({ label: `Bar ${i}`, value: i })),
+      },
+      study: { scrawls: ['VR = escape', 'Spatial = augment'] },
+    } as unknown as Block;
+    expect(studyVoices(block, 0, null, 'standard')[0].marks!.length).toBeGreaterThan(2);
   });
 });
