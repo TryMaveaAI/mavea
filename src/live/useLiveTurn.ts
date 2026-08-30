@@ -26,6 +26,7 @@ import { saveCanvas } from './library/store';
 import type { SavedSession } from './session/store';
 import { createTurnFrameId, type TurnFrame } from './history';
 import type { ChatMessage } from './providers/types';
+import { recentlyRateLimited } from './providers/http';
 import type { Attachment } from './attachments';
 import { isSpeaking, type SpokenLine } from '../voice/tts';
 import { bounded } from '../lib/bounded';
@@ -1411,7 +1412,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // the ones actually likely to be tapped. On 'fast'/'balanced' a chip generates on tap.
       const prefetchCfg = getConfig();
       const prefetchCaps = getCaps?.();
-      if (prefetchCaps?.quality === 'thorough') {
+      // Never speculate in the shadow of a rate limit. Quotas are per-minute, and measured on a
+      // free-tier key the prefetches from one answer exhausted it — the user's NEXT question
+      // then 429'd three times before landing. An interactive turn always outranks a
+      // speculative one, so a recent 429 simply skips the prefetch round; taps generate fresh.
+      if (prefetchCaps?.quality === 'thorough' && !recentlyRateLimited()) {
         const chips = renderedSpec.suggests ?? [];
         const recentForPrefetch = [...usedTypesRef.current];
         // Filed under exactly the key the TAP will compute: this turn's config, this turn's

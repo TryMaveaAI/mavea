@@ -33,7 +33,22 @@ export async function fetchWithTimeout(
  * the JSON shape every provider uses — `{ error: { message, type|status|code } }`. Trimmed hard, so
  * no key, header, or whole body can ride along. Never throws: no detail is always an acceptable answer.
  */
+/* When any provider last answered 429 (epoch ms), noted by providerErrorDetail below —
+ * the one chokepoint every adapter's error path already flows through. */
+let rateLimitedAt = 0;
+
+/**
+ * Whether a provider rate-limited us inside the given window. Speculative work (chip prefetch,
+ * background enrichment) checks this before spending: quotas are per-minute, so a speculative
+ * call made in the shadow of a 429 doesn't just fail — it eats the budget the user's NEXT
+ * interactive turn needs, which is how one question came to retry three times before landing.
+ */
+export function recentlyRateLimited(windowMs = 60_000): boolean {
+  return Date.now() - rateLimitedAt < windowMs;
+}
+
 export async function providerErrorDetail(res: Response): Promise<string> {
+  if (res.status === 429) rateLimitedAt = Date.now();
   try {
     const text = (await res.text()).slice(0, 2000);
     if (!text) return '';

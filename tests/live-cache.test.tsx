@@ -407,3 +407,21 @@ describe('chip prefetch — bought once, never twice, never for the wrong moment
     expect(timesAsked('Tell me more')).toBe(2);
   });
 });
+
+describe('speculation never spends in the shadow of a rate limit', () => {
+  // Quotas are per-minute. Measured on a free-tier key: one answer's chip prefetches exhausted
+  // it, and the user's NEXT question 429'd three times before landing — the speculative calls
+  // were taxing the interactive one. A recent 429 skips the prefetch round; taps generate fresh.
+  it('skips the prefetch round after a provider 429', async () => {
+    const { providerErrorDetail, recentlyRateLimited } = await import('../src/live/providers/http');
+    expect(recentlyRateLimited()).toBe(false);
+    await providerErrorDetail(
+      new Response('{"error":{"message":"rate limited","status":"RESOURCE_EXHAUSTED"}}', {
+        status: 429,
+      }),
+    );
+    expect(recentlyRateLimited()).toBe(true);
+    // The window is a minute — the next turn's own tail checks it fresh.
+    expect(recentlyRateLimited(0)).toBe(false);
+  });
+});
