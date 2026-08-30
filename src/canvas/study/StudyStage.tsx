@@ -18,7 +18,7 @@ import { condenseForNote } from '../../live/annotate/marginNote';
 import { deriveStudyScene } from './scene';
 import { BACK_SLOTS, CARD_W, CONNECT_SLOT, FRONT_SLOT, SLOT_ORDER } from './slots';
 import type { StudyAside, StudyNoteKind } from './types';
-import type { PenMark, PenSlot } from '../../live/content/penQuip';
+import { PEN_MARK_MAX, PEN_SLOTS, type PenMark, type PenSlot } from '../../live/content/penQuip';
 import { fitVoiceLine } from './voiceFit';
 import { useStudyScale } from './useStudyScale';
 import { useAmbientPause } from '../../hooks/useInView';
@@ -415,16 +415,30 @@ export function StudyStage({
       }
     }
   }
-  // The card's scrawls. A live walk's own written line, when there is one, takes the left slot
-  // (it is what she just SAID about this object); the structural marks fill the rest.
+  // The card's scrawls. A live walk's own written line, when there is one, takes the left slot —
+  // it is what she just SAID about this object, so it is the one the arrow should point with.
+  //
+  // Two rules the first version got wrong. It DISPLACED whatever was already in the left slot,
+  // which silently cost the card one of the model's own scrawls; the displaced one now moves to
+  // the next free slot instead. And it condensed with an ellipsis: a scrawl reading "Your needs
+  // are the non-negotiables, like…" is handwriting cut off mid-thought. `condenseForNote`
+  // returns the first SENTENCE when that fits, so a line that fits whole is used and one that
+  // does not is left out — the walk's words are still in the session notes either way.
   const structural = activeNotes[0]?.marks ?? [];
-  const walkMark = walkNote ? condenseForNote(walkNote, 46) : '';
-  const allMarks: PenMark[] = walkMark
-    ? [
-        { text: walkMark, slot: 'left' as const },
-        ...structural.filter((mark) => mark.slot !== 'left'),
-      ]
-    : [...structural];
+  const condensed = walkNote ? condenseForNote(walkNote, PEN_MARK_MAX) : '';
+  const walkMark = condensed.endsWith('…') ? '' : condensed;
+  let allMarks: PenMark[] = [...structural];
+  if (walkMark) {
+    const displaced = structural.find((mark) => mark.slot === 'left');
+    const kept = structural.filter((mark) => mark.slot !== 'left');
+    const taken = new Set<PenSlot>(['left', ...kept.map((mark) => mark.slot)]);
+    const free = PEN_SLOTS.find((slot) => !taken.has(slot));
+    allMarks = [
+      { text: walkMark, slot: 'left' },
+      ...kept,
+      ...(displaced && free ? [{ ...displaced, slot: free }] : []),
+    ];
+  }
   const deskMarks = allMarks;
 
   // Session notes: one line per beat the reader has actually visited — the walk's written line

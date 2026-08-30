@@ -5,6 +5,7 @@ import { TopicCanvas } from '../src/canvas/TopicCanvas';
 import { StudyStage } from '../src/canvas/study/StudyStage';
 import { deriveStudyScene } from '../src/canvas/study/scene';
 import { BACK_CAP } from '../src/canvas/study/slots';
+import { studyVoices } from '../src/live/content/studyVoices';
 
 function block(id: string, title: string): Block {
   return {
@@ -322,5 +323,55 @@ describe('TopicCanvas — Live Study path', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Everything' }));
     expect(onViewMode).toHaveBeenCalledWith('everything');
+  });
+});
+
+describe('the walk note joins the margin without costing a scrawl', () => {
+  // A guided walk writes its own line beside the object on the desk. It takes the left slot,
+  // because it is what Mavéa just said about that card — but it used to REPLACE whatever the
+  // model had written there, so a slide silently lost one of its own scrawls the moment the
+  // walk reached it. And it was condensed with an ellipsis, which renders as handwriting cut
+  // off mid-thought ("Your needs are the non-negotiables, like…").
+  const scrawled: Block[] = [
+    {
+      ...block('a', 'Needs'),
+      study: {
+        scrawls: ['rent is the only fixed one', 'groceries flex first', 'utilities swing'],
+      },
+    } as Block,
+    block('b', 'Wants'),
+  ];
+
+  function open(walk: { spot: string; text: string }[]) {
+    render(
+      <StudyStage
+        data={spec(scrawled)}
+        blocks={scrawled}
+        spot="a"
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+        asides={{ a: studyVoices(scrawled[0], 0, null, 'standard') }}
+        walkNotes={walk}
+      />,
+    );
+  }
+
+  it('keeps every model scrawl when the walk writes its own line', () => {
+    open([{ spot: 'a', text: 'Rent is the one to watch.' }]);
+    const texts = [...document.querySelectorAll('.study-mark')].map((n) => n.textContent ?? '');
+    expect(texts).toContain('Rent is the one to watch.');
+    for (const scrawl of scrawled[0].study!.scrawls!) expect(texts).toContain(scrawl);
+  });
+
+  it('never shows a scrawl cut off mid-thought', () => {
+    open([
+      {
+        spot: 'a',
+        text: 'Your needs are the non-negotiables, like housing and utilities and transport',
+      },
+    ]);
+    const texts = [...document.querySelectorAll('.study-mark')].map((n) => n.textContent ?? '');
+    for (const text of texts) expect(text).not.toContain('…');
+    // The line that could not fit is simply left out; the model's own scrawls still stand.
+    for (const scrawl of scrawled[0].study!.scrawls!) expect(texts).toContain(scrawl);
   });
 });

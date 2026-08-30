@@ -11,7 +11,7 @@ import {
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
 import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
-import { STUDY_MARKS_MAX } from '../src/engine/liveSchema';
+import { STUDY_INK_MAX, STUDY_MARKS_MAX } from '../src/engine/liveSchema';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -1314,13 +1314,25 @@ describe('the few-shot example obeys the contract it teaches', () => {
     }
   });
 
-  it('shows a VARYING scrawl count, so the example teaches judgement not a fixed number', () => {
-    const counts = example().blocks.map(
-      (b) => ((b.study as unknown as { scrawls?: string[] })?.scrawls ?? []).length,
-    );
-    expect(new Set(counts).size, `counts were ${counts.join(',')}`).toBeGreaterThan(2);
-    expect(Math.min(...counts)).toBe(1);
-    expect(Math.max(...counts)).toBe(PEN_SLOTS.length);
+  it('scales its ink with the block, so the example teaches the rule not a fixed number', () => {
+    // The example is the strongest instruction in the prompt: a model copies the density it
+    // sees far more reliably than the density it is told. So the example has to obey the count
+    // rule it states — dense blocks near the ceiling, a single-figure card nowhere near it.
+    const ink = example().blocks.map((b) => {
+      const st = b.study as unknown as { scrawls?: string[]; marks?: unknown[] };
+      return { type: b.type, scrawls: (st?.scrawls ?? []).length, marks: (st?.marks ?? []).length };
+    });
+    const total = ink.map((i) => i.scrawls + i.marks);
+    expect(new Set(total).size, `totals were ${total.join(',')}`).toBeGreaterThan(2);
+    // Nothing exceeds the budget, and the densest block actually approaches it.
+    for (const i of ink) expect(i.scrawls + i.marks, i.type).toBeLessThanOrEqual(STUDY_INK_MAX);
+    expect(Math.max(...total)).toBeGreaterThanOrEqual(STUDY_INK_MAX - 3);
+    // A six-row breakdown fills every margin slot; a one-figure insight uses one of each.
+    const dense = ink.find((i) => i.type === 'breakdown')!;
+    expect(dense.scrawls).toBe(PEN_SLOTS.length);
+    expect(dense.marks).toBeGreaterThanOrEqual(7);
+    const sparse = ink.find((i) => i.type === 'insight')!;
+    expect(sparse.scrawls + sparse.marks).toBeLessThanOrEqual(3);
   });
 
   it('states the requirement in the prompt body, not only by example', () => {
