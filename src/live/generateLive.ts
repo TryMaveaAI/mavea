@@ -1003,11 +1003,14 @@ export async function generateLive(
   // Gemini's systemInstruction, the Responses `instructions`). These five used to ride the
   // uncached per-turn tail — ~1.6k chars of prompt processing re-paid every turn for text that
   // never changed. The model reads the same words; the provider stops re-billing them.
+  // Complexity-INDEPENDENT text first, keyed text after: a session mixes brief and rich turns,
+  // and provider prefix-caching matches the longest common prefix — this order keeps every
+  // complexity sharing the base prompt plus the first two directives before they diverge.
   const stableDirectives = [
     NARRATION_FIRST_LINE,
+    documentLine(),
     spokenLineDirective(complexity),
     complexity === 'rich' ? rhythmDirective() : '',
-    documentLine(),
     complexity === 'rich' && tier !== 'small' ? conceptSectionsDirective() : '',
   ]
     .filter(Boolean)
