@@ -29,6 +29,7 @@ import {
 import type { ModelConfig } from '../types/mavea';
 import { catalogFacts } from '../canvas/blocks/catalog/facts';
 import { ensureDetails } from '../canvas/blocks/catalog/details';
+import { preloadBlockFamilies } from '../canvas/blocks/loader';
 import { getAdapter } from './providers';
 import { PROVIDER_BLOCKED, PROVIDER_EMPTY, PROVIDER_THINKING_BUDGET } from './providers/http';
 import { isReasoningModel } from './providers/openaiCompatible';
@@ -423,13 +424,17 @@ function outputBudget(
   // Thinking tokens draw from the SAME output budget on both Gemini and Anthropic.
   // Gemini always needs headroom (it thinks at every non-minimal level); Anthropic only
   // when thinking actually activates (adaptive mode fires on medium/high effort turns).
+  // 'low' reserves 1500, not 500: thinking is metered out of maxOutputTokens on Gemini, and a
+  // real low pass runs to the low hundreds-to-~1200 tokens — at 500 the pass could eat the
+  // JSON's own allowance, truncate the canvas, and buy a whole second call to recover it. The
+  // ceiling-not-a-purchase argument below applies here too: unused reserve costs nothing.
   const thinkHeadroom =
     thinkingLevel === 'high'
       ? 1500
       : thinkingLevel === 'medium'
         ? 900
         : thinkingLevel === 'low'
-          ? 500
+          ? 1500
           : 200;
   // An OpenAI-style reasoning model (gpt-5.x, the o-series, Grok) is the harshest case of all: it
   // spends its reasoning tokens FIRST and out of this very budget, and if it runs out mid-thought it
@@ -1510,6 +1515,10 @@ export async function generateLive(
     // be labeled without the turn state reaching the catalog itself.
     if (opts.onPending) {
       const pending = blockStream.pendingType();
+      // The type name streams hundreds of tokens before its props close — starting the family
+      // chunk fetch here buys the whole remainder of the block's stream time, so on a cold
+      // cache the first card's renderer is usually resident by the time the card can mount.
+      if (pending) void preloadBlockFamilies([{ type: pending } as Block]);
       if (pending !== lastPending) {
         lastPending = pending;
         opts.onPending(pending ? (catalogFacts(pending)?.dataShapes?.[0] ?? null) : null);
@@ -1745,6 +1754,11 @@ export async function generateLive(
       const out2 = await adapter.generate(
         {
           ...baseReq,
+          // The retry keeps the FULL per-turn system, unlike the repair pass below: a repair
+          // restructures JSON it is handed verbatim, but a recovery RE-COMPOSES the answer, and
+          // the per-turn directives (today's date, the topic lock, a lesson's spine, the search
+          // rules) are part of what composing correctly means. Trimming them was tried and read
+          // as a saving; it was a quality cut on exactly the fragile turns.
           history: [...sendHistory, { role: 'user', content: userForModel }],
           user: recoverInstruction(userText, floor),
           maxTokens: outputBudget(

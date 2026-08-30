@@ -996,6 +996,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         if (ctrl.signal.aborted) return;
         if (early && !early.error && early.spec.blocks.length > 0) reused = early;
       }
+      // The engine chunk fetch overlaps the disk read below — both were serial, and neither
+      // needs the other. The promise is joined (and its failure surfaced) at the await further
+      // down; catching here only prevents an unhandled-rejection race in between.
+      const enginePromise = turnEngine();
+      enginePromise.catch(() => {});
       if (!reused && !uniqueInput) {
         reused = await readPersistedAnswer(diskKey);
         if (ctrl.signal.aborted) return;
@@ -1038,7 +1043,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // unhandled promise rejection in the console. Fail the way a provider error fails instead.
         let engine: Awaited<ReturnType<typeof turnEngine>>;
         try {
-          engine = await turnEngine();
+          engine = await enginePromise;
         } catch {
           if (ctrl.signal.aborted) return;
           dispatch({
