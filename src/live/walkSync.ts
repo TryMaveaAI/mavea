@@ -70,6 +70,17 @@ export function spokenMs(text: string, dwell = 1700): number {
   return Math.min(7_000, Math.max(1_500, Math.round(trimmed.split(/\s+/).length * 385 + 500)));
 }
 
+/** The same curve WITHOUT the 7s cap — for the one wait that is genuinely about a long text:
+ *  holding the walk while the opener (a rich narration can run ~320 chars) finishes. Capping
+ *  that estimate at 7s let the failure-only ceiling cut a real opener mid-read on long answers
+ *  at slow voice speeds. Everything else keeps spokenMs's cap: a per-stop line is short by
+ *  construction, and the cap is what stops a bad estimate stalling a walk. */
+export function spokenMsUncapped(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 1_700;
+  return Math.max(1_500, Math.round(trimmed.split(/\s+/).length * 385 + 500));
+}
+
 /** Plain cancellable-by-neglect delay; the caller re-checks its own cancel flags after it. */
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

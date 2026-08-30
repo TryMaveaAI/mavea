@@ -88,7 +88,12 @@ describe('VadVoice barge-in — fires only on sustained speech, never on a brief
     expect(onBargeIn).not.toHaveBeenCalled();
   });
 
-  it('does not treat an onset inside the echo tail as a barge-in even once sustained', () => {
+  it('redeems a tail-onset that SUSTAINS — a real interjection is never swallowed by the tail', () => {
+    // The tail exists for blips (the case above). It used to also veto SUSTAINED speech
+    // whenever Mavéa's next line had resumed — which is exactly when a listener interjects —
+    // so words begun in the beat after a sentence ended simply vanished: no transcript, no
+    // barge-in, and the mic felt dead mid-walk. Browser AEC plus the sustained-frames gate is
+    // the real defence against bleed; sustained speech in the tail is a person.
     vi.useFakeTimers();
     vi.setSystemTime(1_000_000);
     try {
@@ -98,9 +103,9 @@ describe('VadVoice barge-in — fires only on sustained speech, never on a brief
       v.setMaveaSpeaking(true);
       v.setMaveaSpeaking(false); // stamps the 600ms echo tail
       v.setMaveaSpeaking(true); // Mavéa is audibly playing again
-      v.handleSpeechStart(); // onset within the tail → utteranceIsEcho = true
-      v.handleSpeechRealStart(); // even if it sustains, it's still echo
-      expect(onBargeIn).not.toHaveBeenCalled();
+      v.handleSpeechStart(); // onset within the tail → provisionally echo
+      v.handleSpeechRealStart(); // …but it SUSTAINED: this is the user, interrupting
+      expect(onBargeIn).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

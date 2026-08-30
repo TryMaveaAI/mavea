@@ -104,7 +104,37 @@ let voiceGain = 1;
  *  (whisper hours) rather than overwriting it, and applies to the clip already playing so
  *  muting mid-sentence is instant. */
 let outputMuted = false;
-const effectiveGain = (): number => (outputMuted ? 0 : voiceGain);
+/** Barge-in duck — a third composing factor, deliberately NOT setVoiceGain (whisper hours own
+ *  that, and a duck-restore to 1 would clobber the whisper level). While the mic hears speech
+ *  onset over Mavéa's playback, her voice drops to a murmur INSTANTLY instead of talking over
+ *  the user at full volume for the ~300-500ms it takes the VAD to confirm sustained speech —
+ *  the window the user described as "the mic usage is shit when the audio is going". A false
+ *  onset restores just as fast, so a cough never mutes her mid-thought. */
+let duckGain = 1;
+const DUCK_LEVEL = 0.15;
+const DUCK_RAMP_S = 0.05;
+const effectiveGain = (): number => (outputMuted ? 0 : voiceGain * duckGain);
+
+/** Duck (or restore) live playback under user speech. Ramped, not stepped — a bare value
+ *  assignment clicks exactly the way cancel used to before CANCEL_FADE_S. */
+export function duckOutput(on: boolean): void {
+  duckGain = on ? DUCK_LEVEL : 1;
+  // Element sinks (the blob fallback, the preview) have no ramp — they take the level directly.
+  for (const el of boundSinks) el.volume = effectiveGain();
+  if (active) {
+    try {
+      const g = active.gain.gain;
+      const ctx = active.ctx;
+      g.cancelScheduledValues(ctx.currentTime);
+      g.setValueAtTime(g.value, ctx.currentTime);
+      g.linearRampToValueAtTime(effectiveGain(), ctx.currentTime + DUCK_RAMP_S);
+      return;
+    } catch {
+      /* fall through to the hard apply below */
+    }
+  }
+  applyOutputGain();
+}
 
 /** HTMLAudio sinks that must obey the SAME output policy but can't live on the WebAudio graph:
  *  the whole-clip blob fallback (kokoro.ts) and the voice preview. Registered only while their

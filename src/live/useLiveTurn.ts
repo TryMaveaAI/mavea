@@ -1130,7 +1130,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             // The narration field CLOSING is the end of speech — not the end of the response, which
             // is a whole canvas later — so a short answer's last sentence is released here, not
             // held until the final block has streamed.
-            const utterance = pacer.push(say, prog.done);
+            // Coalescing only pays while prior audio covers the wait. With the queue truly
+            // idle, holding sentences is AUDIBLE silence — the voice stalls mid-opener then
+            // dumps a burst — so a quiet queue flushes what is held.
+            const utterance = pacer.push(say, prog.done || !isSpeaking());
             if (utterance) speakWhenVisible(utterance);
           },
           {

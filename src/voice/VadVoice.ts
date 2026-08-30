@@ -12,6 +12,7 @@
 // after). The always-on lifecycle is controlled by LiveApp (start on toggle/turn-
 // end, stop when Mavéa is responding).
 import { floatToWavChunked } from './encodeWav';
+import { duckOutput } from './streamTts';
 import type {
   SpeakOptions,
   VoiceCapabilities,
@@ -279,6 +280,7 @@ export class VadVoice implements VoiceController {
   }
 
   dispose(): void {
+    duckOutput(false);
     this.disposed = true;
     this.wantRunning = false;
     this.sessionId += 1;
@@ -421,6 +423,8 @@ export class VadVoice implements VoiceController {
   }
 
   private pauseVad(): void {
+    // A paused mic can never restore the duck later — never leave her voice stuck at a murmur.
+    duckOutput(false);
     if (!this.vad) return;
     void Promise.resolve(this.vad.pause())
       .catch(() => {})
@@ -488,6 +492,12 @@ export class VadVoice implements VoiceController {
   private handleSpeechStart(): void {
     if (this.muted) return;
     this.clearSpeechEnding();
+    // Duck Mavéa the INSTANT the mic hears anything over her playback. Barge-in proper waits
+    // for sustained speech (below), but that confirmation takes ~300-500ms — a window in which
+    // she used to keep talking over the user at full volume. Her voice dropping to a murmur is
+    // both the acknowledgment ("I hear you") and what gives the capture a clean signal. A blip
+    // that never becomes real speech restores in handleMisfire.
+    if (this.maveaSpeaking) duckOutput(true);
     // Speech in the post-playback echo tail is residual speaker bleed — drop it.
     this.utteranceIsEcho = Date.now() < this.echoTailUntil;
     this.utteranceFrames = this.preRollFrames;
@@ -503,15 +513,17 @@ export class VadVoice implements VoiceController {
    *  of TTS bleed. If Mavéa is mid-answer, THIS is the confirmed barge-in. */
   private handleSpeechRealStart(): void {
     if (this.muted) return;
-    // Once VAD confirms sustained speech after playback, treat it as a fast user reply rather
-    // than letting the conservative echo tail swallow their opening words.
-    if (this.utteranceIsEcho && !this.maveaSpeaking) {
+    // Once VAD confirms SUSTAINED speech, redeem the echo-tail veto unconditionally. The veto
+    // used to stand whenever Mavéa's next line had already resumed — which is exactly when a
+    // listener interjects — so words begun in the beat after a sentence ended simply vanished:
+    // no transcript, no barge-in, and the mic felt dead mid-walk. Browser AEC plus the
+    // sustained-frames gate is the real defence against bleed; the tail only exists for blips.
+    if (this.utteranceIsEcho) {
       this.utteranceIsEcho = false;
       this.utteranceFrames = [...this.utteranceFrames, ...this.preRollFrames];
       this.preRollFrames = [];
       this.emitState({ phase: 'listening' });
     }
-    if (this.utteranceIsEcho) return;
     if (this.maveaSpeaking) this.onBargeIn?.();
   }
 
@@ -520,6 +532,8 @@ export class VadVoice implements VoiceController {
   private handleMisfire(): void {
     this.clearBargeInTimer();
     this.clearSpeechEnding();
+    // The onset duck was provisional; a blip that never became speech gives her voice back.
+    duckOutput(false);
     this.utteranceIsEcho = false;
     this.utteranceFrames = [];
     // Tap/Hold own one attempt. A too-short noise must release their stream too; otherwise the UI
@@ -532,6 +546,9 @@ export class VadVoice implements VoiceController {
   }
 
   private handleSpeechEnd(audio: Float32Array): void {
+    // Speech is over — whatever happens next (transcription, submit, resume), Mavéa's voice
+    // comes back to level. If barge-in cancelled her there is nothing playing and this is free.
+    duckOutput(false);
     this.clearBargeInTimer();
     this.clearSpeechEnding();
     // Drop the whole utterance if it started during Mavéa's playback — it's TTS echo, not the

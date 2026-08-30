@@ -90,6 +90,8 @@ import {
   waitQueueQuiet,
   delay,
   finishCapMs,
+  spokenMs,
+  spokenMsUncapped,
   MIN_STOP_MS,
   PREPARE_CUE_DELAY_MS,
   SETTLE_TIMEOUT_MS,
@@ -168,7 +170,7 @@ import {
 } from './voice';
 import { useTurnLatency, formatLatency } from './voice/useTurnLatency';
 import type { HeroContent } from './voice/heroSource';
-import { AnnotationLayer, BADGE_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
+import { AnnotationLayer, BADGE_MS, MARK_DRAW_MS, MARK_STEP_MS } from './annotate/AnnotationLayer';
 import { GestureTrack, type GestureEntry } from './annotate/GestureTrack';
 import { PenPill } from './annotate/PenPill';
 import { isTeachAsk } from './annotate/teach';
@@ -1359,6 +1361,18 @@ export function LiveApp(): ReactElement {
     }
     return m;
   }, [turn.tour, turn.spec]);
+  // The SHOWN side of each stop's line, keyed the same way. Stop 0 needs it because its beat
+  // caption is the OPENER (generateBeats hands beat 0 the narration), so lighting stop 0 with
+  // its caption would put the whole summary in the strip while the voice says one line.
+  const tourShownById = useMemo(() => {
+    const m = new Map<string, string>();
+    const blocks = turn.spec?.blocks ?? [];
+    for (const t of turn.tour) {
+      const id = blocks[t.index]?.id;
+      if (id && t.say) m.set(id, t.say);
+    }
+    return m;
+  }, [turn.tour, turn.spec]);
   // The model's drawn-gesture requests, keyed the same way — each stop may name the exact
   // on-block text Mavéa should circle/underline/arrow while speaking that stop's line.
   const tourMarkById = useMemo(() => {
@@ -2497,7 +2511,9 @@ export function LiveApp(): ReactElement {
       // The written aside, at the moment it is said. A voiced walk used to leave nothing behind:
       // notes were emitted only by the muted planner, so a lesson you LISTENED to could not be
       // re-read. Stop 0 is skipped — it is the opener, already permanent in the answer hero.
-      if (spot && withNotes && line && idx !== undefined && idx > 0) {
+      // idx 0 qualifies now: since the stop-0 restructure it is only ever applied with its own
+      // per-stop line (never the opener), so its note is a real remark like any other stop's.
+      if (spot && withNotes && line && idx !== undefined) {
         const noteText = condenseForNote(line);
         if (noteText)
           ink(spot, line, undefined, undefined, undefined, undefined, undefined, noteText);
@@ -2509,12 +2525,19 @@ export function LiveApp(): ReactElement {
         // explains that specific datum, like a teacher building up the point.
         const stopMarks = tourMarksById.get(spot);
         if (stopMarks?.length) {
-          const totalBadge = BADGE_MS + (stopMarks.length - 1) * MARK_STEP_MS;
+          // Spread the strokes across the LINE'S audio rather than a fixed 900ms clock. The old
+          // pacing was decoupled from the words: on a long line the pen finished every gesture
+          // seconds before the voice reached those data points; on a short one the walk advanced
+          // while ink was still drawing on the dimmed previous card. The step is derived so the
+          // LAST stroke completes as the line ends (spokenMs is a 155wpm estimate, not word-level
+          // sync — close enough that ink and voice arrive at a datum together).
+          const step = markStepFor(line, stopMarks.length);
+          const totalBadge = BADGE_MS + (stopMarks.length - 1) * step;
           // A lone mark just draws — the numbered chip only earns its keep once there's an
           // actual order to show (2+ marks reading as a step-by-step walk).
           const sequence = stopMarks.length > 1;
           for (let mi = 0; mi < stopMarks.length; mi++) {
-            const delayMs = mi * MARK_STEP_MS;
+            const delayMs = mi * step;
             // Only the last mark in a sequence carries the extended badge duration, since
             // each SpotInk sets its own badge timer — the last one's timer runs longest.
             const badgeMs = mi === stopMarks.length - 1 ? totalBadge : undefined;
@@ -2538,6 +2561,12 @@ export function LiveApp(): ReactElement {
     // fall through to the normal step(). Voice must actually be live to bother: muted has
     // nothing to sync to, and reduced motion means the diagram already shows its finished
     // figure with no steps to walk.
+    // One stop's mark cadence: spread `count` strokes so the last completes as the line ends,
+    // never tighter than the hand's own MARK_STEP_MS floor.
+    const markStepFor = (lineText: string | undefined, count: number): number =>
+      count > 1
+        ? Math.max(MARK_STEP_MS, (spokenMs(lineText ?? '') - MARK_DRAW_MS) / (count - 1))
+        : 0;
     const advance = (spot: string | null | undefined): void => {
       const claimed =
         spot && !mutedRef.current && !prefersReducedMotion() ? claimStepper(spot) : null;
@@ -2597,9 +2626,44 @@ export function LiveApp(): ReactElement {
     ): Promise<void> => {
       const estimateMs = beat.ms ?? 1700;
       // Stop 0 carries the opener, already queued sentence-by-sentence while the answer
-      // streamed — never double-speak it. Light it now and hold until the queue drains, so
-      // the walk starts moving exactly when the opener stops talking.
-      if (idx === 0 || !spokenLine) {
+      // streamed — never double-speak it. It used to ALSO light the first card and draw its
+      // marks immediately, so on every spoken walk the opening spotlight and its ink played
+      // against the whole-answer summary, and the line the model wrote about that card was
+      // never heard — the single largest audio/visual mismatch in a walk. Now the canvas rests
+      // on the turn's own landing spotlight while the opener reads (its cap sized to the
+      // opener's REAL length — the 7s-capped estimate let the failure ceiling cut a long one),
+      // and only then does stop 0 speak its own line and light with it, exactly like any other
+      // stop. `ownLine` is STRICTLY the tour's spoken twin — the caption fallback IS the
+      // opener, and re-speaking it would read the whole summary twice.
+      if (idx === 0) {
+        const ownLine = spot ? tourSpokenById.get(spot) : undefined;
+        if (ownLine) primeLine(ownLine, 'mavea');
+        else primeNextSpoken(idx);
+        await waitQueueQuiet({
+          floorMs: MIN_STOP_MS,
+          capMs: finishCapMs(spokenMsUncapped(line ?? '')),
+        });
+        if (bail()) return;
+        if (!ownLine) {
+          advance(spot);
+          return;
+        }
+        const shown = spot ? tourShownById.get(spot) : undefined;
+        const handle = speak(ownLine);
+        const heard = await waitLineStart(handle);
+        if (bail()) return;
+        applyStop(spot, shown ?? ownLine, idx);
+        primeNextSpoken(idx);
+        if (heard) {
+          await waitLineEnd(handle, spokenMs(ownLine));
+        } else {
+          await delay(spokenMs(ownLine));
+        }
+        if (bail()) return;
+        advance(spot);
+        return;
+      }
+      if (!spokenLine) {
         applyStop(spot, line, idx);
         primeNextSpoken(idx);
         await waitQueueQuiet({ floorMs: MIN_STOP_MS, capMs: finishCapMs(estimateMs) });

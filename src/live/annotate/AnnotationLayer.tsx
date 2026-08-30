@@ -474,6 +474,10 @@ function measure(
 // draw sequentially (delayMs > 0), the caller extends this per-mark step below.
 const BADGE_MS = 2400;
 const MARK_STEP_MS = 900;
+/** How long ONE gesture takes to fully draw: the stroke's 1s ink-draw keyframe plus the
+ *  arrowhead's 0.96s + 0.28s follow-through. Exported so the walk can spread a stop's marks
+ *  across its LINE's audio and still know when the last stroke lands. */
+export const MARK_DRAW_MS = 2_240;
 
 function SpotInk({
   spot,
