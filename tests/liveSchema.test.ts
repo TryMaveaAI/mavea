@@ -1302,6 +1302,23 @@ describe('the answer example carries the answer, and nothing else', () => {
     expect(LIVE_SYSTEM_PROMPT).not.toContain('scrawls');
   });
 
+  it('opens by saying what the job is, before it says what the JSON looks like', () => {
+    // The model's first instruction used to be "reply with ONLY a single JSON object" followed
+    // by the schema — 24k chars of presentation before anything asked it to ANSWER, which is
+    // how replies started surveying a question instead of settling it. A prompt's first and
+    // last positions are its strongest; answering holds both now.
+    const opening = LIVE_SYSTEM_PROMPT.slice(0, 600);
+    expect(opening).toContain('ANSWER THE QUESTION');
+    expect(opening.indexOf('ANSWER THE QUESTION')).toBeLessThan(
+      LIVE_SYSTEM_PROMPT.indexOf('single JSON object'),
+    );
+  });
+
+  it('requires the spoken line to open with the answer, not the topic', () => {
+    const narration = LIVE_SYSTEM_PROMPT.slice(LIVE_SYSTEM_PROMPT.indexOf('- "narration":'));
+    expect(narration.slice(0, 700)).toMatch(/FIRST sentence must be the answer/);
+  });
+
   it('closes on answering the question, which is the slot the notes used to hold', () => {
     // The prompt's last instruction before the example is its strongest; margin notes held that
     // slot while answers were glossing. Answering holds it now.
