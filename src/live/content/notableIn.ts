@@ -389,12 +389,26 @@ export function assumptionIn(block: Block, level: NoteLevel = 'standard'): Notab
           ),
         );
       }
+      // Seen in the wild: an insight with NEITHER stat nor delta interpolated the literal word
+      // "undefined" into handwriting. A prose insight has no figure to doubt — its assumption
+      // is the framing, same as the default branch reads every other prose block.
+      const subject = stat ?? delta;
+      if (!subject) {
+        return say(
+          atLevel(
+            level,
+            'This is one way to look at it; the same facts cut another way look different.',
+            'This claim is stated without the working that produced it.',
+            'This claim is stated without its derivation, so it cannot be re-computed or audited from this card alone.',
+          ),
+        );
+      }
       return say(
         atLevel(
           level,
-          `${stat ?? delta} is given without its working.`,
-          `${stat ?? delta} is stated without the working that produced it.`,
-          `${stat ?? delta} is stated without its derivation, so it cannot be re-computed or audited from this card alone.`,
+          `${subject} is given without its working.`,
+          `${subject} is stated without the working that produced it.`,
+          `${subject} is stated without its derivation, so it cannot be re-computed or audited from this card alone.`,
         ),
       );
     }

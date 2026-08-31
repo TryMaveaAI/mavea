@@ -248,3 +248,21 @@ describe('collectionSize counts what the block renders, not what the prop is cal
     expect(studyVoices(block, 0, null, 'standard')[0].marks!.length).toBeGreaterThan(2);
   });
 });
+
+describe('no voice ever interpolates a missing field', () => {
+  it('an insight with neither stat nor delta never says "undefined"', () => {
+    // Seen live: the assumption note read "undefined is stated without the working that
+    // produced it" — the literal word, in handwriting, on the desk.
+    const prose = {
+      type: 'insight',
+      id: 'live-1',
+      col: 4,
+      props: { title: 'The core difference', summary: 'Spatial overlays; VR replaces.' },
+    } as unknown as Block;
+    for (const level of ['simple', 'standard', 'deep'] as const) {
+      for (const note of studyVoices(prose, 0, null, level)) {
+        expect(note.text).not.toMatch(/\bundefined\b|\bnull\b|\bNaN\b/);
+      }
+    }
+  });
+});
