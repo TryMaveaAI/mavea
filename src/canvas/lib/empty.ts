@@ -181,3 +181,49 @@ export function resolvesDeclaredItems(props: unknown, shapes: readonly ItemTextS
   }
   return true;
 }
+
+/** The v-cells judgement for the core `compare`: its criteria rows are only content when at
+ *  least one cell carries text — headers and row labels over an empty grid read as broken.
+ *  The validator refuses this on the way in; this pure twin is for content that BYPASSES the
+ *  validator (a restored session, a Library open) — validated by whatever build saved it. */
+export function resolvesCompareCells(type: string, props: unknown): boolean {
+  if (type !== 'compare') return true;
+  const criteria = asArray(asRecord(props).criteria).map(asRecord);
+  if (criteria.length === 0) return true;
+  return criteria.some((c) => asArray(c.cells).some((cell) => readableText(asRecord(cell).v)));
+}
+
+/** Zero-share judgement for the pure-share visuals, where every share at zero DEFINITIONALLY
+ *  paints nothing: a donut is a grey track, a ring grid is empty arcs around minted "0%"s.
+ *  Deliberately NOT applied to bars/charts — an all-zero series can be an honest measurement. */
+export function resolvesShares(type: string, props: unknown): boolean {
+  const p = asRecord(props);
+  if (type === 'donut') {
+    const rows = asArray(p.rows).map(asRecord);
+    if (rows.length === 0) return true;
+    return rows.some((r) => typeof r.pct === 'number' && r.pct > 0);
+  }
+  if (type === 'ring') {
+    const rings = asArray(p.rings).map(asRecord);
+    if (rings.length === 0) return true;
+    return rings.some(
+      (r) =>
+        (typeof r.pct === 'number' && r.pct > 0) ||
+        (typeof r.display === 'string' && r.display.trim() !== '' && r.display !== '0%'),
+    );
+  }
+  return true;
+}
+
+/** One question, every judgement: can this block show anything? Restored/saved content never
+ *  meets the validator again, so every surface that CASTS blocks (the Study's desk, a session
+ *  hydrate, a Library open) asks this instead of finding out by rendering a placeholder. */
+export function usableBlock(type: string, props: unknown): boolean {
+  return (
+    resolvesKeyedRows(type, props) &&
+    resolvesCellMatrix(type, props) &&
+    resolvesTextItems(type, props) &&
+    resolvesCompareCells(type, props) &&
+    resolvesShares(type, props)
+  );
+}

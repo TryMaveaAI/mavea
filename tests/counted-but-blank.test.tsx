@@ -12,7 +12,9 @@ import { validateLiveResponse } from '../src/engine/liveSchema';
 import { ensureDetails } from '../src/canvas/blocks/catalog';
 import { DataTable } from '../src/canvas/blocks/tables/DataTable';
 import { ComparisonMatrix } from '../src/canvas/ComparisonMatrix';
-import { hasKeyedRows, resolvesKeyedRows } from '../src/canvas/lib/empty';
+import { hydrateFromSession } from '../src/live/useLiveTurn';
+import type { ConversationSpec } from '../src/data/conversation';
+import { hasKeyedRows, resolvesKeyedRows, usableBlock } from '../src/canvas/lib/empty';
 
 const COLUMNS = [
   { key: 'metric', label: 'Bridge Element', align: 'left' as const },
@@ -425,5 +427,76 @@ describe('every bespoke builder survives the natural authoring', () => {
     })?.blocks.find((x) => x.type === 'compare');
     const cells = (r!.props as { criteria: { cells: { v: string }[] }[] }).criteria[0].cells;
     expect(cells.map((c) => c.v)).toEqual(['$99', '$120']);
+  });
+});
+
+// The final door: a SAVED spec, validated by whatever build saved it, hydrating straight past
+// the validator — the pre-fix empty comparison came back from disk and the Study cast it as the
+// FRONT CARD: a "No comparison to show" placeholder headline with margin scrawls pointing at
+// nothing. Restored content is scrubbed at the door now, tours re-pointed, like the demo loader.
+describe('a restored session cannot cast a dead block', () => {
+  it('drops the unusable block and re-points the tour', () => {
+    const state = hydrateFromSession({
+      history: [],
+      frames: [
+        {
+          question: 'spatial vs vr?',
+          narration: '',
+          mode: 'replace',
+          at: 1,
+          tour: [
+            { index: 0, say: 'the grid' },
+            { index: 1, say: 'the lead' },
+          ],
+          spec: {
+            id: 'live',
+            title: 'Key distinctions',
+            sub: '',
+            blocks: [
+              {
+                type: 'compare',
+                id: 'live-1',
+                col: 12,
+                props: {
+                  options: [{ name: 'Spatial' }, { name: 'VR' }],
+                  criteria: [{ label: 'Environment', cells: [{ v: '' }, { v: '' }] }],
+                },
+              },
+              {
+                type: 'insight',
+                id: 'live-2',
+                col: 4,
+                num: '1',
+                props: { title: 'The lead', stat: '2026' },
+              },
+            ],
+          } as unknown as ConversationSpec,
+        },
+      ],
+    } as never);
+    expect(state.spec!.blocks.map((b) => b.type)).toEqual(['insight']);
+    // The surviving tour stop follows its block to its new index.
+    expect(state.frames[0].tour).toEqual([{ index: 0, say: 'the lead' }]);
+  });
+
+  it('usableBlock also refuses the zero-share visuals a pre-fix build saved', () => {
+    expect(
+      usableBlock('donut', {
+        rows: [
+          { label: 'A', pct: 0 },
+          { label: 'B', pct: 0 },
+        ],
+      }),
+    ).toBe(false);
+    expect(usableBlock('ring', { rings: [{ label: 'A', pct: 0, display: '0%' }] })).toBe(false);
+    // An honest zero beside a real share stays.
+    expect(
+      usableBlock('donut', {
+        rows: [
+          { label: 'A', pct: 0 },
+          { label: 'B', pct: 60 },
+        ],
+      }),
+    ).toBe(true);
   });
 });

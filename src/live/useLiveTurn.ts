@@ -7,6 +7,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type { Block, ConversationSpec, WebSource, FillValue } from '../data/conversation';
 import { blockLabel } from '../canvas/blockLabel';
 import { preloadBlockFamilies } from '../canvas/blocks/loader';
+import { usableBlock } from '../canvas/lib/empty';
 import type { ModelConfig } from '../types/mavea';
 // The turn engine (generateLive → adapters → schema → the component catalog) is the heaviest
 // thing Live can pull in, and none of it is needed to MOUNT the surface — only to run a turn.
@@ -617,12 +618,36 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
  * makes the session rail say "Resumed" honestly (same semantics as a Library restore); it
  * clears the moment a real turn starts.
  */
+/** Drop blocks a saved spec carries that can no longer show anything, and re-point the frame's
+ *  tour at where its blocks ended up — the demo corpus loader's exact pattern, for the same
+ *  reason: saved content was validated by whatever build saved it, and replay never meets the
+ *  validator again. Without this, a pre-fix empty grid came back from disk and the STUDY cast
+ *  it as the front card — a placeholder headline with margin notes pointing at nothing. */
+function scrubFrame(frame: TurnFrame): TurnFrame {
+  const keep = frame.spec.blocks.map((b) => usableBlock(b.type, b.props));
+  if (keep.every(Boolean)) return frame;
+  const moved = new Map<number, number>();
+  let next = 0;
+  keep.forEach((ok, i) => {
+    if (ok) moved.set(i, next++);
+  });
+  return {
+    ...frame,
+    spec: { ...frame.spec, blocks: frame.spec.blocks.filter((_, i) => keep[i]) },
+    tour: frame.tour.flatMap((step) => {
+      const index = moved.get(step.index);
+      return index === undefined ? [] : [{ ...step, index }];
+    }),
+  };
+}
+
 export function hydrateFromSession(session: SavedSession): LiveTurnState {
-  const last = session.frames[session.frames.length - 1];
+  const frames = session.frames.map(scrubFrame);
+  const last = frames[frames.length - 1];
   return {
     ...INITIAL,
     history: session.history,
-    frames: session.frames,
+    frames,
     spec: last.spec,
     status: 'idle',
     mode: 'replace',
@@ -1608,9 +1633,14 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   const restore = useCallback(
     (spec: ConversationSpec, question: string) => {
       cancelSpeak?.();
+      // Saved content never meets the validator again — scrub blocks that can no longer show
+      // anything (see scrubFrame) so a pre-fix empty grid cannot come back from the Library.
+      const keep = spec.blocks.filter((b) => usableBlock(b.type, b.props));
+      // Identity preserved when nothing dropped — downstream memos key on the spec object.
+      const usable = keep.length === spec.blocks.length ? spec : { ...spec, blocks: keep };
       // A restored canvas mounts cold (no streaming preload ran) — start its family chunks now.
-      preloadBlockFamilies(spec.blocks);
-      dispatch({ type: 'restore', spec, question, at: Date.now() });
+      preloadBlockFamilies(usable.blocks);
+      dispatch({ type: 'restore', spec: usable, question, at: Date.now() });
     },
     [cancelSpeak],
   );
