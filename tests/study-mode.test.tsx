@@ -562,3 +562,31 @@ describe('a REPLACE answer takes the desk whole — ids collide, types tell the 
     expect(document.querySelectorAll('.study-card').length).toBe(2);
   });
 });
+
+describe('a card taller than its slot says there is more below', () => {
+  // The scroll inside the front card is honest (shrinking violates the legibility floor) but it
+  // was invisible: the Roman timeline's last event sat half-hidden and the card just seemed to
+  // END there. The stage measures the face and flags hidden depth; the flag clears at bottom.
+  it('flags hidden depth and clears it when the reader reaches the bottom', async () => {
+    const tall = block('t', 'Tall content');
+    render(
+      <StudyStage
+        data={spec([tall])}
+        blocks={[tall]}
+        spot="t"
+        renderBlock={() => <div style={{ height: 2000 }}>long body</div>}
+      />,
+    );
+    const face = document.querySelector<HTMLElement>('.study-card.is-front .study-card-face')!;
+    // jsdom reports zero layout, so drive the geometry the measurer reads.
+    Object.defineProperty(face, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(face, 'clientHeight', { value: 500, configurable: true });
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    face.dispatchEvent(new Event('scroll'));
+    expect(face.hasAttribute('data-more-below')).toBe(true);
+    // Scrolled to the bottom: nothing hidden, cue gone.
+    Object.defineProperty(face, 'scrollTop', { value: 1500, configurable: true });
+    face.dispatchEvent(new Event('scroll'));
+    expect(face.hasAttribute('data-more-below')).toBe(false);
+  });
+});

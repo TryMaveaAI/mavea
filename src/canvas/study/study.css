@@ -410,6 +410,31 @@
   scrollbar-width: thin;
 }
 
+/* Content taller than the slot scrolls inside the card — honest, but invisible: the reader saw
+   a card that seemed to END mid-timeline. The stage flags hidden depth (StudyStage measures the
+   face) and the card's lower edge says so: a soft fade into the card colour plus a chevron.
+   Static — no animation, nothing for perf-lite to pause — and gone the moment the reader
+   reaches the bottom. The fade must be a ::after on the CARD (not the face): the face scrolls,
+   and a fade inside it would scroll away with the content it is pointing at. */
+.study-card.is-front:has(.study-card-face[data-more-below])::after {
+  content: '⌄';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--study-ink-muted);
+  background: linear-gradient(to bottom, transparent, var(--study-card) 78%);
+  border-radius: 0 0 14px 14px;
+  pointer-events: none;
+}
+
 /* A block on the desk keeps its own anatomy but sheds its app chrome: the Study's card IS the
    card. Tokens (rebound above) carry the palette in; these strip the double frame. */
 .study-card-face > * {

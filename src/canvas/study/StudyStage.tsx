@@ -369,6 +369,32 @@ export function StudyStage({
   // treatment already; the desk renders its cards outside that grid, so it asks for its own —
   // re-scanned whenever the desk re-casts, since the object on it changes.
   useTruncatedTextDisclosures(stageRef, `${data.id}:${scene.active?.id ?? ''}`);
+
+  // A block taller than the front slot scrolls INSIDE the card — the honest behavior (the
+  // legibility floor forbids shrinking it, and the desk's height is spoken for) — but a scroll
+  // nobody can see is indistinguishable from a card that ends there: the Roman timeline's last
+  // event sat half-hidden with nothing saying so. Measure the face and flag it; CSS paints a
+  // fade + chevron at the clipped edge, and the flag clears the moment the reader reaches the
+  // bottom. One rAF after each cast change: layout must have run for scrollHeight to be real.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const face = stage.querySelector<HTMLElement>('.study-card.is-front .study-card-face');
+    if (!face) return;
+    const judge = (): void => {
+      const more = face.scrollHeight - face.clientHeight - face.scrollTop > 8;
+      face.toggleAttribute('data-more-below', more);
+    };
+    const frame = requestAnimationFrame(judge);
+    face.addEventListener('scroll', judge, { passive: true });
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(judge) : null;
+    ro?.observe(face);
+    return () => {
+      cancelAnimationFrame(frame);
+      face.removeEventListener('scroll', judge);
+      ro?.disconnect();
+    };
+  }, [scene.active?.id, deskBlocks]);
   // Scrolled out of view, the desk stops animating entirely — the equalizer and the narrated
   // card's ring are the only loops left, and neither is worth a frame nobody is looking at.
   const idleRef = useAmbientPause<HTMLElement>();
