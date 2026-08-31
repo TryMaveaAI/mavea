@@ -2819,7 +2819,19 @@ export function validateLiveResponse(
     // A smooth, staggered reveal at any block count (the old fixed table capped at six).
     const delay = Math.min(idx * 70, 560);
     const block = buildBlock(rawBlock, col, delay, insightSeq, allowed, grounded, standaloneTile);
-    if (!block) continue;
+    if (!block) {
+      // DEV visibility for the one failure a green suite cannot show: a real model block dying
+      // in coercion. A dropped block is invisible by design (the canvas just has one fewer
+      // card), which is how a guard regression can silently halve real answers.
+      if (import.meta.env?.DEV) {
+        console.warn('[live] block dropped in coercion', {
+          type,
+          keys: Object.keys(asObj(rawBlock)).slice(0, 12),
+          props: JSON.stringify(asObj(rawBlock).props ?? rawBlock).slice(0, 260),
+        });
+      }
+      continue;
+    }
     // Prompt limits reduce over-generation; this runtime boundary makes the same contract
     // non-optional for malformed, older, local, or adversarial model output.
     block.props = enforceComponentContentBudget(

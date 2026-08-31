@@ -401,7 +401,7 @@ describe('a follow-up answers IN PLACE, and the desk shows it', () => {
     document.querySelector('.study-card.is-front')?.textContent?.replace(/\s+/g, ' ').trim() ??
     null;
 
-  it('brings the first new block to the desk when blocks land under the same id', () => {
+  it('brings the first new block to the desk when the follow-up settles', () => {
     const { rerender } = render(desk(two, 'a'));
     expect(frontTitle()).toContain('Old lead');
     rerender(desk(three, 'a'));
@@ -506,18 +506,31 @@ describe('a streaming answer deals the desk once, not once per card', () => {
     );
   }
 
-  it('holds the arc still while cards stream, then deals the full cast on settle', () => {
+  it('LOADS ALL, THEN SHOWS: a first answer shows one card, the cast deals whole at settle', () => {
     const a = block('a', 'First');
     const stream = [a, block('b', 'Second'), block('c', 'Third'), block('d', 'Fourth')];
     const { rerender } = render(desk([a], 'a', true));
-    const before = document.querySelectorAll('.study-card').length;
-    // Three more cards arrive while streaming: the desk does not grow past the held set + one.
+    expect(document.querySelectorAll('.study-card').length).toBe(1);
+    // Three more cards arrive while streaming: the desk HOLDS — no per-card churn at all.
     rerender(desk(stream, 'a', true));
-    expect(document.querySelectorAll('.study-card').length).toBeLessThanOrEqual(before + 1);
-    // Settle: the whole cast deals.
+    expect(document.querySelectorAll('.study-card').length).toBe(1);
+    // Settle: the whole cast deals at once.
     rerender(desk(stream, 'a', false));
     expect(document.querySelectorAll('.study-card').length).toBe(4);
     expect(beats()).toBeGreaterThanOrEqual(4);
+  });
+
+  it('a follow-up streams behind the SETTLED desk, untouched until settle', () => {
+    const prior = [block('a', 'Settled lead'), block('b', 'Settled detail')];
+    const grown = [...prior, block('c', 'New card'), block('d', 'Newer card')];
+    const { rerender } = render(desk(prior, 'a', false));
+    rerender(desk(grown, 'a', true));
+    // The streaming follow-up changes NOTHING on the desk — load all, then show.
+    expect(document.querySelectorAll('.study-card').length).toBe(2);
+    const texts = document.body.textContent ?? '';
+    expect(texts).not.toContain('New card');
+    rerender(desk(grown, 'a', false));
+    expect(document.querySelectorAll('.study-card').length).toBe(4);
   });
 });
 

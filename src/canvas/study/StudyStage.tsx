@@ -270,9 +270,16 @@ export function StudyStage({
   const deskBlocks = useMemo(() => {
     if (!streaming) return liveBlocks;
     const settled = settledRef.current;
-    const held = new Set(settled.map(blockSig));
-    const fresh = liveBlocks.find((block) => block.id && !held.has(blockSig(block)));
-    return fresh ? [...settled, fresh] : settled;
+    // LOAD ALL, THEN SHOW (user-directed): a follow-up streams behind the settled desk, which
+    // holds completely still — no per-card churn, no half-built arc — and the full new cast
+    // deals once at settle. The composer's own "Composing your answer" pill carries the
+    // progress. Two exceptions keep it honest: a REPLACE switches to the new answer's first
+    // card immediately (holding a different question's cards under a new title was the
+    // original stale-desk bug), and a FIRST answer shows its first card rather than an empty
+    // room (settled is empty — there is nothing to hold).
+    if (settled.length > 0) return settled;
+    const first = liveBlocks.find((block) => block.id);
+    return first ? [first] : settled;
     // `replaced` mutates settledRef in render, so the memo must recompute on the same tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streaming, liveBlocks, replaced]);
