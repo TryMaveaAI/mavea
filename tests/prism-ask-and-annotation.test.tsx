@@ -134,7 +134,7 @@ describe('Ask It — quote recovery and honest coverage', () => {
   });
 
   // ── askDocument coverage semantics (stubbed model) ──
-  const cfg: ModelConfig = { provider: 'anthropic', model: 'test' };
+  const cfg: ModelConfig = { provider: 'anthropic', model: 'test', apiKey: 'test-key' };
   const ctx = (corpus: string[][]): AskContext => ({ corpus, cfg, multiDoc: false });
   const original = ADAPTERS.anthropic;
   afterEach(() => {

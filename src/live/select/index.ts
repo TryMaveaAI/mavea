@@ -5,6 +5,8 @@ export {
   selectComponents,
   chooseComponents,
   menuFor,
+  stableMenu,
+  heroMenuFor,
   type SelectionResult,
   type SelectionInput,
 } from './rank';

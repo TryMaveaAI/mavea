@@ -8,6 +8,7 @@
 import { FRONTIER_BLOCK_TYPES, type LiveResponse } from '../../engine/liveSchema';
 import type { GoldenCase } from './golden';
 import { catalogFacts } from '../../canvas/blocks/catalog';
+import { opensWithPreamble } from '../verify';
 
 /** The eight base types every tier fills; everything else counts as "rich" vocabulary. */
 const BASE_TYPES = new Set([
@@ -51,6 +52,8 @@ export interface CaseScore {
    *  component for two distinct pieces of content (two timelines, two comparisons) is correct.
    *  Tracked only to spot a degenerate all-one-type answer, never gated. */
   noRepeat: boolean;
+  /** The spoken opener reaches the answer without a detected preamble. Informational, not gated. */
+  answerFirst: boolean;
   /** The block types the model actually produced, in order (for the report). */
   produced: string[];
   /** Distinct block types in the answer (variety). */
@@ -104,6 +107,7 @@ export function heroUsage(
 export function scoreCase(c: GoldenCase, resp: LiveResponse | null): CaseScore {
   const produced = resp ? resp.blocks.map((b) => b.type) : [];
   const valid = resp !== null;
+  const answerFirst = !!resp && !opensWithPreamble(resp.narration);
 
   const min = c.minBlocks ?? DEFAULT_MIN;
   const max = c.maxBlocks ?? DEFAULT_MAX;
@@ -153,6 +157,7 @@ export function scoreCase(c: GoldenCase, resp: LiveResponse | null): CaseScore {
     noForbidden,
     honest,
     noRepeat,
+    answerFirst,
     produced,
     varietyCount,
     richCount,
@@ -171,6 +176,8 @@ export interface Scorecard {
   selectionRate: number; // expectedPresent && noForbidden
   honestRate: number;
   noRepeatRate: number;
+  /** Fraction whose narration opens on substance rather than throat-clearing. */
+  answerFirstRate: number;
   passRate: number;
   /** Mean distinct block types per answer (variety). Reported, not gated. */
   avgVariety: number;
@@ -246,6 +253,7 @@ export function aggregate(model: string, scores: CaseScore[]): Scorecard {
     selectionRate: rate(scores.filter((s) => s.expectedPresent && s.noForbidden).length, n),
     honestRate: rate(scores.filter((s) => s.honest).length, n),
     noRepeatRate: rate(scores.filter((s) => s.noRepeat).length, n),
+    answerFirstRate: rate(scores.filter((s) => s.answerFirst).length, n),
     passRate: rate(scores.filter((s) => s.pass).length, n),
     avgVariety:
       n === 0 ? 0 : Math.round((scores.reduce((a, s) => a + s.varietyCount, 0) / n) * 10) / 10,
@@ -281,6 +289,7 @@ export function formatScorecard(card: Scorecard): string {
   lines.push(`  block choice   ${pct(card.selectionRate)}   ← the hard one`);
   lines.push(`  honest labels  ${pct(card.honestRate)}`);
   lines.push(`  no-repeat      ${pct(card.noRepeatRate)}   (info only — fit-driven reuse is fine)`);
+  lines.push(`  answer-first   ${pct(card.answerFirstRate)}   (info only — no paid rewrite)`);
   lines.push(`  avg variety    ${card.avgVariety} types/answer`);
   lines.push(`  rich vocab     ${pct(card.richRate)}   interactive ${pct(card.interactiveRate)}`);
   lines.push(

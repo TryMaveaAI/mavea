@@ -465,6 +465,31 @@ describe('Ripple — a node’s Ask opens the rail, voiceless', () => {
     expect(getByRole('button', { name: 'Close the ask rail' })).toBeTruthy(); // header reflects it
     expect(getByText(/Connect a model in Settings/i)).toBeTruthy(); // …but says so honestly
   });
+
+  it('cleans model-authored node prose before narration', () => {
+    const speak = vi.fn();
+    const model: ShipModel = {
+      ...SEED_SHIP,
+      nodes: SEED_SHIP.nodes.map((node) =>
+        node.id === 'auth'
+          ? {
+              ...node,
+              problem: 'See [the docs](https://example.com/auth) before rollout.',
+              fix: undefined,
+            }
+          : node,
+      ),
+    };
+    const { getByRole, getByText } = render(
+      <RippleOverlay model={model} speak={speak} onClose={() => undefined} />,
+    );
+
+    fireEvent.click(getByRole('button', { name: /Turn narration on/i }));
+    fireEvent.click(getByText('src/auth').closest('button')!);
+    fireEvent.click(getByText(/Ask about src\/auth/i));
+
+    expect(speak).toHaveBeenCalledWith('src/auth. See the docs before rollout.');
+  });
 });
 
 describe('LessonBody — "Ask about this lesson"', () => {
@@ -510,6 +535,40 @@ describe('LessonBody — "Ask about this lesson"', () => {
       />,
     );
     expect(queryByText('Ask about this lesson')).toBeNull();
+  });
+
+  it('cleans model-authored walkthrough prose before narration', () => {
+    const speak = vi.fn();
+    const narratedLesson: CourseLesson = {
+      ...lesson,
+      detail: {
+        overview: 'How the guard works.',
+        walkthrough: [
+          {
+            file: 'src/auth/guard.ts',
+            focus: 'validateToken',
+            explain: 'Read [the contract](https://example.com/contract) first.',
+          },
+        ],
+        concepts: [],
+        pitfalls: [],
+      },
+    };
+    const { getByRole } = render(
+      <LessonBody
+        course={course}
+        lesson={narratedLesson}
+        altitude="working"
+        repo="acme/widget"
+        gitRef="main"
+        fileUrl={() => null}
+        speak={speak}
+      />,
+    );
+
+    fireEvent.click(getByRole('button', { name: 'Step through the code one part at a time' }));
+
+    expect(speak).toHaveBeenCalledWith('validateToken. Read the contract first.');
   });
 });
 

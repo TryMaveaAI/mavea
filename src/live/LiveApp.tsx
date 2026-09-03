@@ -40,7 +40,9 @@ const TopicCanvas = lazy(() =>
 );
 import { useTapNarration } from '../canvas/focus/useTapNarration';
 import { savedViewMode, useViewMode, type ViewMode } from '../canvas/focus/useFocusMode';
+import { answerSignature } from '../data/conversation';
 import type { StudyAside } from '../canvas/study/types';
+import { deskObjects } from '../canvas/study/scene';
 
 import { blockLabel, speakableLine } from '../canvas/blockLabel';
 import { CommandComposer } from '../components/CommandComposer';
@@ -66,7 +68,7 @@ import { useDemoDriver } from '../demo/useDemoDriver';
 import { DemoOverlay } from '../demo/DemoOverlay';
 import { castMember } from '../demo/cast';
 import { loadTourPrism, type TourPrismDoc } from '../tour/corpus/prism';
-import { ensureTourDashboard } from '../tour/dashboardSeed';
+import { ensureTourDashboard, releaseTourDashboard } from '../tour/dashboardSeed';
 import { prewarmLive } from './prewarm';
 import { warmSemanticFit, embedText } from './semantic';
 import { Icon } from '../icons/icons';
@@ -136,6 +138,7 @@ import {
   toModelConfig,
   toCaps,
   getLiveConfigV2,
+  hasModelConfigured,
   secretsReady,
   type LiveConfigV2,
 } from './useLiveConfig';
@@ -584,6 +587,8 @@ export function LiveApp(): ReactElement {
     })(),
   );
   const demoStartStep = useRef(demoPersona.current ? peekDemoStep() : null);
+  const replayBlocksSpending = tourMode.current || !!demoPersona.current;
+  const modelCallsAllowed = !replayBlocksSpending && hasModelConfigured(cfg);
   useEffect(() => {
     if (tourMode.current) clearTourModeFlag();
     if (tourStartChapter.current) clearTourChapterFlag();
@@ -636,11 +641,15 @@ export function LiveApp(): ReactElement {
   const [exportOpen, setExportOpen] = useState(false);
   // "+ Dashboard": turn the current conversation into a living dashboard without leaving Live.
   const [dashOpen, setDashOpen] = useState(false);
-  // The walkthrough's curated dashboard (a real store entry) shown in a full-screen takeover.
+  // The walkthrough's curated dashboard (a transient store entry) shown in a full-screen takeover.
   const [tourDashId, setTourDashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tourDashId) return;
+    return () => releaseTourDashboard(tourDashId);
+  }, [tourDashId]);
   // Within that takeover, flip from the dashboard itself to its Settings panel — the real
-  // refresh-cadence control that backs up "I'll turn it into a living dashboard that keeps itself
-  // up to date". A local flag rather than DashboardSettings' own #/dashboards/.../settings link:
+  // refresh-cadence control that demonstrates the schedule a real dashboard can use. A local flag
+  // rather than DashboardSettings' own #/dashboards/.../settings link:
   // that link is a real hash href, and following it here would navigate the whole surface away
   // from #/live mid-tour.
   const [tourDashSettings, setTourDashSettings] = useState(false);
@@ -812,7 +821,10 @@ export function LiveApp(): ReactElement {
   // Ghost blocks ("it answers while you talk"): tiny speculative glimpses off the partial
   // transcript. Off on the 'fast' quality dial — speculation is a spend the user opted into
   // by choosing a deeper setting. (The hook itself runs below, once the turn it defers to exists.)
-  const ghostCfg = useMemo(() => (cfg.quality !== 'fast' ? toModelConfig(cfg) : null), [cfg]);
+  const ghostCfg = useMemo(
+    () => (modelCallsAllowed && cfg.quality !== 'fast' ? toModelConfig(cfg) : null),
+    [cfg, modelCallsAllowed],
+  );
   // Think-out-loud's "just listening" mode — utterances bank into a ramble instead of
   // answering, until the user says "thoughts?".
   const [justListen, setJustListen] = useState(false);
@@ -829,7 +841,10 @@ export function LiveApp(): ReactElement {
   const watchThinkingRef = useRef(false);
   watchThinkingRef.current = watchThinking;
   const mindShapeRambleRef = useRef<string[]>([]);
-  const mindShapeCfg = useMemo(() => toModelConfig(cfg), [cfg]);
+  const mindShapeCfg = useMemo(
+    () => (modelCallsAllowed ? toModelConfig(cfg) : null),
+    [cfg, modelCallsAllowed],
+  );
   // Always hand the hook the model config (it stays idle until onTranscript runs), so the very
   // first thinking-aloud utterance can seed the map immediately instead of a beat late.
   const mindShape = useMindShape(mindShapeCfg);
@@ -1254,7 +1269,7 @@ export function LiveApp(): ReactElement {
         ...(spec?.topic ? { topic: spec.topic } : {}),
       };
       const mc = toModelConfig(cfg);
-      const configured = !!mc.apiKey;
+      const configured = hasModelConfigured(cfg);
       const enrich = !exact && configured ? () => draftCardsFromBlock(b, mc) : undefined;
       setFlashAdd({ block: b, initial, deck, source, enrich });
     },
@@ -1849,6 +1864,7 @@ export function LiveApp(): ReactElement {
   // frame can never wear the current answer's notes.
   const [studyNotes, setStudyNotes] = useState<{
     specId: string;
+    level: typeof cfg.explainLevel;
     notes: Map<string, BlockStudy>;
   } | null>(null);
   const studySpec = turn.viewSpec ?? turn.spec;
@@ -1857,31 +1873,90 @@ export function LiveApp(): ReactElement {
   // nothing: resets never fired, one session's third answer read as the first. The block set's
   // ids ALSO collide across answers (a replace restarts at live-1), so the signature carries
   // id:type pairs — a replace changes the types at the same positions even when the ids repeat.
-  const studySpecId = studySpec
-    ? `${studySpec.id}|${studySpec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`
-    : null;
+  const studySpecRawId = studySpec?.id;
+  const studySpecBlocks = studySpec?.blocks;
+  const studySpecId = useMemo(
+    () =>
+      studySpecRawId && studySpecBlocks
+        ? answerSignature({ id: studySpecRawId, blocks: deskObjects(studySpecBlocks) })
+        : null,
+    [studySpecRawId, studySpecBlocks],
+  );
+  // Whether this reader uses the desk. Opening it once is the signal — after that the notes are
+  // bought as soon as the answer settles, so the desk is already annotated when they arrive
+  // rather than starting a call at the moment they ask to read. A reader who never opens the
+  // Study never trips this and is never billed for it, which is the whole reason the notes left
+  // the answer turn in the first place.
+  const studyOpenedRef = useRef<boolean | null>(null);
+  if (studyOpenedRef.current === null) studyOpenedRef.current = savedViewMode() === 'study';
   useEffect(() => {
-    if (viewMode !== 'study' || !studySpec || !studySpecId) return;
+    if (viewMode === 'study') studyOpenedRef.current = true;
+  }, [viewMode]);
+
+  useEffect(() => {
+    // On the desk now, or known to be heading there: either way the notes are worth having ready.
+    if (viewMode !== 'study' && !studyOpenedRef.current) return;
+    if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) return;
+    if (!studySpec || !studySpecId) return;
     // Never buy notes for an answer still streaming: every partial would be its own "answer"
     // (the signature grows per block) and each would bill a full annotate call — measured as
     // one paid generation per streamed block. The settled answer buys once.
     if (turn.busy) return;
     // Already have them, or the answer carries them inline (an older turn, a baked demo).
-    if (studyNotes?.specId === studySpecId) return;
-    if (studySpec.blocks.some((b) => b.study)) return;
+    if (studyNotes?.specId === studySpecId && studyNotes.level === cfg.explainLevel) return;
+    const unannotatedBlocks = deskObjects(studySpec.blocks).filter((block) => !block.study);
+    if (!unannotatedBlocks.length) return;
+    const annotationSpec = { ...studySpec, blocks: unannotatedBlocks };
     let alive = true;
+    const watcher = new AbortController();
+    let pendingNotes: Map<string, BlockStudy> | null = null;
+    let notesFrame = 0;
+    // The reply streams, so take each note the moment it closes rather than waiting for the last
+    // one. Measured before this: a six-block answer held the whole reply for ~11s and the margin
+    // stayed in Mavéa's own hand for every second of it.
+    const take = (notes: Map<string, BlockStudy>): void => {
+      if (!alive || !notes.size) return;
+      pendingNotes = notes;
+      if (notesFrame) return;
+      notesFrame = requestAnimationFrame(() => {
+        notesFrame = 0;
+        const next = pendingNotes;
+        pendingNotes = null;
+        if (alive && next) {
+          setStudyNotes({ specId: studySpecId, level: cfg.explainLevel, notes: next });
+        }
+      });
+    };
     void import('./study/annotate')
       .then(({ studyNotesFor }) =>
-        studyNotesFor(studySpec, lastAsk ?? studySpec.title, toModelConfig(cfg), cfg.explainLevel),
+        studyNotesFor(
+          annotationSpec,
+          lastAsk ?? studySpec.title,
+          toModelConfig(cfg),
+          cfg.explainLevel,
+          take,
+          watcher.signal,
+        ),
       )
       .then((notes) => {
-        if (alive && notes) setStudyNotes({ specId: studySpecId, notes });
+        if (!alive || !notes) return;
+        if (notesFrame) cancelAnimationFrame(notesFrame);
+        notesFrame = 0;
+        pendingNotes = null;
+        setStudyNotes({ specId: studySpecId, level: cfg.explainLevel, notes });
       })
       .catch(() => {
         /* the derived voices are already on the desk; nothing to say */
       });
+    // Only stop LISTENING. The call is shared and content-addressed — this effect re-runs on
+    // any `cfg` identity change, and cancelling here aborted the request every render while the
+    // in-flight dedup handed each retry the same dead promise, so the notes never arrived at all.
+    // The call owns its own deadline (see annotate.ts); a reader who leaves still funds the cache
+    // entry their next open reads for free.
     return () => {
       alive = false;
+      watcher.abort();
+      if (notesFrame) cancelAnimationFrame(notesFrame);
     };
     // `studyNotes` is deliberately absent: it is the RESULT of this effect, and reading it here
     // would re-run the moment it lands. The guard above uses a ref-free early return instead.
@@ -1891,26 +1966,78 @@ export function LiveApp(): ReactElement {
   // Four notes per object, written once for the answer — see `studyVoices` for who authors each.
   // Keyed by block id and stable for the turn, so the study re-casting changes only which note is
   // emphasised — never the set, which is what made the old rail tear down on every move.
-  const studyAsides = useMemo(() => {
+  const studyAsideCacheRef = useRef(
+    new Map<
+      string,
+      {
+        block: Block;
+        study: BlockStudy | undefined;
+        index: number;
+        content: ReturnType<typeof answerToContent> | null;
+        level: typeof cfg.explainLevel;
+        notes: StudyAside[];
+      }
+    >(),
+  );
+  const explainLevel = cfg.explainLevel;
+  const studyAsideBundle = useMemo(() => {
     // The spec the canvas is SHOWING — block ids repeat across turns, so notes derived from
     // the live spec would file the current answer's remarks onto a scrubbed older frame.
     const spec = turn.viewSpec ?? turn.spec;
     if (viewMode !== 'study' || !spec) return undefined;
     const out: Record<string, StudyAside[]> = {};
+    const authoredIds = new Set<string>();
+    const nextCache = new Map<
+      string,
+      {
+        block: Block;
+        study: BlockStudy | undefined;
+        index: number;
+        content: ReturnType<typeof answerToContent> | null;
+        level: typeof explainLevel;
+        notes: StudyAside[];
+      }
+    >();
     // Same composite identity the fetch stored — comparing against the bare spec.id ('live',
     // always) meant every note set was bought on the user's key and then never displayed.
-    const sig = `${spec.id}|${spec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`;
-    const written = studyNotes?.specId === sig ? studyNotes.notes : undefined;
+    const sig = answerSignature({ id: spec.id, blocks: deskObjects(spec.blocks) });
+    const written =
+      studyNotes?.specId === sig && studyNotes.level === explainLevel
+        ? studyNotes.notes
+        : undefined;
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
       // The model's notes for THIS answer, when the desk has bought them; otherwise the block's
       // own (which an older answer may carry inline), and failing both, Mavéa's derived reading.
-      const authored = written?.get(block.id);
+      const authored = block.study ?? written?.get(block.id);
+      if (authored) authoredIds.add(block.id);
       const source = authored ? ({ ...block, study: authored } as typeof block) : block;
-      out[block.id] = studyVoices(source, index, studyContent, cfg.explainLevel);
+      const cached = studyAsideCacheRef.current.get(block.id);
+      const notes =
+        cached?.block === block &&
+        cached.study === authored &&
+        cached.index === index &&
+        cached.content === studyContent &&
+        cached.level === explainLevel
+          ? cached.notes
+          : studyVoices(source, index, studyContent, explainLevel);
+      out[block.id] = notes;
+      nextCache.set(block.id, {
+        block,
+        study: authored,
+        index,
+        content: studyContent,
+        level: explainLevel,
+        notes,
+      });
     });
-    return out;
-  }, [studyContent, turn.viewSpec, turn.spec, viewMode, cfg.explainLevel, studyNotes]);
+    return { asides: out, authoredIds, cache: nextCache };
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode, explainLevel, studyNotes]);
+  useEffect(() => {
+    if (studyAsideBundle) studyAsideCacheRef.current = studyAsideBundle.cache;
+  }, [studyAsideBundle]);
+  const studyAsides = studyAsideBundle?.asides;
+  const studyAsidesAuthored = studyAsideBundle?.authoredIds;
 
   // Mute is an AUDIO control, not a layout one: it never switches the view. The user reads muted in
   // whichever mode they chose — Everything keeps the whole living canvas (the point of the app), and
@@ -1941,11 +2068,11 @@ export function LiveApp(): ReactElement {
   const studyInkedFor = useRef<string | null>(null);
   useEffect(() => {
     const spec = turn.spec;
-    if (viewMode !== 'study' || !spec || !annotationsEnabledRef.current) return;
+    if (turn.busy || viewMode !== 'study' || !spec || !annotationsEnabledRef.current) return;
     // Once per answer. Re-entering the study on the SAME answer must not re-run the cascade.
     // spec.id is 'live' on every live turn — keyed on it alone this ran once per SESSION, so
     // from the second answer on the desk opened with no ink at all.
-    const inkKey = `${spec.id}|${spec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',')}`;
+    const inkKey = answerSignature({ id: spec.id, blocks: deskObjects(spec.blocks) });
     if (studyInkedFor.current === inkKey) return;
     studyInkedFor.current = inkKey;
     let step = 0;
@@ -1990,7 +2117,7 @@ export function LiveApp(): ReactElement {
       );
       step++;
     }
-  }, [viewMode, turn.spec, ink]);
+  }, [viewMode, turn.spec, turn.busy, ink]);
 
   // Switching view is switching page: whatever was being said described a surface that is no
   // longer on screen, so it stops. Without this the outgoing view's line kept playing while the
@@ -2370,6 +2497,9 @@ export function LiveApp(): ReactElement {
   useEffect(() => {
     if (tourDrive.done || demoDrive.done) restorePenConfig();
   }, [tourDrive.done, demoDrive.done, restorePenConfig]);
+  useEffect(() => {
+    if (tourDrive.done && tourDashId) setTourDashId(null);
+  }, [tourDrive.done, tourDashId]);
   useEffect(() => () => restorePenConfig(), [restorePenConfig]);
 
   const { narrate: narrateBlock, narratingId } = useTapNarration(
@@ -6284,7 +6414,11 @@ export function LiveApp(): ReactElement {
                         ? 'live-' + turn.replaceEpoch
                         : 'view-' + turn.viewIndex
                   }
-                  data={scrubSpec ?? turn.viewSpec ?? turn.spec}
+                  data={
+                    viewMode === 'study'
+                      ? (turn.viewSpec ?? turn.spec)
+                      : (scrubSpec ?? turn.viewSpec ?? turn.spec)
+                  }
                   spot={viewingLive ? turn.spot : null}
                   built={{}}
                   onProve={() => setProofOpen(true)}
@@ -6297,7 +6431,9 @@ export function LiveApp(): ReactElement {
                   narratingId={narratingId}
                   muted={muted}
                   studyAsides={studyAsides}
+                  studyAsidesAuthored={studyAsidesAuthored}
                   studyStreaming={turn.busy}
+                  studyAnswerEpoch={turn.answerEpoch}
                   viewMode={viewMode}
                   onViewMode={setViewMode}
                   presenting={presenting}

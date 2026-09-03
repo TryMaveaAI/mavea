@@ -60,10 +60,13 @@ describe('useLiveTurn reducer — turn-state additions', () => {
     // A streaming partial must NOT flip busy off, or a half-built canvas would read as finished.
     let s = reducer(INITIAL, { type: 'start' });
     expect(s.busy).toBe(true);
-    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never });
+    const before = s.answerEpoch;
+    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never, first: true });
     expect(s.busy).toBe(true); // first block arrived, still streaming
-    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never });
+    expect(s.answerEpoch).toBe(before + 1);
+    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never, first: false });
     expect(s.busy).toBe(true); // more blocks, still streaming
+    expect(s.answerEpoch).toBe(before + 1);
     s = reducer(s, {
       type: 'show',
       spec: { title: 'T', blocks: [] },
@@ -75,8 +78,10 @@ describe('useLiveTurn reducer — turn-state additions', () => {
       tour: [],
       frame: {},
       spot: null,
+      streamed: true,
     } as never);
     expect(s.busy).toBe(false); // settled — the cue clears
+    expect(s.answerEpoch).toBe(before + 1);
   });
 
   it('restored is true only for a Library restore, and a real turn clears it', () => {
@@ -91,7 +96,7 @@ describe('useLiveTurn reducer — turn-state additions', () => {
     // Streaming a brand-new first turn must NOT read as resumed.
     s = reducer(s, { type: 'start' });
     expect(s.restored).toBe(false);
-    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never });
+    s = reducer(s, { type: 'stream', spec: { title: 'T', blocks: [] } as never, first: true });
     expect(s.restored).toBe(false);
   });
 });

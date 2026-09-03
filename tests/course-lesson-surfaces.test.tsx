@@ -670,6 +670,24 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
         ),
       ).toBeInTheDocument();
     });
+
+    it('treats a collapsed reply as retryable instead of caching a partial lesson', async () => {
+      saveCourse(course('a'));
+      stashCourseLesson({ courseId: 'a', lessonIdx: 0 });
+      mockGenerateLive.mockResolvedValue({
+        ...ok(lessonSpec('partial')),
+        collapsed: true,
+      });
+
+      render(<CourseLessonReader />);
+
+      expect(await screen.findByText(/Couldn't build a complete lesson/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+      cleanup();
+
+      render(<CourseLessonReader />);
+      await waitFor(() => expect(mockGenerateLive).toHaveBeenCalledTimes(2));
+    });
   });
 
   describe('CourseLessonReader — a cached lesson replays with zero model calls', () => {

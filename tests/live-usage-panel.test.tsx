@@ -32,8 +32,22 @@ describe('UsagePanel', () => {
     recordUsage('repair', { input: 500, output: 50, cachedInput: 0 });
     recordUsage('canvas', { input: 9_000, output: 800, cachedInput: 0 });
     const { container } = render(<UsagePanel />);
-    const names = [...container.querySelectorAll('.usage-site-name')].map((n) => n.textContent);
+    const names = [...container.querySelectorAll('.usage-sites .usage-site-name')].map(
+      (n) => n.textContent,
+    );
     expect(names).toEqual(['canvas', 'repair']);
+  });
+
+  it('shows in, cached, and out for every individual provider call', () => {
+    recordUsage('canvas', { input: 1_200, output: 80, cachedInput: 900 }, 1);
+    recordUsage('consistency-repair', { input: 300, output: 40, cachedInput: 250 }, 2);
+    const { container } = render(<UsagePanel />);
+    const rows = [...container.querySelectorAll('.usage-calls li')].map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      'consistency-repair300 in · 250 cached · 40 out',
+      'canvas1,200 in · 900 cached · 80 out',
+    ]);
   });
 
   it('follows the ledger live — a call billed while the panel is open shows up', () => {

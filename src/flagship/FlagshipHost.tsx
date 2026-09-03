@@ -97,8 +97,8 @@ export function FlagshipHost(): ReactElement {
   // the Live shell only; it never mounts Live or runs provider/model logic.
   const preloadLiveRoute = useCallback(() => preloadRoute('#/live') ?? Promise.resolve(), []);
 
-  // Warm the Live provider/TTS connections while the user is still typing (or reaching toward
-  // the demo cards), so the click-through doesn't pay cold-start latency. Dynamically imported
+  // Warm the Live provider/TTS connections while the user is still typing, so the click-through
+  // doesn't pay cold-start latency. Dynamically imported
   // so the Live code never weighs down the eager landing bundle; prewarmLive self-throttles.
   const warmLive = useCallback(() => {
     void preloadRoute('#/live')?.catch(() => {});
@@ -178,7 +178,7 @@ export function FlagshipHost(): ReactElement {
           onPlayStudyDemo={playStudyDemo}
           onEnterLive={enterLive}
           onWarm={warmLive}
-          onDemoIntent={warmLive}
+          onDemoIntent={preloadLiveRoute}
           showTourInvite={!tourInviteSeen}
           onPlayTour={startTour}
           onDismissTourInvite={retireTourInvite}

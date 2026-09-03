@@ -532,6 +532,29 @@ const FULL_CANVAS = JSON.stringify({
 });
 
 describe('generateLive — collapse recovery + continuation topic pin (the reported bugs)', () => {
+  it('keeps a valid two-block lean answer to one model call', async () => {
+    fake.raw = JSON.stringify({
+      title: 'Osmosis',
+      narration: 'Osmosis is water moving across a membrane toward the more concentrated side.',
+      blocks: [
+        { type: 'insight', props: { title: 'Water balances concentration' } },
+        {
+          type: 'compare',
+          props: {
+            options: [{ name: 'Dilute side' }, { name: 'Concentrated side' }],
+            criteria: [{ label: 'Water', cells: [{ v: 'moves from' }, { v: 'moves toward' }] }],
+          },
+        },
+      ],
+    });
+
+    const { spec, collapsed } = await generateLive('define osmosis', [], cfg);
+
+    expect(fake.calls).toBe(1);
+    expect(collapsed).toBeUndefined();
+    expect(spec.blocks).toHaveLength(2);
+  });
+
   it('recovers a COLLAPSED first pass (0 blocks) with one re-ask instead of the lone fallback card', async () => {
     // First pass: narration but no title and no blocks → validateLiveResponse returns null → the
     // old behavior was the single "Here's what I can say / Inferred" card. Now we re-ask once.
@@ -555,10 +578,11 @@ describe('generateLive — collapse recovery + continuation topic pin (the repor
       JSON.stringify({ narration: 'A short spoken answer.', blocks: [] }),
       JSON.stringify({ narration: 'A short spoken answer.', blocks: [] }),
     ];
-    const { spec, narration } = await generateLive('teach me graphs', [], cfg);
+    const { spec, narration, collapsed } = await generateLive('teach me graphs', [], cfg);
     expect(fake.calls).toBe(2);
     expect(spec.title).toBe('Here’s what I can say');
     expect(narration).toBe('A short spoken answer.'); // salvaged + spoken, not the generic apology
+    expect(collapsed).toBe(true);
     const b = spec.blocks[0];
     // The degraded card is not a graded finding — it carries no confidence badge.
     expect((b.props as { conf?: string }).conf).toBeUndefined();

@@ -49,7 +49,8 @@ export function ThinkStep(): ReactElement {
           ]}
         />
         <p className="field-helper">
-          Fast keeps replies snappy; Thorough lets the model think more on hard questions.
+          Fast keeps replies snappy. Thorough buys two speculative turns per answer; Balanced
+          glimpses cost up to three small calls per utterance.
         </p>
       </div>
     </div>

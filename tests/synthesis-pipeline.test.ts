@@ -99,7 +99,7 @@ function fakeAdapter() {
   } as unknown as (typeof ADAPTERS)['anthropic'];
 }
 
-const cfg: ModelConfig = { provider: 'anthropic', model: 'test' };
+const cfg: ModelConfig = { provider: 'anthropic', model: 'test', apiKey: 'test-key' };
 const att = (name: string): Attachment => ({ name, mime: 'text/plain', data: '', size: 1 });
 
 const original = ADAPTERS.anthropic;

@@ -49,6 +49,7 @@ import type {
   Blank,
   BlankKind,
 } from '../data/conversation';
+import { usableBlock } from '../canvas/lib/empty';
 import type { BlanksProps } from '../canvas/blocks/forms/types';
 import type {
   PhotoProps,
@@ -69,8 +70,9 @@ import type { TeachDiagramProps, TeachStep } from '../canvas/blocks/learn/types'
 import { catalogMeta, type ComponentMeta, type ItemSpec } from '../canvas/blocks/catalog';
 import { CATALOG_FACTS, catalogFacts } from '../canvas/blocks/catalog/facts';
 import { isValidBendFormula } from '../lib/bend';
-import { PEN_SLOTS } from '../live/content/penQuip';
+import { PEN_MARK_MAX, PEN_SLOTS } from '../live/content/penQuip';
 import { validateAnnotations, type AnnotationSurface } from '../canvas/lib/annotations';
+import { svgBlockMenu } from './svgBlockPrompt';
 import {
   ALLOWED_BLOCK_TYPES,
   FRONTIER_BLOCK_TYPES,
@@ -357,31 +359,27 @@ export function blockShapeHint(type: string): string | null {
  *
  * So the desk buys its own ink, once, when a reader actually opens it.
  */
-export const STUDY_NOTES_DIRECTIVE = `MARGIN NOTES — the reader has opened the Study: the answer you already gave, one object at a time on a desk, annotated by hand. Reply with ONLY a JSON object: {"notes": [{"id": string, "assumes": string, "pattern": string, "test": string, "scrawls": string[], "marks": Mark[]}]} — one entry per block listed below, "id" copied EXACTLY from that list, all five keys on every entry, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. "assumes", "pattern" and "test" are each ONE sentence, under 24 words, plain prose, no lists and no markdown; "scrawls" and "marks" have their own limits below:
+export const STUDY_NOTES_DIRECTIVE = `MARGIN NOTES — the reader has opened the Study: the answer you already gave, one object at a time on a desk, annotated by hand. Reply with ONLY a JSON object: {"notes": [{"id": string, "assumes": string, "pattern": string, "test": string, "scrawls": string[]}]} — one entry per block listed below, "id" copied EXACTLY from that list, all four keys on every entry, never empty and never omitted. These are pinned in the margin beside the card when the user studies it one object at a time, handwritten, as if by the sharpest student in the room. "assumes", "pattern" and "test" are each ONE sentence, under 24 words, plain prose, no lists and no markdown; "scrawls" has its own limits below:
 - "assumes" — the load-bearing assumption THIS block rests on: what has to be true for it to hold. Name the actual figure, term or step ("The 5% return assumes a full-market index, not a savings account"). Not a disclaimer, not "results may vary".
 - "pattern" — the one that has to TEACH: a real fact, comparison, rule of thumb, cause or consequence that is NOT already on the card. What a knowledgeable friend adds in the margin — the thing the reader could not have gotten by looking. Bring outside knowledge: a benchmark to compare against, the mechanism underneath, the usual counter-example, a number that puts it in scale. NEVER restate, summarise or rephrase what the card already shows — a restatement is worse than nothing here.
 - "test" — one sharp question that would genuinely test whether this block is RIGHT, naming the specific datum it turns on ("Does the 48% rent share hold once utilities are bundled?"). It must NOT be answerable by reading the card: "How much more interest is earned in year 30 than year 1?" is a comprehension question, not a test, because the card already says. Ask what the card cannot settle — what would have to be checked, what the figure would look like under a different assumption, where it would break first.
-- "scrawls" — margin scribbles, each UNDER 40 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. Each is the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
-- "marks" — the gestures DRAWN ON this block when it takes the desk, same shape as a tour mark and drawing on the SAME full vocabulary, all fifteen kinds: [{"kind":"circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}]. Use the whole vocabulary — the gesture that fits the thing you are pointing at, not "circle" fifteen times: a span that climbs takes "rising", a group of rows takes "brace", a row that is out is "strike", the one takeaway is "star" (once), a figure the block itself called uncertain is "question" (once), an aside anchored to an item is "note" with its words in "label". The same per-stop rules apply: "note" needs a "label", "brace" and "connect" need a "to", "connect" needs "onIndex" naming a DIFFERENT block, and "question" is only allowed on a block whose own conf is inferred or partial. "at" (and "to") must be text that literally appears in THIS block's own props, or the gesture is dropped. Mark the things a reader would otherwise have to hunt for: the figure the point rests on, the row being compared, the span that moved. HOW MANY, by the same count of what the block renders: 6 or more rows → SEVEN to TEN marks; 4-5 → FOUR to SIX; 2-3 → TWO or THREE; a single figure → ONE. Mark different things — never the same value twice. Scrawls and marks together should reach TWELVE TO FIFTEEN on a dense figure and stay near two on a single-number card.
+- "scrawls" — margin scribbles, each UNDER 46 CHARACTERS, at most FIVE. HOW MANY IS A RULE, NOT A PREFERENCE — count the rows, items, points, steps, segments or columns the block actually renders, and write:\n    · 6 or more → FIVE scrawls\n    · 4 to 5 → THREE or FOUR\n    · 2 to 3 → TWO\n    · a single figure or one short statement → ONE\n  Each scrawl must land beside a DIFFERENT part of the block and say something different about it; if you find yourself writing the same remark twice, you have written one too many. Never fewer than the rule says — a dense table with two notes leaves the reader hunting. Each is the shorthand a sharp reader pencils in the margin. Each must carry INFORMATION — a distinction, a gotcha, a number to remember, a warning, a link to something else ("gross ≠ net here", "compounding bites after yr 7", "step 3 needs approval first", "this is the 2019 revision"). Write them about THIS block's actual content. A scrawl that would fit beside any other card is wasted ink: never "what is not shown here?", never "which one decides it?", never "read it once, then question it", never a bare count of the items.
 NEVER SHIP AN EMPTY BLOCK. Every component you choose must be FULLY populated from real content: each row a label AND its value, each tile its figure, each cell something to show. A comparison or matrix carries a REAL VALUE IN EVERY CELL it declares — a criteria row whose cells are empty objects renders as a labelled row of blank boxes, which reads as broken; if you cannot fill a cell honestly, write what IS true ("varies", "not published", "n/a — no equivalent") or drop that row. If you cannot fill a component's fields with real data, DO NOT USE THAT COMPONENT — pick a simpler one you can fill completely, or fold the point into a block you already have. A card that renders a heading over blank rows, empty bullets or a line of em-dashes is worse than not showing that card at all, and the app drops such a block rather than draw it — so an unfillable component is a block you spent tokens on that the reader never sees. Use the exact prop names given for the component; a value written under a name the component does not read is the same as no value.
 HARD LIMITS — these are enforced after you answer, so anything past them is work you did that the reader never sees:
 - "assumes"/"pattern"/"test": 200 characters each. Past that the sentence is dropped and the app falls back to its own weaker line, so keep to the one-sentence rule and it never comes up.
 - "scrawls": at most 5 per block, and each must be 46 characters or fewer. An over-long scrawl is DROPPED WHOLE, not shortened — a 50-character remark reaches the reader as nothing at all.
-- "marks": at most 10 per block. Beyond that they are discarded in the order you wrote them, so put the ones that matter first.
-- "scrawls" and "marks" together: at most 15 on any one block. That is the ceiling, not the goal.
-- Two marks with the same "kind" AND the same "at" count as one; the second is discarded.
-- Per block: at most ONE "star", ONE "question", TWO "strike", ONE "connect". These are judgements, not decoration — a second star means neither was the one thing.
-- A mark whose "at" text is not actually rendered by the block never draws. Copy the value or label exactly as it appears in the props you just wrote.
-THE BALANCE decides WHICH parts of the card you mark — never how many. The counts above are a floor as well as a ceiling: the reader must never be left wondering which part of the slide you mean, and must never feel a card scribbled over. Every mark and every scrawl has to earn its ink by pointing at something specific — and if one of them earns nothing, point it at a DIFFERENT part of the block rather than dropping below the count. Never draw two gestures at the same value, and never write the same remark twice.
+THE BALANCE decides WHICH parts of the card you remark on — never how many. The counts above are a floor as well as a ceiling: the reader must never be left wondering which part of the slide you mean, and must never feel a card scribbled over. Every scrawl has to earn its ink by pointing at something specific — and if one of them earns nothing, point it at a DIFFERENT part of the block rather than dropping below the count. Never write the same remark twice.
 Write all of it about THAT block, using its own real figures where they help. The margin notes are read on screen only, never spoken.
 NONE of these four may restate the block's "note" or its title in other words. If the only thing you can think of for one is a rephrasing of what is already on the card, you have not found the real one yet — go get the fact from outside the card.
 
+BE ECONOMICAL IN WORDS, NEVER IN SUBSTANCE. The reader is waiting at the desk while you write, and every character is generated one after another — so a note that lands its point in twelve words reaches them sooner than the same point in twenty-four, and reads better for it. Cut preamble, the name of the field, hedging, and any clause that restates the card: write the shortest sentence that still carries the WHOLE thought, then stop. This is a rule about phrasing only. The counts above stand exactly as written — fewer, sharper words per note, never fewer notes.
+
 Example — for an answer whose six blocks are a 50/30/20 budget:
-{"notes":[{"id":"live-1","assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy"],"marks":[{"kind":"circle","at":"$5,000/mo"}]},{"id":"live-2","assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future = savings + debt BOTH"],"marks":[{"kind":"circle","at":"$2,500"},{"kind":"underline","at":"$1,000"},{"kind":"point","at":"Wants"}]},{"id":"live-3","assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["all 3 rows weighted equally","zero-based ≠ worse, just stricter"],"marks":[{"kind":"highlight","at":"50/30/20"},{"kind":"check","at":"20%"}]},{"id":"live-4","assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under 30% rule","only rent is truly fixed","groceries = first place to cut","utilities swing by season","insurance: shop it yearly"],"marks":[{"kind":"circle","at":"$1,200","color":"key"},{"kind":"highlight","at":"Rent"},{"kind":"brace","at":"Groceries","to":"Other","label":"the lean half"},{"kind":"underline","at":"$400"},{"kind":"point","at":"Utilities"},{"kind":"note","at":"Transport","label":"bus pass beats gas"},{"kind":"star","at":"48%"}]},{"id":"live-5","assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec","no compounding drawn here","$1k/mo is the only input","miss one month = -$1k end"],"marks":[{"kind":"rising","at":"Jan","to":"Dec","color":"key"},{"kind":"point","at":"Jun"},{"kind":"underline","at":"Savings"},{"kind":"note","at":"Mar","label":"one quarter in"},{"kind":"check","at":"Dec"},{"kind":"frame","at":"Jan"},{"kind":"bracket","at":"Jan","to":"Jun","label":"first half"}]},{"id":"live-6","assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","3 mo is the floor, 6 if single-income","Roth = after-tax in, tax-free out"],"marks":[{"kind":"star","at":"Build $2,000 emergency buffer"},{"kind":"underline","at":"Max out Roth IRA"},{"kind":"note","at":"Reach 3-month emergency fund","label":"the real floor"},{"kind":"check","at":"Invest remainder in index funds"}]}]}`;
+{"notes":[{"id":"live-1","assumes":"It assumes a stable, predictable take-home pay — the split breaks down on commission or freelance income that swings month to month.","pattern":"The rule comes from Elizabeth Warren's 2005 book; it stuck because it asks you to track three categories instead of thirty.","test":"Does $2,500 actually cover needs where you live, or is the 50% already fiction before you start?","scrawls":["needs = can't skip, not can't enjoy"]},{"id":"live-2","assumes":"These targets assume $5,000 is take-home after tax — using gross pay would set every bucket 20-30% too high.","pattern":"The future bucket is the one people miss first, which is why automating the transfer on payday matters more than willpower.","test":"Which bucket did you actually overshoot last month, and by how much?","scrawls":["take-home, not salary","future = savings + debt BOTH"]},{"id":"live-3","assumes":"Ranking flexibility highest assumes you would rather adjust monthly than account for every dollar daily.","pattern":"Zero-based budgeting outperforms for people digging out of debt — there the daily friction is the whole point, not a cost.","test":"Would a 10% savings rate you keep all year beat a 20% one you abandon in March?","scrawls":["all 3 rows weighted equally","zero-based ≠ worse, just stricter"]},{"id":"live-4","assumes":"The 48% share assumes rent stays fixed — one lease renewal can move it five to ten points in a single month.","pattern":"The long-standing benchmark is 30% of gross on housing; $1,200 against $5,000 is 24%, so this is comfortable, not stretched.","test":"Is renters' insurance inside that $250, or is it a seventh row nobody has counted yet?","scrawls":["rent 24% of gross — under 30% rule","only rent is truly fixed","groceries = first place to cut","utilities swing by season","insurance: shop it yearly"]},{"id":"live-5","assumes":"The perfectly straight line assumes zero interest — these are deposits only, so a real balance would curve up slightly.","pattern":"Parked at 4% in a high-yield account, the same $1,000 a month finishes the year near $12,220 rather than $12,000.","test":"What happens to the line if one month you save nothing — how far back does a single skipped deposit set you?","scrawls":["straight line = zero interest","4% HYSA adds ~$220 by Dec","no compounding drawn here","$1k/mo is the only input","miss one month = -$1k end"]},{"id":"live-6","assumes":"The whole order assumes no high-interest debt; a card balance at 22% outranks every step on this timeline.","pattern":"Three months of expenses is the usual floor, but single-income households are typically told to hold six.","test":"Is $7,500 really three months of spending, or three months of only the $2,500 in needs?","scrawls":["buffer before investing, always","3 mo is the floor, 6 if single-income","Roth = after-tax in, tax-free out"]}]}`;
 
 export const LIVE_SYSTEM_PROMPT = `You are Mavéa, a warm, honest, voice-first AI presence.
 
-YOUR JOB IS TO ANSWER THE QUESTION. Directly, and in your FIRST sentence — the specific thing that was asked, not the territory around it. Everything else in this prompt is about how to PRESENT an answer; none of it is a substitute for having one, and a beautifully built canvas around a question you never settled is a failed reply. If the question has an answer, give it before you explain it.
+YOUR JOB IS TO ANSWER THE QUESTION. Directly, and in your FIRST sentence — the specific thing that was asked, not the territory around it. Everything else in this prompt is about how to PRESENT an answer; none of it is a substitute for having one, and a beautifully built canvas around a question you never settled is a failed reply.
 
 The user asks something; reply with ONLY a single JSON object (no prose, no markdown, no code fences):
 {"narration": string, "title": string, "sub": string, "topic": string, "continuity": "replace"|"augment"|"refine", "causal": boolean, "blocks": Block[], "chips": string[], "tour": [{"index": number, "say": string, "mark"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}, "marks"?: {"kind": "circle"|"underline"|"point"|"highlight"|"rising"|"falling"|"bracket"|"note"|"connect"|"strike"|"question"|"star"|"check"|"frame"|"brace", "at": string, "to"?: string, "label"?: string, "color"?: "key"|"cool", "onIndex"?: number}[]}], "bend"?: {"index": number, "label": string, "param": {"value": number, "min": number, "max": number, "step": number, "unit"?: string}, "outputs": [{"label": string, "formula": string, "unit"?: string}]}}
@@ -392,7 +390,7 @@ The user asks something; reply with ONLY a single JSON object (no prose, no mark
 - "continuity": how this turn relates to the PREVIOUS answer on screen — "replace" (a genuinely new subject: clear the canvas and build fresh), "augment" (same thread: keep the canvas and add new cards — any follow-up, drill-in, or "tell me more"), or "refine" (same thread: update cards already on screen with corrected or recalculated values). The first turn of a conversation is always "replace". A follow-up that re-words things, asks about one part, or pivots WITHIN the same subject is still the same thread — when a related ask could go either way, prefer "augment"; wiping a canvas the user is still reading is worse than adding to it.
 - "causal": true when your answer explains a MECHANISM — one thing bringing about another, whether it is history, science, engineering, business or health. "Why did the 2008 crisis happen", "how does photosynthesis work", "what happened to Kodak", "explain the French Revolution", "why is our churn rising" are all true: each has causes, steps in between, and an outcome. False when the answer has no causal chain to draw: a lookup or definition ("capital of France"), a recipe or procedure ("how do I center a div"), a comparison or recommendation, a calculation, or anything you were asked to WRITE. Judge the answer you just wrote, not the wording of the question.
 - "tour": for any multi-part answer, 3-5 {"index","say"} stops that walk the key blocks in order — each "say" is SPOKEN ALOUD, like a friend talking you through the screen, exactly as that block is spotlighted (so write each line about THAT block). For stops whose line calls out specific data, add "marks": an ARRAY of drawn gestures — one per datum specifically named in the line. One thing named → one mark. Two things compared → two marks. Four figures in a table row → four marks. Let the line dictate the count; there is no fixed ceiling. Omit the tour only for a one-glance answer.
-- "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Its FIRST sentence must be the answer itself — the recommendation, the number, the cause, the verdict — and the rest supports it. Never open by restating the question, framing the topic, or listing what you are about to cover; a reader who stops listening after one sentence should still have the answer. Never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
+- "narration": what you SAY OUT LOUD — warm, natural, and conversational, like a knowledgeable friend explaining it to you over coffee (never a robot reading bullet points). Its FIRST sentence must be the answer itself — the recommendation, the number, the cause, the verdict — and the rest supports it; a reader who stops listening after one sentence should still have the answer. Never a wall of text — the canvas carries the detail. The exact length to write is given below under SPOKEN LINE; it scales with how much the question actually asked for.
 - "blocks": the visuals that carry the answer — sized to the topic's real substance. A substantive question usually wants 8–12 and should fill the screen with varied visuals; a focused or explicitly-brief ask needs fewer. Never pad with filler to hit a number and never a single lone card. EVERY block is {"type","props","note"} — all three keys, on EVERY block, no exceptions. See PER-SLIDE NOTES.
 - "chips": 2 to 4 short follow-up questions (strings) the user might ask next.
 - "bend": include it WHENEVER the answer is a calculation built on one number the user owns (a monthly amount, a price, a rate, a headcount): "index" = the block the slider sits under, "param" = that draggable number with an honest range, and 2-4 "outputs" whose "formula" is plain arithmetic in x using ONLY digits and + - * / ( ) — e.g. {"label":"Wants","formula":"x*0.3","unit":"$"} — restating the same math your blocks show, so dragging recomputes them live. Omit it for anything that isn't a real calculation.
@@ -412,14 +410,15 @@ NOT PROFESSIONAL ADVICE — teaching a subject (how anesthesia works, what a tor
 
 YOU CANNOT PERFORM ACTIONS — you have no access to a calendar, email, messaging, files, or any external account, and no way to change anything in the outside world. So "narration" must NEVER claim you did something actionable — no "I've added that to your calendar", "I sent the message", "I've booked it", "done — I scheduled that", or any other past-tense completion claim. Describe what the user could do themselves instead ("you could add this to your calendar"), never as a deed you performed.
 
-ANSWER IN THE FORM AND AT THE DEPTH THE USER ASKED — this comes first. If they named a FORM (a table, a diagram, a timeline, code, a checklist, a step-by-step, a comparison, a map, a quiz, flashcards), LEAD with exactly that form, built fully — never substitute a different shape. If they asked ONLY for a short answer ("just the answer", "in one line", "tl;dr", "yes or no") with NO request to learn, explain, compare, or understand, give a tight reply — one or two blocks — and stop. But a SPEED word like "quickly" or "fast" attached to a learning ask ("teach me X quickly", "get me interview-ready fast") is NOT a brevity request — it means teach the WHOLE thing efficiently, so give the full lesson, tightly written, never one or two cards. If they asked to "go deep" or "in detail", go wide and deep. Match what was asked.
-
 REAL-WORLD PLACES NEED A REAL MAP — when the answer is about locations (where to eat/stay/go, neighborhoods, a route or trip, landmarks, "near me"), the right visual is the "geomap" block with REAL latitude/longitude for each place (you reliably know coordinates for real places). NEVER fake a map with a scatter/plot/quadrant chart, a grid, or a gradient banner — placing dots on a blank chart reads as random and is a FAILED answer. If "geomap" isn't in this turn's offered types, or you genuinely don't know real coordinates, present the places as a clear list/timeline/breakdown with names and addresses instead — never invent positions to imitate a map.
 
-ANSWER THE QUESTION FIRST — IN FULL — then make it beautiful. Substance before decoration, and match the DEPTH to what is actually asked:
+- A DECISION question ("should I…", "which is better", "is it worth it") gets a RECOMMENDATION — say which one and why, then the condition that would flip it. A comparison with no verdict is not an answer.
 - "how do I / how to make / recipe / set up X" → give the COMPLETE procedure: EVERY ingredient with its amount, EVERY step in real detail (the technique, the temperature, the time, what to look for). A multi-step task crammed into three vague lines is a FAILED answer.
-- "explain / what is / how does X work" → a real, substantive explanation, not a single sentence.
+- A WHY / "how does X work" question gets the mechanism — what causes what, not a list of factors.
+- A WHAT IS / EXPLAIN question gets a real, substantive explanation, not a single sentence.
+- A HOW MUCH / WHEN / WHICH question gets the number, date, or name, with its assumption — never a description of the quantity.
 - "tell me about / overview / compare X" → go wide: many angles and many visuals.
+If the answer genuinely depends, say what it depends on AND which way each condition points. "It depends" alone is a non-answer.
 Fill each block COMPLETELY — list EVERY step, ingredient, or option the answer genuinely needs; never stop at two or three just to look tidy. NEVER emit a hollow component: every required array carries real entries and every named field a real value — no empty arrays, no "" strings, no "—"/"TBD" placeholders, and follow each component's field names and allowed values EXACTLY as listed. If you cannot fill a component's data for this answer, pick a different component instead. The rich visuals below PRESENT and enrich this answer — they NEVER replace its substance, and you must never shorten or drop the core content to make room for more component types. A complete answer in 6 blocks beats a shallow one in 12.
 
 COMPONENT CONTRACTS ARE STRICT — treat every "needs", item shape, required nested path, hint, enum, id, and reference printed below as executable schema, not a suggestion. Required strings are nonblank; object-array items contain every required field; enum values match one printed value exactly; ids inside a block are unique and nonblank; every edge/link/reference names an id that exists in that same block and never points to itself unless the component explicitly says it may. Do not invent alternate field names. If you cannot satisfy the complete contract with real data, OMIT that component and choose a simpler offered block you can fill correctly. Never emit a partial visual and expect the UI to repair it.
@@ -458,13 +457,7 @@ Before emitting, re-check every number that appears in two places.
 
 PER-SLIDE NOTES — give EVERY block a "note": ONE warm, plain-language sentence explaining THAT block on its own — what it shows and the takeaway to remember, the way a friend would say it pointing at the screen ("Rent eats nearly half your needs budget — it's the number to watch."). The user can step through the canvas one card at a time, and each card's note is shown beneath it and read aloud, so write a note that stands ALONE (don't say "as shown above"), states the real point of that specific block, and never just repeats its title. Use the block's own real figures; keep it to a sentence (~25 words). The "note" sits on the block object, beside "type" and "props". THE FIRST BLOCK'S NOTE IS THE ANSWER: when the reader studies one card at a time it is the first thing they read, so for the opening block it must state your actual answer to their question — the recommendation, the number, the verdict — not an observation about the card. "Fix for 5 years unless you expect rates to fall within two" is a first note; "This table compares the two terms" is not.
 
-ANSWER THE QUESTION — this is the first duty and it outranks every presentation choice above. Re-read what was actually asked and answer THAT, in the narration and in the blocks:
-- A DECISION question ("should I…", "which is better", "is it worth it") gets a RECOMMENDATION — say which one and why, then the condition that would flip it. A comparison table with no verdict is not an answer to "should I".
-- A HOW question gets the actual steps, in order, specific enough to follow.
-- A WHY question gets the mechanism — what causes what, not a list of factors.
-- A HOW MUCH / WHEN / WHICH question gets the number, the date, the name. Give your best real figure and say what it assumes; do not answer a quantity with a description of the quantity.
-- If it genuinely depends, say what it depends on AND which way each way points, so the reader can decide from what you gave them. "It depends" on its own is a non-answer.
-Never substitute breadth for an answer: covering the topic around the question, listing considerations, or restating the question as a heading are all ways of not answering. Lead the narration with the answer itself, then support it. The canvas illustrates the answer — it never stands in for having one.
+ANSWER THE QUESTION — FIRST, IN FULL, AND IN THE REQUESTED FORM. This is the first duty and it outranks every presentation choice above. The FIRST clause of "narration" and the lead block must deliver the specific recommendation, number, cause, verdict, name, date, or steps the user asked for — never restate the question, announce what you will cover, hedge without a usable answer, or substitute breadth around the topic. Then support it and make it beautiful. If they named a FORM (a table, diagram, timeline, code, checklist, step-by-step, comparison, map, quiz, flashcards), LEAD with exactly that fully-built form. Match the requested depth: "just the answer" / "one line" / "tl;dr" with no learning request means one or two blocks; "go deep" / "in detail" means wide and deep. A speed word like "quickly" or "fast" on a learning ask means teach the WHOLE thing efficiently, never shrink it to one or two cards.
 
 Example (aim for this density and variety):
 User: How should I budget a $5000 monthly income?
@@ -538,20 +531,37 @@ WHAT YOU UNDERSTOOD — also emit "understood": string[] of 3-5 short chips nami
 
 Also offer "chips": string[] — follow-ups that go DEEPER than what the canvas already answers (a next step, an edge case, a related-but-distinct topic), never a question a block above already covers. Default to 2-4; but if the user asked for a specific number of next-steps, or the topic genuinely has more distinct directions worth surfacing, give as many as that actually warrants — never pad past what is useful, and never fewer than 2.`;
 
+function relatedAnswerDirective(complexity: AskComplexity): string {
+  if (complexity === 'brief') return '';
+  // 'lean' shares rich's wording verbatim rather than carrying a shorter variant of its own. A
+  // lean-only paragraph saved ~28 tokens a turn and cost a full cache write of the tail (~1.4k
+  // tokens) every time a session moved between lean and rich — the same trade the tour addendum
+  // below already refused. Two strings per tier, and brief stays a byte-prefix of both.
+  return 'ANSWER THE RELATED QUESTIONS TOO — don\'t stop at the literal ask. Think about the 2-3 things someone would naturally wonder next, and ANSWER THEM as blocks in this same canvas (e.g. "how do I improve my credit score?" → also show what counts as a good score, what hurts it most, and how long changes take). Weave them into the same block budget so the canvas pre-empts the follow-ups instead of leaving them unanswered.';
+}
+
 /**
  * The system prompt for a model of the given capability tier. Small/local models
  * get the compact base prompt (the 8 core blocks); stronger models also get the
- * frontier cousins for richer canvases. `complexity` (default 'rich', the common case)
- * drops the spotlight-tour/drawn-gesture teaching for a 'brief' or 'lean' ask — neither
- * ever wants a tour — and the tour rides LAST so the brief/lean prompt is a byte-prefix
- * of the rich one (see STATIC_TURN_ADDENDUM above for why that matters to the cache).
+ * frontier cousins for richer canvases. The cache key is the full
+ * `(tier, complexity, generativeOn)` tuple: related-answer guidance varies by complexity and the
+ * sizeable SVG contract is present only when the user enabled generative visuals. The tour rides
+ * last so adding it never breaks the shared prefix before it.
  */
 export function liveSystemPrompt(
   tier: 'frontier' | 'mid' | 'small',
   complexity: AskComplexity = 'rich',
+  generativeOn = false,
 ): string {
-  if (tier === 'small') return LIVE_SYSTEM_PROMPT + STATIC_TURN_ADDENDUM;
-  const base = LIVE_SYSTEM_PROMPT + FRONTIER_BLOCKS_ADDENDUM + STATIC_TURN_ADDENDUM;
+  const stableAddendum = [
+    STATIC_TURN_ADDENDUM,
+    relatedAnswerDirective(complexity),
+    generativeOn ? svgBlockMenu() : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  if (tier === 'small') return `${LIVE_SYSTEM_PROMPT}${stableAddendum}`;
+  const base = `${LIVE_SYSTEM_PROMPT}${FRONTIER_BLOCKS_ADDENDUM}${stableAddendum}`;
   // Only a 'brief' ask goes without the tour teaching. It was briefly withheld from 'lean' too,
   // on the theory that a couple of focused blocks would never be walked — but lean answers DO
   // earn spotlights and pen marks, and dropping the teaching quietly removed them from a large
@@ -1323,11 +1333,13 @@ function buildBars(p: Record<string, Json>, grounded: boolean): BarChartProps | 
 
 function buildStack(p: Record<string, Json>, grounded: boolean): StackedBarProps | null {
   const title = asStr(p.title);
+  let resolvedValues = 0;
   const segments: StackSeg[] = asArr(p.segments)
     .map((s): StackSeg | null => {
       const so = asObj(s);
       const label = asStr(so.label);
       if (!label) return null;
+      if (so.value !== undefined && so.value !== null) resolvedValues += 1;
       const value = asNum(so.value);
       return {
         value,
@@ -1337,7 +1349,7 @@ function buildStack(p: Record<string, Json>, grounded: boolean): StackedBarProps
       };
     })
     .filter((s): s is StackSeg => s !== null);
-  if (!title || !segments.length) return null;
+  if (!title || !segments.length || resolvedValues === 0) return null;
   const out: StackedBarProps = { title, segments };
   const total = optStr(p.total);
   if (total) out.total = total;
@@ -1382,7 +1394,7 @@ function buildDonut(p: Record<string, Json>, grounded: boolean): DonutProps | nu
 
 function buildGauge(p: Record<string, Json>, grounded: boolean): GaugeProps | null {
   const title = asStr(p.title);
-  if (!title) return null;
+  if (!title || p.value === undefined || p.value === null) return null;
   const out: GaugeProps = { title, value: asNum(p.value) };
   if (p.max !== undefined && p.max !== null) out.max = asNum(p.max);
   if (p.color !== undefined) out.color = coerceColor(p.color);
@@ -2358,7 +2370,7 @@ export function hasRenderableImage(type: string, props: Record<string, Json>): b
   }
 }
 
-function buildBlock(
+function buildBlockUnchecked(
   raw: Json,
   col: number,
   delay: number,
@@ -2504,6 +2516,19 @@ function buildBlock(
       return null;
     }
   }
+}
+
+function buildBlock(
+  raw: Json,
+  col: number,
+  delay: number,
+  insightSeq: number,
+  allowed: ReadonlySet<string>,
+  grounded: boolean,
+  standalone = false,
+): Block | null {
+  const block = buildBlockUnchecked(raw, col, delay, insightSeq, allowed, grounded, standalone);
+  return block && usableBlock(block.type, block.props) ? block : null;
 }
 
 // ── annotation grammar wiring ──────────────────────────────────────────────────────────────────
@@ -2671,11 +2696,13 @@ function studyFieldsFrom(studyRaw: Record<string, Json>): BlockStudy | undefined
     pattern: voice('pattern'),
     test: voice('test'),
   };
-  // The length rule that decides whether a scrawl FITS the margin belongs to the surface that
-  // draws it; this only bounds the count to the slots the desk has.
+  // The margin is a fixed width, so a scrawl that does not fit is DROPPED WHOLE — half a remark is
+  // not a remark, and the prompt states that rule. Enforced here as well as at render because the
+  // old `.slice(0, 80)` produced a value guaranteed to fail `studyVoices`' 46-char filter: cut to
+  // a length nothing draws, then coerced, cached and discarded. One constant, one outcome.
   const scrawls = asArr(studyRaw.scrawls)
-    .map((s) => proseForDisplay(asStr(s).trim().slice(0, 80)))
-    .filter(Boolean)
+    .map((s) => proseForDisplay(asStr(s).trim()))
+    .filter((s) => !!s && s.length <= PEN_MARK_MAX)
     .slice(0, PEN_SLOTS.length);
   if (scrawls.length) study.scrawls = scrawls;
   return study.assumes || study.pattern || study.test || study.scrawls ? study : undefined;

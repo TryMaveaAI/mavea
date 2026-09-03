@@ -42,6 +42,10 @@ export interface SelectionResult {
   types: string[];
   /** The compact "you may also use these" menu appended to the system prompt. */
   promptSnippet: string;
+  /** Byte-stable menu framing and the always-available core contracts. */
+  stablePromptSnippet: string;
+  /** Only the selected hero lines; this is the turn-varying part of the menu. */
+  heroPromptSnippet: string;
   /** The gate validateLiveResponse uses — exactly the types we exposed. */
   allowed: ReadonlySet<string>;
   /** The strongest data-shape fit among the candidates (0 = the ask matched no shape any
@@ -483,7 +487,8 @@ function describe(m: ComponentMeta, withExample = false, dense = false, lead = t
   const richer = extra.length ? ` · richer with: ${extra.join(', ')}` : '';
   const blurb = lead ? m.blurb : shortBlurb(m.blurb);
   const hints = lead ? propHintsClause(m) : '';
-  return `- ${m.type} — ${blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${contentBudgetPromptClause(m)}${hints}${richer}`;
+  const limits = lead ? contentBudgetPromptClause(m) : '';
+  return `- ${m.type} — ${blurb} · needs: ${needs}${itemShapeClause(m)}${requiredPathsClause(m)}${limits}${hints}${richer}`;
 }
 
 /** The always-present common blocks (the base floor), with their fields taught too, so the
@@ -503,48 +508,66 @@ function commonLines(): string {
 // a demo-grade (denser) example so it fills them deeply; the rest stay thin so the menu stays small.
 const LEAD_DENSE = 3;
 
-function buildMenu(chosen: ComponentFacts[], fitOf: ReadonlyMap<string, number>): string {
-  // The hero lines quote each component's blurb, required props and item shapes — the DETAIL half of
-  // the catalog, resident only after `ensureDetails`. A type whose family failed to load simply drops
-  // out of the menu (it stays in the type set, coerced generically), so a chunk error degrades the
-  // prompt rather than the turn.
+const HERO_MENU_HEADER = [
+  'HERO COMPONENTS for THIS answer — your most impressive options, best first. Build the',
+  'canvas AROUND two or three of these (a demo-grade reply leads with the cool visuals), and',
+  'fill in the rest with the common blocks below. Pick only components that genuinely FIT this',
+  "answer's content — a striking visual used for data it wasn't meant for reads as a mistake;",
+  'when in doubt prefer the clearer block. Use the exact prop NAMES and printed limits shown.',
+  'Treat every needs/item-shape/required-nested/hints clause as an executable contract: all',
+  'required strings are nonblank, ids are unique, references resolve to an existing id, and',
+  'closed values match exactly. If you cannot satisfy a contract, omit that block and use a',
+  'simpler offered type; never send a partial or placeholder-shaped component.',
+  'The example shows SHAPE and DENSITY, not the answer. Prioritize the highest-value real items',
+  'that fit; summarize any remainder and offer it as a follow-up instead of cramming, shrinking,',
+  "or overflowing the card. Use the ANSWER'S OWN real values — never copy example values:",
+];
+
+function commonMenuLines(): string[] {
+  return [
+    'ALWAYS AVAILABLE — the reliable staples. Use these freely alongside the hero components',
+    '(every good canvas mixes both); fall back to a plain insight/list/breakdown only when',
+    'nothing richer fits:',
+    commonLines(),
+  ];
+}
+
+function heroLinesFor(
+  chosen: readonly ComponentFacts[],
+  fitOf: ReadonlyMap<string, number>,
+): string[] {
   const metas = chosen.map((f) => catalogMeta(f.type)).filter((m): m is ComponentMeta => !!m);
-  // Order the heroes the model reads first by FIT, then by wow: a component that genuinely
-  // fits the data leads over a flashier one that doesn't, so "build around the first few"
-  // points at relevant visuals. Within each group, most-impressive-first still holds.
   const cool = [...metas].sort((a, b) => {
     const fa = (fitOf.get(a.type) ?? 0) > 0 ? 1 : 0;
     const fb = (fitOf.get(b.type) ?? 0) > 0 ? 1 : 0;
     if (fa !== fb) return fb - fa;
     return b.wowWeight - a.wowWeight;
   });
-  // Only the leads carry an example (see LEAD_DENSE above); the rest teach shape + hints, thin.
-  const heroLines = cool.map((m, i) => describe(m, i < LEAD_DENSE, true, i < TEACH_HINTS));
+  return cool.map((m, i) => describe(m, i < LEAD_DENSE, true, i < TEACH_HINTS));
+}
+
+/** Stable menu material, placed before the selected hero lines on production turns so providers
+ *  can cache the contracts shared by every answer. */
+export function stableMenu(): string {
+  return [...HERO_MENU_HEADER, '', ...commonMenuLines()].join('\n');
+}
+
+/** The selected hero descriptions are the only menu bytes that vary with the question. */
+export function heroMenuFor(choice: Choice): string {
+  return heroLinesFor(choice.chosen, choice.fitOf).join('\n');
+}
+
+function buildMenu(chosen: ComponentFacts[], fitOf: ReadonlyMap<string, number>): string {
+  // The hero lines quote each component's blurb, required props and item shapes — the DETAIL half of
+  // the catalog, resident only after `ensureDetails`. A type whose family failed to load simply drops
+  // out of the menu (it stays in the type set, coerced generically), so a chunk error degrades the
+  // prompt rather than the turn.
+  const heroLines = heroLinesFor(chosen, fitOf);
   const out: string[] = [];
   if (heroLines.length) {
-    out.push(
-      'HERO COMPONENTS for THIS answer — your most impressive options, best first. Build the',
-      'canvas AROUND two or three of these (a demo-grade reply leads with the cool visuals), and',
-      'fill in the rest with the common blocks below. Pick only components that genuinely FIT this',
-      "answer's content — a striking visual used for data it wasn't meant for reads as a mistake;",
-      'when in doubt prefer the clearer block. Use the exact prop NAMES and printed limits shown.',
-      'Treat every needs/item-shape/required-nested/hints clause as an executable contract: all',
-      'required strings are nonblank, ids are unique, references resolve to an existing id, and',
-      'closed values match exactly. If you cannot satisfy a contract, omit that block and use a',
-      'simpler offered type; never send a partial or placeholder-shaped component.',
-      'The example shows SHAPE and DENSITY, not the answer. Prioritize the highest-value real items',
-      'that fit; summarize any remainder and offer it as a follow-up instead of cramming, shrinking,',
-      "or overflowing the card. Use the ANSWER'S OWN real values — never copy example values:",
-      ...heroLines,
-      '',
-    );
+    out.push(...HERO_MENU_HEADER, ...heroLines, '');
   }
-  out.push(
-    'ALWAYS AVAILABLE — the reliable staples. Use these freely alongside the hero components',
-    '(every good canvas mixes both); fall back to a plain insight/list/breakdown only when',
-    'nothing richer fits:',
-    commonLines(),
-  );
+  out.push(...commonMenuLines());
   return out.join('\n');
 }
 
@@ -853,6 +876,8 @@ export async function selectComponents(input: SelectionInput): Promise<Selection
   return {
     types: choice.types,
     promptSnippet: menuFor(choice),
+    stablePromptSnippet: stableMenu(),
+    heroPromptSnippet: heroMenuFor(choice),
     allowed: choice.allowed,
     bestFit: choice.bestFit,
   };

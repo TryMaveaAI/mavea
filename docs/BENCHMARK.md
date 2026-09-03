@@ -22,12 +22,13 @@ Every case is a real ask with a known-good answer shape. Each model response is 
 | `noForbidden`     | zero _wrong_ block types (e.g. a time-series `chart` for a category split)       |
 | `honest`          | on estimate-only asks, no unsourced `conf:'strong'` — guesses are labeled        |
 | `noRepeat`        | informational only — a type appears once (fit-driven reuse is fine, never gated) |
+| `answerFirst`     | informational only — the spoken opener starts with substance, not preamble       |
 
 **LLM-judge (graded 1–5 by a separate model)** — `src/live/eval/judge.ts`:
 `accuracy` · `completeness` · `fillDepth` (blocks richly filled, not half-empty) · `fit` (block type
 matches the data shape) · `wow` (varied and designed vs. a generic chatbot default) · `intentFit`
-(answered in the FORM and at the DEPTH the user asked — a table when they asked for a table, tight
-when they asked for short).
+(answered in the FORM and at the DEPTH the user asked) · `coherence` (one deliberate story) ·
+`pedagogy` (actually teaches) · `directness` (commits to the ask immediately).
 
 The two are complementary: structural catches "picked the wrong chart / faked confidence"
 mechanically; the judge catches "technically valid but thin or ugly."

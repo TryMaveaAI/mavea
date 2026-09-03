@@ -215,6 +215,14 @@ export function resolvesShares(type: string, props: unknown): boolean {
   return true;
 }
 
+/** A timeline draws an axis and its events along it: with one event there is no span to read and
+ *  no order to follow, so the card shows a lone dot where a sequence should be. Tables are NOT
+ *  held to a row floor — a single fully-resolved row is a record worth showing. */
+export function expressesSequence(type: string, props: unknown): boolean {
+  if (type !== 'timeline') return true;
+  return asArray(asRecord(props).events).length >= 2;
+}
+
 /** One question, every judgement: can this block show anything? Restored/saved content never
  *  meets the validator again, so every surface that CASTS blocks (the Study's desk, a session
  *  hydrate, a Library open) asks this instead of finding out by rendering a placeholder. */
@@ -224,6 +232,7 @@ export function usableBlock(type: string, props: unknown): boolean {
     resolvesCellMatrix(type, props) &&
     resolvesTextItems(type, props) &&
     resolvesCompareCells(type, props) &&
-    resolvesShares(type, props)
+    resolvesShares(type, props) &&
+    expressesSequence(type, props)
   );
 }

@@ -1,10 +1,8 @@
 // live-verify-sparse.test.ts — guards the "too-sparse canvas" check.
 //
-// Live answers need at least 3 blocks. checkConsistency flags `too-sparse` (a HARD issue)
-// whenever blocks.length < 3, routing to the generateLive repair path which re-asks for a
-// fuller answer. autoFix can prepend a framing insight to a lone non-insight (1→2 blocks),
-// but 2 blocks is still below the floor — the sparse flag remains and the model must supply
-// the real additional content (autoFix can't invent it).
+// Rich answers need at least 3 blocks; lean answers need 2; explicitly brief answers need 1.
+// checkConsistency flags `too-sparse` (a HARD issue) below the ask-aware floor, routing to the
+// generateLive repair path only when the answer is genuinely incomplete for that ask.
 import { validateLiveResponse } from '../src/engine/liveSchema';
 import { checkConsistency, hasHardIssue, autoFix, HARD_ISSUE_CODES } from '../src/live/verify';
 
@@ -57,6 +55,14 @@ describe('verify — sparse canvas', () => {
     expect(r.blocks.length).toBe(1);
     const issues = checkConsistency(r, 'brief');
     expect(issues.some((i) => i.code === 'too-sparse')).toBe(false);
+  });
+
+  it('does NOT pad a complete two-block lean answer through a repair round-trip', () => {
+    const r = build([
+      { type: 'insight', props: { title: 'Direct answer' } },
+      { type: 'kpi', props: { title: 'Result', items: [{ label: 'Value', value: '42' }] } },
+    ]);
+    expect(checkConsistency(r, 'lean').some((i) => i.code === 'too-sparse')).toBe(false);
   });
 
   it('still flags an empty canvas as too-sparse even for a brief ask', () => {

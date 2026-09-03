@@ -57,6 +57,25 @@ describe('golden set integrity', () => {
 });
 
 describe('scoreCase', () => {
+  it('counts answer-first directness without making it a hard pass gate', () => {
+    const resp = validateLiveResponse({
+      title: 'Your budget',
+      narration: "Sure, let's walk through your budget.",
+      blocks: [
+        { type: 'insight', props: { title: 'Use 50/30/20', conf: 'inferred' } },
+        {
+          type: 'breakdown',
+          props: { title: 'Split', rows: [{ name: 'Needs', val: '$5,000', pct: 100 }] },
+        },
+      ],
+    });
+    const score = scoreCase(find('budget-5k'), resp);
+
+    expect(score.answerFirst).toBe(false);
+    expect(score.pass).toBe(true);
+    expect(aggregate('m', [score]).answerFirstRate).toBe(0);
+  });
+
   it('passes a correct composition answer (breakdown) for a budget ask', () => {
     const resp = validateLiveResponse(
       JSON.stringify({

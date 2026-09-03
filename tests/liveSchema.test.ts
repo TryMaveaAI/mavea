@@ -11,12 +11,7 @@ import {
 } from '../src/engine/liveSchema';
 import { ICON_KEYS } from '../src/icons/icons';
 import { PEN_MARK_MAX, PEN_SLOTS } from '../src/live/content/penQuip';
-import {
-  STUDY_INK_MAX,
-  STUDY_MARKS_MAX,
-  STUDY_NOTES_DIRECTIVE,
-  STUDY_VOICE_MAX,
-} from '../src/engine/liveSchema';
+import { STUDY_MARKS_MAX, STUDY_NOTES_DIRECTIVE, STUDY_VOICE_MAX } from '../src/engine/liveSchema';
 // Locks the Live validation core: the pure function that turns loose, possibly
 // malformed LLM JSON into a safe, fully-typed renderable response. It is the
 // defense-in-depth layer behind every provider — if it regresses, every model's
@@ -270,6 +265,45 @@ describe('validateLiveResponse — coercion & repair', () => {
     const bb = bd!.blocks[0];
     if (bb.type === 'breakdown') expect(bb.props.rows[0].pct).toBe(100);
     else throw new Error('expected breakdown');
+  });
+  it('drops share visuals with no visible arc and metrics whose value was never supplied', () => {
+    const r = validateLiveResponse(
+      {
+        title: 'T',
+        blocks: [
+          { type: 'ring', props: { title: 'Empty rings', rings: [{ label: 'A', pct: 0 }] } },
+          { type: 'gauge', props: { title: 'Missing gauge' } },
+          { type: 'stack', props: { title: 'Missing stack', segments: [{ label: 'A' }] } },
+          { type: 'gauge', props: { title: 'Real zero', value: 0 } },
+          {
+            type: 'stack',
+            props: { title: 'Real zero stack', segments: [{ label: 'A', value: 0 }] },
+          },
+        ],
+      },
+      FRONTIER_BLOCK_TYPES,
+    );
+    expect(r?.blocks.map((block) => block.type)).toEqual(['gauge', 'stack']);
+  });
+
+  it('drops a one-step timeline because it does not express a sequence', () => {
+    const r = validateLiveResponse({
+      title: 'T',
+      blocks: [
+        { type: 'timeline', props: { events: [{ time: 'Now', title: 'Only event' }] } },
+        {
+          type: 'timeline',
+          props: {
+            events: [
+              { time: 'Now', title: 'First event' },
+              { time: 'Later', title: 'Second event' },
+            ],
+          },
+        },
+      ],
+    });
+    expect(r?.blocks).toHaveLength(1);
+    expect(r?.blocks[0].type).toBe('timeline');
   });
   it('drops a CSS color token that leaks into a ring display or gauge band', () => {
     // A model sometimes drops a color like "var(--warning)" where a short value belongs; it
@@ -941,16 +975,17 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     const safety = prompt.indexOf('SAFETY FIRST');
     const realData = prompt.indexOf('USE REAL DATA ONLY');
     const noAction = prompt.indexOf('YOU CANNOT PERFORM ACTIONS');
-    const form = prompt.indexOf('ANSWER IN THE FORM');
+    // 'ANSWER IN THE FORM' was folded into the single answering directive; BLOCK SELECTION is
+    // the surviving head of the content/style guidance these rules must precede.
     const blockSelection = prompt.indexOf('BLOCK SELECTION');
     expect(safety).toBeGreaterThan(-1);
     expect(realData).toBeGreaterThan(-1);
     expect(noAction).toBeGreaterThan(-1);
+    expect(blockSelection).toBeGreaterThan(-1);
     // all three land before the content/style guidance that used to precede them.
-    expect(safety).toBeLessThan(form);
-    expect(realData).toBeLessThan(form);
-    expect(noAction).toBeLessThan(form);
     expect(safety).toBeLessThan(blockSelection);
+    expect(realData).toBeLessThan(blockSelection);
+    expect(noAction).toBeLessThan(blockSelection);
     // no leftover duplicate PARAGRAPH from the old position (a later cross-reference to "USE
     // REAL DATA ONLY" by name, inside THE BLANK SPACE, is fine — only one real definition).
     expect(prompt.split('SAFETY FIRST').length - 1).toBe(1);
@@ -1394,31 +1429,46 @@ describe('the Study call teaches its own contract, in full', () => {
 
   it('asks for the shape it will be given back', () => {
     expect(directive).toContain('"notes"');
-    for (const key of ['assumes', 'pattern', 'test', 'scrawls', 'marks']) {
+    for (const key of ['assumes', 'pattern', 'test', 'scrawls']) {
       expect(directive, key).toContain(`"${key}"`);
     }
+  });
+
+  it('never asks for the gestures nothing draws', () => {
+    // The Study's ink comes from `block.study.marks` on the SPEC, which only a baked demo or a
+    // pre-Aug-30 answer carries — the on-demand call keeps its notes in React state and never
+    // merges them back, so a gesture bought here is validated, capped, cached and discarded.
+    // It was 26% of the reply's characters. If the ink is ever wired to this call's result, this
+    // test is the place to say so deliberately rather than paying for it again by accident.
+    expect(directive).not.toContain('"marks"');
+    expect(directive).not.toContain('Mark[]');
+    const example = directive.split('\n').find((l) => l.startsWith('{"notes":')) ?? '';
+    expect(example).not.toContain('"marks"');
   });
 
   it('states every limit the coercer enforces', () => {
     // A cap the model cannot see is a cap it can only guess at, and each wrong guess is output
     // the reader paid for and the coercer discards.
-    for (const value of [
-      STUDY_VOICE_MAX,
-      PEN_SLOTS.length,
-      PEN_MARK_MAX,
-      STUDY_MARKS_MAX,
-      STUDY_INK_MAX,
-    ]) {
+    for (const value of [STUDY_VOICE_MAX, PEN_SLOTS.length, PEN_MARK_MAX]) {
       expect(directive, String(value)).toContain(String(value));
     }
-    const limits = directive.slice(
-      directive.indexOf('HARD LIMITS'),
-      directive.indexOf('THE BALANCE'),
-    );
-    for (const kind of ['star', 'question', 'strike', 'connect']) {
-      expect(limits, `${kind} cap`).toContain(`"${kind}"`);
-    }
     expect(directive).toMatch(/DROPPED WHOLE, not shortened/);
+  });
+
+  it('states one scrawl length, not two', () => {
+    // The prose bullet once said 40 while HARD LIMITS said 46 (`PEN_MARK_MAX`). A model told two
+    // numbers writes to neither, and everything between them is generated, cached, then dropped
+    // by `studyVoices`, which filters on the real one.
+    const lengths = [...directive.matchAll(/UNDER (\d+) CHARACTERS/g)].map((m) => Number(m[1]));
+    expect(lengths.length).toBeGreaterThan(0);
+    for (const n of lengths) expect(n).toBe(PEN_MARK_MAX);
+  });
+
+  it('asks for brevity in words without loosening the counts', () => {
+    // Output tokens are serial, so wording is latency — but the count floor exists because a
+    // small model otherwise settles on two scrawls whatever it is looking at.
+    expect(directive).toMatch(/BE ECONOMICAL IN WORDS, NEVER IN SUBSTANCE/);
+    expect(directive).toMatch(/never fewer notes/);
   });
 
   it('shows a worked example that obeys its own count rule', () => {
@@ -1428,19 +1478,16 @@ describe('the Study call teaches its own contract, in full', () => {
     for (const n of notes) {
       for (const key of ['assumes', 'pattern', 'test'] as const) expect(n[key], key).toBeTruthy();
       const scrawls = (n.scrawls ?? []) as string[];
-      const marks = (n.marks ?? []) as unknown[];
       expect(scrawls.length).toBeGreaterThanOrEqual(1);
       expect(scrawls.length).toBeLessThanOrEqual(PEN_SLOTS.length);
       for (const s of scrawls) expect(s.length).toBeLessThanOrEqual(PEN_MARK_MAX);
-      expect(marks.length).toBeGreaterThanOrEqual(1);
-      totals.push(scrawls.length + marks.length);
+      totals.push(scrawls.length);
     }
-    for (const t of totals) expect(t).toBeLessThanOrEqual(STUDY_INK_MAX);
-    // It teaches a RULE, not a number: the densest entry approaches the ceiling, the sparsest
-    // sits near the floor.
+    // It teaches a RULE, not a number: the densest entry reaches the ceiling, the sparsest the
+    // floor, so the model reads a scale off the example rather than one habitual count.
     expect(new Set(totals).size, `totals were ${totals.join(',')}`).toBeGreaterThan(2);
-    expect(Math.max(...totals)).toBeGreaterThanOrEqual(STUDY_INK_MAX - 3);
-    expect(Math.min(...totals)).toBeLessThanOrEqual(3);
+    expect(Math.max(...totals)).toBe(PEN_SLOTS.length);
+    expect(Math.min(...totals)).toBe(1);
   });
 
   it('every id in the example is one the coercer can key on', () => {

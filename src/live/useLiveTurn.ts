@@ -37,6 +37,7 @@ import type { MindShapeSpec } from './mindshape/types';
 import { explodeWorld } from './world/explode';
 import { expandWorldNode } from './world/expand';
 import { cacheGet, cachePut, fnv1a, rippleCacheKey } from './ripple/cache';
+import { providerGenerationAllowed } from './providers/spendPolicy';
 import { turnCorpus } from './world/grounding';
 import type { WorldSpec } from './world/types';
 import { StringFieldScanner, nextSpeakableChunk } from './streamParse';
@@ -87,6 +88,8 @@ export interface LiveTurnState {
   /** Bumped ONLY on replace, so the canvas remounts for a fresh set but reconciles
    *  (no remount) when a follow-up adds or refines. */
   replaceEpoch: number;
+  /** Reader-state identity that advances once when a replacement starts, not per streamed block. */
+  answerEpoch: number;
   /** A snapshot of the last turn, for the next turn's topic-shift decision. */
   prior: TurnSnapshot | null;
   /** Optional model-authored spotlight order (block indices) for this turn; [] = deterministic.
@@ -109,6 +112,8 @@ export interface LiveTurnState {
   /** The last turn's FAILURE, when the provider call produced no answer. A failed turn never
    *  enters history, frames, or the library — it is an error state, not content. Cleared next turn. */
   error: FailedTurn | null;
+  /** The visible canvas is a transient recovery card, not a completed answer. */
+  collapsed: boolean;
   /** The primary DATA SHAPE of the block currently streaming in (resolved from its "type" key by
    *  the engine, which holds the catalog) — labels the in-progress skeleton with the real kind
    *  without this state ever reaching the catalog. Null between blocks and outside a streamed turn. */
@@ -159,7 +164,7 @@ const ANSWER_DISK_TTL_MS = 24 * 60 * 60_000;
  *  ingredients change materially, so yesterday's entries miss cleanly instead of replaying a
  *  shape this build no longer renders. (Separate from the shared store's CACHE_VERSION, which
  *  belongs to Ripple and must not be churned by an unrelated change here.) */
-const ANSWER_DISK_NS = 'live-answer:v1';
+const ANSWER_DISK_NS = 'live-answer:v2';
 
 /** How many follow-up chips to answer ahead of the tap. Every prefetch is a full turn billed to the
  *  user's key whether or not they tap it, and taps concentrate hard on the first couple of chips —
@@ -232,7 +237,7 @@ function readAnswer(cache: Map<string, CachedAnswer>, key: string): LiveResult |
   const hit = cache.get(key);
   if (!hit) return null;
   cache.delete(key);
-  if (Date.now() - hit.at > ANSWER_TTL_MS) return null;
+  if (Date.now() - hit.at > ANSWER_TTL_MS || hit.result.error || hit.result.collapsed) return null;
   cache.set(key, hit);
   return hit.result;
 }
@@ -259,7 +264,13 @@ function answerDiskKey(answerKey: string, cfg: ModelConfig): string {
  *  because a build older than ANSWER_DISK_NS could have written something else here. */
 async function readPersistedAnswer(key: string): Promise<LiveResult | null> {
   const hit = await cacheGet<CachedAnswer>(key);
-  if (typeof hit?.at !== 'number' || !hit.result?.spec?.blocks?.length) return null;
+  if (
+    typeof hit?.at !== 'number' ||
+    !hit.result?.spec?.blocks?.length ||
+    hit.result.error ||
+    hit.result.collapsed
+  )
+    return null;
   return Date.now() - hit.at > ANSWER_DISK_TTL_MS ? null : hit.result;
 }
 
@@ -272,7 +283,7 @@ async function readPersistedAnswer(key: string): Promise<LiveResult | null> {
  *  Within the session neither applies: `ANSWER_TTL_MS` bounds the first and the memory store can
  *  only have grown by what this same session wrote. */
 function persistableAnswer(result: LiveResult, caps: LiveCaps | undefined): boolean {
-  return !result.spec.sources?.length && !caps?.memoryEnabled;
+  return !result.collapsed && !result.spec.sources?.length && !caps?.memoryEnabled;
 }
 
 /** The living world currently on screen, if the canvas carries a BUILT one. Read straight off the
@@ -336,6 +347,7 @@ export const INITIAL: LiveTurnState = {
   spot: null,
   mode: 'replace',
   replaceEpoch: 0,
+  answerEpoch: 0,
   prior: null,
   tour: [],
   past: [],
@@ -343,6 +355,7 @@ export const INITIAL: LiveTurnState = {
   viewIndex: null,
   viewOverride: null,
   error: null,
+  collapsed: false,
   pendingShape: null,
   reasoning: false,
   liveSources: [],
@@ -364,7 +377,7 @@ type Action =
   | { type: 'start'; fresh?: boolean }
   | { type: 'speak'; narration: string }
   | { type: 'activity'; activity: LiveActivity }
-  | { type: 'stream'; spec: ConversationSpec }
+  | { type: 'stream'; spec: ConversationSpec; first: boolean }
   | {
       type: 'show';
       spec: ConversationSpec;
@@ -394,6 +407,8 @@ type Action =
        *  session: start a FRESH frames timeline (this frame is turn 1) instead of appending to
        *  the restored conversation, so the answer becomes its own saved conversation. */
       freshTimeline?: boolean;
+      /** False for a transient recovery card: show it without changing durable turn records. */
+      remember?: boolean;
     }
   | { type: 'idle' }
   // The turn FAILED (provider error): show the error state, keep the prior canvas untouched.
@@ -454,36 +469,50 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
       // Progressive reveal: grow the canvas as blocks stream in, WITHOUT bumping the
       // turn (so the reveal tour doesn't fire yet) or the epoch (so it reconciles, not
       // remounts). The face is already speaking; the canvas now fills in alongside it.
-      return { ...s, status: 'showing', spec: a.spec };
-    case 'show':
+      return {
+        ...s,
+        status: 'showing',
+        spec: a.spec,
+        answerEpoch: a.first ? s.answerEpoch + 1 : s.answerEpoch,
+      };
+    case 'show': {
+      const remember = a.remember !== false;
       return {
         ...s,
         status: 'showing',
         spec: a.spec,
         narration: a.narration || s.narration,
         understood: a.understood,
-        history: a.history.slice(-MESSAGES_CAP),
+        history: remember ? a.history.slice(-MESSAGES_CAP) : s.history,
         turn: s.turn + 1,
         busy: false,
         mode: a.mode,
-        prior: a.prior,
+        prior: remember ? a.prior : s.prior,
         tour: a.tour,
         // Keep the wiped canvas in history so the user can return to it — but a fresh standalone
         // start drops the restored conversation's wiped canvases too (this is a NEW conversation).
-        past: a.freshTimeline
-          ? []
-          : a.mode === 'replace' && a.priorSpec
-            ? [...s.past, a.priorSpec].slice(-HISTORY_CAP)
-            : s.past,
+        past: remember
+          ? a.freshTimeline
+            ? []
+            : a.mode === 'replace' && a.priorSpec
+              ? [...s.past, a.priorSpec].slice(-HISTORY_CAP)
+              : s.past
+          : s.past,
         // Append THIS turn to the timeline (every mode), bounded — the scroll-back + replay log.
         // A fresh standalone start begins a NEW timeline: this frame is turn 1, so the answer is
         // its own saved conversation (its mind-map rail icon and Library entry land here, not on
         // the restored past conversation it was fired on top of).
-        frames: a.freshTimeline ? [a.frame] : [...s.frames, a.frame].slice(-FRAMES_CAP),
+        frames: remember
+          ? a.freshTimeline
+            ? [a.frame]
+            : [...s.frames, a.frame].slice(-FRAMES_CAP)
+          : s.frames,
+        collapsed: !remember,
         activity: null,
         // Remount the canvas only on a fresh set we did NOT already stream — a streamed
         // turn already rendered under the current epoch, and an add/refine reconciles.
         replaceEpoch: a.mode === 'replace' && !a.streamed ? s.replaceEpoch + 1 : s.replaceEpoch,
+        answerEpoch: a.mode === 'replace' && !a.streamed ? s.answerEpoch + 1 : s.answerEpoch,
         // The surface already chose where to open the spotlight (lead block, or the
         // first newly-added block on an augment).
         spot: a.spot,
@@ -501,6 +530,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         activeBlank:
           a.spec.awaiting && a.spec.blanks?.length ? firstUnfilled(a.spec.blanks, {}) : null,
       };
+    }
     case 'idle':
       return { ...s, status: 'idle', busy: false, activity: null, reasoning: false };
     case 'error':
@@ -566,8 +596,10 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         viewOverride: null,
         mode: 'replace',
         replaceEpoch: s.replaceEpoch + 1,
+        answerEpoch: s.answerEpoch + 1,
         tour: [],
         error: null,
+        collapsed: false,
         frames: [...s.frames, restoredFrame].slice(-FRAMES_CAP),
         prior: {
           question: a.question,
@@ -834,6 +866,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   framesRef.current = state.frames;
   const priorRef = useRef<TurnSnapshot | null>(state.prior);
   priorRef.current = state.prior;
+  const collapsedRef = useRef(state.collapsed);
+  collapsedRef.current = state.collapsed;
   // The values filled into the current answer's holes, so complete() reads them at click time.
   const filledRef = useRef<Record<string, FillValue>>(state.filled);
   filledRef.current = state.filled;
@@ -907,7 +941,8 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       cancelSpeak?.();
       // Snapshot the canvas BEFORE this turn streams/replaces it — that's the one to keep
       // in history if this turn wipes the page. A fresh standalone start has no prior canvas.
-      const priorSpec = opts?.freshStart ? null : specRef.current;
+      const replacingCollapsed = collapsedRef.current;
+      const priorSpec = opts?.freshStart || replacingCollapsed ? null : specRef.current;
       // Cancel any prior in-flight turn before starting a new one, and any pre-baked frame
       // (showFrame) still waiting on its narrate-then-reveal beat — a real turn must win.
       abortRef.current?.abort();
@@ -947,7 +982,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       const prior = opts?.freshStart ? null : priorRef.current;
       // The living world already on the canvas: read ONCE, so the world this turn is keyed
       // against is exactly the world it is sent (the send below happens after a lazy import).
-      const priorWorld = currentWorld(specRef.current);
+      const priorWorld = replacingCollapsed ? undefined : currentWorld(specRef.current);
 
       // An attachment, a pinned element, filled blanks or ink all change the effective input the
       // caches never see — they key on the question's text — so such a turn always goes to the
@@ -998,7 +1033,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // (no narration/title to overlap against), and Jaccard against a full prior turn
       // dilutes a four-word follow-up to near zero — so "tell me more" would stream-wipe
       // the canvas it's asking about.
-      const willStream = !likelyFollowUp(prior, userText);
+      const willStream = replacingCollapsed || !likelyFollowUp(prior, userText);
 
       let result: LiveResult;
       // Whether this turn actually revealed progressively via a 'stream' dispatch — only ever
@@ -1095,9 +1130,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           if (!pendingPartial || ctrl.signal.aborted) return;
           const spec = pendingPartial;
           pendingPartial = null;
+          const first = !didStream;
           didStream = true;
           lastStreamed = spec;
-          dispatch({ type: 'stream', spec });
+          dispatch({ type: 'stream', spec, first });
         };
         ctrl.signal.addEventListener(
           'abort',
@@ -1258,7 +1294,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // empty/salvaged spec, or a re-ask would replay a blank answer instead of generating a
         // real one. `uniqueInput` turns are skipped on the way IN as well as out, since their real
         // input (a file, a pinned block) is not in the key.
-        if (!uniqueInput && !result.error && result.spec.blocks.length > 0) {
+        if (!uniqueInput && !result.error && !result.collapsed && result.spec.blocks.length > 0) {
           writeAnswer(answerCacheRef.current, answerKey, result);
           // …and keep it on the device, where a reload or tomorrow's session can still use it.
           // Best-effort and fire-and-forget: cachePut never throws and nothing waits on it.
@@ -1292,11 +1328,13 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       const userContent = selectedBlocks?.length
         ? `${displayText} (about: ${selectedBlocks.map(blockLabel).join(', ')})`
         : displayText;
-      const nextHistory: ChatMessage[] = [
-        ...history,
-        { role: 'user', content: userContent },
-        { role: 'assistant', content: result.narration || result.spec.title },
-      ];
+      const nextHistory: ChatMessage[] = result.collapsed
+        ? history
+        : [
+            ...history,
+            { role: 'user', content: userContent },
+            { role: 'assistant', content: result.narration || result.spec.title },
+          ];
       // Decide what this turn does to the canvas (a deterministic topic-shift check
       // overrides the model's hint), then merge accordingly — augment/refine never lose
       // the user's place, and an overcrowded augment falls back to a clean replace.
@@ -1310,13 +1348,14 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       let renderedSpec: ConversationSpec;
       let frame: TurnFrame;
       try {
-        const priorBlocks: Block[] = opts?.freshStart ? [] : (specRef.current?.blocks ?? []);
+        const priorBlocks: Block[] =
+          opts?.freshStart || replacingCollapsed ? [] : (specRef.current?.blocks ?? []);
         // A streamed turn already revealed a fresh (replace-style) canvas as it generated,
         // so it must settle as REPLACE — otherwise a late flip to augment would re-add the
         // prior blocks and jump. Non-streamed turns use the full deterministic decision
         // (settleTurn is the shared merge/tour/frame step — the demo baker runs it too).
         const settled = settleTurn(prior, priorBlocks, displayText, result, {
-          forceReplace: willStream,
+          forceReplace: willStream || result.collapsed,
         });
         mode = settled.mode;
         renderedSpec = settled.frame.spec;
@@ -1356,11 +1395,14 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           // A fresh standalone start begins its own timeline (this frame is turn 1), so a
           // Watch-Me-Think answer fired on a restored session becomes its own saved conversation.
           freshTimeline: opts?.freshStart,
+          remember: !result.collapsed,
         });
 
         // Add this turn's block types to the conversation's used-set, so the NEXT turn prefers
         // ones not yet shown — this is what keeps successive canvases visually different.
-        for (const t of nextSnap.blockTypes) usedTypesRef.current.add(t);
+        if (!result.collapsed) {
+          for (const t of nextSnap.blockTypes) usedTypesRef.current.add(t);
+        }
       } catch {
         // Never leave the turn spinning: a spec that can't be merged/toured is treated like any
         // other failed turn — an honest, recoverable error, retry carrying the real question.
@@ -1374,6 +1416,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         });
         return;
       }
+
+      // The recovery card is useful feedback, but it is not conversation content. It has already
+      // been shown above; every durable or speculative tail stops here.
+      if (result.collapsed) return;
 
       // Update the concept graph: the model's own `memory` nodes PLUS a heuristic read of the
       // user's own words (a reliable fallback for local models that don't emit the field).
@@ -1449,7 +1495,11 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       // free-tier key the prefetches from one answer exhausted it — the user's NEXT question
       // then 429'd three times before landing. An interactive turn always outranks a
       // speculative one, so a recent 429 simply skips the prefetch round; taps generate fresh.
-      if (prefetchCaps?.quality === 'thorough' && !recentlyRateLimited()) {
+      if (
+        prefetchCaps?.quality === 'thorough' &&
+        providerGenerationAllowed(prefetchCfg) &&
+        !recentlyRateLimited()
+      ) {
         const chips = renderedSpec.suggests ?? [];
         const recentForPrefetch = [...usedTypesRef.current];
         // Filed under exactly the key the TAP will compute: this turn's config, this turn's
@@ -1479,7 +1529,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
             )
             .then((r) => {
               // Never cache a FAILED prefetch — a tap must retry for real, not replay an error.
-              if (!chipCtrl.signal.aborted && !r.error && r.spec.blocks.length > 0) {
+              if (
+                !chipCtrl.signal.aborted &&
+                !r.error &&
+                !r.collapsed &&
+                r.spec.blocks.length > 0
+              ) {
                 writeAnswer(answerCacheRef.current, key, r);
               }
               return r;

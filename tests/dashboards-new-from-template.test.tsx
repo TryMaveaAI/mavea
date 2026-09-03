@@ -45,6 +45,7 @@ vi.mock('../src/live/dashboards/planTracker', async (importOriginal) => {
 
 vi.mock('../src/live/useLiveConfig', () => ({
   getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: { openai: 'k' } }),
+  hasModelConfigured: () => true,
   toModelConfig: () => ({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' }),
 }));
 

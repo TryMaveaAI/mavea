@@ -19,10 +19,17 @@ vi.mock('../src/live/generateLive', () => ({
       _history: unknown,
       _cfg: unknown,
       _onChunk: unknown,
-      opts?: { onPartial?: unknown },
+      opts?: { onPartial?: (partial: { spec: LiveResult['spec']; narration: string }) => void },
     ) => {
       // A turn "streams" exactly when the hook wires the progressive-reveal callback.
       gen.calls.push({ userText, streaming: !!opts?.onPartial });
+      if (gen.result && opts?.onPartial) {
+        opts.onPartial({
+          spec: { ...gen.result.spec, blocks: gen.result.spec.blocks.slice(0, 1) },
+          narration: gen.result.narration,
+        });
+        opts.onPartial({ spec: gen.result.spec, narration: gen.result.narration });
+      }
       return gen.result;
     },
   ),
@@ -75,6 +82,7 @@ describe('useLiveTurn — the streaming decision follows the follow-up guess', (
       await result.current.run('three days in tokyo, food first');
     });
     expect(gen.calls[0].streaming).toBe(true);
+    expect(result.current.answerEpoch).toBe(1);
 
     gen.result = answer(
       'Tokyo Food, Deeper',
@@ -89,6 +97,7 @@ describe('useLiveTurn — the streaming decision follows the follow-up guess', (
     // …and settled as the SAME subject, so the session rail keeps it in the Tokyo chapter.
     expect(result.current.frames[1].topicShift).toBe(false);
     expect(result.current.frames[1].mode).toBe('augment');
+    expect(result.current.answerEpoch).toBe(1);
 
     gen.result = answer('How Bitcoin Works', 'Bitcoin is a decentralized ledger.', 'replace');
     await act(async () => {
@@ -96,5 +105,6 @@ describe('useLiveTurn — the streaming decision follows the follow-up guess', (
     });
     expect(gen.calls[2].streaming).toBe(true);
     expect(result.current.frames[2].topicShift).toBe(true);
+    expect(result.current.answerEpoch).toBe(2);
   });
 });

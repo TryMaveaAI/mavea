@@ -91,7 +91,6 @@ import {
   type QualityPref,
 } from './effort';
 import { buildSendHistory, KEEP_RECENT_TURNS } from './history';
-import { recordUsage } from './usage/ledger';
 import { safePdfUrl, pdfProxyUrl } from './doc/safeUrl';
 import { followUpPlan } from './world/detect';
 import { worldFitness } from './world/fitness';
@@ -373,6 +372,9 @@ export interface LiveResult {
    *  this as an explicit error state (with retry / settings), never as canvas content, and
    *  must not enter it into chat history or the library. `spec` is a minimal honest stub. */
   error?: LiveError;
+  /** The provider replied, but no renderable answer survived validation and recovery. The
+   *  fallback may be shown, but it is not an answer and must never be cached or remembered. */
+  collapsed?: boolean;
 }
 
 // A large explicit count ("give me 15 steps", "list 20 reasons", "top 12 tips") is usually
@@ -856,6 +858,49 @@ export function buildInkIntentContext(
   return `The user highlighted parts of the answer on screen — focus on these:\n${lines.map((l) => `- ${l}`).join('\n')}`;
 }
 
+export interface TurnSystemParts {
+  /** The longest prefix shared by every turn with the same prompt capability tuple. */
+  base: string;
+  /** Session-stable material that merits its own cache breakpoint. */
+  stable?: readonly string[];
+  /** Guidance that changes with this question and must lead the user turn. */
+  dynamic?: readonly string[];
+}
+
+/** The byte-identical foundation for a `(tier, complexity, generativeOn)` prompt cache key. */
+export function buildStableTurnBase(
+  tier: 'frontier' | 'mid' | 'small',
+  complexity: ReturnType<typeof classifyAsk>,
+  generativeOn = false,
+): string {
+  const stableDirectives = [
+    NARRATION_FIRST_LINE,
+    documentLine(),
+    spokenLineDirective(complexity),
+    complexity === 'rich' ? rhythmDirective() : '',
+    complexity === 'rich' && tier !== 'small' ? conceptSectionsDirective() : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  return `${liveSystemPrompt(tier, complexity, generativeOn)}\n\n${stableDirectives}`;
+}
+
+/** Preserve one canonical order while exposing the two cacheable prefixes to every adapter. */
+export function buildTurnSystem(parts: TurnSystemParts): {
+  system: string;
+  systemBase: string;
+  systemStable: string;
+} {
+  const join = (lines: readonly string[]): string => lines.filter(Boolean).join('\n\n');
+  const systemBase = parts.base;
+  const systemStable = join([systemBase, ...(parts.stable ?? [])]);
+  return {
+    system: join([systemStable, ...(parts.dynamic ?? [])]),
+    systemBase,
+    systemStable,
+  };
+}
+
 /**
  * Produce one Live turn for `userText` given the rolling `history` and the
  * connected `cfg`. Streams raw deltas through `onDelta`. Never throws.
@@ -1011,19 +1056,7 @@ export async function generateLive(
   // Complexity-INDEPENDENT text first, keyed text after: a session mixes brief and rich turns,
   // and provider prefix-caching matches the longest common prefix — this order keeps every
   // complexity sharing the base prompt plus the first two directives before they diverge.
-  const stableDirectives = [
-    NARRATION_FIRST_LINE,
-    documentLine(),
-    spokenLineDirective(complexity),
-    complexity === 'rich' ? rhythmDirective() : '',
-    complexity === 'rich' && tier !== 'small' ? conceptSectionsDirective() : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n');
-  const cachedBase = `${liveSystemPrompt(tier, complexity)}\n\n${stableDirectives}`;
-  const baseSystem = selection.promptSnippet
-    ? `${cachedBase}\n\n${selection.promptSnippet}`
-    : cachedBase;
+  const cachedBase = buildStableTurnBase(tier, complexity, generativeOn);
   const codeAuditLine = codeReviewAccuracyDirective(userText, opts.selectedBlocks);
   // Density scales with the ask: a rich question fills THIS viewport (a big monitor needs
   // more than a laptop); a trivial one stays to a few focused blocks.
@@ -1037,8 +1070,10 @@ export async function generateLive(
   const countLine = countDirective(complexity, target);
   // Honor an explicit count: when the user names how many things they want, that number wins
   // over the viewport-derived budget above — "give me 10 ideas" should return ten, not eight.
-  const explicitCountLine =
-    'EXPLICIT COUNT — if the user asked for a specific number of items, examples, options, or results (e.g. "give me 10 ideas", "list 12 tools"), deliver exactly that many in the canvas — as rows of a single list/table/grid block, or as that many blocks. This OVERRIDES the block-count guidance above: the count the user named wins, never silently fewer.';
+  const explicitCount = explicitItemCount(userText);
+  const explicitCountLine = explicitCount
+    ? 'EXPLICIT COUNT — if the user asked for a specific number of items, examples, options, or results (e.g. "give me 10 ideas", "list 12 tools"), deliver exactly that many in the canvas — as rows of a single list/table/grid block, or as that many blocks. This OVERRIDES the block-count guidance above: the count the user named wins, never silently fewer.'
+    : '';
   // Format fidelity: when the user explicitly named the FORM they want (a table, a diagram, a
   // timeline, code, a checklist, a comparison…), the selector has already PINNED that block type
   // into the menu — tell the model to LEAD with it. We intersect with what's actually offered, so
@@ -1103,17 +1138,6 @@ export async function generateLive(
     tier === 'small' || !MIGHT_TRACK_RE.test(userText)
       ? ''
       : 'TRACKABLE — rate 0–100 how genuinely worth-tracking-as-a-living-dashboard this answer is: an ongoing metric or trend the user would revisit and watch evolve (a recurring business number, a personal target, a project milestone). MOST answers score LOW — one-off facts, explanations, advice, and curiosity questions are all well under 50. Reserve 90+ for the rare answer you would truly stand a dashboard up for. Emit "track": {"score": <0-100>, "reason": <short why, a few words>} ONLY when you score it 80 or above; omit the field entirely otherwise.';
-  // ANTICIPATE & ANSWER the related angles, in the SAME canvas — the thing that makes a Mavéa
-  // answer feel hand-built like the demos: don't just answer the literal question, answer the
-  // 2-3 things a curious person would naturally wonder next, AS blocks, woven into the same
-  // block budget (not a longer page). The chips are then for going DEEPER still, beyond what
-  // the canvas already covers — never a restatement of a block that's already there.
-  const relatedLine =
-    complexity === 'brief'
-      ? '' // a brief answer stays on the literal question — no pre-answered tangents
-      : complexity === 'lean'
-        ? 'ALSO ANSWER THE OBVIOUS NEXT QUESTION — beyond the direct answer, work in the one or two adjacent facts a person would immediately wonder, as their own small blocks (e.g. "capital of France?" → the answer, then a key-stats block and a couple of notable nearby facts). Pre-answer it; don\'t just hint at it.'
-        : 'ANSWER THE RELATED QUESTIONS TOO — don\'t stop at the literal ask. Think about the 2-3 things someone would naturally wonder next, and ANSWER THEM as blocks in this same canvas (e.g. "how do I improve my credit score?" → also show what counts as a good score, what hurts it most, and how long changes take). Weave them into the same block budget so the canvas pre-empts the follow-ups instead of leaving them unanswered.';
   // OPEN-ENDED PLANNING DEPTH — broad "what could I do / how should I approach this" asks (a trip,
   // an event, a project) are where a thin generic list feels worst. The planning *intent* regex
   // misses the common "what can I do / things to do" phrasing, so we also sniff that here, and only
@@ -1262,46 +1286,47 @@ export async function generateLive(
   // The drawers themselves are NOT requested here: depth≥2 content is authored on the first
   // open (see depth/deepen), so the eager turn no longer pays output tokens for drawers
   // nobody opens — this asks only for the grouping tags.
-  const system = [
-    baseSystem,
-    codeAuditLine,
-    depthLine,
-    // Course Lessons — additive, layered on top of (never replacing) the teaching-arc shaping
-    // depthLine just produced. See GenerateLiveOpts.lesson / course/lessonSpine.ts.
-    opts.lesson?.directive ?? '',
-    topicLockLine,
-    dateLine,
-    actionMenu,
-    countLine,
-    explicitCountLine,
-    formRequestLine,
-    specialistLine,
-    multiPartLine,
-    relatedLine,
-    planningDepthLine,
-    levelLine,
-    arc.directive,
-    complexity === 'rich' && heroPicks.length >= 2
-      ? `HERO PICKS — build the canvas AROUND these specialized components, chosen from the library for THIS exact question: ${heroPicks.join(', ')}. Use at least TWO of them; don't collapse to a wall of the common types.`
-      : '',
-    noLiveDataLine,
-    groundedSourcesLine,
-    liveStatusLine,
-    searchDateLine,
-    recentLine,
-    memoryLine,
-    personalLine,
-    correctsLine,
-    bendLine,
-    trackLine,
-    offerAnnotate ? annotateMenu(annotatableBases) : '',
-    synthesize ? synthesisMenu() : '',
-    offerSvg ? svgBlockMenu() : '',
-    // Last line of the prompt, immediately before the conversation — deliberately.
-    emitReminder,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
+  const turnSystem = buildTurnSystem({
+    base: cachedBase,
+    stable: [selection.stablePromptSnippet, explicitCountLine, memoryLine, correctsLine],
+    dynamic: [
+      selection.heroPromptSnippet,
+      codeAuditLine,
+      depthLine,
+      // Course Lessons — additive, layered on top of (never replacing) the teaching-arc shaping
+      // depthLine just produced. See GenerateLiveOpts.lesson / course/lessonSpine.ts.
+      opts.lesson?.directive ?? '',
+      topicLockLine,
+      dateLine,
+      actionMenu,
+      countLine,
+      formRequestLine,
+      specialistLine,
+      multiPartLine,
+      planningDepthLine,
+      levelLine,
+      arc.directive,
+      complexity === 'rich' && heroPicks.length >= 2
+        ? `HERO PICKS — build the canvas AROUND these specialized components, chosen from the library for THIS exact question: ${heroPicks.join(', ')}. Use at least TWO of them; don't collapse to a wall of the common types.`
+        : '',
+      noLiveDataLine,
+      groundedSourcesLine,
+      liveStatusLine,
+      searchDateLine,
+      recentLine,
+      personalLine,
+      bendLine,
+      trackLine,
+      offerAnnotate ? annotateMenu(annotatableBases) : '',
+      synthesize ? synthesisMenu() : '',
+      // A fully-enabled SVG contract already lives in liveSystemPrompt's cached tuple. A gap-only
+      // synthesis turn still teaches it here because the user did not enable that stable capability.
+      offerSvg && !generativeOn ? svgBlockMenu() : '',
+      // Last line of the prompt, immediately before the conversation — deliberately.
+      emitReminder,
+    ],
+  });
+  const { system } = turnSystem;
   // Cap to the screen target; a small local model stays a touch lighter so it doesn't stall.
   // A depth request earns headroom so there's room to actually go deeper. (Drawer content no
   // longer rides here: depth≥2 blocks are authored on first open — see depth/deepen — so the
@@ -1328,7 +1353,7 @@ export async function generateLive(
     cfg.provider,
     thinkingLevel,
     deepen,
-    explicitItemCount(userText),
+    explicitCount,
     cfg.model,
   );
   // Keep a long conversation cheap: resend only the last few turns verbatim + a short recap
@@ -1579,8 +1604,10 @@ export async function generateLive(
   // systemBase is the stable liveSystemPrompt prefix — Anthropic uses it to split the
   // system into a cached first block + uncached per-turn suffix (see anthropic.ts).
   const baseReq: Omit<LiveRequest, 'user'> = {
+    usageLabel: 'canvas',
     system,
-    systemBase: cachedBase,
+    systemBase: turnSystem.systemBase,
+    systemStable: turnSystem.systemStable,
     history: sendHistory,
     blockTypes,
     complexity,
@@ -1616,7 +1643,6 @@ export async function generateLive(
   try {
     const out = await adapter.generate({ ...baseReq, user: userForModel }, cfg, streamDelta);
     raw = out.raw;
-    recordUsage('canvas', out.usage);
     // Learn this model's throughput from the turn we just ran, so a repeatedly-slow model earns the
     // leaner menu/budget above on the NEXT turn. Best-effort + storage-backed; a no-op off-DOM.
     recordTurnSpeed(
@@ -1688,12 +1714,16 @@ export async function generateLive(
         streamedBlanks = [];
         streamedTop = null;
         const out2 = await adapter.generate(
-          { ...baseReq, tools: undefined, user: userForModel },
+          {
+            ...baseReq,
+            usageLabel: 'ungrounded-retry',
+            tools: undefined,
+            user: userForModel,
+          },
           cfg,
           streamDelta,
         );
         raw = out2.raw;
-        recordUsage('ungrounded-retry', out2.usage);
       } catch (err2) {
         // The friendly LiveError below deliberately hides provider wire detail from the user —
         // log the real cause so a rejected request (a malformed field, an unsupported tool on
@@ -1741,7 +1771,7 @@ export async function generateLive(
     !streamSalvage &&
     (!validated ||
       validated.blocks.length === 0 ||
-      (complexity !== 'brief' && validated.blocks.length < 3));
+      (complexity === 'rich' && validated.blocks.length < 3));
   let didRecover = false;
   if (opts.repair !== false && wouldCollapse) {
     didRecover = true;
@@ -1754,6 +1784,7 @@ export async function generateLive(
       const out2 = await adapter.generate(
         {
           ...baseReq,
+          usageLabel: 'collapse-recovery',
           // The retry keeps the FULL per-turn system, unlike the repair pass below: a repair
           // restructures JSON it is handed verbatim, but a recovery RE-COMPOSES the answer, and
           // the per-turn directives (today's date, the topic lock, a lesson's spine, the search
@@ -1766,14 +1797,13 @@ export async function generateLive(
             cfg.provider,
             thinkingLevel,
             true,
-            explicitItemCount(userText),
+            explicitCount,
             cfg.model,
           ),
           tools: undefined,
         },
         cfg,
       );
-      recordUsage('collapse-recovery', out2.usage);
       const second = validateLiveResponse(out2.raw, allowed, recoverCap, sources.length > 0);
       // Keep whichever pass produced the richer canvas — never regress if the retry did worse.
       // The recovery instruction asks for blocks, not a fresh causal judgement, so carry the first
@@ -1796,7 +1826,7 @@ export async function generateLive(
     // stays whatever we could actually rescue — the diagnosis is written, not spoken, because it
     // is about the tool rather than the question.
     const summary = salvaged || (answeredInProse(raw) ? PROSE_COLLAPSE_MSG : '');
-    return { spec: fallbackSpec(summary), narration: salvaged, tier };
+    return { spec: fallbackSpec(summary), narration: salvaged, tier, collapsed: true };
   }
 
   // Accuracy guardrail, COST-AWARE — two tiers so we spend model calls sparingly:
@@ -1850,6 +1880,7 @@ export async function generateLive(
       const out2 = await adapter.generate(
         {
           ...baseReq,
+          usageLabel: 'consistency-repair',
           system: baseReq.systemBase ?? baseReq.system,
           history: repairHistory,
           user: repairInstruction(issues, unusedHeroes),
@@ -1862,7 +1893,6 @@ export async function generateLive(
         },
         cfg,
       );
-      recordUsage('consistency-repair', out2.usage);
       const repaired = validateLiveResponse(out2.raw, allowed, maxBlocks, sources.length > 0);
       if (repaired) {
         const fixed2 = autoFix(repaired);

@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock('../src/live/useLiveConfig', () => ({
   getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: {} }),
+  hasModelConfigured: () => Boolean(h.apiKey),
   toModelConfig: () => ({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: h.apiKey }),
 }));
 vi.mock('../src/live/dashboards/useDashboardLoop', () => ({

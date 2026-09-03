@@ -8,14 +8,14 @@
 //   EVAL_LIVE=1 EVAL_PROVIDER=anthropic EVAL_KEY=sk-ant-... npm run eval
 //   EVAL_LIVE=1 EVAL_PROVIDER=gemini    EVAL_KEY=AIza...     npm run eval
 import { select as selectComponents } from './helpers/select';
-import { liveSystemPrompt, blockTypesForTier } from '../src/engine/liveSchema';
+import { blockTypesForTier } from '../src/engine/liveSchema';
+import { buildStableTurnBase, buildTurnSystem } from '../src/live/generateLive';
 import { runEval } from '../src/live/eval/run';
 import { GOLDEN } from '../src/live/eval/golden';
 import { formatScorecard } from '../src/live/eval/score';
 import { classifyAsk, isTeachingAsk } from '../src/live/select';
 
 import { targetBlockCount, countDirective } from '../src/live/screen';
-import { NARRATION_FIRST_LINE, spokenLineDirective } from '../src/live/effort';
 import { getAdapter, providerInfo } from '../src/live/providers';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 
@@ -64,26 +64,21 @@ describe.skipIf(!RUN)('live accuracy + speed eval', () => {
         // (selection.allowed + the tier's standard dozen) so those picks survive into the score.
         const complexity = classifyAsk(ask);
         const selection = selectComponents({ userText: ask, tier, complexity });
-        // liveSystemPrompt is complexity-aware (see liveSchema.ts) — pass it through so a
-        // 'brief' golden case is scored against the SAME trimmed prompt production sends it,
-        // not the always-rich prompt this eval used to hand-build.
-        const baseSystem = selection.promptSnippet
-          ? `${liveSystemPrompt(tier, complexity)}\n\n${selection.promptSnippet}`
-          : liveSystemPrompt(tier, complexity);
-        // The rest of the always-on, ask-driven per-turn directives generateLive.ts sends on
-        // every real turn (block-count target and narration-length rule) — reusing its exact
-        // exported builders rather than a hand-rolled, always-loose approximation, so a prompt
-        // change to either can't silently drift the eval out of sync with production again.
         const target = targetBlockCount(complexity, { teaching: isTeachingAsk(ask) });
-        const system = [
-          baseSystem,
-          countDirective(complexity, target),
-          NARRATION_FIRST_LINE,
-          spokenLineDirective(complexity),
-        ].join('\n\n');
+        const turnSystem = buildTurnSystem({
+          base: buildStableTurnBase(tier, complexity),
+          stable: [selection.stablePromptSnippet],
+          dynamic: [selection.heroPromptSnippet, countDirective(complexity, target)],
+        });
         const allowed = new Set([...selection.allowed, ...blockTypesForTier(tier)]);
         const out = await adapter.generate(
-          { system, history: [], user: ask, blockTypes: selection.types, complexity },
+          {
+            ...turnSystem,
+            history: [],
+            user: ask,
+            blockTypes: selection.types,
+            complexity,
+          },
           cfg,
         );
 

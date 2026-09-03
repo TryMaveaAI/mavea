@@ -47,7 +47,13 @@ describe('shared model/UI content budgets', () => {
         blocks: [
           {
             type: 'timeline',
-            props: { title: huge, events: [{ time: huge, title: huge, detail: huge }] },
+            props: {
+              title: huge,
+              events: [
+                { time: huge, title: huge, detail: huge },
+                { time: 'Later', title: 'Second event', detail: 'Two events make a sequence.' },
+              ],
+            },
           },
         ],
       },

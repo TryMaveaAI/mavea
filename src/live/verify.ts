@@ -147,6 +147,14 @@ function hasVisualBlock(blocks: Block[]): boolean {
   });
 }
 
+const PREAMBLE_OPENER_RE =
+  /^(?:sure|certainly|of course|great question|good question|here(?:'|’)s (?:a |an |what |the )|let(?:'|’)s (?:look|explore|break|walk|dive)|i(?:'|’)ll (?:explain|show|walk)|to (?:answer|understand)|before we |when it comes to |there are (?:a few|several|many) )/i;
+
+/** A deliberately conservative structural signal for throat-clearing before the answer. */
+export function opensWithPreamble(narration: string): boolean {
+  return PREAMBLE_OPENER_RE.test(narration.trim());
+}
+
 /* ------------------------------------------------------------------ *
  * Cross-block numeric consistency. The failure this catches: one canvas
  * says "Future: $1,800" in a kpi and "$1,100" for the same bucket in a
@@ -269,11 +277,9 @@ function checkValueConflicts(blocks: Block[]): Issue[] {
 
 /** Detect data-shape ↔ block-type mismatches and degenerate visuals. Pure.
  *
- *  `complexity` sizes the sparsity floor: a 'brief' ask (the user explicitly asked to keep
- *  it short) is exempt from `too-sparse` down to a single block — otherwise this HARD issue
- *  routes every genuinely brief answer through a repair round-trip whose only effect is to
- *  pad it back up, undoing the brevity the user asked for. Every other complexity keeps the
- *  existing 3-block floor. */
+ *  `complexity` sizes the sparsity floor: a brief ask may be one block, a lean answer may be
+ *  two, and a rich answer needs three. Otherwise this HARD issue turns intentionally tight
+ *  answers into paid repair round-trips whose only effect is padding. */
 export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'rich'): Issue[] {
   const issues: Issue[] = [];
 
@@ -363,11 +369,21 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
   // block is a bare insight (or a truncation that salvaged one block). Flag it HARD so the
   // repair pass asks the model for a fuller, complete answer — autoFix can't invent the
   // missing content under the real-data rule, so only a re-ask fixes it.
-  const sparseFloor = complexity === 'brief' ? 1 : 3;
+  const sparseFloor = complexity === 'brief' ? 1 : complexity === 'lean' ? 2 : 3;
   if (r.blocks.length < sparseFloor) {
     issues.push({
       code: 'too-sparse',
       detail: `the canvas has only ${r.blocks.length} block${r.blocks.length === 1 ? '' : 's'} — that's too sparse. Produce a fuller answer: at least ${sparseFloor} complementary blocks covering the question (the direct answer plus context and a related visual), never fewer than ${sparseFloor} card${sparseFloor === 1 ? '' : 's'}.`,
+    });
+  }
+
+  // Directness is measured, not repaired. A polished answer should commit in its first sentence,
+  // but rewriting semantics requires judgement and must never silently buy a second model call.
+  if (opensWithPreamble(r.narration)) {
+    issues.push({
+      code: 'preamble-opener',
+      detail:
+        'the narration opens with throat-clearing instead of the answer — put the requested number, recommendation, cause, or result in the first clause.',
     });
   }
 

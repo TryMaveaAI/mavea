@@ -69,8 +69,32 @@ function okResult(): LiveResult {
   };
 }
 
+function collapsedResult(): LiveResult {
+  const result = okResult();
+  return {
+    ...result,
+    spec: {
+      ...result.spec,
+      title: 'Here’s what I can say',
+      opener: 'A partial reply.',
+      blocks: [
+        {
+          type: 'insight',
+          id: 'live-1',
+          col: 12,
+          num: '1',
+          props: { title: 'Here’s what I can say', summary: 'A partial reply.' },
+        },
+      ],
+    },
+    narration: 'A partial reply.',
+    collapsed: true,
+  };
+}
+
 beforeEach(() => {
   clearLibrary();
+  vi.mocked(generateLive).mockClear();
   gen.result = errorResult();
 });
 
@@ -134,5 +158,23 @@ describe('useLiveTurn — a failed turn is an error state, not content', () => {
     expect(result.current.history).toHaveLength(2); // the retried turn IS recorded
     expect(result.current.frames).toHaveLength(1);
     expect(getLibrary()).toHaveLength(1); // and saved, as any successful canvas is
+  });
+
+  it('shows a collapsed recovery card without caching or remembering it', async () => {
+    gen.result = collapsedResult();
+    const { result } = renderHook(() =>
+      useLiveTurn({ getConfig: () => cfg, getLibraryEnabled: () => true }),
+    );
+
+    await act(() => result.current.run('explain the mechanism'));
+
+    expect(result.current.spec?.title).toBe('Here’s what I can say');
+    expect(result.current.collapsed).toBe(true);
+    expect(result.current.history).toHaveLength(0);
+    expect(result.current.frames).toHaveLength(0);
+    expect(getLibrary()).toHaveLength(0);
+
+    await act(() => result.current.run('explain the mechanism'));
+    expect(generateLive).toHaveBeenCalledTimes(2);
   });
 });

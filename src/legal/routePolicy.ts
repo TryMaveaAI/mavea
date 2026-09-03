@@ -31,6 +31,12 @@ export function isLegalGateBypassed(hash: string): boolean {
   if (import.meta.env.DEV && DEV_ONLY_PREFIXES.some((prefix) => hash.startsWith(prefix))) {
     return true;
   }
+  if (isNoSpendRoute(hash)) return true;
+  return false;
+}
+
+/** Baked examples are read-only: no model path may spend, even when a key is configured. */
+export function isNoSpendRoute(hash: string): boolean {
   if (/^#\/(?:deepzoom|synthesis)[?&].*\bdemo=1(?:&|$)/.test(hash)) return true;
   if (!hash.startsWith('#/live')) return false;
   if (peekTourMode()) return true;

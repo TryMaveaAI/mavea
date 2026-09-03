@@ -9,6 +9,7 @@
 // synthesized layout can never be unsafe or off-brand.
 import type { AskComplexity } from './complexity';
 import type { ModelTier } from './catalog';
+export { svgBlockMenu } from '../../engine/svgBlockPrompt';
 
 /** The `composite` block — a titled grid of other blocks the model arranges on the fly. */
 export const COMPOSITE_BLOCK_TYPE = 'composite';
@@ -73,66 +74,5 @@ export function synthesisMenu(): string {
     'assemble a fresh, on-brand layout — a hero card beside a few metric tiles, scenario cards over',
     'a checklist — rather than a wall of plain text. Build it from the RICH blocks; never nest a',
     'composite inside a composite.',
-  ].join('\n');
-}
-
-/** The `svgblock` escape hatch — the LAST resort when a visual genuinely can't be expressed by
- *  any component or composed layout (a molecule, a circuit, a geometric figure, a custom
- *  infographic). The model draws a small SVG and we sanitize it before render. The rules below
- *  MIRROR the sanitizer's whitelist (canvas/blocks/media/sanitizeSvg.ts), so following them keeps
- *  the drawing intact; anything outside them is silently stripped. Tier-agnostic — every model
- *  that is offered svgblock is taught it, with an explicit element list a small model can follow. */
-export function svgBlockMenu(): string {
-  return [
-    'CUSTOM SVG — THE LAST RESORT. Before drawing one, walk this ladder IN ORDER and stop at the',
-    'first that fits:',
-    '  1) a purpose-built component (diagram, geometrycanvas, molecularstructure, vectorspace,',
-    '     reactionmechanism, freebodydiagram, musicstaff, chart, timeline, …) — ALWAYS preferred;',
-    '  2) a "composite" arranging real components, if it is only a layout you need;',
-    '  3) ONLY if neither can represent the visual, draw it yourself with "svgblock".',
-    'The right time for svgblock is a STRUCTURAL or CONCEPTUAL picture nothing above can render — a',
-    'labelled apparatus, a geometric figure, a custom infographic, a symbol or logo. When such a',
-    'visual genuinely helps the answer, DRAW IT rather than describing it in prose or dropping it.',
-    'NEVER use svgblock for a CHEMICAL STRUCTURE — use the molecularstructure component (it draws',
-    'real atoms and bonds); a hand-drawn molecule is always wrong. Likewise never use it to plot',
-    'DATA or fake a chart — real numbers go in a real chart; an svgblock must never invent data.',
-    'PREFER A COMPUTED PRIMITIVE for anything one can draw — molecularstructure from a SMILES string',
-    '(it computes exact atom positions; never hand-place 30+ atoms), geometrycanvas from REAL',
-    'coordinates (it auto-fits the axes), freebodydiagram for forces. They place the geometry FOR',
-    'you, so they are always more accurate than drawing it by hand.',
-    'Shape: {"type":"svgblock","props":{"title": string, "svg": string, "caption": string}}.',
-    'CORRECTNESS BEFORE DETAIL — draw only facts you genuinely know from the user, grounded context,',
-    'or stable knowledge. Never fill a visual gap with a plausible label, object, number, arrow, or',
-    'relationship. Prefer a smaller, simpler figure over an impressive-looking guess. Before emitting',
-    'it, cross-check that every label matches its shape, every arrow points in the correct direction,',
-    'and the drawing agrees with its caption and the rest of the answer. Do not imply exact scale,',
-    'position, chronology, causality, or completeness unless the evidence supports it; otherwise say',
-    '"illustrative", "approximate", or "not to scale" in the caption. If accuracy is uncertain, use',
-    'a purpose-built component or prose instead. These checks do not increase the output budget.',
-    'ABSTRACT IDEAS ARE NOT LITERAL OBJECTS — never turn a proof, paradox, non-measurable set,',
-    'invisible process, probability, or quantum effect into a concrete-looking mechanism. If a',
-    'schematic still helps, label it "conceptual" and state exactly what it does NOT depict. Never',
-    'draw ordinary-looking slices or arrows when the real mathematics or mechanism is not that.',
-    'TOKEN & COMPLEXITY LIMIT — emit at most ONE svgblock in an answer. Keep its SVG at or below',
-    '6,000 characters, 80 total elements, and 20 text labels. Spend those tokens on meaningful',
-    'labels and relationships, not decorative paths. If that is insufficient, use a native block.',
-    'RULES for "svg" (follow exactly — anything else is stripped on render):',
-    '• A complete <svg> with a viewBox (e.g. viewBox="0 0 400 300") and NO width/height attributes.',
-    '• Give it room: a truthful viewBox and only the elements + labels needed to explain the idea.',
-    '• Colors: use ONLY these CSS variables — var(--presence), var(--insight), var(--warning),',
-    '  var(--danger), var(--text-primary), var(--text-secondary), var(--text-muted),',
-    '  var(--surface-card). NEVER hex, rgb(), or named colors — that is what keeps it on-brand',
-    '  and correct in light AND dark mode.',
-    '• Allowed elements ONLY: svg, g, defs, title, desc, path, rect, circle, ellipse, line,',
-    '  polyline, polygon, text, tspan, linearGradient, radialGradient, stop, clipPath, mask,',
-    '  pattern, marker, use (href="#id" only). Gradients are referenced as fill="url(#id)".',
-    '• FORBIDDEN: <script>, <style>, <foreignObject>, <image>, <a>, event handlers (onclick…),',
-    '  animation (<animate>/<set>), and ANY external URL or javascript:/data: reference.',
-    '• Strokes and text use currentColor-style tokens; keep line weights consistent and legible.',
-    '• Type must stay READABLE once the figure is scaled to fit a card. font-size is in viewBox',
-    '  units, so it shrinks with everything else: keep every label at or above 1.5% of the',
-    '  viewBox width (a 400-wide viewBox means font-size 6 at the very smallest, ~10 preferred).',
-    '  A label nobody can read is worse than one you left out — drop the label or enlarge the',
-    '  viewBox rather than shrinking type to make it fit.',
   ].join('\n');
 }

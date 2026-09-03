@@ -1,6 +1,8 @@
 import {
   chooseComponents,
+  heroMenuFor,
   menuFor,
+  stableMenu,
   type SelectionInput,
   type SelectionResult,
 } from '../../src/live/select';
@@ -17,6 +19,8 @@ export function select(input: SelectionInput): SelectionResult {
   return {
     types: choice.types,
     promptSnippet: menuFor(choice),
+    stablePromptSnippet: stableMenu(),
+    heroPromptSnippet: heroMenuFor(choice),
     allowed: choice.allowed,
     bestFit: choice.bestFit,
   };
