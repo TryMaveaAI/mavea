@@ -1,11 +1,17 @@
-/** Stable FNV-1a hash used for compact, non-cryptographic content identities. */
-export function fnv1a(text: string): string {
+/** Stable FNV-1a hash as a 32-bit unsigned integer — the seed form, for PRNGs and bucketing. */
+export function fnv1aInt(text: string): number {
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index += 1) {
     hash ^= text.charCodeAt(index);
     hash = Math.imul(hash, 0x01000193);
   }
-  return (hash >>> 0).toString(36);
+  return hash >>> 0;
+}
+
+/** Stable FNV-1a hash used for compact, non-cryptographic content identities. Base-36 of the
+ *  integer form, so the two can never drift apart — persisted ids depend on this exact output. */
+export function fnv1a(text: string): string {
+  return fnv1aInt(text).toString(36);
 }
 
 const DEFAULT_LEAF_LIMIT = 24;

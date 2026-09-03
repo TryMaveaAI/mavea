@@ -8,7 +8,7 @@
 //      the whole canvas.
 // These are source-scan tripwires (no DOM/print engine needed) — the cheapest durable guard.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8');
@@ -44,6 +44,37 @@ describe('PDF export — interactive-only affordances are dropped', () => {
     expect(idx).toBeGreaterThan(-1);
     const rule = printCss.slice(idx, printCss.indexOf('}', idx));
     expect(rule).toMatch(/display:\s*none\s*!important/);
+  });
+});
+
+describe('PDF export — the hide list is not a stale contract', () => {
+  // print.css hides the app chrome by NAME, and a hide list is a claim nobody re-checks: rename a
+  // class anywhere else and the selector here silently matches nothing, so the pipeline still
+  // believes it hides the dock, the face and the overlays while they leak into the PDF.
+  const sources = (): string => {
+    const seen: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ts|tsx|css)$/.test(entry.name) && !full.endsWith(join('print', 'print.css')))
+          seen.push(readFileSync(full, 'utf8'));
+      }
+    };
+    walk(join(__dirname, '..', 'src'));
+    return seen.join('\n');
+  };
+
+  it('names only classes that still exist in the app', () => {
+    // Comments quote filenames and prose; only the selectors themselves are the contract.
+    const selectors = printCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const names = [...new Set([...selectors.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]))];
+    expect(names.length).toBeGreaterThan(40);
+
+    // One pass over the tree: the boundaries stop `.card` from being "found" inside `card-grid`.
+    const anyName = new RegExp(String.raw`(?<![\w-])(${names.join('|')})(?![\w-])`, 'g');
+    const found = new Set(sources().match(anyName) ?? []);
+    expect(names.filter((name) => !found.has(name))).toEqual([]);
   });
 });
 

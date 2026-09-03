@@ -16,6 +16,7 @@
 // twice reaches for different cool visuals, and the long tail finally gets surfaced. The
 // model still makes the final semantic pick, and the base floor is always present, so a
 // novel-but-ill-fitting candidate can never break or empty the canvas.
+import { fnv1aInt } from '../../lib/hash';
 import type { ComponentMeta, ItemSpec } from '../../canvas/blocks/catalog/meta';
 import type { ComponentFacts } from '../../canvas/blocks/catalog/facts';
 import { catalogMeta } from '../../canvas/blocks/catalog/lookup';
@@ -252,15 +253,6 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
 }
 
 /** One scored candidate as the draw sees it. */
@@ -719,7 +711,8 @@ export function chooseComponents(input: SelectionInput): Choice {
         ? Math.max(6, Math.round(K_BY_TIER[input.tier] * 0.45))
         : K_BY_TIER[input.tier];
     const budget = tight ? LEAN_K : richBudget;
-    const seed = (hashStr(input.userText) ^ Math.imul((input.rotation ?? 0) + 1, 0x9e3779b1)) >>> 0;
+    const seed =
+      (fnv1aInt(input.userText) ^ Math.imul((input.rotation ?? 0) + 1, 0x9e3779b1)) >>> 0;
     const rng = mulberry32(seed);
 
     // RELEVANCE FIRST, THEN VARIETY. Two kinds of "always include" beat the random draw:

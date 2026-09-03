@@ -1,19 +1,9 @@
-/* Shared live-exploration controls (canvas/controls/*). Tokens only; light/dark automatic.
-   Everything an interactive viz block lets the user touch lives inside `.viz-controls`, which the
-   export pipeline hides so a PDF/slide captures the clean static figure (the model's seed state). */
-
-.viz-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin-top: 10px;
-  min-width: 0;
-}
+/* Shared live-exploration controls (canvas/controls/*). Tokens only; light/dark automatic. */
 
 /* The export gate: FigureEmbed stamps [data-static] on an embedded block (see embed/FigureEmbed),
-   so every control collapses and only the static figure rasterizes. One rule, whole library. */
-[data-static] .viz-controls {
+   so a slider collapses to nothing and the figure rasterizes in its seed state. It covers the
+   shared primitive only — a block that rolls its own control has to opt in by using it. */
+[data-static] .viz-ctl {
   display: none !important;
 }
 
@@ -101,56 +91,4 @@
 }
 .viz-ctl-range:focus-visible::-moz-range-thumb {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ctl-c) 40%, transparent);
-}
-
-/* ── a live readout chip (drag value), e.g. the ROC operating point ── */
-.viz-readout {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  min-width: 0;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--surface-elevated) 70%, transparent);
-  border: 1px solid var(--grid-line);
-  color: var(--text-secondary);
-  font-size: clamp(11px, 3cqi, 12.5px);
-}
-.viz-readout b {
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-.viz-readout .viz-hint {
-  color: var(--text-faint);
-}
-
-/* ── a draggable on-chart handle (the SVG circle gets this) ── */
-.viz-handle {
-  cursor: grab;
-  touch-action: none;
-}
-.viz-handle:active {
-  cursor: grabbing;
-}
-.viz-handle-ring {
-  fill: none;
-  stroke: var(--surface-default);
-  stroke-width: 2;
-}
-.viz-handle-dot {
-  transition: r var(--m-fast);
-}
-.viz-handle:focus-visible {
-  outline: none;
-}
-.viz-handle:focus-visible .viz-handle-ring {
-  stroke: color-mix(in oklab, var(--presence) 60%, transparent);
-  stroke-width: 3;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .viz-handle-dot {
-    transition: none;
-  }
 }

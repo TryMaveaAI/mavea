@@ -56,13 +56,15 @@
     display: none !important;
   }
 
-  /* Also hide any overlays or portals rendered outside the canvas */
+  /* The rule above only reaches DIRECT children of .mavea-app. Everything here either portals to
+     <body> (so it is not a child at all) or sits deeper in the tree, and none of it belongs in a
+     printed document. Every class must still exist in the app — a renamed one silently stops
+     hiding, and the chrome leaks into the PDF (print-export.test.ts guards that). */
   .live-dock,
   .dock-bar,
   .dock-main,
-  .composer-root,
+  .composer,
   .topbar,
-  .live-topbar,
   .presence-layer,
   .presence-positioner,
   .presence-stage,
@@ -70,36 +72,40 @@
   .center-caption,
   .presence,
   .side-rail,
-  .session-rail,
-  .live-nav,
-  .living-bar,
-  .scrub-fixed,
   .speak-strip,
   .voice-notice,
   .answer-hero,
   .answer-footer,
-  .pen-pill,
   .pen-toggle-pill,
   .ghost-row,
   .filmstrip-rail,
-  .focus-stage-chrome,
   .preso-style-picker,
   .preso-menu,
   .present-exit,
-  .recap-modal,
-  .atlas-modal,
   .dlg-scrim,
-  .replay-modal,
-  .settings-panel,
-  .key-wizard,
-  .user-ink-layer,
+  .ov-root,
+  .cv-takeover,
+  .async-pending-overlay,
+  /* .async-pending-overlay is only the loading shell — once the lazy chunk lands, the modal it was
+     standing in for is its own <body> child, so each scrim has to be named too. Same for the
+     dropdowns, which portal out of their trigger to escape the card's transform. */
+  .cmdk-scrim,
+  .shm-scrim,
+  .drop-select-menu,
+  .se-menu--portal,
+  .cb-menu--portal,
   .live-error,
   .live-error-stage,
   .listen-mode-chip,
   .whisper-badge,
-  .dock-modes,
-  .topbar-menu,
-  .live-welcome {
+  .dock-modes {
+    display: none !important;
+  }
+
+  /* Gesture ink is positioned from measured on-screen geometry, and print reflows the grid into
+     one column — every stroke would land over the wrong words, so drop it with the chrome. */
+  .ink-layer,
+  .ink-connect-layer {
     display: none !important;
   }
 
@@ -141,7 +147,6 @@
      single stacked column: each card becomes a full-width section that reads top-to-bottom
      like a report. The focus-mode variants (`.focus-stage`, hero + filmstrip rail) get the
      same treatment so an export taken mid-focus still flows as a document. */
-  .topic-canvas,
   .card-grid,
   .focus-stage,
   .focus-main {
@@ -223,7 +228,6 @@
      filled-in VALUE stays — .blank-value / .blank-slot are kept), and drop raw
      form inputs so blanks read as static text, not empty boxes. */
   .block-ask,
-  .block-ask-label,
   .mark-toggle-label,
   /* The pen/ink affordances live INSIDE the canvas-stage, so the shell-hiding rule above misses
      them — a printed PDF can't draw, so the "Draw to ask" coachmark and ink bar are noise. */
@@ -251,8 +255,7 @@
   }
 
   /* ── Canvas header (question text) ─────────────────────────────────────── */
-  .canvas-header,
-  .turn-header {
+  .canvas-header {
     color: #111 !important;
   }
 
@@ -261,12 +264,6 @@
      question title/subtitle. */
   .canvas-header-actions {
     display: none !important;
-  }
-
-  /* ── Narration text ─────────────────────────────────────────────────────── */
-  .turn-narration,
-  .answer-narration {
-    color: #333 !important;
   }
 
   /* ── Generated page header ──────────────────────────────────────────────────
@@ -296,19 +293,9 @@
     color: #475467 !important;
   }
 
-  /* Mid-focus exports: drop the hero filmstrip rail / thumbnails — the hero card itself prints. */
-  .focus-rail,
-  .focus-thumbs,
-  .focus-thumb,
-  .focus-filmstrip {
-    display: none !important;
-  }
-
   /* Keep the question/answer title with the content that follows it. */
   .canvas-header,
-  .turn-header,
-  .canvas-title,
-  .focus-hero-title {
+  .canvas-title {
     page-break-after: avoid;
     break-after: avoid;
   }

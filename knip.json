@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}", "scripts/**/*.{mts,mjs}"],
   "ignore": ["src/canvas/blocks/*/types.ts"],
-  "ignoreFiles": ["src/canvas/controls/ControlStrip.tsx", "src/canvas/controls/useDragHandle.ts"],
   "ignoreIssues": {
     "src/live/ripple/cache.ts": ["exports"],
     "src/live/ripple/ingest/generate.ts": ["exports"],

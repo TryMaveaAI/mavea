@@ -17,6 +17,7 @@
 //     back and replay any moment — one answer, from the start, or from a point onward.
 //
 // Pure + dependency-free; never throws.
+import { fnv1a } from '../lib/hash';
 import type { ChatMessage } from './providers/types';
 import type { ConversationSpec } from '../data/conversation';
 import type { CorrectsNote, TourMark } from '../engine/liveSchema';
@@ -90,12 +91,7 @@ export function createTurnFrameId(at: number = Date.now()): string {
 export function turnFrameId(frame: TurnFrame): string {
   if (frame.id) return frame.id;
   const source = `${frame.at}\u0000${frame.question}\u0000${frame.narration}\u0000${frame.spec.title ?? ''}`;
-  let hash = 2166136261;
-  for (let i = 0; i < source.length; i++) {
-    hash ^= source.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `legacy-${frame.at.toString(36)}-${(hash >>> 0).toString(36)}`;
+  return `legacy-${frame.at.toString(36)}-${fnv1a(source)}`;
 }
 
 /** Fold older turns into one compact recap line so the model keeps the gist without the

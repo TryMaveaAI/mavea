@@ -13,6 +13,8 @@
 // `connect` is the one gesture whose two rects may live in DIFFERENT cards — unlike every other
 // kind, it never clamps to a host box (there's no single card to stay inside), so its caller
 // passes a shared frame rather than one card's own bounds. See `connect()` below.
+import { fnv1aInt } from '../../lib/hash';
+
 export type Gesture =
   | 'circle'
   | 'underline'
@@ -90,14 +92,6 @@ const round = (n: number): number => Math.round(n * 10) / 10;
 const unitOf = (r: Rect): number => Math.min(Math.max(r.height / 18, 0.9), 4);
 
 /* ---- seeded wobble: same card, same stroke ---- */
-
-function seedOf(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  }
-  return h >>> 0;
-}
 
 function mulberry32(seed: number): () => number {
   let a = seed || 1;
@@ -730,7 +724,7 @@ export function strokeFor(
   extra?: MarkExtra,
 ): InkStroke | null {
   if (mark.width <= 0 || mark.height <= 0 || host.width <= 0) return null;
-  const rnd = mulberry32(seedOf(seed + kind));
+  const rnd = mulberry32(fnv1aInt(seed + kind));
   const r = relativeRect(mark, host);
   const toR = extra?.to ? relativeRect(extra.to, host) : undefined;
   if (kind === 'circle') {
@@ -805,7 +799,7 @@ export function gestureOf(value: string | null | undefined): Gesture | null {
  *  a small arrowhead at the far end. Built from the same seeded wobble as every stroke, so a
  *  note's tether reads as the same hand that circles figures. */
 export function tetherStroke(from: Pt, to: Pt, seed: string): { d: string; head: string } {
-  const rnd = mulberry32(seedOf(seed + ':tether'));
+  const rnd = mulberry32(fnv1aInt(seed + ':tether'));
   const mid: Pt = {
     x: (from.x + to.x) / 2 + (rnd() - 0.5) * 10,
     y: (from.y + to.y) / 2 + (rnd() - 0.5) * 10,
