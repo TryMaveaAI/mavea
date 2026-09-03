@@ -47,6 +47,10 @@ export interface SelectionResult {
   stablePromptSnippet: string;
   /** Only the selected hero lines; this is the turn-varying part of the menu. */
   heroPromptSnippet: string;
+  /** The three heroes the menu LEADS with — the ones that carry a dense example and that the
+   *  turn names as its targets. One ordering, read from one place, so the targets the model is
+   *  told to build around are the same three it sees at the top of the menu. */
+  leads: string[];
   /** The gate validateLiveResponse uses — exactly the types we exposed. */
   allowed: ReadonlySet<string>;
   /** The strongest data-shape fit among the candidates (0 = the ask matched no shape any
@@ -529,13 +533,38 @@ function heroLinesFor(
   fitOf: ReadonlyMap<string, number>,
 ): string[] {
   const metas = chosen.map((f) => catalogMeta(f.type)).filter((m): m is ComponentMeta => !!m);
-  const cool = [...metas].sort((a, b) => {
-    const fa = (fitOf.get(a.type) ?? 0) > 0 ? 1 : 0;
-    const fb = (fitOf.get(b.type) ?? 0) > 0 ? 1 : 0;
+  const cool = [...metas].sort(leadOrder(fitOf));
+  return cool.map((m, i) => describe(m, i < LEAD_DENSE, true, i < TEACH_HINTS));
+}
+
+/** The menu's lead trio for a choice — one derivation shared by the app's async selector and the
+ *  tests' synchronous twin, so neither can drift from the order the menu actually prints. */
+export function leadsOf(choice: {
+  chosen: readonly ComponentFacts[];
+  fitOf: ReadonlyMap<string, number>;
+}): string[] {
+  return [...choice.chosen]
+    .sort(leadOrder(choice.fitOf))
+    .slice(0, LEAD_DENSE)
+    .map((m) => m.type);
+}
+
+/** How the menu orders its heroes — and therefore which three lead it, get the dense worked
+ *  example, and are named as the turn's targets. Fit comes FIRST, in half-point bands, and wow
+ *  only breaks ties within a band. Fit used to collapse to a yes/no before the wow sort, so a
+ *  budget question led with moodboard, burn-runway and sunburst ahead of a stacked bar that fit
+ *  three times better: the model rightly rejected the loud trio and fell back to the same generic
+ *  blocks every turn, which is the "same ten components" the menu exists to prevent. */
+export function leadOrder(
+  fitOf: ReadonlyMap<string, number>,
+): (a: { type: string; wowWeight: number }, b: { type: string; wowWeight: number }) => number {
+  const band = (t: string): number => Math.round((fitOf.get(t) ?? 0) * 2);
+  return (a, b) => {
+    const fa = band(a.type);
+    const fb = band(b.type);
     if (fa !== fb) return fb - fa;
     return b.wowWeight - a.wowWeight;
-  });
-  return cool.map((m, i) => describe(m, i < LEAD_DENSE, true, i < TEACH_HINTS));
+  };
 }
 
 /** Stable menu material, placed before the selected hero lines on production turns so providers
@@ -848,12 +877,7 @@ export async function selectComponents(input: SelectionInput): Promise<Selection
   // offered type. At a 30-type menu this was ~26 shard round-trips on the critical path ahead of
   // the first request byte, to render three examples.
   const leads = [...choice.chosen]
-    .sort((a, b) => {
-      const fa = (choice.fitOf.get(a.type) ?? 0) > 0 ? 1 : 0;
-      const fb = (choice.fitOf.get(b.type) ?? 0) > 0 ? 1 : 0;
-      if (fa !== fb) return fb - fa;
-      return b.wowWeight - a.wowWeight;
-    })
+    .sort(leadOrder(choice.fitOf))
     // +2 margin: buildMenu re-sorts AFTER catalogMeta has filtered, so if a lead's family chunk
     // failed to load the trio shifts down — the margin keeps the replacements' examples resident
     // rather than rendering a lead thin. Two extra shards is the whole cost.
@@ -871,6 +895,7 @@ export async function selectComponents(input: SelectionInput): Promise<Selection
     promptSnippet: menuFor(choice),
     stablePromptSnippet: stableMenu(),
     heroPromptSnippet: heroMenuFor(choice),
+    leads: leadsOf(choice),
     allowed: choice.allowed,
     bestFit: choice.bestFit,
   };

@@ -6,6 +6,7 @@ import {
   type SelectionInput,
   type SelectionResult,
 } from '../../src/live/select';
+import { leadsOf } from '../../src/live/select/rank';
 
 /** The synchronous equivalent of `selectComponents` for tests.
  *
@@ -21,6 +22,7 @@ export function select(input: SelectionInput): SelectionResult {
     promptSnippet: menuFor(choice),
     stablePromptSnippet: stableMenu(),
     heroPromptSnippet: heroMenuFor(choice),
+    leads: leadsOf(choice),
     allowed: choice.allowed,
     bestFit: choice.bestFit,
   };

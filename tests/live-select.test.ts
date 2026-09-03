@@ -485,17 +485,20 @@ describe('selectComponents — menu teaches components AND fields (demo-grade)',
     const shapes = detectShapes(userText);
     const fitOf = (type: string) =>
       (metaFor(type)?.dataShapes ?? []).reduce((s, sh) => s + (shapes[sh] ?? 0), 0);
+    // Fit is compared in half-point BANDS, not as a yes/no: a block that fits three times better
+    // must lead one that barely fits, however flashy the latter. Within a band, wow decides.
+    const band = (type: string) => Math.round(fitOf(type) * 2);
     for (let i = 1; i < heroes.length; i++) {
       const prev = heroes[i - 1]!;
       const cur = heroes[i]!;
-      const fPrev = fitOf(prev) > 0 ? 1 : 0;
-      const fCur = fitOf(cur) > 0 ? 1 : 0;
-      if (fPrev !== fCur) {
-        expect(fPrev).toBeGreaterThanOrEqual(fCur); // fitting components lead
+      if (band(prev) !== band(cur)) {
+        expect(band(prev)).toBeGreaterThan(band(cur)); // better-fitting components lead
       } else {
         expect(metaFor(cur)?.wowWeight ?? 0).toBeLessThanOrEqual(metaFor(prev)?.wowWeight ?? 0);
       }
     }
+    // The turn's named targets ARE the menu's first three — one set of targets, not two.
+    expect(r.leads).toEqual(heroes.slice(0, 3));
   });
 });
 

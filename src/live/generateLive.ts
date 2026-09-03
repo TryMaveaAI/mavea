@@ -31,7 +31,15 @@ import { catalogFacts } from '../canvas/blocks/catalog/facts';
 import { ensureDetails } from '../canvas/blocks/catalog/details';
 import { preloadBlockFamilies } from '../canvas/blocks/loader';
 import { getAdapter } from './providers';
-import { PROVIDER_BLOCKED, PROVIDER_EMPTY, PROVIDER_THINKING_BUDGET } from './providers/http';
+import {
+  PROVIDER_BLOCKED,
+  PROVIDER_EMPTY,
+  PROVIDER_THINKING_BUDGET,
+  looksLikeBadKey,
+} from './providers/http';
+// The leaf, not './providers' — the adapter registry is mocked wholesale in tests, and this only
+// needs the error class the spend policy throws.
+import { ProviderGenerationBlockedError } from './providers/spendPolicy';
 import { isReasoningModel } from './providers/openaiCompatible';
 import { currentDateTimeLine } from './ground/now';
 import { semanticFit } from './semantic';
@@ -251,12 +259,6 @@ const PROVIDER_LABELS: Record<string, string> = {
 const SPENT_ACCOUNT =
   /resource.?exhausted|quota.?exceed|exceeded your (?:current )?quota|insufficient[_ ](?:quota|funds)|monthly.?limit|credit balance|billing/i;
 
-/** The words a provider uses when the KEY itself is no good — missing, malformed, revoked, or not
- *  enabled for this API. Google returns these as a 400 INVALID_ARGUMENT, which the generic 400
- *  branch below would otherwise translate into "check the model name in settings". */
-const BAD_KEY =
-  /api[_ ]?key not valid|api[_ ]?key.{0,20}invalid|invalid[_ ]api[_ ]?key|API_KEY_INVALID|missing.{0,10}api[_ ]?key|authentication[_ ]error/i;
-
 /** Map a provider failure to a plain-language LiveError. Adapters throw `Error('<provider> <status>
  *  — <reason from the body>')` on HTTP failure, so the status is parsed from the message; no status
  *  at all means the request never got a response (network down, timeout, CORS). */
@@ -264,6 +266,17 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
   const msg = err instanceof Error ? err.message : '';
   const status = Number(/\b(\d{3})\b/.exec(msg)?.[1]) || undefined;
   const label = PROVIDER_LABELS[provider] ?? provider;
+  // A local policy refusal: nothing was sent, so there is no status to read and nothing about the
+  // connection to blame. Without this branch the likeliest first-run state of all — no key yet —
+  // fell through to the network message below and sent a brand-new visitor off to debug their wifi.
+  if (err instanceof ProviderGenerationBlockedError)
+    return {
+      kind: 'auth',
+      message:
+        err.reason === 'replay'
+          ? 'This is a recorded example, so nothing new is generated here — connect your own model to ask your own questions.'
+          : 'No model is connected yet — add a model and its API key in settings to start.',
+    };
   // A 200 OK that carried no answer. These have no status, so without an explicit branch they
   // would fall all the way through to the network message below and blame the connection for
   // something that reached the model and came back.
@@ -282,7 +295,7 @@ export function describeLiveError(err: unknown, provider: string): LiveError {
   // An unusable key is billed at different statuses by different providers (Google answers 400
   // INVALID_ARGUMENT), and "check the model name" sends the user hunting for a typo that isn't
   // there. The adapters carry the provider's own words into the message, so match on those first.
-  if (BAD_KEY.test(msg))
+  if (looksLikeBadKey(msg))
     return {
       kind: 'auth',
       status,
@@ -1046,8 +1059,10 @@ export async function generateLive(
   const offerSvg = allowed.has('svgblock');
   // Name the turn's strongest SPECIALIZED picks so the model builds around them instead of
   // defaulting to the generic dozen — concrete targets reinforce the variety mandate against the
-  // pull of the (generic) worked example in the base prompt.
-  const heroPicks = selection.types.filter((t) => !FRONTIER_BLOCK_TYPES.has(t)).slice(0, 3);
+  // pull of the (generic) worked example in the base prompt. The SAME three the menu leads with:
+  // this used to take the first three of the unsorted pick list while the menu led with its own
+  // fit-sorted trio, so the model was pointed at two different sets of targets.
+  const heroPicks = selection.leads.filter((t) => !FRONTIER_BLOCK_TYPES.has(t)).slice(0, 3);
   // Everything keyed ONLY on (tier, complexity) is byte-identical turn to turn, so it belongs
   // INSIDE the cached prefix the adapters split on (systemBase → Anthropic's cache block,
   // Gemini's systemInstruction, the Responses `instructions`). These five used to ride the
