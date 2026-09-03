@@ -19,6 +19,12 @@
   display: none;
 }
 
+.canvas-empty-answer {
+  width: min(100%, 680px);
+  min-height: 180px;
+  margin-inline: auto;
+}
+
 .canvas-header {
   display: flex;
   flex-wrap: wrap;

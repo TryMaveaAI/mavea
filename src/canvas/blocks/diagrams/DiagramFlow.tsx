@@ -1,6 +1,7 @@
 import { useId, useMemo } from 'react';
 import { richInnerHtml } from '../../../lib/richText';
 import { estimateTextWidth, fitText } from '../../lib/fitText';
+import { honouredPlacements } from './placement';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type {
@@ -179,10 +180,11 @@ function layoutNodes(
   const toX = (u: number) => PAD + u * innerW;
   const toY = (u: number) => PAD + u * innerH;
 
-  // explicit placement wins for any node that provides it
-  const auto = nodes.filter((n) => !(Number.isFinite(n.x) && Number.isFinite(n.y)));
+  // A READABLE explicit placement wins for any node that provides one; everything else is laid out.
+  const honoured = honouredPlacements(nodes);
+  const auto = nodes.filter((n) => !honoured.has(n.id));
   const placed: Placed[] = nodes.map((n) =>
-    Number.isFinite(n.x) && Number.isFinite(n.y)
+    honoured.has(n.id)
       ? { ...n, cx: toX(clamp01(n.x as number)), cy: toY(clamp01(n.y as number)) }
       : { ...n, cx: 0, cy: 0 },
   );

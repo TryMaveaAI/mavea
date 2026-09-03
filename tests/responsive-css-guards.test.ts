@@ -13,10 +13,10 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   const scene = read('src/canvas/study/slots.ts');
 
   it('stands down the desk when the container cannot hold a legible 3-D composition', () => {
-    // Under the compact container query the front card and note return to flow and the blurred
+    // Under the compact stage attribute the front card and note return to flow and the blurred
     // back arc disappears entirely — its objects keep their NAMES on the beat chips; a 3-D scene
     // squeezed into a phone column is an unreadable miniature, not a study.
-    const compact = /@container study \(max-width: \d+px\)[\s\S]*$/.exec(css)?.[0] ?? '';
+    const compact = /\.study-stage\[data-compact\][\s\S]*$/.exec(css)?.[0] ?? '';
     expect(compact).toBeTruthy();
     expect(compact).toMatch(/\.study-card\.is-back[^{]*\{[^}]*\}|\.study-card\.is-back,/);
     expect(compact).toMatch(/display:\s*none/);
@@ -48,7 +48,7 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   it('keeps the compact breakpoint at the width where the note card is last whole', () => {
     // Between 880 and 980 the floored desk crops Mavéa's note card — real reading content —
     // off the right edge; 1280×800 laptops land exactly there.
-    expect(css).toMatch(/@container study \(max-width: 980px\)/);
+    expect(scene).toMatch(/COMPACT_W = 980/);
   });
 
   it('quiets card transitions during a live window resize', () => {
@@ -58,7 +58,7 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   });
 
   it('reflows the voice bubble into the compact column instead of floating it', () => {
-    const compact = /@container study \(max-width: \d+px\)[\s\S]*$/.exec(css)?.[0] ?? '';
+    const compact = /\.study-stage\[data-compact\][\s\S]*$/.exec(css)?.[0] ?? '';
     expect(compact).toMatch(/\.study-voice\s*\{[^}]*position:\s*static/);
   });
 

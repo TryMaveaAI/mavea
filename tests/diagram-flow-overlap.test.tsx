@@ -143,3 +143,96 @@ describe('an edge label in a dense chain is never hidden by the nodes it connect
     ).toBeGreaterThan(lastNode);
   });
 });
+
+describe('a placement the figure cannot read is not a placement', () => {
+  // The real case: a three-node "X-Y-Z bullet formula" that arrived with coordinates on some
+  // other scale. `x`/`y` are contracted as a 0..1 unit canvas and every out-of-range value was
+  // clamped to 1, so all three nodes landed on the SAME point in the bottom-right corner — three
+  // labels piled on one ellipse over a card of empty space. An unreadable hint is worth less than
+  // the layout it displaced, so the figure lays itself out instead.
+  const nodes = (x: number[], y: number[]) =>
+    ['a', 'b', 'c'].map((id, i) => ({
+      id,
+      label: ['Accomplished [X]', 'as measured by [Y]', 'by doing [Z]'][i],
+      x: x[i],
+      y: y[i],
+    }));
+  const edges = [
+    { from: 'a', to: 'b' },
+    { from: 'b', to: 'c' },
+  ];
+
+  function spread(container: HTMLElement): number[] {
+    return centres(container, 'dg-node-label');
+  }
+
+  it('lays out a figure whose coordinates are on a 0..100 scale', () => {
+    const { container } = render(
+      <DiagramFlow
+        title="The X-Y-Z bullet formula"
+        layout="layered"
+        nodes={nodes([10, 50, 90], [50, 50, 50])}
+        edges={edges}
+      />,
+    );
+    const xs = spread(container);
+    expect(xs).toHaveLength(3);
+    // Three distinct columns, not one pile.
+    expect(new Set(xs).size).toBe(3);
+  });
+
+  it('lays out a figure whose authored points all land on one spot', () => {
+    const { container } = render(
+      <DiagramFlow
+        title="Collapsed"
+        layout="layered"
+        nodes={nodes([1, 1, 1], [1, 1, 1])}
+        edges={edges}
+      />,
+    );
+    expect(new Set(spread(container)).size).toBe(3);
+  });
+
+  it('still honours a genuine unit placement', () => {
+    const { container } = render(
+      <DiagramFlow
+        title="Hand-tuned"
+        layout="free"
+        nodes={nodes([0, 0.5, 1], [0.5, 0.5, 0.5])}
+        edges={edges}
+      />,
+    );
+    const xs = spread(container);
+    expect(xs).toHaveLength(3);
+    expect(new Set(xs).size).toBe(3);
+    // The authored order is preserved across the full width, which auto-placement would not do
+    // for a three-node `free` grid (it tiles 2×2).
+    expect(xs[0]).toBeLessThan(xs[1]);
+    expect(xs[1]).toBeLessThan(xs[2]);
+  });
+});
+
+describe('SysArchDiagram reads placement by the same rule', () => {
+  // The same four lines lived in both families, so the pile was possible in both. One rule now,
+  // shared — this is the test that the second family actually got it.
+  const nodes = ['a', 'b', 'c'].map((id, i) => ({
+    id,
+    label: ['Client', 'API', 'Store'][i],
+    kind: 'service' as const,
+    x: [10, 50, 90][i],
+    y: [50, 50, 50][i],
+  }));
+  const edges = [
+    { from: 'a', to: 'b' },
+    { from: 'b', to: 'c' },
+  ];
+
+  it('lays out rather than piling when the coordinates are out of range', () => {
+    const { container } = render(
+      <SysArchDiagram title="Out of scale" nodes={nodes} edges={edges} />,
+    );
+    const xs = centres(container, 'sa-label');
+    expect(xs).toHaveLength(3);
+    expect(new Set(xs).size).toBe(3);
+  });
+});

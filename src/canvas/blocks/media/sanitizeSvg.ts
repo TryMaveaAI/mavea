@@ -104,7 +104,7 @@ const JS_PROTO = /javascript:/i;
 const DANGEROUS_CSS = /expression\s*\(|@import|behavior\s*:|-moz-binding/i;
 
 /** Paint attributes. The model is TAUGHT to use only design-system tokens here (see
- *  svgBlockMenu() in live/select/synthesis.ts) so the drawing is correct in light AND dark —
+ *  svgBlockMenu() in engine/svgBlockPrompt.ts) so the drawing is correct in light AND dark —
  *  a literal `fill="black"` looks fine against whichever theme the model imagined but can go
  *  invisible (or, worse, swallow its own text) against the other. Models don't reliably follow
  *  that instruction, so it's enforced here rather than trusted. */

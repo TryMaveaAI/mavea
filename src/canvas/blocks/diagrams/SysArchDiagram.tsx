@@ -10,6 +10,7 @@ import { useId, useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SysArchDiagramProps, SysArchNode, SysArchEdge, SysArchNodeKind } from './types';
+import { honouredPlacements } from './placement';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = SysArchDiagramProps & { delay?: number };
@@ -119,14 +120,18 @@ function layoutNodes(
   const toX = (u: number) => PAD + u * innerW;
   const toY = (u: number) => PAD + u * innerH;
 
+  // Only a placement this figure can actually read wins; the rest are laid out by rank. See
+  // ./placement — an out-of-scale coordinate used to clamp to 1 and pile the whole diagram into
+  // the bottom-right corner.
+  const honoured = honouredPlacements(nodes);
   const placed: Placed[] = nodes.map((n) =>
-    Number.isFinite(n.x) && Number.isFinite(n.y)
+    honoured.has(n.id)
       ? { ...n, cx: toX(clamp01(n.x as number)), cy: toY(clamp01(n.y as number)) }
       : { ...n, cx: 0, cy: 0 },
   );
   const byId = new Map(placed.map((p) => [p.id, p]));
 
-  const auto = nodes.filter((n) => !(Number.isFinite(n.x) && Number.isFinite(n.y)));
+  const auto = nodes.filter((n) => !honoured.has(n.id));
   const rank = rankNodes(auto, edges);
   const cols = new Map<number, SysArchNode[]>();
   for (const n of auto) {

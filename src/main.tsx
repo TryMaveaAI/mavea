@@ -16,7 +16,8 @@ import { installAmbientPlayDriver } from './lib/pageVisibility';
 import { RootBoundary, SurfaceFallback } from './RootBoundary';
 import { routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
-import { isLegalGateBypassed } from './legal/routePolicy';
+import { isLegalGateBypassed, isNoSpendRoute } from './legal/routePolicy';
+import { configureProviderSpending } from './live/providers/spendPolicy';
 import { createPreloadableLazy } from './lib/preloadableLazy';
 
 // Dashboards refresh while Mavéa is open, not while #/dashboards happens to be the visible surface
@@ -37,11 +38,18 @@ const DashboardLoopGate = dashboardLoopGate.Component;
 // The full route table (which prefix loads which chunk, and which are dev-only QA harnesses)
 // lives in routes.ts.
 function useHashRoute(): string {
-  const [hash, setHash] = useState<string>(() =>
-    typeof window !== 'undefined' ? window.location.hash : '',
-  );
+  const [hash, setHash] = useState<string>(() => {
+    const initial = typeof window !== 'undefined' ? window.location.hash : '';
+    configureProviderSpending(isNoSpendRoute(initial));
+    return initial;
+  });
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash);
+    const onChange = () => {
+      const next = window.location.hash;
+      // Close the model barrier before sibling timers can observe the new replay route.
+      configureProviderSpending(isNoSpendRoute(next));
+      setHash(next);
+    };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);
