@@ -156,7 +156,11 @@ export const layoutFlow: LayoutFn = (world, opts) => {
     edgePaths.push({
       id: e.id,
       d: `M ${px(x1)} ${px(y1)} C ${px(mid)} ${px(y1)} ${px(mid)} ${px(y2)} ${px(x2)} ${px(y2)}`,
-      className: 'morph-edge morph-ribbon' + relClass(e.kind),
+      // A link that HELD the outcome down keeps its colour here. The graph's caption says colour
+      // is the direction of the push, and a ribbon sized by how much of the outcome it explains
+      // while painted like every other one points the reader the wrong way.
+      className:
+        'morph-edge morph-ribbon' + relClass(e.kind) + (e.sign === -1 ? ' morph-edge--damp' : ''),
       width: RIBBON_MIN + share * (RIBBON_MAX - RIBBON_MIN),
     });
   }

@@ -94,3 +94,21 @@ describe("ViewMode 'canvas' is a transient, opt-in view (never sticky)", () => {
     expect(localStorage.getItem('mavea-view-mode')).toBe('focus'); // preference preserved
   });
 });
+
+describe('showViewMode — a scripted view is never the reader’s preference', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it('shows the view in-session but leaves the saved choice alone', async () => {
+    const m = await import('../src/canvas/focus/useFocusMode');
+    m.setViewMode('focus');
+    // What the walkthrough and the curated demos drive — a visitor who closes the tab mid-run
+    // never reaches the restore, so this must not have written anything.
+    m.showViewMode('study');
+    expect(m.getViewMode()).toBe('study');
+    expect(m.savedViewMode()).toBe('focus');
+    expect(localStorage.getItem('mavea-view-mode')).toBe('focus');
+  });
+});

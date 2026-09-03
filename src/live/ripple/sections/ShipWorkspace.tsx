@@ -163,10 +163,14 @@ export function ShipWorkspace({ model }: SectionProps): ReactElement {
           </div>
         </div>
 
-        <div className="ripple-ws-block ripple-ws-why">
-          <span className="ripple-eyebrow">Why it&rsquo;s here</span>
-          <p>{selected.why}</p>
-        </div>
+        {/* Only a model read fills `why`; the deterministic floor leaves it empty. A labelled,
+            ruled block over nothing reads as a failure, so the block goes with the prose. */}
+        {selected.why && (
+          <div className="ripple-ws-block ripple-ws-why">
+            <span className="ripple-eyebrow">Why it&rsquo;s here</span>
+            <p>{selected.why}</p>
+          </div>
+        )}
       </div>
 
       {/* ── RIGHT: cause & effect ── */}

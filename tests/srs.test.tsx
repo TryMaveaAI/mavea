@@ -57,8 +57,8 @@ import type { TurnFrame } from '../src/live/history';
 import type { ChatMessage } from '../src/live/providers/types';
 import type { ConversationSpec, Block } from '../src/data/conversation';
 
-// FlashcardsApp's header count and "Study" button/modal both have to stay honest about what
-// they're describing — a stray "1 cards" reads as unpolished, and a "Study All cards" button
+// FlashcardsApp's header count and "Review" button/modal both have to stay honest about what
+// they're describing — a stray "1 cards" reads as unpolished, and a "Review All cards" button
 // that's silently narrowed to whatever smart filter is selected in the sidebar is misleading.
 describe('FlashcardsApp', () => {
   beforeEach(() => {
@@ -86,7 +86,7 @@ describe('FlashcardsApp', () => {
     });
   });
 
-  describe('FlashcardsApp — Study button label matches what it actually studies', () => {
+  describe('FlashcardsApp — Review button label matches what it actually queues', () => {
     it('switches to "Due cards" when the Due smart filter is active, instead of still claiming "All cards"', () => {
       const now = Date.now();
       const [card] = addCards([{ front: 'Capital of France?', back: 'Paris' }], { now });
@@ -97,13 +97,24 @@ describe('FlashcardsApp', () => {
 
       render(<FlashcardsApp />);
       // Default filter is "All" — the primary action studies everything regardless of schedule.
-      expect(screen.getByRole('button', { name: /Study All cards/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Review All cards/i })).toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Due').closest('button')!);
       // The button (and, if opened, the review sheet's title) must now say "Due", not "All cards" —
       // otherwise it launches a Due-only session while still promising "All cards".
-      expect(screen.getByRole('button', { name: /Study Due cards/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /Study All cards/i })).toBeNull();
+      expect(screen.getByRole('button', { name: /Review Due cards/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Review All cards/i })).toBeNull();
+    });
+
+    it('goes quiet when the scope it names would queue nothing', () => {
+      // The list already says "Nothing here"; the button used to stay live off the deck's GLOBAL
+      // count and open a full-screen modal that said "Nothing to flip".
+      addCards([{ front: 'Q', back: 'A', deck: 'Biology' }]);
+      render(<FlashcardsApp />);
+      expect(screen.getByRole('button', { name: /Review All cards/i })).toBeEnabled();
+
+      fireEvent.click(screen.getByText('Missed').closest('button')!);
+      expect(screen.getByRole('button', { name: /Review Missed cards/i })).toBeDisabled();
     });
 
     it('combines the filter with a selected tag ("Due · #geo") rather than dropping the tag', () => {
@@ -115,7 +126,7 @@ describe('FlashcardsApp', () => {
       const { container } = render(<FlashcardsApp />);
       fireEvent.click(container.querySelector('.fc-tag-chip')!);
       fireEvent.click(screen.getByText('Due').closest('button')!);
-      expect(screen.getByRole('button', { name: /Study Due · #geo/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Review Due · #geo/i })).toBeInTheDocument();
     });
   });
 
@@ -399,6 +410,50 @@ describe('SrsReview', () => {
       const chips = within(container.querySelector('.srs-done-breakdown')!);
       expect(chips.getByText('Got it')).toBeInTheDocument();
       expect(chips.getByText('Not yet')).toBeInTheDocument();
+    });
+
+    it('does not credit a card recovered on the repeat pass as one they knew', () => {
+      // Every card missed, every repeat recovered: the headline used to count each good answer,
+      // so a session where nothing was known first time read "You got 2 of 2."
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+      flip(container);
+      fireEvent.click(screen.getByText('Not yet'));
+      flip(container);
+      fireEvent.click(screen.getByText('Not yet'));
+      flip(container);
+      fireEvent.click(screen.getByText('Got it'));
+      flip(container);
+      fireEvent.click(screen.getByText('Got it'));
+
+      expect(screen.getByText('You got 0 of 2.')).toBeInTheDocument();
+      expect(screen.queryByText('You got 2 of 2.')).toBeNull();
+    });
+  });
+
+  // role="button" on the flip container made its children presentational, so the question and the
+  // answer — the whole content of this feature — never reached the accessibility tree.
+  describe('the card is readable to a screen reader, one face at a time', () => {
+    beforeEach(() => {
+      addCards([{ front: 'Capital of France?', back: 'Paris' }], { now: 0 });
+      setStudyStyle('collection');
+    });
+
+    it('exposes the question, and holds the answer back until it is asked for', () => {
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+      const scene = container.querySelector('.srs-flip-scene')!;
+      expect(scene.getAttribute('role')).toBeNull();
+      expect(screen.getByText('Capital of France?')).toBeInTheDocument();
+      expect(container.querySelector('.srs-face-front')!.getAttribute('aria-hidden')).toBe('false');
+      // The answer is in the DOM for the flip, but a reader must not hear it before flipping.
+      expect(container.querySelector('.srs-face-back')!.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('offers a real control to reveal it, and drops it once the card has turned', () => {
+      const { container } = render(<SrsReview onClose={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Reveal the answer' }));
+      expect(container.querySelector('.srs-face-back')!.getAttribute('aria-hidden')).toBe('false');
+      expect(container.querySelector('.srs-face-front')!.getAttribute('aria-hidden')).toBe('true');
+      expect(screen.queryByRole('button', { name: 'Reveal the answer' })).toBeNull();
     });
   });
 

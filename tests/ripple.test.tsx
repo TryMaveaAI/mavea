@@ -8,6 +8,11 @@ import { SEED_SHIP } from '../src/live/ripple/seed';
 import { layoutImpact, NODE_W, NODE_H } from '../src/live/ripple/layout';
 import { statusVar, statusLabel, riskVar } from '../src/live/ripple/colors';
 import { RippleOverlay } from '../src/live/ripple/RippleOverlay';
+import { ShipGate } from '../src/live/ripple/sections/ShipGate';
+import { ShipWorkspace } from '../src/live/ripple/sections/ShipWorkspace';
+import { ShipRead } from '../src/live/ripple/sections/ShipRead';
+import { parseUnifiedDiff } from '../src/live/ripple/ingest/parseDiff';
+import { buildShipFromDiff } from '../src/live/ripple/ingest/buildShip';
 import type { NodeStatus, RiskLevel, ShipNode } from '../src/live/ripple/model';
 
 afterEach(() => cleanup());
@@ -176,6 +181,42 @@ describe('RippleOverlay', () => {
     expect(closed).toBe(true);
   });
 
+  // The backdrop is a large live target around a surface whose primary gestures are selecting a
+  // file path, a SQL line or a diff line. A drag released past the panel's edge fires its click on
+  // the common ancestor — the scrim — and closing there discards the whole analysis.
+  it('closes on a backdrop click, but not on a gesture that merely ended there', () => {
+    localStorage.clear();
+    let closed = 0;
+    const { container } = render(<RippleOverlay model={SEED_SHIP} onClose={() => (closed += 1)} />);
+    const scrim = container.querySelector('.ripple-scrim')!;
+    const panel = container.querySelector('.ripple-panel')!;
+
+    // Began on the panel, released on the backdrop — the reader was selecting, not dismissing.
+    fireEvent.pointerDown(panel);
+    fireEvent.click(scrim);
+    expect(closed).toBe(0);
+
+    // Began and ended on the backdrop — a real dismissal.
+    fireEvent.pointerDown(scrim);
+    fireEvent.click(scrim);
+    expect(closed).toBe(1);
+  });
+
+  // The intake renders inside the panel's own focus trap, so without one of its own the keyboard
+  // stayed outside it — 36 stops through the rail, the map and the verdict chips, every one of them
+  // behind the intake's scrim, before reaching the field the dialog exists to fill.
+  it('moves focus into the intake dialog when it opens', () => {
+    localStorage.clear();
+    const { getByText, getByPlaceholderText, container } = render(
+      <RippleOverlay model={SEED_SHIP} onClose={() => undefined} />,
+    );
+    fireEvent.click(getByText(/Run on your own code/i));
+
+    const input = getByPlaceholderText(/github\.com\/owner\/repo\/pull/i);
+    expect(document.activeElement).toBe(input);
+    expect(container.querySelector('.ripple-paste')?.getAttribute('aria-modal')).toBe('true');
+  });
+
   it('never closes on a Space typed into an intake input', () => {
     // The scrim is a click-to-close target with a keyboard twin; a bubbled Enter/Space from a field
     // inside the panel belongs to that field, not to the scrim.
@@ -187,5 +228,53 @@ describe('RippleOverlay', () => {
     fireEvent.click(getByText(/Run on your own code/i));
     fireEvent.keyDown(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), { key: ' ' });
     expect(closed).toBe(false);
+  });
+});
+
+// The deterministic floor is what a reader with no key sees, and it carries no model prose. Every
+// section here used to render its frame regardless — a labelled block over an empty paragraph, or a
+// positive safety claim derived from a field nothing populates.
+describe('the deterministic floor promises only what it has', () => {
+  const FLOOR = buildShipFromDiff(
+    parseUnifiedDiff(
+      [
+        'diff --git a/src/auth/token.ts b/src/auth/token.ts',
+        '--- a/src/auth/token.ts',
+        '+++ b/src/auth/token.ts',
+        '@@ -42 +42 @@',
+        '-validateToken(t: string)',
+        '+validateToken(t: string, opts: VerifyOpts)',
+      ].join('\n'),
+    ),
+    'acme/widget #482',
+  );
+
+  it('leaves out "Why it’s here" rather than heading an empty paragraph', () => {
+    expect(FLOOR.changes.every((c) => c.why === '')).toBe(true);
+    const { container, queryByText } = render(<ShipWorkspace model={FLOOR} altitude="working" />);
+    expect(queryByText(/Why it’s here/i)).toBeNull();
+    expect(container.querySelector('.ripple-ws-why')).toBeNull();
+  });
+
+  it('makes no prerequisites claim from a field nothing populates', () => {
+    expect(FLOOR.gate.requires).toEqual([]);
+    const { queryByText } = render(<ShipGate model={FLOOR} altitude="working" />);
+    expect(queryByText(/No external prerequisites/i)).toBeNull();
+  });
+
+  it('does not offer an expander the read has no control for', () => {
+    const { getByText, container } = render(<ShipRead model={FLOOR} altitude="working" />);
+    expect(getByText(/paraphrases nothing it can’t cite/i).textContent).not.toMatch(/expand any/i);
+    expect(container.querySelector('.ripple-read')!.querySelectorAll('button, a').length).toBe(0);
+  });
+
+  it('never labels the machine contract blocked while the verdict beside it says watch', () => {
+    expect(FLOOR.gate.decision).toBe('block'); // this diff changes a signature
+    const watching = {
+      ...FLOOR,
+      gate: { ...FLOOR.gate, decision: 'watch' as const, unackedP0: 0 },
+    };
+    const { container } = render(<ShipGate model={watching} altitude="working" />);
+    expect(container.querySelector('.ripple-gate-term-status')!.textContent).toBe('watch');
   });
 });

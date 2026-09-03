@@ -220,8 +220,10 @@ export function CourseRail({
 
       {lesson.objectives.length > 0 && (
         <ul className="cx-objectives">
-          {lesson.objectives.map((o) => (
-            <li key={o}>{o}</li>
+          {/* Keyed by position: nothing here reorders, and a model is free to write the same
+              objective twice, which as a key is a React duplicate-key error. */}
+          {lesson.objectives.map((o, i) => (
+            <li key={i}>{o}</li>
           ))}
         </ul>
       )}

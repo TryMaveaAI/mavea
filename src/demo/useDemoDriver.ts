@@ -90,6 +90,8 @@ export function useDemoDriver(opts: {
   personaId: string | null;
   /** Resume step from a mid-demo reload (?step=N). */
   startStep?: number | null;
+  /** The surface's own mute state — what the transport's narration button shows and flips. */
+  muted: boolean;
   ops: TourOps;
 }): DemoDriver {
   const { active, personaId } = opts;
@@ -102,9 +104,10 @@ export function useDemoDriver(opts: {
   const [index, setIndex] = useState(() => Math.max(0, Math.min(total - 1, opts.startStep ?? 0)));
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [userMuted, setUserMuted] = useState(false);
-  const userMutedRef = useRef(userMuted);
-  userMutedRef.current = userMuted;
+  // The transport reports and flips the SURFACE's mute, never a private copy: a mirror let the
+  // dock's own toggle and this one disagree, and the next step re-asserted the stale value.
+  const mutedRef = useRef(opts.muted);
+  mutedRef.current = opts.muted;
   const [done, setDone] = useState(false);
   // Bumped to force the apply-effect to re-run even when the index is unchanged (replay).
   const [token, setToken] = useState(0);
@@ -162,7 +165,6 @@ export function useDemoDriver(opts: {
     // Curated replays lead with the product's defining surface even when this browser previously
     // chose a grid. The visitor's standing preference is restored when the replay unmounts.
     o.setViewMode('study');
-    o.setMuted(userMutedRef.current);
 
     const rawFrame = frameFor(script.steps, index, convo);
     const rawBeatFrame = rawFrame ?? currentFrame(script.steps, index, convo);
@@ -297,7 +299,11 @@ export function useDemoDriver(opts: {
       setDone(true);
     } else goto(index + 1, { keepPlaying: true });
   }, [index, total, goto, resetTriggers]);
-  const prev = useCallback(() => goto(index - 1), [index, goto]);
+  // The transport's Previous button is disabled at the first step; the keyboard path must agree,
+  // or ← replays step 0 and the session rail gains a second copy of the same moment.
+  const prev = useCallback(() => {
+    if (index > 0) goto(index - 1);
+  }, [index, goto]);
   const jumpTo = useCallback((i: number) => goto(i), [goto]);
   const replay = useCallback(() => {
     resetTriggers();
@@ -319,9 +325,7 @@ export function useDemoDriver(opts: {
   }, [done, replay, start, started]);
   const toggleMute = useCallback(() => {
     unlockAudio();
-    const next = !userMutedRef.current;
-    userMutedRef.current = next;
-    setUserMuted(next);
+    const next = !mutedRef.current;
     opsRef.current.setMuted(next);
     if (next) opsRef.current.cancelSpeech();
   }, []);
@@ -341,7 +345,7 @@ export function useDemoDriver(opts: {
     step: active ? (steps[index] ?? null) : null,
     note,
     playing,
-    muted: userMuted,
+    muted: opts.muted,
     done,
     start,
     next,

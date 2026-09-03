@@ -209,14 +209,11 @@
   text-transform: uppercase;
   padding: 3px 10px;
   border-radius: var(--r-full);
-  color: var(--danger);
-  background: color-mix(in oklab, var(--danger) 14%, transparent);
-  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
-}
-.ripple-gate-term-status[data-clear='true'] {
-  color: var(--insight);
-  background: color-mix(in oklab, var(--insight) 14%, transparent);
-  border-color: color-mix(in oklab, var(--insight) 32%, transparent);
+  /* Tinted by the decision itself (set inline), so the contract's pill can never disagree with the
+     verdict two rows above it. */
+  color: var(--gate-accent, var(--danger));
+  background: color-mix(in oklab, var(--gate-accent, var(--danger)) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--gate-accent, var(--danger)) 32%, transparent);
 }
 .ripple-gate-term-body {
   margin: 0;

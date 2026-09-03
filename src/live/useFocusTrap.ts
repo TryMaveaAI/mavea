@@ -72,6 +72,10 @@ export function useFocusTrap<T extends HTMLElement>(
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && onEscapeRef.current) {
+        // The topmost layer takes the key. Surfaces underneath commonly listen for Escape on
+        // `window` to dismiss themselves, and one press closing both the receipt a reader opened
+        // AND the surface it stands on is a dismissal they never asked for.
+        e.stopPropagation();
         onEscapeRef.current();
         return;
       }

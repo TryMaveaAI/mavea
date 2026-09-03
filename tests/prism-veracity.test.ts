@@ -365,9 +365,11 @@ describe('veracity — the Standing line', () => {
       expect(standingLine(v)).toBe('2 of 3 checked claims need a second look: 2 outdated.');
     });
 
-    it('omits empty buckets', () => {
+    // The verb agrees with what needs looking at, not with the pool it was drawn from — a single
+    // troubled claim among many read "1 of 6 checked claims need a second look".
+    it('omits empty buckets, and agrees the verb with the troubled count', () => {
       const v: Verdict[] = ['disputed', 'holds'];
-      expect(standingLine(v)).toBe('1 of 2 checked claims need a second look: 1 disputed.');
+      expect(standingLine(v)).toBe('1 of 2 checked claims needs a second look: 1 disputed.');
     });
   });
 });

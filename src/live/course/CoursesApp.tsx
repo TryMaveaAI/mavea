@@ -457,12 +457,19 @@ export function CoursesApp(): ReactElement {
   // chosen workspace appearance, not just its brightness.
   useEffect(() => mountTemplateSkin(document), []);
   useCourseRevision();
-  // A topic handed off from Deep Zoom's "Turn this into a course" (see courseSeed.ts) opens
-  // the composer pre-filled and generating immediately — same mount-time, read-once pattern
-  // LiveApp.tsx's own `useRef(takeCourseLesson())` uses for the lesson seed.
-  const topicSeed = useRef(takeCourseTopic());
-  const [composerOpen, setComposerOpen] = useState(!!topicSeed.current);
-  const [composerTopic, setComposerTopic] = useState(topicSeed.current ?? '');
+  // A topic handed off from Deep Zoom's "Turn this into a course" (see courseSeed.ts) opens the
+  // composer pre-filled. The read CONSUMES the handoff, so it belongs in an effect, not in the
+  // render body: on a cold navigation this route's chunk arrives mid-render and the component is
+  // rendered twice, and the discarded first pass ate the topic — leaving every reader's FIRST
+  // press of that button on the empty Courses screen with nothing filled in.
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerTopic, setComposerTopic] = useState('');
+  useEffect(() => {
+    const topic = takeCourseTopic();
+    if (topic === undefined) return;
+    setComposerTopic(topic);
+    setComposerOpen(true);
+  }, []);
   const courses = getCourses();
 
   const openComposer = (topic = ''): void => {

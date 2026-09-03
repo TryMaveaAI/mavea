@@ -51,7 +51,10 @@ function toEditor(cards: DraftCard[]): EditorCard[] {
 
 export function CardEditor(p: Props): ReactElement {
   const shellRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(shellRef);
+  // Open on the first field, not on ✕ — this is a sheet you have come here to type in, and the
+  // first focusable in DOM order is the close button.
+  const firstFieldRef = useRef<HTMLTextAreaElement>(null);
+  useFocusTrap(shellRef, { initialFocus: firstFieldRef });
 
   const [rows, setRows] = useState<EditorCard[]>(() =>
     p.mode === 'add' ? toEditor(p.initial) : [{ front: p.card.front, back: p.card.back }],
@@ -200,6 +203,7 @@ export function CardEditor(p: Props): ReactElement {
               <label className="fc-ed-field">
                 <span className="fc-ed-label">Front · question</span>
                 <textarea
+                  ref={i === 0 ? firstFieldRef : undefined}
                   className="fc-ed-input"
                   rows={2}
                   value={r.front}

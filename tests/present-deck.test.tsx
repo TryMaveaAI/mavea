@@ -159,6 +159,33 @@ describe('PresentationDeck', () => {
     }
   });
 
+  it('← still moves after crossing out the last slide', () => {
+    vi.useFakeTimers();
+    try {
+      const settle = () => act(() => void vi.advanceTimersByTime(400));
+      const count = () => document.querySelector('.preso-count')!.textContent!.trim();
+      mount();
+      press('End');
+      settle();
+      const [, total] = count()
+        .split('/')
+        .map((n) => Number(n.trim()));
+      expect(count()).toBe(`${total} / ${total}`);
+
+      // Crossing out the slide the show is ON shrinks the deck under the state index, which is
+      // only clamped at render — so ← used to step from the stale index and land back on the
+      // slide already showing. A dead ← in front of a room.
+      press('x');
+      settle();
+      expect(count()).toBe(`${total - 1} / ${total - 1}`);
+      press('ArrowLeft');
+      settle();
+      expect(count()).toBe(`${total - 2} / ${total - 1}`);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('announces the current slide through a polite live region', () => {
     mount();
     const live = document.querySelector('.preso-sr') as HTMLElement;

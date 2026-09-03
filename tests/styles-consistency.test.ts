@@ -59,7 +59,10 @@ describe('styles.css — overflow + SVG cap safety net is preserved', () => {
 
 describe('styles.css — accessibility + touch', () => {
   it('establishes the rem baseline with html{font-size:100%}', () => {
-    expect(css).toMatch(/html\s*\{\s*font-size:\s*100%;\s*\}/);
+    // The document reset lives with the type roles now — still an EAGER sheet, which is the whole
+    // point: a first visit must get the baseline before any route's stylesheet has loaded.
+    const typeRoles = readFileSync(join(stylesDir, 'type-roles.css'), 'utf8');
+    expect(css + typeRoles).toMatch(/html\s*\{\s*font-size:\s*100%;\s*\}/);
   });
 
   it('grows controls to a 44px touch target under (hover: none)', () => {

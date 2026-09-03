@@ -4,12 +4,18 @@
 // on mount. A `?tour=1` in the hash is also honored so the tour is directly deep-linkable (and
 // easy to dev-test) without going through the landing. Defensive: any storage failure just means
 // no tour, never a throw.
+import { markTourSeen } from './tourSeen';
+
 const KEY = 'mavea-tour-mode';
 const CHAPTER_KEY = 'mavea-tour-chapter';
 const SOLO_KEY = 'mavea-tour-solo';
 
-/** Ask the next #/live mount to play the walkthrough. Call right before navigating to #/live. */
+/** Ask the next #/live mount to play the walkthrough. Call right before navigating to #/live.
+ *  Retiring the landing's first-run invite belongs HERE, not at each caller: the rule is that every
+ *  route into the walkthrough retires it, and the showcase's ten deep-links each stashed tour mode
+ *  on their own and left the visitor to be invited on the tour they had just watched. */
 export function stashTourMode(): void {
+  markTourSeen();
   try {
     sessionStorage.setItem(KEY, '1');
   } catch {

@@ -100,7 +100,9 @@ export function ShipGate({ model }: SectionProps): ReactElement {
     [gate.shipSafe, gate.unackedP0, gate.requires, gate.deployOrder],
   );
 
-  const contractStatus = gate.shipSafe ? 'clear' : 'blocked';
+  // The terminal's status echoes the verdict two rows up. Reading it off `shipSafe` alone printed
+  // "blocked" over a Watch verdict, since anything that isn't purely tests/config is not ship-safe.
+  const contractStatus = gate.decision === 'pass' ? 'clear' : verdict.label.toLowerCase();
 
   return (
     <div className="ripple-gate">
@@ -146,24 +148,27 @@ export function ShipGate({ model }: SectionProps): ReactElement {
       </section>
 
       {/* ── requires + deploy order ── */}
-      <section className="ripple-gate-requires" aria-label="Requires">
-        <div className="ripple-eyebrow">Requires</div>
-        <div className="ripple-gate-req-row">
-          {gate.requires.length > 0 ? (
-            gate.requires.map((r) => (
+      {/* Nothing derives prerequisites from a diff — cross-repo contracts need a connected graph —
+          so an empty `requires` means "not established", not "none". Saying "No external
+          prerequisites" there was a safety claim made from having looked at nothing; the row
+          appears only when there is something to show. */}
+      {(gate.requires.length > 0 || gate.deployOrder === 'enforced') && (
+        <section className="ripple-gate-requires" aria-label="Requires">
+          <div className="ripple-eyebrow">Requires</div>
+          <div className="ripple-gate-req-row">
+            {gate.requires.map((r) => (
               <code className="ripple-gate-chip" key={r}>
                 {r}
               </code>
-            ))
-          ) : (
-            <span className="ripple-gate-req-empty">No external prerequisites.</span>
-          )}
-          <span className="ripple-gate-deploy">
-            deploy order:{' '}
-            <strong data-enforced={gate.deployOrder === 'enforced'}>{gate.deployOrder}</strong>
-          </span>
-        </div>
-      </section>
+            ))}
+            {gate.deployOrder === 'enforced' && (
+              <span className="ripple-gate-deploy">
+                deploy order: <strong data-enforced>enforced</strong>
+              </span>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── the machine-readable contract: what an agent gates on ── */}
       <section className="ripple-gate-agents" aria-label="For your agents">
@@ -173,7 +178,10 @@ export function ShipGate({ model }: SectionProps): ReactElement {
             <span className="ripple-gate-term-prompt">
               mavea.gate(<span className="ripple-gate-term-arg">{prLabel}</span>)
             </span>
-            <span className="ripple-gate-term-status" data-clear={gate.shipSafe}>
+            <span
+              className="ripple-gate-term-status"
+              style={{ ['--gate-accent' as string]: verdict.token }}
+            >
               {contractStatus}
             </span>
           </div>

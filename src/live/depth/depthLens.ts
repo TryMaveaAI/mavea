@@ -11,7 +11,8 @@ import type { Block } from '../../data/conversation';
 export interface DepthSection {
   /** Short concept label (e.g. "The TCP handshake"). Empty string for the fallback section. */
   label: string;
-  /** 1-based display order from the model; sections are sorted ascending by this. */
+  /** 1-based position in the settled canvas — assigned after the sort, so a merged follow-up
+   *  continues the numbering instead of restarting it. */
   order: number;
   /** Blocks that render as normal grid cards (depth ≤ 1, or undefined depth). */
   standard: Block[];
@@ -85,5 +86,8 @@ export function depthLens(blocks: readonly Block[]): DepthSection[] {
   // Sort by order hint ascending, preserving insertion order for ties.
   sections.sort((a, b) => a.order - b.order);
 
-  return sections;
+  // The badge is a position in THIS canvas, so number it from the settled order rather than
+  // printing the model's own hint: a merged follow-up numbers its sections from 1 too, and the
+  // reader ends up reading "1, 1, 2, 2, 3, 3".
+  return sections.map((s, i) => ({ ...s, order: i + 1 }));
 }

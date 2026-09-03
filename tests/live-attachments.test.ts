@@ -6,6 +6,9 @@ import {
   ensureAttachmentData,
   attachmentLabel,
   attachmentKind,
+  attachmentFileError,
+  attachmentSizeLimit,
+  isExplodable,
   isImage,
   isPdf,
   MAX_ATTACHMENT_BYTES,
@@ -135,6 +138,41 @@ describe('attachment helpers', () => {
   it('labels with a human size', () => {
     expect(attachmentLabel({ ...img, size: 2 * 1024 * 1024 })).toBe('a.png · 2.0 MB');
     expect(attachmentLabel({ ...img, size: 5 * 1024 })).toBe('a.png · 5 KB');
+  });
+
+  // Prism reads a picture as a one-page deck on the vision path, so every picker that offers
+  // images has to agree it is explodable — the Go hub's Prism card staged the screenshot it had
+  // just asked for and then opened nothing, because this said no.
+  it('counts a picture among the things Prism can explode', () => {
+    expect(isExplodable(img)).toBe(true);
+    expect(isExplodable(pdf)).toBe(true);
+  });
+});
+
+describe('the size cap a rejection quotes is the one the guard applied', () => {
+  const file = (name: string, type: string, size: number): File => {
+    const f = new File(['x'], name, { type });
+    Object.defineProperty(f, 'size', { value: size });
+    return f;
+  };
+
+  // Text and data files are documents: they get 40 MB. Quoting the 10 MB image cap at a 20 MB CSV
+  // told its owner to give up on a file the guard would have taken.
+  it('gives a text/data file the document cap, not the image one', () => {
+    expect(attachmentSizeLimit(file('data.csv', 'text/csv', 1))).toBe(MAX_DOCUMENT_BYTES);
+    expect(attachmentSizeLimit(file('a.png', 'image/png', 1))).toBe(MAX_ATTACHMENT_BYTES);
+    expect(attachmentFileError(file('data.csv', 'text/csv', 20 * 1024 * 1024))).toBeNull();
+  });
+
+  // "Unsupported file type. Try a ... Word doc" was the answer a refused Word document got.
+  it('names the real cause for a pre-OOXML Office file', () => {
+    expect(attachmentFileError(file('memo.doc', 'application/msword', 10))).toBe('legacy-office');
+    expect(attachmentFileError(file('deck.ppt', 'application/vnd.ms-powerpoint', 10))).toBe(
+      'legacy-office',
+    );
+    expect(attachmentFileError(file('thing.exe', 'application/octet-stream', 10))).toBe(
+      'unsupported',
+    );
   });
 });
 

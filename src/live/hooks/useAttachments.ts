@@ -4,7 +4,12 @@
 // evidence panel can be honest about what (if anything) grounded the answer. All self-contained
 // staging state — it never reads or writes the turn loop; the composer and submit path call into it.
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
-import { fileToAttachment, MAX_ATTACHMENTS, type Attachment } from '../attachments';
+import {
+  attachmentSizeLimit,
+  fileToAttachment,
+  MAX_ATTACHMENTS,
+  type Attachment,
+} from '../attachments';
 
 export interface UseAttachments {
   /** Files staged for the next turn (shown as chips above the composer, cleared on send). */
@@ -46,11 +51,16 @@ export function useAttachments(): UseAttachments {
         const res = await fileToAttachment(file);
         if (res.ok && res.attachment) next.push(res.attachment);
         else if (!rejected) {
-          const isDoc = /\.(pdf|docx|pptx|xlsx)$/i.test(file.name);
+          // Ask the guard for the cap it actually applied. Recomputing it here (as "40 for a
+          // pdf/docx/pptx/xlsx, else 10") quoted 10 MB at every text/data file, which the guard
+          // gives 40 — so someone with a 20 MB CSV gave up on a file that would have been taken.
+          const mb = Math.round(attachmentSizeLimit(file) / (1024 * 1024));
           rejected =
             res.error === 'too-large'
-              ? `"${file.name}" is too large (max ${isDoc ? 40 : 10} MB).`
-              : `"${file.name}" isn't a supported type (images, PDF, Office docs, or text/data files like CSV, TXT, Markdown, JSON).`;
+              ? `"${file.name}" is too large (max ${mb} MB).`
+              : res.error === 'legacy-office'
+                ? `"${file.name}" is the old binary Office format — re-save it as .docx, .pptx or .xlsx.`
+                : `"${file.name}" isn't a supported type (images, PDF, Office docs, or text/data files like CSV, TXT, Markdown, JSON).`;
         }
       }
       if (files.length > room) rejected = `Only the first ${room} file(s) were added.`;

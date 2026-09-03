@@ -166,6 +166,7 @@ vi.mock('../src/live/providers', () => ({
 
 // Import generateLive AFTER the mock is registered (vi.mock is hoisted, so this is safe).
 import { generateLive, describeLiveError } from '../src/live/generateLive';
+import { ProviderGenerationBlockedError } from '../src/live/providers/spendPolicy';
 
 const cfg: ModelConfig = { provider: 'openrouter', model: 'meta-llama/llama-3.3-8b', apiKey: 'k' };
 
@@ -724,6 +725,19 @@ describe('describeLiveError — plain-language mapping of provider failures', ()
     const e = describeLiveError(new Error('Failed to fetch'), 'grok');
     expect(e.message).toContain("Couldn't reach Grok");
     expect(e.message).not.toContain('grok');
+  });
+
+  it('a local spend refusal names the missing model — it never blames the connection', () => {
+    // The likeliest first-run state of all. No request is made, so there is no status to read and
+    // the network fallback used to send a brand-new visitor off to debug their wifi.
+    const e = describeLiveError(new ProviderGenerationBlockedError('unconfigured'), 'gemini');
+    expect(e.kind).toBe('auth');
+    expect(e.message).toMatch(/no model is connected/i);
+    expect(e.message).not.toMatch(/connection|reach/i);
+
+    const replay = describeLiveError(new ProviderGenerationBlockedError('replay'), 'gemini');
+    expect(replay.message).toMatch(/recorded/i);
+    expect(replay.message).not.toMatch(/connection/i);
   });
 
   it('404 → model-name guidance; other statuses stay honest with the code', () => {

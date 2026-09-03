@@ -182,6 +182,131 @@ describe('useInView', () => {
     }
   });
 
+  it('holds the arrival check to the caller’s threshold', () => {
+    // The arrival fallback used to reveal on ANY overlap, which defeated the reason a caller asks
+    // for a threshold at all: SeeDontRead wants a third of its comparison on screen so the
+    // multi-second one-shot cannot play where nobody can watch it. A scroll settling with a sliver
+    // showing was enough to burn it.
+    vi.useFakeTimers();
+    class SilentIO {
+      constructor(_cb: unknown, _options?: IntersectionObserverInit) {}
+      observe() {}
+      disconnect() {}
+    }
+    (globalThis as { IntersectionObserver: unknown }).IntersectionObserver = SilentIO;
+
+    function ThresholdProbe() {
+      const [ref, inView] = useInView<HTMLDivElement>({
+        threshold: 0.3,
+        nearestScrollRoot: true,
+        measureInitial: false,
+      });
+      return (
+        <div ref={ref} data-testid="threshold-probe">
+          {inView ? 'in' : 'out'}
+        </div>
+      );
+    }
+
+    try {
+      const { getByTestId } = render(
+        <div data-testid="scroller" style={{ overflowY: 'auto' }}>
+          <ThresholdProbe />
+        </div>,
+      );
+      const scroller = getByTestId('scroller');
+      const probe = getByTestId('threshold-probe');
+      const rect = (top: number, bottom: number) =>
+        ({
+          top,
+          bottom,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: bottom - top,
+          x: 0,
+          y: top,
+          toJSON() {},
+        }) as DOMRect;
+      scroller.getBoundingClientRect = () => rect(0, 800);
+
+      // 20px of a 300px section peeking in from the bottom is not an arrival.
+      probe.getBoundingClientRect = () => rect(780, 1080);
+      act(() => {
+        scroller.dispatchEvent(new Event('scrollend'));
+        vi.advanceTimersByTime(250);
+      });
+      expect(probe).toHaveTextContent('out');
+
+      // A third of it on screen is.
+      probe.getBoundingClientRect = () => rect(700, 1000);
+      act(() => {
+        scroller.dispatchEvent(new Event('scrollend'));
+      });
+      expect(probe).toHaveTextContent('in');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still reveals a section taller than the window it can never fill', () => {
+    // The threshold is a fraction of the ELEMENT, so a 4000px section in an 800px scroller could
+    // never reach 30% of itself — capping the requirement at the root's own height keeps the
+    // arrival guarantee a guarantee.
+    vi.useFakeTimers();
+    class SilentIO {
+      constructor(_cb: unknown) {}
+      observe() {}
+      disconnect() {}
+    }
+    (globalThis as { IntersectionObserver: unknown }).IntersectionObserver = SilentIO;
+
+    function TallProbe() {
+      const [ref, inView] = useInView<HTMLDivElement>({
+        threshold: 0.3,
+        nearestScrollRoot: true,
+        measureInitial: false,
+      });
+      return (
+        <div ref={ref} data-testid="tall-probe">
+          {inView ? 'in' : 'out'}
+        </div>
+      );
+    }
+
+    try {
+      const { getByTestId } = render(
+        <div data-testid="tall-scroller" style={{ overflowY: 'auto' }}>
+          <TallProbe />
+        </div>,
+      );
+      const scroller = getByTestId('tall-scroller');
+      const probe = getByTestId('tall-probe');
+      const rect = (top: number, bottom: number) =>
+        ({
+          top,
+          bottom,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: bottom - top,
+          x: 0,
+          y: top,
+          toJSON() {},
+        }) as DOMRect;
+      scroller.getBoundingClientRect = () => rect(0, 800);
+      // Fills the scroller from a third of the way down: 4000px tall, 533px of it showing.
+      probe.getBoundingClientRect = () => rect(267, 4267);
+      act(() => {
+        scroller.dispatchEvent(new Event('scrollend'));
+        vi.advanceTimersByTime(250);
+      });
+      expect(probe).toHaveTextContent('in');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('reveals in-view sections when the tab becomes visible again', () => {
     // A scroll performed while the window is occluded or the tab hidden delivers no
     // intersection entries at all; the first thing the user should see on return is the

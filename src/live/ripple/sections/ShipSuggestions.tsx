@@ -101,30 +101,37 @@ export function ShipSuggestions({ model }: SectionProps): ReactElement {
 
                 {open && (
                   <div className="ripple-sg-body" id={panelId}>
-                    <p className="ripple-sg-why">{s.why}</p>
+                    {/* Only the title is required of a suggestion, so each of these parts renders
+                        with its own copy or not at all — a filled, bordered evidence frame around
+                        nothing, or a "Suggested:" label with nothing after it, reads as a failure. */}
+                    {s.why && <p className="ripple-sg-why">{s.why}</p>}
 
-                    <div className="ripple-sg-evidence">
-                      <div className="ripple-eyebrow">Why you’re seeing this</div>
-                      <p className="ripple-sg-evidence-text">{s.evidence}</p>
-                    </div>
+                    {s.evidence && (
+                      <div className="ripple-sg-evidence">
+                        <div className="ripple-eyebrow">Why you’re seeing this</div>
+                        <p className="ripple-sg-evidence-text">{s.evidence}</p>
+                      </div>
+                    )}
 
-                    <div className="ripple-sg-fix">
-                      <span className="ripple-sg-check" aria-hidden="true">
-                        <svg viewBox="0 0 14 14" focusable="false">
-                          <path
-                            d="M3 7.4 5.8 10.2 11 4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                      <p className="ripple-sg-fix-text">
-                        <span className="ripple-sg-fix-label">Suggested:</span> {s.fix}
-                      </p>
-                    </div>
+                    {s.fix && (
+                      <div className="ripple-sg-fix">
+                        <span className="ripple-sg-check" aria-hidden="true">
+                          <svg viewBox="0 0 14 14" focusable="false">
+                            <path
+                              d="M3 7.4 5.8 10.2 11 4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <p className="ripple-sg-fix-text">
+                          <span className="ripple-sg-fix-label">Suggested:</span> {s.fix}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

@@ -343,6 +343,20 @@ describe('mapClaims — model output through the grounding gate', () => {
       expect(res.error ?? '').not.toMatch(/corrupt|not a pdf/i);
     });
 
+    // Mapping the picture was only half of it: the DOCUMENT has to carry the picture too, or the
+    // source panel falls through every surface to the PDF reader (DocPageView selects ImageSurface
+    // on slideImages) and pdf.js is handed a PNG — the same wrong cause, one layer down.
+    it("publishes a dropped image as the document's page image, so the source panel shows it", async () => {
+      const png: Attachment = { name: 'chart.png', mime: 'image/png', data: 'AA==', size: 4 };
+      modelReply = JSON.stringify({
+        regions: [],
+        claims: [{ quote: 'Revenue doubled', page: 1, kind: 'stat', title: 'X', region: 'R' }],
+      });
+      const res = await mapClaims(png, cfg);
+      expect(res.spec).not.toBeNull();
+      expect(res.spec!.documents[0].slideImages).toEqual([{ data: 'AA==', mime: 'image/png' }]);
+    });
+
     it('tells a non-vision model’s user that a picture needs a model that can see it', async () => {
       visionCapable = false;
       try {

@@ -59,10 +59,18 @@ export function parseUnifiedDiff(text: string): ParsedDiff {
   // header in between, i.e. a bare multi-file diff) is recognised as the START of the next file
   // instead of overwriting the current one's path/hunks in place.
   let sawPreImage = false;
+  // Lines still owed to the open hunk, from its @@ counts. A hunk body is read against this budget
+  // rather than by prefix, because content is indistinguishable from a header once the diff marker
+  // is prepended: removing the SQL comment `-- backfill first` puts `--- backfill first` on the
+  // wire, and adding `++ count;` puts `+++ count;`. Read by prefix, those silently became the next
+  // file's paths and the rest of the hunk was dropped. Null when the header carried no usable
+  // counts — then the body is read by prefix, as before.
+  let owed: { del: number; add: number } | null = null;
 
   const flushHunk = (): void => {
     if (cur && hunk) cur.hunks.push(hunk);
     hunk = null;
+    owed = null;
   };
   const flushFile = (): void => {
     flushHunk();
@@ -74,6 +82,32 @@ export function parseUnifiedDiff(text: string): ParsedDiff {
   const lines = text.split('\n');
   for (const raw of lines) {
     const line = raw.replace(/\r$/, '');
+
+    // Inside a counted hunk every line belongs to the body, whatever it starts with. Only the two
+    // markers a body line can never produce — an unprefixed `diff --git` or `@@` at column 0 — end
+    // it early, so a diff that emits fewer lines than its header promised still recovers.
+    if (hunk && cur && owed && (owed.del > 0 || owed.add > 0)) {
+      if (!line.startsWith('diff --git') && !line.startsWith('@@')) {
+        if (line.startsWith('+')) {
+          hunk.lines.push({ t: 'add', c: line.slice(1) });
+          cur.add += 1;
+          owed.add -= 1;
+        } else if (line.startsWith('-')) {
+          hunk.lines.push({ t: 'del', c: line.slice(1) });
+          cur.del += 1;
+          owed.del -= 1;
+        } else if (line.startsWith('\\')) {
+          // "\ No newline at end of file" — owed by neither side.
+        } else {
+          // Context, including the empty line git writes for an unchanged blank line.
+          hunk.lines.push({ t: 'ctx', c: line.startsWith(' ') ? line.slice(1) : line });
+          owed.del -= 1;
+          owed.add -= 1;
+        }
+        continue;
+      }
+      owed = null;
+    }
 
     // A new file block. git emits "diff --git a/x b/y"; a bare unified diff starts at "--- ".
     if (line.startsWith('diff --git')) {
@@ -141,6 +175,13 @@ export function parseUnifiedDiff(text: string): ParsedDiff {
     if (line.startsWith('@@')) {
       flushHunk();
       hunk = { header: line, lines: [] };
+      const counts = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line);
+      if (counts) {
+        owed = {
+          del: counts[1] === undefined ? 1 : Number(counts[1]),
+          add: counts[2] === undefined ? 1 : Number(counts[2]),
+        };
+      }
       continue;
     }
 

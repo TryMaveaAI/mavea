@@ -7,7 +7,7 @@
 // calm-vs-woken to it via a root data attribute, never touching the byte-locked face.
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Icon } from '../../icons/icons';
-import { resetLiveConfig } from '../useLiveConfig';
+import { hasModelConfigured, resetLiveConfig, useLiveConfig } from '../useLiveConfig';
 import { clearSession } from '../session/store';
 import { welcomeBackLine } from '../../lib/greeting';
 import { isSetupDone, markSetupDone, resetSetup } from './setup';
@@ -17,6 +17,7 @@ import {
   nextStep,
   GO_FIRST_RUN_TITLE,
   GO_FIRST_RUN_SUB,
+  GO_FIRST_RUN_SUB_UNSET,
   type StepId,
 } from './steps';
 import { Constellation } from './Constellation';
@@ -28,9 +29,11 @@ import { GoStep } from './steps/GoStep';
 
 export function SetupWizard({
   speak,
-  goDemo,
+  goHome,
   onStart,
   onStartTalking,
+  onAttach,
+  attachTitle,
   onSeeHow,
   studySlot,
   librarySlot,
@@ -39,9 +42,13 @@ export function SetupWizard({
   seed,
 }: {
   speak: (text: string) => void;
-  goDemo: () => void;
+  goHome: () => void;
   onStart: (text: string) => void;
   onStartTalking: () => void;
+  /** Opens a file picker whose files ride the FIRST question. Distinct from the Prism card's
+   *  picker: that one explodes a document; this one attaches it to whatever is asked next. */
+  onAttach?: () => void;
+  attachTitle?: string;
   onSeeHow?: () => void;
   studySlot?: ReactNode;
   librarySlot?: ReactNode;
@@ -68,6 +75,12 @@ export function SetupWizard({
   // Becomes true once the ritual is finished (Go reached on a first run) — from then on the
   // constellation shows every step as configured, like a returning user's.
   const [reachedGo, setReachedGo] = useState(!firstRun.current);
+  const [cfg] = useLiveConfig();
+  // The Go hub's big button has always refused to start a turn with no model behind it. Every
+  // OTHER door on the hub — the starter chips, the composer's Enter and send, its mic — reached
+  // the model anyway, so the commonest first-run gesture left the wizard for a turn that could
+  // never run. One gate, applied to all of them: send the visitor to Connect instead.
+  const configured = hasModelConfigured(cfg);
 
   const setupComplete = !firstRun.current || reachedGo;
 
@@ -87,13 +100,18 @@ export function SetupWizard({
     const seeded = pendingSeed.current;
     if (seeded) {
       pendingSeed.current = '';
-      onStart(seeded);
-      return;
+      if (configured) {
+        onStart(seeded);
+        return;
+      }
+      // Nothing can run yet: park the landing's question in the composer rather than spending it
+      // on a doomed turn, so it is still there once a model is connected.
+      setTyped(seeded);
     }
     if (spoken.current) return;
     spoken.current = true;
     speak(firstRun.current ? 'I’m awake.' : welcomeBackLine(new Date().getHours()));
-  }, [step, speak, onStart]);
+  }, [step, speak, onStart, configured]);
 
   // Stamp the current step so CSS can hide the orb through the ritual and reveal + position the
   // resting aurora face on the Go hub. No colour re-tint — the face keeps its natural palette.
@@ -137,6 +155,29 @@ export function SetupWizard({
     if (id !== 'go') setTyped('');
   };
 
+  // Routing a blocked start to Connect keeps whatever was typed — the question is what the visitor
+  // came to ask, and clearing it (as a plain step change does) reads as the app having eaten it.
+  const toConnect = (): void => {
+    setEditingReturn(setupComplete);
+    setStep('connect');
+  };
+
+  const start = (text: string): void => {
+    if (!configured) {
+      toConnect();
+      return;
+    }
+    onStart(text);
+  };
+
+  const startTalking = (): void => {
+    if (!configured) {
+      toConnect();
+      return;
+    }
+    onStartTalking();
+  };
+
   const done = (): void => {
     go(editingReturn ? 'go' : (nextStep(step) ?? 'go'));
   };
@@ -160,19 +201,25 @@ export function SetupWizard({
   // every step except the one you're on.
   const currentIndex = STEPS.findIndex((s) => s.id === step);
   const doneSet = new Set<StepId>(
-    STEPS.filter((s, i) => (setupComplete ? s.id !== step : i < currentIndex)).map((s) => s.id),
+    STEPS.filter((s, i) => {
+      // Connect is the one step you can walk past without finishing it, so position alone can't
+      // vouch for it: a "Connect, done" disc over an unconnected model is the same false claim.
+      if (s.id === 'connect' && !configured) return false;
+      return setupComplete ? s.id !== step : i < currentIndex;
+    }).map((s) => s.id),
   );
 
   const meta = stepMeta(step);
   const onGo = step === 'go';
   const title = onGo && firstRun.current ? GO_FIRST_RUN_TITLE : meta.title;
-  const sub = onGo && firstRun.current ? GO_FIRST_RUN_SUB : meta.sub;
+  const sub =
+    onGo && firstRun.current ? (configured ? GO_FIRST_RUN_SUB : GO_FIRST_RUN_SUB_UNSET) : meta.sub;
 
   return (
     <div className="setup stage" data-active="1">
       <header className="setup-nav">
-        <button type="button" className="setup-back" onClick={goDemo}>
-          <span aria-hidden>←</span> Back to the demo
+        <button type="button" className="setup-back" onClick={goHome}>
+          <span aria-hidden>←</span> Back to home
         </button>
         <Constellation current={step} done={doneSet} onPick={go} />
         {/* One right flank, not two children: the nav is a 1fr-auto-1fr grid that puts the
@@ -202,8 +249,8 @@ export function SetupWizard({
           {onGo && (
             <GoStep
               onJump={go}
-              onStart={onStart}
-              onStartTalking={onStartTalking}
+              onStart={start}
+              onStartTalking={startTalking}
               onStartOver={startOver}
               onSeeHow={onSeeHow}
               studySlot={studySlot}
@@ -229,6 +276,7 @@ export function SetupWizard({
             <input
               className="go-composer-input"
               type="text"
+              aria-label="Ask Mavéa"
               placeholder="Say it or type it. Try ‘plan a trip’ or ‘compare two options’…"
               value={typed}
               autoComplete="off"
@@ -238,16 +286,27 @@ export function SetupWizard({
                 // See CommandComposer: an IME's Enter commits a candidate, it doesn't send.
                 if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter' && typed.trim()) {
-                  onStart(typed.trim());
+                  start(typed.trim());
                 }
               }}
             />
+            {onAttach && (
+              <button
+                type="button"
+                className="go-composer-attach"
+                title={attachTitle ?? 'Attach a file'}
+                aria-label={attachTitle ?? 'Attach a file'}
+                onClick={onAttach}
+              >
+                <Icon.paperclip />
+              </button>
+            )}
             {typed.trim() ? (
               <button
                 type="button"
                 className="go-composer-send"
                 aria-label="Send"
-                onClick={() => onStart(typed.trim())}
+                onClick={() => start(typed.trim())}
               >
                 <Icon.send />
               </button>
@@ -256,7 +315,7 @@ export function SetupWizard({
                 type="button"
                 className="go-composer-mic"
                 aria-label="Use microphone"
-                onClick={onStartTalking}
+                onClick={startTalking}
               >
                 <Icon.mic />
               </button>

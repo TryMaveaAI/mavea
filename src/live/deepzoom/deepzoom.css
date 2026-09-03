@@ -23,7 +23,10 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  overflow: hidden;
+  /* clip, not hidden: a hidden-overflow box still SCROLLS programmatically, so tabbing to
+     something below the fold shoved the whole surface — top bar included — off screen with no
+     scrollbar to bring it back. The shell is a fixed frame; the screens inside it scroll. */
+  overflow: clip;
   background: var(--surface-deep);
   color: var(--text-primary);
   font-family: var(--font);
@@ -46,6 +49,10 @@
 
 /* ── top bar ──────────────────────────────────────────────────────────── */
 .dz-topbar {
+  /* Sticky rather than static: the start screen scrolls (see .dz-start), and the back button is
+     this screen's only way out. Already glass, so it reads as a bar over the hero. */
+  position: sticky;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -649,12 +656,6 @@
   border-color: var(--dz-current);
   box-shadow: 0 0 8px color-mix(in oklab, var(--dz-current) 60%, transparent);
 }
-.dz-chip-more {
-  border-style: dashed;
-  color: var(--text-muted);
-  cursor: default;
-}
-
 /* ── zoom CTA ─────────────────────────────────────────────────────────── */
 .dz-zoom {
   display: inline-flex;
@@ -685,6 +686,33 @@
 .dz-zoom:focus-visible {
   outline: 2px solid var(--dz-current);
   outline-offset: 2px;
+}
+/* A descent this session cannot open — the canned walkthrough off its authored path. Still a
+   button, and still focusable, so the reason below it is reachable rather than a dead grey slab. */
+.dz-zoom:disabled {
+  cursor: default;
+  border-color: var(--line);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+}
+.dz-zoom:disabled:hover {
+  border-color: var(--line);
+  background: var(--surface-glass);
+  transform: none;
+}
+.dz-zoom:disabled strong,
+.dz-zoom:disabled .dz-zoom-glyph {
+  color: var(--text-secondary);
+}
+.dz-zoom:disabled .dz-zoom-glyph {
+  background: color-mix(in oklab, var(--text-secondary) 16%, transparent);
+}
+.dz-zoom-note {
+  margin: 10px 0 0;
+  max-width: 44ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 .dz-zoom-glyph {
   display: grid;
@@ -786,12 +814,40 @@
   color: var(--text-secondary);
   margin-bottom: 8px;
 }
+.dz-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+/* The secondary of the two: retrying a topic is the right move only when the topic was the
+   problem, so where it is not, it steps back behind the action that is. */
+.dz-error-alt {
+  padding: 9px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.dz-error-alt:hover {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
 
 /* ── start screen ─────────────────────────────────────────────────────── */
 .dz-start {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  flex: 1;
+  min-height: 0;
+  /* The hero is taller than a short laptop window and the shell above is a fixed 100dvh, so
+     without a scroller here the example topics simply sat below the fold, unreachable — and
+     tabbing to one shoved the whole surface, top bar included, out of view instead. */
+  overflow: hidden auto;
+  overscroll-behavior: contain;
   background:
     radial-gradient(
       80% 60% at 80% 0%,
@@ -808,7 +864,7 @@
      ultrawide monitor a left-anchored block leaves the reader looking off to the side. Centred
      text + a centred, margin-auto column reads as intentional at every width from phone to 5K. */
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   text-align: center;
   gap: 0;
   padding: clamp(32px, 7vw, 96px) clamp(24px, 6vw, 72px);

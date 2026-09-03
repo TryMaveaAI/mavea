@@ -22,6 +22,7 @@ import {
   mountTemplateSkin,
 } from './templates';
 import { useLiveConfig, type LiveConfigV2 } from './useLiveConfig';
+import { useFontScaleStamp } from './fontScale';
 
 const FONT_SCALES: LiveConfigV2['fontScale'][] = ['smaller', 'normal', 'larger'];
 const FONT_SCALE_LABEL: Record<LiveConfigV2['fontScale'], string> = {
@@ -54,6 +55,7 @@ function useAppearanceState(): {
   const [active, setActive] = useState<TemplateId>(() => readTemplate());
   const [theme, setTheme] = useState<Theme>(() => readTheme());
   const [liveCfg, setLiveCfg] = useLiveConfig();
+  useFontScaleStamp(liveCfg.fontScale);
 
   useEffect(() => {
     const sync = (event: Event): void => {
@@ -364,9 +366,14 @@ export function TemplatePicker({
 /** The same identity gallery, embedded in Settings rather than duplicated as a second design. */
 export function AppearanceSettings(): ReactElement {
   const { active, theme, fontScale, pickTemplate, pickTheme, pickFontScale } = useAppearanceState();
+  // Without these the roving tabindex leaves five of the six templates with no tab stop AND no
+  // arrow path (moveFocus preventDefaults either way), so the workspace was unreachable from the
+  // keyboard in Settings even though it works in the topbar picker.
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   return (
     <AppearancePanel
       embedded
+      optionRefs={optionRefs}
       active={active}
       theme={theme}
       fontScale={fontScale}

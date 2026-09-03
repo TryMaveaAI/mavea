@@ -47,7 +47,10 @@ export function listTracked(): TrackedItem[] {
 /** Track a model, stamping the save time (passed in — `Date.now()` is avoided in pure modules and
  *  is fine here, but the caller may supply one for determinism). De-dupes by label, newest wins. */
 export function trackModel(model: ShipModel, savedAt: number = Date.now()): TrackedItem {
-  const label = model.pr.repo || model.pr.title || 'change';
+  // The repo alone is not an identity — two PRs on one repo would de-dupe onto a single row, and
+  // the number is the half a reader recognises.
+  const named = [model.pr.repo, model.pr.number].filter(Boolean).join(' ');
+  const label = named || model.pr.title || 'change';
   const item: TrackedItem = {
     id: `${label}::${savedAt}`,
     label,

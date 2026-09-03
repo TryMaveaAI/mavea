@@ -70,16 +70,27 @@ export function GoStep({
     ? `${facts.length} ${facts.length === 1 ? 'concept' : 'concepts'} · this device only`
     : 'Off';
 
-  const rows: { key: string; label: string; value: string; step: StepId }[] = [
-    { key: 'model', label: 'Model', value: `${model} · ${company}`, step: 'connect' },
-    { key: 'search', label: 'Web search', value: searchValue, step: 'think' },
+  // A gateway ships no default model (the user pastes their own), so an unfilled field would
+  // otherwise render as a bare " · OpenRouter" — a checked row naming nothing.
+  const modelValue = configured
+    ? `${model} · ${company}`
+    : model
+      ? `${model} · ${company} — needs a key`
+      : `No model set · ${company}`;
+
+  const rows: { key: string; label: string; value: string; step: StepId; done: boolean }[] = [
+    { key: 'model', label: 'Model', value: modelValue, step: 'connect', done: configured },
+    { key: 'search', label: 'Web search', value: searchValue, step: 'think', done: true },
     {
       key: 'quality',
-      label: 'Quality',
+      // Same name the wizard's Think step and Settings give this dial — a checklist that renames
+      // it is a third name for one control.
+      label: 'Thinking time',
       value: QUALITY_NOTE[cfg.quality] ?? cfg.quality,
       step: 'think',
+      done: true,
     },
-    { key: 'memory', label: 'Memory', value: memoryValue, step: 'remember' },
+    { key: 'memory', label: 'Memory', value: memoryValue, step: 'remember', done: true },
     {
       key: 'voice',
       label: 'Voice',
@@ -88,6 +99,7 @@ export function GoStep({
           ? 'Off — captions only (voice needs the local TTS service)'
           : voiceName(VOICE_MAVEA_STORAGE_KEY, DEFAULT_MAVEA_VOICE_ID),
       step: 'remember',
+      done: true,
     },
   ];
 
@@ -98,8 +110,11 @@ export function GoStep({
           {rows.map((r) => (
             <li key={r.key}>
               <button type="button" className="check-row" onClick={() => onJump(r.step)}>
-                <span className="check-mark" aria-hidden>
-                  <Icon.check />
+                {/* A tick is a claim that this is settled. Ticking Model while the turn it
+                    promises cannot run put a ✓ and the gated "Connect a model to start" in the
+                    same card, inches apart. */}
+                <span className={'check-mark' + (r.done ? '' : ' check-mark--todo')} aria-hidden>
+                  {r.done ? <Icon.check /> : <Icon.alert />}
                 </span>
                 <span className="check-label">{r.label}</span>
                 <span className="check-value">{r.value}</span>

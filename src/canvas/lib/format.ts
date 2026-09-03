@@ -56,11 +56,17 @@ export function formatValue(value: number, opts: FormatOptions = {}): string {
   return unit ? `${text}${NBSP}${unit}` : text;
 }
 
+/** A currency unit, split into the symbol that leads and whatever rides behind it. A magnitude or
+ *  a rate lives in that tail — "$bn", "$k", "$/mo", "£m" — and it belongs on the far side of the
+ *  digits, tight, the way the figure is written: "$1,900bn", not "$bn1,900". */
+const CURRENCY_UNIT = /^([$€£¥₹])(.*)$/;
+
 /**
  * Compose a value with a free-form `unit` string the way a person reads it, so a model that
  * sets `unit: "Millions"` renders "1,000 Millions" — not "Millions1000". A currency symbol
- * ($, €, £, ¥, ₹) prefixes; "%" suffixes tight; any word unit suffixes with a (non-breaking)
- * space. Thousands separators / compact notation come from `formatValue`.
+ * ($, €, £, ¥, ₹) prefixes, carrying any magnitude behind it to the tail; "%" suffixes tight;
+ * any word unit suffixes with a (non-breaking) space. Thousands separators / compact notation
+ * come from `formatValue`.
  */
 export function withUnit(
   value: number,
@@ -70,7 +76,8 @@ export function withUnit(
   const text = formatValue(value, opts);
   const u = unit?.trim();
   if (!u) return text;
-  if (/^[$€£¥₹]/.test(u)) return `${u}${text}`;
+  const currency = CURRENCY_UNIT.exec(u);
+  if (currency) return `${currency[1]}${text}${currency[2]}`;
   if (u === '%') return `${text}%`;
   return `${text}${NBSP}${u}`;
 }

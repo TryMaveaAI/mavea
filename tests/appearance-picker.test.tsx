@@ -139,4 +139,24 @@ describe('premium Appearance selector', () => {
       screen.getByRole('button', { name: /current: Paper, Scholar, light mode/i }),
     ).toBeTruthy();
   });
+
+  it('lets the keyboard walk the workspaces inside Settings, not only in the topbar', () => {
+    // The roving tabindex leaves five of six with no tab stop, and moveFocus preventDefaults the
+    // arrow either way — so without option refs the embedded gallery was unreachable by keyboard.
+    render(<AppearanceSettings />);
+    const checked = screen.getByRole('radio', { name: /Paper, Scholar/i });
+    checked.focus();
+    fireEvent.keyDown(checked, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: /Daylight, Planner/i }));
+  });
+
+  it('stamps the chosen reading size on the root wherever the control is offered', () => {
+    // Only LiveApp used to stamp it, so on Dashboards and Courses "Larger" lit up and changed
+    // nothing on the page.
+    const { unmount } = render(<AppearanceSettings />);
+    fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
+    expect(document.documentElement.dataset.fontScale).toBe('larger');
+    unmount();
+    expect(document.documentElement.dataset.fontScale).toBeUndefined();
+  });
 });

@@ -48,9 +48,9 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
     create: [inLive('New', 'Start a fresh session')],
     practice: [
       inLive('Rehearse', 'Practice a hard conversation — take the seat, or send your Mavéa'),
-      // In Live these are two different things (study opens the session overlay in place); out
-      // here both land on the same page, so offering them twice is just a longer menu.
-      route('Study', 'Go through your flashcards, and organize your decks', '#/flashcards'),
+      // In Live these are two entries (Review goes THROUGH the cards, Manage flashcards organises
+      // them); out here both land on the same page, so offering them twice is just a longer menu.
+      route('Review', 'Go through your flashcards, and organize your decks', '#/flashcards'),
       route(
         'Courses',
         'Turn a topic into a structured syllabus — a lesson at a time, at your pace',
@@ -59,7 +59,7 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
     ],
     share: [
       inLive('Present', 'Fill the room — the chrome falls away, the mic stays live'),
-      inLive('Export', 'Choose a template and export a polished PDF'),
+      inLive('Export', 'Turn this answer into a presentation deck or a designed document'),
       inLive('Share', 'Share this conversation as a story'),
     ],
     explore: [

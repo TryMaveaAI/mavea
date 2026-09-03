@@ -57,7 +57,9 @@ export function FlagshipHost(): ReactElement {
   // First-run walkthrough invite: shown once, never a forced auto-launch (the tour stays
   // reachable from "Take the tour", Explore, ⌘K, and ?tour=1 links). EVERY route into the
   // walkthrough retires it, not just the invite's own buttons — coming back from the tour to
-  // be invited on it again reads as a surface that wasn't paying attention.
+  // be invited on it again reads as a surface that wasn't paying attention. The persisted half of
+  // that rule lives in stashTourMode, so a deep-link that never touches this host still honours it;
+  // this state is the local half, so the hero updates without a remount.
   const [tourInviteSeen, setTourInviteSeen] = useState(isTourSeen);
   const retireTourInvite = useCallback(() => {
     markTourSeen();
@@ -73,18 +75,23 @@ export function FlagshipHost(): ReactElement {
   }, [retireTourInvite]);
 
   // A demo card: stash the persona, hand off to Live's demo replay mode. Navigation is
-  // instant — the curated replay (its own lazy chunk) loads inside the demo boot.
-  const playDemo = useCallback((p: DemoCastMember) => {
-    stashDemoPersona(p.id);
-    window.location.hash = '#/live';
-  }, []);
+  // instant — the curated replay (its own lazy chunk) loads inside the demo boot. Retires the
+  // invite for the same reason the walkthrough does: a replay IS the "see it work" the invite
+  // offers, and its own primary button plays one.
+  const playDemo = useCallback(
+    (p: DemoCastMember) => {
+      retireTourInvite();
+      stashDemoPersona(p.id);
+      window.location.hash = '#/live';
+    },
+    [retireTourInvite],
+  );
 
   const playStudyDemo = useCallback(() => {
     const studyDemo = castMember('cfo');
     if (!studyDemo) return;
-    retireTourInvite();
     playDemo(studyDemo);
-  }, [playDemo, retireTourInvite]);
+  }, [playDemo]);
 
   // Enter the real product. An optional seed (the hero composer's typed question) is stashed
   // for LiveApp to run (or to forward through the setup wizard first).

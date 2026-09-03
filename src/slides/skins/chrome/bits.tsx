@@ -275,10 +275,17 @@ export function Dots({ skin, level, scale }: { skin: SlideSkin; level: number; s
   // On a dark skin an empty dot in `track` can vanish — give it a faint ring so the scale reads.
   const emptyRing = t.dark ? `inset 0 0 0 1px ${tintOf(t.ink, 22)}` : undefined;
   return (
-    <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+    // The dots are the whole cell — without a text alternative a screen reader reads the column
+    // heads and the row names and no values at all.
+    <span
+      role="img"
+      aria-label={`${level} of ${scale}`}
+      style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}
+    >
       {Array.from({ length: scale }, (_, i) => (
         <span
           key={i}
+          aria-hidden="true"
           style={{
             width: 18,
             height: 18,

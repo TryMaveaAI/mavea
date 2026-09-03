@@ -128,12 +128,6 @@
   height: 40px;
   color: var(--text-muted);
 }
-.prism-dropzone-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-}
 .prism-dropzone-label {
   font-size: clamp(16px, 1.6vw, 20px);
   font-weight: 600;
@@ -147,10 +141,14 @@
 
 /* ── error ── */
 .prism-app-error {
-  font-size: 13px;
-  color: var(--danger, #e05);
+  /* Shares the staged list's column — left against the window edge it sat 280px from the content
+     it describes. */
+  width: 100%;
+  max-width: 860px;
+  margin-inline: auto;
   padding: 12px 32px 0;
-  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 /* ── staging area ── */
@@ -303,8 +301,6 @@
   color: var(--text-secondary);
 }
 .prism-app-features li strong {
-  display: block;
   color: var(--text-primary);
   font-weight: 600;
-  margin-bottom: 6px;
 }

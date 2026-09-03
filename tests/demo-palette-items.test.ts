@@ -74,3 +74,21 @@ describe('buildDemoPaletteItems', () => {
     expect(watchInLive).toHaveBeenCalledWith('dashboards');
   });
 });
+
+// The landing's palette says "Click any feature to see it in action." over the real registry, so
+// the promise is only true while every row resolves to something watchable. `living-answer` was
+// the one that didn't: it named no chapter, so it fell to the "Opens in Live" fallback and dropped
+// a key-free visitor on the setup wizard — while the hero's own button played that very chapter.
+describe('the landing palette has no dead rows', () => {
+  it('resolves every registry feature to an action, not an "Opens in Live" teaser', async () => {
+    const { FEATURES } = await import('../src/live/features/registry');
+    // The two the landing opens in place (see FlagshipCommandPalette); everything else must name
+    // a walkthrough chapter to earn its row.
+    const direct: Record<string, () => void> = { dashboards: vi.fn(), how: vi.fn() };
+    const built = buildDemoPaletteItems(
+      FEATURES.filter((f) => f.surface !== 'demo'),
+      { direct, watchInLive: () => vi.fn(), enterLive: vi.fn() },
+    );
+    expect(built.filter((it) => !it.available).map((it) => it.feature.id)).toEqual([]);
+  });
+});

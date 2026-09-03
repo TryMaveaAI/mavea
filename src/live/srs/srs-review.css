@@ -146,8 +146,15 @@
   word-break: break-word;
 }
 
+/* A real button — it is what a keyboard or screen-reader user presses to reveal the answer, since
+   the card body itself is plain text. Stretched so the inherited right-alignment still lands it in
+   the corner the design puts it in. */
 .srs-tap-hint {
+  align-self: stretch;
   margin-top: auto;
+  padding: 0;
+  border: 0;
+  background: none;
   font: 450 11.5px/1 var(--font);
   color: var(--text-faint);
   text-align: right;

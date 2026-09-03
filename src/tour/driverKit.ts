@@ -5,6 +5,7 @@
 // knowing when Mavéa has actually FINISHED everything a step set in motion. Solving them once
 // here keeps the two players in lockstep — a pacing fix lands in both or neither.
 import { unlockAudio } from '../voice/voiceEnergy';
+import { inTextField } from '../live/shareIn';
 
 /** Typewriter cadence (ms per character) for lines "typed" into the real composer. */
 export const TYPE_MS = 22;
@@ -110,4 +111,30 @@ export function startQuietGate(opts: {
     }
   }, QUIET_POLL_MS);
   return () => window.clearInterval(id);
+}
+
+/** Roles whose own keyboard contract owns the arrow keys: focused, they move a value or a
+ *  selection. Matched on the focused element OR an ancestor, since a composite widget (the
+ *  filmstrip's toolbar, a tablist) handles the key for whichever child has focus. */
+const ARROW_ROLES =
+  '[role="slider"],[role="spinbutton"],[role="toolbar"],[role="tablist"],[role="listbox"],' +
+  '[role="menu"],[role="menubar"],[role="radiogroup"],[role="tree"],[role="grid"],[role="combobox"]';
+
+/**
+ * True when a transport key (←/→/Space) belongs to the focused control rather than to the
+ * walkthrough or the demo replay. Both drive REAL UI under a pointer-transparent overlay — the
+ * API-key input, the end-card buttons, the card rail, the voice scrubber — so a global
+ * preventDefault would swallow typing, a focused button's native Space activation, or a widget's
+ * own arrow keys. Escape stays global: it always means "leave the run".
+ */
+export function transportKeyBelongsToControl(e: KeyboardEvent): boolean {
+  if (inTextField(e.target)) return true;
+  if (!(e.target instanceof HTMLElement)) return false;
+  if (e.key === ' ' || e.key === 'Spacebar') return !!e.target.closest('button');
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    // Either the control already acted on the key (it called preventDefault on the way up
+    // through React's root), or it declares a role whose contract owns the arrows.
+    return e.defaultPrevented || !!e.target.closest(ARROW_ROLES);
+  }
+  return false;
 }

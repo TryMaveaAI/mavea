@@ -3,8 +3,9 @@
 // pure engine. The honesty spine is visible in the chrome: grounded edges/nodes wear a receipt and
 // carry real weight; ungrounded ones render faint/dashed with no number; precise deltas + "% explained"
 // appear ONLY when the whole web is grounded — otherwise "—". An illustrative web says so up top.
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
+import { useFocusTrap } from '../useFocusTrap';
 import { safeHttpUrl } from '../../lib/sourceHost';
 import { EdgeEvidencePanel } from '../trust/EdgeEvidencePanel';
 import { asEdgeRelation } from '../trust/relations';
@@ -35,6 +36,11 @@ const relLabel = (v: number): string =>
         : 'No active support';
 
 export function WhyMachineOverlay({ dag, onClose }: Props): React.ReactElement {
+  // The lens is layered over its host's own dialog rather than inside it, so it has to trap Tab and
+  // answer Escape itself: aria-modal told assistive tech to ignore the surface behind, while Tab
+  // still cycled it and no key in here reached the lens at all.
+  const scrimRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(scrimRef, onClose ? { onEscape: onClose } : {});
   const layout = useMemo(() => layoutWhy(dag), [dag]);
   const [act, setAct] = useState<Map<string, number>>(new Map());
   const [sel, setSel] = useState<Selected>(null);
@@ -79,7 +85,13 @@ export function WhyMachineOverlay({ dag, onClose }: Props): React.ReactElement {
   const relOutcome = result.relativeOutcome;
 
   return (
-    <div className="wm-scrim" role="dialog" aria-label="Why machine" aria-modal="true">
+    <div
+      className="wm-scrim"
+      role="dialog"
+      aria-label="Why machine"
+      aria-modal="true"
+      ref={scrimRef}
+    >
       {/* Layered directly over PrismOverlay's own scrim (not inside its stopPropagation-guarded
           panel), so without this guard any click in here — not just the close button — bubbles up
           and closes the whole Prism session instead of just this lens. role="presentation" because

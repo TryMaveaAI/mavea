@@ -1006,7 +1006,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  background: #fff;
+  /* A page fragment — the colour of a page in this skin, not always white. */
+  background: var(--surface-elevated);
   border: 1px solid var(--line);
   border-radius: 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -1046,7 +1047,14 @@
   width: 46px;
   height: 46px;
   border-radius: 48% 52% 50% 50% / 52% 50% 50% 48%;
-  background: radial-gradient(circle at 34% 28%, #a9afff 0%, var(--presence) 55%, #3a43c9 100%);
+  /* Derived from the accent, not painted indigo on top of it: under a template skin the two fixed
+     stops left the orb reading lavender→green→indigo while everything around it followed the palette. */
+  background: radial-gradient(
+    circle at 34% 28%,
+    color-mix(in oklab, var(--presence) 55%, #fff) 0%,
+    var(--presence) 55%,
+    var(--presence-deep) 100%
+  );
   animation: prism-breathe 1.4s ease-in-out infinite;
 }
 @keyframes prism-breathe {
@@ -1097,10 +1105,12 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
 }
 .prism-error-retry:hover {
-  border-color: var(--line-strong);
+  border-color: var(--hover-line);
+  background: var(--surface-glass);
 }
 
 /* ---- settled: the world ---- */

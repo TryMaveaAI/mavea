@@ -5,12 +5,20 @@
 // that), while an on-design menu presents the provider's curated picks — each with its
 // trait line and a Default marker — plus a footer that says outright that other ids work
 // and links the provider's full catalog page.
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type { ProviderId } from '../../types/mavea';
 import { MODEL_CATALOG_AUDIT, providerInfo } from '../providers/info';
 import { isFreeRoute } from '../providers/route';
-import { useAnchoredMenu } from './useAnchoredMenu';
+import { useAnchoredMenu, useMenuEscape } from './useAnchoredMenu';
 import './drop-select.css';
 
 /** The company half of a "Name · Company" provider label ("Gemini · Google" → "Google");
@@ -64,6 +72,11 @@ export function ModelSelect({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const menuStyle = useAnchoredMenu(open, rootRef);
+  useMenuEscape(
+    open,
+    rootRef,
+    useCallback(() => setOpen(false), []),
+  );
 
   const models = info.suggestedModels;
   // The empty field falls back to the provider default at request time (toModelConfig), so the
@@ -101,10 +114,8 @@ export function ModelSelect({
     } else if (e.key === 'Enter' && open && active >= 0) {
       e.preventDefault();
       choose(models[active]);
-    } else if (e.key === 'Escape' && open) {
-      e.preventDefault();
-      setOpen(false);
     }
+    // Escape is handled natively by useMenuEscape — see there for why it can't live here.
   };
 
   return (

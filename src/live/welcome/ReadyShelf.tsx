@@ -59,7 +59,7 @@ export function ReadyShelf({ onStudy }: { onStudy: () => void }): ReactElement |
         icon: <Icon.layers />,
         title: `${capped(cards.count)} card${cards.count === 1 ? '' : 's'}`,
         sub: cards.label,
-        action: 'Study',
+        action: 'Review',
         onPick: onStudy,
       });
     }

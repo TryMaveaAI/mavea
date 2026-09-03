@@ -304,9 +304,11 @@ const AFTER_THE_ANSWER = [
   { label: 'Present it', detail: 'a full deck, ten looks', chapter: 'present' },
   { label: 'Print it', detail: 'a typeset PDF, ten templates', chapter: 'export' },
   { label: 'Reel it', detail: 'a vertical clip built to share', chapter: 'share' },
+  // Detail matches the chapter this opens (capture: any card becomes a flashcard). Scheduling is
+  // the separate `review` chapter, so promising it here was a tooltip the deep-link couldn't keep.
   {
     label: 'Flashcards',
-    detail: 'saved from answers, scheduled for review',
+    detail: 'saved from an answer, kept on your device',
     chapter: 'flashcards',
   },
   { label: 'Focus', detail: 'one card at a time', chapter: 'focus' },

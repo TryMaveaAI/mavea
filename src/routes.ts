@@ -76,8 +76,8 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   defineRoute('#/gallery', () =>
     import('./gallery/GalleryApp').then((m) => ({ default: m.GalleryApp })),
   ),
-  // Deep Zoom (#/deepzoom): Powers-of-Ten semantic zoom through any topic — five levels from the
-  // broadest field to the finest mechanism. Pass ?q= to pre-seed.
+  // Deep Zoom (#/deepzoom): Powers-of-Ten semantic zoom through any topic — ten levels from the
+  // broadest field to the finest mechanism, and ten more per fork. Pass ?q= to pre-seed.
   defineRoute('#/deepzoom', () =>
     import('./live/deepzoom/DeepZoomApp').then((m) => ({ default: m.DeepZoomApp })),
   ),

@@ -96,7 +96,7 @@ export function ExploreNav({
   const items: ExploreItem[] = [
     {
       name: 'Take the tour',
-      sub: 'A guided, 2-minute walkthrough',
+      sub: 'A guided walkthrough, about three minutes',
       onClick: onStartTour,
       compact: true,
     },
@@ -109,7 +109,13 @@ export function ExploreNav({
     { name: 'Deep Zoom', sub: 'Explore any topic, level by level', onClick: go('#/deepzoom') },
     { name: 'Courses', sub: 'Learn any topic, lesson by lesson', onClick: go('#/courses') },
     { name: 'Flashcards', sub: 'What you asked to remember', onClick: go('#/flashcards') },
-    { name: 'Dashboards', sub: 'Track what matters, live', onClick: go('#/dashboards') },
+    // "live" is the one word the surface's own disclosure denies (checks run while Mavéa is
+    // open, and can be delayed or missed) — so this says what the registry blurb says.
+    {
+      name: 'Dashboards',
+      sub: 'Track what matters, refreshed while Mavéa is open',
+      onClick: go('#/dashboards'),
+    },
     { name: 'Prism', sub: 'Chat with your documents', onClick: go('#/prism') },
     {
       name: 'Ripple',
@@ -135,12 +141,7 @@ export function ExploreNav({
         <span className="fl-explore-caret" aria-hidden="true" />
       </button>
       {open && (
-        <div
-          className="fl-explore-menu tpl-menu"
-          role="menu"
-          aria-label="Explore features"
-          ref={menuRef}
-        >
+        <div className="fl-explore-menu" role="menu" aria-label="Explore features" ref={menuRef}>
           {items.map((item) => (
             <button
               key={item.name}

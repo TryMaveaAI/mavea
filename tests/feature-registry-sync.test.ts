@@ -7,6 +7,7 @@ import { join } from 'path';
 import { FEATURES } from '../src/live/features/registry';
 import { START_WITH_IDS } from '../src/live/welcome/startWithIds';
 import { chapterById } from '../src/tour/tourPlan';
+import { buildAppMenus } from '../src/nav/appMenus';
 
 const liveApp = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
 
@@ -106,6 +107,21 @@ describe('feature registry', () => {
     expect(exploreMenuSource()).not.toContain("label: 'The Table'");
   });
 
+  it('lists Review in the Practice menus, on and off Live, not its retired label', () => {
+    // The flashcard surface was renamed out of "Study" because the Study — the reading desk — had
+    // the word first, and two features under one name sent readers to the wrong surface. The
+    // registry drives the palette, but both Practice menus are curated, hardcoded lists: the
+    // rename reached the palette and left the menus, which are the doors people actually click.
+    const practice = practiceMenuSource();
+    expect(practice).toContain("label: 'Review'");
+    expect(practice).toContain('featureActions.review.run');
+    expect(practice).not.toContain("label: 'Study'");
+
+    const offLive = buildAppMenus({ openPalette: () => {}, enterLive: () => {} }).practice;
+    expect(offLive.map((i) => i.label)).toContain('Review');
+    expect(offLive.map((i) => i.label)).not.toContain('Study');
+  });
+
   it('Rehearse absorbed both vocabularies: one entry, searchable by either', () => {
     const rehearse = FEATURES.find((f) => f.id === 'delegate');
     expect(rehearse?.label).toBe('Rehearse');
@@ -117,6 +133,21 @@ describe('feature registry', () => {
     expect(rehearse?.keywords).toContain('practice');
     expect(rehearse?.blurb.toLowerCase()).not.toContain('work on its own');
     expect(FEATURES.find((f) => f.id === 'rehearse')).toBeUndefined();
+  });
+
+  it('calls going through your flashcards "Review" everywhere, never "Study"', () => {
+    // Two features shared the word: the Study is the reading DESK that pulls one answer onto a
+    // table, and this one goes through your saved cards. The registry was renamed; Live's own
+    // Practice menu and its off-Live twin kept the old label, so the topbar still sent a reader
+    // looking for the desk to the flashcards.
+    const practice = practiceMenuSource();
+    expect(practice).toContain("label: 'Review'");
+    expect(practice).not.toContain("label: 'Study'");
+    expect(FEATURES.find((f) => f.id === 'review')?.label).toBe('Review');
+    // The Study keeps its own name — the rename separated them, it did not retire one.
+    expect(FEATURES.find((f) => f.id === 'study')?.label).toBe('The Study');
+    const offLive = readFileSync(join(__dirname, '../src/nav/appMenus.ts'), 'utf8');
+    expect(offLive).not.toContain("route('Study'");
   });
 
   it('has unique feature ids', () => {

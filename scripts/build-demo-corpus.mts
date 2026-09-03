@@ -100,10 +100,29 @@ const cfg: ModelConfig = {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Two lines count as the same spoken answer once trailing punctuation and spacing are set aside
+ *  — a re-emitted opener usually comes back with an ellipsis or a full stop swapped in. */
+function sameLine(a: string | undefined, b: string | undefined): boolean {
+  const norm = (t: string | undefined): string =>
+    (t ?? '')
+      .replace(/[\s.…]+$/u, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toLowerCase();
+  const left = norm(a);
+  return !!left && left === norm(b);
+}
+
 /** One step's bake-time report: what the pipeline decided, and whether it met the script's
  *  expectations. A ✗ is not fatal — it's the signal to re-roll that persona. */
-function checkExpectations(step: DemoStep, frame: TurnFrame): string[] {
+function checkExpectations(step: DemoStep, frame: TurnFrame, prev: TurnFrame | null): string[] {
   const misses: string[] = [];
+  // Checked for EVERY step, expectations or not: a follow-up that re-emits the previous answer's
+  // opener is spoken aloud under the new question, so the replay answers the wrong ask out loud.
+  // It is what an augment turn gets wrong, and nothing else here would catch it.
+  if (prev && sameLine(frame.narration, prev.narration)) {
+    misses.push('narration repeats the previous turn');
+  }
   const e = step.expect;
   if (!e) return misses;
   if (e.minBlocks && frame.spec.blocks.length < e.minBlocks) {
@@ -153,7 +172,7 @@ async function bakePersona(script: DemoScript): Promise<DemoConversation> {
     priorBlocks = settled.frame.spec.blocks;
     prior = settled.snap;
 
-    const misses = checkExpectations(step, settled.frame);
+    const misses = checkExpectations(step, settled.frame, frames[frames.length - 2] ?? null);
     // A chip-arrival step is only honest if the previous canvas really offers that chip.
     if (step.viaChip && i > 0 && !frames[i - 1].spec.suggests?.some((s) => s.label === step.ask)) {
       misses.push(`viaChip: previous turn has no chip "${step.ask}" (driver will type instead)`);

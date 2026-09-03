@@ -12,6 +12,16 @@ export const STATUS_LABEL: Record<ValueStatus, string> = {
   structure: 'NO NUMBER',
 };
 
+/** What pressing the figure actually opens, appended to its accessible name. It has to match the
+ *  card, kind for kind: "source available" on an illustrative magnitude promised a SOURCE section
+ *  that the card cannot render, because a textbook figure carries a caveat and no receipt — and on
+ *  an illustrative world that was every clickable figure on the screen. */
+export const OPENS_LABEL: Record<Exclude<ValueStatus, 'structure'>, string> = {
+  grounded: ', source available',
+  calculated: ', how this was worked out',
+  illustrative: ', illustrative — no source',
+};
+
 /** The figure as text. Already unit-suffixed upstream (withUnit), so there is exactly one place
  *  where a number becomes words. */
 export function rawOf(v: WorldValue): string {

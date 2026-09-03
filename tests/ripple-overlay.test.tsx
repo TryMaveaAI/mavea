@@ -420,6 +420,24 @@ describe('useRippleAsk', () => {
     expect(askRepoImpl).not.toHaveBeenCalled();
     expect(result.current.turns).toHaveLength(0);
   });
+
+  // A request that never landed is not a verdict about the repo. Resolving the failure as an answer
+  // put "not covered by what Ripple has read" — the same pill real grounding uses — over a
+  // transport error, and left the thread's own error state unreachable.
+  it('reports a failed request as an error turn, never as a coverage verdict', async () => {
+    askRepoImpl.mockRejectedValueOnce(new Error('Couldn’t reach the model just now.'));
+    const { result } = renderHook(() => useRippleAsk(ctx));
+
+    await act(async () => {
+      result.current.ask('what is the blast radius?');
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.turns[0]?.status).toBe('error'));
+    expect(result.current.turns[0]?.answer).toBeUndefined();
+    expect(result.current.turns[0]?.error).toMatch(/reach the model/i);
+    expect(result.current.busy).toBe(false);
+  });
 });
 
 // The Ask rail's two "opens me, prefilled" entry points: a node's "Ask about {label}" (RippleOverlay
@@ -464,6 +482,26 @@ describe('Ripple — a node’s Ask opens the rail, voiceless', () => {
     await waitFor(() => expect(getByRole('region', { name: 'Ask' })).toBeTruthy());
     expect(getByRole('button', { name: 'Close the ask rail' })).toBeTruthy(); // header reflects it
     expect(getByText(/Connect a model in Settings/i)).toBeTruthy(); // …but says so honestly
+  });
+
+  // Live hands the overlay a ModelConfig whether or not a key is set, so a keyless reader used to
+  // get the full composer — preset chips and a send button that could only ever fail. The honest
+  // state has to be reachable from the config Live actually passes, not just from a null one.
+  it('shows the same honest state for a config carrying no key', async () => {
+    const { getByText, getByRole, queryByLabelText } = render(
+      <RippleOverlay
+        model={SEED_SHIP}
+        cfg={{ provider: 'anthropic', model: 'claude-test', apiKey: '' }}
+        onClose={() => undefined}
+      />,
+    );
+
+    fireEvent.click(getByText('src/auth').closest('button')!);
+    fireEvent.click(getByText(/Ask about src\/auth/i));
+
+    await waitFor(() => expect(getByRole('region', { name: 'Ask' })).toBeTruthy());
+    expect(queryByLabelText('Ask about this repo or PR')).toBeNull();
+    expect(getByText(/Connect a model in Settings/i)).toBeTruthy();
   });
 
   it('cleans model-authored node prose before narration', async () => {

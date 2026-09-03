@@ -27,3 +27,28 @@
 .ex-measure-host * {
   min-width: 0;
 }
+
+/*
+ * Two things the panel's inline `CSSProperties` cannot express.
+ *
+ * A disabled control (mid-export, or with no raster pipeline at all) was pixel-identical to a live
+ * one and kept `cursor: pointer` — a full-strength blue "Download PDF" that invites a click and
+ * does nothing. Eight controls in the panel go inert this way.
+ */
+.ex-modal button:disabled {
+  opacity: 0.45;
+  /* The panel's controls carry an inline `cursor: pointer`, which a plain rule cannot outrank. */
+  cursor: default !important;
+}
+
+/*
+ * A page edge in the document preview. The preview stage is near-black, and a dark skin's paper is
+ * the same value (≈1.01:1), so a stack of sheets read as one continuous scroll in the panel whose
+ * whole job is to show what the paper will look like. Scoped to the preview: the offscreen raster
+ * host renders its own `.ex-page` elements, which must stay exactly what the PDF prints.
+ */
+.ex-preview .ex-page {
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.14);
+}

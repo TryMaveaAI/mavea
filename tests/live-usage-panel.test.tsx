@@ -28,6 +28,16 @@ describe('UsagePanel', () => {
     expect(values[3]).toBe('2');
   });
 
+  it('totals the session past the cap on the call log, and says the log is only its tail', () => {
+    for (let i = 0; i < 60; i++) recordUsage('canvas', { input: 10, output: 1, cachedInput: 0 }, i);
+    const { container } = render(<UsagePanel />);
+    const values = [...container.querySelectorAll('.usage-totals dd')].map((d) => d.textContent);
+    expect(values[0]).toContain('600');
+    expect(values[3]).toBe('60');
+    expect(container.querySelectorAll('.usage-calls li')).toHaveLength(50);
+    expect(container.querySelector('.usage-call-heading')?.textContent).toContain('last 50 of 60');
+  });
+
   it('attributes spend to the pass that spent it, heaviest first', () => {
     recordUsage('repair', { input: 500, output: 50, cachedInput: 0 });
     recordUsage('canvas', { input: 9_000, output: 800, cachedInput: 0 });

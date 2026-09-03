@@ -429,8 +429,9 @@ function LoadingStage({
         <>
           <div className="clr-state-sub">{lesson.goal}</div>
           <div className="clr-lesson-outline" aria-label="Lesson outline">
+            {/* Keyed by position, not by text — a repeated objective is a duplicate key. */}
             {lesson.objectives.slice(0, 3).map((objective, index) => (
-              <div className="clr-lesson-outline-row" key={objective}>
+              <div className="clr-lesson-outline-row" key={index}>
                 <span aria-hidden="true">{index + 1}</span>
                 <strong>{objective}</strong>
               </div>
@@ -471,7 +472,10 @@ function StreamingStage({
 
 function ErrorStage({ message, onRetry }: { message: string; onRetry: () => void }): ReactElement {
   return (
-    <div className="clr-state">
+    // role="alert", like every other failure on this surface: the live "Building lesson N…" node
+    // unmounts to make room for this one, so without it a reader who cannot see the page is told
+    // nothing at all about a 90-second wait that ended in an error.
+    <div className="clr-state" role="alert">
       <div className="clr-state-icon clr-state-icon-warn" aria-hidden="true">
         <Icon.alert />
       </div>

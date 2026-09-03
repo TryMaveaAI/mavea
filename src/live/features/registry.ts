@@ -267,6 +267,9 @@ export const FEATURES: Feature[] = [
     blurb: 'Open the causal web behind this answer — walk it, weigh it, and see its receipts',
     group: 'This session',
     surface: 'live',
+    // Off Live there is no answer to open a world on, so without a chapter this row was the one
+    // dead teaser under the landing palette's "click any feature to see it in action".
+    tourChapter: 'living-answer',
     keywords: [
       'world',
       'living answer',
@@ -456,7 +459,34 @@ export const FEATURES: Feature[] = [
     group: 'Setup',
     surface: 'live',
     tourChapter: 'settings',
-    keywords: ['settings', 'model', 'provider', 'api key', 'config'],
+    // This one dialog owns a dozen shipped controls the palette is the only index of. Without
+    // their names here, searching "theme", "backup" or "tokens" answered "No features match" —
+    // which reads as "Mavéa can't do that" on the surface built for discovery.
+    keywords: [
+      'settings',
+      'model',
+      'provider',
+      'api key',
+      'config',
+      'appearance',
+      'theme',
+      'dark mode',
+      'light mode',
+      'workspace',
+      'text size',
+      'font',
+      'web search',
+      'thinking time',
+      'explanation level',
+      'usage',
+      'tokens',
+      'cost',
+      'spend',
+      'backup',
+      'export',
+      'import',
+      'restore',
+    ],
   },
   {
     id: 'morning-brief',

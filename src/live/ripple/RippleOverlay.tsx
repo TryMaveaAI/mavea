@@ -2,14 +2,16 @@
 // outward. Structurally a sibling of Prism's PrismOverlay (scrim + panel + draggable drill-ins),
 // but its backdrop is the system impact map and its left rail is the chapters of a change's story:
 // Mavéa's read, the workspace, the impact map, the cascade, the migration, the safe rollout order,
-// onboarding, the hotspots, the suggestions, and the gate.
+// onboarding, the suggestions, and the gate.
 //
-// Every section — the read, the workspace, the impact map, the cascade, the migration, safe
-// rollout, onboarding, hotspots, suggestions, and the gate — renders a real, grounded view driven
-// by one ShipModel. Nothing here is invented.
+// Every section renders a real, grounded view driven by one ShipModel, and a chapter whose data the
+// model doesn't carry is not offered at all — `applies` is what keeps the rail honest. (The
+// hotspots chapter is one of those: no producer fills `hotspots`, so it has no reachable input.)
+// Nothing here is invented.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
 import { providerInfo } from '../providers/info';
+import { modelCanGenerate } from '../providers/spendPolicy';
 import type {
   Altitude,
   CourseCapstone,
@@ -423,8 +425,11 @@ export function RippleOverlay({
     setAskSeed((s) => ({ text: question, nonce: (s?.nonce ?? 0) + 1 }));
     setAskOpen(true);
   }, []);
+  // Ask needs a model it can actually call. Live hands the overlay a ModelConfig whether or not a
+  // key is set, so testing `cfg` alone offered preset chips and a composer that could only ever
+  // fail — the rail's honest "connect a model" state was unreachable on that route.
   const askCtx: RepoAskContext | null = useMemo(() => {
-    if (!cfg) return null;
+    if (!cfg || !modelCanGenerate(cfg)) return null;
     return {
       model: shown,
       cfg,
@@ -1177,7 +1182,12 @@ export function RippleOverlay({
         case 'hotspots':
           return `The story behind the lines worth knowing before you touch them.`;
         case 'suggestions':
-          return `${m.suggestions.length} things worth your time. ${m.suppressedNits} shallow nits suppressed.`;
+          // Nothing computes a suppression count outside the worked example, so the spoken line
+          // guards on it exactly as the rendered copy does — never "0 shallow nits suppressed".
+          return (
+            `${m.suggestions.length} things worth your time.` +
+            (m.suppressedNits > 0 ? ` ${m.suppressedNits} shallow nits suppressed.` : '')
+          );
         case 'gate':
           return m.gate.rationale;
         default:
@@ -1212,6 +1222,19 @@ export function RippleOverlay({
   // at window rather than on the dialog node).
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef);
+  // Whether the gesture that is about to become a click STARTED on the backdrop — see the scrim.
+  const downOnScrim = useRef(false);
+
+  // The intake sits INSIDE the panel, so the panel's trap alone left its input 36 tab stops behind
+  // the rail, the map and the verdict chips — every one of them covered by the intake's own scrim.
+  // Its own trap lands the keyboard on the field the dialog exists to fill.
+  const intakeRef = useRef<HTMLDivElement>(null);
+  const intakeInputRef = useRef<HTMLInputElement>(null);
+  useFocusTrap(intakeRef, {
+    active: pasteOpen,
+    initialFocus: intakeInputRef,
+    onEscape: () => setPasteOpen(false),
+  });
 
   const pr = shown.pr;
   const isExample = shown.provenance.example;
@@ -1301,7 +1324,15 @@ export function RippleOverlay({
     <div
       className="ripple-scrim"
       data-expanded={expanded ? 'true' : undefined}
-      onClick={onClose}
+      // Close only on a click that BEGAN and ENDED on the backdrop. Selecting a diff line or a file
+      // path and releasing past the panel's edge fires the click on the common ancestor — the scrim
+      // — and closing here discards the whole analysis, including the model spend behind it.
+      onPointerDown={(e) => {
+        downOnScrim.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && downOnScrim.current) onClose();
+      }}
       role="button"
       tabIndex={0}
       aria-label="Close Ripple"
@@ -1567,7 +1598,13 @@ export function RippleOverlay({
         </div>
 
         {pasteOpen && (
-          <div className="ripple-paste" role="dialog" aria-label="Run Ripple on a diff">
+          <div
+            className="ripple-paste"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Run Ripple on a diff"
+            ref={intakeRef}
+          >
             <div className="ripple-paste-card">
               <div className="ripple-paste-head">
                 <div>
@@ -1704,6 +1741,7 @@ export function RippleOverlay({
                       {ghRepo.trim() ? <em> — or a PR number for {ghRepo.trim()}</em> : null}
                     </span>
                     <input
+                      ref={intakeInputRef}
                       value={ghInput}
                       onChange={(e) => {
                         setGhInput(e.target.value);

@@ -244,6 +244,9 @@ export function PresentationDeck({
   const [i, setI] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef(0);
+  const notesOpenRef = useRef(notesOpen);
+  notesOpenRef.current = notesOpen;
   const [blackout, setBlackout] = useState<'black' | 'white' | null>(null);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [overviewSel, setOverviewSel] = useState(0);
@@ -254,9 +257,15 @@ export function PresentationDeck({
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const count = slides.length;
   const clamp = useCallback((n: number) => Math.max(0, Math.min(count - 1, n)), [count]);
-  const next = useCallback(() => setI((n) => clamp(n + 1)), [clamp]);
-  const prev = useCallback(() => setI((n) => clamp(n - 1)), [clamp]);
-  const resetTimer = useCallback(() => setElapsed(0), []);
+  // Clamp the CURRENT index before stepping: crossing a slide out shrinks the deck under a state
+  // index that is only clamped at render, so `prev` from a stale past-the-end `i` landed back on
+  // the slide already showing — a dead ← in front of a room.
+  const next = useCallback(() => setI((n) => clamp(clamp(n) + 1)), [clamp]);
+  const prev = useCallback(() => setI((n) => clamp(clamp(n) - 1)), [clamp]);
+  const resetTimer = useCallback(() => {
+    elapsedRef.current = 0;
+    setElapsed(0);
+  }, []);
 
   const toggleFullscreen = useCallback(() => {
     const el = deckRef.current;
@@ -297,13 +306,22 @@ export function PresentationDeck({
   // A presentation timer, ticking once the deck opens (cleared on unmount). Skips a tick while
   // the tab is backgrounded — a throttled background interval otherwise catches up in one jump
   // once it's visible again, so the clock would silently lose (or double-count) real seconds.
+  // Only the presenter panel reads the clock, so the seconds accumulate in a ref and reach state
+  // only while that panel is open: committing one every second with it closed (the default, and
+  // what a projector shows) re-rendered the whole slide tree for a value nobody could see.
   useEffect(() => {
     const id = window.setInterval(() => {
       if (isHidden()) return;
-      setElapsed((e) => e + 1);
+      elapsedRef.current += 1;
+      if (notesOpenRef.current) setElapsed(elapsedRef.current);
     }, 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Opening the panel catches the display up to the seconds counted while it was closed.
+  useEffect(() => {
+    if (notesOpen) setElapsed(elapsedRef.current);
+  }, [notesOpen]);
 
   // Hands-free auto-advance (the first-run tour and the recorded demo replays): step one slide
   // every autoAdvanceMs and hold on the last, so the run plays the whole deck without a presenter
@@ -602,14 +620,14 @@ export function PresentationDeck({
         className="preso-zone preso-zone-prev"
         onClick={prev}
         aria-label="Previous slide"
-        disabled={i === 0}
+        disabled={idx === 0}
       />
       <button
         type="button"
         className="preso-zone preso-zone-next"
         onClick={next}
         aria-label="Next slide"
-        disabled={i >= count - 1}
+        disabled={idx >= count - 1}
       />
 
       {/* Progress rail */}

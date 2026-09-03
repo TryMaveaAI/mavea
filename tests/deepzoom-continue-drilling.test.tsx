@@ -115,4 +115,38 @@ describe('DeepZoom — drilling past the generated frontier', () => {
 
     expect(mockGenerateBranch).not.toHaveBeenCalled();
   });
+
+  it('says the sample stops here rather than offering a live button that ignores you', async () => {
+    // 20 of the walkthrough's 27 chips fork somewhere the demo tree was never authored for, and the
+    // press was dropped in silence: the chip visibly selected, the CTA rewrote itself to name it,
+    // and clicking did nothing at all — the frontier's own default chip included.
+    window.location.hash = '#/deepzoom?demo=1';
+    render(<DeepZoomApp />);
+    await screen.findByRole('heading', { name: 'A plant, quietly eating light' });
+
+    const zoom = (): HTMLButtonElement =>
+      screen.getByRole('button', { name: /^Zoom into/ }) as HTMLButtonElement;
+    expect(zoom().disabled).toBe(false); // the authored path is still live
+
+    fireEvent.click(screen.getByRole('button', { name: 'The roots' }));
+    expect(zoom()).toHaveAccessibleName('Zoom into The roots');
+    expect(zoom().disabled).toBe(true);
+    expect(screen.getByText(/sample descends one path/i)).toBeInTheDocument();
+  });
+
+  it('leaves Space to whatever button has focus', async () => {
+    // The window handler took Space unconditionally and preventDefault()ed it, so pressing Space on
+    // the theme toggle — or on a chip, or on Back — zoomed a level instead of doing its own job.
+    window.location.hash = '#/deepzoom?demo=1';
+    render(<DeepZoomApp />);
+    await screen.findByRole('heading', { name: 'A plant, quietly eating light' });
+
+    const chip = screen.getByRole('button', { name: 'The roots' });
+    chip.focus();
+    fireEvent.keyDown(chip, { key: ' ', bubbles: true });
+
+    expect(screen.getByRole('heading', { level: 2 })).toHaveAccessibleName(
+      'A plant, quietly eating light',
+    );
+  });
 });

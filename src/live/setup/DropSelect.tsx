@@ -3,9 +3,17 @@
 // course level, Ripple's course focus) renders through this select-only combobox instead: a
 // button trigger showing the current choice, and the same on-design menu ModelSelect draws —
 // option rows with an optional trait note, keyboard driven from the trigger.
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react';
 import { createPortal } from 'react-dom';
-import { useAnchoredMenu } from './useAnchoredMenu';
+import { useAnchoredMenu, useMenuEscape } from './useAnchoredMenu';
 // The picker owns its menu styling — it renders on standalone routes (#/courses, #/ripple) that
 // never load Live's runtime stylesheet.
 import './drop-select.css';
@@ -43,6 +51,11 @@ export function DropSelect({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const menuStyle = useAnchoredMenu(open, triggerRef);
+  useMenuEscape(
+    open,
+    triggerRef,
+    useCallback(() => setOpen(false), []),
+  );
 
   const current = options.find((o) => o.value === value);
   const optionId = (index: number): string => `${listId}-opt-${index}`;
@@ -74,10 +87,8 @@ export function DropSelect({
       // Without the menu open, Enter falls through to the button's default click → openMenu.
       e.preventDefault();
       choose(options[active].value);
-    } else if (e.key === 'Escape' && open) {
-      e.preventDefault();
-      setOpen(false);
     }
+    // Escape is handled natively by useMenuEscape — see there for why it can't live here.
   };
 
   return (

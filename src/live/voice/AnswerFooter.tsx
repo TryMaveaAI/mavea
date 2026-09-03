@@ -77,8 +77,10 @@ export function AnswerFooter({
         <div className="footer-keepgoing">
           <span className="footer-label">Keep going</span>
           <ul className="footer-list">
-            {asks.map((s) => (
-              <li key={s.label}>
+            {/* Keyed by position as well as label: the chips are free-text model output, so two
+                identical follow-ups would otherwise share one React key. */}
+            {asks.map((s, i) => (
+              <li key={`${i}-${s.label}`}>
                 <button
                   type="button"
                   className="kg-row"
@@ -115,7 +117,7 @@ export function AnswerFooter({
               type="button"
               className="footer-feature-chip"
               onClick={onCanvas}
-              title="Spread this answer's cards on a board you can wander — the Mavéa threads them together"
+              title="Spread this answer's cards on a board you can wander — the Mavéa thread joins them up"
             >
               See this answer as a canvas
               <span className="footer-chip-arrow" aria-hidden="true">

@@ -477,6 +477,15 @@ function PlayableVoiceScrubber({
           dragging.current = false;
           playFrom(timeAt(e.clientX));
         }}
+        // A touch drag the browser reclaims (page scroll, pinch) ends in pointercancel, never
+        // pointerup — without this the drag flag stuck on, and every later hover over the strip
+        // un-built the answer to wherever the finger passed.
+        onPointerCancel={() => {
+          dragging.current = false;
+        }}
+        onLostPointerCapture={() => {
+          dragging.current = false;
+        }}
         onKeyDown={(e) => {
           const cur = pos ?? audio.duration;
           if (e.key === 'ArrowLeft') {

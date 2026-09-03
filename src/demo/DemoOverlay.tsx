@@ -3,7 +3,7 @@
 // exit), and the occasional one-line beat caption. No coach voice, no spotlight scrim — the
 // answers' own narration and reveal walks ARE the show; this overlay only frames them. It
 // renders OVER the real Live surface and is pointer-transparent except for its own controls.
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
 import { useFocusTrap } from '../live/useFocusTrap';
 import type { DemoDriver } from './useDemoDriver';
@@ -24,11 +24,16 @@ export function DemoOverlay({
   driver,
   member,
   onExit,
+  covered = false,
 }: {
   driver: DemoDriver;
   member: DemoCastMember;
   /** Leave the demo into the real surface (clean reload — see endTourToApp). */
   onExit: () => void;
+  /** An overlay is holding the screen (the export studio, Present, a panel). This chrome sits at
+   *  z-index 400 — above every one of them — so its banner covered their titles and its transport
+   *  took clicks meant for them. The replay keeps running; only its frame steps aside. */
+  covered?: boolean;
 }): ReactElement | null {
   // The start and end cards are the replay's only modal moments — each sits on the .demox-intro
   // scrim, so keyboard focus has to move into the card and stay there while it's up (otherwise Tab
@@ -52,6 +57,28 @@ export function DemoOverlay({
   }, [endCard]);
   const modal = driver.active && driver.loadState === 'ready' && (!driver.started || endCard);
   useFocusTrap(cardRef, { active: modal });
+
+  // The transport is chrome the canvas has to make ROOM for, not merely paint over. It parks in
+  // the same band the Study pins its beat bar to, so two beat chips sat behind the pill —
+  // unclickable, in the middle of the curated replay it exists to run. Publish the band it claims
+  // ABOVE the dock (its own height plus a little air) and let the content column add that to the
+  // dock reserve it already keeps. Measured rather than assumed, the way the dock measures
+  // itself: the pill's height moves with the theme's type. Only its height is watched, because
+  // only its height is its own — where it sits is --dock-h's business, and the column reserves
+  // that separately.
+  const attachPanel = useCallback((panel: HTMLDivElement | null) => {
+    const app = panel?.closest<HTMLElement>('.mavea-app');
+    if (!panel || !app) return;
+    const apply = (): void =>
+      app.style.setProperty('--demo-h', `${Math.round(panel.offsetHeight) + 12}px`);
+    apply();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
+    observer?.observe(panel);
+    return () => {
+      observer?.disconnect();
+      app.style.removeProperty('--demo-h');
+    };
+  }, []);
 
   if (!driver.active) return null;
   const accentStyle = { ['--accent' as string]: member.accent };
@@ -179,7 +206,7 @@ export function DemoOverlay({
   }
 
   return (
-    <div className="demox" aria-live="polite">
+    <div className="demox" data-covered={covered ? '' : undefined} aria-live="polite">
       {/* What this replay shows (the fictional persona is supporting detail) — top-left. */}
       <div className="demox-banner" style={accentStyle}>
         <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>
@@ -202,7 +229,13 @@ export function DemoOverlay({
       )}
 
       {/* Transport — bottom-center, above the composer. */}
-      <div className="demox-panel" style={accentStyle} role="group" aria-label="Demo controls">
+      <div
+        className="demox-panel"
+        ref={attachPanel}
+        style={accentStyle}
+        role="group"
+        aria-label="Demo controls"
+      >
         <button
           type="button"
           className="demox-btn"

@@ -1,7 +1,7 @@
 // What a reader who never touches a pointer gets. The stage is a composite widget — a world of
 // nodes laid out in a picture — and it was being handed over as twenty-odd tab stops in spec order,
 // which on every view but the causal web is an order the picture denies.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WORLD_SEED } from '../src/live/world/seed';
 import { WorldOverlay } from '../src/live/world/WorldOverlay';
@@ -42,6 +42,24 @@ describe('the stage is one tab stop, walked with the arrows', () => {
       expect(folded.getAttribute('role'), folded.dataset.id).toBeNull();
       expect(folded.getAttribute('tabindex'), folded.dataset.id).toBeNull();
     }
+  });
+
+  it('opens the cause under the cursor on Space, and only that', async () => {
+    // A cause card is a `div` carrying role="button", so the overlay's window-level Space handler
+    // — guarded by a selector of bare tag names — never recognised it: one press both selected the
+    // cause and started the narrated walk on top of it, which then took the rail.
+    const { container } = render(<WorldOverlay spec={WORLD_SEED} view="graph" />);
+    // The walk's script is composed off the mount, so wait for the transport to exist — without a
+    // walk to hijack there is nothing for this test to catch.
+    await waitFor(() => expect(container.querySelector('.wo-transport')).toBeTruthy());
+
+    const card = nodes(container).find((n) => n.tabIndex === 0)!;
+    fireEvent.keyDown(card, { key: ' ', bubbles: true });
+
+    expect(container.querySelector('.wo-transport[data-playing]')).toBeNull();
+    expect(container.querySelector('.wo-detail-title')?.textContent).toBe(
+      card.querySelector('.mv-label')?.textContent,
+    );
   });
 
   it('says a cause name exactly once, though every face is rendered', () => {

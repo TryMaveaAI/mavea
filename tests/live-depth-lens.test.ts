@@ -71,6 +71,27 @@ describe('depthLens — with sections', () => {
     expect(sections[1].label).toBe('Second');
   });
 
+  it('numbers sections 1..N in settled order, so a merged follow-up cannot repeat 1', () => {
+    // Two turns merged onto one canvas: each numbered its own sections from 1.
+    const first = [
+      block('a', { section: 'The Core Concept', order: 1, depth: 1 }),
+      block('b', { section: 'The OAuth Flow', order: 2, depth: 1 }),
+    ];
+    const followUp = [
+      block('c', { section: 'Session Management', order: 1, depth: 1 }),
+      block('d', { section: 'Security', order: 2, depth: 1 }),
+    ];
+
+    const sections = depthLens([...first, ...followUp]);
+    expect(sections.map((s) => s.order)).toEqual([1, 2, 3, 4]);
+    expect(sections.map((s) => s.label)).toEqual([
+      'The Core Concept',
+      'Session Management',
+      'The OAuth Flow',
+      'Security',
+    ]);
+  });
+
   it('routes depth≥2 blocks to deeper array', () => {
     const std = block('std', { section: 'Concept', order: 1, depth: 1 });
     const deep2 = block('d2', { section: 'Concept', order: 1, depth: 2 });

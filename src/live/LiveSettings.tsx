@@ -126,6 +126,11 @@ function AdvancedGroup({
   defaultOpen?: boolean;
 }): ReactElement {
   const [open, setOpen] = useState(defaultOpen);
+  // The panel stays mounted between visits, so a later request to open it (a second palette row
+  // that promises a setting in here) only changes this prop — the initializer has long since run.
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <button
@@ -253,20 +258,26 @@ function ToggleRow({
   on,
   onToggle,
   note,
+  id,
 }: {
   label: string;
   on: boolean;
   onToggle: () => void;
   note: string;
+  /** Anchor for a caller that needs to scroll this exact row into view. */
+  id?: string;
 }): ReactElement {
   const noteId = useId();
   return (
     // A <label>, so clicking the text or the note flips the switch (a button is labelable, so this
-    // adds no second tab stop) — the same affordance as the native checkbox row on the Model tab.
+    // adds no second tab stop).
     // jsx-a11y only recognises input/select/textarea as a label's control, so it can't see the
     // button below; the HTML spec can.
     // eslint-disable-next-line jsx-a11y/label-has-associated-control
-    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+    <label
+      id={id}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}
+    >
       <button
         type="button"
         role="switch"
@@ -316,10 +327,14 @@ function ArmedActionButton({
   label,
   confirmLabel,
   onConfirm,
+  variant = 'pill',
 }: {
   label: string;
   confirmLabel: string;
   onConfirm: () => void;
+  /** 'link' wears the surrounding text's look — for an armed action that lives in a row of
+   *  links rather than beside the other controls. */
+  variant?: 'pill' | 'link';
 }): ReactElement {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
@@ -327,6 +342,22 @@ function ArmedActionButton({
     const timer = window.setTimeout(() => setArmed(false), 5_000);
     return () => window.clearTimeout(timer);
   }, [armed]);
+  const pill: CSSProperties = {
+    background: armed ? 'color-mix(in oklab, var(--warning) 10%, transparent)' : 'transparent',
+    border: `1px solid ${armed ? 'var(--warning)' : 'var(--line)'}`,
+    borderRadius: 8,
+    padding: '3px 9px',
+    color: armed ? 'var(--warning)' : 'var(--text-muted)',
+    fontSize: 12,
+  };
+  const link: CSSProperties = {
+    background: 'transparent',
+    border: 0,
+    padding: 0,
+    color: armed ? 'var(--warning)' : 'inherit',
+    textDecoration: 'underline',
+    textUnderlineOffset: 3,
+  };
   return (
     <button
       type="button"
@@ -339,14 +370,9 @@ function ArmedActionButton({
         onConfirm();
       }}
       style={{
-        background: armed ? 'color-mix(in oklab, var(--warning) 10%, transparent)' : 'transparent',
-        border: `1px solid ${armed ? 'var(--warning)' : 'var(--line)'}`,
-        borderRadius: 8,
-        padding: '3px 9px',
-        color: armed ? 'var(--warning)' : 'var(--text-muted)',
         cursor: 'pointer',
         font: 'inherit',
-        fontSize: 12,
+        ...(variant === 'link' ? link : pill),
       }}
     >
       {armed ? confirmLabel : label}
@@ -443,14 +469,15 @@ function SegRow({
 export function LiveSettings({
   onClose,
   initialTab,
-  initialAdvancedYouOpen,
+  revealYouSetting,
 }: {
   onClose?: () => void;
   /** Open on a specific tab. */
   initialTab?: SettingsTab;
-  /** Start the You tab's "More options" expanded — the palette's "Whisper mode" lands straight
-   *  on Quiet hours, the setting that actually controls it. */
-  initialAdvancedYouOpen?: boolean;
+  /** A setting under You → More options to open the group for AND scroll to. The palette rows
+   *  that promise one ("Whisper mode" → Quiet hours) otherwise landed the reader at the top of a
+   *  480px scroller with the promised switch a couple of hundred pixels below the fold. */
+  revealYouSetting?: 'quiet-hours' | 'morning-brief' | null;
 }): ReactElement {
   const [cfg] = useLiveConfig();
   // Three surfaces can change the study style (here, the flashcards page, the first-save question),
@@ -501,7 +528,25 @@ export function LiveSettings({
   // Board-grade modal behavior, matching the other Live overlays: trap focus inside the dialog
   // and close on Escape (it previously closed only on a backdrop click — a keyboard/a11y gap).
   const dialogRef = useRef<HTMLDivElement>(null);
+  const apiKeyId = useId();
+  const apiKeyNoteId = useId();
   useFocusTrap(dialogRef, { onEscape: onClose });
+
+  // A palette row can ask for a tab (or a specific setting) while this panel is ALREADY open —
+  // the props change, the mount doesn't — so honour every request, not just the first.
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+  useEffect(() => {
+    if (!revealYouSetting) return;
+    // A frame later: "More options" expands in the same commit that sets this.
+    const frame = requestAnimationFrame(() => {
+      dialogRef.current
+        ?.querySelector(`#ls-${revealYouSetting}`)
+        ?.scrollIntoView?.({ block: 'center' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [revealYouSetting]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -851,14 +896,17 @@ export function LiveSettings({
               />
             </div>
 
-            {/* key (hosted only) */}
+            {/* key (hosted only) — the note is DESCRIBED, not part of the field's name: wrapping
+                it in the label made the input announce itself as forty-five words of legal copy. */}
             {info.needsKey && (
-              <label
+              <div
                 className="settings-api-key-field"
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={labelStyle}>API key</span>
+                  <label htmlFor={apiKeyId} style={labelStyle}>
+                    API key
+                  </label>
                   {!cfg.rememberKey && (
                     <span className="settings-session-only" aria-label="Key is not saved to disk">
                       session only
@@ -866,6 +914,8 @@ export function LiveSettings({
                   )}
                 </span>
                 <input
+                  id={apiKeyId}
+                  aria-describedby={apiKeyNoteId}
                   style={inputStyle}
                   type="password"
                   value={key}
@@ -874,13 +924,13 @@ export function LiveSettings({
                   spellCheck={false}
                   autoComplete="off"
                 />
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <span id={apiKeyNoteId} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   Kept in memory unless Remember can store encrypted ciphertext on this device. If
                   browser encryption is unavailable, it stays session-only and is never saved as
                   plaintext. Sent through this deployment to{' '}
                   {info.label.split(' · ')[1] ?? info.label} when used.
                 </span>
-              </label>
+              </div>
             )}
 
             {/* operating point + readiness */}
@@ -920,21 +970,19 @@ export function LiveSettings({
               </button>
             </div>
 
-            {/* remember key + export/import — bottom of model tab */}
+            {/* remember key + export/import — bottom of model tab. The same switch the wizard's
+                Connect step offers, not a bare browser checkbox: one choice, one control. */}
             {info.needsKey && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={cfg.rememberKey}
-                  onChange={(e) => setLiveConfigV2({ rememberKey: e.target.checked })}
-                />
-                <span>Remember key on this device</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                  {cfg.rememberKey
-                    ? 'encrypted on this device when supported; otherwise session-only — never saved as plaintext'
-                    : 'kept in memory only — cleared on reload'}
-                </span>
-              </label>
+              <ToggleRow
+                label="Remember key on this device"
+                on={cfg.rememberKey}
+                onToggle={() => setLiveConfigV2({ rememberKey: !cfg.rememberKey })}
+                note={
+                  cfg.rememberKey
+                    ? 'Encrypted on this device when supported; otherwise session-only — never saved as plaintext.'
+                    : 'Kept in memory only — cleared on reload.'
+                }
+              />
             )}
             <ProviderResponsibilityNotice />
             {/* What this session actually spent on the reader's own key. It sits under the key
@@ -1351,7 +1399,7 @@ export function LiveSettings({
               </div>
             )}
 
-            <AdvancedGroup defaultOpen={initialAdvancedYouOpen}>
+            <AdvancedGroup defaultOpen={!!revealYouSetting}>
               {/* Push-to-talk key — only read while the mic is in Hold mode; Tap and Always on
                   never listen for it. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1411,6 +1459,7 @@ export function LiveSettings({
                 </div>
               </div>
               <ToggleRow
+                id="ls-morning-brief"
                 label="Morning brief"
                 on={cfg.morningBrief}
                 onToggle={() => setLiveConfigV2({ morningBrief: !cfg.morningBrief })}
@@ -1423,6 +1472,7 @@ export function LiveSettings({
                 note="When an answer already contains flashcards, keep them without asking. Off by default — the usual way is tapping “Cards” on the answer you want. Every save shows a pill with Undo, so it's never silent."
               />
               <ToggleRow
+                id="ls-quiet-hours"
                 label="Quiet hours"
                 on={quietHours}
                 onToggle={() => {
@@ -1540,23 +1590,17 @@ export function LiveSettings({
           >
             License
           </a>
-          <button
-            type="button"
-            onClick={resetLegalAcceptance}
-            style={{
-              marginLeft: 'auto',
-              padding: 0,
-              border: 0,
-              color: 'inherit',
-              background: 'transparent',
-              font: 'inherit',
-              textDecoration: 'underline',
-              textUnderlineOffset: 3,
-              cursor: 'pointer',
-            }}
-          >
-            Review legal acknowledgement now
-          </button>
+          {/* This REVOKES the stored acceptance: the gate sits above the router and replaces the
+              whole app until both boxes are ticked again. Two-step, like every other action in
+              this panel that undoes something — and named for what it does. */}
+          <span style={{ marginLeft: 'auto' }}>
+            <ArmedActionButton
+              variant="link"
+              label="Sign the acknowledgement again"
+              confirmLabel="Sign again? This reopens the gate"
+              onConfirm={resetLegalAcceptance}
+            />
+          </span>
         </div>
       </div>
     </div>

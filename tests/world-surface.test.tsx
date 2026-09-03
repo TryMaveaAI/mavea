@@ -71,12 +71,34 @@ describe('WorldOverlay evidence', () => {
     expect(panel.querySelector('.tr-not-as')?.textContent).toMatch(/^Not represented as: .+\.$/);
   });
 
+  it('marks the link the receipt belongs to', () => {
+    // Opening one takes the surface back from the walk, and taking it back used to clear the lit
+    // edge — so the ONE gesture that opens a link's receipt was also the one that unmarked it,
+    // leaving the rail describing one of fifteen identical ribbons.
+    const { container } = mount();
+    const groups = [...container.querySelectorAll<SVGGElement>('.mv-edge-g')];
+    expect(groups.every((g) => g.getAttribute('data-lit') === null)).toBe(true);
+
+    fireEvent.click(groups[1]);
+    expect(groups.filter((g) => g.getAttribute('data-lit') !== null)).toEqual([groups[1]]);
+  });
+
+  it('counts the causes without counting the outcome they explain', () => {
+    // The panel said twelve while the walk's own opening line, four rows below it on the same
+    // screen, said eleven.
+    const { container } = mount();
+    const facts = [...container.querySelectorAll('.wo-facts div')].map((d) => d.textContent);
+    expect(facts[0]).toBe(`Causes${WORLD_SEED.nodes.length - 1}`);
+  });
+
   it('opens the card behind a figure, badged for an illustrative world', () => {
     const { container } = mount();
     // The figure itself, not the card it sits on: the stage makes a node clickable too, so its
     // accessible name swallows the figure's.
     const figure = container.querySelector<HTMLButtonElement>('.mv-face-card button.tr-num')!;
-    expect(figure.textContent).toMatch(/source available/);
+    // Named for what the card actually holds. On this world that is a caveat, not a receipt —
+    // announcing "source available" over a card with no SOURCE section is a promise it can't keep.
+    expect(figure.textContent).toMatch(/illustrative — no source/);
     fireEvent.click(figure);
 
     const card = screen.getByRole('dialog');

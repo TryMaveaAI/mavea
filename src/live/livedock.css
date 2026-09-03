@@ -538,12 +538,20 @@
   cursor: default;
 }
 
-/* Center the error state when the first turn fails (no canvas exists yet). */
+/* The error state when the first turn fails (no canvas exists yet). The resting face is a fixed,
+   viewport-centred layer (.presence-layer, z-46) over this very stage, so a vertically centred card
+   lands underneath the jelly — "Open settings" was more than half-eaten by the bell, and there is no
+   viewport short enough to fit both in the middle. Sit at the top of the stage, leaving the face its
+   rest position below, and stay above it in the stack the way the spoken caption does (z-47) for the
+   long message that grows back down into it. */
 .live-error-stage {
   display: grid;
-  place-items: center;
+  align-content: start;
+  justify-items: center;
   height: 100%;
   padding: 24px;
+  position: relative;
+  z-index: 47;
 }
 
 /* ---- voice feedback ------------------------------------------------------------------------ */

@@ -38,7 +38,12 @@ const TopicCanvas = lazy(() =>
   import('../canvas/TopicCanvas').then((m) => ({ default: m.TopicCanvas })),
 );
 import { useTapNarration } from '../canvas/focus/useTapNarration';
-import { savedViewMode, useViewMode, type ViewMode } from '../canvas/focus/useFocusMode';
+import {
+  savedViewMode,
+  showViewMode,
+  useViewMode,
+  type ViewMode,
+} from '../canvas/focus/useFocusMode';
 import { answerSignature } from '../data/conversation';
 import type { StudyAside } from '../canvas/study/types';
 import { deskObjects } from '../canvas/study/scene';
@@ -60,6 +65,7 @@ import {
 } from '../tour/tourEntry';
 import { useTourDriver, type TourOps } from '../tour/useTourDriver';
 import { TourOverlay } from '../tour/TourOverlay';
+import { transportKeyBelongsToControl } from '../tour/driverKit';
 import { TourEndCard } from '../tour/TourEndCard';
 import { tourConversation } from '../tour/corpus';
 import { peekDemoPersona, clearDemoPersonaFlag, peekDemoStep } from '../demo/demoEntry';
@@ -155,6 +161,7 @@ import {
 import { SetupWizard } from './setup/SetupWizard';
 import { isSetupDone } from './setup/setup';
 import { TemplatePicker } from './TemplatePicker';
+import { useFontScaleStamp } from './fontScale';
 import { MicModePopover, type MicMode } from './voice/MicModePopover';
 import { applyPresenceStyle, automaticPresenceStyle, clearPresenceStyle } from './presenceStyles';
 import type { ExportAnswer } from '../export';
@@ -342,16 +349,6 @@ const SETTLE_SILENCE_MS = 6400;
 // voice recording can close without eating the rest of the tour.
 const TURN_VOICE_QUIET_MS = STEP_DWELL_MS + MIN_STOP_MS;
 
-/** True when a transport key (←/→/Space) belongs to the focused control, not to the walkthrough
- *  or demo replay. Both drive REAL UI under a pointer-transparent overlay — the API-key input,
- *  the end-card buttons — so a global preventDefault would swallow typing and a focused button's
- *  native Space activation. Escape stays global: it always means "leave the tour". */
-function transportKeyBelongsToControl(e: KeyboardEvent): boolean {
-  if (inTextField(e.target)) return true;
-  const isSpace = e.key === ' ' || e.key === 'Spacebar';
-  return isSpace && e.target instanceof HTMLElement && !!e.target.closest('button');
-}
-
 // Overlays and modals that only ever mount on an explicit user action — open Prism, compare
 // sources, export, share the reel, replay a moment, pin to a dashboard, present, rehearse a
 // hard conversation, review flashcards, resume the library. Each is heavy (the PDF
@@ -491,7 +488,8 @@ function LazyOverlay({
   );
 }
 
-function goDemo(): void {
+/** Leave Live for the marketing landing — the destination the demo's own cards call "home". */
+function goHome(): void {
   try {
     window.location.hash = '';
   } catch {
@@ -537,17 +535,9 @@ export function LiveApp(): ReactElement {
   // `data-template`, so the first answer after "New" rendered in the stock skin.
   useLayoutEffect(() => mountTemplateSkin(document), []);
 
-  // Reading text size (Appearance → Text size): stamps the root so the `--fs-reader` token
-  // override in wow-polish.css takes effect. 'normal' clears the attribute rather than writing
-  // it, so the token falls through to its unscaled default.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (cfg.fontScale === 'normal') delete root.dataset.fontScale;
-    else root.dataset.fontScale = cfg.fontScale;
-    return () => {
-      delete root.dataset.fontScale;
-    };
-  }, [cfg.fontScale]);
+  // Reading text size (Appearance → Text size). Ref-counted like the skin above, because the
+  // wizard's own picker holds it too and whichever unmounts first must not clear it.
+  useFontScaleStamp(cfg.fontScale);
 
   // A typed question handed over from the landing's hero composer (one-shot, cleared on read).
   // If setup is already done, an effect below auto-starts the session with it — the user "just
@@ -742,7 +732,11 @@ export function LiveApp(): ReactElement {
   const SYNTHESIS_MIN_SOURCES = 3; // synth available as a choice from here
   const SYNTHESIS_AUTO_SOURCES = 4; // synth is the automatic default from here
   const openExplode = useCallback((docs: Attachment[]) => {
-    if (docs.length >= SYNTHESIS_AUTO_SOURCES) setSynthesis(docs);
+    // Prism reads a picture (mapClaims routes it down the vision path); a Synthesis corpus does not
+    // — mapCorpus extracts text and would hand a PNG to the PDF reader. So a pile counts only the
+    // sources Synthesis can actually read when deciding which surface opens.
+    const corpusReadable = docs.filter((d) => !isImage(d));
+    if (corpusReadable.length >= SYNTHESIS_AUTO_SOURCES) setSynthesis(corpusReadable);
     else if (docs.length > 0) setPrismDocs(docs);
   }, []);
   // Ripple — the code/ship companion. Null = closed; a ShipModel = the open overlay. For now it
@@ -892,13 +886,18 @@ export function LiveApp(): ReactElement {
   // Which tab the settings modal opens on — the palette's "Connect apps" jumps straight to
   // Actions (the tab is otherwise hidden until something is connected).
   const [settingsTab, setSettingsTab] = useState<'model' | 'settings' | 'you'>();
-  // Set once by the palette's "Whisper mode" so the You tab lands with More options already
-  // open on Quiet hours, instead of one more click to find the setting that was just promised.
-  // Cleared whenever settings closes (any path — backdrop click, Escape, the panel's own close)
-  // so a later, unrelated visit to Settings doesn't inherit an expansion it didn't ask for.
-  const [showAdvancedYou, setShowAdvancedYou] = useState(false);
+  // Which You-tab setting a palette row promised ("Whisper mode" → Quiet hours): the panel opens
+  // More options and scrolls there. Both this and the tab are cleared whenever settings closes
+  // (any path — backdrop click, Escape, the panel's own close) so a later, unrelated visit
+  // inherits neither, and so the NEXT request is a real prop change the open panel can act on.
+  const [revealYouSetting, setRevealYouSetting] = useState<'quiet-hours' | 'morning-brief' | null>(
+    null,
+  );
   useEffect(() => {
-    if (!showSettings) setShowAdvancedYou(false);
+    if (!showSettings) {
+      setRevealYouSetting(null);
+      setSettingsTab(undefined);
+    }
   }, [showSettings]);
   // The ⌘K command palette — the product's discoverable feature registry, searchable. Open-state +
   // the global ⌘K hotkey come from the shared hook (the same one the landing uses), so the two
@@ -2189,7 +2188,10 @@ export function LiveApp(): ReactElement {
     },
     cancelSpeech,
     setMuted,
-    setViewMode,
+    // A scripted view is choreography, not a choice: showViewMode drives the toggle without
+    // writing the reader's remembered mode, which a run that ends by closing the tab never
+    // restores.
+    setViewMode: showViewMode,
     setInkArmed,
     setPresenting,
     setShareOpen,
@@ -2381,7 +2383,7 @@ export function LiveApp(): ReactElement {
       turn.setSpot(null);
       setPinned([]);
       setValue('');
-      setViewMode('everything');
+      showViewMode('everything');
       setInkArmed(false);
       clearInkRef.current();
       // The pen's drawn marks belong to the chapter that drew them — leaving them in `inked`
@@ -2438,14 +2440,23 @@ export function LiveApp(): ReactElement {
     active: !!demoPersona.current,
     personaId: demoPersona.current,
     startStep: demoStartStep.current,
+    muted,
     ops: liveOps,
   });
   const tourDriveRef = useRef(tourDrive);
   tourDriveRef.current = tourDrive;
+  // Whether an overlay is holding attention above the canvas (assigned further below, where the
+  // overlay state exists). The transport keys belong to the TOP layer: an overlay's own key
+  // handler also listens on `window`, and a sibling window listener still fires however hard that
+  // one calls preventDefault — so without this guard one Escape both closed the palette and threw
+  // away the walkthrough the palette was opened from, and one ← stepped the replay under an open
+  // export studio, swapping out the very answer being exported.
+  const overlayLayeredRef = useRef(false);
   // Keyboard controls for the walkthrough: ←/→ step chapters, Space plays/pauses, Esc skips.
   useEffect(() => {
     if (!tourMode.current) return;
     const onKey = (e: KeyboardEvent): void => {
+      if (overlayLayeredRef.current) return;
       const t = tourDriveRef.current;
       if (e.key === 'Escape') {
         t.skip();
@@ -2471,6 +2482,7 @@ export function LiveApp(): ReactElement {
   useEffect(() => {
     if (!demoPersona.current) return;
     const onKey = (e: KeyboardEvent): void => {
+      if (overlayLayeredRef.current) return;
       const d = demoDriveRef.current;
       if (e.key === 'Escape') {
         d.skip();
@@ -2536,7 +2548,15 @@ export function LiveApp(): ReactElement {
         block.note ??
         (block.id ? tourSpokenById.get(block.id) : undefined) ??
         speakableLine(block),
-      speakLine: speak,
+      // A tapped card — and every stop of the Study's "Guide me", which walks the desk through
+      // this same path — is a spoken line like any other. The caption strip and the Study's voice
+      // bubble both read `spokenNow`, so without this the caption kept reading the answer's opener
+      // while Mavéa was audibly three cards further on, and the bubble never appeared at all: the
+      // same "caption and voice visibly out of sync" the coach line was fixed for.
+      speakLine: (line) => {
+        setSpokenNow(line);
+        speak(line);
+      },
     },
     turn.turn,
   );
@@ -3204,7 +3224,9 @@ export function LiveApp(): ReactElement {
   useEffect(() => {
     if (!turn.spot) return;
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') showAll();
+      // Same top-layer rule as the walkthrough's Escape: closing an overlay must not also dump
+      // the paced walk running behind it.
+      if (e.key === 'Escape' && !overlayLayeredRef.current) showAll();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -4055,6 +4077,9 @@ export function LiveApp(): ReactElement {
       zoomLevel,
       mindViewOpen: mindView.open,
     });
+  // Published to the window-level Escape handlers declared above, which run before this point in
+  // the file but need the same single notion of "an overlay is on top".
+  overlayLayeredRef.current = overlayLayered;
 
   // Esc leaves Watch Me Think — the overlay must never trap the user. The listener is fully
   // detached while another overlay is layered on top (above), so a single Escape can't both close
@@ -4788,11 +4813,15 @@ export function LiveApp(): ReactElement {
   // id: the overlay hands this to the memoized stage, so a callback that changed every render
   // would re-render every card on the world on every camera frame.
   const { expandWorld } = turn;
+  // Undefined where nothing can be bought — a walkthrough, a replay, or no model configured. The
+  // overlay reads the callback's presence as "the host can pay for a breakdown", so handing it one
+  // that resolves null on every press wore the "break down" chip on every cause and answered none.
   const expandWorldNode = useCallback(
     (nodeId: string, showing: WorldSpec) =>
       openWorldId ? expandWorld(openWorldId, nodeId, showing) : Promise.resolve(null),
     [openWorldId, expandWorld],
   );
+  const buyExpansion = modelCallsAllowed ? expandWorldNode : undefined;
 
   // The registry resolved to live actions + availability. One map so the palette and the menu
   // can never disagree about what exists. Behavioral/automatic features (whisper, ghost, focus)
@@ -4809,7 +4838,8 @@ export function LiveApp(): ReactElement {
     },
     'pdf-world': {
       available: attached.some(isExplodable),
-      reason: 'Attach a PDF, Office doc, or data file (CSV, text, JSON) to split it into a map',
+      reason:
+        'Attach a PDF, Office doc, image, or data file (CSV, text, JSON) to split it into a map',
       run: () => {
         // Explode every attached document together — a few compare in Prism, a pile fuses into the
         // Synthesis World (openExplode routes by count).
@@ -4968,7 +4998,7 @@ export function LiveApp(): ReactElement {
       // last left open, so the click actually goes somewhere connected to what it promised.
       run: () => {
         setSettingsTab('you');
-        setShowAdvancedYou(true);
+        setRevealYouSetting('quiet-hours');
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
@@ -5030,7 +5060,7 @@ export function LiveApp(): ReactElement {
       // options), the same way Whisper resolves to its own setting.
       run: () => {
         setSettingsTab('you');
-        setShowAdvancedYou(true);
+        setRevealYouSetting('morning-brief');
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
@@ -5075,6 +5105,11 @@ export function LiveApp(): ReactElement {
   // The Go hub's own file picker: the wizard hides the composer's paperclip, so the Prism card
   // opens this instead. Staging a document is what makes Prism available in the first place.
   const wizardFileRef = useRef<HTMLInputElement>(null);
+  const wizardAttachRef = useRef<HTMLInputElement>(null);
+  // Which door the staged file came through, so "Choose a different file" re-opens the same one:
+  // a document picked to be split should be replaced by another to split, and a file picked to be
+  // asked about by another to ask about.
+  const wizardPickedVia = useRef<'attach' | 'prism'>('prism');
 
   // The Go hub's "ways to begin". Built from paletteItems so availability, the "why not yet"
   // reason and the preload are the SAME resolution the ⌘K palette uses — the registry is meant to
@@ -5152,7 +5187,9 @@ export function LiveApp(): ReactElement {
       show: true,
     },
     {
-      label: 'Study',
+      // "Review", not "Study" — the Study is the reading desk, and one word over two features is
+      // exactly what sent readers to the wrong surface.
+      label: 'Review',
       blurb:
         srsDue > 0
           ? `${srsDue} card${srsDue === 1 ? '' : 's'} ready`
@@ -5195,7 +5232,7 @@ export function LiveApp(): ReactElement {
     },
     {
       label: 'Export',
-      blurb: 'Choose a template and export a polished PDF',
+      blurb: 'Turn this answer into a presentation deck or a designed document',
       onClick: featureActions.export.run,
       preload: featureActions.export.preload,
       show: turn.frames.length > 0,
@@ -5588,7 +5625,12 @@ export function LiveApp(): ReactElement {
         (() => {
           const member = castMember(demoPersona.current);
           return member ? (
-            <DemoOverlay driver={demoDrive} member={member} onExit={endTourToApp} />
+            <DemoOverlay
+              driver={demoDrive}
+              member={member}
+              onExit={endTourToApp}
+              covered={overlayLayered}
+            />
           ) : null;
         })()}
       {presentationPreparing && (
@@ -5710,19 +5752,21 @@ export function LiveApp(): ReactElement {
         <button
           className="brand brand-link"
           type="button"
-          onClick={goDemo}
-          title="Back to the demo"
-          aria-label="Back to the demo"
+          onClick={goHome}
+          title="Back to home"
+          aria-label="Back to home"
         >
           <span className="brand-dot jelly-mark" ref={brandDotRef}></span>
           <span className="brand-name">Mavéa</span>
           {/* Only show the workspace title once an answer exists — on the welcome the
               "Live" badge already says it, so a default "Live" here just duplicated it. */}
-          {turn.spec && (
+          {shownSpec && (
             <>
               <span className="brand-sep"></span>
+              {/* The moment ON SCREEN, not the live head — jumping back in the session rail
+                  otherwise left the topbar naming an answer the reader could not see. */}
               <span className="workspace-name">
-                {turn.error ? 'Couldn’t answer' : turn.spec.title}
+                {turn.error ? 'Couldn’t answer' : shownSpec.title}
               </span>
             </>
           )}
@@ -5870,10 +5914,10 @@ export function LiveApp(): ReactElement {
                   <Icon.paperclip />
                 )}
                 <span className="attach-name">{attachmentLabel(a)}</span>
-                {/* PDFs need a document-reading model (vision); Word/PowerPoint/Excel and plain-text
-                    /data files (CSV, TXT, Markdown, JSON, code) are extracted client-side as text, so
-                    they explode on any model. */}
-                {((isPdf(a) && visionCaps) || isOffice(a) || isText(a)) && (
+                {/* PDFs and pictures need a model that can see them; Word/PowerPoint/Excel and
+                    plain-text/data files (CSV, TXT, Markdown, JSON, code) are extracted client-side
+                    as text, so they explode on any model. */}
+                {(((isPdf(a) || isImage(a)) && visionCaps) || isOffice(a) || isText(a)) && (
                   <button
                     type="button"
                     className="attach-explode"
@@ -6409,6 +6453,7 @@ export function LiveApp(): ReactElement {
                   onNarrate={narrateBlock}
                   narratingId={narratingId}
                   muted={muted}
+                  onToggleMute={() => setMuted((m) => !m)}
                   studyAsides={studyAsides}
                   studyAsidesAuthored={studyAsidesAuthored}
                   studyStreaming={turn.busy}
@@ -6579,7 +6624,7 @@ export function LiveApp(): ReactElement {
           <SetupWizard
             seed={seedQuery.current || undefined}
             speak={speak}
-            goDemo={goDemo}
+            goHome={goHome}
             onStart={(text) => {
               setConversationStarted(true);
               submit(text);
@@ -6596,6 +6641,15 @@ export function LiveApp(): ReactElement {
               void voice.start({ inCanvas: false });
             }}
             onSeeHow={() => setShowHow(true)}
+            // The composer's own paperclip. The Prism card's picker opens the map; this one stages
+            // a file to ride the first question, for the reader who wants to ASK about a document
+            // rather than split it — a door the wizard did not have, since it hides the dock.
+            onAttach={() => wizardAttachRef.current?.click()}
+            attachTitle={
+              visionCaps
+                ? 'Attach an image or PDF to ask about'
+                : `Attach a doc or data file to ask about — ${connected} can't read images/PDFs directly`
+            }
             paletteSlot={
               <TopbarSearchButton onOpen={openPalette} preload={commandPaletteLoad.preload} />
             }
@@ -6613,6 +6667,20 @@ export function LiveApp(): ReactElement {
                     nothing on screen saying to) is the kind of step that reads as the app having
                     ignored them. */}
                 <input
+                  ref={wizardAttachRef}
+                  type="file"
+                  accept={ACCEPTED_TYPES}
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = '';
+                    if (!files.length) return;
+                    wizardPickedVia.current = 'attach';
+                    void onFiles(files);
+                  }}
+                />
+                <input
                   ref={wizardFileRef}
                   type="file"
                   accept={ACCEPTED_TYPES}
@@ -6622,6 +6690,7 @@ export function LiveApp(): ReactElement {
                     const files = Array.from(e.target.files ?? []);
                     e.target.value = ''; // re-picking the same file must fire again
                     if (!files.length) return;
+                    wizardPickedVia.current = 'prism';
                     void onFiles(files).then((staged) => {
                       const docs = staged.filter(isExplodable);
                       if (docs.length) openExplode(docs);
@@ -6652,7 +6721,12 @@ export function LiveApp(): ReactElement {
                     <button
                       type="button"
                       className="start-with-another"
-                      onClick={() => wizardFileRef.current?.click()}
+                      onClick={() =>
+                        (wizardPickedVia.current === 'attach'
+                          ? wizardAttachRef
+                          : wizardFileRef
+                        ).current?.click()
+                      }
                     >
                       Choose a different file
                     </button>
@@ -6722,7 +6796,7 @@ export function LiveApp(): ReactElement {
             onRetry={() => setWorldAttempt((n) => n + 1)}
             onClose={leaveWorldView}
             view={worldBlock.props.view}
-            onExpandNode={expandWorldNode}
+            onExpandNode={buyExpansion}
             autoWalk={seededWorldWalks && worldBlock.id === 'tour-world'}
             speakLine={speak}
           />
@@ -6764,7 +6838,7 @@ export function LiveApp(): ReactElement {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.45)',
+            background: 'rgba(var(--scrim-rgb), 0.45)',
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'center',
@@ -6776,7 +6850,7 @@ export function LiveApp(): ReactElement {
             <LiveSettings
               onClose={() => setShowSettings(false)}
               initialTab={settingsTab}
-              initialAdvancedYouOpen={showAdvancedYou}
+              revealYouSetting={revealYouSetting}
             />
           </LazyOverlay>
         </div>

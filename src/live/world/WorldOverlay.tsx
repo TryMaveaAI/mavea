@@ -89,6 +89,12 @@ const CHIP_CAP = 5;
 /** The stage's id, so the view tabs can name the panel they control. */
 const STAGE_ID = 'wo-stage';
 
+/** Anything that answers Space itself, so the overlay's play/pause never fires on top of it. The
+ *  ROLE arms matter as much as the tags: a cause card is a `div` carrying `role="button"`, so a
+ *  selector of bare tag names let one press both open the cause and start the narrated walk. */
+const INTERACTIVE =
+  'button, input, select, textarea, [contenteditable="true"], [role="button"], [role="tab"], [role="slider"], [role="checkbox"], [role="switch"]';
+
 const ILLUSTRATIVE_BASE_NOTE =
   'an illustrative living answer measures nothing, so there is no baseline';
 
@@ -623,7 +629,7 @@ function WorldSurface({
       }
       if (e.key !== ' ' && e.key !== 'Spacebar') return;
       const el = e.target as HTMLElement | null;
-      if (el?.closest('button, input, select, textarea, [contenteditable="true"]')) return;
+      if (el?.closest(INTERACTIVE)) return;
       e.preventDefault();
       toggleRef.current();
     };
@@ -641,6 +647,10 @@ function WorldSurface({
   const onEdgeClick = useCallback(
     (edgeId: string) => {
       takeOver();
+      // Back on, after takeOver cleared the walk's own lit link: `data-lit` is the only marker an
+      // edge has, and a receipt in the rail beside fifteen identical ribbons says nothing about
+      // which one it belongs to.
+      setLitEdgeId(edgeId);
       setSelection({ kind: 'edge', id: edgeId });
     },
     [takeOver],
@@ -863,15 +873,17 @@ function WorldSurface({
   );
 
   // Structure, not claims: how big the web is and how much of it stands on a source. Counted over
-  // the TOP level, which is what the reader is looking at — a breakdown is one cause's parts.
-  const worldFacts = useMemo(
-    () => ({
-      causes: spec.nodes.length,
+  // the TOP level, which is what the reader is looking at — a breakdown is one cause's parts. The
+  // outcome is what the causes explain, not one of them: counting it made this panel say twelve
+  // while the walk narrating the same world said eleven, four lines apart on the same screen.
+  const worldFacts = useMemo(() => {
+    const causes = spec.nodes.filter((n) => n.id !== spec.outcomeId);
+    return {
+      causes: causes.length,
       links: spec.edges.length,
-      sourced: spec.nodes.filter((n) => n.receipt !== undefined).length,
-    }),
-    [spec],
-  );
+      sourced: causes.filter((n) => n.receipt !== undefined).length,
+    };
+  }, [spec]);
 
   const selectedNode = selection?.kind === 'node' ? nodeById.get(selection.id) : undefined;
   // What the selected cause is MADE OF, drawn by the catalog's own choice. Compiled from the content
@@ -996,7 +1008,16 @@ function WorldSurface({
                   ))}
                 </div>
               )}
-              <button type="button" className="wo-btn" onClick={reset} disabled={!active}>
+              {/* Says what it resets. Sitting unqualified at the end of the view tabs it read as
+                  the VIEW's reset, and a reader who had just changed the view found it greyed. */}
+              <button
+                type="button"
+                className="wo-btn"
+                onClick={reset}
+                disabled={!active}
+                aria-label="Reset the what-if levers"
+                title="Reset the what-if levers"
+              >
                 Reset
               </button>
               {onClose && (
@@ -1074,7 +1095,10 @@ function WorldSurface({
               />
 
               <div className="wo-detail">
-                <span className="wo-rail-kicker">EVIDENCE</span>
+                {/* The kicker names what is under it, so it only appears once something is
+                    selected — over the standing panel it headed an invitation and three counts,
+                    none of which is evidence. */}
+                <span className="wo-rail-kicker">{selection ? 'EVIDENCE' : 'THIS WORLD'}</span>
                 {!selection && (
                   // The rail is a third of the surface and used to spend all of it, until something
                   // was clicked, on one sentence asking to be clicked. What a reader wants before

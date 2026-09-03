@@ -63,14 +63,13 @@ export function getViewMode(): ViewMode {
   return cache;
 }
 
-/** Persist + broadcast a new view mode. No-op on an unknown value. */
-export function setViewMode(mode: ViewMode): void {
+function applyViewMode(mode: ViewMode, persist: boolean): void {
   if (!isViewMode(mode)) return;
   cache = mode;
   try {
     // A transient per-answer view is not a saved preference — never persist it (and don't clobber
     // the saved study/focus/everything choice), so it can't stick across answers or a reload.
-    if (typeof localStorage !== 'undefined' && !TRANSIENT.has(mode)) {
+    if (persist && typeof localStorage !== 'undefined' && !TRANSIENT.has(mode)) {
       localStorage.setItem(STORAGE_KEY, mode);
     }
   } catch {
@@ -83,6 +82,21 @@ export function setViewMode(mode: ViewMode): void {
   } catch {
     /* no window (test/SSR) */
   }
+}
+
+/** Persist + broadcast a new view mode. No-op on an unknown value. */
+export function setViewMode(mode: ViewMode): void {
+  applyViewMode(mode, true);
+}
+
+/**
+ * Show a view WITHOUT touching the reader's saved choice — for the scripted surfaces (the
+ * walkthrough and the curated demos), which drive the toggle as choreography. They restore the
+ * standing view when they end, but a visitor who simply closes the tab mid-run never reaches that
+ * cleanup, and the last view a script happened to be showing must not become their preference.
+ */
+export function showViewMode(mode: ViewMode): void {
+  applyViewMode(mode, false);
 }
 
 /** The view mode + a setter, live-updating as it changes anywhere (the store broadcasts). */

@@ -56,9 +56,11 @@ export function ShipRead({
         <div className="ripple-eyebrow">What this change does</div>
         {lead && <p className="ripple-read-lead">{lead}</p>}
         <p className="ripple-read-summary">{pr.summary}</p>
+        {/* No per-claim expander exists on this surface — the risks beside it are plain text — so
+            the sentence stops at what the read actually is. */}
         {altitude !== 'principal' && pr.readScope && (
           <p className="ripple-read-scope">
-            {pr.readScope} Mavéa paraphrases nothing it can’t cite — expand any claim to its line.
+            {pr.readScope} Mavéa paraphrases nothing it can’t cite.
           </p>
         )}
         {coaching && <p className="ripple-read-scope">{coaching}</p>}

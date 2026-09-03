@@ -101,6 +101,28 @@ function strField(o: unknown, names: string[]): string | undefined {
   return undefined;
 }
 
+/**
+ * An item's own first reader-facing string, used only when none of the conventional name fields
+ * is present. The catalog declares ~100 distinct item text keys (`action`, `slot`, `version`,
+ * `chiefComplaint`, …) and they live in the lazily-fetched detail shards, so a fixed alias list
+ * could never cover them — and an unnamed item is dropped, which empties the whole block. Style
+ * tokens and classifiers are skipped so a colour or a status enum can never stand in for a label.
+ */
+function firstTextField(o: unknown): string | undefined {
+  if (!o || typeof o !== 'object') return undefined;
+  for (const [k, v] of Object.entries(o as AnyProps)) {
+    if (typeof v !== 'string' || !v.trim()) continue;
+    if (!isPresentableKey(k) || NON_TEXT_KEY.test(k) || v.startsWith('var(--') || v.startsWith('#'))
+      continue;
+    return plain(v);
+  }
+  return undefined;
+}
+
+/** Prop keys that name a presentation token or a category, never reader-facing text. */
+const NON_TEXT_KEY =
+  /^(icon|iconColor|color|accent|tint|fill|stroke|className|style|kind|type|status|state|level|method|tone|variant|severity|verdict)$/i;
+
 /** First number-valued field among `names` on an object. */
 function numField(o: unknown, names: string[]): number | undefined {
   if (!o || typeof o !== 'object') return undefined;
@@ -112,15 +134,29 @@ function numField(o: unknown, names: string[]): number | undefined {
 const NAME_FIELDS = ['name', 'label', 'title', 'text', 'k', 't', 'team', 'who'];
 const VALUE_FIELDS = ['val', 'value', 'display', 'v', 'amount', 'rec'];
 const HEADING_FIELDS = ['title', 'heading', 'label', 'name', 'question', 'caption', 'eyebrow'];
-const BODY_FIELDS = ['summary', 'narrative', 'detail', 'sub', 'body', 'text'];
+// `caption`/`footer`/`note` are the catalog's near-universal optional prose slots — a block whose
+// only sentence lives there (a route map, a code listing) otherwise printed as a bare heading.
+const BODY_FIELDS = [
+  'summary',
+  'narrative',
+  'detail',
+  'sub',
+  'body',
+  'text',
+  'caption',
+  'footer',
+  'note',
+];
 
 /* ── prose fallback (the universal honest renderer) ─────────────────────────── */
 
 /**
  * Render a block we can't lay out as a heading + paragraph — but ONLY from its real, prop-derived
- * text. Returns null when the block carries no real heading and no real body, so an unrenderable
- * block (a bare map/video with no caption) is dropped rather than left as a placeholder-looking
- * stub. Never surfaces the internal block `type` as printable text (real-data-only).
+ * text. Returns null unless the block carries a real BODY, so an unrenderable block (a bare
+ * map/video with no caption) is dropped rather than left as a placeholder-looking stub. A heading
+ * with nothing under it is the same defect: on paper it is an orphan line, on a slide a titled
+ * blank frame, and the agenda promises both. Never surfaces the internal block `type` as
+ * printable text (real-data-only).
  */
 function proseDraft(b: Block): SectionDraft | null {
   const p = propsOf(b);
@@ -133,8 +169,8 @@ function proseDraft(b: Block): SectionDraft | null {
       break;
     }
   }
-  if (!heading && !body) return null;
-  return { kind: 'prose', data: { heading, body: body ?? '' } };
+  if (!body) return null;
+  return { kind: 'prose', data: { heading, body } };
 }
 
 /** proseDraft as a (possibly empty) draft list — an extractor whose own data is missing falls
@@ -154,7 +190,9 @@ function genericDraft(b: Block, kind: SectionKind): SectionDraft | null {
   const named = (): { name: string; o: unknown }[] =>
     (arr ?? [])
       .map((o) =>
-        typeof o === 'string' ? { name: plain(o), o } : { name: strField(o, NAME_FIELDS) ?? '', o },
+        typeof o === 'string'
+          ? { name: plain(o), o }
+          : { name: strField(o, NAME_FIELDS) ?? firstTextField(o) ?? '', o },
       )
       .filter((it) => it.name);
 
@@ -195,11 +233,16 @@ function genericDraft(b: Block, kind: SectionKind): SectionDraft | null {
         value: strField(it.o, ['display', 'val', 'value']),
       }));
       const m = max(raw.map((r) => r.n ?? 0)) || 1;
-      const cells = raw.map((r) => ({
-        title: r.title,
-        value: r.value ?? (isFiniteNum(r.n) ? String(r.n) : undefined),
-        pct: isFiniteNum(r.n) ? clamp01(r.n / m) : undefined,
-      }));
+      // A cell with no reading is a label over an empty bar — the figure is the numbers. Blocks
+      // whose values live a level down (a plot's `curves[].points[]`) resolve none of them, and
+      // the grid drew a heading over one stray series name; those fall through to prose instead.
+      const cells = raw
+        .filter((r) => isFiniteNum(r.n) || !!r.value)
+        .map((r) => ({
+          title: r.title,
+          value: r.value ?? (isFiniteNum(r.n) ? String(r.n) : undefined),
+          pct: isFiniteNum(r.n) ? clamp01(r.n / m) : undefined,
+        }));
       return cells.length ? { kind, data: { heading, cells } } : null;
     }
     case 'checklist': {
@@ -230,10 +273,65 @@ function genericDraft(b: Block, kind: SectionKind): SectionDraft | null {
     case 'specTable':
       return tableDraft(b, heading);
     case 'ratingMatrix':
-      return null; // dot matrices need a real cols×rows shape; let core `heat` own this
+      // A dot matrix needs a real level grid; let core `heat` own that. An extended comparison
+      // grid (columns + rows of cells) is a table on paper, and printing it beats dropping the
+      // side-by-side the reader actually asked for.
+      return comparisonDraft(p, heading);
     default:
       return null;
   }
+}
+
+/** Column headers for a comparison grid — the first prop that is a non-empty array of strings. */
+function headerStrings(p: AnyProps): string[] | null {
+  for (const key of ['cols', 'columns', 'headers', 'options', 'choices']) {
+    const v = p[key];
+    if (Array.isArray(v) && v.length && v.every((c) => typeof c === 'string'))
+      return v.map((c) => plain(c));
+  }
+  return null;
+}
+
+/** Read one comparison cell: a short value, a verdict word, or a rating, in that order. */
+function cellText(cell: unknown, kindWords: Record<string, string>): string {
+  if (typeof cell === 'string') return plain(cell);
+  if (typeof cell === 'number') return String(cell);
+  const value = strField(cell, ['value', 'val', 'v', 'text', 'label', 'note']);
+  if (value) return value;
+  const kind = strField(cell, ['kind', 'level', 'verdict', 'status']);
+  if (kind) return kindWords[kind.toLowerCase()] ?? kind;
+  const n = numField(cell, ['value', 'val', 'rating', 'score']);
+  return isFiniteNum(n) ? String(n) : '';
+}
+
+const VERDICT_WORDS: Record<string, string> = {
+  yes: 'Yes',
+  no: 'No',
+  partial: 'Partial',
+  safe: 'Safe',
+  caution: 'Caution',
+  avoid: 'Avoid',
+  unknown: 'Unknown',
+};
+
+/**
+ * A columns × rows comparison grid as a plain table. Returns null unless the block really carries
+ * both halves, so a `comparison` block of some other shape still falls through to prose.
+ */
+function comparisonDraft(p: AnyProps, heading?: string): SectionDraft | null {
+  const columns = headerStrings(p);
+  if (!columns) return null;
+  const arr = pickArray(p);
+  const rows = (arr ?? [])
+    .map((r) => {
+      const label = strField(r, NAME_FIELDS) ?? firstTextField(r) ?? '';
+      const cells = (r as AnyProps | null)?.cells;
+      if (!label || !Array.isArray(cells)) return null;
+      return [label, ...columns.map((_, i) => cellText(cells[i], VERDICT_WORDS))];
+    })
+    .filter((r): r is string[] => !!r);
+  if (!rows.length) return null;
+  return { kind: 'specTable', data: { heading, columns: ['', ...columns], rows } };
 }
 
 function clampPct(n?: number): number | undefined {
@@ -875,8 +973,15 @@ function figureDraft(b: Block): SectionDraft | null {
   if (!hasFigureData(b, meta)) return null;
   const p = propsOf(b);
   const heading = plain(p.title) || plain(p.heading) || undefined;
-  const caption = plain(p.footer) || plain(p.caption) || plain(p.sub) || undefined;
-  return { kind: 'figure', data: { block: b, embed: cls, heading, caption } };
+  const captionKey = (['footer', 'caption', 'sub'] as const).find((k) => plain(p[k]));
+  const caption = captionKey ? plain(p[captionKey]) : undefined;
+  // The skin draws that sentence itself, under the frame. Left on the block, the component draws
+  // it too (its own footer/caption is not card chrome the embed strips), printing the same line
+  // twice on the page. The copy is the export's alone — the live canvas keeps the original.
+  const block = captionKey
+    ? ({ ...b, props: { ...p, [captionKey]: undefined } } as unknown as Block)
+    : b;
+  return { kind: 'figure', data: { block, embed: cls, heading, caption } };
 }
 
 /* ── per-block extraction ───────────────────────────────────────────────────── */

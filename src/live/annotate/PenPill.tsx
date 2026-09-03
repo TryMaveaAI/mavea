@@ -27,7 +27,10 @@ export function PenPill({
       <span aria-hidden="true">✦</span>
       <span>{enabled ? 'Pen on' : 'Pen off'}</span>
       {!open && inkCount > 0 && (
-        <span className="pen-ink-count" aria-label={`${inkCount} marks drawn`}>
+        <span
+          className="pen-ink-count"
+          aria-label={`${inkCount} mark${inkCount === 1 ? '' : 's'} drawn`}
+        >
           {inkCount}
         </span>
       )}

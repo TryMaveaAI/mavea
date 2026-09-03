@@ -19,7 +19,7 @@ function mkSpeak() {
 }
 
 const defaultProps = {
-  goDemo: vi.fn(),
+  goHome: vi.fn(),
   onStart: vi.fn(),
   onStartTalking: vi.fn(),
 };
@@ -179,12 +179,44 @@ describe('SetupWizard — Connect step model input', () => {
     expect(input.value).toBe('my-custom-model');
   });
 
+  it('says a Gemini key is invalid, not "Error 400." — Google bills a bad key as a 400', async () => {
+    // The one screen whose whole job is getting a key working could only report the status, so the
+    // default provider's commonest failure read as an unexplained number.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        String(url).includes('/llm/gemini')
+          ? Promise.resolve({
+              ok: false,
+              status: 400,
+              text: () =>
+                Promise.resolve(
+                  JSON.stringify({
+                    error: {
+                      code: 400,
+                      message: 'API key not valid. Please pass a valid API key.',
+                      status: 'INVALID_ARGUMENT',
+                    },
+                  }),
+                ),
+            })
+          : Promise.reject(new Error('no network in test')),
+      ),
+    );
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+
+    fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'AIzaNOT-A-REAL-KEY' } });
+
+    expect(await screen.findByText('Invalid API key.', undefined, { timeout: 3000 })).toBeVisible();
+  });
+
   it('offers a "Get a key" link for a keyless first-time visitor, honest about which providers are free', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
-    // Default provider (Gemini) has a genuinely free tier.
-    const geminiLink = screen.getByRole('link', { name: /Get a key/i });
+    // Default provider (Gemini) has a genuinely free tier, and the link says so — the fastest
+    // answer to a keyless visitor's first question.
+    const geminiLink = screen.getByRole('link', { name: /Get a free key/i });
     expect(geminiLink).toHaveAttribute('href', 'https://aistudio.google.com/apikey');
 
     // Switching to a paid-only provider swaps the link's wording — never overstates a free offer.
@@ -234,6 +266,7 @@ describe('SetupWizard — returning user', () => {
 
 describe('SetupWizard — landing seed', () => {
   it('a first-run user has the seed forwarded as their first turn once Go is reached', async () => {
+    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
     const onStart = vi.fn();
     const speak = mkSpeak();
     render(
@@ -258,6 +291,7 @@ describe('SetupWizard — landing seed', () => {
   });
 
   it('forwards the seed only once, even if Go is re-entered', async () => {
+    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
     const onStart = vi.fn();
     const speak = mkSpeak();
     render(
@@ -285,6 +319,87 @@ describe('SetupWizard — landing seed', () => {
       fireEvent.click(screen.getByRole('tab', { name: /Go/i }));
     });
     expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('parks the seed in the composer instead of spending it when no model is connected', async () => {
+    const onStart = vi.fn();
+    render(
+      <SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} seed="Why did Q3 dip?" />,
+    );
+
+    const doneButtons = () => screen.getAllByRole('button', { name: /Done/i });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        fireEvent.click(doneButtons()[0]);
+      });
+    }
+
+    expect(onStart).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: /Ask Mavéa/i })).toHaveValue('Why did Q3 dip?');
+  });
+});
+
+// The Go hub gated exactly ONE of its thirteen ways to begin: the big "Start talking" button.
+// The starter chips, the composer's Enter/send and its mic all reached the model regardless, so
+// the commonest first-run gesture left the wizard for a turn that could never run — and the
+// failure it produced blamed the visitor's connection.
+describe('SetupWizard — the Go hub with no model connected', () => {
+  beforeEach(() => {
+    localStorage.setItem(SETUP_KEY, '1');
+  });
+
+  it('sends a starter chip to Connect instead of starting a doomed turn', () => {
+    const onStart = vi.fn();
+    render(<SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Build me a budget/i }));
+
+    expect(onStart).not.toHaveBeenCalled();
+    expect(screen.getByText(/Which mind should I think with/i)).toBeInTheDocument();
+  });
+
+  it('sends the composer to Connect and keeps the question waiting there', () => {
+    const onStart = vi.fn();
+    render(<SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} />);
+
+    const input = screen.getByRole('textbox', { name: /Ask Mavéa/i });
+    fireEvent.change(input, { target: { value: 'plan a trip' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onStart).not.toHaveBeenCalled();
+    expect(screen.getByText(/Which mind should I think with/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Go/ }));
+    expect(screen.getByRole('textbox', { name: /Ask Mavéa/i })).toHaveValue('plan a trip');
+  });
+
+  it('does not open the microphone for a turn that cannot run', () => {
+    const onStartTalking = vi.fn();
+    render(<SetupWizard {...defaultProps} onStartTalking={onStartTalking} speak={mkSpeak()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Use microphone/i }));
+
+    expect(onStartTalking).not.toHaveBeenCalled();
+    expect(screen.getByText(/Which mind should I think with/i)).toBeInTheDocument();
+  });
+
+  it('never claims the setup is finished — no Model tick, no "done" Connect disc', () => {
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+
+    // The row named a model and ticked it while the button below said to go connect one.
+    expect(screen.getByRole('button', { name: /^Model/ })).toHaveTextContent(/needs a key/i);
+    expect(screen.getByRole('tab', { name: 'Connect' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Connect, done' })).toBeNull();
+  });
+
+  it('lets every one of them through once a key is present', () => {
+    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    const onStart = vi.fn();
+    render(<SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Build me a budget/i }));
+    expect(onStart).toHaveBeenCalledWith('Build me a budget for a $5,000 month');
+    expect(screen.getByRole('button', { name: /^Model/ })).not.toHaveTextContent(/needs a key/i);
   });
 });
 
@@ -329,5 +444,31 @@ describe('SetupWizard — start over', () => {
     expect(screen.getByRole('button', { name: /Start talking/i })).toBeInTheDocument();
     // Flag unchanged.
     expect(localStorage.getItem(SETUP_KEY)).toBe('1');
+  });
+});
+
+describe("SetupWizard — the composer's own paperclip", () => {
+  // The wizard hides the dock and with it the paperclip, so a reader who wanted to ASK about a
+  // document — not split it with Prism — had no door until they typed a throwaway question first.
+  it('offers a paperclip on the Go step that calls the attach handler', () => {
+    localStorage.setItem(SETUP_KEY, '1');
+    const onAttach = vi.fn();
+    render(
+      <SetupWizard
+        {...defaultProps}
+        speak={mkSpeak()}
+        onAttach={onAttach}
+        attachTitle="Attach an image or PDF to ask about"
+      />,
+    );
+    const clip = screen.getByRole('button', { name: 'Attach an image or PDF to ask about' });
+    fireEvent.click(clip);
+    expect(onAttach).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws no paperclip when there is nothing to attach to', () => {
+    localStorage.setItem(SETUP_KEY, '1');
+    render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
+    expect(screen.queryByRole('button', { name: /attach/i })).toBeNull();
   });
 });

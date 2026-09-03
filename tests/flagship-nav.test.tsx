@@ -166,3 +166,29 @@ describe('flagship hero — presence ghost', () => {
     expect(container.querySelector('.presence-ghost')).toBeNull();
   });
 });
+
+// Last in the file on purpose: waiting for a deferred section flushes every pending lazy import,
+// including the face — and the presence-ghost test above needs that chunk still in flight.
+describe('flagship — the invite also retires on the routes that only SHOW the product', () => {
+  it('retires when a flagship card opens its scripted demo', async () => {
+    render(<FlagshipHost />);
+    const cta = await waitFor(
+      () => screen.getAllByRole('button', { name: /Open scripted demo/i })[0],
+    );
+    fireEvent.click(cta);
+    expect(sessionStorage.getItem('mavea-tour-chapter')).toBeTruthy();
+    expect(isTourSeen()).toBe(true);
+  });
+
+  it('retires when a demo card plays its replay', async () => {
+    const { container } = render(<FlagshipHost />);
+    const card = await waitFor(() => {
+      const el = container.querySelector('.fl-demo-card');
+      expect(el).toBeTruthy();
+      return el!;
+    });
+    fireEvent.click(card);
+    expect(sessionStorage.getItem('mavea-demo-persona')).toBeTruthy();
+    expect(isTourSeen()).toBe(true);
+  });
+});

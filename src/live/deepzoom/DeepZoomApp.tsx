@@ -23,6 +23,7 @@ import { applyTheme, readTheme, writeTheme, type Theme } from '../../lib/theme';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
 import type { ModelConfig } from '../../types/mavea';
 import { generateTrunk, generateBranch } from './generate';
+import { ProviderGenerationBlockedError } from '../providers/spendPolicy';
 import { DEEPZOOM_DEMO_TREE } from './demoTree';
 import { buildDefaultPath, planZoomIn, scaleColor, scaleStops } from './nav';
 import type { ZoomLevel, ZoomNode, ZoomTree } from './types';
@@ -256,6 +257,9 @@ interface LevelProps {
   dir: 'in' | 'out';
   selectedIndex: number;
   generating: boolean;
+  /** False when the selected chip leads nowhere this session can open — the canned walkthrough at
+   *  a chip it was never authored for. The control says so instead of ignoring the press. */
+  canZoom: boolean;
   onChipSelect: (i: number) => void;
   onZoomIn: () => void;
 }
@@ -266,6 +270,7 @@ function Level({
   dir,
   selectedIndex,
   generating,
+  canZoom,
   onChipSelect,
   onZoomIn,
 }: LevelProps): ReactNode {
@@ -273,8 +278,6 @@ function Level({
   const color = scaleColor(depth);
   const interactive = layer === 'current';
   const selectedLabel = level.subtopics[selectedIndex] ?? level.subtopics[0];
-  const shownChips = level.subtopics.slice(0, 5);
-  const extra = level.subtopics.length - shownChips.length;
 
   return (
     <article
@@ -282,6 +285,14 @@ function Level({
       data-dir={dir}
       style={{ '--dz-current': color } as React.CSSProperties}
       aria-hidden={!interactive}
+      // The whole reading pane is replaced on every move, which drops keyboard focus to the top of
+      // the document and tells a screen reader nothing. The stage catches focus here, and this is
+      // the name it announces when it does.
+      tabIndex={interactive ? -1 : undefined}
+      role={interactive ? 'group' : undefined}
+      aria-label={
+        interactive ? `${level.multiplier} · ${level.scaleLabel} · ${level.title}` : undefined
+      }
     >
       <div className="dz-scale-eyebrow">
         <span className="dz-scale-mult">{level.multiplier}</span>
@@ -293,7 +304,7 @@ function Level({
       <p className="dz-body">{level.body}</p>
 
       <div className="dz-chips" role="group" aria-label="Zoom into a sub-area">
-        {shownChips.map((topic, i) => (
+        {level.subtopics.map((topic, i) => (
           <button
             key={`${topic}-${i}`}
             type="button"
@@ -306,11 +317,6 @@ function Level({
             {topic}
           </button>
         ))}
-        {extra > 0 && (
-          <span className="dz-chip dz-chip-more" aria-hidden>
-            +{extra}
-          </span>
-        )}
       </div>
 
       {generating ? (
@@ -319,17 +325,25 @@ function Level({
           opening ten more levels…
         </p>
       ) : (
-        <button
-          type="button"
-          tabIndex={interactive ? 0 : -1}
-          className="dz-zoom"
-          onClick={() => interactive && onZoomIn()}
-        >
-          <span className="dz-zoom-glyph" aria-hidden>
-            <ZoomIcon />
-          </span>
-          Zoom into <strong>{selectedLabel}</strong>
-        </button>
+        <>
+          <button
+            type="button"
+            tabIndex={interactive ? 0 : -1}
+            className="dz-zoom"
+            disabled={!canZoom}
+            onClick={() => interactive && onZoomIn()}
+          >
+            <span className="dz-zoom-glyph" aria-hidden>
+              <ZoomIcon />
+            </span>
+            Zoom into <strong>{selectedLabel}</strong>
+          </button>
+          {!canZoom && (
+            <p className="dz-zoom-note">
+              This sample descends one path. A live Deep Zoom forks into any sub-area.
+            </p>
+          )}
+        </>
       )}
     </article>
   );
@@ -441,12 +455,15 @@ function SessionView({
   // Keyboard: ← / ↑ zoom out, → / ↓ / Space zoom in (or fork at the frontier), Esc → overview.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      if (el?.closest('input, textarea, select, [contenteditable="true"]')) return;
       switch (e.key) {
         case 'ArrowRight':
         case 'ArrowDown':
         case ' ':
+          // Space is a focused button's own activation key. Taking it globally meant the theme
+          // toggle, the ladder stops and the chips all zoomed a level instead of doing their job.
+          if (e.key === ' ' && el?.closest('button')) return;
           e.preventDefault();
           if (current < navPath.length - 1) goTo(current + 1);
           else handleZoomIn(current);
@@ -488,6 +505,29 @@ function SessionView({
   const dir = motion?.dir ?? 'in';
   const exitingNode = motion ? navNodes[motion.from] : undefined;
 
+  // Will pressing the button move anything? Asked of the same planner the press runs, so the
+  // control can never look live while `handleZoomIn` has already decided to do nothing — which is
+  // what 20 of the walkthrough's 27 chips did, the frontier's default chip among them.
+  const plan = planZoomIn(tree, navPath, chipSels, current);
+  const canZoom = plan !== null && (plan.kind === 'navigate' || allowBranchGeneration);
+
+  // Every move unmounts the level that was on screen, so a reader who zoomed from the control
+  // inside it is left on <body> at the top of the document with nothing announced. Only when
+  // focus was actually lost — a reader still standing on the ladder keeps their place there.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const landed = useRef(false);
+  useEffect(() => {
+    if (!landed.current) {
+      landed.current = true;
+      return;
+    }
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    stageRef.current
+      ?.querySelector<HTMLElement>('.dz-level.is-current')
+      ?.focus({ preventScroll: true });
+  }, [current]);
+
   const makeCourse = useCallback(() => {
     stashCourseTopic(query);
     window.location.hash = '#/courses';
@@ -500,7 +540,7 @@ function SessionView({
         <ScaleLadder navNodes={navNodes} current={current} onJump={goTo} />
         <div className="dz-reading" style={{ '--dz-current': color } as React.CSSProperties}>
           <div className="dz-field" aria-hidden />
-          <div className="dz-levels">
+          <div className="dz-levels" ref={stageRef}>
             {exitingNode && (
               <Level
                 key={`x${motion?.from}`}
@@ -509,6 +549,7 @@ function SessionView({
                 dir={dir}
                 selectedIndex={chipSels[motion?.from ?? 0] ?? exitingNode.level.selectedIndex}
                 generating={false}
+                canZoom
                 onChipSelect={() => {}}
                 onZoomIn={() => {}}
               />
@@ -521,6 +562,7 @@ function SessionView({
                 dir={dir}
                 selectedIndex={chipSels[current] ?? currentNode.level.selectedIndex}
                 generating={generatingHere}
+                canZoom={canZoom}
                 onChipSelect={(ci) => selectChip(current, ci)}
                 onZoomIn={() => handleZoomIn(current)}
               />
@@ -641,16 +683,49 @@ function LoadingScreen({ query }: { query: string }): ReactNode {
 }
 
 // ── error screen ───────────────────────────────────────────────────────
-function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }): ReactNode {
+function ErrorScreen({
+  message,
+  needsModel,
+  onRetry,
+}: {
+  message: string;
+  /** The failure was the missing model, not the topic. Retrying a different topic cannot fix it,
+   *  so the screen names what is actually missing and offers the one thing that works without it. */
+  needsModel: boolean;
+  onRetry: () => void;
+}): ReactNode {
   return (
     <div className="dz-loading-screen">
       <TopBar />
       <div className="dz-error">
-        <div className="dz-error-title">Couldn't build the zoom</div>
-        <div className="dz-error-body">{message}</div>
-        <button type="button" className="dz-start-btn" onClick={onRetry}>
-          Try another topic
-        </button>
+        <div className="dz-error-title">
+          {needsModel ? 'Deep Zoom needs a model' : 'Couldn’t build the zoom'}
+        </div>
+        <div className="dz-error-body">
+          {needsModel
+            ? 'Every descent is written on the spot, so this one needs a model connected in Live. The sample below runs without one.'
+            : message}
+        </div>
+        <div className="dz-error-actions">
+          {needsModel && (
+            <button
+              type="button"
+              className="dz-start-btn"
+              onClick={() => {
+                window.location.hash = '#/deepzoom?demo=1';
+              }}
+            >
+              See a sample zoom
+            </button>
+          )}
+          <button
+            type="button"
+            className={needsModel ? 'dz-error-alt' : 'dz-start-btn'}
+            onClick={onRetry}
+          >
+            Try another topic
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -663,7 +738,9 @@ export function DeepZoomApp(): ReactNode {
   const [query, setQuery] = useState('');
   const [tree, setTree] = useState<ZoomTree | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The message, plus whether the topic was ever the problem. "Try another topic" is the one action
+  // that cannot help a reader with no model connected, and it used to be the only one offered.
+  const [error, setError] = useState<{ message: string; needsModel: boolean } | null>(null);
   const [generatingForId, setGeneratingForId] = useState<number | null>(null);
   // A topic carried in from Live (?seed=) pre-fills the start screen WITHOUT auto-zooming, so the
   // reader chooses this topic or another. `?q=` still auto-runs (deep links, the walkthrough). Read
@@ -715,7 +792,11 @@ export function DeepZoomApp(): ReactNode {
       // it) must not flip loading off underneath the new run — that leaves query set, tree null and
       // loading false, i.e. a blank frame until the new run lands. `!aborted` ⟺ still the current run.
       if (!ac.signal.aborted) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.');
+        setError({
+          message: err instanceof Error ? err.message : 'Something went wrong.',
+          needsModel:
+            err instanceof ProviderGenerationBlockedError && err.reason === 'unconfigured',
+        });
         setLoading(false);
       }
     }
@@ -845,7 +926,9 @@ export function DeepZoomApp(): ReactNode {
         <StartScreen onSubmit={(q) => void run(q)} seed={seed} />
       )}
       {loading && <LoadingScreen query={query} />}
-      {error && !loading && <ErrorScreen message={error} onRetry={reset} />}
+      {error && !loading && (
+        <ErrorScreen message={error.message} needsModel={error.needsModel} onRetry={reset} />
+      )}
       {tree && !loading && (
         <SessionView
           tree={tree}

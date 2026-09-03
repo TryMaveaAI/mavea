@@ -121,6 +121,50 @@ describe('CommandPalette', () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it('runs the row the keyboard is actually on, not the one the pointer last grazed', () => {
+    // Enter is handled on a window listener against `active`, which arrow keys and the mouse move
+    // but Tab focus did not — so tabbing to a row and pressing Enter fired a different feature.
+    const atlas = vi.fn();
+    const memory = vi.fn();
+    render(
+      <CommandPalette
+        items={items({ atlas: { run: atlas }, memory: { run: memory } })}
+        surface="live"
+        onClose={vi.fn()}
+      />,
+    );
+    const memoryRow = screen.getByRole('option', { name: /What Mavéa remembers/ });
+    fireEvent.focus(memoryRow);
+    expect(memoryRow).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(memory).toHaveBeenCalledOnce();
+    expect(atlas).not.toHaveBeenCalled();
+  });
+
+  it('keeps Tab inside the dialog it declares modal', () => {
+    // aria-modal="true" with nothing inert behind it was a promise the panel did not keep: one
+    // Shift+Tab landed on the scrim's own "Close" stop, the next walked out onto the page.
+    const { container } = render(
+      <>
+        <button type="button">behind the palette</button>
+        <CommandPalette items={items()} surface="live" onClose={vi.fn()} />
+      </>,
+    );
+    const panel = container.querySelector('.cmdk-panel')!;
+    const stops = [...panel.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex]')];
+    const input = screen.getByLabelText('Search features') as HTMLInputElement;
+    input.focus();
+    expect(document.activeElement).toBe(input);
+    expect(stops[0]).toBe(input);
+
+    // Fired from the focused control, the way a real Tab arrives — the trap listens on the panel.
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(stops[stops.length - 1]);
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+  });
+
   it('when pinned, Escape does not close and the esc hint is hidden', () => {
     const onClose = vi.fn();
     render(<CommandPalette items={items()} surface="live" onClose={onClose} pinned />);

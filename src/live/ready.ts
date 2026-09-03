@@ -6,6 +6,7 @@
 // the catalog stays deferred until the first real turn. generateLive.ts re-exports it for any
 // caller that still imports from there.
 import type { ModelConfig } from '../types/mavea';
+import type { LiveProbe } from './providers/types';
 import { getAdapter } from './providers';
 import { fetchWithTimeout } from './providers/http';
 
@@ -15,13 +16,10 @@ const TTS_PROBE_MS = 2_500;
 export async function checkLiveReady(
   cfg: ModelConfig,
   opts: { tts?: boolean } = {},
-): Promise<{ llm: boolean; tts: boolean; model: boolean; statusCode?: number }> {
+): Promise<{ llm: boolean; tts: boolean; model: boolean; statusCode?: number; detail?: string }> {
   const probeP = getAdapter(cfg.provider)
     .probe(cfg)
-    .catch((): { ok: boolean; model: boolean; statusCode?: number } => ({
-      ok: false,
-      model: false,
-    }));
+    .catch((): LiveProbe => ({ ok: false, model: false }));
   const ttsP =
     opts.tts === false
       ? Promise.resolve(false)
@@ -33,6 +31,6 @@ export async function checkLiveReady(
             return false;
           }
         })();
-  const [{ ok, model, statusCode }, tts] = await Promise.all([probeP, ttsP]);
-  return { llm: ok, tts, model, statusCode };
+  const [{ ok, model, statusCode, detail }, tts] = await Promise.all([probeP, ttsP]);
+  return { llm: ok, tts, model, statusCode, detail };
 }

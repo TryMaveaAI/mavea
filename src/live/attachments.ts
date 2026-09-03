@@ -42,6 +42,10 @@ export const PPTX_MIME =
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const OFFICE_MIMES = new Set([DOCX_MIME, PPTX_MIME, XLSX_MIME]);
 const OFFICE_EXT = /\.(docx|pptx|xlsx)$/i;
+// The pre-2007 binary Office formats. They are NOT OOXML — there is no zip to read — so the
+// extractor cannot open one, and refusing it as a plain "unsupported file type. Try a Word doc"
+// named the wrong cause at the exact reader who had just dropped a Word doc.
+const LEGACY_OFFICE_EXT = /\.(doc|ppt|xls)$/i;
 
 // Plain-text / data formats Prism can explode directly: the file bytes ARE the text, so there's no
 // archive to unzip and no vision needed — just smart per-format paging for grounding (textDoc.ts).
@@ -103,9 +107,12 @@ export function isXlsx(a: Attachment): boolean {
 export function isPptx(a: Attachment): boolean {
   return a.mime === PPTX_MIME || /\.pptx$/i.test(a.name);
 }
-/** Anything Prism can split into a claim map: a PDF, an Office doc, or a plain-text/data file. */
+/** Anything Prism can split into a claim map: a PDF, an Office doc, a plain-text/data file — or a
+ *  picture, which mapClaims reads as a one-page deck on the vision path. Images belong here because
+ *  the pickers offer them: without it the Go hub's Prism card staged the screenshot it had just
+ *  asked for and then opened nothing at all. */
 export function isExplodable(a: Attachment): boolean {
-  return isPdf(a) || isOffice(a) || isText(a);
+  return isPdf(a) || isOffice(a) || isText(a) || isImage(a);
 }
 
 /** A coarse kind the SELECTOR reasons over — an attached spreadsheet/CSV is a tabular medium the
@@ -122,7 +129,7 @@ export function attachmentKind(a: Attachment): AttachmentKind {
 }
 
 /** Reason a file was rejected, so the UI can tell the user WHY (not just that it failed). */
-export type AttachmentError = 'too-large' | 'unsupported';
+export type AttachmentError = 'too-large' | 'unsupported' | 'legacy-office';
 
 export interface EncodeResult {
   ok: boolean;
@@ -130,31 +137,44 @@ export interface EncodeResult {
   error?: AttachmentError;
 }
 
-/** Validate from metadata alone so upload-first surfaces can stage instantly and defer file reads. */
-export function attachmentFileError(file: File): AttachmentError | null {
+/** Is this picked file a text/data file (CSV, TXT, Markdown, JSON, code)? The {@link isText}
+ *  reasoning, applied to a File's metadata before it is read. */
+function isTextFile(file: File): boolean {
   const mime = file.type;
-  const textFile =
+  return (
     !mime.startsWith('image/') &&
     mime !== 'application/pdf' &&
     !OFFICE_MIMES.has(mime) &&
     (mime.startsWith('text/') ||
       mime === 'application/json' ||
       /\b(json|xml|yaml|csv|javascript|typescript)\b/.test(mime) ||
-      TEXT_EXT.test(file.name));
+      TEXT_EXT.test(file.name))
+  );
+}
+
+/** The size cap this picked file is held to. Exported so the surface that REPORTS a rejection names
+ *  the same number the guard applied — quoting the image cap at a 20 MB CSV told its owner to give
+ *  up on a file that would have been accepted. */
+export function attachmentSizeLimit(file: File): number {
+  const isDoc =
+    file.type === 'application/pdf' ||
+    OFFICE_MIMES.has(file.type) ||
+    /\.(pdf|docx|pptx|xlsx)$/i.test(file.name) ||
+    isTextFile(file);
+  return isDoc ? MAX_DOCUMENT_BYTES : MAX_ATTACHMENT_BYTES;
+}
+
+/** Validate from metadata alone so upload-first surfaces can stage instantly and defer file reads. */
+export function attachmentFileError(file: File): AttachmentError | null {
+  const mime = file.type;
   const accepted =
     mime.startsWith('image/') ||
     mime === 'application/pdf' ||
     OFFICE_MIMES.has(mime) ||
     OFFICE_EXT.test(file.name) ||
-    textFile;
-  if (!accepted) return 'unsupported';
-  const isDoc =
-    mime === 'application/pdf' ||
-    OFFICE_MIMES.has(mime) ||
-    /\.(pdf|docx|pptx|xlsx)$/i.test(file.name) ||
-    textFile;
-  const limit = isDoc ? MAX_DOCUMENT_BYTES : MAX_ATTACHMENT_BYTES;
-  return file.size > limit ? 'too-large' : null;
+    isTextFile(file);
+  if (!accepted) return LEGACY_OFFICE_EXT.test(file.name) ? 'legacy-office' : 'unsupported';
+  return file.size > attachmentSizeLimit(file) ? 'too-large' : null;
 }
 
 /** Read one File into an Attachment, enforcing the type + size guards. Never throws —

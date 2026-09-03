@@ -304,7 +304,10 @@ export async function askRepo(question: string, ctx: RepoAskContext): Promise<Re
     if (err instanceof DOMException && err.name === 'AbortError') {
       return { text: '', coverage: 'none', citations: [] };
     }
-    return { text: 'Couldn’t reach the model just now.', coverage: 'none', citations: [] };
+    // A request that never landed is not a coverage verdict. Resolving with `coverage: 'none'` put
+    // "not covered by what Ripple has read" — a judgement about the REPO — over a transport
+    // failure; the thread's own error state says what actually happened.
+    throw new Error('Couldn’t reach the model just now.', { cause: err });
   }
   if (ctx.signal?.aborted) return { text: '', coverage: 'none', citations: [] };
 

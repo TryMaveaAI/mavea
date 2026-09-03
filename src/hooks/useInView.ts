@@ -29,7 +29,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
  * renders no frames at all — either way an element can sit squarely in the viewport with no
  * intersection ever delivered, and fire-once semantics would keep it invisible forever. So in
  * `once` mode the observer is the path that *times* the entrance, while a direct rect check on
- * scroll-settle, on tab-reveal, and once shortly after mount guarantees *arrival*.
+ * scroll-settle, on tab-reveal, and once shortly after mount guarantees *arrival*. That check
+ * applies `threshold` too, so the guarantee never fires an entrance the observer would have held.
  */
 export function useInView<T extends Element = HTMLDivElement>(
   options: {
@@ -120,7 +121,16 @@ export function useInView<T extends Element = HTMLDivElement>(
       const near = () => {
         const rect = el.getBoundingClientRect();
         const bounds = root ? root.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
-        if (rect.top < bounds.bottom + pad && rect.bottom > bounds.top - pad) reveal();
+        const top = bounds.top - pad;
+        const bottom = bounds.bottom + pad;
+        const shown = Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
+        // The fallback holds the caller's threshold, not bare overlap. A one-shot choreography
+        // asks for one (SeeDontRead wants a third of its comparison on screen) precisely so it
+        // can't play to nobody, and a scroll that settles with a 20px sliver showing was
+        // otherwise enough to burn it. Measured against the ROOT as well as the element, so a
+        // section taller than the window — which can never reach 12% of itself — still arrives.
+        const need = threshold * Math.min(rect.height, bottom - top);
+        if (shown > 0 && shown >= need) reveal();
       };
       const scroller: EventTarget = root ?? window;
       if ('onscrollend' in window) {

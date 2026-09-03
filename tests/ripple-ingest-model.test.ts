@@ -85,6 +85,71 @@ index 0000000..2222222
       expect(looksLikeDiff(SAMPLE)).toBe(true);
       expect(looksLikeDiff('just some notes about my change')).toBe(false);
     });
+
+    // Content is indistinguishable from a header once the diff marker is prepended: removing the
+    // SQL comment `-- backfill first` puts `--- backfill first` on the wire. Read by prefix, that
+    // was taken for the next file's pre-image and the rest of the hunk was silently dropped —
+    // which also cost the migration its risk verdict, since that is derived from the added lines.
+    it('reads a body line that looks like a file header — the @@ counts bound the hunk', () => {
+      const d = parseUnifiedDiff(
+        [
+          'diff --git a/migrations/007.sql b/migrations/007.sql',
+          '--- a/migrations/007.sql',
+          '+++ b/migrations/007.sql',
+          '@@ -1,3 +1,3 @@',
+          ' BEGIN;',
+          '--- backfill first',
+          '+ALTER TABLE users ADD COLUMN plan text NOT NULL;',
+          ' COMMIT;',
+        ].join('\n'),
+      );
+      expect(d.files.map((f) => f.path)).toEqual(['migrations/007.sql']);
+      expect(d.files[0]!.add).toBe(1);
+      expect(d.files[0]!.del).toBe(1);
+      const lines = d.files[0]!.hunks[0]!.lines;
+      expect(lines).toContainEqual({ t: 'del', c: '-- backfill first' });
+      expect(lines).toContainEqual({
+        t: 'add',
+        c: 'ALTER TABLE users ADD COLUMN plan text NOT NULL;',
+      });
+      expect(lines).toContainEqual({ t: 'ctx', c: 'COMMIT;' });
+    });
+
+    it('reads an added line that looks like a post-image header without renaming the file', () => {
+      const d = parseUnifiedDiff(
+        [
+          'diff --git a/src/count.ts b/src/count.ts',
+          '--- a/src/count.ts',
+          '+++ b/src/count.ts',
+          '@@ -1 +1,2 @@',
+          ' let count = 0;',
+          '+++ count;',
+        ].join('\n'),
+      );
+      expect(d.files.map((f) => f.path)).toEqual(['src/count.ts']);
+      expect(d.files[0]!.add).toBe(1);
+      expect(d.files[0]!.hunks[0]!.lines).toContainEqual({ t: 'add', c: '++ count;' });
+    });
+
+    it('still splits a bare multi-file diff, where a hunk runs straight into the next --- line', () => {
+      const d = parseUnifiedDiff(
+        [
+          '--- a/one.ts',
+          '+++ b/one.ts',
+          '@@ -1 +1 @@',
+          '-const a = 1;',
+          '+const a = 2;',
+          '--- a/two.ts',
+          '+++ b/two.ts',
+          '@@ -1 +1 @@',
+          '-const b = 1;',
+          '+const b = 2;',
+        ].join('\n'),
+      );
+      expect(d.files.map((f) => f.path)).toEqual(['one.ts', 'two.ts']);
+      expect(d.add).toBe(2);
+      expect(d.del).toBe(2);
+    });
   });
 
   describe('buildShipFromDiff', () => {
@@ -134,6 +199,101 @@ index 0000000..2222222
       expect(m.gate.unackedP0).toBeGreaterThanOrEqual(2);
       expect(m.gate.decision).toBe('block');
       expect(m.pr.risks.some((r) => r.text.includes('parseLegacyJWT'))).toBe(true);
+    });
+
+    // A file that declared nothing cannot break an importer, so a docs-only PR must not read as a
+    // P0. The deletion branch used to claim one for every removed file, naming the file itself as
+    // the missing symbol ("Anything importing README breaks").
+    it('does not call a deletion breaking when the file declared no symbol', () => {
+      const docs = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/README b/README',
+            'deleted file mode 100644',
+            '--- a/README',
+            '+++ /dev/null',
+            '@@ -1 +0,0 @@',
+            '-Hello World!',
+          ].join('\n'),
+        ),
+      );
+      expect(docs.changes[0]!.risk).toBe('watch');
+      expect(docs.changes[0]!.intent).toBe('Deletes README.');
+      expect(docs.pr.p0Ways).toBeUndefined();
+      expect(docs.gate.decision).not.toBe('block');
+      expect(docs.gate.unackedP0).toBe(0);
+      expect(docs.pr.risks.every((r) => !r.text.includes('importing README'))).toBe(true);
+    });
+
+    it('still calls a deletion breaking when the file declared something callers could import', () => {
+      const mod = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/src/auth/legacy.ts b/src/auth/legacy.ts',
+            'deleted file mode 100644',
+            '--- a/src/auth/legacy.ts',
+            '+++ /dev/null',
+            '@@ -1,2 +0,0 @@',
+            '-export function parseLegacyJWT(t: string) {',
+            '-}',
+          ].join('\n'),
+        ),
+      );
+      expect(mod.changes[0]!.risk).toBe('breaks');
+      expect(mod.changes[0]!.title).toBe('Remove parseLegacyJWT');
+    });
+
+    // Expand/contract is the recipe for adding a non-nullable column. Printed beside a DROP or an
+    // index build it is prescriptive advice for a migration the diff does not contain.
+    it('offers the expand/contract plan only for the migration it actually describes', () => {
+      const drop = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/migrations/010.sql b/migrations/010.sql',
+            '--- /dev/null',
+            '+++ b/migrations/010.sql',
+            '@@ -0,0 +1,2 @@',
+            '+DROP TABLE legacy_sessions;',
+            '+CREATE INDEX CONCURRENTLY idx_user ON sessions (user_id);',
+          ].join('\n'),
+        ),
+      );
+      expect(drop.migration?.sql?.length).toBe(2);
+      expect(drop.migration?.expand).toEqual([]);
+
+      const addCol = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/migrations/011.sql b/migrations/011.sql',
+            '--- /dev/null',
+            '+++ b/migrations/011.sql',
+            '@@ -0,0 +1 @@',
+            "+ALTER TABLE users ADD COLUMN plan text NOT NULL DEFAULT 'free';",
+          ].join('\n'),
+        ),
+      );
+      expect(addCol.migration?.expand.map((s) => s.title)).toEqual([
+        'Add it nullable',
+        'Backfill in batches',
+        'Then set NOT NULL',
+      ]);
+    });
+
+    it('names the repo root readably instead of double-bracketing the area list', () => {
+      const root = buildShipFromDiff(
+        parseUnifiedDiff(
+          [
+            'diff --git a/index.js b/index.js',
+            '--- a/index.js',
+            '+++ b/index.js',
+            '@@ -1 +1,2 @@',
+            ' a',
+            '+b',
+          ].join('\n'),
+        ),
+      );
+      expect(root.pr.summary).not.toContain('((root))');
+      expect(root.pr.summary).toContain('the repo root');
     });
   });
 

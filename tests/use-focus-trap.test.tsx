@@ -79,6 +79,28 @@ describe('useFocusTrap', () => {
     expect(escaped).toBe(true);
   });
 
+  it('keeps the Escape it handled, so the surface underneath does not also close', () => {
+    // Every surface that opens one of these listens for Escape on `window` to dismiss itself. One
+    // press closing both the receipt a reader opened AND the world it stands on is a dismissal
+    // they never asked for.
+    let escaped = 0;
+    let reachedWindow = 0;
+    const spy = () => (reachedWindow += 1);
+    window.addEventListener('keydown', spy);
+    try {
+      const { getByTestId } = render(<Trapped onEscape={() => (escaped += 1)} />);
+      fireEvent.keyDown(getByTestId('trap'), { key: 'Escape', bubbles: true });
+      expect(escaped).toBe(1);
+      expect(reachedWindow).toBe(0);
+
+      // Anything the trap does NOT claim still reaches the host.
+      fireEvent.keyDown(getByTestId('trap'), { key: 'k', bubbles: true });
+      expect(reachedWindow).toBe(1);
+    } finally {
+      window.removeEventListener('keydown', spy);
+    }
+  });
+
   it('does not steal focus back to the first element when the host re-renders with a fresh onEscape closure', () => {
     const { getByText, rerender } = render(<TrappedUnstableEscape tick={0} />);
     const last = getByText('last');

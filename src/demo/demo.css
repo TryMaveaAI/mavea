@@ -498,3 +498,10 @@
     bottom: 204px;
   }
 }
+
+/* An overlay that owns the screen sits below this chrome's z-index (the export studio's scrim is
+   90; Present's deck is 150), so the banner covered their titles and the transport still took the
+   clicks. Hide the frame while one is up — the replay underneath keeps performing. */
+.demox[data-covered] > * {
+  display: none;
+}

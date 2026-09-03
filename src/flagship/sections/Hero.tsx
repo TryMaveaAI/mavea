@@ -153,9 +153,11 @@ export function Hero({
           </button>
         </div>
       </form>
+      {/* Says microphone, not "voice": in Live, "Mavéa's voice" is the SPEECH switch, and that one
+          starts on. The device permission this line is about is the mic, which never opens itself. */}
       <p className="fl-privacy-line">
-        Fully usable with keyboard and pointer. No camera. Voice is optional and starts only when
-        you explicitly turn it on in Live.
+        Fully usable with keyboard and pointer. No camera. The microphone is optional and opens only
+        when you turn it on in Live; Mavéa&rsquo;s spoken replies have their own switch.
       </p>
 
       {showTourInvite ? (

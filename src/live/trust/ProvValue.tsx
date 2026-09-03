@@ -5,7 +5,7 @@
 // a structure value that never had a number — is never a button.
 import { type ReactElement } from 'react';
 import { statusOf } from './types';
-import { rawOf } from './display';
+import { OPENS_LABEL, rawOf } from './display';
 import { useTrust } from './trustContext';
 
 interface ProvValueProps {
@@ -36,7 +36,7 @@ export function ProvValue({ id, className }: ProvValueProps): ReactElement | nul
       onClick={(e) => trust?.open(id, e.currentTarget)}
     >
       {rawOf(value)}
-      <span className="tr-sr">, source available</span>
+      <span className="tr-sr">{OPENS_LABEL[value.kind]}</span>
     </button>
   );
 }

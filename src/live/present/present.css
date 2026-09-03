@@ -372,12 +372,15 @@
 }
 
 /* ── Slide counter — minimal centered pill at the bottom ─────────────────────────────────── */
+/* Belongs to FocusStage's filmstrip-present feature, so it rides just above its own arrows (52)
+   and stays under the .preso-deck overlay (150-162). At 155 it landed INSIDE that band and drew a
+   canvas-card count over a real slide — three counters on a projected screen, one of them wrong. */
 .present-nav {
   position: fixed;
   bottom: calc(var(--dock-h, 72px) + 14px);
   left: 50%;
   translate: -50% 0;
-  z-index: 155;
+  z-index: 53;
   display: inline-flex;
   align-items: center;
   padding: 5px 14px;

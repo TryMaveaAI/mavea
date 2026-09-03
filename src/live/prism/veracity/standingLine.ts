@@ -41,8 +41,9 @@ export function standingLine(verdicts: readonly Verdict[]): string {
     if (n > 0) parts.push(`${n} ${wording[v]}`);
   }
 
-  return `${troubled.length} of ${total} checked ${plural(
-    total,
-    'claim',
-  )} need a second look: ${parts.join(' · ')}.`;
+  // The verb agrees with the COUNT that needs looking at, not the pool it came from: "1 of 6
+  // checked claims need a second look" was the reading every single-trouble document got.
+  return `${troubled.length} of ${total} checked ${plural(total, 'claim')} ${
+    troubled.length === 1 ? 'needs' : 'need'
+  } a second look: ${parts.join(' · ')}.`;
 }

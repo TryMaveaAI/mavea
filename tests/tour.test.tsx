@@ -229,12 +229,14 @@ describe('core walkthrough feature scenes', () => {
     // preventDefault stole typing in the API-key input the Connect chapter opens, and Space on a
     // focused end-card button drove the tour instead of pressing the button. (Escape stays global —
     // it always means "leave the run".)
-    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    const guard = /function transportKeyBelongsToControl[\s\S]{0,500}?\n}/.exec(live);
+    // The rule lives in the driver kit both runs share, so neither can drift from the other.
+    const kit = readFileSync(join(__dirname, '../src/tour/driverKit.ts'), 'utf8');
+    const guard = /export function transportKeyBelongsToControl[\s\S]{0,700}?\n}/.exec(kit);
     expect(guard, 'the transport-key guard is gone').not.toBeNull();
     expect(guard![0]).toMatch(/inTextField\(e\.target\)/);
     expect(guard![0]).toMatch(/closest\('button'\)/);
     // Both the tour handler and the demo-replay handler consult it.
+    const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
     expect(live.match(/transportKeyBelongsToControl\(e\)/g)).toHaveLength(2);
   });
 
@@ -552,6 +554,16 @@ describe('tour entry flags', () => {
       expect(takeTourMode()).toBe(true);
       // Consumed: a reload without re-stashing must NOT replay the tour.
       expect(takeTourMode()).toBe(false);
+    });
+
+    it('retires the landing’s first-run invite — every route into the tour goes through here', () => {
+      // The rule used to live at each caller, and the showcase's ten deep-links each stashed tour
+      // mode on their own: a visitor came back from the walkthrough to be invited on it again.
+      localStorage.clear();
+      expect(isTourSeen()).toBe(false);
+      stashTourMode();
+      expect(isTourSeen()).toBe(true);
+      resetTourSeen();
     });
 
     it('honors a ?tour=1 deep-link in the hash', () => {

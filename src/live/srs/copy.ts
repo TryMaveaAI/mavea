@@ -33,7 +33,7 @@ export interface StyleCopy {
   moreLeft: string;
   /** Curated and ordered by importance — never alphabetical. */
   filters: StyleFilter[];
-  /** Adjective for the Study button when a narrowing filter is active. */
+  /** Adjective for the Review button when a narrowing filter is active. */
   filterAdjective: Partial<Record<CardFilter, string>>;
   /** Row status pills. `touched` is the majority state, so it must read as calm, not as debt. */
   status: { parked: string; fresh: string; touched: string };
@@ -58,7 +58,7 @@ const SPACED: StyleCopy = {
   ],
   filterAdjective: { due: 'Due', new: 'New', struggling: 'Struggling' },
   status: { parked: 'Suspended', fresh: 'New', touched: 'Scheduled' },
-  parkVerb: { park: 'Suspend', unpark: 'Unsuspend', title: 'Suspend (skip in study)' },
+  parkVerb: { park: 'Suspend', unpark: 'Unsuspend', title: 'Suspend (skip in reviews)' },
 };
 
 const COLLECTION: StyleCopy = {
@@ -77,7 +77,7 @@ const COLLECTION: StyleCopy = {
   ],
   filterAdjective: { unseen: 'Unseen', missed: 'Missed' },
   status: { parked: 'Parked', fresh: 'Unseen', touched: 'Seen' },
-  parkVerb: { park: 'Park', unpark: 'Unpark', title: 'Park (skip in study)' },
+  parkVerb: { park: 'Park', unpark: 'Unpark', title: 'Park (skip in reviews)' },
 };
 
 const BY_STYLE: Record<StudyStyle, StyleCopy> = { spaced: SPACED, collection: COLLECTION };

@@ -874,7 +874,10 @@ export const LegalMasthead: MastheadComponent = ({ meta, skin }) => {
               whiteSpace: 'nowrap',
             }}
           >
-            Attorneys at Law
+            {/* The shared output tagline, never a professional identity: a reader picks this look
+                for its style, and stamping "Attorneys at Law" under it claims the document was
+                written by a law firm. */}
+            {skin.brand.tagline}
           </div>
         </div>
         <span
@@ -887,7 +890,9 @@ export const LegalMasthead: MastheadComponent = ({ meta, skin }) => {
             whiteSpace: 'nowrap',
           }}
         >
-          Privileged &amp; Confidential
+          {/* Neither privilege nor work-product attaches to a model-generated document, so the
+              memo is marked the way every other template marks one. */}
+          Confidential
         </span>
       </div>
       <div style={{ paddingTop: 26 }}>

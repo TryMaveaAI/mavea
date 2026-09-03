@@ -1,5 +1,5 @@
 // ThinkStep.tsx — step 2: how Mavéa answers. Just the two most useful dials (web search and
-// answer quality) — everything else defaults to great and lives in settings. Defaults
+// thinking time) — everything else defaults to great and lives in settings. Defaults
 // are good, so this whole step is skippable; every control writes through the config store.
 import { type ReactElement } from 'react';
 import { getAdapter } from '../../providers';
@@ -18,7 +18,7 @@ export function ThinkStep(): ReactElement {
       ? "Answers from the model's own knowledge — no web calls."
       : caps.nativeWebSearch
         ? 'Grounds fresh asks in live web results with citations, only when a question needs it.'
-        : "This model has no built-in search, so Real-time won't ground anything right now. Works only if your model supports it — pick one that does (Gemini or OpenRouter), or leave this off.";
+        : "This model has no built-in search, so Real-time won't ground anything right now. The four direct providers support it; on OpenRouter it depends on the selected model. Pick a search-capable model or leave this off.";
 
   return (
     <div className="step-body">
@@ -37,9 +37,12 @@ export function ThinkStep(): ReactElement {
       </div>
 
       <div className="field-block">
-        <span className="card-eyebrow">Answer quality</span>
+        {/* Named exactly as Settings names it. It was "Answer quality" here and "Thinking time"
+            there, so the dial a first-run visitor set in the wizard could not be found again by
+            the name they set it under — including in the command palette. */}
+        <span className="card-eyebrow">Thinking time</span>
         <SegRow
-          ariaLabel="Answer quality"
+          ariaLabel="Thinking time"
           value={cfg.quality}
           onPick={(v) => setLiveConfigV2({ quality: v as typeof cfg.quality })}
           options={[

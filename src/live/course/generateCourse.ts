@@ -8,6 +8,9 @@
 // failure, and the caller (CoursesApp) shows that failure honestly instead of a hollow course.
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers';
+// From the leaf, not the adapter registry: the registry is what callers mock, and this is a
+// policy class with no adapter graph behind it.
+import { ProviderGenerationBlockedError } from '../providers/spendPolicy';
 import { parseLooseJsonObject } from '../ground/json';
 import type { CheckpointQuestion, CourseLevel, TopicCourse, TopicLesson } from './model';
 
@@ -20,17 +23,37 @@ const MAX_LESSONS = 9;
  *  the user gets an honest "took too long" instead of a hang. */
 const GEN_BUDGET_MS = 90_000;
 
+/** Display names for these messages. A copy of generateLive's, on purpose: importing it would drag
+ *  the whole live-generation graph into this lazy chunk for five words, and `providerInfo`'s label
+ *  ("Gemini · Google") is written for the picker, not for the middle of a sentence. */
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  gemini: 'Google',
+  openrouter: 'OpenRouter',
+  grok: 'Grok',
+};
+
 /** Turn a raw provider/transport error into a short, human message for the course sheet. The adapters
- *  surface things like "anthropic 429" or "gemini 401"; those shouldn't reach a learner verbatim. */
+ *  surface things like "anthropic 429" or "gemini 401"; those shouldn't reach a learner verbatim.
+ *  Shared by the syllabus and the checkpoint call, so nothing here names one of them. */
 function friendlyGenError(err: unknown, provider: string): string {
+  // A local policy refusal: nothing was sent, so there is nothing about the connection to blame.
+  // Without this the likeliest first-run state — no model yet — sent a learner off to debug their
+  // wifi, on a surface that has no route to settings.
+  if (err instanceof ProviderGenerationBlockedError)
+    return err.reason === 'replay'
+      ? 'This is a recorded example, so nothing new is generated here — connect your own model to build a course of your own.'
+      : 'No model is connected yet — add a model and its API key in settings to start.';
+  const label = PROVIDER_LABELS[provider] ?? provider;
   const msg = err instanceof Error ? err.message : String(err);
   if (/\b429\b|rate.?limit|quota|resource.?exhausted/i.test(msg))
-    return `${provider} is rate-limiting right now — wait a moment and try again.`;
+    return `${label} is rate-limiting right now — wait a moment and try again.`;
   if (/\b40[13]\b|api key|unauthor|permission/i.test(msg))
-    return `${provider} rejected the request — check its API key in settings.`;
+    return `${label} rejected the request — check its API key in settings.`;
   if (/\b5\d\d\b|overloaded|unavailable/i.test(msg))
-    return `${provider} had a server error — try again in a moment.`;
-  return `Couldn't reach ${provider} to build the course — check your connection and its key, then try again.`;
+    return `${label} had a server error — try again in a moment.`;
+  return `Couldn't reach ${label} — check your connection and its key, then try again.`;
 }
 /** A checkpoint is exactly this many questions — small enough to stay a quick self-check, real
  *  enough to test the lesson. Written lazily by generateCheckpoint, never as part of the syllabus. */

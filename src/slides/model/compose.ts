@@ -79,6 +79,13 @@ const splitProse = (body: string, max = PROSE_MAX): string[] => {
         cur = '';
       }
       cur += word;
+      // A single token past the budget has no boundary left to break on — a URL, a hash, or a
+      // script that does not space its words. Cut it, rather than hand the layout a chunk its
+      // line-clamp can only ellipsize (which drops most of the paragraph, silently).
+      while (cur.length > max) {
+        units.push(cur.slice(0, max));
+        cur = cur.slice(max);
+      }
     }
     if (cur) units.push(cur);
   }
@@ -349,7 +356,9 @@ function draftsForSection(s: Section): SlideDraft[] {
 
     case 'prose': {
       const d = s.data;
-      const body = d.body || d.heading || '';
+      // Never restate the heading as the body: a section that normalized to a heading alone is
+      // dropped upstream, and echoing it here painted a slide with its own title twice.
+      const body = d.body;
       if (!body) return [];
       if (!d.heading && body.length <= 140) return [{ kind: 'quote', data: { body }, notes: body }];
       return splitProse(body).map((part, i) => ({

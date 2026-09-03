@@ -93,8 +93,19 @@ describe('LiveSettings — lifecycle and truthful status', () => {
     ).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('honours a tab and setting request that arrives while it is already open', () => {
+    // The palette can ask for a destination without remounting this panel — those props were read
+    // only by a useState initializer, so "Whisper mode" over an open Settings did nothing at all.
+    const { rerender } = render(<LiveSettings initialTab="model" />);
+    expect(screen.getByRole('tab', { name: 'Model' })).toHaveAttribute('aria-selected', 'true');
+
+    rerender(<LiveSettings initialTab="you" revealYouSetting="quiet-hours" />);
+    expect(screen.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('switch', { name: 'Quiet hours' })).toBeInTheDocument();
+  });
+
   it('describes quiet hours without promising inaudibility', () => {
-    render(<LiveSettings initialTab="you" initialAdvancedYouOpen />);
+    render(<LiveSettings initialTab="you" revealYouSetting="quiet-hours" />);
     expect(screen.getByText(/Audibility still depends on your device volume/i)).toBeInTheDocument();
     expect(screen.queryByText(/won't wake anyone/i)).not.toBeInTheDocument();
   });
@@ -216,11 +227,14 @@ describe('LiveSettings — destructive and legal actions', () => {
     expect(getLibrary()).toHaveLength(0);
   });
 
-  it('withdraws acknowledgement immediately so the gate can review it now', () => {
+  it('takes two clicks to withdraw acknowledgement — it tears the whole surface down', () => {
     expect(acceptLegalTerms()).toBe(true);
     render(<LiveSettings />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Review legal acknowledgement now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign the acknowledgement again' }));
+    expect(hasLegalAcceptance()).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: /Sign again\?/ }));
     expect(hasLegalAcceptance()).toBe(false);
   });
 });

@@ -4,33 +4,15 @@
 // to an answer to. Tokens only — never a currency estimate: prices differ per provider and per
 // model and change without notice, and a confidently wrong dollar figure is worse than none.
 import { useSyncExternalStore, type ReactElement } from 'react';
-import { getUsageLedger, subscribeUsage, type UsageEntry } from './ledger';
+import { getUsageLedger, getUsageSummary, subscribeUsage, USAGE_LEDGER_MAX } from './ledger';
 import './usage.css';
-
-interface Totals {
-  calls: number;
-  input: number;
-  cachedInput: number;
-  output: number;
-}
-
-function sum(entries: readonly UsageEntry[]): Totals {
-  return entries.reduce<Totals>(
-    (acc, e) => ({
-      calls: acc.calls + 1,
-      input: acc.input + e.input,
-      cachedInput: acc.cachedInput + e.cachedInput,
-      output: acc.output + e.output,
-    }),
-    { calls: 0, input: 0, cachedInput: 0, output: 0 },
-  );
-}
 
 /** Thousands separators at every size: a bare 18500 reads as noise beside 1850. */
 const NUM = new Intl.NumberFormat();
 
 export function UsagePanel(): ReactElement {
   const entries = useSyncExternalStore(subscribeUsage, getUsageLedger, getUsageLedger);
+  const totals = useSyncExternalStore(subscribeUsage, getUsageSummary, getUsageSummary);
   if (!entries.length) {
     return (
       <p className="usage-empty">
@@ -39,18 +21,13 @@ export function UsagePanel(): ReactElement {
     );
   }
 
-  const totals = sum(entries);
   // The share of input billed at the cached rate. It is the number every prompt-shape decision in
   // here is judged by, so it gets stated plainly rather than left to be derived from two others.
   const cachedShare = totals.input ? Math.round((totals.cachedInput / totals.input) * 100) : 0;
 
   // Per call site, biggest first: a turn can bill several passes, and "which pass spent it" is
   // the actionable half of the answer.
-  const byLabel = new Map<string, number>();
-  for (const e of entries) {
-    byLabel.set(e.label, (byLabel.get(e.label) ?? 0) + e.input + e.output);
-  }
-  const sites = [...byLabel.entries()].sort((a, b) => b[1] - a[1]);
+  const sites = [...totals.sites].sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="usage-panel">
@@ -90,7 +67,14 @@ export function UsagePanel(): ReactElement {
         ))}
       </ul>
       <div className="usage-call-log">
-        <p className="usage-call-heading">Calls, newest first</p>
+        {/* Say the cap out loud, like the Library does with its own: the totals above cover the
+            whole session, this list is only its tail. */}
+        <p className="usage-call-heading">
+          Calls, newest first
+          {totals.truncated
+            ? ` — the last ${NUM.format(USAGE_LEDGER_MAX)} of ${NUM.format(totals.calls)}`
+            : ''}
+        </p>
         <ul className="usage-calls">
           {[...entries].reverse().map((entry, index) => (
             <li key={`${entry.at}-${entry.label}-${index}`}>

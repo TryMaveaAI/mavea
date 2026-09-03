@@ -72,14 +72,19 @@ function mount(
   );
 }
 
+/** A figure's accessible name says what pressing it opens, and that WORDING is kind-specific
+ *  (see `opens what it actually holds` below) — so tests that just need the figure match any of
+ *  the three rather than asserting one. */
+const OPENS = /source available|how this was worked out|illustrative — no source/i;
+
 function openFirst(): void {
-  fireEvent.click(screen.getAllByRole('button', { name: /source available/i })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: OPENS })[0]);
 }
 
 describe('ProvValue', () => {
   it('is a real button that names its affordance, and never a button without one', () => {
     const { container } = mount([PRICE]);
-    const btn = screen.getByRole('button', { name: /source available/i });
+    const btn = screen.getByRole('button', { name: OPENS });
     expect(btn.tagName).toBe('BUTTON');
     expect(btn.getAttribute('type')).toBe('button');
     expect(btn.getAttribute('data-status')).toBe('grounded');
@@ -102,13 +107,40 @@ describe('ProvValue', () => {
     expect(container.querySelector('button')).toBeNull();
     expect(container.textContent).not.toMatch(/undefined|NaN/);
   });
+
+  it('opens what it actually holds — never a source an illustrative figure has not got', () => {
+    // Every figure once announced ", source available". An illustrative magnitude carries no
+    // receipt, so its card renders no SOURCE section at all — and on an illustrative world that
+    // was every clickable figure on the screen promising one.
+    const illustrative: WorldValue = {
+      id: 'half_life',
+      label: 'Half life',
+      kind: 'illustrative',
+      resolution: {
+        ok: true,
+        tier: 'T3',
+        value: 5,
+        raw: '5 years',
+        illustrative: 'textbook order of magnitude',
+        surface: 'model',
+      },
+    };
+    mount([PRICE, REVENUE, illustrative]);
+    const named = screen.getAllByRole('button').map((b) => b.textContent);
+    expect(named).toEqual([
+      '10, source available',
+      '30, how this was worked out',
+      '5 years, illustrative — no source',
+    ]);
+    expect(screen.queryByRole('button', { name: /5 years, source available/i })).toBeNull();
+  });
 });
 
 describe('ProvenanceCard status', () => {
   it('badges each status in plain words', () => {
     const badge = (v: WorldValue): string | undefined => {
       const { container, unmount } = mount([v]);
-      fireEvent.click(screen.getByRole('button', { name: /source available/i }));
+      fireEvent.click(screen.getByRole('button', { name: OPENS }));
       const text = container.querySelector('.tr-badge')?.textContent ?? undefined;
       unmount();
       return text;
@@ -251,7 +283,7 @@ describe('ProvenanceCard navigation and dismissal', () => {
 
   it('closes on Escape and on a click away, handing focus back to the figure', () => {
     mount([PRICE]);
-    const btn = screen.getByRole('button', { name: /source available/i });
+    const btn = screen.getByRole('button', { name: OPENS });
 
     fireEvent.click(btn);
     const card = screen.getByRole('dialog');

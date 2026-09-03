@@ -14,6 +14,12 @@
 }
 
 :root {
+  /* Native controls follow the chosen theme, not the OS. Undeclared, a checkbox on a dark surface
+     paints its unchecked box solid white — on the flashcard list that reads as a column of already
+     ticked rows — and the document scrollbar stays light beside a dark page. Set here for the dark
+     default; light-theme.css overrides it with the rest of the palette. */
+  color-scheme: dark;
+
   /* --- viewport scale --- */
   /* The interface is drawn against a 1440x900 reference, and the geometry below is stated as a
      multiple of that reference rather than in fixed pixels: a small laptop tucks in instead of

@@ -31,17 +31,25 @@ const MULTIPLIERS = [
   '×10Qn',
 ];
 
+/** Chips a level may carry. The prompt asks for 3–5 and the stage draws every one it is given, so
+ *  the cap is enforced HERE — a sixth subtopic reached the level, could not be drawn, and could
+ *  still be the `selectedIndex`, leaving the reader under a "Zoom into …" naming a chip that was
+ *  nowhere on the screen and could not be changed. */
+const MAX_SUBTOPICS = 5;
+
 function coerceLevel(raw: unknown, scale: number): ZoomLevel | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const subtopics = Array.isArray(r.subtopics)
-    ? (r.subtopics as unknown[]).map(String).filter(Boolean).slice(0, 8)
+    ? (r.subtopics as unknown[]).map(String).filter(Boolean).slice(0, MAX_SUBTOPICS)
     : [];
   if (subtopics.length === 0) return null;
   const selectedIndex = Math.max(0, Math.min(subtopics.length - 1, Number(r.selectedIndex ?? 0)));
   return {
     scale,
-    multiplier: MULTIPLIERS[scale] ?? `×${10 ** scale}`,
+    // Past the named powers a bare `10 ** scale` printed twenty zeroes, then flipped to "1e+21".
+    // Two forks off the frontier is all it takes to get there.
+    multiplier: MULTIPLIERS[scale] ?? `×10^${scale}`,
     scaleLabel: String(r.scaleLabel ?? `SCALE ${scale}`).toUpperCase(),
     title: String(r.title ?? '').trim(),
     body: String(r.body ?? '').trim(),

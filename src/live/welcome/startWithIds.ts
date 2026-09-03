@@ -40,7 +40,7 @@ export function prismRow(staged: readonly { name: string }[]): {
 } {
   if (staged.length === 0) {
     return {
-      blurb: 'Choose a PDF, Office doc, or data file to map its claims',
+      blurb: 'Choose a PDF, Office doc, image, or data file to map its claims',
       opensPicker: true,
     };
   }

@@ -47,6 +47,7 @@ vi.mock('../src/live/providers', () => ({
 }));
 
 import { generateCourse, generateCheckpoint } from '../src/live/course/generateCourse';
+import { ProviderGenerationBlockedError } from '../src/live/providers/spendPolicy';
 import { generateLive } from '../src/live/generateLive';
 
 // generateCourse.ts is the one file in the Courses feature that talks to the model and does the real
@@ -210,6 +211,25 @@ describe('generateCourse — the syllabus writer', () => {
     it('maps a 401/API-key error to a check-your-key message', async () => {
       fake.throwError = new Error('gemini 401 Unauthorized');
       await expect(generateCourse('topic', cfg)).rejects.toThrow(/check its API key/i);
+    });
+
+    it('says no model is connected rather than blaming the connection, when nothing was sent', async () => {
+      // The likeliest first-run state of all. Courses has no route to settings, so sending a
+      // learner off to check their wifi over a local policy refusal is a dead end.
+      fake.throwError = new ProviderGenerationBlockedError('unconfigured');
+      const msg = await generateCourse('topic', cfg).then(
+        () => 'resolved',
+        (e: Error) => e.message,
+      );
+      expect(msg).toMatch(/no model is connected/i);
+      expect(msg).not.toMatch(/connection/i);
+    });
+
+    it('names the provider the way a reader would, never its config id', async () => {
+      fake.throwError = new Error('gemini network down');
+      await expect(generateCourse('topic', { ...cfg, provider: 'gemini' })).rejects.toThrow(
+        /Couldn't reach Google/i,
+      );
     });
 
     it('a deliberate caller-cancel propagates untouched (not reported as a server error)', async () => {
@@ -406,6 +426,17 @@ describe('generateCheckpoint — the lazy self-check writer', () => {
     it('maps a 401/API-key error to a check-your-key message', async () => {
       fake.throwError = new Error('gemini 401 Unauthorized');
       await expect(generateCheckpoint(course, 0, cfg)).rejects.toThrow(/check its API key/i);
+    });
+
+    it('never claims a course build failed — this call writes a checkpoint', async () => {
+      // One shared error helper for both calls, so nothing in it may name either one.
+      fake.throwError = new Error('gemini network down');
+      const msg = await generateCheckpoint(course, 0, cfg).then(
+        () => 'resolved',
+        (e: Error) => e.message,
+      );
+      expect(msg).toMatch(/Couldn't reach OpenRouter/i);
+      expect(msg).not.toMatch(/course/i);
     });
 
     it('a deliberate caller-cancel propagates untouched (not reported as a server error)', async () => {

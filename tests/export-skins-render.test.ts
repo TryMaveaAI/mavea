@@ -616,16 +616,44 @@ describe('prose fallback never leaves a placeholder stub', () => {
     expect(normalize([spec([empty])])).toEqual([]);
   });
 
-  it('keeps a prose block only with real content, never an empty body paired with a type name', () => {
-    const withText = {
+  it('drops a block that resolves to a heading and nothing else', () => {
+    // A heading over an empty body is an orphan line on paper and a titled blank frame on a
+    // slide — and the agenda promises both. Measured over the demo/tour corpora, 39 sections
+    // (every prose section there was) came out this way before the extractors were widened.
+    const headingOnly = {
       type: 'mysteryblock',
       col: 6,
       props: { title: 'Real heading' },
     } as unknown as Block;
+    expect(normalize([spec([headingOnly])])).toEqual([]);
+  });
+
+  it('keeps a prose block with real content, and never surfaces the type name', () => {
+    const withText = {
+      type: 'mysteryblock',
+      col: 6,
+      props: { title: 'Real heading', summary: 'A real sentence about the thing.' },
+    } as unknown as Block;
     const out = normalize([spec([withText])]);
     expect(out).toHaveLength(1);
     expect(out[0].kind).toBe('prose');
-    if (out[0].kind === 'prose') expect(out[0].data.heading).toBe('Real heading');
+    if (out[0].kind === 'prose') {
+      expect(out[0].data.heading).toBe('Real heading');
+      expect(out[0].data.body).toBe('A real sentence about the thing.');
+    }
+    expect(JSON.stringify(out)).not.toContain('mysteryblock');
+  });
+
+  it("reads a block's caption or footer as its body — a route map is not a bare heading", () => {
+    const withCaption = {
+      type: 'mysteryblock',
+      col: 6,
+      props: { title: 'Day 1', caption: 'A climb from the river through Alfama.' },
+    } as unknown as Block;
+    const out = normalize([spec([withCaption])]);
+    expect(out).toHaveLength(1);
+    if (out[0].kind === 'prose')
+      expect(out[0].data.body).toBe('A climb from the river through Alfama.');
   });
 });
 
@@ -885,5 +913,109 @@ describe('rasterToPdf', () => {
       expect.any(Number),
       { align: 'center' },
     );
+  });
+});
+
+describe('the generic extractor reaches the extended library it was built for', () => {
+  const block = (type: string, props: Record<string, unknown>) =>
+    ({ type, col: 6, props }) as unknown as Block;
+
+  it("names an item by its own text field when the component's key isn't a conventional one", () => {
+    // ~100 distinct item text keys are declared across the catalog, and they live in the lazily
+    // fetched detail shards — an item the name list can't read is dropped, which empties the whole
+    // block into a bare heading. `howtosteps` keys its steps on `action`.
+    const out = normalize([
+      spec([
+        block('howtosteps', {
+          title: 'The Authorization Code Flow',
+          steps: [
+            { action: 'Redirect to the provider', detail: 'With your client id and scopes.' },
+            { action: 'Exchange the code', detail: 'Server-to-server, with the client secret.' },
+          ],
+        }),
+      ]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('verticalTimeline');
+    if (out[0].kind === 'verticalTimeline')
+      expect(out[0].data.events.map((e) => e.title)).toEqual([
+        'Redirect to the provider',
+        'Exchange the code',
+      ]);
+  });
+
+  it('never lets a style token or a status enum stand in for a label', () => {
+    const out = normalize([
+      spec([
+        block('howtosteps', {
+          title: 'Styled',
+          steps: [{ iconColor: 'var(--presence)', kind: 'warning', headline: 'Check the state' }],
+        }),
+      ]),
+    ]);
+    if (out[0]?.kind === 'verticalTimeline')
+      expect(out[0].data.events[0].title).toBe('Check the state');
+  });
+
+  it('prints a columns × rows comparison as a real table instead of dropping it', () => {
+    // `comparison` is the primary shape of 26 catalog components and returned no draft at all, so
+    // the side-by-side the reader actually asked for came out as a heading over nothing.
+    const out = normalize([
+      spec([
+        block('comparematrix', {
+          title: 'Session Cookies vs. JWTs',
+          cols: ['Session Cookies', 'JWT'],
+          rows: [
+            { label: 'Storage', cells: [{ value: 'Server-side' }, { value: 'Client-side' }] },
+            { label: 'Revocation', cells: [{ kind: 'yes' }, { kind: 'no' }] },
+          ],
+        }),
+      ]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('specTable');
+    if (out[0].kind === 'specTable') {
+      expect(out[0].data.columns).toEqual(['', 'Session Cookies', 'JWT']);
+      expect(out[0].data.rows).toEqual([
+        ['Storage', 'Server-side', 'Client-side'],
+        ['Revocation', 'Yes', 'No'],
+      ]);
+    }
+  });
+
+  it('drops a figure grid whose cells resolve no readings', () => {
+    // A `plot` keeps its numbers in `curves[].points[]`, so the grid resolved one series name and
+    // no values — a heading, one word, and an empty frame on the slide and the page.
+    const out = normalize([
+      spec([
+        block('plot', {
+          title: 'Growth trajectory',
+          curves: [{ label: 'Total Value', points: [{ x: 0, y: 10000 }] }],
+        }),
+      ]),
+    ]);
+    expect(out.some((s) => s.kind === 'figureGrid')).toBe(false);
+  });
+
+  it("does not print an embedded figure's own caption twice", () => {
+    const out = normalize([
+      spec([
+        block('sankey', {
+          title: 'Energy flow',
+          footer: 'Losses are shown in grey.',
+          nodes: [
+            { id: 'a', label: 'A' },
+            { id: 'b', label: 'B' },
+          ],
+          links: [{ from: 'a', to: 'b', value: 4 }],
+        }),
+      ]),
+    ]);
+    expect(out[0]?.kind).toBe('figure');
+    if (out[0]?.kind === 'figure') {
+      expect(out[0].data.caption).toBe('Losses are shown in grey.');
+      // The skin draws it under the frame, so the block handed to the embed must not draw it too.
+      expect((out[0].data.block.props as { footer?: string }).footer).toBeUndefined();
+    }
   });
 });

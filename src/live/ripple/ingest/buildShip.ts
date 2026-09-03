@@ -164,7 +164,21 @@ function analyze(f: ParsedFile): Analysis {
   const primary = (s: Set<string>): string | undefined => [...s][0];
 
   if (f.status === 'deleted') {
-    const sym = primary(removed) ?? name;
+    const sym = primary(removed);
+    // Only a file that DECLARED something can break an importer, so a doc, fixture, changelog or
+    // lockfile removal gets an honest "check nothing points at it" — never a P0. The diff proves
+    // the file is gone; it proves nothing about callers of a symbol that was never there.
+    if (!sym || isTest(f.path) || isLockfile(f.path)) {
+      return {
+        kind: 'behavior',
+        risk: 'watch',
+        title: `Delete ${name}`,
+        intent: `Deletes ${name}.`,
+        phrase: `deletes ${name}`,
+        risks: [{ level: 'watch', text: `${name} is gone — check nothing still points at it.` }],
+        symbols: [...removed],
+      };
+    }
     return {
       kind: 'breaking',
       risk: 'breaks',
@@ -512,30 +526,46 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
 
   // Migration section, if the diff carries a schema change.
   const migFile = real.find((f) => isMigration(f.path));
+  const migSql = migFile ? linesOf(migFile, 'add').slice(0, 6) : [];
+  // Expand/contract is the recipe for ONE operation: adding a non-nullable column. Printing it
+  // beside a DROP, an index build or a type change would be prescriptive advice for a migration
+  // this diff doesn't contain — so it's offered only when the SQL actually adds a NOT NULL column.
+  const addsNotNullColumn =
+    /\badd\s+column\b/i.test(migSql.join(' ')) && /\bnot\s+null\b/i.test(migSql.join(' '));
   const migration: ShipMigration | undefined = migFile
     ? {
         file: migFile.path,
-        sql: linesOf(migFile, 'add').slice(0, 6),
+        sql: migSql,
         rows: 'unknown',
         lockCost: 'depends on the table size — verify the row count before running',
-        expand: [
-          {
-            title: 'Add it nullable',
-            detail: 'Add the column without NOT NULL — instant, no rewrite.',
-          },
-          {
-            title: 'Backfill in batches',
-            detail: 'Fill existing rows off-peak so replicas keep up.',
-          },
-          { title: 'Then set NOT NULL', detail: 'A fast validate once every row is populated.' },
-        ],
+        expand: addsNotNullColumn
+          ? [
+              {
+                title: 'Add it nullable',
+                detail: 'Add the column without NOT NULL — instant, no rewrite.',
+              },
+              {
+                title: 'Backfill in batches',
+                detail: 'Fill existing rows off-peak so replicas keep up.',
+              },
+              {
+                title: 'Then set NOT NULL',
+                detail: 'A fast validate once every row is populated.',
+              },
+            ]
+          : [],
         note: 'Row count and lock time aren’t in the diff — confirm against the real table before you run it.',
       }
     : undefined;
 
   const fileWord = real.length === 1 ? 'file' : 'files';
   const areaNames = [...areaIdx.keys()];
-  const areaList = areaNames.slice(0, 3).join(', ');
+  // The root sentinel already carries its own brackets, and the summary wraps the list in another
+  // pair — "((root))" without this.
+  const areaList = areaNames
+    .slice(0, 3)
+    .map((a) => (a === '(root)' ? 'the repo root' : a))
+    .join(', ');
   // A read synthesised from the actual changes, worst-first.
   const rank: Record<RiskLevel, number> = { safe: 0, watch: 1, breaks: 2 };
   const ordered = [...changes].sort((a, b) => rank[b.risk] - rank[a.risk]);
@@ -549,9 +579,15 @@ export function buildShipFromDiff(parsed: ParsedDiff, label?: string): ShipModel
       ? lead.slice(0, -1).join(', ') + (lead.length > 1 ? ' and ' : '') + lead[lead.length - 1]
       : `touches ${real.length} ${fileWord}`;
 
+  // "owner/repo #482" is one label to the reader but two fields to the surface: the header sets the
+  // number in its own pill, and the gate's agent contract is keyed on it — `mavea.gate(pr)`, a
+  // literal placeholder, was what the whole contract said it applied to.
+  const labelled = /^(.*?)\s+(#\d+)$/.exec((label ?? '').trim());
+
   return {
     pr: {
-      repo: label || '',
+      repo: labelled?.[1] ?? label ?? '',
+      ...(labelled?.[2] ? { number: labelled[2] } : {}),
       title: `${real.length} ${fileWord} changed`,
       added: parsed.add,
       removed: parsed.del,

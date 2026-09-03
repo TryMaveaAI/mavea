@@ -46,7 +46,7 @@ describe('Welcome hub (returning user)', () => {
   it('(c) leads with the conversational headline and shows the starters', () => {
     localStorage.setItem(SETUP_KEY, '1');
     render(
-      <SetupWizard speak={vi.fn()} goDemo={vi.fn()} onStart={vi.fn()} onStartTalking={vi.fn()} />,
+      <SetupWizard speak={vi.fn()} goHome={vi.fn()} onStart={vi.fn()} onStartTalking={vi.fn()} />,
     );
     expect(screen.getByText('What are we figuring out?')).toBeInTheDocument();
     expect(screen.getByText(/switch topics whenever you want/i)).toBeInTheDocument();

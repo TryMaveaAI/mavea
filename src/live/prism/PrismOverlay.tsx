@@ -95,6 +95,10 @@ function speakKokoroResult(text: string): void {
   void loadKokoro().then((m) => m.speakKokoroResult(text, 'mavea'));
 }
 
+/** A file's extension, stripped for display. Prism reads far more than PDFs, so peeling only
+ *  ".pdf" left the header and the legend reading "report.docx" and "data.csv". */
+const EXT = /\.[a-z0-9]+$/i;
+
 /** Kind → accent token + label. Tints a card; never organizes layout (regions do that). */
 const KIND_META: Record<ClaimKind, { color: string; label: string }> = {
   forecast: { color: 'var(--presence)', label: 'FORECAST' },
@@ -313,6 +317,10 @@ export function PrismOverlay({
   // The Why lens opens as its own layer over the map. Null = closed; `lensBusy` guards the build.
   const [whyDag, setWhyDag] = useState<WhyDag | null>(null);
   const [lensBusy, setLensBusy] = useState<'why' | null>(null);
+  // A trace that never ran must say so. explodeWhy resolves NULL on a model/network failure, so
+  // without this the button spun, returned to rest, showed nothing and said nothing — after
+  // spending the reader's tokens. Every sibling pass (Reconcile, Cross-Examine, Levers) tracks it.
+  const [whyFailed, setWhyFailed] = useState(false);
   const whyAbort = useRef<AbortController | null>(null);
   // The kind + thread palette legend — the vocabulary of the map. Off by default so it never sits on
   // the cards; a footer toggle opens it when you want to read what the colors and line styles mean.
@@ -381,22 +389,28 @@ export function PrismOverlay({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        if (briefing) {
-          cancelKokoro();
-          setBriefing(null);
-          setBriefingIds(new Set());
-          setOpenId(null);
-          fitRef.current();
-        } else if (browse) setBrowse(null);
-        else if (askFocus) setAskFocus(null);
-        else if (openId) setOpenId(null);
-        else onClose();
-      }
+      if (e.key !== 'Escape') return;
+      // A dialog layered ABOVE Prism (the Why lens, the share-reel modal) owns its own Escape.
+      // This listener is on the window, so without the guard one press dismissed two: the layer
+      // the reader meant, and the whole Prism session behind it.
+      const target = e.target as HTMLElement | null;
+      const dialog = target?.closest('[role="dialog"]');
+      if (dialog && !panelRef.current?.contains(dialog)) return;
+      if (briefing) {
+        cancelKokoro();
+        setBriefing(null);
+        setBriefingIds(new Set());
+        setOpenId(null);
+        fitRef.current();
+      } else if (legendOpen) setLegendOpen(false);
+      else if (browse) setBrowse(null);
+      else if (askFocus) setAskFocus(null);
+      else if (openId) setOpenId(null);
+      else onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [briefing, browse, askFocus, openId, onClose]);
+  }, [briefing, legendOpen, browse, askFocus, openId, onClose]);
 
   const [largeLayout, setLargeLayout] = useState<{
     spec: PrismSpec;
@@ -583,6 +597,7 @@ export function PrismOverlay({
     lvRan.current = false;
     whyAbort.current?.abort();
     setWhyDag(null);
+    setWhyFailed(false);
     setLensBusy(null);
     setLens('map');
     // "from scratch" is the promise on the button: skip the remembered map and re-read the source
@@ -753,15 +768,20 @@ export function PrismOverlay({
     const ac = new AbortController();
     whyAbort.current = ac;
     setLensBusy('why');
+    setWhyFailed(false);
     const text = corpus.flat().join('\n').slice(0, 8000);
     const q = multiDoc
       ? 'Why — the argument these documents make'
-      : `Why does "${pdfs[0].name.replace(/\.[a-z0-9]+$/i, '')}" reach its conclusion?`;
+      : `Why does "${pdfs[0].name.replace(EXT, '')}" reach its conclusion?`;
     void loadWhy()
       .then(({ explodeWhy }) => explodeWhy(q, text, cfg, ac.signal))
       .then((dag) => {
         if (ac.signal.aborted) return; // a replay/re-explode superseded this build — never show its result
-        setWhyDag(dag);
+        if (!dag) setWhyFailed(true);
+        else setWhyDag(dag);
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) setWhyFailed(true);
       })
       .finally(() => {
         if (!ac.signal.aborted) setLensBusy(null);
@@ -1262,6 +1282,13 @@ export function PrismOverlay({
   }, [lvOpen, spec, corpus, cfg, cancelOtherRuns]);
 
   return (
+    // The backdrop dismisses on click, and that is ALL it is: it carries no button role and takes
+    // no focus. As `role="button"` it wrapped the whole dialog, so assistive tech announced Prism
+    // as the contents of one "Close Prism" button — and its Enter/Space handler fired for keydowns
+    // BUBBLING from every control inside it, so Enter on a claim card or the zoom knob closed the
+    // session instead of activating the control, and a space typed into the ask box did the same.
+    // The keyboard already has the header's Close button and Escape.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className="prism-scrim"
       data-expanded={expanded ? 'true' : undefined}
@@ -1275,14 +1302,6 @@ export function PrismOverlay({
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="Close Prism"
-      onKeyDown={(e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-        onClose();
       }}
     >
       {/* Clicks inside the panel are swallowed so they don't bubble to the scrim above and close
@@ -1306,7 +1325,11 @@ export function PrismOverlay({
             <span className="prism-file-name">
               {multiDoc ? `${pdfs.length} documents` : pdfs[0].name}
             </span>
-            {spec && <span className="prism-file-pages">· {spec.pageCount} pages</span>}
+            {spec && (
+              <span className="prism-file-pages">
+                · {spec.pageCount} page{spec.pageCount === 1 ? '' : 's'}
+              </span>
+            )}
           </div>
           <div className="prism-head-right">
             {/* Corpus lens: filter the fused map to everything / the disputes / the holes / the
@@ -1377,7 +1400,11 @@ export function PrismOverlay({
                 ▤<span className="prism-replay-label"> Read document</span>
               </button>
             )}
-            {settled && (
+            {/* An externally settled world can only be re-mapped by the owner that built it (see
+                onReplay): without one there is no "from scratch" to run — the internal explode's
+                result is discarded by `world ?? internal` — so the button would promise a re-map
+                and, with a key configured, quietly bill one whose result nothing reads. */}
+            {settled && (!world || onReplay) && (
               <button
                 type="button"
                 className="prism-replay"
@@ -1420,7 +1447,7 @@ export function PrismOverlay({
                     style={{ background: DOC_PALETTE[i % DOC_PALETTE.length] }}
                     aria-hidden="true"
                   />
-                  <span className="prism-legend-name">{d.fileName.replace(/\.pdf$/i, '')}</span>
+                  <span className="prism-legend-name">{d.fileName.replace(EXT, '')}</span>
                   <span className="prism-legend-count">{count}</span>
                 </span>
               );
@@ -1462,7 +1489,7 @@ export function PrismOverlay({
                 <div className="prism-doc-page">
                   <span className="prism-doc-eyebrow">{multiDoc ? 'DOCUMENTS' : 'DOCUMENT'}</span>
                   <span className="prism-doc-title">
-                    {multiDoc ? `${pdfs.length} documents` : pdfs[0].name.replace(/\.pdf$/i, '')}
+                    {multiDoc ? `${pdfs.length} documents` : pdfs[0].name.replace(EXT, '')}
                   </span>
                   <div className="prism-doc-lines">
                     {[92, 84, 88, 70, 90, 60, 80, 66].map((w, i) => (
@@ -1508,9 +1535,18 @@ export function PrismOverlay({
             {phase === 'error' && (
               <div className="prism-error" role="alert">
                 <p className="prism-error-msg">{error}</p>
-                <button type="button" className="prism-error-retry" onClick={replay}>
-                  Try again
-                </button>
+                {/* With no model connected, retrying can only fail the same way — and on the
+                    standalone #/prism route there is no other control on screen. Settings live in
+                    Live, so that is where the way out points. */}
+                {cfg ? (
+                  <button type="button" className="prism-error-retry" onClick={replay}>
+                    Try again
+                  </button>
+                ) : (
+                  <a className="prism-error-retry" href="#/live">
+                    Connect a model
+                  </a>
+                )}
               </div>
             )}
 
@@ -2270,6 +2306,14 @@ export function PrismOverlay({
           </div>
         )}
 
+        {/* Why standing — the causal trace has no dock of its own, so a failed one is reported here */}
+        {settled && whyFailed && !whyDag && (
+          <div className="prism-standing" role="status">
+            <span className="prism-standing-dot" aria-hidden="true" />
+            <span className="prism-standing-text">Couldn’t trace the causes — try again.</span>
+          </div>
+        )}
+
         {/* Reconcile standing — the document's own figures checked against each other in pure code */}
         {settled && (reconBusy || reconOn || reconFailed) && (
           <div
@@ -2321,6 +2365,10 @@ export function PrismOverlay({
                     setAskOpen((v) => !v);
                   }}
                   {...preloadIntentProps(askSurface.preload)}
+                  // The dock renders on askCtx (a model AND the grounding corpus), so the button
+                  // has to gate on the same thing. Without it, a corpus-less host — the tour's
+                  // baked map — offered a control that latched "Hide ask" over an empty stage.
+                  disabled={!askCtx}
                   aria-pressed={askOpen}
                   title="Ask the document a question — the answer lights up the exact lines"
                 >
@@ -2333,7 +2381,7 @@ export function PrismOverlay({
                   {...preloadIntentProps(briefingSurface.preload)}
                   disabled={!placed || placed.claims.length === 0}
                   aria-pressed={briefingOn}
-                  title="Play a silent, captioned flight through the document's argument — ending on its weakest point"
+                  title="Play a captioned, narrated flight through the document's argument — ending on its weakest point"
                 >
                   {briefingOn ? 'End briefing' : 'Brief me'}
                 </button>
@@ -2347,9 +2395,9 @@ export function PrismOverlay({
                   className={'prism-foot-btn' + (reconOn ? ' is-active' : '')}
                   onClick={runReconcileNow}
                   {...preloadIntentProps(() => loadReconcile().then(() => undefined))}
-                  disabled={reconBusy || !cfg || !spec || spec.claims.length === 0}
+                  disabled={reconBusy || !cfg || !corpus || !spec || spec.claims.length === 0}
                   aria-pressed={reconOn}
-                  title="Check the document's own figures against each other — flags numbers that don't add up, computed in pure code"
+                  title="Check the document's own figures against each other — flags numbers that don't add up (one model call; the arithmetic and the verdict are pure code)"
                 >
                   {reconBusy ? 'Checking…' : reconOn ? 'Hide numbers' : 'Check the numbers'}
                 </button>
@@ -2365,6 +2413,7 @@ export function PrismOverlay({
                   disabled={
                     xeBusy ||
                     !cfg ||
+                    !corpus ||
                     !spec ||
                     spec.claims.filter((c) => c.role === 'load-bearing').length === 0
                   }

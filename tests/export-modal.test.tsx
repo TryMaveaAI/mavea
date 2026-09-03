@@ -207,9 +207,9 @@ describe('ExportModal — progress, cancel, and size', () => {
       getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
 
     fireEvent.click(getByText('Select all'));
-    await waitFor(() => getByText('Select none'));
+    await waitFor(() => getByText('Just this answer'));
 
-    fireEvent.click(getByText('Select none'));
+    fireEvent.click(getByText('Just this answer'));
     // Collapsing never empties the selection — the default answer remains.
     await waitFor(() => getByText('Select all'));
     expect(pressed().some((b) => b.textContent?.includes('Second'))).toBe(true);
@@ -363,7 +363,7 @@ describe('ExportModal — the document pipeline gets the same progress/cancel/me
       answer(0, 'Quarterly review'),
     ]);
 
-    fireEvent.click(getByLabelText('Accent #7A2E33'));
+    fireEvent.click(getByLabelText('Accent Brick'));
 
     expect(queryByText('Composing…')).toBeNull();
     expect(getByText('Download PDF')).not.toBeDisabled();
@@ -482,5 +482,22 @@ describe('ExportModal — per-slide skip', () => {
     // Putting it back clears the note — the full deck exports again.
     fireEvent.click(getByText('Include slide'));
     expect(queryByText(/slides in the file$/)).toBeNull();
+  });
+
+  it('drops the measured size once the slide list changes under it', async () => {
+    exportDeckToPdf.mockResolvedValue(new Blob(['0123456789']));
+    const { getByText, queryByText } = render(
+      <ExportModal answers={[answer(0, 'Quarterly review')]} defaultIndex={0} onClose={() => {}} />,
+    );
+
+    fireEvent.click(getByText('Download PDF'));
+    // The exact size of the file that was just written — no "~".
+    await waitFor(() => expect(getByText(/^\d+(\.\d+)? (B|KB|MB)$/)).toBeInTheDocument());
+
+    // Crossing a slide out makes that file a different file. Reporting its old byte count, still
+    // without the "~", claimed an exact size for something that no longer exists.
+    fireEvent.click(getByText('Skip slide'));
+    await waitFor(() => expect(getByText(/^~ /)).toBeInTheDocument());
+    expect(queryByText(/^\d+(\.\d+)? (B|KB|MB)$/)).toBeNull();
   });
 });

@@ -1,5 +1,7 @@
 /* ===================== LIGHT THEME ===================== */
 :root[data-theme='light'] {
+  color-scheme: light;
+
   --surface-default: #f3f5fb;
   --surface-deep: #e9edf5;
   --surface-elevated: #ffffff;

@@ -84,21 +84,27 @@ export function ShipMigration({ model }: SectionProps): ReactElement {
 
       {/* RIGHT — the same change, shipped safely */}
       <div className="ripple-mig-right">
-        <div className="ripple-eyebrow">Ship it this way instead — expand / contract</div>
+        {/* A safe-shipping plan is specific to the operation. Offered only when there is one for
+            what this SQL actually does — never a generic recipe printed beside a different change. */}
+        {expand.length > 0 && (
+          <>
+            <div className="ripple-eyebrow">Ship it this way instead — expand / contract</div>
 
-        <ol className="ripple-mig-steps">
-          {expand.map((step, i) => (
-            <li className="ripple-mig-step" key={i}>
-              <span className="ripple-mig-step-rail" aria-hidden="true">
-                <span className="ripple-mig-step-dot" />
-              </span>
-              <div className="ripple-mig-step-body">
-                <span className="ripple-mig-step-title">{step.title}</span>
-                <span className="ripple-mig-step-detail">{step.detail}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
+            <ol className="ripple-mig-steps">
+              {expand.map((step, i) => (
+                <li className="ripple-mig-step" key={i}>
+                  <span className="ripple-mig-step-rail" aria-hidden="true">
+                    <span className="ripple-mig-step-dot" />
+                  </span>
+                  <div className="ripple-mig-step-body">
+                    <span className="ripple-mig-step-title">{step.title}</span>
+                    <span className="ripple-mig-step-detail">{step.detail}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
 
         {note && (
           <div className="ripple-mig-tell">

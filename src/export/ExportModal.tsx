@@ -52,16 +52,17 @@ function defaultPageFormat(): PageFormat {
   return region && LETTER_REGIONS.has(region) ? 'letter' : 'a4';
 }
 
-/** Accent presets offered alongside each skin's signature colour. */
-const ACCENT_PRESETS = [
-  '#1C6E8C',
-  '#1C3D5A',
-  '#7A2E33',
-  '#0F766E',
-  '#1B4332',
-  '#43388E',
-  '#B45309',
-  '#111111',
+/** Accent presets offered alongside each skin's signature colour. Named, because the chip's only
+ *  accessible text is its label and a hex code is read out digit by digit. */
+const ACCENT_PRESETS: readonly { name: string; value: string }[] = [
+  { name: 'Teal', value: '#1C6E8C' },
+  { name: 'Navy', value: '#1C3D5A' },
+  { name: 'Brick', value: '#7A2E33' },
+  { name: 'Pine', value: '#0F766E' },
+  { name: 'Forest', value: '#1B4332' },
+  { name: 'Indigo', value: '#43388E' },
+  { name: 'Amber', value: '#B45309' },
+  { name: 'Ink', value: '#111111' },
 ];
 
 export function ExportModal({
@@ -116,6 +117,7 @@ export function ExportModal({
   // Lets the Cancel button abort an in-flight export, and lets the unmount cleanup abort leaked work.
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const firstControlRef = useRef<HTMLButtonElement | null>(null);
 
   // The walkthrough sequence belongs to the modal so its clock begins only after this lazy
   // surface has actually mounted. Driving these controls from outside raced the chunk load on
@@ -229,10 +231,11 @@ export function ExportModal({
   }, [allSlides.length, slideIndex]);
 
   // A reported size belongs to one exact configuration — once any input that affects the output
-  // changes, fall back to showing the estimate again rather than a now-stale measured size.
+  // changes, fall back to showing the estimate again rather than a now-stale measured size. A
+  // slide crossed out after an export changes the file just as surely as a template does.
   useEffect(() => {
     setLastSize(null);
-  }, [format, specs, skin, slideSkin, accent, slideScale, docScale, pageFormat]);
+  }, [format, specs, skin, slideSkin, accent, slideScale, docScale, pageFormat, skippedSlides]);
 
   // Escape closes the modal — but while an export is in flight it cancels that instead, so a
   // panicked Escape stops the work rather than abandoning it half-run. During a print there is
@@ -272,8 +275,10 @@ export function ExportModal({
 
   // Trap focus inside the panel and restore it to the trigger on close. Escape and the ←/→ deck keys
   // stay on the window handler above (which also needs to ignore them mid-export), so the trap here
-  // manages only Tab cycling and focus restore.
-  useFocusTrap(panelRef);
+  // manages only Tab cycling and focus restore. Focus opens on the Format control, not on the
+  // notice's "Details" link that precedes it in DOM order — following that link navigates the SPA
+  // to the legal page and takes the whole half-configured export with it.
+  useFocusTrap(panelRef, { initialFocus: firstControlRef });
 
   const titleText = isPres ? deck?.meta.title : doc?.meta.title;
   const safeTitle = (titleText ?? (isPres ? 'Deck' : 'Document'))
@@ -430,15 +435,18 @@ export function ExportModal({
         style={narrow ? { ...ST.panel, ...ST.panelNarrow } : ST.panel}
         ref={panelRef}
         tabIndex={-1}
+        className="ex-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Export as PDF"
+        aria-label="Export"
       >
         {/* ── Controls ─────────────────────────────────────────── */}
         <div style={narrow ? { ...ST.controls, ...ST.controlsNarrow } : ST.controls}>
           {narrow && closeButton}
           <div style={ST.head}>
-            <div style={ST.title}>Export as PDF</div>
+            {/* Not "Export as PDF": the same panel also writes a .pptx, and the format the
+                reader picks is the control directly below. */}
+            <div style={ST.title}>Export</div>
             <div style={ST.subtitle}>
               {isPres
                 ? 'A polished slide deck, designed to present.'
@@ -455,6 +463,7 @@ export function ExportModal({
                 ([label, val]) => (
                   <button
                     key={val}
+                    ref={val === 'presentation' ? firstControlRef : undefined}
                     type="button"
                     style={segBtn(format === val)}
                     onClick={() => setFormat(val)}
@@ -488,8 +497,7 @@ export function ExportModal({
                         <span
                           style={{
                             ...ST.swatchDot,
-                            background: s.tokens.accent,
-                            outline: s.tokens.dark ? '1px solid #2a2f37' : 'none',
+                            background: `linear-gradient(135deg, ${s.tokens.paper} 0 50%, ${s.tokens.accent} 50%)`,
                           }}
                         />
                         <span style={ST.swatchLabel}>{s.label}</span>
@@ -512,8 +520,7 @@ export function ExportModal({
                         <span
                           style={{
                             ...ST.swatchDot,
-                            background: s.tokens.accent,
-                            outline: s.tokens.dark ? '1px solid #2a2f37' : 'none',
+                            background: `linear-gradient(135deg, ${s.tokens.pageBg} 0 50%, ${s.tokens.accent} 50%)`,
                           }}
                         />
                         <span style={ST.swatchLabel}>{s.label}</span>
@@ -561,14 +568,15 @@ export function ExportModal({
                 title="Template default"
                 aria-pressed={accentOverride === null}
               />
-              {ACCENT_PRESETS.map((c) => (
+              {ACCENT_PRESETS.map(({ name, value }) => (
                 <button
-                  key={c}
+                  key={value}
                   type="button"
-                  style={accentChip(accentOverride === c, c)}
-                  onClick={() => setAccentOverride(c)}
-                  aria-label={`Accent ${c}`}
-                  aria-pressed={accentOverride === c}
+                  style={accentChip(accentOverride === value, value)}
+                  onClick={() => setAccentOverride(value)}
+                  aria-label={`Accent ${name}`}
+                  title={name}
+                  aria-pressed={accentOverride === value}
                 />
               ))}
               <label style={ST.colorWrap} title="Custom accent">
@@ -588,7 +596,7 @@ export function ExportModal({
               <div style={ST.groupHeadRow}>
                 <div style={ST.groupLabel}>Include</div>
                 <button type="button" style={ST.linkBtn} onClick={toggleSelectAll}>
-                  {allSelected ? 'Select none' : 'Select all'}
+                  {allSelected ? 'Just this answer' : 'Select all'}
                 </button>
               </div>
               <div style={ST.answers}>
@@ -604,6 +612,12 @@ export function ExportModal({
                     >
                       <span style={checkBox(on)} aria-hidden="true">
                         {on ? '✓' : ''}
+                      </span>
+                      {/* Two turns on one thread can open with the same words, and the label
+                          ellipsizes long before they diverge — the position in the session is
+                          what tells them apart. */}
+                      <span style={ST.answerOrdinal} aria-hidden="true">
+                        {String(a.index + 1).padStart(2, '0')}
                       </span>
                       <span style={ST.answerLabel}>{a.label}</span>
                     </button>
@@ -638,95 +652,97 @@ export function ExportModal({
 
           <div style={{ flex: 1 }} />
 
-          {error && <div style={ST.error}>{error}</div>}
+          <div style={ST.footer}>
+            {error && <div style={ST.error}>{error}</div>}
 
-          {progress && (
-            <div style={ST.progressWrap}>
-              <div
-                style={ST.progressTrack}
-                role="progressbar"
-                aria-label={isPres ? 'Exporting slides' : 'Exporting pages'}
-                aria-valuemin={0}
-                aria-valuemax={progress.total}
-                aria-valuenow={progress.done}
-              >
+            {progress && (
+              <div style={ST.progressWrap}>
                 <div
-                  style={{
-                    ...ST.progressFill,
-                    width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`,
-                  }}
-                />
+                  style={ST.progressTrack}
+                  role="progressbar"
+                  aria-label={isPres ? 'Exporting slides' : 'Exporting pages'}
+                  aria-valuemin={0}
+                  aria-valuemax={progress.total}
+                  aria-valuenow={progress.done}
+                >
+                  <div
+                    style={{
+                      ...ST.progressFill,
+                      width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <div style={ST.progressLabel}>
+                  {progress.done} / {progress.total} {isPres ? 'slides' : 'pages'}
+                </div>
               </div>
-              <div style={ST.progressLabel}>
-                {progress.done} / {progress.total} {isPres ? 'slides' : 'pages'}
-              </div>
+            )}
+
+            {sizeNote && !progress && <div style={ST.sizeNote}>{sizeNote}</div>}
+
+            {/* Screen-reader-only running commentary: progress, completion, or the error text. */}
+            <div aria-live="polite" style={ST.srOnly}>
+              {statusMessage(isPres, busy, progress, error, lastSize)}
             </div>
-          )}
 
-          {sizeNote && !progress && <div style={ST.sizeNote}>{sizeNote}</div>}
-
-          {/* Screen-reader-only running commentary: progress, completion, or the error text. */}
-          <div aria-live="polite" style={ST.srOnly}>
-            {statusMessage(isPres, busy, progress, error, lastSize)}
-          </div>
-
-          <div style={ST.actionsStack}>
-            <div style={ST.actions}>
-              <button
-                type="button"
-                style={ST.primary}
-                onClick={() => onDownload('pdf')}
-                disabled={busy || building || !ready || !canRaster}
-              >
-                {busy && activeFormat === 'pdf' ? 'Working…' : 'Download PDF'}
-              </button>
-              {isPres && (
+            <div style={ST.actionsStack}>
+              <div style={ST.actions}>
                 <button
                   type="button"
-                  style={ST.secondary}
-                  onClick={() => onDownload('pptx')}
+                  style={ST.primary}
+                  onClick={() => onDownload('pdf')}
                   disabled={busy || building || !ready || !canRaster}
-                  title="Export as a PowerPoint file (.pptx), with speaker notes on every slide"
                 >
-                  {busy && activeFormat === 'pptx' ? 'Working…' : 'Download PPTX'}
-                </button>
-              )}
-            </div>
-            {/* Cancel belongs only to work we can actually abort. A print is the browser's own
-                dialog — offering Cancel there would be a button that does nothing. */}
-            {busy && activeFormat !== 'print' ? (
-              <div style={ST.actions}>
-                <button
-                  type="button"
-                  style={{ ...ST.cancelBtn, flex: 1 }}
-                  onClick={() => abortRef.current?.abort()}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div style={ST.actions}>
-                <button
-                  type="button"
-                  style={ST.secondary}
-                  onClick={() => onPrint(false)}
-                  disabled={busy || building || !ready}
-                >
-                  Print
+                  {busy && activeFormat === 'pdf' ? 'Working…' : 'Download PDF'}
                 </button>
                 {isPres && (
                   <button
                     type="button"
                     style={ST.secondary}
-                    onClick={() => onPrint(true)}
-                    disabled={busy || building || !ready}
-                    title="Print the deck with each slide's speaker notes underneath it"
+                    onClick={() => onDownload('pptx')}
+                    disabled={busy || building || !ready || !canRaster}
+                    title="Export as a PowerPoint file (.pptx). Each slide is a full-bleed image — the design travels exactly, but the text is not editable; speaker notes are."
                   >
-                    Print with notes
+                    {busy && activeFormat === 'pptx' ? 'Working…' : 'Download PPTX'}
                   </button>
                 )}
               </div>
-            )}
+              {/* Cancel belongs only to work we can actually abort. A print is the browser's own
+                dialog — offering Cancel there would be a button that does nothing. */}
+              {busy && activeFormat !== 'print' ? (
+                <div style={ST.actions}>
+                  <button
+                    type="button"
+                    style={{ ...ST.cancelBtn, flex: 1 }}
+                    onClick={() => abortRef.current?.abort()}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div style={ST.actions}>
+                  <button
+                    type="button"
+                    style={ST.secondary}
+                    onClick={() => onPrint(false)}
+                    disabled={busy || building || !ready}
+                  >
+                    Print
+                  </button>
+                  {isPres && (
+                    <button
+                      type="button"
+                      style={ST.secondary}
+                      onClick={() => onPrint(true)}
+                      disabled={busy || building || !ready}
+                      title="Print the deck with each slide's speaker notes underneath it"
+                    >
+                      Print with notes
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -815,7 +831,7 @@ export function ExportModal({
                 <div style={ST.previewNote}>Select at least one answer to export.</div>
               )}
               {doc && (
-                <div style={ST.previewScroll}>
+                <div className="ex-preview" style={ST.previewScroll}>
                   {/* A transform-scaled child keeps its UNSCALED layout box, so without an explicit
                       scaled height the scroll area ran on into empty space far below the last page.
                       Give the wrapper the flow's real scaled height and clip the overhang. */}
@@ -848,6 +864,7 @@ export function ExportModal({
 
 /* ── styles (fixed light-on-dark: the scrim is always dark) ──────────────── */
 
+const PANEL = '#14171E';
 const TXT = '#E8EAF0';
 const TXT_DIM = '#9AA0AD';
 const LINE = 'rgba(255,255,255,.10)';
@@ -870,7 +887,7 @@ const ST = {
     gridTemplateColumns: '300px 1fr',
     width: 'min(900px, 96vw)',
     height: 'min(760px, 92vh)',
-    background: '#14171E',
+    background: PANEL,
     border: `1px solid ${LINE}`,
     borderRadius: 16,
     overflow: 'hidden',
@@ -928,6 +945,14 @@ const ST = {
   swatchLabel: { fontSize: 12, fontWeight: 550 },
   accents: { display: 'flex', flexWrap: 'wrap', gap: 7, alignItems: 'center' },
   answers: { display: 'flex', flexDirection: 'column', gap: 6 },
+  answerOrdinal: {
+    flex: 'none',
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '.06em',
+    color: TXT_DIM,
+    fontVariantNumeric: 'tabular-nums',
+  },
   answerLabel: {
     fontSize: 12.5,
     overflow: 'hidden',
@@ -958,12 +983,32 @@ const ST = {
   colorPlus: { fontSize: 14, color: TXT_DIM, pointerEvents: 'none' },
   // Two stacked rows (download formats, then print variants/Cancel) — kept separate from `actions`
   // itself so Cancel can still swap in as one flat row when an export is running.
+  //
   actionsStack: { display: 'flex', flexDirection: 'column', gap: 8 },
+  // Pinned to the bottom of the scrolling column. The panel is height-capped at 760px, so a full
+  // control list (template + accent + include + quality) overflows it at every desktop size and
+  // the download buttons used to sit below the clipped edge — the studio opened showing no way to
+  // export. The size note and the progress bar ride along: they are what you read before, and
+  // while, committing to a download.
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    position: 'sticky',
+    bottom: -24,
+    zIndex: 1,
+    marginInline: -24,
+    paddingInline: 24,
+    paddingTop: 12,
+    paddingBottom: 24,
+    background: PANEL,
+    borderTop: `1px solid ${LINE}`,
+  },
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
   primary: {
     flex: 1,
     minHeight: 44,
-    padding: '11px 14px',
+    padding: '11px 8px',
     borderRadius: 10,
     border: 'none',
     background: '#5B8CFF',
@@ -973,8 +1018,9 @@ const ST = {
     cursor: 'pointer',
   },
   secondary: {
+    flex: 1,
     minHeight: 44,
-    padding: '11px 16px',
+    padding: '11px 8px',
     borderRadius: 10,
     border: `1px solid ${LINE}`,
     background: 'transparent',
@@ -1060,6 +1106,10 @@ const ST = {
     maxWidth: 760,
     aspectRatio: '16 / 9',
     display: 'flex',
+    // Without this the flex item's automatic minimum resolves against the unscaled 1920×1080
+    // canvas inside, the aspect ratio loses, and the slide's own frame — the rounded corners and
+    // the drop shadow that separate it from the backdrop — paints around a taller phantom box.
+    minHeight: 0,
   },
   navbar: { display: 'flex', alignItems: 'center', gap: 16 },
   navBtn: {
@@ -1143,11 +1193,17 @@ function formatBytes(bytes: number): string {
  * these per-page constants are deliberately approximate (real content varies) and shown with a "~".
  */
 function estimateExportBytes(isPres: boolean, pages: number, scale: RasterScale): number {
-  // Presentation pages are dense 16:9 rasters: ~120 KB at Standard (2×), ~200 KB at High (2.5×).
-  // Document pages pick PNG per page whenever it doesn't bloat past ~2x the JPEG estimate for that
-  // page (crisper text, no JPEG ringing) — for typical flat-colour-plus-text content that's most
-  // pages, so the estimate leans toward the PNG side rather than the older pure-JPEG number.
-  const perPage = isPres ? (scale >= 2.5 ? 200_000 : 120_000) : scale >= 3 ? 260_000 : 190_000;
+  // Calibrated against real downloads (a 9-slide deck, a 3-page document, Standard quality), not
+  // derived on paper — the old 120 KB/slide guess came out 3-10x under on every template measured.
+  //
+  // A slide's weight swings with how much ink its skin puts on the paper: 367 KB (Cobalt), 533 KB
+  // (Folio), 1.26 MB (Noir) per slide. One constant can only be roughly right for all three, so
+  // it sits at the geometric middle of that spread — the value whose worst case is the same
+  // factor high as it is low (~1.9x either way) rather than an order of magnitude under. Document
+  // pages are flat colour and text and vary far less: 280 KB/page measured.
+  //
+  // Both High tiers scale by rendered pixel count, i.e. the square of the quality multiplier.
+  const perPage = isPres ? (scale >= 2.5 ? 1_060_000 : 680_000) : scale >= 3 ? 400_000 : 280_000;
   return Math.max(1, pages) * perPage;
 }
 

@@ -4,9 +4,10 @@
 // just filters, navigates, and fires. Unavailable features stay visible (greyed, with a reason)
 // rather than hidden — discovery is the whole point. Reuses the topbar menu's row styling and the
 // app's token-based modal grammar so it's consistent in light and dark.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../../icons/icons';
 import { preloadIntentProps } from '../../lib/preloadableLazy';
+import { useFocusTrap } from '../useFocusTrap';
 import { FEATURE_GROUPS, featureHaystack, type Feature } from './registry';
 import './commandPalette.css';
 
@@ -37,7 +38,13 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const restoreRef = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  // The panel calls itself aria-modal and nothing behind it is inert, so one Shift+Tab used to
+  // step onto the scrim's own "Close" stop and the next landed on the page underneath — palette
+  // still open. The shared trap also owns opening focus and handing it back on close; Escape stays
+  // with the window listener below, which the pinned tour chapter needs to swallow.
+  useFocusTrap(panelRef);
 
   // Fuzzy filter: every whitespace term must appear somewhere in the feature's haystack.
   const filtered = useMemo(() => {
@@ -65,13 +72,6 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
   useEffect(() => {
     setActive(0);
   }, [query]);
-
-  // Focus the input on open; restore the previously-focused element on close (focus trap hygiene).
-  useEffect(() => {
-    restoreRef.current = (document.activeElement as HTMLElement) ?? null;
-    inputRef.current?.focus();
-    return () => restoreRef.current?.focus?.();
-  }, []);
 
   // Keep the active row in view as the user arrows through. Guarded: scrollIntoView isn't
   // implemented in every environment (jsdom) and must never break the list.
@@ -103,8 +103,10 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        // Pinned (tour palette chapter): swallow Escape so it can't close the spotlighted panel,
-        // but still preventDefault so it doesn't leak to a listener beneath.
+        // preventDefault only stops the BROWSER's own default; a sibling window listener still
+        // hears the key, so surfaces underneath (the walkthrough, the demo replay) check for an
+        // open overlay themselves — see overlayLayeredRef in LiveApp. Pinned (the tour's palette
+        // chapter) additionally swallows the close, so a stray key can't shut the spotlit panel.
         e.preventDefault();
         if (!pinned) onClose();
       } else if (e.key === 'ArrowDown') {
@@ -145,7 +147,13 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
         }
       }}
     >
-      <div className="cmdk-panel" role="dialog" aria-modal="true" aria-label="Find a feature">
+      <div
+        className="cmdk-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Find a feature"
+        ref={panelRef}
+      >
         <div className="cmdk-search">
           <Icon.sparkle className="cmdk-search-icon" aria-hidden="true" />
           <input
@@ -156,7 +164,13 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
             placeholder={
               surface === 'demo' ? 'Find anything Mavéa can do…' : 'Search everything Mavéa can do…'
             }
+            // Full combobox wiring, not aria-activedescendant alone: the list is a SIBLING of the
+            // field, so without aria-controls naming it the pointer is unresolvable and arrowing
+            // the rows announces nothing.
+            role="combobox"
             aria-label="Search features"
+            aria-expanded={flat.length > 0}
+            aria-controls={listId}
             aria-activedescendant={activeId ? `cmdk-opt-${activeId}` : undefined}
             autoComplete="off"
             spellCheck={false}
@@ -168,7 +182,7 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
             quick demo of it on the real surface. Say so up front, so the whole palette reads as a
             "see it in action" gallery rather than a menu of things that mysteriously don't do much. */}
         {surface === 'demo' && <p className="cmdk-note">Click any feature to see it in action.</p>}
-        <div className="cmdk-list" role="listbox" aria-label="Features" ref={listRef}>
+        <div className="cmdk-list" role="listbox" id={listId} aria-label="Features" ref={listRef}>
           {flat.length === 0 ? (
             <div className="cmdk-empty">No features match “{query.trim()}”.</div>
           ) : (
@@ -192,6 +206,10 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
                           it.available ? '' : ' is-unavailable'
                         }`}
                         onMouseMove={() => setActive(idx)}
+                        // Enter is handled on the window listener against `active`, so a row
+                        // reached by Tab has to move `active` too — otherwise Enter fires
+                        // whichever row the pointer last grazed.
+                        onFocus={() => setActive(idx)}
                         onClick={() => runItem(it)}
                         {...(it.preload ? preloadIntentProps(it.preload) : {})}
                       >
@@ -207,6 +225,7 @@ export function CommandPalette({ items, surface, onClose, pinned = false }: Prop
                           aria-label={`See how ${it.feature.label} works`}
                           title="See how it works — a quick demo (⌘↵)"
                           onMouseMove={() => setActive(idx)}
+                          onFocus={() => setActive(idx)}
                           onClick={() => watchItem(it)}
                         >
                           <Icon.play className="cmdk-watch-ic" aria-hidden="true" />

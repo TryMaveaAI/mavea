@@ -36,8 +36,8 @@ const SAMPLER: Block[] = [
     props: {
       title: 'What it draws on',
       kpis: [
-        { val: '130+', label: 'components' },
-        { val: '40+', label: 'chart types' },
+        { val: '600+', label: 'components' },
+        { val: '80+', label: 'chart types' },
         { val: 'Live', label: 'by voice' },
       ],
     },

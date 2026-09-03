@@ -22,7 +22,9 @@ export const PERSONAS: readonly PersonaDef[] = SLIDE_SKIN_ORDER.map((id) => {
   return {
     id,
     label: s.label,
-    description: `${s.archetype} — ${s.blurb}`,
+    // The blurb already opens with the archetype ("Editorial — Warm editorial — …"), and the row
+    // ellipsizes at ~240px, so prefixing it cut away the part that tells the styles apart.
+    description: s.blurb,
     accent: s.tokens.accent,
   };
 });

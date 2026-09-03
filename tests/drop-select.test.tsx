@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DropSelect, type DropOption } from '../src/live/setup/DropSelect';
@@ -41,6 +41,23 @@ describe('DropSelect', () => {
     fireEvent.click(screen.getByRole('option', { name: /Bella/ }));
     expect(trigger()).toHaveTextContent('Bella');
     expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('keeps Escape inside the menu, so it cannot close the dialog the picker sits in', () => {
+    // Modals trap focus with a NATIVE keydown listener on the dialog node, which fires long before
+    // React's root delegate — so a picker that dismissed itself through a synthetic handler shut
+    // the whole Settings dialog and never closed its own menu.
+    const onAncestorEscape = vi.fn();
+    render(
+      <div role="presentation" onKeyDown={(e) => e.key === 'Escape' && onAncestorEscape()}>
+        <Harness />
+      </div>,
+    );
+    fireEvent.click(trigger());
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    fireEvent.keyDown(trigger(), { key: 'Escape' });
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+    expect(onAncestorEscape).not.toHaveBeenCalled();
   });
 
   it('supports arrows, Enter, and Escape from the trigger', () => {

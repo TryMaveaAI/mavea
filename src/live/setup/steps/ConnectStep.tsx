@@ -16,6 +16,7 @@ import {
 // Import from the catalog-free leaf, not generateLive — a static import of the engine here would
 // pull the whole catalog into the eager Live-mount chunk just to render a readiness dot.
 import { checkLiveReady } from '../../ready';
+import { looksLikeBadKey } from '../../providers/http';
 import { ToggleRow, EyeInput } from '../controls';
 import { ModelSelect } from '../ModelSelect';
 import { ProviderResponsibilityNotice } from '../ProviderResponsibilityNotice';
@@ -64,9 +65,12 @@ export function ConnectStep(): ReactElement {
   const model = rawModel || info.defaultModel;
   const key = cfg.keys[cfg.provider] ?? '';
 
-  const [ready, setReady] = useState<{ llm: boolean; model: boolean; statusCode?: number } | null>(
-    null,
-  );
+  const [ready, setReady] = useState<{
+    llm: boolean;
+    model: boolean;
+    statusCode?: number;
+    detail?: string;
+  } | null>(null);
   const [checking, setChecking] = useState(false);
   const probeSeq = useRef(0);
 
@@ -75,7 +79,7 @@ export function ConnectStep(): ReactElement {
     setChecking(true);
     const r = await checkLiveReady(toModelConfig(getLiveConfigV2()), { tts: false });
     if (seq === probeSeq.current) {
-      setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode });
+      setReady({ llm: r.llm, model: r.model, statusCode: r.statusCode, detail: r.detail });
       setChecking(false);
     }
   }, []);
@@ -106,15 +110,20 @@ export function ConnectStep(): ReactElement {
           ? 'Looks good.'
           : ready?.llm
             ? 'Reachable, but the model was not found.'
-            : ready?.statusCode === 401
+            : // The provider's own words before its status: Google bills an unusable key as a 400,
+              // which the status ladder below could only report as "Error 400." on the one screen
+              // whose whole job is getting a key working.
+              looksLikeBadKey(ready?.detail)
               ? 'Invalid API key.'
-              : ready?.statusCode === 403
-                ? 'Key lacks permission.'
-                : ready?.statusCode === 404
-                  ? 'Model not found.'
-                  : ready?.statusCode !== undefined
-                    ? `Error ${ready.statusCode}.`
-                    : 'Not reachable.';
+              : ready?.statusCode === 401
+                ? 'Invalid API key.'
+                : ready?.statusCode === 403
+                  ? 'Key lacks permission.'
+                  : ready?.statusCode === 404
+                    ? 'Model not found.'
+                    : ready?.statusCode !== undefined
+                      ? `Error ${ready.statusCode}.`
+                      : 'Not reachable.';
   const rest = ok
     ? `Kept in memory unless you choose Remember; sent through this deployment to ${companyOf(info.label)} when used.`
     : '';
@@ -184,7 +193,10 @@ export function ConnectStep(): ReactElement {
                 target="_blank"
                 rel="noreferrer noopener"
               >
-                Get a key&#x2197;
+                {/* `keyFree` marks a provider whose console issues a genuinely free tier — the
+                    fastest answer to a keyless visitor's first question ("does this cost me
+                    money before I can see anything?"). */}
+                {info.keyFree ? 'Get a free key' : 'Get a key'}&#x2197;
               </a>
             )}
             {/* Least-privilege nudge: the key never leaves this device unencrypted, but the surest

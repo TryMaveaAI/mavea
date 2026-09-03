@@ -335,7 +335,10 @@ button.tr-num:focus-visible {
   border-color: transparent;
 }
 .tr-wi-chip-hypo {
-  color: var(--insight);
+  /* Deepened towards the text colour, exactly as the hypothetical figure below it is: raw
+     --insight is a light-surface accent, and at 9.5px over a 12% wash of itself it landed near
+     1.5:1 — the least legible thing in the rail was the one saying the number is modelled. */
+  color: color-mix(in oklab, var(--insight) 42%, var(--text-primary));
   background: color-mix(in oklab, var(--insight) 12%, transparent);
   cursor: help;
 }

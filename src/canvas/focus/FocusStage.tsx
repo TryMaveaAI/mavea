@@ -6,7 +6,7 @@
 // one of the 269 block types takes the stage at full fidelity.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Block, ConversationSpec } from '../../data/conversation';
+import { answerSignature, type Block, type ConversationSpec } from '../../data/conversation';
 import { Icon } from '../../icons/icons';
 import { BlockBoundary } from '../BlockBoundary';
 import { FallbackCard } from '../FallbackCard';
@@ -44,6 +44,9 @@ interface Props {
   walkNotes?: readonly { spot: string; text: string }[];
   /** Present mode: hides the filmstrip, shows a slide nav bar, wires ← → keys. */
   presenting?: boolean;
+  /** Live's per-answer counter, fixed while a turn's blocks stream in. Gallery and test mounts
+   *  omit it and fall back to a content digest. */
+  answerEpoch?: number;
 }
 
 export function FocusStage({
@@ -58,14 +61,21 @@ export function FocusStage({
   muted,
   walkNotes,
   presenting,
+  answerEpoch,
 }: Props) {
   // Only id-bearing blocks can hold the stage or appear in the rail (the spotlightable set).
   const railBlocks = useMemo(() => blocks.filter((b) => !!b.id), [blocks]);
 
   // A manual pick (tapping a rail card) overrides the auto-tour until the next answer arrives.
   const [pinned, setPinned] = useState<string | null>(null);
-  // A fresh answer re-arms the auto-follow (also covered by the surface remounting the canvas).
-  useEffect(() => setPinned(null), [data.id]);
+  // Keyed on the ANSWER, not `data.id`: a live spec's id is the constant 'live', so a follow-up
+  // that MERGES (the canvas is not remounted, and the pinned id is still in the merged blocks)
+  // left the stage holding the previous answer's card while Mavéa narrated the new one.
+  const answerKey = useMemo(
+    () => answerEpoch ?? answerSignature({ id: data.id, blocks: data.blocks }),
+    [answerEpoch, data.id, data.blocks],
+  );
+  useEffect(() => setPinned(null), [answerKey]);
 
   // Take the wheel on a tap: pin the card AND have Mavéa speak about it (the surface owns TTS +
   // quieting the running tour, so we don't reach across into its speech state from here).

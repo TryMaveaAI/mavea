@@ -337,6 +337,38 @@ describe('TopicCanvas — Focus mode', () => {
     expect(hero()).toContain('Alpha');
   });
 
+  it('re-arms the auto-follow when a live follow-up MERGES onto the same canvas', () => {
+    // A live spec's id is the constant 'live' and a merge appends blocks without remounting the
+    // canvas, so keying the reset on the id left the stage holding the previous answer's card.
+    const { container, rerender } = render(
+      <TopicCanvas
+        data={spec(three(), 'live')}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+        viewMode="focus"
+      />,
+    );
+    const hero = () => container.querySelector('.focus-hero')?.textContent ?? '';
+
+    const gammaEntry = Array.from(container.querySelectorAll<HTMLElement>('.filmstrip-entry')).find(
+      (e) => e.textContent?.includes('Gamma'),
+    )!;
+    fireEvent.click(gammaEntry);
+    expect(hero()).toContain('Gamma');
+
+    rerender(
+      <TopicCanvas
+        data={spec([...three(), insight('d4', 'Delta')], 'live')}
+        spot="d4"
+        built={{}}
+        onProve={() => {}}
+        viewMode="focus"
+      />,
+    );
+    expect(hero()).toContain('Delta');
+  });
+
   it('reports the chosen mode when the toggle is clicked', () => {
     const onViewMode = vi.fn();
     const { getByRole } = render(

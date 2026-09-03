@@ -82,8 +82,9 @@ export interface Thread {
 export interface PrismDocument {
   fileName: string;
   pageCount: number;
-  /** For a deck exported as IMAGES (no selectable text): the slide images, one per page, so the
-   *  source panel shows the real slide. `page` (1-based) indexes this. */
+  /** For anything read by vision — a deck exported as IMAGES (no selectable text), or a dropped
+   *  picture, which is a one-page deck: the page images, so the source panel shows the real
+   *  picture rather than handing it to the PDF reader. `page` (1-based) indexes this. */
   slideImages?: { data: string; mime: string }[];
   /** For a spreadsheet: the real sheet/tab name behind each page, index-aligned (page N's name is
    *  `pageLabels[N - 1]`) — lets a claim cite its sheet by name instead of a bare page number. */

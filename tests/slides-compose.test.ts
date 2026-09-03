@@ -249,3 +249,28 @@ describe('composeSlides', () => {
     expect(closing.data.sources).toEqual(['Wikipedia', 'NPS.gov']);
   });
 });
+
+describe('every slide carries something the reader could not already read on its title', () => {
+  it('never restates a prose heading as its own body', () => {
+    // A section that resolved to a heading and nothing else used to become a slide whose headline
+    // and body were the same string — a titled blank frame, listed on the agenda as real content.
+    const out = composeSlides(
+      [sec('prose', { heading: 'Session Cookies vs. JWTs', body: '' })],
+      meta(),
+    );
+    expect(out.some((s) => s.kind === 'prose')).toBe(false);
+    expect(out.some((s) => s.kind === 'quote')).toBe(false);
+  });
+
+  it('splits a paragraph with no sentence or word boundary instead of handing it to the clamp', () => {
+    // A run with no ASCII .!? and no spaces — full-width punctuation, or a URL/hash — has no
+    // boundary to break on, and the render side is a line-clamp, not a splitter: the composer's
+    // "split across continuation slides" contract has to hold by hard cut.
+    const body = 'これはテストです'.repeat(175);
+    const out = composeSlides([sec('prose', { heading: 'H', body })], meta());
+    const prose = out.filter((s): s is Extract<Slide, { kind: 'prose' }> => s.kind === 'prose');
+    expect(prose.length).toBeGreaterThan(1);
+    for (const s of prose) expect(s.data.body.length).toBeLessThanOrEqual(620);
+    expect(prose.map((s) => s.data.body).join('').length).toBe(body.length);
+  });
+});

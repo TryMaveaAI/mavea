@@ -149,7 +149,7 @@ index, or open the **Explore** menu in the top bar.
   need no setup, a private one uses a token encrypted on your device. Ripple will also build the
   repo's onboarding course, each lesson written only when you open it, quoting the real files.
 - 🎓 **Courses** — name something you want to learn, pick a starting level or let Mavéa pick, and
-  you get a real syllabus of five to seven lessons, each with a one-line goal and two to four
+  you get a real syllabus — typically five to seven lessons, each with a one-line goal and two to four
   concrete objectives. Lessons are written one at a time, when you open one — a course you abandon
   after two lessons only ever cost two — and one you come back to replays from your device for free.
   Each lesson knows where it sits, recaps the one before it, and ends with a two-question checkpoint

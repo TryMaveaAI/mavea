@@ -437,7 +437,10 @@
   max-width: 62ch;
   margin: 10px 0 0;
   font: 500 11.5px/1.45 var(--font);
-  color: var(--text-faint);
+  /* Not --text-faint: this line, .fl-cta-note, .fl-seen-note and .fl-fig-note carry the page's
+     permission, cost and this-is-invented claims, and faint ink measured 1.9-2.3:1 against the
+     surfaces behind them. --text-muted is the token that was tuned to clear AA on both. */
+  color: var(--text-muted);
   text-wrap: balance;
 }
 .fl-hero-hint {
@@ -500,14 +503,27 @@
 .fl-explore-item.fl-explore-item--compact {
   display: none;
 }
+/* The popover panel is styled in full here rather than borrowing Live's .tpl-menu: templates.css
+   is route-scoped to Live, so on a first visit to the landing the menu had no positioning at all
+   and laid out in the topbar's flex row, half of it above the top of the window. */
 .fl-explore-menu {
+  position: absolute;
   /* Right-anchored: the trigger sits at the right of the nav, so opening leftward keeps the menu
      on-screen instead of running off the right edge. */
   right: 0;
   left: auto;
   top: calc(100% + 10px);
+  z-index: 60;
   min-width: 240px;
   max-width: min(300px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
 }
 .fl-explore-item {
   display: flex;
@@ -940,7 +956,7 @@
 .fl-fig-note {
   font-family: var(--font-data);
   font-size: 10px;
-  color: var(--text-faint);
+  color: var(--text-muted);
   margin-top: 8px;
 }
 
@@ -1982,7 +1998,7 @@
 .fl-seen-note {
   font-family: var(--font-data);
   font-size: 10px;
-  color: var(--text-faint);
+  color: var(--text-muted);
   margin-top: 10px;
 }
 @keyframes fl-wall-appear {
@@ -2312,12 +2328,12 @@
    * truncates; a cut-off promise reads as a bug. The persona line below stays one-line. */
   text-wrap: balance;
 }
+/* Wraps rather than truncating: at 1366 and 1440 every one of these overflowed, and the word it
+   cut was "Fictional" — the disclosure the card exists to carry. */
 .fl-demo-role {
   font-size: 12.5px;
+  line-height: 1.3;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .fl-demo-badge {
   flex: none;
@@ -2582,7 +2598,7 @@
   font-family: var(--font-data);
   margin-top: 18px;
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 /* ===================== topbar nav (home only) ===================== */
 .fl-nav {
@@ -3162,6 +3178,9 @@
   flex-direction: column;
   gap: 6px;
   padding: 16px 18px 18px;
+  /* Takes the card's leftover height so the CTA below can sit on the floor of every card in the
+     row, not wherever its own blurb happened to stop wrapping. */
+  flex: 1;
 }
 .fs-card-name {
   margin: 0;
@@ -3177,7 +3196,10 @@
 }
 .fs-card-cta {
   align-self: flex-start;
-  margin-top: 8px;
+  /* auto, not a fixed gap: the four blurbs wrap to different heights, and a CTA that follows its
+     own copy left the row's buttons on two different baselines (the body grows to the card floor,
+     just above). */
+  margin-top: auto;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -3277,7 +3299,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font: 500 8px/1 var(--font-data, var(--font));
+  /* the 9px legibility floor — these labels are meant to be read, not just sensed */
+  font: 500 9px/1 var(--font-data, var(--font));
   color: var(--text-faint);
   text-align: right;
   opacity: 0;
@@ -3329,7 +3352,7 @@
   opacity: 0;
 }
 .fs-prism-claim i {
-  font: 700 8px/1 var(--font);
+  font: 700 9px/1 var(--font);
   font-style: normal;
   letter-spacing: 0.12em;
   color: var(--fl-ink-presence);
@@ -3506,7 +3529,7 @@
   border-radius: 50%;
   border: 1px solid color-mix(in oklab, var(--insight) 55%, var(--line));
   background: var(--surface-elevated);
-  font: 700 8px/1 var(--font-data, var(--font));
+  font: 700 9px/1 var(--font-data, var(--font));
   color: var(--fl-ink-insight);
   opacity: 0;
 }
@@ -3548,7 +3571,7 @@
 .fs-ripple-node i {
   font-style: normal;
   margin-right: 4px;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 /* Watch Me Think — a breathing orb; speech drifts out of it and dissolves into structure. */
@@ -3667,7 +3690,7 @@
   opacity: 0;
 }
 .fs-think-atom i {
-  font: 700 8px/1 var(--font);
+  font: 700 9px/1 var(--font);
   font-style: normal;
   letter-spacing: 0.14em;
   text-transform: uppercase;

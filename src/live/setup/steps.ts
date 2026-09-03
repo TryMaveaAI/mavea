@@ -46,6 +46,9 @@ export const STEPS: readonly StepMeta[] = [
  *  finisher gets a warmer arrival line instead (the orb has just woken). */
 export const GO_FIRST_RUN_TITLE = 'I’m awake.';
 export const GO_FIRST_RUN_SUB = 'Set and ready, start talking, or try one of these.';
+/** …unless Connect was walked past. "Set and ready" over a hub where no turn can run is the same
+ *  claim the checklist's ticks used to make, in the one line a first-run visitor actually reads. */
+export const GO_FIRST_RUN_SUB_UNSET = 'One thing left — connect a model, then we can start.';
 
 const ORDER: readonly StepId[] = STEPS.map((s) => s.id);
 

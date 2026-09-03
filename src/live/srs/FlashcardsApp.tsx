@@ -20,6 +20,7 @@ import {
 } from './store';
 import type { CardFilter, SrsCard, StudyStyle } from './store';
 import { studyCopy } from './copy';
+import { getStudyQueue } from './queue';
 import { useSrsRevision } from './useSrsCards';
 import { flashHref, parseRoute, useHash } from './route';
 import { SrsReview } from './SrsReview';
@@ -128,10 +129,10 @@ export function FlashcardsApp(): ReactElement {
     tag: tag ?? undefined,
     filter: activeFilter === 'suspended' ? 'all' : activeFilter,
   };
-  // The label must reflect what Study will actually queue: the sidebar's smart filter narrows
+  // The label must reflect what Review will actually queue: the sidebar's smart filter narrows
   // studyScope silently (it's the same `filter` state), so a selected "Due"/"New"/"Struggling"
-  // has to show up here too — otherwise "Study All cards" would launch a Due-only session while
-  // still claiming to study everything.
+  // has to show up here too — otherwise "Review All cards" would launch a Due-only session while
+  // still claiming to cover everything.
   const scopeName = deck ?? (tag ? `#${tag}` : null);
   const filterAdj = copy.filterAdjective[activeFilter];
   const studyLabel = filterAdj
@@ -139,6 +140,12 @@ export function FlashcardsApp(): ReactElement {
       ? `${filterAdj} · ${scopeName}`
       : `${filterAdj} cards`
     : (scopeName ?? 'All cards');
+
+  // What pressing the button would actually queue — not the deck's global count. A scope can hold
+  // cards the session would skip (all parked, a filter that matches none, a deck that no longer
+  // exists), and offering a session that opens straight onto "Nothing to flip" is a dead end the
+  // list beside it has already ruled out.
+  const readyToReview = getStudyQueue(studyScope).length;
 
   const anySuspendedSelected = selIds.some((id) => cards.find((c) => c.id === id)?.suspended);
 
@@ -168,10 +175,10 @@ export function FlashcardsApp(): ReactElement {
           <button
             type="button"
             className="fc-btn fc-btn-primary"
-            disabled={counts.total === 0}
+            disabled={readyToReview === 0}
             onClick={() => setStudying(studyScope)}
           >
-            <Icon.play /> Study {studyLabel}
+            <Icon.play /> Review {studyLabel}
           </button>
         </div>
       </header>
@@ -180,7 +187,7 @@ export function FlashcardsApp(): ReactElement {
         {/* ── sidebar ── */}
         <aside className="fc-side">
           <div className="fc-side-group">
-            <div className="fc-side-eyebrow">Study</div>
+            <div className="fc-side-eyebrow">Cards</div>
             {copy.filters.map((f) => (
               <button
                 key={f.key}
@@ -244,8 +251,8 @@ export function FlashcardsApp(): ReactElement {
               it — and nothing here is destructive, so it can be flipped back at any time. */}
           {counts.total > 0 && (
             <div className="fc-side-group fc-side-style">
-              <div className="fc-side-eyebrow">Study style</div>
-              <div className="fc-style-seg" role="radiogroup" aria-label="Study style">
+              <div className="fc-side-eyebrow">Review style</div>
+              <div className="fc-style-seg" role="radiogroup" aria-label="Review style">
                 {STYLE_CHOICES.map((c) => (
                   <button
                     key={c.value}
@@ -393,7 +400,7 @@ export function FlashcardsApp(): ReactElement {
       {studying && (
         <SrsReview
           scope={studying}
-          title={`STUDY · ${studyLabel}`}
+          title={`${copy.eyebrow} · ${studyLabel}`}
           onClose={() => setStudying(null)}
         />
       )}

@@ -43,6 +43,14 @@ describe('withUnit', () => {
     expect(withUnit(1000, '$', { locale: L })).toBe('$1,000');
     expect(withUnit(50, '%', { locale: L })).toBe('50%');
   });
+  it('carries a currency unit’s magnitude to the far side of the digits', () => {
+    // A unit that merely STARTS with a symbol used to be pasted on whole, so the living world's
+    // "$bn" figures reached the screen as "$bn1,900" — and the seed world prints eighteen of them.
+    expect(withUnit(1900, '$bn', { locale: L })).toBe('$1,900bn');
+    expect(withUnit(12, '$k', { locale: L })).toBe('$12k');
+    expect(withUnit(30, '$/mo', { locale: L })).toBe('$30/mo');
+    expect(withUnit(4, '£m', { locale: L })).toBe('£4m');
+  });
   it('returns a bare formatted number when there is no unit', () => {
     expect(withUnit(1234, undefined, { locale: L })).toBe('1,234');
     expect(withUnit(1234, '  ', { locale: L })).toBe('1,234');

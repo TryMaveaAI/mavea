@@ -108,7 +108,11 @@ export function SrsReview({
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(false);
-  const [streak, setStreak] = useState(0);
+  // Cards answered well the first time they came up. Counted on the first pass only: a card the
+  // reader missed and then got on its repeat is not one they knew, and `total` below counts
+  // distinct cards — crediting the retry made a session where every card was missed report a
+  // perfect score.
+  const [firstPassGood, setFirstPassGood] = useState(0);
   const [tally, setTally] = useState<Record<string, number>>(() =>
     Object.fromEntries(actions.map((a) => [a.key, 0])),
   );
@@ -158,7 +162,7 @@ export function SrsReview({
       if (index >= running.length) return;
       const card = running[index];
       action.apply(card.id);
-      if (action.good) setStreak((s) => s + 1);
+      if (action.good && index < queue.length) setFirstPassGood((n) => n + 1);
       setTally((t) => ({ ...t, [action.key]: (t[action.key] ?? 0) + 1 }));
 
       let pending = repeats;
@@ -252,7 +256,7 @@ export function SrsReview({
               🎉
             </div>
             <div className="srs-done-head">{copy.doneHead}</div>
-            <div className="srs-done-sub">{copy.doneSub(streak, total)}</div>
+            <div className="srs-done-sub">{copy.doneSub(firstPassGood, total)}</div>
             <div className="srs-done-breakdown" aria-label="How it went">
               {actions.map((a) => (
                 <span
@@ -277,31 +281,39 @@ export function SrsReview({
           <div className="srs-body">
             {card.deck && <div className="srs-tag">{card.deck}</div>}
 
-            {/* flip container */}
+            {/* Flip container. NOT role="button": a button's children are presentational, so the
+                question and the answer — the entire content of this feature — never reached the
+                accessibility tree. It stays a focusable, clickable container instead, and the face
+                turned away is hidden rather than the whole card, so nobody hears the answer before
+                they ask for it. */}
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
             <div
               className="srs-flip-scene"
               onClick={() => {
                 if (!flipped) setFlipped(true);
               }}
-              role="button"
-              tabIndex={0}
-              aria-label={flipped ? 'Card back' : 'Tap to reveal answer'}
-              onKeyDown={(e) => {
-                if ((e.key === 'Enter' || e.key === ' ') && !flipped) {
-                  e.preventDefault();
-                  setFlipped(true);
-                }
-              }}
             >
               <div className={`srs-flip-card${flipped ? ' flipped' : ''}`}>
                 {/* front face */}
-                <div className="srs-face srs-face-front">
+                <div className="srs-face srs-face-front" aria-hidden={flipped}>
                   <div className="srs-face-label">QUESTION</div>
                   <div className="srs-face-text">{card.front}</div>
-                  <div className="srs-tap-hint">tap to flip</div>
+                  {/* The keyboard's and the screen reader's way in — the card itself is now plain
+                      text, so this is the control that reveals the answer. It leaves with the front
+                      face, so a flipped card holds no phantom tab stop. */}
+                  {!flipped && (
+                    <button
+                      type="button"
+                      className="srs-tap-hint"
+                      onClick={() => setFlipped(true)}
+                      aria-label="Reveal the answer"
+                    >
+                      tap to flip
+                    </button>
+                  )}
                 </div>
                 {/* back face */}
-                <div className="srs-face srs-face-back">
+                <div className="srs-face srs-face-back" aria-hidden={!flipped}>
                   <div className="srs-face-label">ANSWER</div>
                   <div className="srs-face-text">{card.back}</div>
                 </div>

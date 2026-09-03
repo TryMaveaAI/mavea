@@ -46,16 +46,17 @@ export function ShipVerdict({
 
   // Depth, on demand — only the chapters this model actually has. The course leads when present.
   const chips: { id: string; label: string }[] = [
-    ...(model.courses?.length || model.modules.length
+    // A chip counting courses has to land on the courses, not on the module map beside them.
+    ...(model.courses?.length
       ? [
           {
-            id: 'onboarding',
-            label: model.courses?.length
-              ? `Onboard · ${model.courses.length} course${model.courses.length === 1 ? '' : 's'}`
-              : 'Onboarding',
+            id: 'course',
+            label: `Onboard · ${model.courses.length} course${model.courses.length === 1 ? '' : 's'}`,
           },
         ]
-      : []),
+      : model.modules.length
+        ? [{ id: 'onboarding', label: 'Onboarding' }]
+        : []),
     ...(model.changes.length
       ? [
           {

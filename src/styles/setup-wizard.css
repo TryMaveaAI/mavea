@@ -939,6 +939,10 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
+/* A row that is NOT settled yet — the tick would otherwise assert a setup that cannot run. */
+.check-mark--todo {
+  color: var(--warning);
+}
 .check-mark svg {
   height: 14px;
   width: 14px;
@@ -1029,6 +1033,7 @@
 .go-composer-input::placeholder {
   color: var(--text-faint);
 }
+.go-composer-attach,
 .go-composer-mic,
 .go-composer-send {
   align-items: center;
@@ -1047,10 +1052,12 @@
     background var(--m-fast);
   width: 34px;
 }
+.go-composer-attach:hover,
 .go-composer-mic:hover,
 .go-composer-send:hover {
   opacity: 0.85;
 }
+.go-composer-attach svg,
 .go-composer-mic svg,
 .go-composer-send svg {
   height: 15px;

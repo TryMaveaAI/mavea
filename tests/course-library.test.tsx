@@ -13,6 +13,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { Suspense } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationSpec } from '../src/data/conversation';
 import type { ModelConfig } from '../src/types/mavea';
@@ -362,6 +363,42 @@ describe('CoursesApp — the courses library', () => {
       expect(getCourse('from-deepzoom')).toBeDefined();
       const seed = JSON.parse(sessionStorage.getItem('mavea-course-seed') ?? 'null');
       expect(seed).toEqual({ courseId: 'from-deepzoom', lessonIdx: 0 });
+    });
+
+    it('survives a render React throws away — the cold-navigation case, i.e. every first visit', async () => {
+      // The handoff was read in the RENDER BODY, and reading it CONSUMES it. On a cold navigation
+      // this route's chunk is still arriving, React discards the pass it rendered and renders again
+      // — and the discarded one had already eaten the topic, so the composer never opened and the
+      // reader landed on the empty Courses screen. A render that never commits must cost nothing.
+      sessionStorage.setItem('mavea-course-topic-seed', 'photosynthesis');
+      mockGenerateCourse.mockResolvedValue(course('a'));
+
+      let release!: () => void;
+      const arrived = new Promise<void>((resolve) => (release = resolve));
+      let ready = false;
+      const thenable = arrived.then(() => {
+        ready = true;
+      });
+      // Suspends AFTER CoursesApp has rendered, so the boundary throws that whole pass away.
+      function Chunk(): null {
+        if (!ready) throw thenable;
+        return null;
+      }
+
+      render(
+        <Suspense fallback={<p>loading</p>}>
+          <CoursesApp />
+          <Chunk />
+        </Suspense>,
+      );
+      expect(screen.getByText('loading')).toBeInTheDocument();
+      expect(sessionStorage.getItem('mavea-course-topic-seed')).toBe('photosynthesis');
+
+      await act(async () => {
+        release();
+        await thenable;
+      });
+      expect(screen.getByPlaceholderText(/linear algebra/i)).toHaveValue('photosynthesis');
     });
 
     it('the stashed topic is consumed once — a later remount never re-triggers it', () => {

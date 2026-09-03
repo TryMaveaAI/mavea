@@ -749,9 +749,13 @@
 .in-wizard .live-dock {
   display: none;
 }
+/* The demo transport rides on top of the dock and publishes the band it claims into --demo-h
+   (DemoOverlay), exactly as the dock publishes --dock-h. It is 0 outside a replay. Without it the
+   column ended UNDER the transport, which covered the Study's pinned beat bar — two beat chips
+   were not merely hidden but unclickable, mid-replay. */
 .mavea-app.live-voice.with-rail .canvas-stage,
 .mavea-app.live-voice.with-rail .presence-stage {
-  padding-bottom: calc(var(--dock-h) + 16px);
+  padding-bottom: calc(var(--dock-h) + 16px + var(--demo-h, 0px));
 }
 
 /* ===== slim session rail — a chaptered table of contents ===== */

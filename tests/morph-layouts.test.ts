@@ -434,6 +434,32 @@ describe('edge relation vocabulary', () => {
     expect(classOf(layoutGraph(withKind(undefined)))).not.toContain('morph-edge--rel-');
   });
 
+  it('keeps the direction of the push when the same web is read as contributions', () => {
+    // `--damp` is the only carrier of "this one held the outcome DOWN" — the warning stroke and
+    // the crossbar head. Flow left it off, so switching from the causal web to contributions
+    // silently repainted every dampening link like every other, while sizing its ribbon by how
+    // much of the outcome it explains.
+    const signed: WorldData = {
+      outcomeId: 'out',
+      nodes: [
+        { id: 'up', label: 'Up', role: 'root' },
+        { id: 'down', label: 'Down', role: 'root' },
+        { id: 'out', label: 'Out', role: 'outcome' },
+      ],
+      edges: [
+        { id: 'e-up', from: 'up', to: 'out', sign: 1, weight: 0.6 },
+        { id: 'e-down', from: 'down', to: 'out', sign: -1, weight: 0.4 },
+      ],
+    };
+    const classIn = (layout: MorphLayout, id: string): string =>
+      layout.edgePaths.find((e) => e.id === id)!.className;
+
+    for (const fn of [layoutFlow, layoutGraph]) {
+      expect(classIn(fn(signed), 'e-down')).toContain('morph-edge--damp');
+      expect(classIn(fn(signed), 'e-up')).not.toContain('morph-edge--damp');
+    }
+  });
+
   it.each(['x y', 'Causes', 'a'.repeat(25), '"><script>'])(
     'refuses to paste %j into a class name',
     (junk) => {

@@ -23,9 +23,14 @@ const prismWorkbench = createPreloadableLazy(() =>
 );
 const PrismWorkbench = prismWorkbench.Component;
 
+/** Identity of a staged file: two picked from different folders can share a basename. */
+const fileKey = (file: File): string => `${file.name}:${file.size}`;
+
 const ERROR_LABEL: Record<AttachmentError, string> = {
   'too-large': 'File is too large. Documents up to 40 MB, images up to 10 MB.',
   unsupported: 'Unsupported file type. Try a PDF, Word doc, spreadsheet, image, or text file.',
+  'legacy-office':
+    'That’s the old binary Office format. Re-save it as .docx, .pptx or .xlsx and drop it again.',
 };
 
 export function PrismApp(): ReactElement {
@@ -40,28 +45,48 @@ export function PrismApp(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const stageFiles = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    void prismWorkbench.preload().catch(() => {});
-    setError(null);
-    const accepted = Array.from(files).flatMap((file) => {
-      const problem = attachmentFileError(file);
-      if (problem) {
-        setError(ERROR_LABEL[problem]);
-        return [];
+  const stageFiles = useCallback(
+    (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      void prismWorkbench.preload().catch(() => {});
+      // Keyed by name+size, not name alone: a second report.pdf picked from another folder is a
+      // different document, and matching on the basename dropped it with nothing on screen saying
+      // so — while two same-named files in ONE drop both staged, under the same React key, and
+      // then removed each other.
+      const seen = new Set(staged.map(fileKey));
+      const fresh: File[] = [];
+      let refused: File | null = null;
+      let duplicates = 0;
+      for (const file of Array.from(files)) {
+        if (attachmentFileError(file)) {
+          refused ??= file;
+        } else if (seen.has(fileKey(file))) {
+          duplicates += 1;
+        } else {
+          seen.add(fileKey(file));
+          fresh.push(file);
+        }
       }
-      return [file];
-    });
-    if (accepted.length > 0)
-      setStaged((prev) => {
-        const seen = new Set(prev.map((file) => file.name));
-        return [...prev, ...accepted.filter((file) => !seen.has(file.name))];
-      });
-    if (inputRef.current) inputRef.current.value = '';
-  }, []);
+      // One note per drop, and the loudest thing that happened. A refusal names the file it
+      // refused, so a mixed drop no longer reports only whatever came last.
+      const problem = refused ? attachmentFileError(refused) : null;
+      setError(
+        refused && problem
+          ? `“${refused.name}” — ${ERROR_LABEL[problem]}`
+          : duplicates > 0
+            ? 'Already added — files are matched by name and size.'
+            : null,
+      );
+      if (fresh.length > 0) setStaged((prev) => [...prev, ...fresh]);
+      if (inputRef.current) inputRef.current.value = '';
+    },
+    [staged],
+  );
 
-  const removeStaged = useCallback((name: string) => {
-    setStaged((prev) => prev.filter((a) => a.name !== name));
+  // By index, not name: two staged files can legitimately share a basename, and removing "by name"
+  // deleted every one of them while their rows stayed on screen.
+  const removeStaged = useCallback((index: number) => {
+    setStaged((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const confirm = useCallback(async () => {
@@ -80,7 +105,7 @@ export function PrismApp(): ReactElement {
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      void stageFiles(e.dataTransfer.files);
+      stageFiles(e.dataTransfer.files);
     },
     [stageFiles],
   );
@@ -124,8 +149,8 @@ export function PrismApp(): ReactElement {
         <div className="prism-app-hero">
           <h1 className="prism-app-title">Understand any document</h1>
           <p className="prism-app-lede">
-            Drop a PDF, Word doc, spreadsheet, or text file. Prism maps every claim, finding, and
-            risk — every card cites its exact source.
+            Drop a PDF, Word doc, slide deck, spreadsheet, image, or text file. Prism maps every
+            claim, finding, and risk — every card cites its exact source.
           </p>
           <FeatureUseNotice kind="upload" />
         </div>
@@ -150,9 +175,8 @@ export function PrismApp(): ReactElement {
             type="file"
             accept={ACCEPTED_TYPES}
             multiple
-            className="prism-dropzone-input"
-            onChange={(e) => void stageFiles(e.target.files)}
-            aria-hidden="true"
+            hidden
+            onChange={(e) => stageFiles(e.target.files)}
           />
           <Icon.upload />
           <span className="prism-dropzone-label">
@@ -180,8 +204,8 @@ export function PrismApp(): ReactElement {
               {staged.length === 1 ? '1 document ready' : `${staged.length} documents ready`}
             </p>
             <ul className="prism-staged-list">
-              {staged.map((file) => (
-                <li key={file.name} className="prism-staged-item">
+              {staged.map((file, index) => (
+                <li key={fileKey(file)} className="prism-staged-item">
                   <Icon.doc />
                   <span className="prism-staged-name">
                     {attachmentLabel({
@@ -196,7 +220,7 @@ export function PrismApp(): ReactElement {
                     className="prism-staged-remove"
                     onClick={(e) => {
                       e.stopPropagation();
-                      removeStaged(file.name);
+                      removeStaged(index);
                     }}
                     aria-label={`Remove ${file.name}`}
                   >
@@ -229,8 +253,8 @@ export function PrismApp(): ReactElement {
             Mavéa can't cite it, the card doesn't exist.
           </li>
           <li>
-            <strong>Ask the whole document</strong> — highlight any claim and ask a follow-up; the
-            answer lights up the exact lines it came from.
+            <strong>Ask the whole document</strong> — put a question to it and the answer lights up
+            the exact lines it came from.
           </li>
         </ul>
       </main>

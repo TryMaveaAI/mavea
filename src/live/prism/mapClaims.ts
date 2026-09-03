@@ -263,7 +263,7 @@ function parseResponse(raw: string | object): CandidateClaim[] {
 
 /** A short, human label for a document, from its filename — drops the extension, trims length. */
 function docLabel(fileName: string): string {
-  const base = fileName.replace(/\.pdf$/i, '').trim();
+  const base = fileName.replace(/\.[a-z0-9]+$/i, '').trim();
   return base.length > 28 ? base.slice(0, 27).trimEnd() + '…' : base || 'Document';
 }
 
@@ -342,7 +342,8 @@ interface DocResult {
   claims: (Claim & { contradictsPage?: number })[];
   proposed: number;
   error?: string;
-  /** For an image-only deck: the slide images, so the source panel can show the real slide. */
+  /** For anything read by vision (a picture-exported deck, a dropped image): the page images, so
+   *  the source panel shows the real picture instead of handing it to the PDF reader. */
   slideImages?: OfficeImage[];
   /** For a spreadsheet: each page's real sheet name, index-aligned with `pages`. */
   pageLabels?: string[];
@@ -370,7 +371,6 @@ async function mapOneDocument(
   // An image-only deck (slides exported as pictures) carries its slide images for the vision path.
   let pages: string[] | null;
   let officeReason: string | undefined;
-  let officeImages: OfficeImage[] | undefined;
   let slideImages: Attachment[] | undefined;
   let pageLabels: string[] | undefined;
   if (pagesOverride) {
@@ -385,8 +385,7 @@ async function mapOneDocument(
       // the images so the source panel can show the real slide a claim came from. Cap how many slides
       // we send so a 100-slide deck doesn't blow the vision request's size/cost; the source panel
       // still maps to the slides we sent (page is 1-based within them).
-      officeImages = res.images.slice(0, MAX_VISION_SLIDES);
-      slideImages = officeImages.map((img, i) => ({
+      slideImages = res.images.slice(0, MAX_VISION_SLIDES).map((img, i) => ({
         name: `${pdf.name} — slide ${i + 1}`,
         mime: img.mime,
         data: img.data,
@@ -549,7 +548,12 @@ async function mapOneDocument(
     pages: groundingPages,
     claims,
     proposed: candidates.length,
-    ...(officeImages ? { slideImages: officeImages } : {}),
+    // Every vision path publishes its pages as images so the source panel shows the real picture a
+    // claim was read off — a dropped photo as much as a slide deck. Only {data, mime} travels: the
+    // spec is cached, and the attachment's raw bytes/filename have no business in it.
+    ...(slideImages
+      ? { slideImages: slideImages.map((img) => ({ data: img.data, mime: img.mime })) }
+      : {}),
     ...(pageLabels ? { pageLabels } : {}),
   };
 }

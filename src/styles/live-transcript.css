@@ -157,40 +157,6 @@
   }
 }
 
-/* Establish the rem baseline at the user's browser default (typically 16px)
-   rather than leaving it unset. Using 100% — not a fixed px — keeps any rem-based
-   sizing honest to a reader who's bumped up their default font size for legibility.
-   (The codebase is px today; this is the accessibility floor for future rem use.) */
-html {
-  font-size: 100%;
-}
-
-html,
-body {
-  margin: 0;
-  height: 100%;
-  background: var(--surface-deep);
-  color: var(--text-primary);
-  font-family: var(--font);
-  font-feature-settings: 'ss01' 1;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  overflow: hidden;
-}
-
-#root {
-  height: 100%;
-}
-
-button {
-  font-family: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-::selection {
-  background: rgba(110, 140, 255, 0.35);
-}
-
 /* ambient backdrop */
 .mavea-app {
   position: relative;
@@ -257,22 +223,4 @@ button {
 *::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.18);
   background-clip: padding-box;
-}
-
-/* ---- focus ---- */
-:focus-visible {
-  outline: 2px solid var(--presence-soft);
-  outline-offset: 2px;
-  border-radius: var(--r-sm);
-}
-/* TEXT-ENTRY controls only are exempt: unlike buttons, editable elements match :focus-visible even
- * on a mouse click, so the ring drew a stray box around the composer on every tap. Their focus
- * affordance is the field's own chrome (the capsule border/caret), in every template and
- * both themes — keyboard users still get the ring on buttons, links, and cards. Checkboxes and
- * radios are NOT exempt: they only match :focus-visible from the keyboard, and a bare `input`
- * selector left every toggle in the app with no visible focus at all. */
-input:not([type='checkbox']):not([type='radio']):focus-visible,
-textarea:focus-visible,
-[contenteditable='true']:focus-visible {
-  outline: none;
 }

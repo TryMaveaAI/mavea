@@ -46,6 +46,67 @@ body {
   background: var(--app-bg);
 }
 
+/* The document reset. It lives in this eager layer, not in Live's route-scoped sheet, because
+   every surface is the same fixed app shell — and hash routing loads a route's CSS only when that
+   route mounts, so the landing (and Dashboards, Courses, Flashcards, Prism…) cold-started with the
+   browser's own defaults: Times at an 8px body margin until a trip through Live happened to pull
+   Live's copy in. */
+
+/* Establish the rem baseline at the user's browser default (typically 16px)
+   rather than leaving it unset. Using 100% — not a fixed px — keeps any rem-based
+   sizing honest to a reader who's bumped up their default font size for legibility.
+   (The codebase is px today; this is the accessibility floor for future rem use.) */
+html {
+  font-size: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-feature-settings: 'ss01' 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+::selection {
+  background: rgba(110, 140, 255, 0.35);
+}
+
+/* ---- focus ---- */
+/* Eager for the same reason as the reset above: route-scoped, every surface reached without going
+   through Live first drew Chrome's own blue ring — including #/courses, where courses.css covers
+   some of its buttons and not others, so one blue ring sat beside a row of green ones. */
+:focus-visible {
+  outline: 2px solid var(--presence-soft);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+/* TEXT-ENTRY controls only are exempt: unlike buttons, editable elements match :focus-visible even
+ * on a mouse click, so the ring drew a stray box around the composer on every tap. Their focus
+ * affordance is the field's own chrome (the capsule border/caret), in every template and
+ * both themes — keyboard users still get the ring on buttons, links, and cards. Checkboxes and
+ * radios are NOT exempt: they only match :focus-visible from the keyboard, and a bare `input`
+ * selector left every toggle in the app with no visible focus at all. */
+input:not([type='checkbox']):not([type='radio']):focus-visible,
+textarea:focus-visible,
+[contenteditable='true']:focus-visible {
+  outline: none;
+}
+
 .voice-text {
   font-family: var(--font-voice);
   font-size: var(--voice-size);

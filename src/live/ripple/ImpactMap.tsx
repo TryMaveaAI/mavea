@@ -1,9 +1,9 @@
 // ImpactMap.tsx — the flyable system map: THIS change at the centre, everything it touches ringed
 // around it, the breaking edges drawn as animated coral so the eye lands on the danger first. Built
-// on the shared spatial camera (pan/zoom/fit) with a scale-based level of detail so the map stays
-// legible whether it's six nodes or sixty. Click a node to read its contract, what breaks, and the
-// fix. Two lenses (severity vs live traffic) and a cross-repo filter re-weight the view without ever
-// moving the deterministic layout — your mental map holds.
+// on the shared spatial camera (pan/zoom/fit), whose scale floor keeps a fitted node a real touch
+// target — a denser map pans rather than shrinking. Click a node to read its contract, what breaks,
+// and the fix. Two lenses (severity vs live traffic) and a cross-repo filter re-weight the view
+// without ever moving the deterministic layout — your mental map holds.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useSpatialCanvas } from '../../canvas/spatial/useSpatialCanvas';
 import { statusVar, statusLabel } from './colors';
@@ -120,15 +120,13 @@ export function ImpactMap({
     return () => el.removeEventListener('wheel', onWheel);
   }, [viewportEl, zoomAtClient]);
 
-  // Level of detail: the secondary line (owner · traffic) appears once you've zoomed in.
-  const detail = spatial.camera.scale >= 0.7;
   const traffic = lens === 'traffic';
 
   const open = openId ? (placedById.get(openId)?.node ?? null) : null;
 
-  // Only offer a control when the data behind it exists. A diff/repo carries no live traffic and no
-  // cross-repo nodes, so showing those toggles there would be a control that does nothing — hide them
-  // and let the map just read by severity. The seed (with traffic/cross-repo) shows the full set.
+  // Only offer a control when the data behind it exists. Nothing populates traffic or cross-repo
+  // today — not the worked example, not a diff, not a repo read — so in practice these stay hidden
+  // and the map reads by severity; they appear the day a connected graph supplies either.
   const hasTraffic = nodes.some((n) => typeof n.traffic === 'number');
   const hasCrossRepo = nodes.some((n) => n.crossRepo === true);
 
@@ -236,31 +234,30 @@ export function ImpactMap({
               })}
           </svg>
 
-          {/* edge verb labels (only when zoomed in enough to read) */}
-          {detail &&
-            view.nodes
-              .filter((p) => p.node.id !== view.centerId)
-              .map((p) => {
-                const c = placedById.get(view.centerId);
-                if (!c) return null;
-                const e =
-                  edges.find((ed) => ed.from === c.node.id && ed.to === p.node.id) ??
-                  edges.find((ed) => ed.to === c.node.id && ed.from === p.node.id);
-                if (!e) return null;
-                return (
-                  <div
-                    key={`v-${p.node.id}`}
-                    className="ripple-edge-verb"
-                    style={{
-                      left: (c.x + p.x) / 2,
-                      top: (c.y + p.y) / 2,
-                      color: statusVar(p.node.status),
-                    }}
-                  >
-                    {e.verb}
-                  </div>
-                );
-              })}
+          {/* edge verb labels */}
+          {view.nodes
+            .filter((p) => p.node.id !== view.centerId)
+            .map((p) => {
+              const c = placedById.get(view.centerId);
+              if (!c) return null;
+              const e =
+                edges.find((ed) => ed.from === c.node.id && ed.to === p.node.id) ??
+                edges.find((ed) => ed.to === c.node.id && ed.from === p.node.id);
+              if (!e) return null;
+              return (
+                <div
+                  key={`v-${p.node.id}`}
+                  className="ripple-edge-verb"
+                  style={{
+                    left: (c.x + p.x) / 2,
+                    top: (c.y + p.y) / 2,
+                    color: statusVar(p.node.status),
+                  }}
+                >
+                  {e.verb}
+                </div>
+              );
+            })}
 
           {/* nodes */}
           {view.nodes.map((p) => {
@@ -317,12 +314,10 @@ export function ImpactMap({
                       )}
                     </span>
                     <span className="ripple-node-name">{n.label}</span>
-                    {detail && (
-                      <span className="ripple-node-meta">
-                        {n.team ?? n.owner ?? ''}
-                        {n.trafficLabel ? ` · ${n.trafficLabel}` : ''}
-                      </span>
-                    )}
+                    <span className="ripple-node-meta">
+                      {n.team ?? n.owner ?? ''}
+                      {n.trafficLabel ? ` · ${n.trafficLabel}` : ''}
+                    </span>
                     {n.crossRepo && <span className="ripple-node-repo">other repo</span>}
                   </>
                 )}
