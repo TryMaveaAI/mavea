@@ -1423,7 +1423,11 @@
   width: 100vw;
   height: 100dvh;
   min-height: 100dvh;
-  /* The column cap belongs to the in-canvas stage; full screen IS the viewport. */
+  /* The column and height caps belong to the in-canvas stage; full screen IS the viewport. The
+     width cap is the one that bites: it is a clamp whose floor is wider than most windows, so a
+     stage asked for 100vw was still held to the reading column and filled the middle of the
+     screen with the app showing around it. */
+  max-width: none;
   max-height: none;
   overflow: hidden;
   border: 0;

@@ -62,6 +62,16 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(fullscreen).toMatch(/max-height:\s*none/);
   });
 
+  it('lets full screen off the reading column, not just off the height cap', () => {
+    // The stage caps its width at --canvas-col-max, a clamp whose floor is 1280px — wider than
+    // most windows. Full screen asked for 100vw and was held to that clamp, so it filled the
+    // middle of the screen with the app still showing around it.
+    const fullscreen =
+      /\.study-stage:is\(:fullscreen, \.is-fullscreen\)\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(fullscreen).toMatch(/max-width:\s*none/);
+    expect(fullscreen).toMatch(/width:\s*100vw/);
+  });
+
   it('keeps the compact breakpoint off the width a 1280px window resolves to', () => {
     // 1280 − 236 rail − 52 − 12 = 980.0 exactly, so a breakpoint of 980 decided the whole layout
     // on a sub-pixel: the most common laptop width was a coin toss between desk and column.
