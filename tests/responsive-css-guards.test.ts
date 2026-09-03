@@ -62,6 +62,18 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(fullscreen).toMatch(/max-height:\s*none/);
   });
 
+  it('rules the note paper on the same rhythm the handwriting is set in', () => {
+    // The rule spacing and the line box were written as two separate numbers — 28px against a
+    // 21/1.35 box — so they drifted a third of a pixel per line and the hand slid off its rule.
+    const note = /\.study-note-copy\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(note).toMatch(/--note-rule:/);
+    expect(note).toMatch(/line-height:\s*var\(--note-rule\)/);
+    // The gradient states its stops in terms of the same variable, never a literal.
+    const gradient = /background-image:[^;]+;/.exec(note)?.[0] ?? '';
+    expect(gradient).toMatch(/var\(--note-rule\)/);
+    expect(gradient).not.toMatch(/\d+px\s+\d+px/);
+  });
+
   it('lets full screen off the reading column, not just off the height cap', () => {
     // The stage caps its width at --canvas-col-max, a clamp whose floor is 1280px — wider than
     // most windows. Full screen asked for 100vw and was held to that clamp, so it filled the

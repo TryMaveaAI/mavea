@@ -582,17 +582,21 @@
   font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
 }
 
-/* The note is written ON ruled paper: faint lines on the handwriting's own 28px rhythm, so the
-   hand sits on them rather than floating over a blank card. */
+/* The note is written ON ruled paper: faint lines on the handwriting's own rhythm, so the hand
+   sits on them rather than floating over a blank card. The rule spacing is DERIVED from the line
+   box, never written twice — a hand-kept 28px against a 21/1.35 line box drifted a third of a
+   pixel per line, so by the fourth the writing no longer sat on its rule. */
 .study-note-copy {
+  --note-rule: calc(21px * 1.35);
   background-image: repeating-linear-gradient(
-    transparent 0 27px,
-    color-mix(in oklab, var(--study-pen) 16%, transparent) 27px 28px
+    transparent 0 calc(var(--note-rule) - 1px),
+    color-mix(in oklab, var(--study-pen) 16%, transparent) calc(var(--note-rule) - 1px)
+      var(--note-rule)
   );
   margin: 10px 0 0;
   font-weight: 500;
   font-size: 21px;
-  line-height: 1.35;
+  line-height: var(--note-rule);
   color: var(--study-hand-ink);
   text-wrap: pretty;
 }
