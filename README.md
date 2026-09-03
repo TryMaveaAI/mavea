@@ -114,7 +114,7 @@ Twelve moments from the walkthrough and the recorded sessions. Every one replays
 <table>
   <tr>
     <td width="25%" valign="top"><img width="168" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
-    <td width="25%" valign="top"><img width="168" src="docs/media/canvas-view.jpg" alt="The same answer opened as a spatial canvas, cards connected by drawn links" /><br /><sub><b>The same answer as a board.</b> Laid out in space, with the relationships drawn between them.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/study-desk.jpg" alt="One card of an answer lit on a desk, with Mavéa’s handwritten notes and pen marks in the margin around it" /><br /><sub><b>One object on a desk.</b> The answer comes forward a card at a time, with Mavéa’s notes pencilled in the margin.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into themes and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes — and it names the tension you missed.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/voice-scrub.jpg" alt="A settled answer with its spoken track drawn as a waveform, above the card being narrated" /><br /><sub><b>Scrub the voice.</b> Drag the spoken track and the canvas un-builds to what had been said.</sub></td>
   </tr>

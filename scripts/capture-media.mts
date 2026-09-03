@@ -61,7 +61,11 @@ const SHOTS: Shot[] = [
     from: 'demo',
     persona: 'dev',
     settleMs: 26_000,
-    then: ['Study'],
+    // Hold the replay before switching: its own choreography moves the view mode, so a click that
+    // is not the last thing to happen lands on whatever beat runs next.
+    then: ['Pause autoplay', 'Study'],
+    // Past the narration header, so the frame is the desk rather than the paragraph above it.
+    scrollTop: 430,
   },
   // The settled thought map, from the dev-only harness (#/mindlab) rather than a live session:
   // its threads and themes come from a model, so a key-free tour chapter can only ever show the
@@ -199,7 +203,9 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     const start = page.getByRole('button', { name: /start demo/i });
     await start.waitFor({ state: 'visible', timeout: 30_000 });
     await start.click();
-    await page.waitForSelector('.card-grid .card', { timeout: 30_000 });
+    // Any answer card, not one inside the grid: the reading modes place their cards elsewhere, so
+    // waiting on the grid meant a shot of a Study or Focus replay timed out instead of firing.
+    await page.waitForSelector('.card', { timeout: 30_000 });
     await page.waitForTimeout(shot.settleMs);
     if (shot.then) {
       await clickThrough(page, shot.then);

@@ -107,7 +107,6 @@ is the one asset that can quietly acquire third-party content later.
 | File                | Subject                                                        |
 | ------------------- | -------------------------------------------------------------- |
 | `answer-ink.jpg`    | An answer in the Ink template                                  |
-| `canvas-view.jpg`   | The canvas view of a conversation                              |
 | `course-lesson.jpg` | A generated course lesson                                      |
 | `deck-export.jpg`   | The export studio previewing a slide                           |
 | `deep-zoom.jpg`     | Deep Zoom on a canvas                                          |
@@ -115,6 +114,7 @@ is the one asset that can quietly acquire third-party content later.
 | `doc-prism.jpg`     | Prism reading the bundled public-domain NASA memorandum        |
 | `living-answer.jpg` | The living world over an answer                                |
 | `repo-course.jpg`   | Ripple on the fictional `acme/auth-service` worked example     |
+| `study-desk.jpg`    | The Study desk, one card of an answer at a time                |
 | `think-map.jpg`     | Watch Me Think's live map                                      |
 | `trip-plan.jpg`     | A trip itinerary — **contains a map; carries its ODbL credit** |
 | `voice-scrub.jpg`   | The voice scrubber over an answer                              |
