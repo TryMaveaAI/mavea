@@ -100,6 +100,7 @@ export async function enrichShipModel(
     const onDelta = onPartial ? enrichmentDeltas(onPartial) : undefined;
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'ripple-enrichment',
         system: ENRICH_SYSTEM,
         // The schema + rules are stable, so pass them as the cache base — providers serve them from
         // cache on every re-analysis (Anthropic ephemeral block, Gemini systemInstruction).
@@ -174,6 +175,7 @@ export async function enrichOrientation(
     const orientation = await getAdapter(cfg.provider)
       .generate(
         {
+          usageLabel: 'ripple-orientation',
           system: ONBOARD_SYSTEM,
           systemBase: ONBOARD_SYSTEM,
           history: [],
@@ -225,6 +227,7 @@ export async function enrichCourses(
     const courses = await getAdapter(cfg.provider)
       .generate(
         {
+          usageLabel: 'ripple-courses',
           system: COURSES_SYSTEM,
           systemBase: COURSES_SYSTEM,
           history: [],
@@ -259,6 +262,7 @@ export async function enrichCourseClosing(
   try {
     const r = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'ripple-course-closing',
         system: COURSE_CLOSING_SYSTEM,
         systemBase: COURSE_CLOSING_SYSTEM,
         history: [],
@@ -341,6 +345,7 @@ export async function enrichLesson(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'ripple-lesson',
         system: LESSON_SYSTEM,
         systemBase: LESSON_SYSTEM,
         history: [],
@@ -373,6 +378,7 @@ export async function enrichIncident(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'ripple-incident',
         system:
           'You are an on-call engineer reasoning BACKWARDS from a production alert to its likely ' +
           'cause. You ground every claim in the alert and the change provided; you never invent ' +

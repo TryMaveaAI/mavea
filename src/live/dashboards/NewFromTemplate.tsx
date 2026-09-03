@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useFocusTrap } from '../useFocusTrap';
 import { getDashboards } from './store';
 import { dashHref } from './route';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
 import { planTracker, type TrackerPlan } from './planTracker';
 import { PlanReview } from './PlanReview';
 import type { Dashboard } from './types';
@@ -38,7 +38,7 @@ export function NewFromTemplate({ onClose }: { onClose: () => void }): ReactElem
   // Read once, like ExtractionPreview does — this modal is a single, short-lived review, not a
   // live view that needs to track dashboards created elsewhere while it's open.
   const existing = useMemo<Dashboard[]>(() => getDashboards(), []);
-  const hasModel = useMemo(() => !!toModelConfig(getLiveConfigV2()).apiKey, []);
+  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
 
   const runPlan = async (): Promise<void> => {
     const wish = ask.trim();

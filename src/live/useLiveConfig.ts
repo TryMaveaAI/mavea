@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { encryptSecret, decryptSecret } from './keyVault';
 import type { ModelConfig, ProviderId } from '../types/mavea';
 import { PROVIDERS, providerInfo } from './providers';
+import { modelCanGenerate } from './providers/spendPolicy';
 import type { LiveCaps } from './generateLive';
 import type { SearchProviderId } from './search';
 import type { SearchMode, QualityPref } from './generateLive';
@@ -483,9 +484,7 @@ export function toModelConfig(c: LiveConfigV2): ModelConfig {
  *  on every render. It exists to keep a returning visitor from silently walking into a doomed
  *  turn: the Go hub's "Start talking" gates on it rather than firing a request with no key. */
 export function hasModelConfigured(c: LiveConfigV2): boolean {
-  const info = providerInfo(c.provider);
-  const model = c.models[c.provider] || info.defaultModel;
-  return !!model && (!info.needsKey || !!c.keys[c.provider]);
+  return modelCanGenerate(toModelConfig(c));
 }
 
 /**

@@ -124,6 +124,7 @@ export async function explodeWhy(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'why-map',
         system: WHY_SYSTEM,
         history: [],
         user: message(question, corpus, nodeCap),

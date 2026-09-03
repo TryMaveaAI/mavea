@@ -90,11 +90,36 @@ async function errorDetail(res: Response): Promise<string> {
   }
 }
 
+/** Models this session has learned do not accept `thinkingLevel: MINIMAL`.
+ *
+ *  Gemini 3's Flash line split on this: 3.5/3.6-flash and the flash-lites take MINIMAL, while
+ *  3.7-flash, 3.8-flash and 3.1-pro-preview take only low/medium/high and answer a MINIMAL request
+ *  with `400 INVALID_ARGUMENT: Thinking level MINIMAL is not supported for this model`. Every turn
+ *  asks for MINIMAL, so on those models EVERY call failed and the surface simply did not work.
+ *
+ *  Learned rather than listed: the model field is free text and Google ships a new Flash roughly
+ *  every quarter, so a hand-kept set of ids would rot into the same outage it was added to fix.
+ *  The first rejection for a model is remembered and every later call opens at `low`. */
+const noMinimal = new Set<string>();
+
 /** Gemini's thinkingConfig uses uppercase level names. Omit the whole config when no
  *  level is requested, so the model's own default (Flash-Lite = MINIMAL) applies. */
-function thinkingConfig(level?: ThinkingLevel): { thinkingLevel: string } | undefined {
+function thinkingConfig(
+  level: ThinkingLevel | undefined,
+  model: string,
+): { thinkingLevel: string } | undefined {
   if (!level) return undefined;
-  return { thinkingLevel: level.toUpperCase() };
+  // `low` is the nearest thing these models accept, so the intent — think as little as this model
+  // can — survives the substitution rather than being dropped.
+  const effective = level === 'minimal' && noMinimal.has(model) ? 'low' : level;
+  return { thinkingLevel: effective.toUpperCase() };
+}
+
+/** Whether a 400 is Gemini telling us this model has no MINIMAL tier, as opposed to any other
+ *  invalid argument. Matched on the two words the message is built from rather than the whole
+ *  sentence, which is provider copy and free to change. */
+function rejectsMinimal(status: number, detail: string): boolean {
+  return status === 400 && /thinking\s*level/i.test(detail) && /minimal/i.test(detail);
 }
 
 /** Build the `tools` array for a turn. google_search grounds the answer in real-time
@@ -178,7 +203,10 @@ export const geminiAdapter: ProviderAdapter = {
     // (liveSystemPrompt(tier)) as the systemInstruction instead and fold the per-turn delta into
     // the user turn — the model still sees every instruction, but now the large prefix
     // (systemInstruction + prior history) hits Gemini's implicit cache (~90% input discount).
-    const sysBase = req.systemBase;
+    const sysBase =
+      req.systemStable && req.system.startsWith(req.systemStable)
+        ? req.systemStable
+        : req.systemBase;
     let stableSystem = req.system;
     let perTurn = '';
     if (sysBase && req.system.startsWith(sysBase)) {
@@ -205,19 +233,25 @@ export const geminiAdapter: ProviderAdapter = {
       // same reason native grounding tools compose cleanly here — no schema to fight.)
       responseMimeType: 'application/json',
     };
-    const thinking = thinkingConfig(req.thinkingLevel);
-    if (thinking) generationConfig.thinkingConfig = thinking;
     const tools = buildTools(req);
+    // Rebuildable: a model that refuses MINIMAL is re-asked at `low` on the spot, and the only
+    // thing that differs between the two attempts is the thinking level.
+    const buildBody = (): string => {
+      const thinking = thinkingConfig(req.thinkingLevel, cfg.model);
+      return JSON.stringify({
+        systemInstruction: { parts: [{ text: stableSystem }] },
+        contents,
+        generationConfig: thinking
+          ? { ...generationConfig, thinkingConfig: thinking }
+          : generationConfig,
+        ...(tools ? { tools } : {}),
+      });
+    };
 
     const requestInit: RequestInit = {
       method: 'POST',
       headers: keyHeader(cfg),
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: stableSystem }] },
-        contents,
-        generationConfig,
-        ...(tools ? { tools } : {}),
-      }),
+      body: buildBody(),
     };
 
     // Total-turn ceiling, merged with the caller's abort (a superseded turn). See STREAM_TOTAL_MS.
@@ -246,7 +280,16 @@ export const geminiAdapter: ProviderAdapter = {
               await sleepAbortable(retryAfterMs(res, tries), signal);
               continue;
             }
-            throw new Error(`gemini ${res.status}${await errorDetail(res)}`);
+            const detail = await errorDetail(res);
+            // Not a transient failure and not the user's fault: this model simply has no MINIMAL
+            // tier. Learn it and re-ask at `low` rather than failing a turn over a level nobody
+            // chose — every turn asks for MINIMAL, so without this the model never works at all.
+            if (rejectsMinimal(res.status, detail) && !noMinimal.has(cfg.model)) {
+              noMinimal.add(cfg.model);
+              requestInit.body = buildBody();
+              continue;
+            }
+            throw new Error(`gemini ${res.status}${detail}`);
           }
 
           await readSSE(res, (ev) => {

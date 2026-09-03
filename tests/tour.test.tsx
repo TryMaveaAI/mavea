@@ -9,7 +9,7 @@ import { join } from 'path';
 import { Blanks } from '../src/canvas/blocks/forms/Blanks';
 import { buildBlanksDemo } from '../src/tour/blanksDemo';
 import { ensureTourCourse } from '../src/tour/courseSeed';
-import { ensureTourDashboard } from '../src/tour/dashboardSeed';
+import { ensureTourDashboard, releaseTourDashboard } from '../src/tour/dashboardSeed';
 import { markCircleLoop } from '../src/tour/markCircle';
 import { TourEndCard } from '../src/tour/TourEndCard';
 import { ALL_CHAPTERS, TOUR, TOUR_EXTRAS, tourFrame } from '../src/tour/tourPlan';
@@ -449,45 +449,33 @@ describe('ensureTourCourse — a real, teachable course backs the tour chapter',
   });
 });
 
-// Regression coverage for chapter 15 ("dashboards", "Track it live"): the coach line claims "I'll
-// turn it into a living dashboard that keeps itself up to date" — but createBlankDashboard
-// defaults to a manual (off) cadence, and the chapter now flips its takeover to the real Settings
-// panel to show the refresh control backing that claim. Showing "Manual" there would read as the
-// opposite of "keeps itself up to date", so ensureTourDashboard must give the seeded dashboard a
-// real, live cadence rather than the blank default.
-//
 // ensureTourDashboard reads the corpus synchronously; on the surface the driver's corpusReady
 // gate guarantees it has loaded before the chapter fires — the file-level beforeAll mirrors that.
-describe('ensureTourDashboard — the seeded dashboard actually keeps itself up to date', () => {
+describe('ensureTourDashboard — the walkthrough never leaves a scheduled spend behind', () => {
   beforeEach(() => clearDashboards());
 
-  it('seeds a live data-refresh cadence, not the manual default', () => {
+  it('shows a real cadence only on the temporary fixture', () => {
     const id = ensureTourDashboard();
     expect(id).not.toBeNull();
     const dash = getDashboards().find((d) => d.id === id);
     expect(dash).toBeDefined();
-    expect(dash?.cadence.data).not.toBe('manual');
-  });
-
-  it('seeds a live AI-analysis cadence too', () => {
-    const id = ensureTourDashboard();
-    const dash = getDashboards().find((d) => d.id === id);
-    expect(dash?.cadence.ai).not.toBe('manual');
-  });
-
-  it('sets a real next-due clock consistent with the seeded cadence (not the manual sentinel)', () => {
-    const id = ensureTourDashboard();
-    const dash = getDashboards().find((d) => d.id === id);
-    expect(dash?.nextDataAt).toBeLessThan(Number.MAX_SAFE_INTEGER);
+    expect(dash?.cadence).toEqual({ data: 'hourly', ai: 'daily' });
     expect(dash?.nextDataAt).toBeGreaterThan(dash?.createdAt ?? 0);
+    expect(dash?.nextAiAt).toBeGreaterThan(dash?.createdAt ?? 0);
   });
 
-  it('is idempotent — a second call finds the same, already-live-cadenced dashboard', () => {
+  it('is idempotent within one walkthrough', () => {
     const first = ensureTourDashboard();
     const second = ensureTourDashboard();
     expect(second).toBe(first);
-    const dash = getDashboards().find((d) => d.id === second);
-    expect(dash?.cadence.data).not.toBe('manual');
+    expect(getDashboards().filter((dashboard) => dashboard.id === second)).toHaveLength(1);
+  });
+
+  it('removes the fixture when the walkthrough releases it', () => {
+    const id = ensureTourDashboard();
+    expect(id).not.toBeNull();
+    releaseTourDashboard(id!);
+    expect(getDashboards().some((dashboard) => dashboard.id === id)).toBe(false);
   });
 });
 

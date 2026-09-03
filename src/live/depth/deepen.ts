@@ -22,7 +22,6 @@ import { blockTypesForTier } from '../../engine/blockTypes';
 import { ensureDetails } from '../../canvas/blocks/catalog/details';
 import { adaptiveCols } from '../layout';
 import { catalogSpan } from '../select';
-import { recordUsage } from '../usage/ledger';
 import { getDeepenTurn, deepenOffered, deepenKeySeed, type DeepenTurn } from './deepenStore';
 
 /** Blocks per drawer. The eager budget was ~6 across a whole answer's sections; per opened
@@ -98,6 +97,7 @@ async function fetchDrawer(
     const base = deepenSystemBase(turn.tier);
     const res = await getAdapter(turn.cfg.provider).generate(
       {
+        usageLabel: 'go-deeper',
         system: `${base}\n\n${DEEPEN_DIRECTIVE}`,
         systemBase: base,
         history: [],
@@ -112,7 +112,6 @@ async function fetchDrawer(
       },
       turn.cfg,
     );
-    recordUsage('go-deeper', res.usage);
     raw = res.raw;
   } catch (err) {
     if (import.meta.env?.DEV) console.warn('[live] go-deeper drawer failed', err);

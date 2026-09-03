@@ -10,6 +10,31 @@ import { openaiAdapter } from './openai';
 import { geminiAdapter } from './gemini';
 import { openrouterAdapter } from './openrouter';
 import { grokAdapter } from './grok';
+import { assertProviderGenerationAllowed, providerGenerationAllowed } from './spendPolicy';
+import { recordUsage } from '../usage/ledger';
+
+function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
+  const facade: ProviderAdapter = {
+    ...adapter,
+    async probe(cfg) {
+      if (!providerGenerationAllowed(cfg)) return { ok: false, model: false };
+      return ADAPTERS[id].probe(cfg);
+    },
+    async generate(req, cfg, onDelta) {
+      assertProviderGenerationAllowed(cfg);
+      const result = await ADAPTERS[id].generate(req, cfg, onDelta);
+      recordUsage(req.usageLabel ?? 'model-call', result.usage);
+      return result;
+    },
+  };
+  if (adapter.warm) {
+    facade.warm = async (cfg) => {
+      if (!providerGenerationAllowed(cfg)) return;
+      await ADAPTERS[id].warm?.(cfg);
+    };
+  }
+  return facade;
+}
 
 export const ADAPTERS: Record<ProviderId, ProviderAdapter> = {
   anthropic: anthropicAdapter,
@@ -19,8 +44,16 @@ export const ADAPTERS: Record<ProviderId, ProviderAdapter> = {
   grok: grokAdapter,
 };
 
+const GUARDED_ADAPTERS: Record<ProviderId, ProviderAdapter> = {
+  anthropic: guarded('anthropic', anthropicAdapter),
+  gemini: guarded('gemini', geminiAdapter),
+  openai: guarded('openai', openaiAdapter),
+  openrouter: guarded('openrouter', openrouterAdapter),
+  grok: guarded('grok', grokAdapter),
+};
+
 export function getAdapter(id: ProviderId): ProviderAdapter {
-  return ADAPTERS[id];
+  return GUARDED_ADAPTERS[id];
 }
 
 // Provider UI metadata lives in the adapter-free './info' leaf; re-exported here so existing
@@ -29,3 +62,8 @@ export function getAdapter(id: ProviderId): ProviderAdapter {
 export { PROVIDERS, VISIBLE_PROVIDERS, providerInfo, type ProviderInfo } from './info';
 
 export type { ProviderAdapter } from './types';
+export {
+  configureProviderSpending,
+  ProviderGenerationBlockedError,
+  type ProviderGenerationBlockedReason,
+} from './spendPolicy';

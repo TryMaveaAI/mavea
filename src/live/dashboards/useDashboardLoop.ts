@@ -42,6 +42,7 @@ import type { Dashboard, Tripwire, Verdict } from './types';
 import { analyzeMove } from './analyze';
 import { notifyTriggered } from './notify';
 import { hasLiveContent, hostOf } from './format';
+import { isProviderSpendingBlocked, modelCanGenerate } from '../providers/spendPolicy';
 import { appendLedger, checksThisWeek, getLedger } from './ledger';
 import type { LedgerEntry } from './ledger';
 import { budgetState, getDashSettings } from './budget';
@@ -504,8 +505,9 @@ export async function refreshDashboardNow(
   if (inFlight.has(id)) return 'busy';
   const target = getDashboard(id);
   if (!target) return 'busy';
-  const cfg = toModelConfig(getLiveConfigV2());
-  if (!cfg.apiKey) return 'no-model';
+  const liveConfig = getLiveConfigV2();
+  const cfg = toModelConfig(liveConfig);
+  if (!modelCanGenerate(cfg)) return 'no-model';
   inFlight.add(id);
   try {
     const outcomes = await runRefreshBatch([target], cfg, true, { manual: true });
@@ -530,8 +532,9 @@ export async function refreshDashboardNow(
  *  is exactly what that round's batch covers, so nothing gets marked "checked" without a real
  *  attempt. Budget-exempt like every other manual action. */
 export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'busy' | 'failed'> {
-  const cfg = toModelConfig(getLiveConfigV2());
-  if (!cfg.apiKey) return 'no-model';
+  const liveConfig = getLiveConfigV2();
+  const cfg = toModelConfig(liveConfig);
+  if (!modelCanGenerate(cfg)) return 'no-model';
   const liveContent = getDashboards().filter(hasLiveContent);
   let remaining = liveContent.filter((d) => !inFlight.has(d.id));
   // Nothing to do at all reads as 'done'; everything that COULD be checked already mid-flight
@@ -576,8 +579,9 @@ export async function readDashboardNow(
   if (verdictPending.has(id)) return 'busy';
   const target = getDashboard(id);
   if (!target) return 'failed';
-  const cfg = toModelConfig(getLiveConfigV2());
-  if (!cfg.apiKey) return 'no-model';
+  const liveConfig = getLiveConfigV2();
+  const cfg = toModelConfig(liveConfig);
+  if (!modelCanGenerate(cfg)) return 'no-model';
   const now = Date.now();
   const breached = target.tripwires.find((t) => t.state === 'TRIGGERED');
   const trigger: Tripwire | 'scheduled' = breached ?? 'scheduled';
@@ -654,8 +658,10 @@ export function useDashboardLoop(): void {
     const tick = async (): Promise<void> => {
       if (busy.current || !alive) return;
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      const cfg = toModelConfig(getLiveConfigV2());
-      const ready = !!cfg.apiKey;
+      if (isProviderSpendingBlocked()) return;
+      const liveConfig = getLiveConfigV2();
+      const cfg = toModelConfig(liveConfig);
+      const ready = modelCanGenerate(cfg);
       const now = Date.now();
       const all = getDashboards();
       const settings = getDashSettings();

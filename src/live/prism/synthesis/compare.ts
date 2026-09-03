@@ -129,6 +129,7 @@ export async function adjudicate(
   try {
     const out = await getAdapter(ctx.cfg.provider).generate(
       {
+        usageLabel: 'prism-compare',
         system: SYSTEM,
         history: [],
         user: prompt(labeled),

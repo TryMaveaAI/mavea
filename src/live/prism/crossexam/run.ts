@@ -116,6 +116,7 @@ export async function runCrossExam(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-cross-examination',
         system: SYSTEM,
         history: [],
         user: buildPrompt(targets),

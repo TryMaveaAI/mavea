@@ -133,6 +133,7 @@ async function callJson(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-corpus-themes',
         system,
         history: [],
         user,
@@ -161,6 +162,7 @@ async function callRaw(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-corpus-synthesis',
         system,
         history: [],
         user,

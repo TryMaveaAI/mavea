@@ -215,6 +215,7 @@ export async function draftCardsFromBlock(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'srs-card-suggestions',
         system: DRAFT_SYSTEM,
         systemBase: DRAFT_SYSTEM,
         history: [],

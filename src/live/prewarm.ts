@@ -11,6 +11,7 @@
 import { getAdapter } from './providers';
 import { getLiveConfigV2, toModelConfig } from './useLiveConfig';
 import { hasLegalAcceptance } from '../legal/acceptance';
+import { providerGenerationAllowed } from './providers/spendPolicy';
 
 /** Don't re-warm more than once per this window — a focus/blur/refocus burst is one warm. */
 const COOLDOWN_MS = 20_000;
@@ -44,9 +45,11 @@ export function prewarmLive(opts: { force?: boolean } = {}): void {
   // rejection.
   try {
     const cfg = toModelConfig(getLiveConfigV2());
-    const adapter = getAdapter(cfg.provider);
-    const open = adapter.warm ? adapter.warm(cfg) : adapter.probe(cfg);
-    void Promise.resolve(open).catch(() => {});
+    if (providerGenerationAllowed(cfg)) {
+      const adapter = getAdapter(cfg.provider);
+      const open = adapter.warm ? adapter.warm(cfg) : adapter.probe(cfg);
+      void Promise.resolve(open).catch(() => {});
+    }
   } catch {
     /* config/adapter unavailable — warming is best-effort */
   }

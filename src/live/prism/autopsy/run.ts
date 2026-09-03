@@ -186,6 +186,7 @@ export async function runAutopsy(
   try {
     const res = await getAdapter(opts.cfg.provider).generate(
       {
+        usageLabel: 'prism-autopsy',
         system: SYSTEM,
         history: [],
         user: buildPrompt(checkable, evidence),

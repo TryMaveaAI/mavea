@@ -116,6 +116,7 @@ export async function generateTrunk(
   const adapter = getAdapter(cfg.provider);
   const result = await adapter.generate(
     {
+      usageLabel: 'deep-zoom-trunk',
       system: TRUNK_SYSTEM,
       history: [],
       user: query,
@@ -145,6 +146,7 @@ export async function generateBranch(
   const user = `Topic: "${query}"\nCurrent level (${parentLevel.scaleLabel}): "${parentLevel.title}"\nForking into: "${subtopic}"`;
   const result = await adapter.generate(
     {
+      usageLabel: 'deep-zoom-branch',
       system: BRANCH_SYSTEM,
       history: [],
       user,

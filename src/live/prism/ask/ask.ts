@@ -311,6 +311,7 @@ async function reachOutside(question: string, ctx: AskContext): Promise<OutsideF
   try {
     const res = await getAdapter(ctx.cfg.provider).generate(
       {
+        usageLabel: 'prism-outside-evidence',
         system: OUTSIDE_SYSTEM,
         history: [],
         user: outsidePrompt(question, evidence),
@@ -356,6 +357,7 @@ export async function askDocument(question: string, ctx: AskContext): Promise<As
     try {
       const res = await getAdapter(ctx.cfg.provider).generate(
         {
+          usageLabel: 'prism-ask-document',
           system: ASK_SYSTEM,
           history: [],
           user: askPrompt(q, pages, ctx.multiDoc),

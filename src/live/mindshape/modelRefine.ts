@@ -177,6 +177,7 @@ Only genuinely new atoms (each needs a verbatim quote from the NEW speech). Reus
 /** Shared raw model call. Returns the raw response, or null on abort/network/JSON failure.
  *  `format` is the structured-output schema (ignored by free-form adapters). */
 async function callModel(
+  usageLabel: 'mindshape-settle' | 'mindshape-patch',
   user: string,
   maxTokens: number,
   format: object,
@@ -187,6 +188,7 @@ async function callModel(
     const adapter = getAdapter(cfg.provider);
     const result = await adapter.generate(
       {
+        usageLabel,
         system: MINDSHAPE_SYSTEM,
         history: [],
         user,
@@ -213,6 +215,7 @@ export async function settleMindShape(
   signal?: AbortSignal,
 ): Promise<MindShapeSpec | null> {
   const raw = await callModel(
+    'mindshape-settle',
     settleMessage(transcript),
     SETTLE_MAX_TOKENS,
     SETTLE_FORMAT,
@@ -233,6 +236,7 @@ export async function patchMindShape(
   signal?: AbortSignal,
 ): Promise<MindShapePatch | null> {
   const raw = await callModel(
+    'mindshape-patch',
     patchMessage(delta, prior),
     PATCH_MAX_TOKENS,
     PATCH_FORMAT,

@@ -136,6 +136,7 @@ export async function runReconcile(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-reconcile',
         system: RECON_SYSTEM,
         history: [],
         user: buildPrompt(atoms),

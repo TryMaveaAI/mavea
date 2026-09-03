@@ -212,7 +212,10 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
       // alone as the system message and fold the per-turn delta into the user turn, ahead of the
       // user's own words: the model sees every instruction, in the same order, but now the whole
       // system + history prefix caches. This is the split Gemini already ships.
-      const sysBase = req.systemBase;
+      const sysBase =
+        req.systemStable && req.system.startsWith(req.systemStable)
+          ? req.systemStable
+          : req.systemBase;
       const split = !!sysBase && req.system.startsWith(sysBase);
       const stableSystem = split ? (sysBase as string) : req.system;
       const perTurn = split ? req.system.slice((sysBase as string).length).trim() : '';

@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { addWidget, ensureFirstCheck, foldInto, MAX_METRICS, MAX_WIDGETS } from './store';
 import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { planTracker } from './planTracker';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
 import type { Block } from '../../data/conversation';
 import type { Dashboard, MetricSpec, Widget, WidgetSpan } from './types';
 import { useFocusTrap } from '../useFocusTrap';
@@ -97,7 +97,7 @@ export function AddWidgetPalette({
 
   // Read once — the palette is a short-lived popover; a key can't change while it's open without
   // going through Live settings anyway.
-  const hasKey = useMemo(() => !!toModelConfig(getLiveConfigV2()).apiKey, []);
+  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
 
   const add = (o: Addable): void => {
     const { block, span } = o.make();
@@ -285,7 +285,7 @@ export function AddWidgetPalette({
             </button>
             <span className="dash-ptrack-kicker">Track a number</span>
           </div>
-          {hasKey ? (
+          {hasModel ? (
             <form
               className="dash-ptrack-form"
               onSubmit={(e) => {

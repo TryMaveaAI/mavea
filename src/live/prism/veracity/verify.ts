@@ -208,6 +208,7 @@ export async function runVeracity(
   try {
     const res = await getAdapter(opts.cfg.provider).generate(
       {
+        usageLabel: 'prism-veracity',
         system: VERIFY_SYSTEM,
         history: [],
         user: buildPrompt(checkable, evidence),

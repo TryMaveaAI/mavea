@@ -70,6 +70,44 @@
   font-family: var(--font-data);
   color: var(--text-muted);
 }
+.usage-call-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.usage-call-heading {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.usage-calls {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 148px;
+  overflow-y: auto;
+}
+.usage-calls li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 2px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 55%, transparent);
+  font-size: 11px;
+}
+.usage-calls li:last-child {
+  border-bottom: 0;
+}
+.usage-call-tokens {
+  font-family: var(--font-data);
+  color: var(--text-muted);
+  text-align: right;
+}
 .usage-note {
   margin: 0;
   font-size: 11.5px;

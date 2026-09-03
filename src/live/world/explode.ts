@@ -247,6 +247,7 @@ async function callWorld(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'world-evolve',
         system,
         history: [],
         user,

@@ -166,7 +166,10 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
       // instructions and fold the per-turn delta into the user turn, ahead of the user's own words:
       // the model still sees every instruction, in the same order, but now the whole
       // instructions + history prefix caches. This is the split Gemini already ships.
-      const sysBase = req.systemBase;
+      const sysBase =
+        req.systemStable && req.system.startsWith(req.systemStable)
+          ? req.systemStable
+          : req.systemBase;
       const stableSystem = sysBase && req.system.startsWith(sysBase) ? sysBase : req.system;
       const perTurn =
         sysBase && req.system.startsWith(sysBase) ? req.system.slice(sysBase.length).trim() : '';

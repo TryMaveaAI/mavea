@@ -72,6 +72,7 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
       !turn.loading &&
       turn.result &&
       !turn.result.error &&
+      !turn.result.collapsed &&
       turn.result.spec.blocks.length > 0 &&
       !pinned
     ) {

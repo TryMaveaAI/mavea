@@ -74,6 +74,7 @@ async function skimSelectPages(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-page-skim',
         system: 'You pick the most important pages of a document and return strict JSON only.',
         history: [],
         user: `${SKIM_PROMPT}\n\n${skimPagesToPrompt(pages, SKIM_PER_PAGE)}`,
@@ -465,6 +466,7 @@ async function mapOneDocument(
   const gen = await adapter
     .generate(
       {
+        usageLabel: 'prism-claim-map',
         system:
           'You extract grounded, verbatim-quoted claims from a document and return strict JSON only.',
         history: [],
@@ -711,6 +713,7 @@ async function sameDocumentCompare(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-internal-compare',
         system: 'You compare grounded claims within documents and return strict JSON only.',
         history: [],
         user: sameDocumentPrompt(claims),
@@ -759,6 +762,7 @@ async function crossCompare(
   try {
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-cross-document-compare',
         system: 'You compare claims across documents and return strict JSON only.',
         history: [],
         user: crossPrompt(claims),

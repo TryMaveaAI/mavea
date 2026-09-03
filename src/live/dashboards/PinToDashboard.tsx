@@ -11,7 +11,7 @@ import { blockLabel } from '../../canvas/blockLabel';
 import type { Block } from '../../data/conversation';
 import { getDashboards, whenDashboardsHydrated } from './store';
 import { estimateSearchesPerMonth } from './cadence';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, hasModelConfigured } from '../useLiveConfig';
 import { displayTitle } from './format';
 import { pinBlockToDashboard, type PinTarget } from './pin';
 import { useFocusTrap } from '../useFocusTrap';
@@ -114,7 +114,7 @@ export function PinToDashboard({
   };
 
   const searchesPerMonth = estimateSearchesPerMonth(cadence);
-  const hasKey = useMemo(() => !!toModelConfig(getLiveConfigV2()).apiKey, []);
+  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
 
   return (
     <div
@@ -186,7 +186,7 @@ export function PinToDashboard({
                 {/* Keyless truth: nothing runs without a key, so no "on your key" claims — the
                     schedule survives and checks start on their own once one is connected. */}
                 {searchesPerMonth > 0
-                  ? hasKey
+                  ? hasModel
                     ? `≈ ${searchesPerMonth} searches/mo on your key, at this cadence.`
                     : `≈ ${searchesPerMonth} searches/mo once a key is connected in Live — parked until then.`
                   : 'No standing searches — this refreshes only when you ask.'}

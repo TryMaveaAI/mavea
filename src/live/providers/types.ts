@@ -47,6 +47,8 @@ export interface LiveRequestTools {
 
 /** Everything an adapter needs to produce one Live turn. */
 export interface LiveRequest {
+  /** Human-readable ledger attribution for this billed call. Provider facades record it centrally. */
+  usageLabel?: string;
   /** System prompt (LIVE_SYSTEM_PROMPT, possibly tier-tuned). Providers cache this. */
   system: string;
   /** The stable, tier-invariant base of the system prompt (liveSystemPrompt(tier)).
@@ -54,6 +56,10 @@ export interface LiveRequest {
    *  suffix, so the large stable prefix gets the ~90% cache discount every turn after
    *  the first. Omit → fall back to caching the whole system. */
   systemBase?: string;
+  /** The full cacheable prefix, beginning with `systemBase`. Live uses the second segment for
+   *  session-stable feature/menu guidance; Anthropic marks both segments independently, while
+   *  implicit-cache providers send the combined prefix before history. */
+  systemStable?: string;
   /** Rolling history (excludes the system prompt and the current user turn). */
   history: ChatMessage[];
   /** The current user question. */

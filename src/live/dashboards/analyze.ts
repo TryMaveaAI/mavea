@@ -78,6 +78,7 @@ export async function analyzeMove(
         `numbers show and what has materially changed since the last check.`;
     const rr = await adapter.generate(
       {
+        usageLabel: 'dashboard-analysis',
         system: currentDateTimeLine() + ' ' + SYSTEM,
         history: [],
         user,

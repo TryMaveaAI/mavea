@@ -19,6 +19,7 @@ import { refreshDashboardNow } from './useDashboardLoop';
 import { nextDataDue } from './cadence';
 import { refineRefreshQuery } from './refineQuery';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { modelCanGenerate } from '../providers/spendPolicy';
 import type { Block } from '../../data/conversation';
 import type { DashSource, DataCadenceMode, Widget } from './types';
 
@@ -115,7 +116,7 @@ export function pinBlockToDashboard(opts: {
   // which the identity check below turns into a no-op write.
   if (ask) {
     const cfg = toModelConfig(getLiveConfigV2());
-    if (cfg.apiKey) {
+    if (modelCanGenerate(cfg)) {
       const ids = widgets.map((w) => w.id);
       void refineRefreshQuery(ask, blocks[0].type, cfg).then((refined) => {
         const q = refined.trim();

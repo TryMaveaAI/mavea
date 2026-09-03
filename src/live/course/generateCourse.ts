@@ -179,6 +179,7 @@ async function callModelJson(
   try {
     result = await adapter.generate(
       {
+        usageLabel: 'course-outline',
         system,
         history: [],
         user,

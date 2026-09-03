@@ -1,18 +1,20 @@
 // dashboardSeed.ts — the walkthrough's dashboard: a CURATED, finished board built from the same
 // baked answers the tour replays (the $10k-at-7% ask and its $500-monthly follow-up), so every
-// tile carries real numbers a viewer just watched Mavéa compute. Seeded idempotently into the real
-// dashboards store and rendered by the real DashboardDetail — the feature, not a mock of it.
+// tile carries real numbers a viewer just watched Mavéa compute. Seeded idempotently as a
+// non-serialized dashboard and rendered by the real DashboardDetail — the feature, not a mock.
 import { tourConversation } from './corpus';
 import {
-  addDashboard,
+  addTemporaryDashboard,
   createBlankDashboard,
   blockToWidget,
   getDashboards,
+  removeDashboard,
 } from '../live/dashboards/store';
-import { DATA_CADENCE_MIN, AI_CADENCE_MIN, nextDue } from '../live/dashboards/cadence';
+import { AI_CADENCE_MIN, nextDataDue, nextDue } from '../live/dashboards/cadence';
 import type { Block } from '../data/conversation';
 
 const TOUR_DASH_QUESTION = 'How does $10,000 grow at 7% over 30 years?';
+let activeTourDashboardId: string | null = null;
 
 /** The showpiece blocks, in render order: growth chart + split from the base answer, then the
  *  comparison + composition + summary from the follow-up. */
@@ -37,8 +39,11 @@ function pickBlocks(): Block[] {
 
 /** Seed (or find) the tour's dashboard and return its id — stable across replays. */
 export function ensureTourDashboard(): string | null {
-  const existing = getDashboards().find((d) => d.question === TOUR_DASH_QUESTION);
+  const existing = activeTourDashboardId
+    ? getDashboards().find((dashboard) => dashboard.id === activeTourDashboardId)
+    : undefined;
   if (existing) return existing.id;
+  activeTourDashboardId = null;
   const blocks = pickBlocks();
   if (blocks.length === 0) return null;
   const dash = createBlankDashboard({
@@ -50,13 +55,18 @@ export function ensureTourDashboard(): string | null {
     text: 'Your initial $10,000 grows by more than 7.6× through the power of compounding interest.',
     saidAt: dash.createdAt,
   };
-  dash.widgets = blocks.map((b) => blockToWidget(b, 'tour'));
-  // The chapter's coach line claims this dashboard "keeps itself up to date" — createBlankDashboard
-  // defaults to a manual (off) cadence, which would show the opposite the moment its own Settings
-  // panel is on screen. Give it a real, live cadence so that claim is actually true, not aspirational.
   dash.cadence = { data: 'hourly', ai: 'daily' };
-  dash.nextDataAt = nextDue(dash.createdAt, DATA_CADENCE_MIN[dash.cadence.data]);
+  dash.nextDataAt = nextDataDue(dash.cadence, dash.createdAt);
   dash.nextAiAt = nextDue(dash.createdAt, AI_CADENCE_MIN[dash.cadence.ai]);
-  addDashboard(dash);
+  dash.widgets = blocks.map((b) => blockToWidget(b, 'tour'));
+  addTemporaryDashboard(dash);
+  activeTourDashboardId = dash.id;
   return dash.id;
+}
+
+/** Remove the temporary walkthrough fixture when the replay leaves its chapter. */
+export function releaseTourDashboard(id: string): void {
+  if (id !== activeTourDashboardId) return;
+  activeTourDashboardId = null;
+  removeDashboard(id);
 }

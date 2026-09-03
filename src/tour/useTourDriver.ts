@@ -48,8 +48,7 @@ export interface TourOps {
   drawPenOnFirstBlock: () => void;
   /** Open the walkthrough's curated living dashboard (a real store entry, full-screen). */
   openDashboards: () => void;
-  /** Flip the dashboard takeover from the board itself to its Settings panel — the real
-   *  refresh-cadence control that backs up "keeps itself up to date". */
+  /** Flip the dashboard takeover from the board itself to its real refresh-cadence controls. */
   dashboardShowSettings: () => void;
   /** Open the real Model settings so the walkthrough can show all five providers and BYOK field. */
   openModelSettings: () => void;

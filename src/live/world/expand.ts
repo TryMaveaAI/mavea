@@ -120,6 +120,7 @@ async function fetchChildren(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'world-expand',
         system: EXPAND_SYSTEM,
         history: [],
         user: expandMessage(prior, node, corpus),

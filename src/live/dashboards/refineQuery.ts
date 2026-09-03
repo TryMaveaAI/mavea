@@ -30,6 +30,7 @@ export async function refineRefreshQuery(
     const adapter = getAdapter(cfg.provider);
     const rr = await adapter.generate(
       {
+        usageLabel: 'dashboard-query-refine',
         system: REFINE_SYSTEM,
         history: [],
         user: `Original ask: "${ask}"\nThis produces a "${blockType}" block.`,

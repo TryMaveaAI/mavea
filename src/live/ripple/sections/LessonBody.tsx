@@ -5,6 +5,7 @@
 // The deep content is generated once and cached by the loader, so reopening a lesson never re-spends
 // tokens. Keyed by lesson in the parent, so its state resets cleanly when you move between lessons.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { proseForSpeech } from '../../../lib/spokenText';
 import type { Altitude, CourseLesson, LessonDetail, ShipCourse } from '../model';
 
 interface LessonBodyProps {
@@ -101,7 +102,7 @@ export function LessonBody({
   useEffect(() => {
     if (spot === null || !speak) return;
     const step = walk[spot];
-    if (step) speak(`${step.focus ? step.focus + '. ' : ''}${step.explain}`);
+    if (step) speak(proseForSpeech(`${step.focus ? step.focus + '. ' : ''}${step.explain}`));
   }, [spot, walk, speak]);
 
   const goal = lesson.goal;

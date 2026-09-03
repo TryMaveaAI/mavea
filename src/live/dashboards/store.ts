@@ -62,8 +62,20 @@ const METRIC_HISTORY_CAP = 60;
 const MAX_PREDICTION_HISTORY = 20;
 
 let cache: Dashboard[] | null = null;
+const temporaryDashboards = new Map<string, Dashboard>();
+let temporaryVersion = 0;
 let idSeq = 0;
 let quotaDropped = false;
+
+function announceTemporaryChange(): void {
+  try {
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(DASHBOARDS_EVENT));
+    }
+  } catch {
+    /* non-browser env */
+  }
+}
 
 /** True once any write has been dropped for lack of storage space this session. Latched, because
  *  the surface that reports it may not have been mounted when the write failed. */
@@ -507,6 +519,17 @@ function patchOne(
   now = Date.now(),
   opts: { userTouch?: boolean } = {},
 ): void {
+  const temporary = temporaryDashboards.get(id);
+  if (temporary) {
+    temporaryDashboards.set(id, {
+      ...fn(temporary),
+      updatedAt: now,
+      ...(opts.userTouch ? { lastTouchedByUserAt: now } : {}),
+    });
+    temporaryVersion += 1;
+    announceTemporaryChange();
+    return;
+  }
   let touched = false;
   const next = get().map((d) => {
     if (d.id !== id) return d;
@@ -527,6 +550,7 @@ function patchOne(
 // against whichever `cache` array it was computed from, rather than sorting fresh each call.
 let sortedSnapshot: Dashboard[] | null = null;
 let sortedFrom: Dashboard[] | null = null;
+let sortedTemporaryVersion = -1;
 
 /** Every dashboard, most-recently-touched-by-the-user first. Deliberately NOT `updatedAt`: every
  *  background check bumps that, so the grids rearranged themselves under the reader each time a
@@ -535,16 +559,20 @@ let sortedFrom: Dashboard[] | null = null;
  *  `createdAt` covers a dashboard predating the field. */
 export function getDashboards(): Dashboard[] {
   const c = get();
-  if (sortedFrom !== c || sortedSnapshot === null) {
-    sortedSnapshot = [...c].sort(
+  if (sortedFrom !== c || sortedTemporaryVersion !== temporaryVersion || sortedSnapshot === null) {
+    sortedSnapshot = [
+      ...temporaryDashboards.values(),
+      ...c.filter((dashboard) => !temporaryDashboards.has(dashboard.id)),
+    ].sort(
       (a, b) => (b.lastTouchedByUserAt ?? b.createdAt) - (a.lastTouchedByUserAt ?? a.createdAt),
     );
     sortedFrom = c;
+    sortedTemporaryVersion = temporaryVersion;
   }
   return sortedSnapshot;
 }
 export function getDashboard(id: string): Dashboard | null {
-  return get().find((d) => d.id === id) ?? null;
+  return temporaryDashboards.get(id) ?? get().find((d) => d.id === id) ?? null;
 }
 
 /* ---- lifecycle ---- */
@@ -555,6 +583,14 @@ export function getDashboard(id: string): Dashboard | null {
 export function addDashboard(dash: Dashboard): void {
   const stamped = { ...dash, lastTouchedByUserAt: dash.lastTouchedByUserAt ?? dash.updatedAt };
   persist(capList([stripHeavy(stamped), ...get().filter((d) => d.id !== dash.id)]));
+}
+
+/** Add a dashboard that behaves like a real board for this tab but is never serialized. */
+export function addTemporaryDashboard(dash: Dashboard): void {
+  const stamped = { ...dash, lastTouchedByUserAt: dash.lastTouchedByUserAt ?? dash.updatedAt };
+  temporaryDashboards.set(dash.id, stripHeavy(stamped));
+  temporaryVersion += 1;
+  announceTemporaryChange();
 }
 
 /** Merge dashboards from an imported backup. Each is coerced through the same decode() a disk read
@@ -662,6 +698,14 @@ export function updateCadence(
 }
 
 export function removeDashboard(id: string): void {
+  if (temporaryDashboards.delete(id)) {
+    temporaryVersion += 1;
+    announceTemporaryChange();
+    pruneDeadOpens(new Set(getDashboards().map((dashboard) => dashboard.id)));
+    clearCheckRuns(id);
+    void clearObservations(id);
+    return;
+  }
   const rest = get().filter((d) => d.id !== id);
   if (rest.length === get().length) return;
   persist(rest);
@@ -675,7 +719,15 @@ export function removeDashboard(id: string): void {
 }
 
 export function clearDashboards(): void {
-  if (get().length === 0) return;
+  const hadTemporary = temporaryDashboards.size > 0;
+  if (hadTemporary) {
+    temporaryDashboards.clear();
+    temporaryVersion += 1;
+  }
+  if (get().length === 0) {
+    if (hadTemporary) announceTemporaryChange();
+    return;
+  }
   persist([]);
   pruneDeadOpens(new Set());
 }

@@ -4,7 +4,8 @@ import { openaiAdapter } from '../src/live/providers/openai';
 import { geminiAdapter } from '../src/live/providers/gemini';
 import { openrouterAdapter } from '../src/live/providers/openrouter';
 import { grokAdapter } from '../src/live/providers/grok';
-import { ADAPTERS, PROVIDERS, VISIBLE_PROVIDERS } from '../src/live/providers';
+import { ADAPTERS, PROVIDERS, VISIBLE_PROVIDERS, getAdapter } from '../src/live/providers';
+import { getUsageLedger, resetUsageLedgerForTest } from '../src/live/usage/ledger';
 import type { LiveRequest } from '../src/live/providers/types';
 import type { ModelConfig, ProviderId } from '../src/types/mavea';
 import { describeLiveError } from '../src/live/generateLive';
@@ -37,6 +38,7 @@ const req: LiveRequest = { system: 'sys', history: [], user: 'How should I budge
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  resetUsageLedgerForTest();
 });
 
 // A real canvas turn (what generateLive always sends): blockTypes is non-empty, which is the
@@ -559,6 +561,35 @@ describe('token usage capture — the cost signal the eval reads', () => {
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     const body = JSON.parse(init.body as string) as { stream_options?: unknown };
     expect(body.stream_options).toEqual({ include_usage: true });
+  });
+
+  it('records every guarded provider call under its feature label', async () => {
+    mockFetchOnce(
+      streamResponse(
+        [
+          'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":null}]}\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":30,"prompt_tokens_details":{"cached_tokens":50}}}\n',
+          'data: [DONE]\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    const cfg: ModelConfig = {
+      provider: 'openrouter',
+      model: 'openai/gpt-4o-mini',
+      apiKey: 'k',
+    };
+
+    await getAdapter('openrouter').generate({ ...req, usageLabel: 'ripple-enrichment' }, cfg);
+
+    expect(getUsageLedger()).toEqual([
+      expect.objectContaining({
+        label: 'ripple-enrichment',
+        input: 120,
+        cachedInput: 50,
+        output: 30,
+      }),
+    ]);
   });
 });
 
@@ -1270,17 +1301,17 @@ describe('provider registry — every provider is wired + carries picker metadat
 
 // ── Prompt caching: the stable prefix must actually stay stable ────────────────────────────────
 // Providers cache on the request's LEADING tokens, so anything that varies turn-to-turn poisons
-// everything behind it. generateLive hands the adapters `systemBase` (the fixed liveSystemPrompt)
-// separately from `system` (that base + this turn's menu/hero-picks/freshness). An adapter that
-// ships the whole thing as the system message caps the cache at the base and re-buys the replayed
-// history every turn. These pin the split: stable base stays in the system slot, the per-turn delta
-// leads the user turn (so the model still reads every instruction, in order).
+// everything behind it. Live exposes a fixed base, a session-stable extension, and the dynamic
+// turn tail. The first two stay ahead of replayed history; only the changing tail leads the user.
 describe('prompt-cache prefix split', () => {
   const BASE = 'STABLE BASE PROMPT — the part that never changes.';
+  const SESSION = 'SESSION STABLE — core menu and enabled capabilities.';
+  const STABLE_PREFIX = `${BASE}\n\n${SESSION}`;
   const PER_TURN = 'THIS TURN — the component menu and hero picks.';
   const splitReq: LiveRequest = {
-    system: `${BASE}\n\n${PER_TURN}`,
+    system: `${STABLE_PREFIX}\n\n${PER_TURN}`,
     systemBase: BASE,
+    systemStable: STABLE_PREFIX,
     history: [{ role: 'user', content: 'earlier question' }],
     user: 'How should I budget?',
   };
@@ -1295,7 +1326,7 @@ describe('prompt-cache prefix split', () => {
     await openaiAdapter.generate(splitReq, { provider: 'openai', model: 'gpt-5.4-mini' });
 
     const body = bodyOf(fetchMock);
-    expect(body.instructions).toBe(BASE);
+    expect(body.instructions).toBe(STABLE_PREFIX);
     const input = body.input as { role: string; content: unknown }[];
     const userTurn = input[input.length - 1];
     const parts = userTurn.content as { type: string; text: string }[];
@@ -1303,13 +1334,7 @@ describe('prompt-cache prefix split', () => {
     expect(parts.some((p) => p.text === 'How should I budget?')).toBe(true);
   });
 
-  it('Anthropic sends ONE cached system block (1h TTL), delta folded into the user turn, and a second breakpoint on the last history message', async () => {
-    // Anthropic caching is prefix-based, so a second (per-turn) system block sat BEFORE the
-    // history and billed the whole replayed conversation at full price every turn. The split
-    // must match the other adapters: stable base alone in the system slot, per-turn delta at
-    // the head of the user turn — plus a breakpoint on the last history message so
-    // `system + history` caches, both on the 1h TTL (a voice pause > 5 min otherwise repays
-    // the entire cold prompt).
+  it('Anthropic marks base, session extension, and history as three 1h cache breakpoints', async () => {
     const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
     vi.stubGlobal('fetch', fetchMock);
     await anthropicAdapter.generate(splitReq, {
@@ -1320,11 +1345,13 @@ describe('prompt-cache prefix split', () => {
 
     const body = bodyOf(fetchMock);
     const system = body.system as { text: string; cache_control?: unknown }[];
-    expect(system).toHaveLength(1);
+    expect(system).toHaveLength(2);
     expect(system[0].text).toBe(BASE);
     expect(system[0].cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+    expect(system[1].text).toBe(SESSION);
+    expect(system[1].cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
     const messages = body.messages as { role: string; content: unknown }[];
-    // Last history message carries the second breakpoint…
+    // Last history message carries the third breakpoint…
     const lastHistory = messages[messages.length - 2].content as {
       text: string;
       cache_control?: unknown;
@@ -1362,7 +1389,7 @@ describe('prompt-cache prefix split', () => {
     const body = bodyOf(fetchMock);
     const messages = body.messages as { role: string; content: unknown }[];
     const system = messages[0].content as { text: string; cache_control?: unknown }[];
-    expect(system[0].text).toBe(BASE);
+    expect(system[0].text).toBe(STABLE_PREFIX);
     // Anthropic-routed models cache NOTHING without this explicit breakpoint.
     expect(system[0].cache_control).toEqual({ type: 'ephemeral' });
     expect(String(JSON.stringify(messages[messages.length - 1].content))).toContain(PER_TURN);
@@ -1656,5 +1683,110 @@ describe('requiring the search tool, not merely offering it', () => {
     const body = JSON.parse(init.body as string) as { tool_choice?: unknown };
     // Forcing a search on a question that needs none would spend a call to learn nothing.
     expect(body.tool_choice).toBeUndefined();
+  });
+});
+
+describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
+  // Gemini 3's Flash line split on this. 3.5/3.6-flash and the flash-lites accept
+  // `thinkingLevel: MINIMAL`; 3.7-flash, 3.8-flash and 3.1-pro-preview accept only low/medium/high
+  // and answer MINIMAL with `400 INVALID_ARGUMENT: Thinking level MINIMAL is not supported for
+  // this model`. Nothing user-facing selects `minimal` — `effort.ts` picks it for every ask that
+  // is not a hard problem, and a dozen call sites hardcode it — so on those models EVERY call
+  // failed and the whole surface was dead. Learned, not listed: the model field is free text and
+  // a hand-kept set of ids would rot into the same outage the day the next Flash ships.
+  const REFUSAL = JSON.stringify({
+    error: {
+      code: 400,
+      status: 'INVALID_ARGUMENT',
+      message:
+        'Thinking level MINIMAL is not supported for this model. Please retry with other thinking level.',
+    },
+  });
+
+  function refuseThenStream() {
+    let call = 0;
+    return vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => {
+      call += 1;
+      if (call === 1) {
+        return new Response(REFUSAL, {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return streamResponse(
+        ['data: {"candidates":[{"content":{"parts":[{"text":"{\\"ok\\":1}"}]}}]}\n\n'],
+        'text/event-stream',
+      );
+    });
+  }
+
+  it('re-asks at low instead of failing the turn', async () => {
+    const fetchMock = refuseThenStream();
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.8-flash', apiKey: 'k' };
+    const out = await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+    const second = JSON.parse(fetchMock.mock.calls[1][1]!.body as string);
+    expect(first.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'MINIMAL' });
+    expect(second.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'LOW' });
+    // Only the thinking level differs — the retry must not quietly re-shape the ask.
+    expect({ ...second, generationConfig: null }).toEqual({ ...first, generationConfig: null });
+    expect(out.raw).toContain('"ok"');
+  });
+
+  it('remembers, so the next call opens at low with no wasted round trip', async () => {
+    const fetchMock = refuseThenStream();
+    vi.stubGlobal('fetch', fetchMock);
+    // Its OWN model id: what the adapter learns is module state that outlives one test, which is
+    // the whole point of the feature and would otherwise let this test pass on the last one's work.
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.7-flash', apiKey: 'k' };
+    await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
+
+    const again = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      streamResponse(
+        ['data: {"candidates":[{"content":{"parts":[{"text":"{\\"ok\\":1}"}]}}]}\n\n'],
+        'text/event-stream',
+      ),
+    );
+    vi.stubGlobal('fetch', again);
+    await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
+    expect(again).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(again.mock.calls[0][1]!.body as string);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'LOW' });
+  });
+
+  it('leaves a model that does support MINIMAL alone', async () => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      streamResponse(
+        ['data: {"candidates":[{"content":{"parts":[{"text":"{\\"ok\\":1}"}]}}]}\n\n'],
+        'text/event-stream',
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
+    await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'MINIMAL' });
+  });
+
+  it('still fails loudly on an invalid argument that is not about thinking', async () => {
+    const fetchMock = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Unknown field foo' },
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.6-flash', apiKey: 'k' };
+    await expect(
+      geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg),
+    ).rejects.toThrow(/Unknown field foo/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

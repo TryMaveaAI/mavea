@@ -5,7 +5,7 @@
 // points the user to Live to set one up rather than failing silently.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LiveResult } from '../generateLive';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
 import type { ChatMessage } from '../providers/types';
 import { projectWidgetBlock } from './project';
 import type { Dashboard } from './types';
@@ -27,10 +27,9 @@ export interface DashboardTurnState {
   reset: () => void;
 }
 
-/** Is a model connected enough to answer? Every provider is hosted BYOK, so a key is the test. */
+/** Is a model connected enough to answer? Provider metadata owns whether a key is required. */
 function configReady(): boolean {
-  const cfg = toModelConfig(getLiveConfigV2());
-  return !!cfg.apiKey;
+  return hasModelConfigured(getLiveConfigV2());
 }
 
 export function useDashboardTurn(dashboard: Dashboard): DashboardTurnState {
@@ -88,7 +87,7 @@ export function useDashboardTurn(dashboard: Dashboard): DashboardTurnState {
         )
         .then((r) => {
           if (ac.signal.aborted) return;
-          if (!r.error) {
+          if (!r.error && !r.collapsed) {
             historyRef.current = [
               ...historyRef.current,
               { role: 'user' as const, content: ask },

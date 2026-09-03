@@ -282,6 +282,11 @@ export function CourseLessonReader(): ReactElement {
             setPhase('error');
             return;
           }
+          if (result.collapsed) {
+            setError("Couldn't build a complete lesson from that reply — try again.");
+            setPhase('error');
+            return;
+          }
           cacheLessonFrame(c.id, lesson.id, toLessonFrame(result, displayLabel));
           setSpec(result.spec);
           setNarration(result.narration);

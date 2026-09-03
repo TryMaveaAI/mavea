@@ -89,9 +89,24 @@ export function UsagePanel(): ReactElement {
           </li>
         ))}
       </ul>
+      <div className="usage-call-log">
+        <p className="usage-call-heading">Calls, newest first</p>
+        <ul className="usage-calls">
+          {[...entries].reverse().map((entry, index) => (
+            <li key={`${entry.at}-${entry.label}-${index}`}>
+              <span className="usage-site-name">{entry.label}</span>
+              <span className="usage-call-tokens">
+                {NUM.format(entry.input)} in · {NUM.format(entry.cachedInput)} cached ·{' '}
+                {NUM.format(entry.output)} out
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <p className="usage-note">
-        Counted from what each provider reported for this session only — nothing is stored, and
-        nothing leaves this device. Output tokens usually cost several times what input does.
+        Each row is one provider call; retries and follow-on tools appear separately. Counted from
+        what each provider reported for this session only — nothing is stored, and nothing leaves
+        this device. Output tokens usually cost several times what input does.
       </p>
     </div>
   );

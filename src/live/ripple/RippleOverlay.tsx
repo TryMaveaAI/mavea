@@ -9,6 +9,7 @@
 // by one ShipModel. Nothing here is invented.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
+import { proseForSpeech } from '../../lib/spokenText';
 import type {
   Altitude,
   CourseCapstone,
@@ -1123,7 +1124,11 @@ export function RippleOverlay({
   const onAsk = useCallback(
     (node: ShipNode) => {
       if (narrate && speak) {
-        speak(`${node.label}. ${node.problem ?? node.contract ?? ''} ${node.fix ?? ''}`.trim());
+        speak(
+          proseForSpeech(
+            `${node.label}. ${node.problem ?? node.contract ?? ''} ${node.fix ?? ''}`.trim(),
+          ),
+        );
       }
       openAsk(`Explain ${node.label}${node.contract ? ` — ${node.contract}` : ''}`);
     },

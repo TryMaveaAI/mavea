@@ -137,7 +137,12 @@ export const anthropicAdapter: ProviderAdapter = {
     // Both breakpoints use the 1h TTL — a voice conversation pauses longer than the 5-minute
     // default all the time, and each such pause was repaying the full cold prompt.
     const stableBase = req.systemBase ?? req.system;
-    const perTurn = req.systemBase ? req.system.slice(stableBase.length).trimStart() : '';
+    const stablePrefix =
+      req.systemStable?.startsWith(stableBase) && req.system.startsWith(req.systemStable)
+        ? req.systemStable
+        : stableBase;
+    const stableTail = stablePrefix.slice(stableBase.length).trimStart();
+    const perTurn = req.systemBase ? req.system.slice(stablePrefix.length).trimStart() : '';
     const cacheHour = { type: 'ephemeral', ttl: '1h' };
     // A caller without a systemBase split (Prism, mindshape, dashboards…) keeps the exact
     // wire shape it always had: one plain-ephemeral system block, untouched messages.
@@ -147,6 +152,9 @@ export const anthropicAdapter: ProviderAdapter = {
         text: stableBase,
         cache_control: req.systemBase ? cacheHour : { type: 'ephemeral' },
       },
+      ...(req.systemBase && stableTail
+        ? [{ type: 'text', text: stableTail, cache_control: cacheHour }]
+        : []),
     ];
     const lastTurn = req.history.length - 1;
     const history = req.history.map((h, i) =>

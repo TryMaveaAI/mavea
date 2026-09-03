@@ -248,6 +248,7 @@ export async function extractDashboard(
     const adapter = getAdapter(cfg.provider);
     const rr = await adapter.generate(
       {
+        usageLabel: 'dashboard-extract',
         system: EXTRACT_SYSTEM,
         history: historyWindow(history, frames),
         user: EXTRACT_INSTRUCTION,

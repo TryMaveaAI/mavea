@@ -288,6 +288,7 @@ export async function askRepo(question: string, ctx: RepoAskContext): Promise<Re
   try {
     const res = await getAdapter(ctx.cfg.provider).generate(
       {
+        usageLabel: 'ripple-repository-ask',
         system: ASK_SYSTEM,
         history: [],
         user: askPrompt(q, ctx.altitude, facts, diffText, ctx.fileCache),

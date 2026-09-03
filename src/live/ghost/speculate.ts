@@ -62,6 +62,7 @@ export async function speculate(
     // default level would spend more on deliberation than on the entire disposable answer.
     const out = await adapter.generate(
       {
+        usageLabel: 'glimpse',
         system: SYSTEM,
         history: [],
         user: partial,

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { loadSession } from '../session/store';
 import { getLibrary } from '../library/store';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
 import type { ChatMessage } from '../providers/types';
 import type { TurnFrame } from '../history';
 import { addDashboard, ensureFirstCheck, getDashboards } from './store';
@@ -165,8 +165,9 @@ export function ExtractionPreview({
     // conversation). React runs this cleanup before the next source's effect body, so it's set
     // BEFORE any newer run's `finish` could ever check it.
     let cancelled = false;
-    const cfg = toModelConfig(getLiveConfigV2());
-    const ready = !!cfg.apiKey;
+    const liveCfg = getLiveConfigV2();
+    const cfg = toModelConfig(liveCfg);
+    const ready = hasModelConfigured(liveCfg);
     const grounded = (): DashboardDraft => groundedDraft(current.history, current.frames);
     const finish = (d: DashboardDraft): void => {
       if (cancelled) return;

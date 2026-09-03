@@ -44,7 +44,16 @@ function agentCall(cfg: ModelConfig, signal?: AbortSignal, maxTokens = 1200) {
       // maxTokens on current providers — 300 was eaten before a single JSON byte arrived,
       // so every run opened with an empty reply and died as an instant "no deal".
       // thinkingLevel keeps that reasoning minimal: these are short in-character moves.
-      { system, history: [], user, maxTokens, temperature: 0.7, thinkingLevel: 'minimal', signal },
+      {
+        usageLabel: 'delegate-simulation',
+        system,
+        history: [],
+        user,
+        maxTokens,
+        temperature: 0.7,
+        thinkingLevel: 'minimal',
+        signal,
+      },
       cfg,
     );
     return typeof out.raw === 'string' ? out.raw : JSON.stringify(out.raw);

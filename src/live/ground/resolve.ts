@@ -142,6 +142,7 @@ async function fromWeb(
   try {
     const res = await getAdapter(ctx.cfg.provider).generate(
       {
+        usageLabel: 'grounding-resolve',
         system: T2_SYSTEM,
         history: [],
         user: t2Message(label, query, evidence),

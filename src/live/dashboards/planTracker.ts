@@ -211,6 +211,7 @@ export async function planTracker(ask: string, cfg: ModelConfig): Promise<Tracke
     const adapter = getAdapter(cfg.provider);
     const rr = await adapter.generate(
       {
+        usageLabel: 'dashboard-plan',
         system: currentDateTimeLine() + ' ' + PLAN_SYSTEM,
         history: [],
         user: `Track: ${wish}`,
@@ -300,6 +301,7 @@ export async function answerOnce(ask: string, cfg: ModelConfig): Promise<StaticA
     const adapter = getAdapter(cfg.provider);
     const rr = await adapter.generate(
       {
+        usageLabel: 'dashboard-plan-answer',
         system: currentDateTimeLine() + ' ' + ANSWER_SYSTEM,
         history: [],
         user: wish,

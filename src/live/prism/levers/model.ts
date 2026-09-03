@@ -129,6 +129,7 @@ export async function runLevers(
   try {
     const res = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'prism-levers',
         system: SYSTEM,
         history: [],
         user: buildPrompt(claims),

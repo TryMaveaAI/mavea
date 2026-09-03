@@ -90,6 +90,7 @@ export async function counterpartReply(
     if (!last || last.role !== 'user') return '';
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'delegate-rehearsal',
         system: personaSystem(setup),
         history,
         user: last.content,
@@ -134,6 +135,7 @@ export async function coachTake(
       .join('\n');
     const out = await getAdapter(cfg.provider).generate(
       {
+        usageLabel: 'delegate-coach',
         system: coachSystem(),
         history: [],
         user,

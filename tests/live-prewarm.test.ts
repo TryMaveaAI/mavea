@@ -3,6 +3,7 @@ import { prewarmLive, _resetPrewarmForTest } from '../src/live/prewarm';
 import { getAdapter } from '../src/live/providers';
 import { setLiveConfigV2 } from '../src/live/useLiveConfig';
 import { acceptLegalTerms, resetLegalAcceptance } from '../src/legal/acceptance';
+import { configureProviderSpending } from '../src/live/providers/spendPolicy';
 
 // prewarmLive opens the network path ahead of the first turn: it probes the connected provider
 // (warming DNS/TLS + the same-origin proxy hop) and pings the TTS service. It must be a cheap,
@@ -14,7 +15,8 @@ beforeEach(() => {
   resetLegalAcceptance();
   expect(acceptLegalTerms(new Date('2026-07-16T12:00:00.000Z'))).toBe(true);
   // Default provider is Gemini; pin it explicitly so the assertions don't drift with defaults.
-  setLiveConfigV2({ provider: 'gemini' });
+  setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+  configureProviderSpending(false);
   vi.stubGlobal(
     'fetch',
     vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))),
@@ -26,9 +28,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
   resetLegalAcceptance();
   _resetPrewarmForTest();
+  configureProviderSpending(false);
 });
 
 describe('prewarmLive', () => {
+  it('does not contact an unconfigured provider', () => {
+    setLiveConfigV2({ keys: { gemini: '' } });
+    const probe = vi.spyOn(getAdapter('gemini'), 'probe');
+    prewarmLive({ force: true });
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it('does not contact a provider during a baked replay', () => {
+    configureProviderSpending(true);
+    const probe = vi.spyOn(getAdapter('gemini'), 'probe');
+    prewarmLive({ force: true });
+    expect(probe).not.toHaveBeenCalled();
+  });
+
   it('does not contact a provider, STT, or TTS before legal acknowledgement', () => {
     resetLegalAcceptance();
     const probe = vi

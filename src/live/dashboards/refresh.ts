@@ -700,6 +700,7 @@ export async function refreshDashboards(
       adapter
         .generate(
           {
+            usageLabel: sharpen ? 'dashboard-grounding-retry' : 'dashboard-refresh',
             system: sharpen ? system + GROUNDING_RETRY : system,
             history: [],
             user,

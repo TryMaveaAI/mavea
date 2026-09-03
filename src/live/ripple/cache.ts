@@ -5,6 +5,8 @@
 // already done. "Regenerate" busts a key to force a fresh build. Stored in IndexedDB (a deep lesson is
 // far too big and frequent for the synchronous localStorage that `tracked.ts` uses), LRU-capped, with
 // an in-memory fallback when IndexedDB is unavailable (private mode / SSR / tests). Zero deps.
+import { fnv1a } from '../../lib/hash';
+export { fnv1a } from '../../lib/hash';
 
 /** Bump when a cached shape or a prompt changes materially, so old entries miss cleanly. v3: the
  *  lesson key is now content-addressed (a hash of the lesson's real files, not the branch name) and
@@ -28,16 +30,6 @@ const MAX_ENTRIES = 60;
  *  is ~150 KB, and the per-entry guard allowed far more — 60 of those is not a number anyone would
  *  agree to give a website. This is the number to quote when asked how much room it takes. */
 const MAX_TOTAL_BYTES = 32 * 1024 * 1024;
-
-/** FNV-1a — a tiny, fast, dependency-free string hash for the content key (not cryptographic). */
-export function fnv1a(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(36);
-}
 
 /** Build a cache key from the content identity, the model, and the schema version. */
 export function rippleCacheKey(identity: string, model: string): string {
