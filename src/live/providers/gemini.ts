@@ -30,6 +30,7 @@ import type {
 } from './types';
 import {
   fetchWithTimeout,
+  providerErrorDetail,
   readSSE,
   isStreamStall,
   retryAfterMs,
@@ -184,7 +185,13 @@ export const geminiAdapter: ProviderAdapter = {
         { method: 'GET', headers: keyHeader(cfg) },
         PROBE_TIMEOUT_MS,
       );
-      if (!res.ok) return { ok: false, model: false, statusCode: res.status };
+      if (!res.ok)
+        return {
+          ok: false,
+          model: false,
+          statusCode: res.status,
+          detail: await providerErrorDetail(res),
+        };
       const body: unknown = await res.json();
       // model names come back as "models/gemini-3.1-flash-lite"
       const names = arr(obj(body).models).map((m) => str(obj(m).name).replace(/^models\//, ''));
@@ -314,8 +321,12 @@ export const geminiAdapter: ProviderAdapter = {
             const u = obj(ev).usageMetadata;
             if (u) {
               usage = {
-                input: num(obj(u).promptTokenCount),
-                output: num(obj(u).candidatesTokenCount),
+                // Search grounding bills its tool prompt separately from the turn's own.
+                input: num(obj(u).promptTokenCount) + num(obj(u).toolUsePromptTokenCount),
+                // Gemini reports reasoning apart from the answer text, and bills it at the output
+                // rate — and effort.ts drives thinking on most asks, so leaving thoughts out
+                // understated the expensive half of the reader's own bill.
+                output: num(obj(u).candidatesTokenCount) + num(obj(u).thoughtsTokenCount),
                 cachedInput: num(obj(u).cachedContentTokenCount),
               };
             }

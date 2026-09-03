@@ -52,7 +52,7 @@ low-cost tier — the model field accepts any id, so stronger models are always 
 | ---------- | ------------------------- | -------------------------------------------------------------------------------------- |
 | Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; `claude-sonnet-5` is the suggested step-up                     |
 | Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; `gemini-3.8-flash` is the suggested step-up                    |
-| OpenAI     | `gpt-5.6-luna`            | Newest light tier — nano's price with a 1M window; `gpt-5.4-mini` is the step-up       |
+| OpenAI     | `gpt-5.6-luna`            | Cheapest tier OpenAI sells, with a 1M window; `gpt-5.4-mini` is the step-up            |
 | Grok       | `grok-4.3`                | Fast, low-cost default; `grok-4.6` is the flagship step-up                             |
 | OpenRouter | _(none — paste your own)_ | One key, hundreds of models; `google/gemini-3.1-flash-lite` is a current starting pick |
 

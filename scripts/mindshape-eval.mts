@@ -20,9 +20,10 @@ import { FIXTURES } from '../src/live/mindshape/eval/fixtures';
 import type { ModelConfig } from '../src/types/mavea';
 import type { MindShapeSpec } from '../src/live/mindshape/types';
 
-// gemini-3.1-flash-lite for extraction (fast, cheap); step up to gemini-3.1-flash for judging.
+// gemini-3.1-flash-lite for extraction (fast, cheap); step up to the app's own suggested Flash for
+// judging. There is no plain `gemini-3.1-flash` — the Flash line skips from 3.1-flash-lite to 3.5.
 const REFINE_MODEL = 'gemini-3.1-flash-lite';
-const JUDGE_MODEL = 'gemini-3.1-flash';
+const JUDGE_MODEL = 'gemini-3.8-flash';
 const DIRECT_BASE = 'https://generativelanguage.googleapis.com';
 
 function readKey(name: string): string {

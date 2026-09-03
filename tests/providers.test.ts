@@ -85,6 +85,83 @@ describe('anthropic adapter — Structured Outputs streaming', () => {
   });
 });
 
+describe('anthropic adapter — the lineup is split on thinking and on temperature', () => {
+  // Haiku 4.5, the prefilled default, runs extended thinking only and answers `type:'adaptive'`
+  // with a 400; Sonnet 5 and the Opus 4.7+ line accept only adaptive AND reject any temperature
+  // but the default. One body cannot satisfy both, so the adapter learns which side it is on.
+  function badRequest(message: string): Response {
+    return new Response(JSON.stringify({ error: { type: 'invalid_request_error', message } }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  /** Answers the first call with `first`, then streams an empty success. Returns the mock so the
+   *  test can read back the body of each attempt. */
+  function mockRejectThenStream(first: Response): ReturnType<typeof vi.fn> {
+    let call = 0;
+    const fetchMock = vi.fn(async () =>
+      call++ === 0 ? first : streamResponse([], 'text/event-stream'),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  const bodyOf = (fetchMock: ReturnType<typeof vi.fn>, n: number): Record<string, unknown> =>
+    JSON.parse((fetchMock.mock.calls[n] as [string, RequestInit])[1].body as string);
+
+  it('re-asks with extended thinking when the model has no adaptive mode', async () => {
+    const fetchMock = mockRejectThenStream(
+      badRequest('adaptive thinking is not supported on this model'),
+    );
+    // A unique id per test: the learned set is module state, keyed by model.
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-x1', apiKey: 'k' };
+    await anthropicAdapter.generate({ ...canvasReq, thinkingLevel: 'high', maxTokens: 8000 }, cfg);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(bodyOf(fetchMock, 0).thinking).toEqual({ type: 'adaptive', display: 'summarized' });
+    // Budgeted out of max_tokens, so it takes half and leaves the rest for the answer.
+    expect(bodyOf(fetchMock, 1).thinking).toEqual({ type: 'enabled', budget_tokens: 4000 });
+  });
+
+  it('drops thinking entirely when half the budget cannot clear the 1024-token floor', async () => {
+    const fetchMock = mockRejectThenStream(
+      badRequest('adaptive thinking is not supported on this model'),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-x2', apiKey: 'k' };
+    await anthropicAdapter.generate({ ...canvasReq, thinkingLevel: 'high', maxTokens: 1200 }, cfg);
+    // There is no room to think AND answer, so the answer wins rather than the turn failing.
+    expect(bodyOf(fetchMock, 1).thinking).toBeUndefined();
+    expect(bodyOf(fetchMock, 1).max_tokens).toBe(1200);
+  });
+
+  it('re-asks without the temperature nudge when the model rejects a non-default value', async () => {
+    const fetchMock = mockRejectThenStream(
+      badRequest('`temperature` may only be set to 1 on this model'),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-sonnet-x1', apiKey: 'k' };
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(bodyOf(fetchMock, 0).temperature).toBe(0.3);
+    expect(bodyOf(fetchMock, 1).temperature).toBe(1);
+  });
+
+  it('remembers across turns, so only the first call on a model pays the retry', async () => {
+    const fetchMock = mockRejectThenStream(
+      badRequest('`temperature` may only be set to 1 on this model'),
+    );
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-sonnet-x2', apiKey: 'k' };
+    await anthropicAdapter.generate(canvasReq, cfg);
+    await anthropicAdapter.generate(canvasReq, cfg);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(bodyOf(fetchMock, 2).temperature).toBe(1);
+  });
+
+  it('still surfaces a 400 that is neither quirk', async () => {
+    mockFetchOnce(badRequest('max_tokens: must be greater than 0'));
+    const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-x3', apiKey: 'k' };
+    await expect(anthropicAdapter.generate(canvasReq, cfg)).rejects.toThrow(/anthropic 400/);
+  });
+});
+
 describe('anthropic adapter — minItems relaxes for a brief ask', () => {
   it('defaults the Structured Outputs schema blocks minItems to 3', async () => {
     const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
@@ -423,7 +500,7 @@ describe('reasoning models — effort pinned low + budget floored (never an empt
 // the hidden pass the floor protects against, which is exactly what makes dropping the floor safe.
 // The two move TOGETHER — a floor removed while the model still thinks is how a small caller pays
 // for reasoning and receives an empty completion.
-describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
+describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () => {
   async function responsesBody(
     model: string,
     extra: Partial<LiveRequest> = {},
@@ -437,13 +514,15 @@ describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
 
   const glimpse: Partial<LiveRequest> = { maxTokens: 150, thinkingLevel: 'minimal' };
 
-  it('Responses: a gpt-5 glimpse asks for minimal effort and keeps its own 150-token budget', async () => {
-    const body = await responsesBody('gpt-5.4-nano', glimpse);
-    expect(body.reasoning).toEqual({ effort: 'minimal' });
+  it('Responses: a gpt-5 glimpse asks for the no-thinking tier and keeps its own 150-token budget', async () => {
+    // The rung below `low` is `none` on the current family — `minimal` was its name on the first
+    // GPT-5 models and is now rejected outright, which broke every glimpse.
+    const body = await responsesBody('gpt-5.6-luna', glimpse);
+    expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 
-  it('Responses: an o-series model has no minimal tier, so it keeps low effort AND the floor', async () => {
+  it('Responses: an o-series model has no sub-low tier, so it keeps low effort AND the floor', async () => {
     // The value would be rejected outright there — the saving is never worth a 400.
     const body = await responsesBody('o4-mini', glimpse);
     expect(body.reasoning).toEqual({ effort: 'low' });
@@ -454,7 +533,7 @@ describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
     // A lean ask legitimately asks for minimal thinking (effort.ts pins it there), so blockTypes
     // is what separates the turn the reader is waiting on from a disposable glimpse. Without this
     // the cheapest, most common turn would lose the protection the floor exists for.
-    const body = await responsesBody('gpt-5.4-nano', { ...glimpse, blockTypes: ['insight'] });
+    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, blockTypes: ['insight'] });
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_output_tokens).toBe(1500);
   });
@@ -462,14 +541,14 @@ describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
   it('Responses: a glimpse that also wants web search stays at medium — grounding outranks it', async () => {
     // Search is reasoning-gated: at the lowest tier the tool doesn't engage and the "saving" is an
     // ungrounded answer.
-    const body = await responsesBody('gpt-5.4-nano', { ...glimpse, tools: { webSearch: true } });
+    const body = await responsesBody('gpt-5.6-luna', { ...glimpse, tools: { webSearch: true } });
     expect(body.reasoning).toEqual({ effort: 'medium' });
     expect(body.max_output_tokens).toBe(8000);
   });
 
   it('Responses: a caller that did NOT size its own budget still gets the floor', async () => {
     // Minimal thinking alone is not the signal — both dials have to be set on purpose.
-    const body = await responsesBody('gpt-5.4-nano', { thinkingLevel: 'minimal' });
+    const body = await responsesBody('gpt-5.6-luna', { thinkingLevel: 'minimal' });
     expect(body.reasoning).toEqual({ effort: 'low' });
     expect(body.max_output_tokens).toBe(1500);
   });
@@ -486,10 +565,10 @@ describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
       vi.unstubAllGlobals();
       return JSON.parse(init.body as string) as Record<string, unknown>;
     };
-    const gpt5 = await bodyFor('openai/gpt-5-mini');
-    expect(gpt5.reasoning_effort).toBe('minimal');
+    const gpt5 = await bodyFor('openai/gpt-5.4-mini');
+    expect(gpt5.reasoning_effort).toBe('none');
     expect(gpt5.max_completion_tokens).toBe(150);
-    // A gateway can route anywhere, and 'minimal' is not universally accepted — so anything but
+    // A gateway can route anywhere, and the sub-low rung is not universally accepted — so anything but
     // the family that documents the tier keeps today's request exactly as it was.
     const oSeries = await bodyFor('openai/o4-mini');
     expect(oSeries.reasoning_effort).toBe('low');
@@ -511,13 +590,13 @@ describe('a glimpse costs what it asked for (minimal tier, no floor)', () => {
     vi.stubGlobal('fetch', fetchMock);
     const cards = await speculate(
       'we are thinking Tokyo in',
-      { provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' },
+      { provider: 'openai', model: 'gpt-5.6-luna', apiKey: 'k' },
       new AbortController().signal,
     );
     expect(cards).toEqual([{ kind: 'forming', title: 'Bloom forecast' }]);
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     const body = JSON.parse(init.body as string) as Record<string, unknown>;
-    expect(body.reasoning).toEqual({ effort: 'minimal' });
+    expect(body.reasoning).toEqual({ effort: 'none' });
     expect(body.max_output_tokens).toBe(150);
   });
 });
@@ -539,6 +618,24 @@ describe('token usage capture — the cost signal the eval reads', () => {
     // input = fresh 100 + cache_read 900 + cache_creation 0 (total input, cross-provider-consistent);
     // cachedInput = the cache_read slice; output = the cumulative message_delta count.
     expect(usage).toEqual({ input: 1000, output: 42, cachedInput: 900 });
+  });
+
+  it('gemini counts thinking as output and the search tool prompt as input', async () => {
+    // Both ride beside candidatesTokenCount/promptTokenCount rather than inside them, and both are
+    // billed — thinking at the output rate. Omitting them printed a number under what the reader's
+    // own key was charged, on the default provider, in the panel whose job is spend accounting.
+    mockFetchOnce(
+      streamResponse(
+        [
+          'data: {"candidates":[{"content":{"parts":[{"text":"{\\"narration\\":\\"Hi\\"}"}]}}]}\n',
+          'data: {"usageMetadata":{"promptTokenCount":100,"toolUsePromptTokenCount":40,"candidatesTokenCount":10,"thoughtsTokenCount":250,"cachedContentTokenCount":60}}\n',
+        ],
+        'text/event-stream',
+      ),
+    );
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
+    const { usage } = await geminiAdapter.generate(req, cfg);
+    expect(usage).toEqual({ input: 140, output: 260, cachedInput: 60 });
   });
 
   it('chat-completions requests usage and reads the post-finish summary frame', async () => {

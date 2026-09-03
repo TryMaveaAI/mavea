@@ -107,6 +107,11 @@ export interface LiveProbe {
   ok: boolean; // provider reachable + credentials accepted
   model: boolean; // the configured model is available
   statusCode?: number; // HTTP status from the probe, if it got a response (e.g. 401, 404)
+  /** The provider's own short reason from the failed response body (providerErrorDetail). The
+   *  status alone can't name the fault where it matters most: Google bills an unusable key as a
+   *  400, which the setup wizard could only report as "Error 400." on the one screen whose whole
+   *  job is getting a key working. */
+  detail?: string;
 }
 
 /** Optional per-delta metadata. `reasoning` marks a model "thinking" token (e.g. OpenRouter's

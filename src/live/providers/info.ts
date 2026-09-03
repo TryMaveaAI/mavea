@@ -78,9 +78,14 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'anthropic',
     label: 'Claude · Anthropic',
-    // Haiku 4.5 retires no sooner than 2026-10-15 — pick its successor before then, or the
-    // prefilled model starts erroring for every new key.
+    // Haiku 4.5 is the only small Claude left — the lineup above it starts at Sonnet 5, twice the
+    // price — so it stays the default despite a retirement floor of 2026-10-15 that has nearly
+    // arrived. Anthropic gives 60 days' notice, and no Haiku successor is announced yet; when one
+    // ships, move both this and the note below, or the prefilled model starts erroring on every
+    // new key.
     defaultModel: 'claude-haiku-4-5',
+    // Sonnet 5's $2/$10 was introductory through 2026-08-31; Anthropic has since cancelled the
+    // rise to $3/$15, so the step-up costs 2× the default rather than the 3× it was headed for.
     suggestedModels: ['claude-haiku-4-5', 'claude-sonnet-5'],
     needsKey: true,
     keyUrl: 'https://console.anthropic.com/settings/keys',
@@ -95,17 +100,17 @@ export const PROVIDERS: ProviderInfo[] = [
     id: 'openai',
     label: 'GPT · OpenAI',
     // The GPT-5 family are reasoning models: the adapter sends max_completion_tokens +
-    // reasoning_effort and omits the (fixed-at-1) temperature automatically. Default is luna —
-    // the newest light tier, nano's price with a far bigger window — then nano and mini.
+    // reasoning_effort and omits the (fixed-at-1) temperature automatically. luna is the light
+    // tier; gpt-5.4-nano used to sit beside it and no longer earns a row — same $0.20 input,
+    // dearer output ($1.25 vs $1.20), a 400k window against luna's 1.05M, and a generation older.
     defaultModel: 'gpt-5.6-luna',
-    suggestedModels: ['gpt-5.6-luna', 'gpt-5.4-nano', 'gpt-5.4-mini'],
+    suggestedModels: ['gpt-5.6-luna', 'gpt-5.4-mini'],
     needsKey: true,
     keyUrl: 'https://platform.openai.com/api-keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool on the Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
-      'gpt-5.6-luna': 'newest generation · 1M ctx',
-      'gpt-5.4-nano': 'fastest · highest throughput',
+      'gpt-5.6-luna': 'fastest · light · 1M ctx',
       'gpt-5.4-mini': 'a step up in quality',
     },
   },

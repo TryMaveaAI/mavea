@@ -81,13 +81,20 @@ export function isReasoningModel(model: string): boolean {
   return /(?:^|\/)(?:o[1-9]|gpt-5)/i.test(model);
 }
 
-/** The gpt-5 family adds a `minimal` reasoning tier BELOW `low`: the model answers without a
- *  hidden thinking pass, so nothing competes with the answer for the completion budget. Matched
- *  by NAME rather than by "is a reasoning model" — the o-series rejects the value outright, and a
- *  gateway route can point at any vendor's model — so the tier is only ever requested where it is
- *  documented. Same name-boundary rule as isReasoningModel, so a gateway id
- *  ("openai/gpt-5.4-nano") matches while "acme-gpt-5-clone" does not. */
-function supportsMinimalReasoning(model: string): boolean {
+/** The wire value for the rung BELOW `low`: the model answers with no hidden thinking pass, so
+ *  nothing competes with the answer for the completion budget. OpenAI shipped this rung as
+ *  `minimal` on the first GPT-5 models and renamed it `none` — the whole current family
+ *  (gpt-5.6-luna/terra/sol, gpt-5.4 and its mini/nano) documents `none, low, medium, high, xhigh`
+ *  and answers a `minimal` request with a 400, so sending the old name broke every glimpse. Our
+ *  own ThinkingLevel keeps the name `minimal`; only the wire value moved. */
+export const NO_THINKING_EFFORT = 'none';
+
+/** Whether this model has the sub-`low` rung above. Matched by NAME rather than by "is a reasoning
+ *  model" — the o-series rejects the value outright, and a gateway route can point at any vendor's
+ *  model — so the tier is only ever requested where it is documented. Same name-boundary rule as
+ *  isReasoningModel, so a gateway id ("openai/gpt-5.6-luna") matches while "acme-gpt-5-clone"
+ *  does not. */
+function supportsNoThinkingTier(model: string): boolean {
   return /(?:^|\/)gpt-5/i.test(model);
 }
 
@@ -113,7 +120,7 @@ export function isMinimalGlimpse(req: LiveRequest, model: string): boolean {
     req.thinkingLevel === 'minimal' &&
     req.maxTokens !== undefined &&
     !req.blockTypes?.length &&
-    supportsMinimalReasoning(model)
+    supportsNoThinkingTier(model)
   );
 }
 
@@ -183,7 +190,13 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
           { method: 'GET', headers: headers(cfg) },
           PROBE_TIMEOUT_MS,
         );
-        if (!res.ok) return { ok: false, model: false, statusCode: res.status };
+        if (!res.ok)
+          return {
+            ok: false,
+            model: false,
+            statusCode: res.status,
+            detail: await providerErrorDetail(res),
+          };
         const body: unknown = await res.json();
         const ids = arr(obj(body).data).map((m) => str(obj(m).id));
         // A gateway's listing isn't exhaustive (stealth/rotating ids are absent), so trust the
@@ -284,11 +297,11 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
                     // models (o-series, Grok). Pin 'low' by default — sending nothing lets the API
                     // default ('medium') apply, and at medium a reasoning model spends its whole
                     // output budget thinking about the large canvas prompt and returns an empty
-                    // answer (see the measured note in openaiResponsesCompatible). 'minimal' is
-                    // NOT universally accepted, so it goes out only where the model family
+                    // answer (see the measured note in openaiResponsesCompatible). The rung below
+                    // it is NOT universally accepted, so it goes out only where the model family
                     // documents it and the caller asked for a glimpse (isMinimalGlimpse) — never
                     // on a search turn, whose reasoning-gated tool wants the higher tier.
-                    reasoning_effort: glimpse ? 'minimal' : 'low',
+                    reasoning_effort: glimpse ? NO_THINKING_EFFORT : 'low',
                   }
                 : { max_tokens: req.maxTokens ?? 1024, temperature: req.temperature ?? 0.3 }),
               // json_object mode coexists with the search tool — the model still emits JSON;

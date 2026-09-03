@@ -50,6 +50,33 @@ function headers(cfg: ModelConfig): Record<string, string> {
   };
 }
 
+/** Models this session has learned reject `thinking: {type:'adaptive'}`, and models that reject a
+ *  non-default `temperature`. The lineup is split down both seams and no single body satisfies it:
+ *  Haiku 4.5 — the prefilled default — runs extended thinking only and answers adaptive with
+ *  `400 adaptive thinking is not supported on this model`, while Sonnet 5 and the Opus 4.7+ line
+ *  accept only adaptive AND reject any temperature but the default on every request, thinking or
+ *  not. Learned rather than listed, for the reason gemini.ts learns its thinking tiers: the model
+ *  field is free text, a gateway route can front either side, and a hand-kept set of ids rots into
+ *  the outage it was added to fix. The first rejection is remembered and the turn is re-asked. */
+const noAdaptiveThinking = new Set<string>();
+const noCustomTemperature = new Set<string>();
+
+/** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
+const MIN_THINKING_BUDGET = 1024;
+
+/** Whether a 400 is Anthropic refusing adaptive thinking, rather than any other bad argument.
+ *  Matched on the words the message is built from, not the whole sentence — that is provider copy
+ *  and free to change. */
+function rejectsAdaptive(status: number, detail: string): boolean {
+  return status === 400 && /adaptive/i.test(detail) && /thinking/i.test(detail);
+}
+
+/** Whether a 400 is the sampling-parameter deprecation (Claude 4.7 and later return one for any
+ *  non-default `temperature`/`top_p`/`top_k`), rather than any other bad argument. */
+function rejectsTemperature(status: number, detail: string): boolean {
+  return status === 400 && /temperature/i.test(detail);
+}
+
 /** Dynamic-filtering web search (`web_search_20260209`) isn't available on Haiku —
  *  it falls back to the basic tool version. Match a name boundary so a future
  *  "claude-haiku-5" etc. still matches. */
@@ -81,7 +108,13 @@ export const anthropicAdapter: ProviderAdapter = {
         { method: 'GET', headers: headers(cfg) },
         PROBE_TIMEOUT_MS,
       );
-      if (!res.ok) return { ok: false, model: false, statusCode: res.status };
+      if (!res.ok)
+        return {
+          ok: false,
+          model: false,
+          statusCode: res.status,
+          detail: await providerErrorDetail(res),
+        };
       // Pass 2 (paid, ~1 token): a minimal POST /v1/messages. /v1/models can return 200 while
       // the REAL generation endpoint 401s (Anthropic's browser detection blocks /v1/messages
       // only) — so "Ready" must come from the endpoint a turn actually uses. Probes only fire
@@ -100,7 +133,14 @@ export const anthropicAdapter: ProviderAdapter = {
         },
         PROBE_TIMEOUT_MS,
       );
-      return { ok: gen.ok, model: gen.ok, statusCode: gen.status };
+      if (!gen.ok)
+        return {
+          ok: false,
+          model: false,
+          statusCode: gen.status,
+          detail: await providerErrorDetail(gen),
+        };
+      return { ok: true, model: true, statusCode: gen.status };
     } catch {
       return { ok: false, model: false };
     }
@@ -200,36 +240,71 @@ export const anthropicAdapter: ProviderAdapter = {
     const capTimer = setTimeout(() => capCtrl.abort(), STREAM_TOTAL_MS);
     try {
       const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
-      const res = await fetchWithTimeout(
-        `${base}${MESSAGES}`,
-        {
-          method: 'POST',
-          headers: headers(cfg),
-          body: JSON.stringify({
-            model: cfg.model,
-            max_tokens: req.maxTokens ?? 1024,
-            temperature: useThinking ? 1 : (req.temperature ?? 0.3),
-            ...(useThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
-            system: systemBlocks,
-            messages: [...history, { role: 'user', content: userContent }],
-            // Structured Outputs validates the FINAL text response against the schema —
-            // tool_choice is left at its default 'auto' (never forced), which is what lets
-            // Claude call web_search first when it's offered below.
-            ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
-            ...(useNativeSearch
-              ? {
-                  tools: [{ type: webSearchToolType(cfg.model), name: 'web_search', max_uses: 5 }],
-                }
-              : {}),
-            stream: true,
-          }),
-        },
-        GEN_TIMEOUT_MS,
-        signal,
-      );
-      // Carry the provider's own reason: a 429 is either a per-minute rate limit or a spent quota,
-      // and only the body says which (describeLiveError reads the words, not just the status).
-      if (!res.ok) throw new Error(`anthropic ${res.status}${await providerErrorDetail(res)}`);
+      const maxTokens = req.maxTokens ?? 1024;
+
+      // On a model with no adaptive mode, extended thinking carries the same intent — but it is
+      // budgeted out of max_tokens, so it only goes out when half the budget still clears
+      // Anthropic's floor. Below that there is no room to think AND answer, and the answer wins.
+      const extendedBudget = Math.floor(maxTokens / 2);
+      function thinkingConfig(): Record<string, unknown> | undefined {
+        if (!useThinking) return undefined;
+        if (!noAdaptiveThinking.has(cfg.model)) {
+          return { thinking: { type: 'adaptive', display: 'summarized' } };
+        }
+        return extendedBudget >= MIN_THINKING_BUDGET
+          ? { thinking: { type: 'enabled', budget_tokens: extendedBudget } }
+          : undefined;
+      }
+
+      const buildBody = (): string =>
+        JSON.stringify({
+          model: cfg.model,
+          max_tokens: maxTokens,
+          // Thinking pins temperature to 1, which is also the default — so the only value that can
+          // trip the 4.7+ sampling-parameter refusal is our own nudge on a non-thinking turn.
+          ...(useThinking || noCustomTemperature.has(cfg.model)
+            ? { temperature: 1 }
+            : { temperature: req.temperature ?? 0.3 }),
+          ...thinkingConfig(),
+          system: systemBlocks,
+          messages: [...history, { role: 'user', content: userContent }],
+          // Structured Outputs validates the FINAL text response against the schema —
+          // tool_choice is left at its default 'auto' (never forced), which is what lets
+          // Claude call web_search first when it's offered below.
+          ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
+          ...(useNativeSearch
+            ? {
+                tools: [{ type: webSearchToolType(cfg.model), name: 'web_search', max_uses: 5 }],
+              }
+            : {}),
+          stream: true,
+        });
+
+      let res: Response;
+      for (;;) {
+        res = await fetchWithTimeout(
+          `${base}${MESSAGES}`,
+          { method: 'POST', headers: headers(cfg), body: buildBody() },
+          GEN_TIMEOUT_MS,
+          signal,
+        );
+        if (res.ok) break;
+        // Carry the provider's own reason: a 429 is either a per-minute rate limit or a spent
+        // quota, and only the body says which (describeLiveError reads the words, not the status).
+        const detail = await providerErrorDetail(res);
+        // Neither of these is transient and neither is the user's fault — the request simply named
+        // a mode this half of the lineup doesn't take. Learn it and re-ask rather than failing a
+        // turn over a knob nobody chose.
+        if (rejectsAdaptive(res.status, detail) && !noAdaptiveThinking.has(cfg.model)) {
+          noAdaptiveThinking.add(cfg.model);
+          continue;
+        }
+        if (rejectsTemperature(res.status, detail) && !noCustomTemperature.has(cfg.model)) {
+          noCustomTemperature.add(cfg.model);
+          continue;
+        }
+        throw new Error(`anthropic ${res.status}${detail}`);
+      }
 
       // The schema-validated answer arrives as ordinary text_delta fragments on a `text`
       // content block — Structured Outputs constrains the FINAL text, it doesn't reroute it

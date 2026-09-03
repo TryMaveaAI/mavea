@@ -77,6 +77,19 @@ export async function providerErrorDetail(res: Response): Promise<string> {
   }
 }
 
+/** The words a provider uses when the KEY itself is no good — missing, malformed, revoked, or not
+ *  enabled for this API. Google returns these as a 400 INVALID_ARGUMENT, which a plain status
+ *  ladder reads as "check the model name" (a turn) or "Error 400." (the setup wizard) — so both the
+ *  turn path and the readiness strip match on the provider's own words instead. */
+const BAD_KEY =
+  /api[_ ]?key not valid|api[_ ]?key.{0,20}invalid|invalid[_ ]api[_ ]?key|API_KEY_INVALID|missing.{0,10}api[_ ]?key|authentication[_ ]error/i;
+
+/** Whether a provider's own error text says the key — not the model, not the request — is the
+ *  problem. Reads a thrown adapter message or a probe's `detail` equally. */
+export function looksLikeBadKey(text: string | undefined): boolean {
+  return !!text && BAD_KEY.test(text);
+}
+
 /** Max silence between stream chunks before we treat the stream as stalled.
  *  The fetch-level timeout above only guards time-to-FIRST-byte — it's cleared the instant the
  *  response headers arrive, so it does NOT protect the body. A provider that streams a few blocks

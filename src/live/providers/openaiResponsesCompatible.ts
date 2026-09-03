@@ -37,7 +37,12 @@ import {
   noteRateLimited,
 } from './http';
 import { openaiResponsesUserContent } from './parts';
-import { isReasoningModel, isMinimalGlimpse, inBandErrorMessage } from './openaiCompatible';
+import {
+  isReasoningModel,
+  isMinimalGlimpse,
+  inBandErrorMessage,
+  NO_THINKING_EFFORT,
+} from './openaiCompatible';
 import { liveJsonSchema } from './schema';
 
 const GEN_TIMEOUT_MS = 60_000;
@@ -231,13 +236,13 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
       // doesn't engage reliably at the lowest tier) and never a canvas turn (blockTypes excludes it,
       // so a lean ask — which also asks for minimal thinking — keeps today's floor and effort).
       const glimpse = !searchTool && isMinimalGlimpse(req, cfg.model);
-      const effort: 'minimal' | 'low' | 'medium' | 'high' =
+      const effort: typeof NO_THINKING_EFFORT | 'low' | 'medium' | 'high' =
         searchTool && !isCanvasTurn
           ? req.thinkingLevel === 'high'
             ? 'high'
             : 'medium'
           : glimpse
-            ? 'minimal'
+            ? NO_THINKING_EFFORT
             : 'low';
 
       const requestInit = {
@@ -265,13 +270,13 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // way). And it lifts only the small callers that need it — sizing a large, self-sized
           // request DOWN belongs where that request is computed, not here.
           //
-          // The `minimal` rung is the bottom of that same ladder and it reserves nothing: the tier
-          // means no hidden pass, so there is no thinking to leave room for and the caller's own
+          // The bottom rung of that same ladder reserves nothing: the tier means no hidden pass,
+          // so there is no thinking to leave room for and the caller's own
           // cap is the honest number. That is the whole reason the floor may be dropped there and
           // nowhere else — a floor removed while the model is still asked to think is how a small
           // caller pays for reasoning and receives an empty completion.
           max_output_tokens: reasoning
-            ? effort === 'minimal'
+            ? effort === NO_THINKING_EFFORT
               ? (req.maxTokens ?? 1024)
               : Math.max(
                   req.maxTokens ?? 1024,
