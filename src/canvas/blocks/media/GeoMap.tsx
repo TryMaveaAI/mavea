@@ -272,7 +272,14 @@ export function GeoMap({
         attributes: true,
         attributeFilter: ['data-theme'],
       });
-    })();
+    })().catch(() => {
+      // The renderer can fail after the module loads — no WebGL context, a refused tile host, a
+      // container detached mid-build. Left alone it escapes as an unhandled rejection with nothing
+      // on screen to explain it; the card says the map could not be drawn instead.
+      if (cancelled) return;
+      window.clearTimeout(unveilCap);
+      setMapFailed(true);
+    });
 
     return () => {
       cancelled = true;
