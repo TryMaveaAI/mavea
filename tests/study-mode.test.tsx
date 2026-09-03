@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
 import { StudyStage } from '../src/canvas/study/StudyStage';
-import { deriveStudyScene } from '../src/canvas/study/scene';
+import { deriveStudyScene, deskObjects } from '../src/canvas/study/scene';
 import { BACK_CAP } from '../src/canvas/study/slots';
 import { studyVoices } from '../src/live/content/studyVoices';
 
@@ -392,6 +392,7 @@ describe('a follow-up answers IN PLACE, and the desk shows it', () => {
         data={spec(blocks, 'same-turn')}
         blocks={blocks}
         spot={spot}
+        answerEpoch={0}
         renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
       />
     );
@@ -442,6 +443,40 @@ describe('a follow-up answers IN PLACE, and the desk shows it', () => {
     const { rerender } = render(desk(three, 'b'));
     rerender(desk(three, 'b'));
     expect(frontTitle()).toContain('Old detail');
+  });
+
+  it('keeps the reader pin, visited notes and open crib through an augment', () => {
+    const walkNotes = [
+      { spot: 'a', text: 'Lead note.' },
+      { spot: 'b', text: 'Detail note.' },
+    ];
+    const view = (cast: Block[], spot: string, streaming: boolean) => (
+      <StudyStage
+        data={spec(cast, 'same-turn')}
+        blocks={cast}
+        spot={spot}
+        streaming={streaming}
+        answerEpoch={0}
+        walkNotes={walkNotes}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+    const { container, rerender } = render(view(two, 'a', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Old detail forward' }));
+    fireEvent.click(screen.getByRole('button', { name: '✎ Notes (2)' }));
+    expect(container.querySelector('.study-crib')).toBeTruthy();
+
+    rerender(view(three, 'a', true));
+    expect(frontTitle()).toContain('Old detail');
+    expect(container.querySelector('.study-crib')).toBeTruthy();
+    rerender(view(three, 'a', false));
+    expect(frontTitle()).toContain('The follow-up answer');
+    expect(container.querySelectorAll('.study-crib-line')).toHaveLength(2);
+
+    // Once the narrated walk moves, the temporary recast yields to the reader's surviving pin.
+    rerender(view(three, 'c', false));
+    expect(frontTitle()).toContain('Old detail');
+    expect(container.querySelector('.study-crib')).toBeTruthy();
   });
 });
 
@@ -501,6 +536,7 @@ describe('a streaming answer deals the desk once, not once per card', () => {
         blocks={blocks}
         spot={spot}
         streaming={streaming}
+        answerEpoch={1}
         renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
       />
     );
@@ -550,29 +586,105 @@ describe('a REPLACE answer takes the desk whole — ids collide, types tell the 
     block('live-2', 'New detail'),
   ];
 
-  function desk(blocks: Block[], spot: string | null, streaming: boolean) {
+  function desk(blocks: Block[], spot: string | null, streaming: boolean, answerEpoch: number) {
     return (
       <StudyStage
         data={spec(blocks, 'live')}
         blocks={blocks}
         spot={spot}
         streaming={streaming}
+        answerEpoch={answerEpoch}
         renderBlock={(b) => <div>{(b.props as { title?: string }).title ?? 'timeline-card'}</div>}
       />
     );
   }
 
   it('shows the new answer during its stream instead of holding the old one', () => {
-    const { rerender } = render(desk(oldAnswer, 'live-2', false));
+    const { rerender } = render(desk(oldAnswer, 'live-2', false, 0));
     expect(document.querySelector('.study-card.is-front')?.textContent).toContain('Old detail');
     // The replace streams in: first partial carries ONE new block whose id collides.
-    rerender(desk([newAnswer[0]], 'live-2', true));
+    rerender(desk([newAnswer[0]], 'live-2', true, 1));
     const front = document.querySelector('.study-card.is-front')?.textContent ?? '';
     expect(front).toContain('timeline-card');
     expect(front).not.toContain('Old');
     // Settle with the full new cast.
-    rerender(desk(newAnswer, 'live-1', false));
+    rerender(desk(newAnswer, 'live-1', false, 1));
     expect(document.querySelectorAll('.study-card').length).toBe(2);
+  });
+
+  it('replaces a one-card answer with the same id and type when the reducer epoch moves', () => {
+    const prior = [block('live-1', 'Old one-card answer')];
+    const next = [block('live-1', 'New one-card answer')];
+    const { rerender } = render(desk(prior, 'live-1', false, 4));
+    rerender(desk(next, 'live-1', true, 5));
+    expect(document.querySelector('.study-card.is-front')?.textContent).toContain(
+      'New one-card answer',
+    );
+  });
+
+  it('aligns a replacement once after settle, never once per partial', async () => {
+    const scrollIntoView = vi.fn();
+    const previous = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { rerender } = render(desk(oldAnswer, 'live-1', false, 6));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      scrollIntoView.mockClear();
+      rerender(desk([newAnswer[0]], 'live-1', true, 7));
+      rerender(desk(newAnswer, 'live-1', true, 7));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      rerender(desk(newAnswer, 'live-1', false, 7));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      expect(scrollIntoView).toHaveBeenCalledOnce();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'end', behavior: 'auto' });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = previous;
+    }
+  });
+
+  it('aligns a compact replacement to the active card instead of the beat bar', async () => {
+    const scrollIntoView = vi.fn();
+    const previous = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { rerender } = render(desk(oldAnswer, 'live-1', false, 8));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      scrollIntoView.mockClear();
+      document.querySelector('.study-stage')?.setAttribute('data-compact', '');
+      rerender(desk([newAnswer[0]], 'live-1', true, 9));
+      rerender(desk(newAnswer, 'live-1', false, 9));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      expect(scrollIntoView).toHaveBeenCalledOnce();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'auto' });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = previous;
+    }
+  });
+});
+
+describe('non-desk write-backs do not disturb the Study', () => {
+  it('keeps a reader pin when a world is appended to the answer', () => {
+    const core = [block('a', 'Lead'), block('b', 'Pinned detail')];
+    const world = {
+      type: 'world',
+      id: 'world-1',
+      col: 12,
+      props: { title: 'Living world' },
+    } as unknown as Block;
+    const view = (cast: Block[]) => (
+      <StudyStage
+        data={spec(cast, 'live')}
+        blocks={cast}
+        spot="a"
+        answerEpoch={3}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+    const { rerender } = render(view(core));
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Pinned detail forward' }));
+    rerender(view([...core, world]));
+    expect(document.querySelector('.study-card.is-front')?.textContent).toContain('Pinned detail');
   });
 });
 
@@ -601,5 +713,238 @@ describe('a card taller than its slot says there is more below', () => {
     Object.defineProperty(face, 'scrollTop', { value: 1500, configurable: true });
     face.dispatchEvent(new Event('scroll'));
     expect(face.hasAttribute('data-more-below')).toBe(false);
+  });
+});
+
+describe('the desk resets per ANSWER, not per spec id', () => {
+  // Every per-answer reset in StudyStage used to key on `data.id`. A live spec's id is the
+  // constant 'live' for the whole session, so none of them fired between answers: the pin, the
+  // open crib, the visited beats and the guided walk all survived onto the next answer's cards.
+  // Nothing caught it because every other test in this file builds specs with a unique id.
+  function desk(blocks: Block[]) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot={blocks[0]?.id ?? null}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  it('drops a guided walk when the next live answer arrives', () => {
+    const first = [block('live-1', 'A lead'), block('live-2', 'A detail')];
+    const second = [block('live-1', 'B lead'), block('live-2', 'B detail')];
+    const { container, rerender } = render(desk(first));
+    const guide = () => container.querySelector('.study-guide');
+    fireEvent.click(guide() as Element);
+    expect(guide()?.getAttribute('aria-pressed')).toBe('true');
+    // Same spec id, different answer — the reset has to fire on the CONTENT changing.
+    rerender(desk(second));
+    expect(guide()?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('keeps the walk while the very same answer re-renders', () => {
+    const same = [block('live-1', 'A lead'), block('live-2', 'A detail')];
+    const { container, rerender } = render(desk(same));
+    fireEvent.click(container.querySelector('.study-guide') as Element);
+    rerender(desk([...same]));
+    expect(container.querySelector('.study-guide')?.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('a REPLACE is caught even when it opens with the same block type', () => {
+  // The detector compared id:type at each index, but early in a stream only index 0 exists — and
+  // the answer prompt pushes an answer/insight card first, so a new answer's opener routinely
+  // matches the old one's id AND type. The desk then held the previous answer's whole cast under
+  // the new question's title for the entire stream. A follow-UP only ever appends, so a list that
+  // SHRANK is the signal the type comparison cannot give.
+  const oldAnswer = [
+    block('live-1', 'Old lead'),
+    block('live-2', 'Old detail'),
+    block('live-3', 'Old extra'),
+  ];
+  const newAnswer = [block('live-1', 'New lead'), block('live-2', 'New detail')];
+
+  function desk(blocks: Block[], streaming: boolean, answerEpoch: number) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot={blocks[0]?.id ?? null}
+        streaming={streaming}
+        answerEpoch={answerEpoch}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  it('shows the new answer while it streams, not the old cast', () => {
+    const { rerender } = render(desk(oldAnswer, false, 0));
+    expect(document.querySelectorAll('.study-card').length).toBe(3);
+    // The replace streams its first card: identical id AND identical type to the old first card.
+    rerender(desk([newAnswer[0]], true, 1));
+    const body = document.body.textContent ?? '';
+    expect(body).toContain('New lead');
+    expect(body).not.toContain('Old');
+  });
+
+  it('still holds the desk still for a follow-up that appends', () => {
+    const grown = [...oldAnswer, block('live-4', 'Appended')];
+    const { rerender } = render(desk(oldAnswer, false, 0));
+    rerender(desk(grown, true, 0));
+    expect(document.querySelectorAll('.study-card').length).toBe(3);
+    expect(document.body.textContent ?? '').not.toContain('Appended');
+  });
+});
+
+describe('the offer and the desk agree on what belongs there', () => {
+  // `TopicCanvas` counted every id-bearing block when deciding whether to OFFER the Study, while
+  // `StudyStage` filtered worlds out — so an answer whose only addressable block was a doorway
+  // offered a Study that then rendered nothing: no cards, no beats, no message, and no way back
+  // but the toggle the reader had just used. Two copies of one rule is what allowed the drift, so
+  // both sides now read `deskObjects` and this is the test of that single rule.
+  const world = {
+    type: 'world',
+    id: 'w',
+    col: 12,
+    num: 'w',
+    props: { title: 'Teach me about regimes' },
+  } as unknown as Block;
+
+  const addressable = (blocks: Block[]): number => deskObjects(blocks).filter((b) => !!b.id).length;
+
+  it('counts nothing for an answer that is only a doorway', () => {
+    expect(addressable([world])).toBe(0);
+  });
+
+  it('counts the real object beside a doorway', () => {
+    expect(addressable([block('a', 'Revenue'), world])).toBe(1);
+  });
+
+  it('draws exactly what it counted', () => {
+    const blocks = [block('a', 'Revenue'), block('b', 'Costs'), world];
+    const { container } = render(
+      <StudyStage
+        data={spec(blocks)}
+        blocks={blocks}
+        spot="a"
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />,
+    );
+    expect(container.querySelectorAll('.study-beat')).toHaveLength(addressable(blocks));
+  });
+});
+
+describe('a note the reader has seen does not rewrite itself', () => {
+  // The model's notes stream in, so the remark in the margin can arrive after the card is already
+  // on the desk. Without a latch it rewrites itself under the reader's eyes mid-sentence. The
+  // intro gate is the one window where an upgrade is free — while it is closed the notes are
+  // `visibility: hidden` — so the freeze begins when the desk actually becomes visible.
+  const blocks = [block('a', 'Revenue')];
+  const derived = {
+    a: [{ text: 'Mavéa reads this off the card.', kind: 'caution' as const }],
+  };
+  const authored = {
+    a: [{ text: 'The model brings an outside benchmark.', kind: 'caution' as const }],
+  };
+
+  function desk(
+    asides: Record<string, { text: string; kind: 'caution' }[]>,
+    authoredIds: ReadonlySet<string> = new Set(),
+    intro?: 'full',
+  ) {
+    return (
+      <StudyStage
+        data={spec(blocks)}
+        blocks={blocks}
+        spot="a"
+        asides={asides}
+        asidesAuthored={authoredIds}
+        {...(intro ? { intro } : {})}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  it('upgrades a derived hold once, then keeps the authored note stable', () => {
+    const { container, rerender } = render(desk(derived));
+    expect(container.textContent).toContain('Mavéa reads this off the card.');
+    rerender(desk(authored, new Set(['a'])));
+    expect(container.textContent).toContain('outside benchmark');
+    rerender(desk(derived));
+    expect(container.textContent).toContain('outside benchmark');
+  });
+
+  it('still takes the upgrade while the gate is hiding the margin', () => {
+    const { container, rerender } = render(desk(derived, new Set(), 'full'));
+    rerender(desk(authored, new Set(['a']), 'full'));
+    // Nothing was on screen to swap, so the desk opens on the better note rather than the floor.
+    expect(container.textContent).toContain('outside benchmark');
+  });
+
+  it('lets a genuinely new answer write its own notes', () => {
+    const { container, rerender } = render(desk(derived));
+    const next = [block('a', 'Costs')];
+    rerender(
+      <StudyStage
+        data={spec(next)}
+        blocks={next}
+        spot="a"
+        asides={authored}
+        asidesAuthored={new Set(['a'])}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />,
+    );
+    expect(container.textContent).toContain('outside benchmark');
+  });
+
+  it('drops held notes when a refine replaces the block under the same id', () => {
+    const { container, rerender } = render(desk(authored, new Set(['a'])));
+    expect(container.textContent).toContain('outside benchmark');
+    const refined = [block('a', 'Refined revenue')];
+    rerender(
+      <StudyStage
+        data={spec(refined)}
+        blocks={refined}
+        spot="a"
+        asides={derived}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />,
+    );
+    expect(container.textContent).toContain('Mavéa reads this off the card.');
+    expect(container.textContent).not.toContain('outside benchmark');
+  });
+});
+
+describe('the first Study entrance waits for the complete cast', () => {
+  it('stays covered through partials, then deals the full answer at settle', async () => {
+    vi.useFakeTimers();
+    try {
+      const one = [block('gate-a', 'First')];
+      const full = [...one, block('gate-b', 'Second'), block('gate-c', 'Third')];
+      const view = (cast: Block[], streaming: boolean) => (
+        <StudyStage
+          data={spec(cast, 'intro-answer')}
+          blocks={cast}
+          spot="gate-a"
+          answerEpoch={11}
+          streaming={streaming}
+          intro="full"
+          renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+        />
+      );
+      const { container, rerender } = render(view(one, true));
+      rerender(view(full, true));
+      await act(() => vi.advanceTimersByTimeAsync(3_400));
+      expect(container.querySelector('.study-intro')).toBeTruthy();
+
+      rerender(view(full, false));
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(container.querySelector('.study-intro')).toBeNull();
+      expect(container.querySelectorAll('.study-card')).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

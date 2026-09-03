@@ -6,9 +6,9 @@
 //
 // Each note has TWO possible authors, and which one speaks is the whole point of this file:
 //
-//   1. The MODEL, in `block.study`, written in the same call that wrote the answer — so it costs
-//      no extra request and it can say things the card does not contain: an outside benchmark,
-//      the mechanism underneath a number, the assumption an expert would challenge.
+//   1. The MODEL, in `block.study`, written on demand after a reader first opens the Study. It can
+//      say things the card does not contain: an outside benchmark, the mechanism underneath a
+//      number, or the assumption an expert would challenge.
 //   2. MAVÉA HERSELF, derived from the object on screen. A derived voice can only ever re-read
 //      what is already visible, which is why it is the floor rather than the preference — it
 //      carries demo replays, answers saved before the field existed, and any voice the model

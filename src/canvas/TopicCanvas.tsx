@@ -65,6 +65,7 @@ import './layout/hscroll.css';
 import './layout/mobileText.css';
 import './layout/textDisclosure.css';
 import { BlockBoundary } from './BlockBoundary';
+import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
 import { skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
@@ -79,6 +80,7 @@ import { FocusStage } from './focus/FocusStage';
 import { FocusToggle } from './focus/FocusToggle';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
 import { StudyStage } from './study/StudyStage';
+import { deskObjects } from './study/scene';
 import type {
   Block,
   BendSpec,
@@ -87,6 +89,7 @@ import type {
   PreviewProps,
   AccentVar,
 } from '../data/conversation';
+import { answerSignature } from '../data/conversation';
 import type { ReactNode, CSSProperties } from 'react';
 
 // A replay extra is rare and opt-in; keeping its story composer out of the canvas's static graph
@@ -273,8 +276,12 @@ interface Props {
   selectedBlockIds?: ReadonlySet<string>;
   /** What Mavéa has written about each object in the Study, keyed by block id. */
   studyAsides?: Readonly<Record<string, readonly StudyAside[]>>;
+  /** Block ids whose current Study aside set contains model-authored notes. */
+  studyAsidesAuthored?: ReadonlySet<string>;
   /** The turn is still streaming blocks in — the Study holds its desk still and deals once. */
   studyStreaming?: boolean;
+  /** Live's stable per-answer identity. Standalone consumers fall back to a content digest. */
+  studyAnswerEpoch?: number;
   /** When set, the canvas offers a Study/Focus/Everything view toggle (the surface owns the
    *  remembered preference). Absent → the classic full grid, exactly as before — clips and
    *  any other embedder are unaffected. */
@@ -336,7 +343,9 @@ export function TopicCanvas({
   onAddToDashboard,
   selectedBlockIds,
   studyAsides,
+  studyAsidesAuthored,
   studyStreaming,
+  studyAnswerEpoch,
   viewMode,
   onViewMode,
   onNarrate,
@@ -390,9 +399,18 @@ export function TopicCanvas({
   // tiling input so the grid reflows and closes the gap — a broken/empty tile is never shown.
   // Keyed by block id and reset per answer (data.id), so a fresh answer re-shows any dropped id.
   const [droppedIds, setDroppedIds] = useState<ReadonlySet<string>>(() => new Set());
+  // Keyed on the ANSWER, not `data.id`: a live spec's id is the constant 'live', so this reset
+  // never fired between answers — a block that reported itself unrenderable once stayed suppressed
+  // for the rest of the session, and because ids restart at live-1 on a replace it went on to
+  // suppress an unrelated block in every later answer.
+  const answerSig = useMemo(
+    () => answerSignature({ id: data.id, blocks: data.blocks }),
+    [data.id, data.blocks],
+  );
   useEffect(() => {
+    if (studyStreaming) return;
     setDroppedIds((prev) => (prev.size ? new Set() : prev));
-  }, [data.id]);
+  }, [answerSig, studyStreaming]);
   const markUnrenderable = useCallback((id: string) => {
     setDroppedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
@@ -417,7 +435,11 @@ export function TopicCanvas({
   // id-bearing cards to page through — a single card has nothing to focus, so it stays a plain
   // Study. Neither mode disturbs the remembered preference if a particular answer cannot use it.
   const addressableCount = displayBlocks.filter((b) => !!b.id).length;
-  const studyCapable = viewMode !== undefined && addressableCount >= 1;
+  // The desk drops a world preview — it is a doorway to another surface, not an object to examine
+  // (StudyStage does the same filter) — so counting one here offered a Study that then rendered
+  // nothing at all: no cards, no message, no way back but the toggle.
+  const deskCount = deskObjects(displayBlocks).filter((b) => !!b.id).length;
+  const studyCapable = viewMode !== undefined && deskCount >= 1;
   const focusCapable = viewMode !== undefined && addressableCount >= 2;
   const inStudy = studyCapable && viewMode === 'study';
   const focused = focusCapable && viewMode === 'focus';
@@ -713,7 +735,14 @@ export function TopicCanvas({
           ))}
         </div>
       )}
-      {familiesLoaded && canvasView ? (
+      {familiesLoaded && displayBlocks.length === 0 ? (
+        <div className="card reveal canvas-empty-answer">
+          <BlockEmpty
+            message="Nothing usable to show"
+            hint="Try asking again or choosing another model."
+          />
+        </div>
+      ) : familiesLoaded && canvasView ? (
         // The board takes the whole screen (a portal, so no column can clip it); closing lands
         // back in the conversation. Nothing renders in-flow — the takeover covers the page.
         <CanvasTakeover
@@ -733,6 +762,7 @@ export function TopicCanvas({
           renderBlock={renderBlock}
           onAskBlock={onAskBlock}
           asides={studyAsides}
+          asidesAuthored={studyAsidesAuthored}
           selectedBlockIds={selectedBlockIds}
           onNarrate={onNarrate}
           narratingId={narratingId}
@@ -743,6 +773,7 @@ export function TopicCanvas({
           lead={lead}
           intro={studyIntro}
           streaming={studyStreaming}
+          answerEpoch={studyAnswerEpoch}
         />
       ) : familiesLoaded && focused ? (
         <FocusStage

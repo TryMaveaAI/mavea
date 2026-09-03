@@ -12,8 +12,7 @@
 // at 11px (kickers, the note pager), and 9px is the app-wide rendered floor, so the desk may
 // shrink to 9/11 of its authored size and no further.
 
-/** The authored size of the desk composition, in design px. */
-export const DESK_W = 1440;
+/** The authored height of the desk composition, in design px. */
 export const DESK_H = 740;
 
 /** The fitting box the scale is computed against — slightly larger than the desk so the
@@ -78,9 +77,6 @@ export const BACK_CAP = BACK_SLOTS.length;
  *  with the far-left slot first to counterweight the note card on the right. */
 export const SLOT_ORDER = [0, 4, 3, 1, 2] as const;
 
-/** Where a card waits before the answer assembles: the centre of the desk, tiny. */
-export const GATHER_SLOT: DeskSlot = { x: 590, y: 420, z: 70, ry: 0, s: 0.22 };
-
 /** Every card is authored at the front card's width and scaled per slot, so a card carries the
  *  same face everywhere and travel is pure transform. */
 export const CARD_W = 560;
@@ -97,12 +93,6 @@ export const WIDE_FRONT_SLOT: DeskSlot = { x: 570, y: 330, z: 70, ry: 0, s: 1 };
 /** The connector's frame shifts with the wide card's edge so its curve still lands on the flank. */
 export const WIDE_CONNECT_SLOT = { x: 922, y: 208, z: 72, w: 150, h: 220 } as const;
 
-/** Mavéa's note, on the desk beside the front card. */
-export const NOTE_SLOT = { x: 1165, y: 392, z: 75, w: 302 } as const;
-
 /** The connector arrow's frame. Tall on purpose: its curve starts at the note's edge and lands
  *  HIGH on the front card's flank, so a short card is still genuinely pointed at. */
 export const CONNECT_SLOT = { x: 872, y: 208, z: 72, w: 150, h: 220 } as const;
-
-/** The handwritten takeaway under the front card. */
-export const TAKEAWAY_SLOT = { x: 590, y: 648, w: 600 } as const;

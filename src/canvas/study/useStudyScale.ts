@@ -4,7 +4,7 @@
 // custom property, so a resize re-composites the desk without re-rendering a single component.
 // The mockup polled the box on an interval; an observer is the same measurement without the idle
 // cost, and it disconnects with the stage.
-import { useEffect, type RefObject } from 'react';
+import { useLayoutEffect, type RefObject } from 'react';
 import {
   COMPACT_W,
   DESK_H,
@@ -23,39 +23,53 @@ import {
  * floor-grid band rather than cropping into the cards.
  */
 export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const stage = stageRef.current;
     if (!stage || typeof ResizeObserver === 'undefined') return;
-    const desk = stage.querySelector<HTMLElement>('.study-desk');
-    if (!desk) return;
+    const scrollViewport = stage.closest<HTMLElement>('.canvas-scroll');
+    const widthHost = stage.parentElement;
 
-    const apply = (w: number, h: number): void => {
+    const apply = (): void => {
+      const stageBox = stage.getBoundingClientRect();
+      const viewportBox = scrollViewport?.getBoundingClientRect();
+      const w = stageBox.width || widthHost?.getBoundingClientRect().width || 0;
+      const availableH = viewportBox
+        ? Math.min(viewportBox.bottom, window.innerHeight) - Math.max(viewportBox.top, 0)
+        : Math.min(stageBox.height, window.innerHeight);
+      const h = Math.max(0, Math.min(820, availableH));
       if (!w || !h) return;
       // A container query cannot style its OWN container, so the stage's compact box (height,
       // padding) can never come from `@container study` — its children reflowed while the stage
       // itself kept a desk-sized height, leaving a page of empty parchment underneath. The
       // observer already measures this box; publishing the state as an attribute is what lets
       // the stage restyle itself.
-      stage.toggleAttribute('data-compact', w <= COMPACT_W);
+      const full = stage.matches(':fullscreen') || stage.classList.contains('is-fullscreen');
+      const compact = !full && (w <= COMPACT_W || h < FIT_H * STUDY_FIT_FLOOR);
+      stage.toggleAttribute('data-compact', compact);
+      if (compact) {
+        stage.style.removeProperty('--study-stage-height');
+        stage.style.setProperty('--study-scale', '1');
+        stage.style.setProperty('--study-hud', '1');
+        stage.style.removeProperty('--study-front-max');
+        stage.removeAttribute('data-shallow');
+        return;
+      }
+      stage.style.setProperty('--study-stage-height', `${Math.round(h)}px`);
       // Full screen is the one place the desk may grow past its authored size: the reader asked
       // for the whole viewport, and a 1440-wide composition marooned in the middle of a 27-inch
       // display is not what they asked for. The HUD grows with it there (and only there) so the
       // whole surface scales as one piece.
-      const full = stage.matches(':fullscreen') || stage.classList.contains('is-fullscreen');
       const fitted = Math.min(w / FIT_W, h / FIT_H);
       const scale = Math.min(full ? SCALE_MAX_FULL : SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
       stage.style.setProperty('--study-scale', scale.toFixed(4));
       stage.style.setProperty('--study-hud', full ? Math.max(1, scale).toFixed(4) : '1');
-      // The tallest the front card may stand HERE, in design px. The card is CENTRED on desk
-      // y=330 and lifted to z=70 (a 1.046 magnification), so its lower edge lands at
-      //   stageH/2 + (330 + H/2 − 370) · scale · 1.046
-      // and the beat bar plus takeaway keep the last ~90 stage px. Solving for H is what stops
-      // a tall card from growing into the HUD, without pinning short ones to the top of an
-      // empty desk. Published as a custom property so CSS caps the card without a guess.
-      // 150px of stage, not 90: the beat bar (~59) plus a takeaway that may run to three
-      // handwritten lines. The takeaway is never truncated, so the room it might need is
-      // reserved rather than discovered by collision.
-      const frontMax = Math.max(240, Math.min(560, 80 + (2 * (h / 2 - 150)) / (1.046 * scale)));
+      // Reserve the whole takeaway band, including three wrapped handwritten lines, before
+      // solving the front card's projected height. A card may scroll; it may never cover the
+      // sentence the reader is meant to carry away.
+      const bottomReserve = stage.querySelector('.study-takeaway') ? 174 : 86;
+      const projectedCenter = h / 2 - 38 * scale;
+      const availableHalf = h - bottomReserve - 12 - projectedCenter;
+      const frontMax = Math.max(240, Math.min(560, (2 * availableHalf) / (1.046 * scale)));
       stage.style.setProperty('--study-front-max', `${frontMax.toFixed(0)}px`);
       // How much of the authored desk the floored scale pushes out of the box, in design px.
       // Hysteresis: the flag releases 26px below its trip point, so dragging a window edge
@@ -68,14 +82,15 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       );
     };
 
-    const observer = new ResizeObserver((entries) => {
-      const box = entries[0]?.contentRect;
-      if (box) apply(box.width, box.height);
-    });
-    observer.observe(desk);
-    const initial = desk.getBoundingClientRect();
-    apply(initial.width, initial.height);
+    const observer = new ResizeObserver(apply);
+    if (widthHost) observer.observe(widthHost);
+    if (scrollViewport && scrollViewport !== widthHost) observer.observe(scrollViewport);
+    apply();
+    window.addEventListener('resize', apply, { passive: true });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', apply);
+    };
   }, [stageRef]);
 }

@@ -97,7 +97,10 @@
      slicing cards — 534 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border (slots.ts). A
      short window scrolls to a whole desk (the stage aligns its own bottom edge per answer)
      instead of showing a beheaded one; fullscreen lifts the cap to the viewport itself. */
-  height: clamp(534px, calc(100dvh - 380px), 820px);
+  width: 100%;
+  max-width: var(--canvas-col-max);
+  margin-inline: auto;
+  height: clamp(534px, var(--study-stage-height, calc(100dvh - 380px)), 820px);
   overflow: clip;
   border: 1px solid var(--study-frame);
   border-radius: 26px;
@@ -408,6 +411,31 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.study-card.is-front .study-card-face:is(:hover, :focus-within),
+.study-card.is-front .study-card-face[data-scrolling] {
+  scrollbar-color: var(--study-ink-muted) transparent;
+}
+
+.study-card.is-front .study-card-face::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.study-card.is-front .study-card-face::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.study-card.is-front .study-card-face::-webkit-scrollbar-thumb {
+  border-radius: var(--r-full);
+  background: transparent;
+}
+
+.study-card.is-front .study-card-face:is(:hover, :focus-within)::-webkit-scrollbar-thumb,
+.study-card.is-front .study-card-face[data-scrolling]::-webkit-scrollbar-thumb {
+  background: var(--study-ink-muted);
 }
 
 /* Content taller than the slot scrolls inside the card — honest, but invisible: the reader saw
@@ -731,7 +759,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -744,6 +772,40 @@
 
 .study-beats-row::-webkit-scrollbar {
   display: none;
+}
+
+.study-stepper {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.study-stepper span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font: 500 12px/1 var(--study-serif);
+  color: var(--study-ink-soft);
+}
+
+.study-stepper button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--study-inner-border);
+  border-radius: 50%;
+  background: var(--study-inner);
+  color: var(--study-ink);
+  font: 600 18px/1 var(--study-serif);
+  cursor: pointer;
 }
 
 .study-beat {
@@ -1551,94 +1613,103 @@
 }
 
 /* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
-   Under ~880px of container the 3-D composition has nothing to offer but squinting; the Study
-   reflows to a flat reading column — the front card full-width, Mavéa's note beneath it, the
-   beat bar as the whole navigator. Background objects keep their NAMES (the beat chips), never
-   an unreadable miniature. */
-/* The stage's OWN box in compact — driven by the attribute useStudyScale publishes, because a
-   container query only ever reaches a container's descendants, never the container itself. */
+   Under 980px of container, or in a short laptop viewport, the 3-D composition has nothing to
+   offer but squinting. The Study reflows to a flat reading column — the front card full-width,
+   Mavéa's note beneath it, and one unbroken beat bar. Background objects keep their names in the
+   navigator, never as unreadable miniatures. The scale hook publishes the attribute because a
+   container query cannot switch its own stage from fixed height to content height. */
 .study-stage[data-compact] {
+  box-sizing: border-box;
   height: auto;
   padding: 14px;
 }
 
-@container study (max-width: 980px) {
-  .study-desk {
-    position: static;
-    background: var(--study-bg);
-  }
+.study-stage[data-compact] .study-desk {
+  position: static;
+  background: var(--study-bg);
+}
 
-  .study-canvas,
-  .study-scene {
-    position: static;
-    width: auto;
-    height: auto;
-    transform: none;
-    perspective: none;
-  }
+.study-stage[data-compact] :is(.study-canvas, .study-scene) {
+  position: static;
+  width: auto;
+  height: auto;
+  transform: none;
+  perspective: none;
+}
 
-  .study-floor,
-  .study-pool,
-  .study-vignette,
-  .study-grain,
-  .study-connect,
-  .study-mark,
-  .study-card.is-back,
-  .study-card-mute {
+.study-stage[data-compact]
+  :is(
+    .study-floor,
+    .study-pool,
+    .study-vignette,
+    .study-grain,
+    .study-connect,
+    .study-mark,
+    .study-card.is-back,
+    .study-card-mute
+  ) {
+  display: none;
+}
+
+.study-stage[data-compact] .study-crib {
+  position: static;
+  width: auto;
+  margin: 0 0 14px;
+  transform: none;
+}
+
+.study-stage[data-compact] .study-card.is-front {
+  position: static;
+  width: 100% !important;
+  max-height: none;
+  transform: none;
+  margin: 0 0 14px;
+}
+
+.study-stage[data-compact] .study-note-wrap {
+  position: static;
+  width: auto;
+  transform: none;
+  margin: 0 0 14px;
+}
+
+.study-stage[data-compact] .study-takeaway {
+  position: static;
+  width: auto;
+  transform: none;
+  margin: 0 0 14px;
+}
+
+.study-stage[data-compact] .study-beats {
+  position: static;
+  width: 100%;
+  max-width: none;
+  flex-wrap: nowrap;
+  transform: none;
+  border-radius: 18px;
+}
+
+.study-stage[data-compact] .study-voice {
+  position: static;
+  max-width: none;
+  margin: 0 0 14px;
+}
+
+/* The 3-D stage has stood down to the flat column, so there is no back arc left to collide
+   with and no reason to hold the spoken line to a few lines — it flows in full. */
+.study-stage[data-compact] .study-voice-text {
+  display: block;
+  max-height: none;
+  overflow: visible;
+}
+
+@container study (max-width: 700px) {
+  .study-beats-row,
+  .study-beat-next {
     display: none;
   }
 
-  .study-crib {
-    position: static;
-    width: auto;
-    margin: 0 0 14px;
-    transform: none;
-  }
-
-  .study-card.is-front {
-    position: static;
-    width: 100% !important;
-    transform: none;
-    margin: 0 0 14px;
-  }
-
-  .study-note-wrap {
-    position: static;
-    width: auto;
-    transform: none;
-    margin: 0 0 14px;
-  }
-
-  .study-takeaway {
-    position: static;
-    width: auto;
-    transform: none;
-    margin: 0 0 14px;
-  }
-
-  .study-beats {
-    position: static;
-    transform: none;
-    max-width: none;
-    flex-wrap: wrap;
-    border-radius: 18px;
-  }
-
-  .study-voice {
-    position: static;
-    max-width: none;
-    margin: 0 0 14px;
-  }
-
-  /* The 3-D stage has stood down to the flat column, so there is no back arc left to collide
-     with and no reason to hold the spoken line to a few lines — it flows in full. */
-  .study-voice-text {
-    display: block;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .study-beats-row {
-    flex-wrap: wrap;
+  .study-stepper {
+    display: flex;
   }
 }

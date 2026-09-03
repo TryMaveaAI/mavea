@@ -2,6 +2,7 @@
 // canvas block prop shapes and the ConversationSpec. Canvas components extend these data
 // prop types with render-only props (num / spotlight / delay).
 import type { IconKey, TopicId } from '../types/mavea';
+import { boundedValueHash, fnv1a } from '../lib/hash';
 
 // The extended block library (240 components) lives in src/canvas/blocks and self-assembles
 // its union here. Type-only import → erased at runtime, so it pulls in no CSS/JS side effects.
@@ -893,4 +894,24 @@ export interface ConversationSpec {
   suggests: SuggestSpec[];
   intents?: Record<string, IntentSpec>;
   keywords: KeywordRule[];
+}
+
+/**
+ * The identity of an ANSWER — for anything that must reset, refetch or re-deal when the answer
+ * changes.
+ *
+ * `spec.id` alone is NOT it, and that is the trap this exists to close: a live spec's id is the
+ * constant `'live'` for a whole session, so an effect keyed on it fires once and never again, and
+ * a REPLACE restarts block ids at `live-1`, so a bare id list collides across answers too.
+ *
+ * Nor is id:type enough on its own. Answers repeat their silhouette constantly — insight + chart
+ * + list is the house style — so a shape-only key reads a genuinely new answer as the same one,
+ * which is how the desk kept the previous answer's notes and the reader's pin. The content
+ * fingerprint is what makes two answers of the same shape distinguishable; it reads a bounded
+ * slice of each block so the cost stays flat however large the props grow.
+ */
+export function answerSignature(spec: Pick<ConversationSpec, 'id' | 'blocks'>): string {
+  const shape = spec.blocks.map((b) => `${b.id ?? ''}:${b.type}`).join(',');
+  const content = spec.blocks.map((b) => boundedValueHash(b.props ?? {})).join('|');
+  return `${spec.id}|${shape}|${fnv1a(content)}`;
 }

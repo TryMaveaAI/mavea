@@ -4,18 +4,20 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from 'react';
 import type { Block, ConversationSpec } from '../../data/conversation';
+import { answerSignature } from '../../data/conversation';
 import { Icon } from '../../icons/icons';
 import { BlockBoundary } from '../BlockBoundary';
 import { FallbackCard } from '../FallbackCard';
 import { blockLabel } from '../blockLabel';
 import { condenseForNote } from '../../live/annotate/marginNote';
-import { deriveStudyScene } from './scene';
+import { deriveStudyScene, deskObjects } from './scene';
 import {
   BACK_SLOTS,
   CARD_W,
@@ -42,6 +44,35 @@ import { useFullscreen } from '../../lib/useFullscreen';
 import '../layout/textDisclosure.css';
 import './study.css';
 
+/** The reader's motion preference, live. It used to be read once per render with nothing
+ *  listening, so turning "reduce motion" on mid-session left the gate and the fan-out running
+ *  until something else happened to re-render the desk. Module-scope so every desk shares one
+ *  listener, and it degrades to "motion is fine" where matchMedia does not exist (tests, SSR). */
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+const INTRO_MS = 3400;
+const INTRO_MAX_MS = 12_000;
+let reducedMotionQuery: MediaQueryList | null = null;
+
+function motionQuery(): MediaQueryList | null {
+  if (typeof matchMedia !== 'function') return null;
+  return (reducedMotionQuery ??= matchMedia(REDUCED_MOTION));
+}
+
+function readReducedMotion(): boolean {
+  return motionQuery()?.matches ?? false;
+}
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+  const query = motionQuery();
+  if (!query) return () => {};
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function noReducedMotion(): boolean {
+  return false;
+}
+
 interface Props {
   data: ConversationSpec;
   blocks: Block[];
@@ -52,6 +83,8 @@ interface Props {
    *  — what changes as the study re-casts is only which note is on the desk, which is a key swap
    *  on the note card alone, so nothing else tears down as the desk moves. */
   asides?: Readonly<Record<string, readonly StudyAside[]>>;
+  /** Blocks whose current aside set includes model-authored notes. */
+  asidesAuthored?: ReadonlySet<string>;
   selectedBlockIds?: ReadonlySet<string>;
   onNarrate?: (block: Block) => void;
   narratingId?: string | null;
@@ -75,6 +108,8 @@ interface Props {
    *  the stream settles. Watching the arc reshuffle and the beat bar grow for every arriving
    *  card read as the desk re-rendering over and over. */
   streaming?: boolean;
+  /** Reducer-owned identity that stays fixed while one answer streams. */
+  answerEpoch?: number;
 }
 
 /** The arrow each scrawl points with, in its own 90×70 frame — the design's own curves: the
@@ -141,6 +176,7 @@ export function StudyStage({
   renderBlock,
   onAskBlock,
   asides,
+  asidesAuthored,
   selectedBlockIds,
   onNarrate,
   narratingId,
@@ -151,6 +187,7 @@ export function StudyStage({
   lead,
   intro = 'skip',
   streaming,
+  answerEpoch,
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
@@ -177,15 +214,25 @@ export function StudyStage({
   const stageRef = useRef<HTMLElement | null>(null);
   const beatsRowRef = useRef<HTMLDivElement | null>(null);
 
+  // Live supplies an epoch that stays fixed as partial blocks arrive. Gallery and isolated test
+  // mounts fall back to a bounded content digest because they do not own turn state.
+  const answerKey = useMemo(
+    () => answerEpoch ?? answerSignature({ id: data.id, blocks: deskObjects(data.blocks) }),
+    [answerEpoch, data.id, data.blocks],
+  );
+
   useEffect(() => {
     setPinnedId(null);
     setCribOpen(false);
     setVisitedIds([]);
     setGuiding(false);
-  }, [data.id]);
+  }, [answerKey]);
 
-  const reducedMotion =
-    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    readReducedMotion,
+    noReducedMotion,
+  );
   const gathered = intro === 'full' && !reducedMotion && !entered;
   const enter = useCallback(() => {
     introPlayed = true;
@@ -200,53 +247,25 @@ export function StudyStage({
     return () => window.clearTimeout(timer);
   }, [assembling]);
 
-  // v3: a NEW answer after the gate has played reassembles in place — the cards gather for one
-  // frame and fan back out, no overlay. (The first answer is handled by the gate itself.)
-  const reassembleRef = useRef(data.id);
+  const introStartedAt = useRef<number | null>(null);
+  // Keep the first answer covered until its full cast is ready. The absolute cap still lets a
+  // reader through if a provider wedges without settling the turn.
   useEffect(() => {
-    if (reassembleRef.current === data.id) return;
-    reassembleRef.current = data.id;
-    if (intro !== 'full' || reducedMotion || !introPlayed) return;
-    const stage = stageRef.current;
-    if (!stage) return;
-    stage.setAttribute('data-gathered', '');
-    setAssembling(true);
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => stage.removeAttribute('data-gathered'));
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      stage.removeAttribute('data-gathered');
-    };
-  }, [data.id, intro, reducedMotion]);
-
-  // The intro never traps: click anywhere or just wait — 3.4s and the desk assembles on its
-  // own. No Escape shortcut: the demo driver owns that key, and v3 reads Escape as "leave",
-  // never "enter". Reduced motion skips the whole beat (no gate, no fan-out).
-  useEffect(() => {
-    if (!gathered) return;
-    const timer = window.setTimeout(enter, 3400);
+    if (!gathered) {
+      introStartedAt.current = null;
+      return;
+    }
+    const started = (introStartedAt.current ??= Date.now());
+    const elapsed = Date.now() - started;
+    const target = streaming ? INTRO_MAX_MS : INTRO_MS;
+    const timer = window.setTimeout(enter, Math.max(0, target - elapsed));
     return () => window.clearTimeout(timer);
-  }, [gathered, enter]);
-
-  // The desk is a single composition — arriving with its beat bar under the fold reads as a
-  // missing control, not a scrollable page. On each new answer the stage aligns its own bottom
-  // edge to the scroll column once, after paint; the walk's later per-card scrolls then find
-  // every target already visible. Instant, not smooth: this is arrival, not animation.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const stage = stageRef.current;
-      if (typeof stage?.scrollIntoView === 'function') {
-        stage.scrollIntoView({ block: 'end', behavior: 'auto' });
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [data.id]);
+  }, [gathered, enter, streaming]);
 
   // The desk holds things to LOOK at. A world preview is a doorway to another surface, not an
   // object to examine — on the desk it takes a slot, a beat and a set of notes to say only
   // "there is more elsewhere". It stays on the grid, where a doorway belongs.
-  const liveBlocks = useMemo(() => blocks.filter((block) => block.type !== 'world'), [blocks]);
+  const liveBlocks = useMemo(() => deskObjects(blocks), [blocks]);
   // While the turn streams, the desk composes from the last SETTLED set plus the newest card —
   // the reader gets the answer's first object immediately and a still desk behind it, then one
   // re-deal with the full cast when the stream ends.
@@ -257,19 +276,39 @@ export function StudyStage({
   // stream. A broken prefix (same position, different type) is a new answer: the settled set is
   // dropped on the spot and the new cast takes the desk.
   const blockSig = (block: Block): string => `${block.id ?? ''}:${block.type}`;
-  const settledRef = useRef(liveBlocks);
+  // Held as STATE, not written to a ref during render. A render-body ref write commits from a
+  // pass React is free to discard, and this value decides WHICH ANSWER the desk is showing —
+  // the most expensive thing in here to get wrong. React's documented adjust-during-render
+  // pattern instead: set it, and React re-runs this component with the new value before it
+  // commits anything, throwing the in-flight output away.
+  const [settledState, setSettledState] = useState<{ answer: string | number; blocks: Block[] }>(
+    () => ({
+      answer: answerKey,
+      blocks: liveBlocks,
+    }),
+  );
+  const settled = settledState.blocks;
+  // A follow-UP appends to the settled cast, so its list can only ever GROW. A list that shrank
+  // is therefore a new answer — which is the case the type comparison below cannot see, because
+  // early in a stream only index 0 exists and the prompt pushes an answer card first, so the new
+  // answer's opener routinely matches the old one's id:type exactly.
+  const shrank = streaming && liveBlocks.length > 0 && liveBlocks.length < settled.length;
   const replaced =
-    streaming &&
-    liveBlocks.length > 0 &&
-    settledRef.current.length > 0 &&
-    liveBlocks.some((block, i) => {
-      const prior = settledRef.current[i];
-      return !!prior && blockSig(prior) !== blockSig(block);
-    });
-  if (!streaming || replaced) settledRef.current = liveBlocks;
+    shrank ||
+    (streaming &&
+      liveBlocks.length > 0 &&
+      settled.length > 0 &&
+      liveBlocks.some((block, i) => {
+        const prior = settled[i];
+        return !!prior && blockSig(prior) !== blockSig(block);
+      }));
+  if (settledState.answer !== answerKey) {
+    setSettledState({ answer: answerKey, blocks: liveBlocks });
+  } else if ((!streaming || replaced) && settled !== liveBlocks) {
+    setSettledState({ answer: answerKey, blocks: liveBlocks });
+  }
   const deskBlocks = useMemo(() => {
     if (!streaming) return liveBlocks;
-    const settled = settledRef.current;
     // LOAD ALL, THEN SHOW (user-directed): a follow-up streams behind the settled desk, which
     // holds completely still — no per-card churn, no half-built arc — and the full new cast
     // deals once at settle. The composer's own "Composing your answer" pill carries the
@@ -280,9 +319,7 @@ export function StudyStage({
     if (settled.length > 0) return settled;
     const first = liveBlocks.find((block) => block.id);
     return first ? [first] : settled;
-    // `replaced` mutates settledRef in render, so the memo must recompute on the same tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streaming, liveBlocks, replaced]);
+  }, [streaming, liveBlocks, settled]);
 
   // A follow-UP answers IN PLACE: continuity 'augment' keeps the spec id and appends blocks, so
   // none of the data.id resets above fire — and the desk sat on the previous answer's card, with
@@ -296,71 +333,100 @@ export function StudyStage({
   // then the walk has the wheel exactly as it always did. Session notes survive: it is the same
   // session, and the crib is its running spine.
   const [recastId, setRecastId] = useState<string | null>(null);
+  const recastIdRef = useRef<string | null>(null);
   const spotAtRecast = useRef<string | null>(null);
-  const deskIdsRef = useRef<string | null>(null);
+  const dealtCastRef = useRef<{ answer: string | number; ids: string[] } | null>(null);
+  const pendingRedealRef = useRef(false);
+  const pendingFirstDealRef = useRef(false);
   useEffect(() => {
-    const key = deskBlocks.map((block) => `${block.id ?? ''}:${block.type}`).join('|');
-    const previous = deskIdsRef.current;
-    deskIdsRef.current = key;
-    if (previous === null || previous === key) return;
-    const beforeList = previous.split('|');
-    const before = new Set(beforeList);
-    // A REPLACE restarts block ids, so the change shows as the same position wearing a
-    // different id:type — not as an appended tail. That is a NEW ANSWER: everything the reader
-    // held on the old one (pin, visited beats, open crib) belongs to cards that no longer
-    // exist, so the desk resets whole rather than recasting in place.
-    const currentList = key.split('|');
-    const isReplace = currentList.some((sig, i) => !!beforeList[i] && beforeList[i] !== sig);
-    if (isReplace) {
-      setPinnedId(null);
-      setVisitedIds([]);
-      setRecastId(deskBlocks[0]?.id ?? null);
-      spotAtRecast.current = spot;
-      setNotePage(0);
-      setCribOpen(false);
-      setGuiding(false);
+    const ids = deskBlocks.map((block) => `${block.id ?? ''}:${block.type}`);
+    const previous = dealtCastRef.current;
+    dealtCastRef.current = { answer: answerKey, ids };
+    const firstCast = previous === null;
+    const replaced =
+      !!previous &&
+      (previous.answer !== answerKey ||
+        ids.length < previous.ids.length ||
+        ids.some((id, index) => previous.ids[index] !== undefined && previous.ids[index] !== id));
+
+    if (streaming) {
+      if (firstCast) {
+        pendingFirstDealRef.current = true;
+      } else if (replaced) {
+        pendingRedealRef.current = true;
+        const id = deskBlocks[0]?.id ?? null;
+        recastIdRef.current = id;
+        setRecastId(id);
+        spotAtRecast.current = spot;
+      }
       return;
     }
-    const fresh = deskBlocks.find((block) => block.id && !before.has(`${block.id}:${block.type}`));
-    if (!fresh?.id) return;
-    // ONCE PER BURST, not once per card. A streamed answer appends its blocks one partial at a
-    // time, and recasting on each appended card re-dealt the whole desk over and over while the
-    // answer arrived — the reader watched the cards gather and fan for every block. While a
-    // recast is still holding (the walk has not moved the spot since), later arrivals just take
-    // their place in the arc; the desk stays on the burst's first card.
-    if (recastId !== null && spot === spotAtRecast.current) return;
-    setRecastId(fresh.id);
-    spotAtRecast.current = spot;
-    setPinnedId(null);
-    setNotePage(0);
-    setCribOpen(false);
-    setGuiding(false);
-    // Gather the cards for a frame so the change reads as a re-deal, not a jump-cut.
+
+    const settledReplacement = pendingRedealRef.current;
+    pendingRedealRef.current = false;
+    const settledFirstDeal = pendingFirstDealRef.current;
+    pendingFirstDealRef.current = false;
+    const before = new Set(previous?.ids ?? []);
+    const fresh =
+      previous && !settledFirstDeal
+        ? deskBlocks.find((block) => block.id && !before.has(`${block.id}:${block.type}`))
+        : undefined;
+    const shouldRecast = replaced || settledReplacement || !!fresh;
+    if (shouldRecast) {
+      const id = replaced || settledReplacement ? (deskBlocks[0]?.id ?? null) : (fresh?.id ?? null);
+      if (!(recastIdRef.current !== null && spot === spotAtRecast.current && !settledReplacement)) {
+        recastIdRef.current = id;
+        setRecastId(id);
+        spotAtRecast.current = spot;
+      }
+    }
+
+    // Arrival aligns a new answer once; an in-place augment never moves the reading column.
+    let scrollFrame = 0;
+    if (firstCast || replaced || settledReplacement || settledFirstDeal) {
+      scrollFrame = requestAnimationFrame(() => {
+        const stage = stageRef.current;
+        stage?.scrollIntoView?.({
+          block: stage.hasAttribute('data-compact') ? 'start' : 'end',
+          behavior: 'auto',
+        });
+      });
+    }
+
+    if (!shouldRecast || reducedMotion || gathered) {
+      return () => cancelAnimationFrame(scrollFrame);
+    }
+    // The dealt cast owns the single re-deal animation. Partial casts never touch this attribute.
     const stage = stageRef.current;
-    if (!stage || reducedMotion) return;
+    if (!stage) return () => cancelAnimationFrame(scrollFrame);
     stage.setAttribute('data-gathered', '');
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => stage.removeAttribute('data-gathered'));
+    setAssembling(true);
+    let releaseFrame = 0;
+    const gatherFrame = requestAnimationFrame(() => {
+      releaseFrame = requestAnimationFrame(() => stage.removeAttribute('data-gathered'));
     });
     return () => {
-      cancelAnimationFrame(frame);
+      cancelAnimationFrame(scrollFrame);
+      cancelAnimationFrame(gatherFrame);
+      cancelAnimationFrame(releaseFrame);
       stage.removeAttribute('data-gathered');
     };
-    // `spot` is read into the ref, not reacted to — the effect is about the BLOCK SET changing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deskBlocks, reducedMotion, recastId]);
+  }, [answerKey, deskBlocks, gathered, reducedMotion, spot, streaming]);
   // The walk moving on is the recast's end: the voice is now talking about a different object,
   // and the desk follows the voice.
   useEffect(() => {
-    if (recastId && spot !== spotAtRecast.current) setRecastId(null);
+    if (recastId && spot !== spotAtRecast.current) {
+      recastIdRef.current = null;
+      setRecastId(null);
+    }
   }, [spot, recastId]);
   const eligibleIds = useMemo(
     () => new Set(deskBlocks.flatMap((block) => (block.id ? [block.id] : []))),
     [deskBlocks],
   );
   const activeId =
-    (pinnedId && eligibleIds.has(pinnedId) ? pinnedId : null) ??
     (recastId && eligibleIds.has(recastId) ? recastId : null) ??
+    (pinnedId && eligibleIds.has(pinnedId) ? pinnedId : null) ??
     spot;
   const scene = useMemo(
     () => deriveStudyScene(deskBlocks, activeId, selectedBlockIds),
@@ -392,13 +458,27 @@ export function StudyStage({
       const more = face.scrollHeight - face.clientHeight - face.scrollTop > 8;
       face.toggleAttribute('data-more-below', more);
     };
+    let scrollTimer = 0;
+    const onScroll = (): void => {
+      judge();
+      face.setAttribute('data-scrolling', '');
+      window.clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(() => face.removeAttribute('data-scrolling'), 650);
+    };
     const frame = requestAnimationFrame(judge);
-    face.addEventListener('scroll', judge, { passive: true });
+    face.addEventListener('scroll', onScroll, { passive: true });
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(judge) : null;
     ro?.observe(face);
+    // A ResizeObserver on the SCROLL CONTAINER never fires when its content grows: a chart family
+    // chunk landing, a web font swapping, an image decoding all move scrollHeight while the box
+    // itself is unchanged. That is exactly the card this cue exists for — one taller than its slot
+    // — so watch what scrolls, not only the window onto it.
+    for (const child of Array.from(face.children)) ro?.observe(child);
     return () => {
       cancelAnimationFrame(frame);
-      face.removeEventListener('scroll', judge);
+      window.clearTimeout(scrollTimer);
+      face.removeAttribute('data-scrolling');
+      face.removeEventListener('scroll', onScroll);
       ro?.disconnect();
     };
   }, [scene.active?.id, deskBlocks]);
@@ -408,7 +488,36 @@ export function StudyStage({
 
   // What Mavéa has written about the object on the desk — several notes per object, paged.
   const foregroundId = scene.active?.id ?? null;
-  const activeNotes = (foregroundId ? asides?.[foregroundId] : undefined) ?? [];
+  // Once a card's notes have been SEEN they hold still. The model's notes stream in, so without
+  // this the remark under the reader's eyes could rewrite itself mid-sentence. While the intro
+  // gate is closed the notes are `visibility: hidden` (study.css), so an upgrade during the gate
+  // costs nothing and is allowed — the freeze begins the moment the desk is actually visible.
+  const [heldNotes, setHeldNotes] = useState<
+    Record<string, { notes: readonly StudyAside[]; authored: boolean; block: Block }>
+  >({});
+  useEffect(() => setHeldNotes({}), [answerKey]);
+  useEffect(() => {
+    if (gathered || !foregroundId) return;
+    const shown = asides?.[foregroundId];
+    const block = data.blocks.find((candidate) => candidate.id === foregroundId);
+    if (!shown?.length || !block) return;
+    const authored = asidesAuthored?.has(foregroundId) ?? false;
+    setHeldNotes((prev) => {
+      const held = prev[foregroundId];
+      if (held?.block === block && (held.authored || !authored)) return prev;
+      return { ...prev, [foregroundId]: { notes: shown, authored, block } };
+    });
+  }, [asides, asidesAuthored, data.blocks, foregroundId, gathered]);
+  const currentNoteBlock = foregroundId
+    ? data.blocks.find((candidate) => candidate.id === foregroundId)
+    : undefined;
+  const held = foregroundId ? heldNotes[foregroundId] : undefined;
+  const activeNotes =
+    (foregroundId
+      ? held && held.block === currentNoteBlock
+        ? held.notes
+        : asides?.[foregroundId]
+      : undefined) ?? [];
   const pageIndex = activeNotes.length ? Math.min(notePage, activeNotes.length - 1) : 0;
   const activeAside = activeNotes[pageIndex] ?? null;
 
@@ -449,6 +558,8 @@ export function StudyStage({
         onAskBlock?.(block);
         return;
       }
+      recastIdRef.current = null;
+      setRecastId(null);
       setPinnedId(block.id);
       onNarrate?.(block);
     },
@@ -479,10 +590,15 @@ export function StudyStage({
   // Held in an effect, not a timer chain, so it tears down with the stage and re-arms cleanly
   // whenever the desk, the voice, or the reader's own pick moves it.
   const guideRef = useRef<{ blocks: Block[]; id: string | null }>({ blocks: [], id: null });
-  guideRef.current = {
-    blocks: deskBlocks.filter((block) => block.id),
-    id: scene.active?.id ?? null,
-  };
+  // Written after the commit, never in the render body: the timer below reads it asynchronously,
+  // so it only ever needs the LAST committed desk — and a discarded render must not be able to
+  // point the guide at a cast that was never shown.
+  useEffect(() => {
+    guideRef.current = {
+      blocks: deskBlocks.filter((block) => block.id),
+      id: scene.active?.id ?? null,
+    };
+  }, [deskBlocks, scene.active?.id]);
   // The object the guide itself last moved to. Anything else moving the desk — above all the
   // turn's own spoken walk — means someone else is driving, and two narrators is two voices
   // over each other.
@@ -512,16 +628,40 @@ export function StudyStage({
       setGuiding(false);
     }
   }, [guiding, foregroundId]);
+  // Silence ACCRUES; it does not restart. `speaking` flips at every sentence boundary, and the
+  // old effect re-armed the whole gap on each flip — so a voice that pauses more often than
+  // GUIDE_GAP_MS left "Guide me" lit and advancing never, which reads as a dead control. Bank the
+  // quiet between flickers, and still never fire WHILE a line is audible.
+  const quietRef = useRef<{ id: string | null; banked: number; since: number }>({
+    id: null,
+    banked: 0,
+    since: 0,
+  });
   useEffect(() => {
     if (!guiding) return;
-    // Never talk over her: while a line is audible the guide simply waits for it.
-    if (speaking) return;
+    const quiet = quietRef.current;
+    // A new object on the desk is a new beat — its wait starts from zero.
+    if (quiet.id !== foregroundId) {
+      quiet.id = foregroundId;
+      quiet.banked = 0;
+      quiet.since = 0;
+    }
+    if (speaking) {
+      if (quiet.since) {
+        quiet.banked += Date.now() - quiet.since;
+        quiet.since = 0;
+      }
+      return;
+    }
+    if (!quiet.since) quiet.since = Date.now();
+    const waited = quiet.banked + (Date.now() - quiet.since);
     // The first step lands at once — a control that does nothing for nine seconds reads as
     // broken — and each later one after a beat of air once the voice has stopped.
-    const delay = guideStartRef.current ? 0 : GUIDE_GAP_MS;
+    const delay = guideStartRef.current ? 0 : Math.max(0, GUIDE_GAP_MS - waited);
     const timer = window.setTimeout(() => {
       const fromStart = guideStartRef.current;
       guideStartRef.current = false;
+      quietRef.current = { id: foregroundId, banked: 0, since: 0 };
       guideStep(fromStart);
     }, delay);
     return () => window.clearTimeout(timer);
@@ -589,7 +729,9 @@ export function StudyStage({
   //
   // Two rules the first version got wrong. It DISPLACED whatever was already in the left slot,
   // which silently cost the card one of the model's own scrawls; the displaced one now moves to
-  // the next free slot instead. And it condensed with an ellipsis: a scrawl reading "Your needs
+  // the next free slot — and when the margin is genuinely full (all five slots taken) it is the
+  // displaced scrawl that goes, not one the walk did not touch. Something has to give at five,
+  // and the remark the walk pushed out is the honest one to lose. And it condensed with an ellipsis: a scrawl reading "Your needs
   // are the non-negotiables, like…" is handwriting cut off mid-thought. `condenseForNote`
   // returns the first SENTENCE when that fits, so a line that fits whole is used and one that
   // does not is left out — the walk's words are still in the session notes either way.
@@ -907,6 +1049,19 @@ export function StudyStage({
                 </button>
               );
             })}
+          </div>
+          <div className="study-stepper" aria-live="polite">
+            <button type="button" onClick={() => moveLesson(-1)} aria-label="Previous beat">
+              ‹
+            </button>
+            <span>
+              {String(lessonIndex + 1).padStart(2, '0')} /{' '}
+              {String(lessonBlocks.length).padStart(2, '0')} · Step {lessonIndex + 1}:{' '}
+              {blockLabel(active)}
+            </span>
+            <button type="button" onClick={() => moveLesson(1)} aria-label="Next beat">
+              ›
+            </button>
           </div>
           <button type="button" className="study-beat-next" onClick={() => moveLesson(1)}>
             Next →

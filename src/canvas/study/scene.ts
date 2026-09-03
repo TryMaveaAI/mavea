@@ -27,6 +27,26 @@ function intensityFor(count: number): StudyIntensity {
 }
 
 /**
+ * Whether an object belongs ON the desk.
+ *
+ * A world preview is a doorway to another surface, not something to examine: on the desk it would
+ * take a slot, a beat and four notes to say "there is more elsewhere". It stays on the grid.
+ *
+ * This is exported because the OFFER and the DESK have to agree. They did not: `TopicCanvas`
+ * counted every id-bearing block when deciding whether to offer the Study, while `StudyStage`
+ * filtered worlds out — so an answer whose only addressable block was a doorway offered a Study
+ * that then rendered nothing at all. Two copies of one rule is what made that possible.
+ */
+export function isDeskObject(block: Block): boolean {
+  return block.type !== 'world';
+}
+
+/** The objects a desk built from these blocks would actually draw. */
+export function deskObjects(blocks: readonly Block[]): Block[] {
+  return blocks.filter(isDeskObject);
+}
+
+/**
  * Builds the study from answer order and the current conversational focus. The active object's
  * neighbors alternate forward/backward around it, keeping related evidence close without making
  * placement depend on a particular demo's card count. Nearby actors fill the desk's back arc

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PEN_MARK_MAX } from '../src/live/content/penQuip';
 import type { Block } from '../src/data/conversation';
 import { coerceStudyNotes, STUDY_MARKS_MAX } from '../src/engine/liveSchema';
 
@@ -70,5 +71,42 @@ describe('coerceStudyNotes — the reply is keyed to the answer it annotates', (
       expect(() => coerceStudyNotes(junk as never, blocks)).not.toThrow();
       expect(coerceStudyNotes(junk as never, blocks).size).toBe(0);
     }
+  });
+});
+
+describe('a scrawl that cannot fit the margin is dropped, not cut', () => {
+  // The coercer used to `.slice(0, 80)` while `studyVoices` filters on PEN_MARK_MAX (46). Anything
+  // between the two was mangled to a length nothing draws, then coerced, cached, and discarded at
+  // render — output the reader paid for and never saw. One constant, one outcome.
+  it('keeps what fits and drops what does not', () => {
+    const long = 'x'.repeat(PEN_MARK_MAX + 1);
+    const notes = coerceStudyNotes(
+      {
+        notes: [
+          { id: 'live-1', assumes: 'A.', pattern: 'B.', test: 'C?', scrawls: ['fits', long] },
+        ],
+      } as never,
+      blocks,
+    );
+    expect(notes.get('live-1')?.scrawls).toEqual(['fits']);
+  });
+
+  it('never stores a truncated remark', () => {
+    const notes = coerceStudyNotes(
+      {
+        notes: [
+          {
+            id: 'live-1',
+            assumes: 'A.',
+            pattern: 'B.',
+            test: 'C?',
+            scrawls: ['y'.repeat(PEN_MARK_MAX + 20)],
+          },
+        ],
+      } as never,
+      blocks,
+    );
+    for (const s of notes.get('live-1')?.scrawls ?? [])
+      expect(s.length).toBeLessThanOrEqual(PEN_MARK_MAX);
   });
 });
