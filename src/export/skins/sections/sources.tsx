@@ -47,7 +47,7 @@ export const SourcesAppendix: SectionComponent<'sourcesAppendix'> = ({ data, ski
             flex: 'none' as const,
           };
           return safeUrl ? (
-            <a key={i} href={safeUrl} target="_blank" rel="noreferrer" style={row}>
+            <a key={i} href={safeUrl} target="_blank" rel="noopener noreferrer" style={row}>
               <span style={nameStyle}>{it.name}</span>
               <span style={metaStyle}>{hostOf(safeUrl)}</span>
             </a>

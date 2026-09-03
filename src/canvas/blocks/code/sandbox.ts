@@ -116,9 +116,17 @@ function buildWorkerSource(code: string): string {
   console.error=capture;
   console.debug=capture;
 
-  function locked(name,value){
-    try{Object.defineProperty(self,name,{value:value,writable:false,configurable:false});}catch(_err){}
+  // Some of these live on WorkerGlobalScope.prototype rather than on the global object itself, so
+  // an own property only SHADOWS them — Object.getPrototypeOf(self).fetch hands the original
+  // straight back. Redefine down the whole chain, wherever the name is genuinely defined.
+  function lockOn(host,name,value){
+    for(var target=host;target;target=Object.getPrototypeOf(target)){
+      if(target!==host&&!Object.prototype.hasOwnProperty.call(target,name))continue;
+      try{Object.defineProperty(target,name,{value:value,writable:false,configurable:false});}catch(_err){}
+    }
   }
+  function locked(name,value){lockOn(self,name,value);}
+  function blockedNetwork(){throw new Error('Network access is disabled in the code sandbox.');}
   locked('fetch',function(){return NativePromise.reject(new Error('Network access is disabled in the code sandbox.'));});
   locked('XMLHttpRequest',undefined);
   locked('WebSocket',undefined);
@@ -133,6 +141,8 @@ function buildWorkerSource(code: string): string {
   locked('caches',undefined);
   locked('postMessage',function(){});
   locked('close',function(){});
+  // sendBeacon is egress that isn't a global — it hangs off navigator, and works in workers.
+  try{if(self.navigator)lockOn(self.navigator,'sendBeacon',blockedNetwork);}catch(_err){}
 
   function done(result){
     if(output===''&&result!==undefined)append(result);

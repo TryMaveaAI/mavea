@@ -39,14 +39,39 @@ describe('sanitizeRichText — strips the dangerous, keeps the safe', () => {
     expect(out).toContain('ok');
   });
 
-  it('keeps the allow-listed formatting tags and a class attribute', () => {
+  it('keeps the allow-listed formatting tags and the highlight classes', () => {
     const out = sanitizeRichText(
-      '<strong>bold</strong> <mark class="hot">hi</mark><br><ul><li>one</li></ul>',
+      '<strong>bold</strong> <span class="k">const</span><br><ul><li>one</li></ul>',
     );
     expect(out).toContain('<strong>bold</strong>');
-    expect(out).toContain('<mark class="hot">hi</mark>');
+    expect(out).toContain('<span class="k">const</span>');
     expect(out).toContain('<br>');
     expect(out).toContain('<li>one</li>');
+  });
+
+  it('drops a class the renderer does not use, keeping the tag and its text', () => {
+    // A class here is chosen by the model; an app class would let a formatting field borrow
+    // layout or overlay styling it was never meant to reach.
+    const out = sanitizeRichText('<span class="live-dock topbar">gotcha</span>');
+    expect(out).toBe('<span>gotcha</span>');
+    const mixed = sanitizeRichText('<span class="k live-dock">const</span>');
+    expect(mixed).toBe('<span class="k">const</span>');
+  });
+
+  it('flattens markup nested past the depth cap instead of recursing the render path', () => {
+    // Serializing is recursive, so nesting depth is stack depth — capped, the words still land.
+    const deep = '<b>'.repeat(400) + 'bottom' + '</b>'.repeat(400);
+    let out = '';
+    expect(() => (out = sanitizeRichText(deep))).not.toThrow();
+    expect(out).toContain('bottom');
+    expect(out.match(/<b>/g)).toHaveLength(24);
+  });
+
+  it('cuts oversized input rather than parsing all of it', () => {
+    const huge = 'x'.repeat(50_000);
+    const out = sanitizeRichText(`<b>${huge}</b>`);
+    expect(out.length).toBeLessThan(huge.length);
+    expect(out).toContain('xxx');
   });
 
   it('escapes a plain string with no markup', () => {

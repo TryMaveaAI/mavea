@@ -233,7 +233,7 @@ describe('SourcesAppendix — link safety', () => {
     ]);
     expect(html).toContain('href="https://en.wikipedia.org/wiki/Chicago"');
     expect(html).toContain('target="_blank"');
-    expect(html).toContain('rel="noreferrer"');
+    expect(html).toContain('rel="noopener noreferrer"');
   });
 
   it('never turns a javascript:/data: scheme into a clickable href — model output is not trusted', () => {
