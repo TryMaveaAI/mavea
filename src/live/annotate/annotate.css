@@ -442,7 +442,7 @@
 }
 /* A short window cannot spend two lines on a one-time tip. The coach still appears and still says
    what the tool does — it says it on one line, and the reader gets the space back for the answer. */
-@media (max-height: 760px) {
+@media (max-height: 820px) {
   .ink-coach {
     padding: 4px 8px 4px 10px;
     font-size: 11.5px;

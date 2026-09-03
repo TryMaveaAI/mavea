@@ -349,3 +349,12 @@
   width: 13px;
   height: 13px;
 }
+
+/* A short window gives the reading column back its top and bottom air: on the most common
+   laptop the chrome was taking over half the screen, and this pad was the last of it. */
+@media (max-height: 820px) {
+  .canvas-stage {
+    padding-top: calc(60px + 8px * var(--vp-scale, 1));
+    padding-bottom: calc(var(--dock-h, 76px) + 12px);
+  }
+}
