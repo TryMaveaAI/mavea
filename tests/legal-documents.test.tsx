@@ -23,7 +23,7 @@ describe('canonical legal documents', () => {
     render(<TermsApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Terms of Use' })).toBeInTheDocument();
-    expect(screen.getByText('Effective August 23, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Effective September 3, 2026')).toBeInTheDocument();
     expect(screen.getByText(/govern your use of the Mavéa application/i)).toBeInTheDocument();
     expect(screen.getByText(/at least 18 years old/i)).toBeInTheDocument();
     expect(screen.getByText(/does not provide medical, legal, financial/i)).toBeInTheDocument();

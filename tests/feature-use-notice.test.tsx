@@ -51,7 +51,18 @@ describe('FeatureUseNotice', () => {
     // A document's map is kept on the device now, so the surface that makes one says so — the
     // Privacy Notice covers it, but a reader on a shared machine is standing here, not there.
     expect(screen.getByText(/stays on this device/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Dismiss/ })).not.toBeInTheDocument();
+    // Closable, but only for this session: the next visit's first upload says again where the
+    // file goes, which a notice about an ACT has to keep doing.
+    const close = screen.getByRole('button', { name: /Dismiss/ });
+    fireEvent.click(close);
+    expect(screen.queryByText(/Files are staged and extracted locally/)).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('mavea-feature-notice-dismissed-v1:upload')).toBe('1');
+    expect(localStorage.getItem('mavea-feature-notice-dismissed-v1:upload')).toBeNull();
+  });
+
+  it('links the upload notice to the legal page', () => {
+    sessionStorage.removeItem('mavea-feature-notice-dismissed-v1:upload');
+    render(<FeatureUseNotice kind="upload" from="live" />);
     expect(screen.getByRole('link', { name: 'Details' })).toHaveAttribute(
       'href',
       '#/legal?from=live',

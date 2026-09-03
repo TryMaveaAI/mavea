@@ -106,7 +106,7 @@
    stacked here took an eighth of the screen off the reading column. The notice still appears, still
    names what it is about, and still links the full text — it just states it in one line until there
    is room for more. */
-@media (max-height: 760px) {
+@media (max-height: 820px) {
   .feature-use-notice {
     padding: 6px 10px;
     font-size: 11px;

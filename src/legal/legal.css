@@ -173,6 +173,10 @@ html:has(.legal-app) body {
 .legal-warranty p,
 .legal-fineprint {
   margin: 0;
+  /* A readable measure, like the summary above already has. Unbounded, the 13px body filled the
+     sheet's whole 860px column at ~134 characters a line — the page's most important type set
+     twice as wide as its least. */
+  max-width: 62ch;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.72;

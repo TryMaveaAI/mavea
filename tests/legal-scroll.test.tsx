@@ -8,7 +8,10 @@ import { readFileSync } from 'node:fs';
 // Vitest stubs CSS imports, so the stylesheets are read from disk (the suite runs at the root).
 const legalCss = readFileSync('src/legal/legal.css', 'utf8');
 const gateCss = readFileSync('src/legal/legal-gate.css', 'utf8');
-const shellCss = readFileSync('src/styles/live-transcript.css', 'utf8');
+// The viewport lock moved out of Live's route-scoped sheet into the eager type layer, so every
+// surface — not just Live — is a fixed shell from the first paint. That makes the override below
+// matter MORE, not less: a document now meets the lock however the reader arrived at it.
+const shellCss = readFileSync('src/styles/type-roles.css', 'utf8');
 
 // jsdom has no layout, so the scroll call is the only observable signal that a document opened
 // at the top.
@@ -65,10 +68,10 @@ describe('legal document scroll position', () => {
   });
 });
 
-/** Every expectation above assumes the window is what scrolls. Live's stylesheet locks the
- * viewport on bare `html, body` and a hash route change never unloads it, so opening a document
- * FROM Live once clipped it at the fold — wheel, keys and scrollTo all dead. The lock is loaded
- * last here on purpose: what lifts it has to be specificity, not stylesheet order. */
+/** Every expectation above assumes the window is what scrolls. The app shell locks the viewport on
+ * bare `html, body` and a hash route change never unloads a stylesheet, so opening a document once
+ * clipped it at the fold — wheel, keys and scrollTo all dead. The lock is loaded last here on
+ * purpose: what lifts it has to be specificity, not stylesheet order. */
 describe('legal documents scroll the window whatever else is loaded', () => {
   /** Both stylesheets use CSS that jsdom's parser rejects outright (color-mix, oklab), and one bad
    * declaration drops the whole sheet — so lift out the rules that target the document itself and
@@ -109,7 +112,7 @@ describe('legal documents scroll the window whatever else is loaded', () => {
 
   it('lifts it for the acknowledgement gate too — the one document you cannot skip', () => {
     // The gate outgrows a short window (five points, five links, two consent boxes, the actions
-    // row) and it is shown to RETURNING readers, whose session already loaded the shell's lock. So
+    // row) and it is shown to RETURNING readers, whose session has the shell's lock resident. So
     // the card was clipped at the fold with the two checkboxes and Continue below it, and nothing
     // could reach them: the only way past the gate sat under an edge the window would not scroll.
     localStorage.clear();

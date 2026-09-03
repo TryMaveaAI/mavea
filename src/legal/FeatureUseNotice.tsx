@@ -22,9 +22,17 @@ function storageKey(kind: Exclude<FeatureNoticeKind, 'global'>): string {
   return `${DISMISSAL_STORAGE_PREFIX}${kind}`;
 }
 
+/** Where a dismissal is kept. A notice about a standing capability is retired for good once read;
+ *  a notice about an ACT — uploading a file, connecting a repository, storing a key — is retired
+ *  only for this session, so the next visit's first upload still says where the file goes. Every
+ *  notice can be closed; what differs is how long the closing lasts. */
+function storeFor(kind: Exclude<FeatureNoticeKind, 'global'>): Storage {
+  return DISMISSIBLE_KINDS.has(kind) ? localStorage : sessionStorage;
+}
+
 function readDismissed(kind: Exclude<FeatureNoticeKind, 'global'>): boolean {
   try {
-    return localStorage.getItem(storageKey(kind)) === '1';
+    return storeFor(kind).getItem(storageKey(kind)) === '1';
   } catch {
     return false;
   }
@@ -32,7 +40,7 @@ function readDismissed(kind: Exclude<FeatureNoticeKind, 'global'>): boolean {
 
 function rememberDismissed(kind: Exclude<FeatureNoticeKind, 'global'>): void {
   try {
-    localStorage.setItem(storageKey(kind), '1');
+    storeFor(kind).setItem(storageKey(kind), '1');
   } catch {
     // Storage can be unavailable or full. The notice still hides for this mount.
   }
@@ -48,8 +56,7 @@ export function FeatureUseNotice({
   className?: string;
 }): ReactElement | null {
   const copy = FEATURE_NOTICE_COPY[kind];
-  const dismissible = DISMISSIBLE_KINDS.has(kind);
-  const [dismissed, setDismissed] = useState(() => dismissible && readDismissed(kind));
+  const [dismissed, setDismissed] = useState(() => readDismissed(kind));
   const descriptionId = useId();
 
   if (dismissed) return null;
@@ -62,7 +69,7 @@ export function FeatureUseNotice({
       </p>
       <div className="feature-use-notice-actions">
         <a href={`#/legal?from=${from}`}>Details</a>
-        {dismissible && (
+        {
           <button
             type="button"
             className="feature-use-notice-dismiss"
@@ -75,7 +82,7 @@ export function FeatureUseNotice({
           >
             <span aria-hidden>×</span>
           </button>
-        )}
+        }
       </div>
     </aside>
   );

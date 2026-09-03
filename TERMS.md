@@ -1,6 +1,6 @@
 # Mavéa Terms of Use
 
-Effective: August 23, 2026
+Effective: September 3, 2026
 
 These Terms of Use (the **Terms**) govern your use of the Mavéa application, command-line package, demos, documentation, and related materials (collectively, the **Service**). **Licensor** means each applicable copyright holder offering software under the PolyForm license. **Maintainers** means the people who publish or contribute to Mavéa; a Maintainer is not necessarily a Licensor. **Deployment operator** means the person or organization hosting the copy you use. **Responsible Party** means the applicable Licensor, Maintainer, or deployment operator responsible for a statement, obligation, service, or claim. In these Terms, **we**, **us**, or **our** means the relevant Responsible Party or Parties in context. A separately operated deployment remains independent from the Licensors and Maintainers unless the same person or organization serves both roles.
 
@@ -58,7 +58,7 @@ Mavéa's recording paths are configured to request only the project's reviewed o
 
 You retain any rights you have in prompts, files, audio, credentials, account data, and other material you provide (**User Content**). You give the deployment operator and selected providers only the permission reasonably needed to receive, transmit, process, display, and return User Content for features you request. You are responsible for User Content and must have all rights, notices, consents, workplace approvals, permissions, and lawful bases needed to process it with the Service and your selected third parties.
 
-Do not provide secrets or sensitive, regulated, confidential, privileged, export-controlled, or personal information unless you have assessed the deployment and every recipient and have a lawful basis to do so. Do not submit information about children or third parties without appropriate authority. Mavéa is not a confidential or privileged channel. The Responsible Parties do not acquire ownership of User Content merely because you use the software.
+Do not provide secrets or sensitive, regulated, confidential, privileged, export-controlled, or personal information unless you have assessed the deployment and every recipient and have a lawful basis to do so. Do not submit information about children or third parties without appropriate authority. Mavéa is not a confidential or privileged channel. Whatever you upload or connect — including work documents, an employer's or client's private code, and other people's information — is sent to the providers you select and handled under their terms, which may include retention and use for training; the Responsible Parties do not control that and accept no liability for it. The Responsible Parties do not acquire ownership of User Content merely because you use the software.
 
 Listening features turn nearby speech into text. Recording and eavesdropping laws differ by place — some require every participant's consent, not just yours — so when you use a listening mode where other people can be heard, you are responsible for telling them and obtaining whatever consent your jurisdiction requires.
 

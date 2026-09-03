@@ -14,7 +14,7 @@
    v10: the feedback terms bind whoever SENDS feedback, not only whoever ran the app — posting an
    issue, a discussion or an email is now itself an acceptance, because §9's grant was worth nothing
    against a person who had never installed Mavéa and so had never agreed to anything. */
-export const LEGAL_ACCEPTANCE_VERSION = '2026-08-23-feedback-terms-v10';
+export const LEGAL_ACCEPTANCE_VERSION = '2026-09-03-upload-training-terms-v11';
 export const LEGAL_ACCEPTANCE_STORAGE_KEY = 'mavea-legal-acceptance-v1';
 
 interface LegalAcceptance {
