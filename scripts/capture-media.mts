@@ -43,7 +43,7 @@ interface BaseShot {
 /** Which key-free surface the shot comes from, and what it needs to get there. */
 type Shot = BaseShot &
   (
-    | { from: 'demo'; persona: string; asCanvas?: boolean; then?: string[] }
+    | { from: 'demo'; persona: string; then?: string[] }
     | { from: 'tour'; chapter: string; then?: string[]; awaitWalk?: boolean }
     | { from: 'ripple'; section: string; then?: string[] }
     | { from: 'route'; hash: string; ready: string; click?: string[] }
@@ -53,7 +53,16 @@ const SHOTS: Shot[] = [
   // Row 1 — an answer, three ways: narrated and marked up, spread out as a board, and forming
   // live while someone is still talking.
   { name: 'answer-ink', from: 'demo', persona: 'dev', settleMs: 20_000 },
-  { name: 'canvas-view', from: 'demo', persona: 'dev', settleMs: 26_000, asCanvas: true },
+  // The desk, one object at a time. The reading modes are what an answer IS now — Study, Focus and
+  // Everything — and none of them had a tile; the board view this replaced is a per-answer takeover
+  // that is never even remembered, and the causal web below already carries the spatial reading.
+  {
+    name: 'study-desk',
+    from: 'demo',
+    persona: 'dev',
+    settleMs: 26_000,
+    then: ['Study'],
+  },
   // The settled thought map, from the dev-only harness (#/mindlab) rather than a live session:
   // its threads and themes come from a model, so a key-free tour chapter can only ever show the
   // listening half. Same component, same CSS, a real settled spec — and reproducible.
@@ -192,10 +201,6 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
     await start.click();
     await page.waitForSelector('.card-grid .card', { timeout: 30_000 });
     await page.waitForTimeout(shot.settleMs);
-    if (shot.asCanvas) {
-      await page.getByRole('button', { name: /view as canvas/i }).click({ timeout: 15_000 });
-      await page.waitForTimeout(2500);
-    }
     if (shot.then) {
       await clickThrough(page, shot.then);
       // Short: the replay is still playing underneath, and its own next beat (the palette, its

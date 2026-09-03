@@ -330,6 +330,32 @@ describe('mapClaims — model output through the grounding gate', () => {
       expect(res.error).not.toMatch(/scan/i);
     });
 
+    // The picker offers images, so a reader drops a screenshot and expects it to be read. It used
+    // to fall through to the PDF reader, which cannot open a PNG, and they were told their image
+    // was a corrupt PDF. A picture is a one-page deck: it takes the vision path.
+    it('reads a dropped image instead of calling it a corrupt PDF', async () => {
+      const png: Attachment = { name: 'chart.png', mime: 'image/png', data: 'AA==', size: 4 };
+      modelReply = JSON.stringify({
+        regions: [],
+        claims: [{ quote: 'Revenue doubled', page: 1, kind: 'stat', title: 'X', region: 'R' }],
+      });
+      const res = await mapClaims(png, cfg);
+      expect(res.error ?? '').not.toMatch(/corrupt|not a pdf/i);
+    });
+
+    it('tells a non-vision model’s user that a picture needs a model that can see it', async () => {
+      visionCapable = false;
+      try {
+        const png: Attachment = { name: 'chart.png', mime: 'image/png', data: 'AA==', size: 4 };
+        const res = await mapClaims(png, cfg);
+        expect(res.spec).toBeNull();
+        expect(res.error).toMatch(/picture/i);
+        expect(res.error).toMatch(/anthropic or gemini/i);
+      } finally {
+        visionCapable = true;
+      }
+    });
+
     // A real scan (pages open, but every one is blank) can only be read by a model that takes the
     // document itself. On a model that can't, we used to send it anyway and then blame grounding
     // ("no claims were grounded in the page text") — true, useless, and not the user's fault.

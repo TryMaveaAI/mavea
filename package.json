@@ -117,7 +117,8 @@
     "perf": "node --import tsx scripts/perf-probe.mts",
     "perf:memory": "node --import tsx scripts/memory-probe.mts",
     "audit:tap": "node --import tsx scripts/tap-audit.mts",
-    "gen:media": "node --import tsx scripts/capture-media.mts"
+    "gen:media": "node --import tsx scripts/capture-media.mts",
+    "audit:surfaces": "node --import tsx scripts/surface-audit.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

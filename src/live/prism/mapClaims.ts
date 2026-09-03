@@ -16,7 +16,7 @@
 import type { Attachment } from '../attachments';
 import type { ModelConfig } from '../../types/mavea';
 import { getAdapter } from '../providers';
-import { ensureAttachmentData, isOffice, isPdf, isText } from '../attachments';
+import { ensureAttachmentData, isImage, isOffice, isPdf, isText } from '../attachments';
 import { groundClaimsOffMain } from './groundOffMain';
 import { skimPagesToPrompt, parseSkimPages, selectedPagesToPrompt } from './mapping';
 import { extractPdfPages } from './extractPdf';
@@ -361,6 +361,11 @@ async function mapOneDocument(
   // paths produce the same pages[] for grounding.
   const office = isOffice(pdf);
   const text = !office && !isPdf(pdf) && isText(pdf);
+  // A picture is a one-page deck: it has no text to extract, so it takes the same vision path a
+  // slide deck exported as images does. Without this it fell through to the PDF reader, which
+  // cannot open it, and a reader who dropped exactly the file type the picker advertises was told
+  // their image was a corrupt PDF.
+  const image = isImage(pdf);
   // Office docs carry a diagnostic reason on failure so the UI can say WHY it couldn't read them.
   // An image-only deck (slides exported as pictures) carries its slide images for the vision path.
   let pages: string[] | null;
@@ -391,6 +396,9 @@ async function mapOneDocument(
   } else if (text) {
     // Plain-text / data file (CSV, TXT, Markdown, JSON, code): the bytes are the text, smart-paged.
     pages = await extractTextOffMain(pdf);
+  } else if (image) {
+    pages = null;
+    slideImages = [pdf];
   } else {
     pages = (await extractPdfPages(pdf)) ?? null;
   }
@@ -429,14 +437,16 @@ async function mapOneDocument(
   // a model that takes the document itself. On a provider that can't (parts.ts degrades a PDF to a
   // "can't read" note), sending it anyway produced claims grounded in nothing and a baffling "no
   // claims were grounded in the page text". Say what's wrong and what fixes it, before spending a call.
-  if (isPdf(pdf) && !visionDeck && textLen === 0 && !adapter.capabilities.vision) {
+  const needsVision = image || (isPdf(pdf) && !visionDeck && textLen === 0);
+  if (needsVision && !adapter.capabilities.vision) {
     return {
       fileName: pdf.name,
       pages: pages ?? [],
       claims: [],
       proposed: 0,
-      error:
-        'This PDF has no selectable text — it looks like a scan. Connect a model that reads documents (Anthropic or Gemini) to read it.',
+      error: image
+        ? 'This is a picture, so only a model that can see it can read it. Connect one that reads images (Anthropic or Gemini).'
+        : 'This PDF has no selectable text — it looks like a scan. Connect a model that reads documents (Anthropic or Gemini) to read it.',
     };
   }
 
