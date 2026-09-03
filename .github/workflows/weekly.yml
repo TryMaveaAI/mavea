@@ -135,6 +135,9 @@ jobs:
           }
 
           gate audit:ui           pnpm audit:ui -- --widths 280,390,768,1280,1920 --variants all
+          # The rooms the cards sit in, not the cards: the block sweep above cannot see a
+          # reading column squeezed to a porthole, or a panel with no way to scroll it.
+          gate audit:surfaces     pnpm audit:surfaces -- --url http://127.0.0.1:5173
           gate audit:tap          pnpm audit:tap
           gate audit:interactions pnpm audit:interactions -- --slow-machine
           gate slides:gate        pnpm slides:gate

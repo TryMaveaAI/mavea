@@ -638,7 +638,9 @@
 }
 .ripple-node-eyebrow {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 7.5px;
+  /* The app's legibility floor. A node label is real content — the kind of thing a reader leans in
+     to read — so it is held to the same 9px every other rendered word is. */
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -664,7 +666,7 @@
 }
 .ripple-node-status {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 7.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }

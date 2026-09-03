@@ -466,7 +466,7 @@ describe('Ripple — a node’s Ask opens the rail, voiceless', () => {
     expect(getByText(/Connect a model in Settings/i)).toBeTruthy(); // …but says so honestly
   });
 
-  it('cleans model-authored node prose before narration', () => {
+  it('cleans model-authored node prose before narration', async () => {
     const speak = vi.fn();
     const model: ShipModel = {
       ...SEED_SHIP,
@@ -488,7 +488,9 @@ describe('Ripple — a node’s Ask opens the rail, voiceless', () => {
     fireEvent.click(getByText('src/auth').closest('button')!);
     fireEvent.click(getByText(/Ask about src\/auth/i));
 
-    expect(speak).toHaveBeenCalledWith('src/auth. See the docs before rollout.');
+    await waitFor(() =>
+      expect(speak).toHaveBeenCalledWith('src/auth. See the docs before rollout.'),
+    );
   });
 });
 
@@ -537,7 +539,7 @@ describe('LessonBody — "Ask about this lesson"', () => {
     expect(queryByText('Ask about this lesson')).toBeNull();
   });
 
-  it('cleans model-authored walkthrough prose before narration', () => {
+  it('cleans model-authored walkthrough prose before narration', async () => {
     const speak = vi.fn();
     const narratedLesson: CourseLesson = {
       ...lesson,
@@ -568,7 +570,9 @@ describe('LessonBody — "Ask about this lesson"', () => {
 
     fireEvent.click(getByRole('button', { name: 'Step through the code one part at a time' }));
 
-    expect(speak).toHaveBeenCalledWith('validateToken. Read the contract first.');
+    await waitFor(() =>
+      expect(speak).toHaveBeenCalledWith('validateToken. Read the contract first.'),
+    );
   });
 });
 

@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
 import { providerInfo } from '../providers/info';
-import { proseForSpeech } from '../../lib/spokenText';
 import type {
   Altitude,
   CourseCapstone,
@@ -1126,10 +1125,10 @@ export function RippleOverlay({
   const onAsk = useCallback(
     (node: ShipNode) => {
       if (narrate && speak) {
-        speak(
-          proseForSpeech(
-            `${node.label}. ${node.problem ?? node.contract ?? ''} ${node.fix ?? ''}`.trim(),
-          ),
+        const line =
+          `${node.label}. ${node.problem ?? node.contract ?? ''} ${node.fix ?? ''}`.trim();
+        void import('../../lib/spokenText').then(({ proseForSpeech }) =>
+          speak(proseForSpeech(line)),
         );
       }
       openAsk(`Explain ${node.label}${node.contract ? ` — ${node.contract}` : ''}`);

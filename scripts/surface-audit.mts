@@ -49,7 +49,7 @@ interface Surface {
 }
 
 const SURFACES: Surface[] = [
-  { key: 'landing', label: 'Landing', hash: '/', ready: '.fl-landing' },
+  { key: 'landing', label: 'Landing', hash: '', ready: '.fl-landing', settleMs: 2500 },
   {
     key: 'live',
     label: 'Live (empty)',
@@ -102,7 +102,7 @@ const SURFACES: Surface[] = [
     key: 'gallery',
     label: 'Gallery',
     hash: '#/gallery',
-    ready: '.gal-app,.gallery-app',
+    ready: '.vlib-body',
     settleMs: 2500,
   },
   { key: 'legal', label: 'Legal', hash: '#/legal', ready: '.legal-app' },
@@ -123,85 +123,73 @@ function readFlag(name: string, fallback: string): string {
   return idx !== -1 && argv[idx + 1] ? argv[idx + 1] : fallback;
 }
 
-/** Everything measured in the page, in one pass — a second evaluate would race the first's layout. */
-async function measure(page: Page, reading: string | undefined, floor: number) {
-  return page.evaluate(
-    ({ readingSel, typeFloor }) => {
-      const describe = (el: Element): string => {
-        const cls = String((el as HTMLElement).className || '')
-          .split(/\s+/)
-          .filter(Boolean)
-          .slice(0, 2)
-          .join('.');
-        return cls ? `${el.tagName.toLowerCase()}.${cls}` : el.tagName.toLowerCase();
-      };
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const outside: string[] = [];
-      const tiny: string[] = [];
-      const trapped: string[] = [];
+/** Everything measured in the page, in one pass — a second evaluate would race the first's layout.
+ *  Passed as a STRING, like the block sweep's own collision script: the bundler rewrites named
+ *  functions inside an evaluated callback into calls to a helper that does not exist in the page. */
+const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string => `(() => {
+  const name = (el) => [el.tagName.toLowerCase(), ...String(el.className || '').split(/\\s+/).filter(Boolean).slice(0, 2)].join('.');
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  // A page that scrolls itself can reach anything below its own fold; only a surface that pins the
+  // document and then paints past the edge has content nobody can get to.
+  const doc = document.scrollingElement;
+  const docScrolls = !!doc && doc.scrollHeight > doc.clientHeight + 2;
+  const outside = [];
+  const tiny = [];
+  const trapped = [];
+  for (const el of Array.from(document.body.querySelectorAll('*'))) {
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+    const box = el.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) continue;
 
-      for (const el of Array.from(document.body.querySelectorAll<HTMLElement>('*'))) {
-        const style = getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')
-          continue;
-        const box = el.getBoundingClientRect();
-        if (box.width < 1 || box.height < 1) continue;
-
-        // Sitting outside the window with nothing able to bring it back. A box inside a scroller
-        // is reachable by definition, so only measure against the scrollers that actually exist.
-        const overRight = box.right - vw;
-        const overBottom = box.bottom - vh;
-        if (overRight > 2 || overBottom > 2) {
-          let scrollable = false;
-          for (let p = el.parentElement; p; p = p.parentElement) {
-            const ps = getComputedStyle(p);
-            const scrolls = /(auto|scroll)/.test(ps.overflowY + ps.overflowX);
-            if (
-              scrolls &&
-              (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)
-            ) {
-              scrollable = true;
-              break;
-            }
-          }
-          if (!scrollable && el.children.length === 0) {
-            outside.push(
-              `${describe(el)} outside by ${Math.round(Math.max(overRight, overBottom))}px`,
-            );
-          }
-        }
-
-        // Type below the floor, judged on what is rendered rather than what was authored.
-        if (el.children.length === 0 && (el.textContent ?? '').trim().length > 1) {
-          const size = parseFloat(style.fontSize);
-          if (size && size < typeFloor) tiny.push(`${describe(el)} ${size.toFixed(1)}px`);
-        }
-
-        // Content taller than its box, in a box that refuses to scroll: unreachable by any gesture.
-        const hidden = el.scrollHeight - el.clientHeight;
-        if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40) {
-          trapped.push(
-            `${describe(el)} hides ${Math.round(hidden)}px with overflow-y:${style.overflowY}`,
-          );
-        }
+    // Outside the window with nothing able to bring it back. A box inside a scroller is reachable
+    // by definition, so only the scrollers that actually exist count as a way back.
+    const overRight = box.right - vw;
+    const overBottom = box.bottom - vh;
+    if ((overRight > 2 || overBottom > 2) && el.children.length === 0) {
+      let scrollable = docScrolls;
+      for (let p = el.parentElement; p && !scrollable; p = p.parentElement) {
+        const ps = getComputedStyle(p);
+        if (/(auto|scroll)/.test(ps.overflowY + ps.overflowX) &&
+            (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) scrollable = true;
       }
+      if (!scrollable) outside.push(name(el) + ' outside by ' + Math.round(Math.max(overRight, overBottom)) + 'px');
+    }
 
-      const readingEl = readingSel ? document.querySelector<HTMLElement>(readingSel) : null;
-      const doc = document.scrollingElement as HTMLElement | null;
-      return {
-        outside: Array.from(new Set(outside)).slice(0, 8),
-        tiny: Array.from(new Set(tiny)).slice(0, 8),
-        trapped: Array.from(new Set(trapped)).slice(0, 8),
-        readingH: readingEl ? Math.round(readingEl.clientHeight) : null,
-        viewportH: vh,
-        docScrollable: doc ? doc.scrollHeight > doc.clientHeight + 2 : false,
-        bodyOverflowX: document.documentElement.scrollWidth > vw + 2,
-      };
-    },
-    { readingSel: reading ?? null, typeFloor: floor },
-  );
-}
+    // Type below the floor, judged on what is rendered rather than what was authored.
+    if (el.children.length === 0 && (el.textContent || '').trim().length > 1) {
+      const size = parseFloat(style.fontSize);
+      if (size && size < ${typeFloor}) tiny.push(name(el) + ' ' + size.toFixed(1) + 'px');
+    }
+
+    // Content taller than its box, in a box that refuses to scroll: unreachable by any gesture.
+    // Two clips are the design rather than a defect, and both are excused on what the element
+    // declares, not on what it is called. A drag camera is undone by dragging — the same case the
+    // world sweep already excuses. A thumbnail is a snapshot scaled into a frame; showing all of it
+    // would make it not a thumbnail.
+    const hidden = el.scrollHeight - el.clientHeight;
+    const dragCamera = style.cursor === 'grab' || style.cursor === 'grabbing';
+    // A line clamp states its own limit: it shows N lines and hides the rest on purpose.
+    const lineClamped = style.webkitLineClamp !== 'none' && style.webkitLineClamp !== '';
+    const scaledSnapshot = Array.from(el.children).some((c) => {
+      const t = getComputedStyle(c).transform;
+      return t !== 'none' && t.startsWith('matrix(0');
+    });
+    if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40 && !dragCamera && !scaledSnapshot && !lineClamped) {
+      trapped.push(name(el) + ' hides ' + Math.round(hidden) + 'px with overflow-y:' + style.overflowY);
+    }
+  }
+  const readingEl = ${readingSel ? `document.querySelector(${JSON.stringify(readingSel)})` : 'null'};
+  return {
+    outside: Array.from(new Set(outside)).slice(0, 8),
+    tiny: Array.from(new Set(tiny)).slice(0, 8),
+    trapped: Array.from(new Set(trapped)).slice(0, 8),
+    readingH: readingEl ? Math.round(readingEl.clientHeight) : null,
+    viewportH: vh,
+    bodyOverflowX: document.documentElement.scrollWidth > vw + 2,
+  };
+})()`;
 
 async function main(): Promise<void> {
   const baseUrl = readFlag('url', 'http://localhost:5173').replace(/\/$/, '');
@@ -253,7 +241,16 @@ async function main(): Promise<void> {
             }
             await page.waitForTimeout(surface.settleMs ?? 1200);
 
-            const m = await measure(page, surface.reading, TYPE_FLOOR);
+            const m = (await page.evaluate(
+              MEASURE_SCRIPT(surface.reading ?? null, TYPE_FLOOR),
+            )) as {
+              outside: string[];
+              tiny: string[];
+              trapped: string[];
+              readingH: number | null;
+              viewportH: number;
+              bodyOverflowX: boolean;
+            };
             for (const o of m.outside) issues.push(`unreachable: ${o}`);
             for (const t of m.trapped) issues.push(`trapped: ${t}`);
             for (const t of m.tiny) issues.push(`below ${TYPE_FLOOR}px: ${t}`);

@@ -101,3 +101,20 @@
     height: 36px;
   }
 }
+
+/* A short window has no room to spend four lines on a standing notice: at 620px tall the two
+   stacked here took an eighth of the screen off the reading column. The notice still appears, still
+   names what it is about, and still links the full text — it just states it in one line until there
+   is room for more. */
+@media (max-height: 760px) {
+  .feature-use-notice {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .feature-use-notice p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+  }
+}
