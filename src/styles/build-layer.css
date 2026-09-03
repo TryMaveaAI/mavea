@@ -223,7 +223,17 @@
   text-align: center;
 }
 
-/* BuildProgress (.tiny-spin already defined above) */
+/* The inline "working…" ring, shared by BuildProgress and ActionCard. */
+.tiny-spin {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--r-full);
+  animation: spin 0.7s linear infinite;
+}
+
+/* BuildProgress */
 .buildsteps {
   display: flex;
   flex-direction: column;

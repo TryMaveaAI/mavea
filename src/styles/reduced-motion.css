@@ -1,0 +1,24 @@
+/* The live surface's reduced-motion floor: the ambient loops that would otherwise run for the
+   whole session, plus the face's fly-to-corner glide. Per-component motion is gated where it is
+   defined; this file is only the always-on chrome. */
+
+@media (prefers-reduced-motion: reduce) {
+  .presence .aura,
+  .presence .mascot,
+  .presence .mascot .jelly,
+  .presence .mascot .bell,
+  .presence .mascot .curtain,
+  .presence .mascot .eyes,
+  .mic-btn.listening,
+  .wave i {
+    animation: none !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* Don't fly the face between home and centre — snap, so an aside has no sweeping motion. */
+  .presence-positioner {
+    transition: none;
+  }
+}

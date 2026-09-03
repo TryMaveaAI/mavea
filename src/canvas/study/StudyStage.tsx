@@ -437,7 +437,9 @@ export function StudyStage({
   // app around it. The control and its target live together rather than being plumbed through
   // two components that would both have to be told which element they meant.
   const fullscreen = useFullscreen();
-  useStudyScale(stageRef);
+  // Re-fit on a re-cast as well as a resize: the fit reserves the handwritten takeaway's
+  // measured band, and the sentence changes with the object on the desk.
+  useStudyScale(stageRef, `${data.id}:${scene.active?.id ?? ''}`);
   // Truncation without a way back to the words is just lost text. The canvas grid gets this
   // treatment already; the desk renders its cards outside that grid, so it asks for its own —
   // re-scanned whenever the desk re-casts, since the object on it changes.
@@ -531,6 +533,35 @@ export function StudyStage({
     );
   }, [foregroundId]);
 
+  // The row's edge fades are a promise that the sentence continues, so each side is flagged from
+  // the row's own scroll position: a chip parked at either end can never be scrolled away from it,
+  // and a permanent gradient would just sit over a real, clickable label.
+  const markBeatOverflow = useCallback((row: HTMLElement): void => {
+    const max = row.scrollWidth - row.clientWidth;
+    row.toggleAttribute('data-more-start', row.scrollLeft > 1);
+    row.toggleAttribute('data-more-end', row.scrollLeft < max - 1);
+  }, []);
+
+  const attachBeatsRow = useCallback(
+    (row: HTMLDivElement | null) => {
+      beatsRowRef.current = row;
+      if (!row) return;
+      const mark = (): void => markBeatOverflow(row);
+      mark();
+      row.addEventListener('scroll', mark, { passive: true });
+      // A widened row can stop overflowing without ever scrolling, which would strand a fade over
+      // the last chip — the one thing the fades must never do.
+      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(mark);
+      observer?.observe(row);
+      return () => {
+        observer?.disconnect();
+        row.removeEventListener('scroll', mark);
+        beatsRowRef.current = null;
+      };
+    },
+    [markBeatOverflow],
+  );
+
   // The active beat chip keeps itself in the visible window of the (scrollable) row. Manual
   // scrollLeft math, not scrollIntoView: the latter is free to scroll every ancestor, which
   // would yank the page each time the walk advances.
@@ -540,13 +571,18 @@ export function StudyStage({
     if (row.matches(':hover')) return;
     const chip = row.querySelector<HTMLElement>('.study-beat.is-now');
     if (!chip) return;
+    // Measured against the ROW, not the chip's offset parent: the beat bar is the positioned
+    // ancestor here, so offsetLeft carried the Guide button's width into the target and scrolled
+    // the first chip's label off the left edge every time the walk opened.
+    const left = chip.getBoundingClientRect().left - row.getBoundingClientRect().left;
     // Centre it, but never past the ends — and when the row does not scroll at all, leave it be.
-    const target = chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2;
+    const target = row.scrollLeft + left - row.clientWidth / 2 + chip.offsetWidth / 2;
     const max = Math.max(0, row.scrollWidth - row.clientWidth);
     if (typeof row.scrollTo === 'function') {
       row.scrollTo({ left: Math.min(max, Math.max(0, target)) });
     }
-  }, [foregroundId]);
+    markBeatOverflow(row);
+  }, [foregroundId, markBeatOverflow]);
 
   const choose = useCallback(
     (block: Block, keepContext = false) => {
@@ -1028,7 +1064,7 @@ export function StudyStage({
           >
             {guiding ? '❚❚ Pause' : '▶ Guide me'}
           </button>
-          <div className="study-beats-row" ref={beatsRowRef}>
+          <div className="study-beats-row" ref={attachBeatsRow}>
             {lessonBlocks.map((block, index) => {
               const now = block.id === active.id;
               return (

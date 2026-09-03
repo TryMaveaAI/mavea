@@ -3,7 +3,7 @@
 // exit), and the occasional one-line beat caption. No coach voice, no spotlight scrim — the
 // answers' own narration and reveal walks ARE the show; this overlay only frames them. It
 // renders OVER the real Live surface and is pointer-transparent except for its own controls.
-import { useRef, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Icon } from '../icons/icons';
 import { useFocusTrap } from '../live/useFocusTrap';
 import type { DemoDriver } from './useDemoDriver';
@@ -34,7 +34,23 @@ export function DemoOverlay({
   // scrim, so keyboard focus has to move into the card and stay there while it's up (otherwise Tab
   // walks straight into the session behind the scrim, which the pointer can't even reach).
   const cardRef = useRef<HTMLDivElement>(null);
-  const modal = driver.active && driver.loadState === 'ready' && (!driver.started || driver.done);
+  // The end card can be waved off: behind it is the finished session, and a card the reader can
+  // neither answer nor close is a dead end over the very thing they came to look at. The
+  // transport stays up afterwards, so replaying or stepping back is still one click away.
+  const [endWavedOff, setEndWavedOff] = useState(false);
+  const endCard = driver.done && !endWavedOff;
+  useEffect(() => {
+    if (!driver.done) setEndWavedOff(false);
+  }, [driver.done]);
+  useEffect(() => {
+    if (!endCard) return;
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setEndWavedOff(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [endCard]);
+  const modal = driver.active && driver.loadState === 'ready' && (!driver.started || endCard);
   useFocusTrap(cardRef, { active: modal });
 
   if (!driver.active) return null;
@@ -108,7 +124,7 @@ export function DemoOverlay({
     );
   }
 
-  if (driver.done) {
+  if (endCard) {
     // Every other curated replay — the end card is how the non-hero scenarios stay reachable.
     const others = DEMO_CAST.filter((p) => p.id !== member.id);
     return (

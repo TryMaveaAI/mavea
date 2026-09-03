@@ -469,13 +469,20 @@
   max-width: 1500px;
   margin-inline: auto;
   display: grid;
+  /* A level longer than a short window is read by scrolling HERE: the reading stage itself has to
+     stay `overflow: hidden` (the ambient field bleeds past all four of its edges), and the app
+     shell is a fixed 100dvh, so without this the last lines were simply unreachable. */
+  overflow: hidden auto;
+  overscroll-behavior: contain;
 }
 
 /* each level fills the stage; content is an editorial column, generously inset,
    vertically centred, biased left so the glow breathes on the right. */
 .dz-level {
   grid-area: 1 / 1;
-  align-self: center;
+  /* `safe`: a level taller than the stage anchors at its top instead of centring its overflow,
+     which would push its opening lines above the scrollport where nothing can reach them. */
+  align-self: safe center;
   justify-self: start;
   width: min(60ch, 100%);
   padding: clamp(28px, 5vw, 72px);
@@ -1014,7 +1021,7 @@
     justify-self: stretch;
     width: 100%;
     padding: 28px 22px;
-    align-self: center;
+    align-self: safe center;
     transform-origin: 50% 42%;
   }
   .dz-body {

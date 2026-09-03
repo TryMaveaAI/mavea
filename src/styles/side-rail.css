@@ -100,9 +100,11 @@
 .with-rail .canvas-stage {
   padding-bottom: 28px;
 }
-/* Keep the canvas column a centered, bounded width within the post-rail stage. */
+/* Keep the canvas column a centered, bounded width within the post-rail stage. The allowance is
+   the stage's own two 26px side pads, which ride --vp-scale, so the column still caps at exactly
+   --canvas-col-max. */
 .with-rail .canvas-scroll {
-  max-width: calc(var(--canvas-col-max) + 52px);
+  max-width: calc(var(--canvas-col-max) + 52px * var(--vp-scale));
   margin-inline: auto;
   width: 100%;
 }

@@ -13,7 +13,9 @@ import {
   SCALE_MAX,
   SCALE_MAX_FULL,
   SHALLOW_CROP,
+  STAGE_H_MAX,
   STUDY_FIT_FLOOR,
+  TAKEAWAY_BOTTOM,
 } from './slots';
 
 /**
@@ -21,8 +23,15 @@ import {
  * [STUDY_FIT_FLOOR, SCALE_MAX]. When the floor forces a vertical crop deeper than the desk's
  * decorative band can absorb, the stage is flagged `data-shallow` and study.css collapses the
  * floor-grid band rather than cropping into the cards.
+ *
+ * `revision` re-fits on a re-cast: the takeaway below the object is MEASURED, and a new sentence
+ * can take a line more without moving one box the observer watches — leaving the front card's
+ * reserve short by that line.
  */
-export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
+export function useStudyScale(
+  stageRef: RefObject<HTMLElement | null>,
+  revision: string | number,
+): void {
   useLayoutEffect(() => {
     const stage = stageRef.current;
     if (!stage || typeof ResizeObserver === 'undefined') return;
@@ -32,11 +41,17 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
     const apply = (): void => {
       const stageBox = stage.getBoundingClientRect();
       const viewportBox = scrollViewport?.getBoundingClientRect();
-      const w = stageBox.width || widthHost?.getBoundingClientRect().width || 0;
+      // The desk is drawn inside the frame, so the fit is measured against the stage's content
+      // box; the border-box is two pixels wider than any room the composition actually has.
+      const w =
+        stage.clientWidth || stageBox.width || widthHost?.getBoundingClientRect().width || 0;
       const availableH = viewportBox
         ? Math.min(viewportBox.bottom, window.innerHeight) - Math.max(viewportBox.top, 0)
         : Math.min(stageBox.height, window.innerHeight);
-      const h = Math.max(0, Math.min(820, availableH));
+      // Both axes are fitted against the box the stage will ACTUALLY have — study.css caps the
+      // stage at the scroll column and at STAGE_H_MAX — rather than against the column alone,
+      // which let the vertical term claim room the frame was never going to give it.
+      const h = Math.max(0, Math.min(STAGE_H_MAX, availableH));
       if (!w || !h) return;
       // A container query cannot style its OWN container, so the stage's compact box (height,
       // padding) can never come from `@container study` — its children reflowed while the stage
@@ -61,12 +76,16 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       // whole surface scales as one piece.
       const fitted = Math.min(w / FIT_W, h / FIT_H);
       const scale = Math.min(full ? SCALE_MAX_FULL : SCALE_MAX, Math.max(STUDY_FIT_FLOOR, fitted));
+      const hud = full ? Math.max(1, scale) : 1;
       stage.style.setProperty('--study-scale', scale.toFixed(4));
-      stage.style.setProperty('--study-hud', full ? Math.max(1, scale).toFixed(4) : '1');
-      // Reserve the whole takeaway band, including three wrapped handwritten lines, before
-      // solving the front card's projected height. A card may scroll; it may never cover the
+      stage.style.setProperty('--study-hud', hud.toFixed(4));
+      // Reserve the takeaway's own band before solving the front card's projected height. It is
+      // MEASURED, not assumed: handwriting wraps to two or three lines depending on the sentence,
+      // and in full screen the HUD scales the whole band with the desk — an assumed height put
+      // the card's lower edge straight through it. A card may scroll; it may never cover the
       // sentence the reader is meant to carry away.
-      const bottomReserve = stage.querySelector('.study-takeaway') ? 174 : 86;
+      const takeaway = stage.querySelector<HTMLElement>('.study-takeaway');
+      const bottomReserve = takeaway ? (takeaway.offsetHeight + TAKEAWAY_BOTTOM) * hud + 12 : 86;
       const projectedCenter = h / 2 - 38 * scale;
       const availableHalf = h - bottomReserve - 12 - projectedCenter;
       const frontMax = Math.max(240, Math.min(560, (2 * availableHalf) / (1.046 * scale)));
@@ -92,5 +111,5 @@ export function useStudyScale(stageRef: RefObject<HTMLElement | null>): void {
       observer.disconnect();
       window.removeEventListener('resize', apply);
     };
-  }, [stageRef]);
+  }, [stageRef, revision]);
 }

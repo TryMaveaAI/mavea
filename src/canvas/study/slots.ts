@@ -33,10 +33,21 @@ export const SCALE_MAX_FULL = 1.6;
 export const STUDY_FIT_FLOOR = 9 / 11;
 
 /** The width at which the 3-D desk stands down for the flat reading column: below it the floored
- *  desk crops Mavéa's note card — real reading content — off the right edge. Shared with
- *  study.css's container query, which handles the descendants; the stage's own box is driven by
- *  the `data-compact` attribute the scale hook publishes (a container cannot query itself). */
-export const COMPACT_W = 980;
+ *  desk crops Mavéa's note card — real reading content — off the right edge. Held clear of the
+ *  980px stage a 1280px window produces (1280 − 236 rail − 52 − 12), which otherwise decided the
+ *  layout on a sub-pixel. Shared with study.css's container query, which handles the descendants;
+ *  the stage's own box is driven by the `data-compact` attribute the scale hook publishes (a
+ *  container cannot query itself). */
+export const COMPACT_W = 940;
+
+/** The tallest stage the desk is fitted into, mirroring study.css's own clamp — past it the
+ *  composition is swimming in parchment rather than reading larger. */
+export const STAGE_H_MAX = 820;
+
+/** How far the handwritten takeaway sits above the stage's lower edge, in design px. Mirrors
+ *  study.css's `.study-takeaway { bottom }`; the scale hook adds the line's measured height to
+ *  it to reserve the whole band under the front card. */
+export const TAKEAWAY_BOTTOM = 74;
 
 /** Vertical crop (in design px) the stage will absorb before it declares itself shallow and
  *  study.css collapses the floor-grid band instead of cropping into the cards. */

@@ -19,7 +19,8 @@
 .demox-banner {
   position: fixed;
   top: 64px;
-  left: 18px;
+  /* Clear of the session rail, which owns the left edge at its own measured width. */
+  left: calc(var(--rail-w, 0px) + 18px);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -83,7 +84,8 @@
 /* ── Beat caption — one line, above the transport ────────────────────────── */
 .demox-note {
   position: fixed;
-  bottom: 158px;
+  /* Rides on top of the transport, which is itself anchored to the dock. */
+  bottom: calc(var(--dock-h, 76px) + 78px);
   left: 50%;
   transform: translateX(-50%);
   max-width: min(480px, 88vw);
@@ -109,10 +111,12 @@
   }
 }
 
-/* ── Transport — bottom-center, above the composer ───────────────────────── */
+/* ── Transport — bottom-center, above the dock ───────────────────────────── */
 .demox-panel {
   position: fixed;
-  bottom: 96px;
+  /* The dock measures its own height into --dock-h and grows with the composer, the caption and
+     the voice controls; a fixed offset put this pill inside it, over the spoken line. */
+  bottom: calc(var(--dock-h, 76px) + 16px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -424,7 +428,8 @@
     left: 10px;
   }
   .demox-panel {
-    bottom: 88px;
+    /* Same anchor as the desktop rule, tucked tighter: the dock is the thing below it here too. */
+    bottom: calc(var(--dock-h, 76px) + 12px);
     display: grid;
     width: min(355px, calc(100vw - 32px));
     max-width: none;
@@ -433,6 +438,10 @@
     gap: 6px;
     padding: 8px 10px;
     border-radius: 22px;
+  }
+  /* The phone transport is two rows tall, so the caption clears the whole of it. */
+  .demox-note {
+    bottom: calc(var(--dock-h, 76px) + 132px);
   }
   .demox-btn {
     width: 44px;

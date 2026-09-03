@@ -45,10 +45,60 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(/height:\s*clamp\(534px/);
   });
 
-  it('keeps the compact breakpoint at the width where the note card is last whole', () => {
-    // Between 880 and 980 the floored desk crops Mavéa's note card — real reading content —
-    // off the right edge; 1280×800 laptops land exactly there.
-    expect(scene).toMatch(/COMPACT_W = 980/);
+  it('sizes the stage from the measured chrome, and never past the column it sits in', () => {
+    // The height used to be `100dvh − 380px`, a guess at the top bar + dock that only cleared
+    // real chrome above ~1006px of viewport — so every laptop got the floored desk inside a
+    // column shorter than the stage. The dock publishes its own height into --dock-h.
+    expect(css).toMatch(/--study-column-h:\s*calc\(100dvh - 92px - var\(--dock-h, 76px\)\)/);
+    expect(css).toMatch(
+      /height:\s*clamp\(534px, var\(--study-stage-height, var\(--study-column-h\)\), 820px\)/,
+    );
+    expect(css).toMatch(/max-height:\s*var\(--study-column-h\)/);
+    // …and the two surfaces that ARE allowed past it say so explicitly.
+    const compact = /\.study-stage\[data-compact\]\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(compact).toMatch(/max-height:\s*none/);
+    const fullscreen =
+      /\.study-stage:is\(:fullscreen, \.is-fullscreen\)\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(fullscreen).toMatch(/max-height:\s*none/);
+  });
+
+  it('keeps the compact breakpoint off the width a 1280px window resolves to', () => {
+    // 1280 − 236 rail − 52 − 12 = 980.0 exactly, so a breakpoint of 980 decided the whole layout
+    // on a sub-pixel: the most common laptop width was a coin toss between desk and column.
+    expect(scene).toMatch(/COMPACT_W = 940/);
+  });
+
+  it('keeps the beat bar on one row, with the chip strip as the only thing that scrolls', () => {
+    const beats = /\n\.study-beats\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(beats).toMatch(/flex-wrap:\s*nowrap/);
+    for (const sel of ['.study-guide', '.study-beat-next']) {
+      expect(new RegExp(`\\n\\${sel} \\{[^}]*flex: none`).test(css), `${sel} must not shrink`).toBe(
+        true,
+      );
+    }
+    const row = /\n\.study-beats-row\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(row).toMatch(/overflow-x:\s*auto/);
+    expect(row).toMatch(/min-width:\s*0/);
+  });
+
+  it('fades a chip-strip edge only on the side that actually has more', () => {
+    // A permanent gradient sits over the first and last chips, which can never be scrolled away
+    // from the ends — so the fades are driven by the row's own scroll position.
+    expect(css).toMatch(/\.study-beats-row\[data-more-start\]/);
+    expect(css).toMatch(/\.study-beats-row\[data-more-end\]/);
+    const stage = read('src/canvas/study/StudyStage.tsx');
+    expect(stage).toMatch(/toggleAttribute\('data-more-start', row\.scrollLeft > 1\)/);
+    // Measured against the ROW: the beat bar is the chip's offset parent, so offsetLeft alone
+    // carried the Guide button's width into the target and scrolled the first label off-screen.
+    expect(stage).toMatch(
+      /chip\.getBoundingClientRect\(\)\.left - row\.getBoundingClientRect\(\)\.left/,
+    );
+  });
+
+  it('swaps the chip strip for a stepper on a container too narrow to read chips', () => {
+    const stepper = css.slice(css.indexOf('@container study (max-width: 700px)'));
+    expect(stepper).toMatch(/\.study-beats-row,\s*\n\s*\.study-beat-next\s*\{[^}]*display:\s*none/);
+    expect(stepper).toMatch(/\.study-stepper\s*\{[^}]*display:\s*flex/);
   });
 
   it('quiets card transitions during a live window resize', () => {
@@ -373,5 +423,63 @@ describe('a cause card truncates a long figure instead of clipping it at both en
     // line-height stands in for the flex centring the block box gives up.
     expect(rule).toMatch(/line-height:\s*24px/);
     expect(/\.wo-num,\s*\n\.wo-expand\s*\{[^}]*min-height:\s*24px/.test(css)).toBe(true);
+  });
+});
+
+describe('the demo replay\u2019s chrome sits beside the app, never on top of it', () => {
+  const css = read('src/demo/demo.css');
+  const rule = (sel: string): string => new RegExp(`\\${sel}\\s*\\{[^}]*\\}`).exec(css)?.[0] ?? '';
+
+  it('anchors the transport and its caption to the dock\u2019s measured height', () => {
+    // The dock is 220\u2013360px tall depending on composer, caption and voice controls, so a
+    // fixed 96px offset put the transport pill INSIDE it, over the spoken line and the toggles.
+    expect(rule('.demox-panel')).toMatch(/bottom:\s*calc\(var\(--dock-h, 76px\) \+ 16px\)/);
+    expect(rule('.demox-note')).toMatch(/bottom:\s*calc\(var\(--dock-h, 76px\) \+ 78px\)/);
+  });
+
+  it('anchors the persona banner past the session rail', () => {
+    expect(rule('.demox-banner')).toMatch(/left:\s*calc\(var\(--rail-w, 0px\) \+ 18px\)/);
+  });
+});
+
+describe('feature overlays scroll their own content instead of cropping it', () => {
+  it('Ripple gives the impact map a real box and lets the section grow into a scroll', () => {
+    // Measured at 1366\u00d7620: the verdict band handed the map its 214px flex remainder and clipped
+    // a 412px world inside it \u2014 nodes cut off the top and bottom with nothing saying so.
+    const ripple = read('src/live/ripple/ripple.css');
+    const verdict = read('src/live/ripple/sections/shipverdict.css');
+    expect(/\.ripple-panel\s*\{[^}]*height:\s*100%/.test(ripple)).toBe(true);
+    expect(/\.ripple-impact\s*\{[^}]*min-height:\s*min\(420px, 62dvh\)/.test(ripple)).toBe(true);
+    expect(/\.ripple-stage\s*\{[^}]*min-height:\s*min\(340px, 50dvh\)/.test(ripple)).toBe(true);
+    expect(/\.ripple-verdict\s*\{[^}]*min-height:\s*100%/.test(verdict)).toBe(true);
+    expect(/\.ripple-verdict-map\s*\{[^}]*min-height:\s*min\(420px, 62dvh\)/.test(verdict)).toBe(
+      true,
+    );
+    // The header stays put while the rail and the main column scroll independently.
+    expect(/\.ripple-head\s*\{[^}]*flex:\s*none/.test(ripple)).toBe(true);
+    expect(/\.ripple-rail\s*\{[^}]*overflow-y:\s*auto/.test(ripple)).toBe(true);
+    expect(/\.ripple-main\s*\{[^}]*overflow:\s*auto/.test(ripple)).toBe(true);
+  });
+
+  it('Focus caps its rails against the canvas column, not the window', () => {
+    // `100vh - 140px` measured a box roughly three times the one the sticky rail actually has
+    // (the real container was 253px tall), so neither list ever scrolled.
+    const css = read('src/canvas/focus/focus.css');
+    expect(css).toMatch(/--focus-col-h:\s*calc\(100dvh - 92px - var\(--dock-h, 76px\)\)/);
+    expect(css).not.toMatch(/max-height:\s*calc\(100vh/);
+    expect(/\.filmstrip-rail\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
+      true,
+    );
+    expect(/\.focus-notes-list\s*\{[^}]*max-height:\s*calc\(var\(--focus-col-h\)/.test(css)).toBe(
+      true,
+    );
+  });
+
+  it('Deep zoom scrolls a level too tall for the window rather than stranding its last lines', () => {
+    const css = read('src/live/deepzoom/deepzoom.css');
+    expect(/\.dz-levels\s*\{[^}]*overflow:\s*hidden auto/.test(css)).toBe(true);
+    // `align-self: center` would push the opening lines above the scrollport, out of reach.
+    expect(css).not.toMatch(/align-self:\s*center;\n\s*transform-origin/);
+    expect(/\.dz-level\s*\{[^}]*align-self:\s*safe center/.test(css)).toBe(true);
   });
 });

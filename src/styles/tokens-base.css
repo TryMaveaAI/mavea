@@ -14,6 +14,26 @@
 }
 
 :root {
+  /* --- viewport scale --- */
+  /* The interface is drawn against a 1440x900 reference, and the geometry below is stated as a
+     multiple of that reference rather than in fixed pixels: a small laptop tucks in instead of
+     cropping, a large display fills instead of stranding the page in the middle of empty gutters.
+     Both axes count — min() stops a wide-but-short window growing chrome it has no vertical room
+     for — and the range is bounded so no surface becomes a caricature of itself at either end.
+     Height is read in svh, not dvh: a mobile URL bar sliding away must not re-scale the entire
+     page mid-scroll, and the smallest viewport is the one everything has to fit inside.
+     The ratio takes the long way round to a plain number — divide by a bare number for a length,
+     then tan(atan2(length, 1px)). Written the obvious way, `100vw / 1440px`, it needs a length
+     divided by a length, which Firefox does not implement at all and Chrome and Safari only
+     reached in 140 and 26. Where that is missing the division yields nothing, so every token
+     built on it below is invalid at computed-value time and the whole interface renders with
+     zero padding and zero-height controls. tan/atan2 are supported wherever this app runs. */
+  --vp-scale: clamp(0.85, tan(atan2(min(100vw / 1440, 100svh / 900), 1px)), 1.25);
+  /* Type takes the same scale, but only upward: below 1 the smallest labels (mono eyebrows, chart
+     ticks) would cross the 9px legibility floor, and reading size is the reader's call anyway —
+     that knob is --fs-reader (wow-polish.css), which composes with this. */
+  --vp-type-scale: max(1, var(--vp-scale));
+
   /* --- surfaces --- */
   --surface-default: #0a0e15;
   --surface-deep: #070a10;
@@ -64,19 +84,20 @@
   --glow-warning: rgba(245, 185, 92, 0.32);
 
   /* --- radii --- */
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-xl: 28px;
+  --r-sm: calc(10px * var(--vp-scale));
+  --r-md: calc(14px * var(--vp-scale));
+  --r-lg: calc(20px * var(--vp-scale));
+  --r-xl: calc(28px * var(--vp-scale));
+  /* Not a measurement — a sentinel that means "pill". It must never scale. */
   --r-full: 999px;
 
   /* --- controls --- */
   /* Shared sizing for pills/buttons/chips so a touch-target or padding tweak in one
      place stays consistent across surfaces. Existing components keep their own values
      until they opt in — these are reuse hooks, not a forced restyle. */
-  --btn-h: 38px;
-  --btn-pad: 0 14px;
-  --chip-pad: 6px 12px;
+  --btn-h: calc(38px * var(--vp-scale));
+  --btn-pad: 0 calc(14px * var(--vp-scale));
+  --chip-pad: calc(6px * var(--vp-scale)) calc(12px * var(--vp-scale));
 
   /* the shared standing-chrome-bar recipe — Live's topbar and Dashboards' nav both dress
      a fixed-height glass strip in this exact frost, so the two read as one system */
@@ -102,14 +123,14 @@
      tests/perf-lite-css.test.ts scans for it. */
 
   /* --- spacing --- */
-  --s-xs: 4px;
-  --s-sm: 8px;
-  --s-2: 12px;
-  --s-md: 16px;
-  --s-lg: 24px;
-  --s-xl: 32px;
-  --s-2xl: 48px;
-  --s-3xl: 64px;
+  --s-xs: calc(4px * var(--vp-scale));
+  --s-sm: calc(8px * var(--vp-scale));
+  --s-2: calc(12px * var(--vp-scale));
+  --s-md: calc(16px * var(--vp-scale));
+  --s-lg: calc(24px * var(--vp-scale));
+  --s-xl: calc(32px * var(--vp-scale));
+  --s-2xl: calc(48px * var(--vp-scale));
+  --s-3xl: calc(64px * var(--vp-scale));
 
   /* --- layout --- */
   /* Canvas answer-column measure. Holds at 1280px through every common laptop/desktop

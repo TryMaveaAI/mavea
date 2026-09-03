@@ -29,7 +29,9 @@
   display: flex;
   flex-direction: column;
   width: min(1700px, 100%);
-  height: 95vh;
+  /* The scrim is the viewport minus its own padding, so the panel takes all of it — a vh figure
+     restates that arithmetic and gets it wrong the moment a mobile toolbar moves. */
+  height: 100%;
   background: var(--surface-default);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -473,10 +475,11 @@
   flex-direction: column;
   gap: var(--s-2);
   height: 100%;
-  /* A pixel floor, not a viewport-relative one — a vh value forced this taller than a short
-     panel (e.g. nested inside the verdict band) can actually offer, defeating the height:100%
-     shrink above and forcing .ripple-main to overflow. */
-  min-height: 280px;
+  /* A graph needs a page, not a band. At 280px the stage below kept barely 240px for a world
+     that draws 400+ even at the camera's floor scale, so nodes were clipped off the top and
+     bottom edges with nothing saying so. The main column scrolls, so asking a short panel for a
+     real box costs a scroll rather than the map. */
+  min-height: min(420px, 62dvh);
 }
 .ripple-impact-controls {
   display: flex;
@@ -536,9 +539,10 @@
 .ripple-stage {
   position: relative;
   flex: 1;
-  /* Same reasoning as .ripple-impact above: a small pixel floor instead of a vh value that
-     could force overflow inside a shorter panel. */
-  min-height: 240px;
+  /* The map's own box: enough for the camera's floor scale to show a whole small world before
+     the reader has to pan. Bounded by the viewport so a short window scrolls instead of
+     reserving a stage taller than the panel. */
+  min-height: min(340px, 50dvh);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   overflow: hidden;

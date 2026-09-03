@@ -215,7 +215,12 @@
   /* Reading text size (Settings/Appearance → Text size): a Kindle-style multiplier over the whole
      ramp below, stamped onto <html data-font-scale> by LiveApp from the user's fontScale choice.
      'normal' never sets the attribute, so this stays at its unscaled default. */
-  --fs-scale: 1;
+  --fs-reader: 1;
+  /* What every size below actually multiplies by: the reader's choice times the viewport's own
+     upward scale (tokens-base.css), so type grows with a big display without ever overriding a
+     text size the reader set for themselves. Composed once here — nothing reads --fs-reader
+     directly, so no call site can forget one half of it. */
+  --fs-scale: calc(var(--fs-reader) * var(--vp-type-scale, 1));
 
   /* Fluid type ramp. clamp(min, card-relative, max). Tuned so a token reads at
      its max in a full-width (col-12 ≈ 1100px) card and floors gracefully in a
@@ -279,10 +284,10 @@
 
 /* Settings/Appearance → Text size. Smaller/Larger nudge the whole ramp above at once. */
 :root[data-font-scale='smaller'] {
-  --fs-scale: 0.9;
+  --fs-reader: 0.9;
 }
 :root[data-font-scale='larger'] {
-  --fs-scale: 1.2;
+  --fs-reader: 1.2;
 }
 
 /* Make every card a containment context so the cqi units above resolve against

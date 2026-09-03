@@ -54,6 +54,7 @@ import { fetchPrDiff, compareRefs, fetchRepoTree } from '../src/live/ripple/inge
 import { enrichShipModel } from '../src/live/ripple/ingest/generate';
 import { buildShipFromDiff } from '../src/live/ripple/ingest/buildShip';
 import { parseUnifiedDiff } from '../src/live/ripple/ingest/parseDiff';
+import { fileUrl } from '../src/live/ripple/links';
 
 // The browser-direct GitHub reader that lets Ripple's "From GitHub"
 // intake read a PR / compare / repo straight from api.github.com, with NO local gateway. Public repos
@@ -464,17 +465,16 @@ describe('ripple.css — the ResizeObserver fit + the retired section stub', () 
     });
   });
 
-  describe('ripple.css — the impact map panels use a pixel floor, not a viewport-relative one', () => {
-    it('.ripple-impact no longer forces a vh-based min-height', () => {
-      const body = ruleBody(css, '.ripple-impact');
-      expect(body).not.toMatch(/min-height:\s*\d+vh/);
-      expect(body).toMatch(/min-height:\s*\d+px/);
-    });
-
-    it('.ripple-stage no longer forces a vh-based min-height', () => {
-      const body = ruleBody(css, '.ripple-stage');
-      expect(body).not.toMatch(/min-height:\s*\d+vh/);
-      expect(body).toMatch(/min-height:\s*\d+px/);
+  // The map's floor is stated in pixels because the panel it sits in scrolls: a floor written as a
+  // fraction of the VIEWPORT is unrelated to the space the panel actually has. It may be capped by
+  // the viewport so a short window scrolls instead of reserving a stage taller than itself — what
+  // it may never be is a bare viewport fraction.
+  describe('ripple.css — the impact map panels state their floor in pixels', () => {
+    it.each([['.ripple-impact'], ['.ripple-stage']])('%s names a pixel floor', (selector) => {
+      const body = ruleBody(css, selector);
+      const floor = /min-height:([^;]+);/.exec(body)?.[1] ?? '';
+      expect(floor).toMatch(/\d+px/);
+      expect(floor).not.toMatch(/^\s*\d+(?:d|s|l)?vh\s*$/);
     });
   });
 
@@ -500,5 +500,23 @@ describe('ripple.css — the ResizeObserver fit + the retired section stub', () 
       walk(RIPPLE_DIR);
       expect(offenders).toEqual([]);
     });
+  });
+});
+
+describe('fileUrl — a ref is validated like the repo beside it', () => {
+  it('links a real repo at a branch, tag or SHA, and strips a ":focus" suffix', () => {
+    expect(fileUrl('acme/widgets', 'feat/short-lived-tokens', 'src/auth/token.ts:validate')).toBe(
+      'https://github.com/acme/widgets/blob/feat/short-lived-tokens/src/auth/token.ts',
+    );
+    expect(fileUrl('acme/widgets', '', 'README.md')).toBe(
+      'https://github.com/acme/widgets/blob/HEAD/README.md',
+    );
+  });
+
+  it('refuses a ref that is not a ref name', () => {
+    expect(fileUrl('acme/widgets', '../../evil', 'a.ts')).toBeNull();
+    expect(fileUrl('acme/widgets', 'main?x=1', 'a.ts')).toBeNull();
+    expect(fileUrl('acme/widgets', 'main#frag', 'a.ts')).toBeNull();
+    expect(fileUrl('acme/widgets', 'main whatever', 'a.ts')).toBeNull();
   });
 });

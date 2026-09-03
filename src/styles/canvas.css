@@ -4,7 +4,11 @@
 .canvas-stage {
   position: absolute;
   inset: 0;
-  padding: 76px 26px 112px;
+  /* The top pad clears the fixed 60px topbar, so only the gap under the bar rides --vp-scale —
+     scaling the clearance itself would let a card slide under the chrome on a short laptop.
+     The sides and the floor scale outright. */
+  padding: calc(60px + 16px * var(--vp-scale)) calc(26px * var(--vp-scale))
+    calc(112px * var(--vp-scale));
   display: grid;
   grid-template-columns: 1fr;
   overflow: hidden;

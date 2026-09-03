@@ -5,6 +5,11 @@
 
 .focus-stage {
   --focus-rail-w: 268px;
+  /* The canvas column the stage lives in, stated in the chrome's own terms: the top bar and
+     canvas inset (92px) and the dock, which measures its own height into --dock-h. The rail and
+     the notes list cap themselves against THIS, not the window — a 100vh cap measured a box
+     roughly three times the one they actually have, so neither ever scrolled. */
+  --focus-col-h: calc(100dvh - 92px - var(--dock-h, 76px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--focus-rail-w);
   gap: 28px;
@@ -159,7 +164,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 140px);
+  max-height: calc(var(--focus-col-h) - 8px);
 }
 .filmstrip-eyebrow {
   font: 600 11px/1 var(--font);
@@ -409,7 +414,8 @@
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
+  /* Its own header and the hero caption sit above it inside the same column. */
+  max-height: calc(var(--focus-col-h) - 88px);
   scrollbar-width: thin;
 }
 /* The same calm note-card language as the grid rail (.margin-note in annotate.css): the words

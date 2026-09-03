@@ -4,7 +4,9 @@
 //
 // The bar grows when the attach strip or pin dock appears, and every neighbour (scrubber,
 // canvas padding, the listen/speak overlays) offsets by --dock-h — so the real rendered
-// height is measured back into that variable rather than trusting the CSS floor.
+// height is measured back into that variable rather than trusting the CSS floor. The bar sizes
+// to its own content against the fixed --dock-min-h floor and never reads --dock-h back: that
+// loop can only ratchet upward, and a dismissed notice would return no pixels.
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { useHoldToTalk, pttKeyLabel } from './useHoldToTalk';
 import type { PttSide } from '../useLiveConfig';

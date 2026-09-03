@@ -90,17 +90,21 @@
   container-type: inline-size;
   container-name: study;
   position: relative;
-  /* MEASURED, not guessed: the canvas scroll column is the viewport minus ~350px of standing
-     chrome (top bar + dock + composer), so this is the tallest stage whose beat bar still clears
-     the dock once the lead scrolls away. The floor is DERIVED, not chosen: below 534px the
-     floored desk must crop deeper than its decorative band can absorb and the frame starts
-     slicing cards — 534 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border (slots.ts). A
-     short window scrolls to a whole desk (the stage aligns its own bottom edge per answer)
-     instead of showing a beheaded one; fullscreen lifts the cap to the viewport itself. */
+  /* The canvas column, stated in the chrome's own terms rather than as a guessed constant: the
+     top bar and canvas inset (92px) and the dock, which measures its own height into --dock-h
+     and grows with the composer. A hardcoded chrome guess only cleared the dock on a viewport
+     taller than any laptop, so the desk sat at its scale floor everywhere else. */
+  --study-column-h: calc(100dvh - 92px - var(--dock-h, 76px));
+  /* The floor is DERIVED, not chosen: below 534px the floored desk must crop deeper than its
+     decorative band can absorb and the frame starts slicing cards — 534 = (740 − SHALLOW_CROP) ×
+     STUDY_FIT_FLOOR + 2px border (slots.ts). The column caps it either way, so a short window
+     never gets a stage taller than the room it has; below the legible floor the scale hook
+     stands the desk down to the flat column (data-compact) instead. */
   width: 100%;
   max-width: var(--canvas-col-max);
   margin-inline: auto;
-  height: clamp(534px, var(--study-stage-height, calc(100dvh - 380px)), 820px);
+  height: clamp(534px, var(--study-stage-height, var(--study-column-h)), 820px);
+  max-height: var(--study-column-h);
   overflow: clip;
   border: 1px solid var(--study-frame);
   border-radius: 26px;
@@ -410,8 +414,12 @@
      off at the card's edge is unreadable in the one direction the reader cannot fix. */
   overflow: auto;
   overscroll-behavior: contain;
+  /* A slim thumb in the room's own muted ink over no track at all — a browser widget in its
+     default grey reads as a scrollbar bolted to a piece of paper. It stays faintly present at
+     rest (it is the only thing that says the card scrolls with a mouse) and takes full ink under
+     the pointer or while the card is actually moving. */
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  scrollbar-color: color-mix(in oklab, var(--study-ink-muted) 45%, transparent) transparent;
 }
 
 .study-card.is-front .study-card-face:is(:hover, :focus-within),
@@ -419,6 +427,8 @@
   scrollbar-color: var(--study-ink-muted) transparent;
 }
 
+/* Safari before 18.2 has no `scrollbar-color`; the same two states in its own idiom. Engines
+   that honour the standard properties ignore these. */
 .study-card.is-front .study-card-face::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -430,7 +440,7 @@
 
 .study-card.is-front .study-card-face::-webkit-scrollbar-thumb {
   border-radius: var(--r-full);
-  background: transparent;
+  background: color-mix(in oklab, var(--study-ink-muted) 45%, transparent);
 }
 
 .study-card.is-front .study-card-face:is(:hover, :focus-within)::-webkit-scrollbar-thumb,
@@ -727,6 +737,10 @@
   z-index: 10;
   display: flex;
   align-items: center;
+  /* ONE row at every width: Guide me, the scrolling chip strip, Next. The controls are fixed-size
+     (`flex: none`), the strip is the only thing allowed to shrink, and nothing may drop to a
+     second line — a wrapped transport strands its own primary action under the bar it belongs to. */
+  flex-wrap: nowrap;
   gap: 8px;
   max-width: min(92%, 1080px);
   padding: 7px 10px;
@@ -762,12 +776,33 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  /* No edge fade. It was meant to say "more this way", but the first and last chips cannot be
-     scrolled away from the ends — centring clamps at 0 — so the fade sat permanently over a
-     real, clickable label. The row's own end padding keeps a chip off the pill's rounded edge,
-     and overflow says the rest of the sentence better than a gradient that eats it. */
+  /* The edge fades say "more this way", and they exist only on a side that actually has more —
+     StudyStage flags each one from the row's scroll position. Painted unconditionally they sat
+     permanently over the first and last chips, which can never be scrolled away from the ends. */
+  --beat-fade-start: 0px;
+  --beat-fade-end: 0px;
   padding-inline: 2px;
+}
+
+/* A mask is a compositing layer, so the row only takes one while a side is genuinely cut off. */
+.study-beats-row:is([data-more-start], [data-more-end]) {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--beat-fade-start),
+    #000 calc(100% - var(--beat-fade-end)),
+    transparent 100%
+  );
+}
+
+.study-beats-row[data-more-start] {
+  --beat-fade-start: 22px;
+}
+
+.study-beats-row[data-more-end] {
+  --beat-fade-end: 22px;
 }
 
 .study-beats-row::-webkit-scrollbar {
@@ -1388,6 +1423,8 @@
   width: 100vw;
   height: 100dvh;
   min-height: 100dvh;
+  /* The column cap belongs to the in-canvas stage; full screen IS the viewport. */
+  max-height: none;
   overflow: hidden;
   border: 0;
   border-radius: 0;
@@ -1621,6 +1658,9 @@
 .study-stage[data-compact] {
   box-sizing: border-box;
   height: auto;
+  /* The flat column is as tall as its content and scrolls with the canvas; capping it here
+     would clip the lesson instead of the desk. */
+  max-height: none;
   padding: 14px;
 }
 
@@ -1684,7 +1724,6 @@
   position: static;
   width: 100%;
   max-width: none;
-  flex-wrap: nowrap;
   transform: none;
   border-radius: 18px;
 }

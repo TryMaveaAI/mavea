@@ -3,8 +3,9 @@
 .ripple-verdict {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  /* At least the panel, taller when the map asks for its floor — the main column scrolls, so the
+     section grows into it rather than clipping the map against a fixed 100%. */
+  min-height: 100%;
   gap: var(--s-md);
 }
 
@@ -93,13 +94,21 @@
 .ripple-verdict-map {
   position: relative;
   flex: 1;
-  min-height: 0;
+  /* Not merely the flex remainder: on a laptop that left ~214px, and the map inside it was
+     clipped to a band with its nodes cut off both edges. */
+  min-height: min(420px, 62dvh);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+/* The map fills this box. `height: 100%` cannot: a flex item sized by `flex: 1` is not a
+   definite height for percentage resolution, so the map fell back to its own floor and left the
+   rest of the band empty on a big display. */
 .ripple-verdict-map > * {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .ripple-verdict-chips {

@@ -617,7 +617,12 @@
 
 /* ===== bottom dock — the composer's fixed home ===== */
 .mavea-app.live-voice {
+  /* --dock-h is a MEASUREMENT, written by DockBar from the bar's rendered height and read by
+     everything that has to sit clear of it. The dock itself must never size off it — that loop
+     only ever ratchets upward, so a dismissed notice would leave its pixels behind. The bar's own
+     floor is --dock-min-h; the value here is just what neighbours use until the first measure. */
   --dock-h: 76px;
+  --dock-min-h: 76px;
 }
 .live-voice .live-dock {
   position: fixed;
@@ -628,12 +633,13 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: var(--dock-h);
-  /* Horizontal padding matches the content column's inset (canvas-stage 26px + canvas-scroll 6px =
-     32px) so the capsule's edges line up with the cards at EVERY width — not just the wide screens
-     where the shared --canvas-col-max cap binds. Below that cap both fall back to their parent's
-     width, and only equal insets keep them aligned. Keep these in sync with the stage/scroll pads. */
-  padding: 10px 32px;
+  min-height: var(--dock-min-h);
+  /* Horizontal padding matches the content column's inset (canvas-stage 26px, which rides
+     --vp-scale, + canvas-scroll 6px, which does not) so the capsule's edges line up with the cards
+     at EVERY width — not just the wide screens where the shared --canvas-col-max cap binds. Below
+     that cap both fall back to their parent's width, and only equal insets keep them aligned. Keep
+     this expression in sync with the stage/scroll pads. */
+  padding: 10px calc(26px * var(--vp-scale) + 6px);
   background: var(--surface-default);
   border-top: 1px solid var(--hairline-ink);
 }

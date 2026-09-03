@@ -235,6 +235,23 @@ describe('guided dialogs — aria-modal has to be backed by a real focus trap', 
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Try it yourself' }));
   });
 
+  it('the demo end card can be waved off with Escape, leaving the transport up', () => {
+    // A modal over a blurred canvas with no way out is a dead end: the finished session behind it
+    // is the thing the visitor came to look at. Escape drops the card; the transport stays, so
+    // Replay and Exit are still one click away.
+    const { container } = render(
+      <DemoOverlay
+        driver={demoDriver({ started: true, done: true })}
+        member={DEMO_CAST[0]}
+        onExit={vi.fn()}
+      />,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'End of curated replay' })).toBeNull();
+    expect(container.querySelector('.demox-intro')).toBeNull();
+    expect(container.querySelector('.demox-panel')).not.toBeNull();
+  });
+
   it('the walkthrough welcome card takes focus', () => {
     render(<TourOverlay driver={tourDriver()} />);
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Start the tour' }));
