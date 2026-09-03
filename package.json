@@ -2,7 +2,7 @@
   "name": "@mavea/mavea",
   "version": "2.3.0",
   "type": "module",
-  "description": "Mavéa — an AI Presence interface. Talk to AI. See what it means.",
+  "description": "Mav\u00e9a \u2014 an AI Presence interface. Talk to AI. See what it means.",
   "keywords": [
     "ai",
     "assistant",
@@ -172,10 +172,5 @@
     "typescript-eslint": "8.67.0",
     "vite": "8.2.1",
     "vitest": "4.1.10"
-  },
-  "pnpm": {
-    "overrides": {
-      "browserslist": "^4.28.8"
-    }
   }
 }

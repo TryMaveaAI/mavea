@@ -7,7 +7,8 @@ settings:
 overrides:
   protobufjs: ^7.6.5
   undici: ^7.29.0
-  fast-uri: ^3.1.5
+  fast-uri: ^3.1.7
+  browserslist: ^4.28.8
   js-yaml: ^4.3.1
   dompurify: ^3.4.13
   brace-expansion@1: ^5.0.8
@@ -3040,7 +3041,7 @@ packages:
     resolution: {integrity: sha512-UQ+MSxlhRm1bzjhU+DcuXfjFO1FzNtqhK5+9Yvlp90ItDLk5vT932A0rFu619nf7RVS+Y/VeaUW1jaRDqZ8VJw==}
     hasBin: true
     peerDependencies:
-      browserslist: '>= 4.21.0'
+      browserslist: ^4.28.8
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}

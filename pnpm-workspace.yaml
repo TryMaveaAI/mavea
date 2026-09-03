@@ -24,13 +24,15 @@ allowBuilds:
   protobufjs: false
 
 # Floors for transitive packages with published advisories the parents haven't picked up yet
-# (OSV: fast-uri GHSA-4c8g-83qw-93j6/GHSA-v2hh-gcrm-f6hx, js-yaml GHSA-52cp-r559-cp3m,
+# (OSV: fast-uri GHSA-4c8g-83qw-93j6/GHSA-v2hh-gcrm-f6hx/GHSA-jqff-g426-hqxp,
+# browserslist GHSA-c83g-rgw3-j3cx, js-yaml GHSA-52cp-r559-cp3m,
 # dompurify GHSA-c2j3-45gr-mqc4, protobufjs GHSA-j3f2-48v5-ccww,
 # brace-expansion GHSA-mh99-v99m-4gvg, postcss GHSA-r28c-9q8g-f849).
 overrides:
   protobufjs: ^7.6.5
   undici: ^7.29.0
-  fast-uri: ^3.1.5
+  fast-uri: ^3.1.7
+  browserslist: ^4.28.8
   js-yaml: ^4.3.1
   dompurify: ^3.4.13
   brace-expansion@1: ^5.0.8
