@@ -258,7 +258,10 @@ const ROUTE_BUDGETS = [
     // was quoting a single entry out of a record holding prose for 25 features it cannot even
     // reach; a bundler drops an unused export but never an unused property, so the whole catalogue
     // rode first paint. Moving it is a straight win overall — this is the half that shows up here.
-    gzip: 56,
+    // 58, from 56: the diff parser stopped truncating hunks and a documentation-only change
+    // stopped reading as an outage, and the upload notice grew a close control. Real fixes, ~400
+    // bytes; the old line was already what the route weighed when it was set.
+    gzip: 58,
     files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus

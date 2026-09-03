@@ -62,8 +62,3 @@ export function getAdapter(id: ProviderId): ProviderAdapter {
 export { PROVIDERS, VISIBLE_PROVIDERS, providerInfo, type ProviderInfo } from './info';
 
 export type { ProviderAdapter } from './types';
-export {
-  configureProviderSpending,
-  ProviderGenerationBlockedError,
-  type ProviderGenerationBlockedReason,
-} from './spendPolicy';

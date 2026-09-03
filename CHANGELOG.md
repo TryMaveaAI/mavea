@@ -6,6 +6,8 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-09-03
+
 ### Added
 
 - **The Study** — a new way to read an answer. One object sits on a
@@ -21,6 +23,12 @@ All notable changes to Mavéa are documented here. The format is based on
   billed for it, and opening the same answer twice costs nothing.
 - The Study follows the reader's theme and template: the parchment desk is the paper template's
   own face in light and dark, and every other template re-dresses it from its own tokens.
+- A paperclip on the first-run composer. A file picked there rides your first question, as a
+  separate door from the Prism card's picker, which still splits a document into its claims.
+- A mute on the Study's beat bar, beside **Guide me**, wired to Mavéa's voice.
+- Every notice can be closed. One about a standing capability stays closed once read; one about an
+  act — uploading a file, connecting a repository, remembering a key — stays closed for the session.
+- The README's screenshot strip shows the Study.
 
 ### Changed
 
@@ -30,6 +38,19 @@ All notable changes to Mavéa are documented here. The format is based on
   command palette and the walkthrough. Your choice is kept for good, not for the session. A saved
   preference of `room` (the surface's former name) is read as `study`; the storage key is
   unchanged.
+- **Guide me** stays on across a follow-up. It waits out the answer's own walk, then resumes from
+  wherever the walk left the desk; only your own pick, or the end of the cast, ends it.
+- The flashcard surface is **Review**. Two features shared the word "Study"; the desk keeps it.
+- Newer default models at the same or lower price, re-checked against each provider's own pages:
+  OpenAI opens on `gpt-5.6-luna`; the Gemini step-up is `gemini-3.8-flash`; the Grok step-up is
+  `grok-4.6`. Three prefilled models that could not complete a turn — Sonnet 5 on a sampling
+  parameter, Haiku 4.5 on adaptive thinking, every GPT-5 on a renamed reasoning rung — now can.
+- The whole interface scales with the window, from a short laptop to an ultrawide, and every
+  surface fits the window it is given with its own scroll regions.
+- The component menu leads with what fits the question, so an answer reaches past the same
+  handful of generic blocks.
+- The Terms, the Privacy notice, the acceptance card and the upload and repository notices name
+  training, work documents and employer or client repositories plainly, and say who is liable.
 
 ### Fixed
 
@@ -37,6 +58,20 @@ All notable changes to Mavéa are documented here. The format is based on
   field of dashes. Its cells are positional, so the existing keyed-row judgement could not see
   them.
 - Long values in a KPI grid drop a size rather than wrapping mid-word.
+- The Study dealt its cards again on every streamed block, and its notes could hide the ones
+  Mavéa wrote; a demo replay bought margin notes from a live model; the desk's full screen
+  filled only the reading column; the front card overlapped the takeaway; a pen mark could stop
+  inside a word, and on a short window the marks landed hundreds of pixels from their cards.
+- The composer kept dead space after a notice was dismissed until the page was reloaded.
+- The first spoken line could start over cards still streaming in on a follow-up.
+- A dropped picture in Prism was called a corrupt PDF. A map that could not draw threw instead of
+  saying so. Ripple's diff parser could truncate a hunk, and any documentation-only change read as
+  a way to cause an outage.
+- Escape in a palette, a picker or an overlay no longer closes the dialog beneath it, or ends a
+  replay running behind it. Arrow keys and Space stay with the control that has focus.
+- The landing cold-started without its document reset, so a first visit rendered in the wrong
+  typeface with an unstyled menu. The conversation surface loaded over a hundred modules; it is a
+  handful now.
 
 ## [2.2.1] - 2026-08-22
 
