@@ -28,6 +28,10 @@ const BUDGET_GZIP_KB = 110;
 // devices even when the transfer is compressed. All three budgets must stay green.
 const BUDGET_BROTLI_KB = 100;
 const BUDGET_RAW_KB = 500;
+// Requests, not just bytes. A sub-10 kB chunk is nearly free in weight and not free at all in
+// latency, so on a slow link or an old machine the round trips before first paint cost more than
+// the payload does — and every surface pays this set before its own route chunk is even asked for.
+const BUDGET_FILES = 6;
 
 // Known feature-only chunks. Vite's generic 500 kB warning measures raw bytes and therefore
 // overstates highly compressible grammars while saying nothing about transfer regressions. Keep
@@ -129,10 +133,10 @@ for (const row of rows) {
 }
 console.log(`  ${'—'.repeat(10)}`);
 console.log(
-  `  ${kb(totalRaw).padStart(10)}  ${kb(totalGzip).padStart(10)}  ${kb(totalBrotli).padStart(10)}  TOTAL`,
+  `  ${kb(totalRaw).padStart(10)}  ${kb(totalGzip).padStart(10)}  ${kb(totalBrotli).padStart(10)}  TOTAL over ${rows.length} requests`,
 );
 console.log(
-  `  budgets: raw ${BUDGET_RAW_KB} kB · gzip ${BUDGET_GZIP_KB} kB · brotli ${BUDGET_BROTLI_KB} kB`,
+  `  budgets: raw ${BUDGET_RAW_KB} kB · gzip ${BUDGET_GZIP_KB} kB · brotli ${BUDGET_BROTLI_KB} kB · ${BUDGET_FILES} requests`,
 );
 
 const failures = [
@@ -140,6 +144,11 @@ const failures = [
   ['gzip', totalGzip, BUDGET_GZIP_KB],
   ['brotli', totalBrotli, BUDGET_BROTLI_KB],
 ].filter(([, bytes, budget]) => bytes > budget * 1024);
+if (rows.length > BUDGET_FILES) {
+  console.error(
+    `\n✖ Landing costs ${rows.length} requests, over the ${BUDGET_FILES}-request budget.`,
+  );
+}
 if (failures.length) {
   for (const [kind, bytes, budget] of failures) {
     console.error(`\n✖ Landing ${kind} payload ${kb(bytes)} exceeds the ${budget} kB budget.`);
@@ -148,6 +157,8 @@ if (failures.length) {
     '  If this growth is intentional, raise the affected budget with a note. Otherwise a',
   );
   console.error('  heavy module likely became eager — check tests/eager-bundle.test.ts for which.');
+}
+if (failures.length || rows.length > BUDGET_FILES) {
   process.exit(1);
 }
 console.log('\n✓ Within budget.');
@@ -187,7 +198,20 @@ console.log('\n✓ Feature-scoped payloads are within budget.');
 
 // Static closures for the public priority surfaces. Multiple roots model UI that mounts a second
 // boundary immediately (Ripple overview) or necessarily loads it for cached content (lesson canvas).
+// `files` is the request count, and it is a budget in its own right: a route's bytes can hold
+// perfectly still while the number of round trips needed to fetch them doubles.
 const ROUTE_BUDGETS = [
+  // The primary product surface. Both roots are what #/live resolves (the Promise.all in
+  // src/routes.ts): the app, plus the session store it waits on before painting.
+  {
+    label: 'Live conversation',
+    roots: ['src/live/LiveApp.tsx', 'src/live/session/store.ts'],
+    // Measured at 343 kB over 98 requests, and the request count is the number to watch: the
+    // surface fans out into ~50 lazily-mounted subsystems and every leaf shared between them
+    // becomes a chunk, so a new seam here can buy a whole round trip for a couple of kB.
+    gzip: 355,
+    files: 105,
+  },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
   // Courses now pays that 2.6 kB only when opened; its landing + route total is still smaller.
   // 23 (was 21): two deliberate costs landed together — the topic/level pickers moved onto the
@@ -213,13 +237,14 @@ const ROUTE_BUDGETS = [
   // cannot be subset either, because any surface can wear any skin and the token blocks ARE the
   // skin. A visitor arriving from Live already holds the sheet; this budget prices the cold
   // direct-link entry. Deliberate — revisit by changing the feature, not the number.
-  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 38 },
+  { label: 'Courses home', roots: ['src/live/course/CoursesApp.tsx'], gzip: 38, files: 22 },
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],
     gzip: 140,
+    files: 58,
   },
-  { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25 },
+  { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
   {
     label: 'Ripple overview',
     // The seed is deferred from the route shell but is still part of every first overview.
@@ -234,6 +259,7 @@ const ROUTE_BUDGETS = [
     // reach; a bundler drops an unused export but never an unused property, so the whole catalogue
     // rode first paint. Moving it is a straight win overall — this is the half that shows up here.
     gzip: 56,
+    files: 27,
   },
   // 47 (was 45): Video Studio adds its Conversation/Reel tabs and lazy conversation handoff, plus
   // the approved-codec capability gate and mandatory-audio failure path. The 1080p stage,
@@ -245,8 +271,8 @@ const ROUTE_BUDGETS = [
   // at the moment speech starts, which is the one shape that cannot be a dynamic import. The
   // synthesizer, by contrast, moved out on its own seam (reel/audioPlayback): playing a rendered
   // buffer needs no speech stack, and a first preview is silent.
-  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 51 },
-  { label: 'Gallery', roots: ['src/gallery/GalleryApp.tsx'], gzip: 130 },
+  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 51, files: 19 },
+  { label: 'Gallery', roots: ['src/gallery/GalleryApp.tsx'], gzip: 130, files: 15 },
 ];
 
 const manifestPath = resolve(DIST, '.vite/manifest.json');
@@ -289,7 +315,7 @@ function closureFor(roots) {
   return files;
 }
 
-console.log('\nPriority route incremental payloads (gzip):');
+console.log('\nPriority route incremental payloads (gzip · requests):');
 let routeFailed = false;
 for (const budget of ROUTE_BUDGETS) {
   let files;
@@ -304,9 +330,23 @@ for (const budget of ROUTE_BUDGETS) {
     (total, file) => total + gzipSync(readFileSync(resolve(DIST, file))).length,
     0,
   );
-  console.log(`  ${kb(gzip).padStart(10)}  ${budget.label} (budget ${budget.gzip} kB)`);
+  console.log(
+    `  ${kb(gzip).padStart(10)}  ${String(files.size).padStart(4)} files  ${budget.label}` +
+      ` (budget ${budget.gzip} kB · ${budget.files} files)`,
+  );
   if (gzip > budget.gzip * 1024) {
     console.error(`  ✖ ${budget.label} exceeds its ${budget.gzip} kB gzip budget.`);
+    routeFailed = true;
+  }
+  if (typeof budget.files !== 'number') {
+    // A ceiling nobody declared is a ceiling nobody enforces, which is how the request count grew
+    // unwatched in the first place. Every route states both numbers or the gate is not green.
+    console.error(`  ✖ ${budget.label} declares no request budget alongside its gzip budget.`);
+    routeFailed = true;
+  } else if (files.size > budget.files) {
+    console.error(
+      `  ✖ ${budget.label} costs ${files.size} requests, over its ${budget.files}-file budget.`,
+    );
     routeFailed = true;
   }
 }

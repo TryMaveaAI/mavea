@@ -86,8 +86,13 @@ describe('production build and package-manager policy', () => {
     expect(vite).toContain("minify: 'oxc'");
     expect(vite).toContain("cssMinify: 'lightningcss'");
     expect(vite).toContain('cssCodeSplit: true');
+    // Safari/iOS 16.4 and Firefox 114 are inside the Baseline target and have no native
+    // modulepreload, so dropping the polyfill would cost them the parallel chunk fetch.
     expect(vite).toContain('modulePreload: { polyfill: true }');
     expect(vite).toContain('sourcemap: false');
+    // Chunking is a stated policy, not whatever automatic splitting happens to produce: the
+    // landing's eager graph ships as one file, not a dozen preloads before first paint.
+    expect(vite).toContain("tags: ['$initial']");
   });
 
   it('ships the pdf.js image decoders everywhere a scanned page can be opened', () => {

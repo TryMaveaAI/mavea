@@ -517,10 +517,40 @@ export default defineConfig({
     minify: 'oxc',
     cssMinify: 'lightningcss',
     cssCodeSplit: true,
+    // Vite's Baseline target still resolves to Safari/iOS 16.4 and Firefox 114, and none of those
+    // support `<link rel=modulepreload>`. The polyfill is what fetches a route's chunk list in
+    // parallel there instead of discovering it one dependency level per round trip — the exact
+    // cost the chunking below exists to cut. Retire it by raising build.target, not on its own.
     modulePreload: { polyfill: true },
     // Public artifacts never carry original source. If private error-monitoring maps are added in
     // future, upload them in a separate authenticated job and delete them before this build ships.
     sourcemap: false,
+    rolldownOptions: {
+      output: {
+        // Chunking policy. Automatic splitting gives every shared leaf a chunk of its own, which
+        // is right for bytes and wrong for round trips — a cold surface opens ~100 files, most of
+        // them under 10 kB. Exactly two folds are free, and these are them: every surface loads
+        // both groups anyway, so no route gains a byte it did not already need. Wider grouping
+        // (by src/live, by src/lib, by feature directory, or `entriesAware`) hands a route the
+        // leaves of sibling features it never mounts — measured, #/live alone pays 190-700 kB
+        // gzip for the shorter request list, and each other route two to eight times its budget.
+        codeSplitting: {
+          groups: [
+            // React is on every surface and only moves on an upgrade, so splitting it out keeps
+            // its hash — and its cache entry — across deploys that touch application code only.
+            {
+              name: 'react',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 20,
+            },
+            // The landing's whole eager graph in one file. `$initial` is exactly the set that
+            // is statically reachable from the HTML entry, so every route pays for all of it
+            // regardless — splitting it only turns one download into a dozen before first paint.
+            { name: 'app', tags: ['$initial'], priority: 10 },
+          ],
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',
