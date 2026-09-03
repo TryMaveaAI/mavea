@@ -1,7 +1,7 @@
 // grok.ts — xAI Grok adapter. Runs on xAI's Responses API (openaiResponsesCompatible.ts),
 // which mirrors OpenAI's design (https://api.x.ai/v1/responses: an `input` array, Bearer
 // key, streamed response.output_text.delta), routed through the same-origin /llm/grok proxy
-// (→ https://api.x.ai). The current suggested model is Grok 4.5; JSON is guaranteed via
+// (→ https://api.x.ai). The default model is Grok 4.3; JSON is guaranteed via
 // text.format:json_object and validated downstream.
 //
 // Native web search: xAI's own agentic {type:'web_search'} tool (NOT OpenAI's
@@ -19,8 +19,8 @@ export const grokAdapter = openaiResponsesCompatible({
   capabilities: {
     constrainedDecoding: true, // text.format:json_object (structure guaranteed; props via validator)
     streaming: true,
-    vision: true, // Grok 4.5 accepts image input
-    contextWindow: 500_000,
+    vision: true, // grok-4.3 takes text + image input
+    contextWindow: 1_000_000, // grok-4.3, the default; the 4.x flagships are 500k
     strengthTier: 'frontier',
     nativeWebSearch: true,
   },

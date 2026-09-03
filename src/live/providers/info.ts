@@ -11,7 +11,7 @@ import type { ProviderId } from '../../types/mavea';
 // Model catalogs move quickly. This date is deliberately exercised by truthfulness-copy.test.ts;
 // after 45 days the release gate fails until the IDs, prices, and official pages are rechecked.
 export const MODEL_CATALOG_AUDIT = {
-  verifiedOn: '2026-07-17',
+  verifiedOn: '2026-09-03',
   maxAgeDays: 45,
   sources: {
     gemini: 'https://ai.google.dev/gemini-api/docs/models',
@@ -64,7 +64,7 @@ export const PROVIDERS: ProviderInfo[] = [
     id: 'gemini',
     label: 'Gemini · Google',
     defaultModel: 'gemini-3.1-flash-lite',
-    suggestedModels: ['gemini-3.1-flash-lite', 'gemini-3.5-flash'],
+    suggestedModels: ['gemini-3.1-flash-lite', 'gemini-3.8-flash'],
     needsKey: true,
     keyUrl: 'https://aistudio.google.com/apikey',
     keyFree: true,
@@ -72,12 +72,14 @@ export const PROVIDERS: ProviderInfo[] = [
     search: 'native', // google_search grounding, server-side
     modelNotes: {
       'gemini-3.1-flash-lite': 'fast · light',
-      'gemini-3.5-flash': 'a step up in quality · still quick',
+      'gemini-3.8-flash': 'a step up in quality · still quick',
     },
   },
   {
     id: 'anthropic',
     label: 'Claude · Anthropic',
+    // Haiku 4.5 retires no sooner than 2026-10-15 — pick its successor before then, or the
+    // prefilled model starts erroring for every new key.
     defaultModel: 'claude-haiku-4-5',
     suggestedModels: ['claude-haiku-4-5', 'claude-sonnet-5'],
     needsKey: true,
@@ -93,34 +95,34 @@ export const PROVIDERS: ProviderInfo[] = [
     id: 'openai',
     label: 'GPT · OpenAI',
     // The GPT-5 family are reasoning models: the adapter sends max_completion_tokens +
-    // reasoning_effort and omits the (fixed-at-1) temperature automatically. Default is nano —
-    // the lightest, highest-throughput option — with mini and the newest generation as step-ups.
-    defaultModel: 'gpt-5.4-nano',
-    suggestedModels: ['gpt-5.4-nano', 'gpt-5.4-mini', 'gpt-5.6-luna'],
+    // reasoning_effort and omits the (fixed-at-1) temperature automatically. Default is luna —
+    // the newest light tier, nano's price with a far bigger window — then nano and mini.
+    defaultModel: 'gpt-5.6-luna',
+    suggestedModels: ['gpt-5.6-luna', 'gpt-5.4-nano', 'gpt-5.4-mini'],
     needsKey: true,
     keyUrl: 'https://platform.openai.com/api-keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool on the Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
+      'gpt-5.6-luna': 'newest generation · 1M ctx',
       'gpt-5.4-nano': 'fastest · highest throughput',
       'gpt-5.4-mini': 'a step up in quality',
-      'gpt-5.6-luna': 'newest generation',
     },
   },
   {
     id: 'grok',
     label: 'Grok · xAI',
-    // xAI's OpenAI-compatible API. 4.3 is the current fast, low-cost general model; 4.5 is the
+    // xAI's OpenAI-compatible API. 4.3 is the current fast, low-cost general model; 4.6 is the
     // flagship step-up. The model field remains free text for users who need another option.
     defaultModel: 'grok-4.3',
-    suggestedModels: ['grok-4.3', 'grok-4.5'],
+    suggestedModels: ['grok-4.3', 'grok-4.6'],
     needsKey: true,
     keyUrl: 'https://console.x.ai',
     hint: 'Fast, efficient default.',
     search: 'native', // xAI's web_search tool on its Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
-      'grok-4.3': 'fast · light',
-      'grok-4.5': 'a step up in quality · current flagship',
+      'grok-4.3': 'fast · light · 1M ctx',
+      'grok-4.6': 'a step up in quality · current flagship',
     },
   },
   {
@@ -130,7 +132,7 @@ export const PROVIDERS: ProviderInfo[] = [
     // exactly the model they want (the gateway IS the escape hatch for anything the first-party
     // menus don't suggest). The picker's footer links the full openrouter.ai catalog.
     defaultModel: '',
-    modelPlaceholder: 'e.g. google/gemini-3.5-flash',
+    modelPlaceholder: 'e.g. google/gemini-3.1-flash-lite',
     suggestedModels: [],
     needsKey: true,
     keyUrl: 'https://openrouter.ai/keys',

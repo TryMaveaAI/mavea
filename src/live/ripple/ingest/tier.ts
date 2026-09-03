@@ -1,11 +1,12 @@
 // tier.ts — size the analysis to the connected model, NEVER swapping it. The user's chosen model is
-// sacred; what we change is how much we ask of it. A fast frontier model (Flash/Haiku/mini) gets the
-// full read + a 3-course curriculum; a deep reasoning model (Opus/GPT-5/o-series/Pro) gets the full
-// read but a tighter curriculum budget (it's slow + pricey); a slow/cheap model (a self-hosted
-// gateway, or an OpenRouter `:free` route) gets a lean read, ONE course, no extra code-context
-// round-trips, and minimal thinking — so even there Ripple feels fast instead of stalling for a
-// minute. The heavy curriculum is always lazy (built only when the user opens it), so cost stays
-// proportional to attention. Pure + unit-tested; imports no adapters.
+// sacred; what we change is how much we ask of it. A fast frontier model (Flash/Haiku/nano/mini)
+// gets the full read + a 3-course curriculum; a deep reasoning model (Opus, the GPT-5
+// heavyweights, o-series, Pro) gets the full read but a tighter curriculum budget (it's slow +
+// pricey); a slow/cheap model (a self-hosted gateway, or an OpenRouter `:free` route) gets a lean
+// read, ONE course, no extra code-context round-trips, and minimal thinking — so even there Ripple
+// feels fast instead of stalling for a minute. The heavy curriculum is always lazy (built only
+// when the user opens it), so cost stays proportional to attention. Pure + unit-tested; imports no
+// adapters.
 import type { ModelConfig } from '../../../types/mavea';
 import type { ThinkingLevel } from '../../providers/types';
 import { isFreeRoute } from '../../providers/route';
@@ -69,6 +70,13 @@ const FRONTIER_FAST: TierPlan = {
   thinkingLevel: 'minimal',
 };
 
+/** GPT-5 spans both ends of the price list: the bare family id and the heavyweight tiers are the
+ *  slow, expensive ones, while nano, luna and mini are the cheapest models OpenAI sells. Match the
+ *  expensive names positively, so a new light tier lands in the fast bucket rather than buying deep
+ *  thinking on the cheapest model in the catalog — the trade is that a new heavyweight must be
+ *  named here or it reads as fast. */
+const GPT5_DEEP = /\bgpt-5(?:\.\d+)?(?:-(?:sol|terra|pro))?(?:-\d{4}-\d{2}-\d{2})?(?![\w.-])/;
+
 const isLocalUrl = (u?: string): boolean =>
   !!u && /(localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal|:11434)/i.test(u);
 
@@ -83,7 +91,7 @@ export function classifyTier(cfg: ModelConfig): RippleTier {
   // Deep reasoning: the big, slower, pricier models — full read, but courses stay lazy.
   if (
     /\bopus\b/.test(id) ||
-    /\bgpt-5(?!.*mini)/.test(id) ||
+    GPT5_DEEP.test(id) ||
     /(^|[^a-z])o[1-9](-|\b)/.test(id) || // o1/o3/… reasoning series
     /gemini-[0-9.]*-?pro/.test(id) ||
     (/\bsonnet\b/.test(id) && !/haiku/.test(id))

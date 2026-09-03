@@ -27,7 +27,7 @@ export const openaiAdapter = openaiResponsesCompatible({
     constrainedDecoding: true, // json_object mode (structure guaranteed; props via validator)
     streaming: true,
     vision: true,
-    contextWindow: 128_000,
+    contextWindow: 1_050_000, // gpt-5.6-luna, the default (922k of it addressable as input)
     strengthTier: 'frontier',
     nativeWebSearch: true,
   },

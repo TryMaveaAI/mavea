@@ -833,6 +833,9 @@ describe('ripple model tiering', () => {
       expect(classifyTier(cfg('anthropic', 'claude-opus-4-8'))).toBe('frontier-deep');
       expect(classifyTier(cfg('anthropic', 'claude-sonnet-4-6'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'gpt-5'))).toBe('frontier-deep');
+      expect(classifyTier(cfg('openai', 'gpt-5.4'))).toBe('frontier-deep');
+      expect(classifyTier(cfg('openai', 'gpt-5.6-sol'))).toBe('frontier-deep');
+      expect(classifyTier(cfg('openai', 'gpt-5.4-2026-03-17'))).toBe('frontier-deep');
       expect(classifyTier(cfg('openai', 'o3'))).toBe('frontier-deep');
       expect(classifyTier(cfg('gemini', 'gemini-3-pro'))).toBe('frontier-deep');
     });
@@ -841,6 +844,11 @@ describe('ripple model tiering', () => {
       expect(classifyTier(cfg('gemini', 'gemini-3.1-flash-lite'))).toBe('frontier-fast');
       expect(classifyTier(cfg('anthropic', 'claude-haiku-4-5-20251001'))).toBe('frontier-fast');
       expect(classifyTier(cfg('openai', 'gpt-5-mini'))).toBe('frontier-fast');
+      // GPT-5's light tiers are the cheapest models OpenAI sells — they must never buy the deep
+      // plan's extra round-trips and thinking just for sharing the family prefix.
+      expect(classifyTier(cfg('openai', 'gpt-5.4-nano'))).toBe('frontier-fast');
+      expect(classifyTier(cfg('openai', 'gpt-5.6-luna'))).toBe('frontier-fast');
+      expect(classifyTier(cfg('openrouter', 'openai/gpt-5.6-luna'))).toBe('frontier-fast');
       expect(classifyTier(cfg('grok', 'grok-4'))).toBe('frontier-fast');
     });
   });

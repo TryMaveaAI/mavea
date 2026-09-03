@@ -9,6 +9,7 @@
 // by one ShipModel. Nothing here is invented.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
+import { providerInfo } from '../providers/info';
 import { proseForSpeech } from '../../lib/spokenText';
 import type {
   Altitude,
@@ -496,11 +497,12 @@ export function RippleOverlay({
   }, [model.provenance.example, showcase]);
 
   // Ripple's analysis wants a CAPABLE model to write a deep read. If a Live model is connected,
-  // use it; otherwise default to Gemini — the dev proxy injects the key, so an empty apiKey here
-  // is fine and the key never reaches the browser.
+  // use it; otherwise fall back to Gemini's own Live default (taken from the registry so it can't
+  // drift) — the dev proxy injects the key, so an empty apiKey here is fine and the key never
+  // reaches the browser.
   const analysisCfg = useMemo<ModelConfig>(() => {
     if (cfg && CAPABLE_PROVIDERS.has(cfg.provider)) return cfg;
-    return { provider: 'gemini', model: 'gemini-3.5-flash', apiKey: '' };
+    return { provider: 'gemini', model: providerInfo('gemini').defaultModel, apiKey: '' };
   }, [cfg]);
 
   // Size the work to the model WITHOUT ever changing it (token caps, course count, code-context gate,

@@ -31,23 +31,25 @@ import { DEMO_SCRIPTS, turnSteps, type DemoScript, type DemoStep } from '../src/
 import { DEMO_CAST } from '../src/demo/cast';
 import type { DemoConversation } from '../src/demo/corpus/types';
 import type { ModelConfig } from '../src/types/mavea';
+import { providerInfo } from '../src/live/providers/info';
 
-// Per-provider bake targets: Live's own default model for each (providers/info.ts), the key's
-// env name, and the DIRECT api origin (this script runs in node, so the browser's same-origin
-// /llm/* proxy isn't there — these are the exact hosts that proxy forwards to).
+// Per-provider bake targets: Live's own default model for each (read straight from
+// providers/info.ts, so a baked demo can't be recorded on a model no reader gets), the key's env
+// name, and the DIRECT api origin (this script runs in node, so the browser's same-origin /llm/*
+// proxy isn't there — these are the exact hosts that proxy forwards to).
 const PROVIDERS = {
   gemini: {
-    defaultModel: 'gemini-3.5-flash',
+    defaultModel: providerInfo('gemini').defaultModel,
     keyEnv: 'GEMINI_API_KEY',
     baseUrl: 'https://generativelanguage.googleapis.com',
   },
   openai: {
-    defaultModel: 'gpt-5.4',
+    defaultModel: providerInfo('openai').defaultModel,
     keyEnv: 'OPENAI_API_KEY',
     baseUrl: 'https://api.openai.com',
   },
   anthropic: {
-    defaultModel: 'claude-sonnet-5',
+    defaultModel: providerInfo('anthropic').defaultModel,
     keyEnv: 'ANTHROPIC_API_KEY',
     baseUrl: 'https://api.anthropic.com',
   },

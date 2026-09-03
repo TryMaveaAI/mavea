@@ -80,7 +80,7 @@ export interface LiveConfigV2 {
   explainLevel: 'standard' | 'simple' | 'deep';
   /** Reading text size across canvas answers — a Kindle-style scale over the fluid `--fs-*` type
    *  ramp and card body copy. 'normal' (default) is untouched; 'smaller'/'larger' shrink or bump
-   *  both the floor and ceiling of the ramp via `--fs-scale` (see wow-polish.css) so it stays
+   *  both the floor and ceiling of the ramp via `--fs-reader` (see wow-polish.css) so it stays
    *  readable even in a narrow tiled card. Purely a display setting — never sent to the model. */
   fontScale: 'smaller' | 'normal' | 'larger';
   /** The keyboard key to hold for push-to-talk in tap mode. KeyboardEvent.key value.

@@ -49,7 +49,7 @@ Set a provider + key (a JSON-mode model — Gemini or OpenAI — is required for
 ```sh
 # .env (repo root)
 EVAL_PROVIDER=gemini      # gemini | openai | anthropic | openrouter | grok
-EVAL_MODEL=               # e.g. gemini-3.5-flash (defaults to the provider's default)
+EVAL_MODEL=               # e.g. gemini-3.8-flash (defaults to the provider's default)
 EVAL_KEY=                 # your API key
 EVAL_JUDGE=1              # also run the LLM judge
 EVAL_JUDGE_PROVIDER=gemini
@@ -75,10 +75,10 @@ maintainers decide whether to update the table.
 | Model                   | Structural pass % | fit (1–5) | wow (1–5) | honest % | Notes                  |
 | ----------------------- | ----------------- | --------- | --------- | -------- | ---------------------- |
 | _gemini-3.1-flash-lite_ | —                 | —         | —         | —        | Gemini default         |
-| _gemini-3.5-flash_      | —                 | —         | —         | —        | Gemini step-up         |
+| _gemini-3.8-flash_      | —                 | —         | —         | —        | Gemini step-up         |
 | _claude-haiku-4-5_      | —                 | —         | —         | —        | Anthropic default      |
 | _claude-sonnet-5_       | —                 | —         | —         | —        | Anthropic step-up      |
-| _gpt-5.4-nano_          | —                 | —         | —         | —        | OpenAI default         |
+| _gpt-5.6-luna_          | —                 | —         | —         | —        | OpenAI default         |
 | _(local, user-set)_     | —                 | —         | —         | —        | No bundled local model |
 
 > Reproduce: each row is one `pnpm eval` run with `EVAL_MODEL` set to that id and `EVAL_JUDGE=1`.
