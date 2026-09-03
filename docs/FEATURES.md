@@ -18,16 +18,22 @@ index, or open the **Explore** menu in the top bar.
   one on the fly — a freeform diagram, or a custom layout arranged from existing blocks — rendered
   with the same design tokens and safety boundary. This is on by default; disabling it removes those
   contracts from the model menu.
-- 📖 **The Study** — one object on a lamplit desk, the rest of
-  the answer waiting in a shallow arc behind it, and Mavéa's notes in the margin beside it. Four
-  notes per object — what it assumes, the pattern in it, what can and cannot be backed, and a
-  pressure-test — each read from that object's own data, and each written at your Explain level.
-  A guided walk narrates the answer object by object; the session notes keep what was said.
-  Nothing here costs a model call.
-- 🎯 **Focus mode & Present mode** — flip any answer to a single hero card on a center stage with a
-  live-thumbnail filmstrip, or go full theater: **Present** drops the chrome entirely, puts one slide
-  on a dark stage with prev/next nav, and keeps the mic live so questions from the room become new
-  canvases (tagged _from the room_ in the session rail).
+- 📖 **The Study** — one object on a lamplit desk, the rest of the answer waiting in a shallow arc
+  behind it, and Mavéa's notes in the margin beside it. Four notes per object: what it assumes, the
+  pattern in it, what its evidence does and does not back, and a pressure-test. The evidence check
+  is always Mavéa's own reading of the turn's real sources — so a receipt is never invented, and
+  "no sources are attached" is said out loud rather than skipped. The other three she writes herself
+  the first time you open the desk, at whatever Explain level you're set to: one short call,
+  streamed into the margin as each note lands and kept for that answer, so every later visit costs
+  nothing and a reader who never opens the desk is never billed for it. **Guide me** walks the desk
+  object by object, narrating each one; the session notes keep a line for every beat you visited.
+- 🎯 **Three ways to read one answer** — **Everything** is the default: the whole canvas at once,
+  nothing staged. **The Study** is the desk above. **Focus** flips the answer to a single hero card
+  on a center stage with a live-thumbnail filmstrip, and appears once there are at least two cards
+  to page through. The switch sits on the canvas, and your choice is kept for every session after.
+- 📽️ **Present mode** — go full theater: the chrome drops entirely, one slide sits on a dark stage
+  with prev/next nav, and the mic stays live so questions from the room become new canvases (tagged
+  _from the room_ in the session rail).
 
 ## A friend at the whiteboard
 
@@ -104,6 +110,56 @@ index, or open the **Explore** menu in the top bar.
   to the selected model provider. It can apply a stored correction or stated format/depth preference
   without a separate model call. Off by default.
 
+## Go deeper
+
+- 🔬 **Deep Zoom** — take one question and telescope it: ten nested scales, ×1 down to
+  ×1,000,000,000, each with a title, two dense sentences, and the handful of sub-areas visible at
+  that magnification. Pick a sub-area the path wasn't heading for and ten more levels open beneath
+  it, so the session becomes a tree you can climb back up — and a branch you've already opened
+  re-opens with no call at all. Arrow keys and Space drive it; the scale ladder down the side jumps
+  to any level you've been. A key-free example descends from a whole plant to a photon.
+- 🌈 **Prism** — drop in a PDF, a Word / PowerPoint / Excel file, or a data file (CSV, text,
+  Markdown, JSON, code) and it comes apart into a map of the claims it actually makes, grouped under
+  the document's own section names, with threads drawn between the ones that agree, sit in tension,
+  or contradict each other. Click a claim and the real page opens beside it with the quoted line lit
+  where it sits — page through it freely, zoom it, or just read. A claim only reaches the map if its
+  quote is in the document word for word: one whose quote is nowhere is dropped, one filed on the
+  wrong page is moved to the right one, and the header keeps the count honest (read · grounded ·
+  dropped). From there you can **ask** the document a question and get spans back you click to light
+  up the lines, watch a silent captioned **briefing** fly through the argument to its weakest point,
+  make it **check its own numbers** for arithmetic that doesn't add up, **cross-examine** the
+  load-bearing claims to see which objections the document answers and which it never does, or pull
+  **levers** on the model implied underneath it and watch the conclusion recompute. Opened from a
+  conversation with search on, those load-bearing claims can also be checked against live sources.
+- 🧩 **Synthesis** — the same machinery over a pile instead of a page: a folder or a zip, up to 200
+  sources, fused into one map with four lenses — everything, contradictions, gaps, consensus. A
+  contradiction survives only when both sides quote their own source verbatim; anything weaker is
+  labelled _in tension_ and says why the two may not be comparable. A gap is measured absence, not
+  an opinion — the text is scanned for every way a missing facet would have been said, and it is
+  only called missing at an actual zero. Consensus rings are badged _k of N agree_, counted in
+  distinct sources, never in claims. Two documents open as a comparison instead; with three, you
+  choose.
+- 🌊 **Ripple** — paste a GitHub pull request, a compare link, or just `owner/repo`, and the change
+  reads as a verdict (clear to ship · review first · hold), the one thing to check, every changed
+  file with what it means, and a map of the areas the change reaches and how they call each other.
+  The structural read — the changes, the worst-first risks, a flagged migration, the gate — is
+  computed from the diff itself and holds up with no model at all; the model layers its explanation
+  on top, streamed in place. Set the altitude — new grad, working, principal — and every line
+  re-pitches. Repo access is read-only and goes straight from your browser to GitHub: public repos
+  need no setup, a private one uses a token encrypted on your device. Ripple will also build the
+  repo's onboarding course, each lesson written only when you open it, quoting the real files.
+- 🎓 **Courses** — name something you want to learn, pick a starting level or let Mavéa pick, and
+  you get a real syllabus of five to seven lessons, each with a one-line goal and two to four
+  concrete objectives. Lessons are written one at a time, when you open one — a course you abandon
+  after two lessons only ever cost two — and one you come back to replays from your device for free.
+  Each lesson knows where it sits, recaps the one before it, and ends with a two-question checkpoint
+  written only when you ask for it and graded on your machine, no model call. Your progress and what
+  you've shown you know stay on this device.
+- 🃏 **Flashcards & Review** — keep a card from any answer (blocks that already hold question and
+  answer pairs yield real cards with no model call at all), organise the pile into decks and tags,
+  and let **Review** take you through it — as a plain pile, or on a spaced schedule that lets a big
+  backlog in a few a day and always ends the session.
+
 ## Reach & trust
 
 - 🔌 **Bring your own model** — Anthropic, OpenAI, Gemini, OpenRouter, or xAI Grok behind one
@@ -133,9 +189,19 @@ index, or open the **Explore** menu in the top bar.
   falling back to WebM (VP9/VP8 + Opus); H.264, H.265, AAC, and unspecified codec fallbacks are
   excluded. Published open-codec patent commitments reduce risk but are not a patent-clearance
   opinion. The separate **Reel** tab keeps the cinematic editorial recut, but its direction,
-  rendering, and encoding are local and never call a configured model provider. Document Export is
-  unchanged. 📌 **Ask about this** pins any
-  block so the next question is grounded in its exact on-screen data.
+  rendering, and encoding are local and never call a configured model provider.
+- 🖨️ **The export studio** — turn an answer, or several ticked off a list, into a **presentation
+  deck** or a **designed document**, with a live preview of the real thing in the panel before
+  anything is written. Ten deck styles and ten document templates, each with its own type, palette
+  and page furniture; Mavéa pre-picks one from the subject and you can override it, along with the
+  accent colour, Letter or A4, and how finely it renders. A deck leaves as a PDF or a real
+  **PowerPoint** file with the speaker notes attached — or straight to the printer as a handout with
+  each slide's notes underneath it. A document leaves as a page-numbered PDF whose text stays
+  selectable and whose links stay clickable, with a contents page once you export more than one
+  answer and a sources appendix when an answer cites more than four. Slides you don't want are
+  skipped from the file but stay in the preview so you can put them back. All of it renders on your
+  machine; the studio never calls a model provider.
+- 📌 **Ask about this** — pin any block so the next question is grounded in its exact on-screen data.
 - 🔍 **Transparency controls** — confidence labels, source citations, real-data-oriented rules, and
   a measured eval harness ([`pnpm eval`](BENCHMARK.md)). These controls do not guarantee accuracy.
 

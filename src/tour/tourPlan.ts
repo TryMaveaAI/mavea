@@ -417,10 +417,10 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
   },
   {
     id: 'review',
-    title: 'Study your cards',
+    title: 'Review your cards',
     mode: 'explain',
     coach:
-      'Open Study to go through your flashcards. Keep it a plain pile, or let Mavéa space them out so the ones you find hard come back sooner.',
+      'Open Review to go through your flashcards. Keep it a plain pile, or let Mavéa space them out so the ones you find hard come back sooner.',
     action: { kind: 'showcase', featureId: 'review' },
     durationMs: 9000,
     glyph: '🧠',

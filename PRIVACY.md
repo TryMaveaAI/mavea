@@ -1,6 +1,6 @@
 # Mavéa Privacy Notice
 
-Effective: August 22, 2026
+Effective: September 3, 2026
 
 This notice describes the current, unmodified local and self-hosted Mavéa software. It does not describe a future hosted service. Local-first does not mean every feature stays on your device: connected features send data through the deployment to third parties you choose. If a person or organization deploys Mavéa for others, that operator must provide any additional privacy notices and controls required for its deployment.
 
@@ -27,6 +27,7 @@ Depending on the features you use, browser storage may contain:
 - remembered provider, search, or optional GitHub credentials;
 - a short-lived cache of recent questions and the answers to them, kept on the device so that asking the same thing again does not bill your key a second time; it expires within a day, and it deliberately excludes any answer that drew on attachments, ink, filled-in blanks, cited sources, or your remembered facts (document text attached to a Prism or Synthesis map is kept separately — see the next entry);
 - the map of a document you exploded with Prism or Synthesis — its claims and the extracted page text they are quoted against — kept on the device so re-opening the same file does not bill your key to read it again. It is filed under that file's identity and the model that read it, so it is only ever reused for the same document; it does not expire on a timer, because the mapping cannot go stale and re-running it would charge you for an identical result. It is bounded instead: the least recently opened entries are dropped once the store passes a fixed number of entries or a fixed total size. Clearing site data removes it;
+- the margin notes Mavéa writes for an answer you opened in the Study, kept on the device against that answer and the model that wrote them, so returning to the same answer does not bill your key to write them again; it is bounded the same way the document maps above are, and clearing site data removes it;
 - temporary in-progress and finished video-export files in origin-private browser storage until the export is consumed or discarded; and
 - short-lived demo, tour, route, and in-progress session data.
 
@@ -73,7 +74,7 @@ According to the feature and configuration you choose, recipients can include:
 - Google Gemini, Anthropic Claude, OpenAI, xAI Grok, OpenRouter, or another model endpoint you configure;
 - configured web-search providers and Wikipedia;
 - the configured speech-to-text or text-to-speech service;
-- GitHub, Google Calendar, or another configured action destination;
+- GitHub, when you point Ripple at a repository;
 - OpenFreeMap's tile host when you open a map, and Wikimedia's upload host for the small set of individually reviewed tour images; these requests expose ordinary network metadata such as your IP address and user agent to those hosts;
 - the jsDelivr content-delivery network, from which the local command-line server downloads version-pinned voice-recognition assets once on first voice use and then serves them from its own cache; and
 - the deployment host, reverse proxy, network, and infrastructure providers.

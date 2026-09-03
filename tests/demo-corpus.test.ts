@@ -21,7 +21,7 @@ describe('demo corpus — every cast member has a complete baked session', () =>
         convo = await loadDemoConversation(member.id);
         expect(
           convo,
-          `no shard for ${member.id} — run: ONLY=${member.id} npx vite-node scripts/build-demo-corpus.mts`,
+          `no shard for ${member.id} — run: ONLY=${member.id} node --import tsx scripts/build-demo-corpus.mts`,
         ).not.toBeNull();
       });
 

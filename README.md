@@ -32,7 +32,8 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 ## Get started
 
-All you need is **Node 22.12+**. That command above opens the tour and demo replays immediately
+All you need to run the published app is **Node 22.12+**; building Mavéa from this repo is stricter
+and wants **Node 24.11+**. That command above opens the tour and demo replays immediately
 — nothing else to set up. Demo replays are fictional, curated prerecorded examples with scripted
 feature choreography; playback does not call a model provider.
 
@@ -46,7 +47,7 @@ rates — the model call is the part of a turn that costs money; the app and the
 run on your machine for free. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that
 provider — your key and prompts never pass through Mavéa's own servers, because there aren't
-any. Full options — models, actions, hosting, and the trust boundary — are in
+any. Full options — models, hosting, and the trust boundary — are in
 [docs/LIVE-SETUP.md](docs/LIVE-SETUP.md).
 
 **Local speech:** Mavéa speaks through Apache-2.0
@@ -79,6 +80,10 @@ A few specific things worth trying:
   row, or number.
 - **It draws while it talks.** It speaks each headline as it streams, then lands hand-style circles
   and arrows on the figure it's narrating.
+- **Three ways to read one answer.** _Everything_ — the default — lays the whole canvas out at
+  once. _The Study_ puts one card on a lamplit desk with Mavéa's notes in the margin and walks you
+  through the rest. _Focus_ pages a single hero card with a filmstrip of the others. The switch sits
+  on the canvas, and your choice is remembered.
 - **It answers while you talk.** Mid-sentence, dashed ghost cards sketch the answer taking shape
   behind your words, reshaping as your question turns.
 - **It maps your thinking.** Ramble for a minute and Mavéa clusters your words into the themes that
@@ -92,9 +97,9 @@ A few specific things worth trying:
   Every figure on it can prove itself, every arrow says what it does _not_ claim, and pulling a
   what-if lever re-weights the world in words — never in invented numbers.
 
-The full tour — Atlas, the Rehearsal, living dashboards, Ripple, selective Conversation video,
-Mavéa Reels, and ~30 more —
-is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
+The full tour — the Study, Prism and Synthesis, Deep Zoom, Courses, Ripple, the Atlas, the
+Rehearsal, living dashboards, selective Conversation video, Mavéa Reels, and deck/document export,
+among some thirty features — is in [docs/FEATURES.md](docs/FEATURES.md). In the app, press **⌘K**.
 
 ## What it looks like
 
@@ -131,12 +136,12 @@ Twelve moments from the walkthrough and the recorded sessions. Every one replays
 
 Mavéa runs on your machine, not in a cloud.
 
-|          | Minimum | Recommended |
-| -------- | ------- | ----------- |
-| **CPU**  | 4 cores | 8 cores     |
-| **RAM**  | 8 GB    | 16 GB       |
-| **Disk** | 3 GB    | 10 GB       |
-| **Node** | 22.12+  | 24.11+      |
+|          | Minimum                | Recommended                |
+| -------- | ---------------------- | -------------------------- |
+| **CPU**  | 4 cores                | 8 cores                    |
+| **RAM**  | 8 GB                   | 16 GB                      |
+| **Disk** | 3 GB                   | 10 GB                      |
+| **Node** | 22.12+ (published app) | 24.11+ (build from source) |
 
 Any browser in [Baseline Widely Available](https://web.dev/baseline) — current Chrome, Edge,
 Safari, or Firefox — on macOS, Windows, or Linux. **Minimum** covers the app with voice off,

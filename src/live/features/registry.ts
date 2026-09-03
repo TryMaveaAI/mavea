@@ -141,11 +141,12 @@ export const FEATURES: Feature[] = [
     ],
   },
   {
-    // A change drops in and you watch it ripple outward — the blast radius, the cause & effect, the
-    // safe ship order. So no one is ever scared to make a coding change again.
+    // A change drops in and you watch it ripple outward — the blast radius, the cause & effect, and
+    // what to look at first. So no one is ever scared to make a coding change again.
     id: 'ripple',
     label: 'Ripple',
-    blurb: 'Model a code change’s blast radius — likely impact, risks, and a proposed ship order',
+    blurb:
+      'Model a code change’s blast radius — what it touches, what could break, and what to check first',
     group: 'Your world',
     surface: 'both',
     tourChapter: 'ripple',
@@ -205,15 +206,27 @@ export const FEATURES: Feature[] = [
   },
   {
     id: 'review',
-    label: 'Study',
-    // Distinct from "Manage flashcards" below: this STUDIES the cards, that one organises them.
-    // Static metadata can't branch on the user's study style, so the wording has to be true of
-    // both a plain pile and a schedule.
+    // "Review", not "Study": the Study is the desk that reads one answer a card at a time, and two
+    // features under one word sent readers to the wrong surface. Distinct from "Manage flashcards"
+    // below: this GOES THROUGH the cards, that one organises them. Static metadata can't branch on
+    // the user's study style, so the wording has to be true of both a plain pile and a schedule.
+    label: 'Review',
     blurb: 'Go through your flashcards — on a schedule if you want one',
     group: 'Your world',
     surface: 'live',
     tourChapter: 'review',
-    keywords: ['srs', 'flashcards', 'study', 'remember', 'spaced', 'due', 'flip', 'pile', 'anki'],
+    keywords: [
+      'srs',
+      'flashcards',
+      'study',
+      'review',
+      'remember',
+      'spaced',
+      'due',
+      'flip',
+      'pile',
+      'anki',
+    ],
   },
   {
     id: 'flashcards',

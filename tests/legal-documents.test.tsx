@@ -60,7 +60,7 @@ describe('canonical legal documents', () => {
     render(<PrivacyApp />);
 
     expect(screen.getByRole('heading', { name: 'Mavéa Privacy Notice' })).toBeInTheDocument();
-    expect(screen.getByText('Effective August 22, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Effective September 3, 2026')).toBeInTheDocument();
     expect(screen.getByText(/no Mavéa user-account system/i)).toBeInTheDocument();
     expect(screen.getByText(/course data, mastery and progress/i)).toBeInTheDocument();
     expect(screen.getByText(/non-extractable, device-bound browser key/i)).toBeInTheDocument();

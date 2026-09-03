@@ -92,7 +92,6 @@ the complete list).
 | `build`   | Typecheck, then production build to `dist/`.                                                                                                     |
 | `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx @mavea/mavea` runs.                                                                   |
 | `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                                       |
-| `actions` | Starts the actions gateway (`:8910`) that proxies Live's confirm-to-execute actions (Calendar, Gmail, Slack, …) to third-party APIs.             |
 
 **Quality gates** (what CI runs; the pre-push hook runs only `typecheck` and `lint`)
 
@@ -207,16 +206,6 @@ prop-shape examples from it, and the render/leak gauntlets iterate it. To add on
 
 No renderer change is required.
 
-### Add a curated demo persona
-
-1. Add an identity to `demo/cast.ts` and a script (asks + feature beats) to `demo/scripts.ts` —
-   keep every ask publicly answerable or self-contained (the persona states their own numbers).
-2. Bake the model output: `ONLY=<id> GEMINI_API_KEY=… npx vite-node scripts/build-demo-corpus.mts`,
-   review the logged ✓/✗ expectations, remove unsupported claims, and re-run to re-roll weak turns.
-   The shipped UI must label the result as a fictional, curated prerecorded example with scripted
-   feature choreography, never as a live result or customer session.
-3. `tests/demo-corpus.test.ts` verifies the cast, script, and baked shard stay in lockstep.
-
 **Minimal shape:**
 
 ```ts
@@ -248,6 +237,17 @@ export const mysubject: ConversationSpec = {
 ```
 
 > **Registry order is routing precedence.** The router returns the first keyword match in `TOPIC_LIST` order in `src/data/topics/index.ts`. Place topics with narrow or colliding keywords before broader ones.
+
+### Add a curated demo persona
+
+1. Add an identity to `demo/cast.ts` and a script (asks + feature beats) to `demo/scripts.ts` —
+   keep every ask publicly answerable or self-contained (the persona states their own numbers).
+2. Bake the model output:
+   `ONLY=<id> GEMINI_API_KEY=… node --import tsx scripts/build-demo-corpus.mts`, review the logged
+   ✓/✗ expectations, remove unsupported claims, and re-run to re-roll weak turns. The shipped UI
+   must label the result as a fictional, curated prerecorded example with scripted feature
+   choreography, never as a live result or customer session.
+3. `tests/demo-corpus.test.ts` verifies the cast, script, and baked shard stay in lockstep.
 
 ### Add a Live provider
 
@@ -318,48 +318,6 @@ Live shows the model.
 
 The full contract — the standard every block follows, the `ComponentMeta` fields, what each test
 enforces, and custom-coercion/nesting — is in **[docs/ADDING-A-COMPONENT.md](docs/ADDING-A-COMPONENT.md)**.
-
-### Add an action
-
-Actions are declarative proposals — Mavéa offers them to the user as a confirm card; they only execute after explicit confirmation through the same-origin `/actions` proxy. Three files are involved:
-
-**Step 1 — `src/live/actions/catalog.ts`:** add an entry to the action catalog.
-
-```ts
-{
-  id: 'myservice.doThing',
-  mcp: 'myservice',
-  label: 'Do the thing',
-  desc: 'One-line description the model reads to decide when to offer this.',
-  cta: 'Do it',
-  params: [
-    { name: 'target', type: 'string', required: true, desc: 'What to act on' },
-  ],
-},
-```
-
-**Step 2 — `gateway/connectors.mjs`:** implement the connector function and add it to the `CONNECTORS` map.
-
-```js
-async function myserviceDoThing(args, env, fetchImpl) {
-  const token = env.MYSERVICE_TOKEN;
-  if (!token) return unconfigured('MYSERVICE_TOKEN not set.');
-  const target = (args.target ?? '').trim();
-  if (!target) return badRequest('target is required.');
-  const res = await fetchImpl('https://api.myservice.com/do', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ target }),
-  });
-  if (!res.ok) return upstreamFailed('MyService', res.status);
-  return { ok: true, status: 200, detail: 'Done.' };
-}
-// add to CONNECTORS map: 'myservice.doThing': myserviceDoThing
-```
-
-**Step 3 — `tests/actions-gateway.test.ts`:** cover the four paths — unconfigured (missing token), bad input, upstream failure, and success.
-
-Finally, document `MYSERVICE_TOKEN` in `.env.example` so `pnpm actions` picks it up at runtime.
 
 ## Reporting bugs
 

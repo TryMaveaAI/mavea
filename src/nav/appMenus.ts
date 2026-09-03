@@ -74,7 +74,11 @@ export function buildAppMenus(deps: AppMenuDeps): AppMenus {
       inLive('Atlas', 'Kept conversations and topics, as a place'),
       inLive('Watch me think', 'A live map of your thinking'),
       route('Prism', 'Split your document into a map of its claims', '#/prism'),
-      route('Ripple', 'Model a code change’s impact, risks, and a proposed ship order', '#/ripple'),
+      route(
+        'Ripple',
+        'Model a code change’s impact, its risks, and what to check first',
+        '#/ripple',
+      ),
       route(
         'Dashboards',
         'Dashboards that refresh on schedule while Mavéa is open',

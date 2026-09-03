@@ -8,15 +8,17 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ### Added
 
-- **The Study** — a new way to read an answer, and now the default view. One object sits on a
+- **The Study** — a new way to read an answer. One object sits on a
   lamplit desk with the rest of the answer in a shallow arc behind it; clicking a card brings it
   forward, and a beat bar walks every object in the answer (never truncated, however large the
   answer). Mavéa writes in the margin beside the object and keeps four notes on it — what it
   assumes, the pattern in it, what can and cannot be backed against your sources, and a
   pressure-test — every one of them read from that object's own data and phrased at your Explain
   level. **Guide me** walks and narrates the answer; the session-notes pad keeps what was said.
-  The desk adds **no model calls**, no new storage and no network access: everything on it is
-  derived from the answer already on screen.
+  The desk paints immediately from notes derived off the answer already on screen. The first time
+  you open it, Mavéa also writes its own margin notes in one short call of their own, streamed in
+  as they land and cached against the answer — so a reader who never opens the desk is never
+  billed for it, and opening the same answer twice costs nothing.
 - The Study follows the reader's theme and template: the parchment desk is the paper template's
   own face in light and dark, and every other template re-dresses it from its own tokens.
 
