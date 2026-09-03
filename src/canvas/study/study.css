@@ -756,7 +756,8 @@
   box-shadow: 0 14px 34px var(--study-shadow-soft);
 }
 
-.study-guide {
+.study-guide,
+.study-mute {
   flex: none;
   padding: 8px 15px;
   border: 0;
@@ -873,8 +874,11 @@
   color: var(--study-beat-num);
 }
 
+/* The active chip inverts — light-on-dark in the light theme, dark-on-light in dark — so the
+   number has to come off the chip's OWN ink, softened. A fixed amber read at 1.4:1 the half of
+   the time the chip was pale. */
 .study-beat.is-now .study-beat-num {
-  color: #e8b87a;
+  color: color-mix(in oklab, var(--study-chip-active-ink) 72%, var(--study-chip-active));
 }
 
 .study-beat-label {
@@ -1077,7 +1081,13 @@
   width: 314px;
   max-height: calc(100% - 96px);
   padding: 14px 14px 22px 0;
-  transform: rotate(1.2deg) scale(var(--study-hud, 1));
+  /* The tilt and the HUD scale are declared on SEPARATE properties so the entrance below can
+     animate one without seizing the other: an animation filled `both` outranks a normal
+     declaration for as long as the element lives, so a keyframe writing `transform` permanently
+     replaced this whole rule — the pad stopped growing with the HUD in full screen, and in the
+     flat column it kept the desk's tilt and its bounding box sat across the beat bar. */
+  rotate: 1.2deg;
+  scale: var(--study-hud, 1);
   transform-origin: bottom right;
   border: 1px solid var(--study-note-border);
   border-radius: 4px;
@@ -1535,7 +1545,7 @@
   }
 
   .study-crib {
-    animation: study-pop 0.3s ease both;
+    animation: study-crib-in 0.3s ease both;
   }
 
   .study-intro-kicker,
@@ -1578,6 +1588,20 @@
   to {
     opacity: 1;
     transform: rotate(1.2deg) scale(1);
+  }
+}
+
+/* The pad's own entrance: the same pop, written on the properties the pad's rule uses, so the
+   tilt and the HUD scale stay where they are declared rather than being frozen at the values a
+   filled animation happens to end on. */
+@keyframes study-crib-in {
+  from {
+    opacity: 0;
+    scale: calc(var(--study-hud, 1) * 0.965);
+  }
+  to {
+    opacity: 1;
+    scale: var(--study-hud, 1);
   }
 }
 
@@ -1703,11 +1727,22 @@
   position: static;
   width: auto;
   margin: 0 0 14px;
+  /* Flat column, no tilt: rotated in flow, the pad's bounding box climbed by its own width ×
+     tan(1.2°) and sat over the beat bar above it. */
+  rotate: none;
   transform: none;
 }
 
 .study-stage[data-compact] .study-card.is-front {
-  position: static;
+  /* Relative, not static: the card is back in normal flow either way, but it must stay the
+     positioning context its `.ink-layer` resolves against. Static handed the layer to the stage,
+     so every pen mark drew at the stage's height against a viewBox cut to the card's — stretched
+     and dropped far below the words it points at.
+     `inset` is what makes relative safe here: the desk speaks a slot as `left`/`top`, which a
+     static box ignores and a relative one obeys, so keeping the offsets shunted the flat
+     column's card a whole slot down and off the right edge — ink and all. */
+  position: relative;
+  inset: auto;
   width: 100% !important;
   max-height: none;
   transform: none;
@@ -1759,4 +1794,13 @@
   .study-stepper {
     display: flex;
   }
+}
+
+/* The mute is an icon, not a word: square, and the glyph sized like the beat chips' text. */
+.study-mute {
+  padding-inline: 10px;
+}
+.study-mute svg {
+  width: 15px;
+  height: 15px;
 }

@@ -89,6 +89,9 @@ interface Props {
   onNarrate?: (block: Block) => void;
   narratingId?: string | null;
   muted?: boolean;
+  /** Flips the app's voice. Offered on the beat bar because the guide speaks from here and, in
+   *  full screen, the dock's own switch is off the screen. */
+  onToggleMute?: () => void;
   /** The walk's written asides for this turn, in walk order — each stop's spoken line condensed
    *  to a handwritten note. The one about the object on the desk is written beside it (the
    *  mockup's margin quip); all of them collect in the session-notes crib. */
@@ -181,6 +184,7 @@ export function StudyStage({
   onNarrate,
   narratingId,
   muted,
+  onToggleMute,
   walkNotes,
   voiceLine,
   speaking,
@@ -191,9 +195,17 @@ export function StudyStage({
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
-  // Which of the active object's notes is face-up. Reset per object: the pages belong to the
-  // thing on the desk, not to the reader's place in some global list.
-  const [notePage, setNotePage] = useState(0);
+  // Which of the active object's notes is face-up, and which object those pages belong to. The
+  // pair is one piece of state on purpose: reset in an effect, the first paint after the desk
+  // moved still used the previous object's page — a note of the wrong kind for one frame, and the
+  // note card remounted twice for every beat.
+  const [notePage, setNotePage] = useState<{ spot: string | null; page: number }>({
+    spot: null,
+    page: 0,
+  });
+  // Set when the reader pressed a pager chip, so focus can follow the note card's remount.
+  const pagedByHand = useRef(false);
+  const noteNavRef = useRef<HTMLSpanElement | null>(null);
   // "Guide me": the desk walks itself, one object every GUIDE_MS. It never talks over the
   // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
   // pick stops it), and stops itself at the last object rather than looping forever.
@@ -221,7 +233,14 @@ export function StudyStage({
     [answerEpoch, data.id, data.blocks],
   );
 
+  // A NEW answer clears the desk's per-answer state. The first run is not a new answer — it is
+  // this mount's own answer, whose state the initializers above already hold — and clearing there
+  // threw away the visited spine seeded from the walk's notes: a reader who flipped to Everything
+  // and back landed on an empty session-notes pad in the middle of the same answer.
+  const clearedFor = useRef(answerKey);
   useEffect(() => {
+    if (clearedFor.current === answerKey) return;
+    clearedFor.current = answerKey;
     setPinnedId(null);
     setCribOpen(false);
     setVisitedIds([]);
@@ -438,8 +457,10 @@ export function StudyStage({
   // two components that would both have to be told which element they meant.
   const fullscreen = useFullscreen();
   // Re-fit on a re-cast as well as a resize: the fit reserves the handwritten takeaway's
-  // measured band, and the sentence changes with the object on the desk.
-  useStudyScale(stageRef, `${data.id}:${scene.active?.id ?? ''}`);
+  // measured band, and the sentence changes with the object on the desk. Filling the screen is
+  // also a re-fit — the stage leaves the reading column for the viewport, and nothing the
+  // observer watches changes size when it does.
+  useStudyScale(stageRef, `${data.id}:${scene.active?.id ?? ''}:${fullscreen.active}`);
   // Truncation without a way back to the words is just lost text. The canvas grid gets this
   // treatment already; the desk renders its cards outside that grid, so it asks for its own —
   // re-scanned whenever the desk re-casts, since the object on it changes.
@@ -520,10 +541,20 @@ export function StudyStage({
         ? held.notes
         : asides?.[foregroundId]
       : undefined) ?? [];
-  const pageIndex = activeNotes.length ? Math.min(notePage, activeNotes.length - 1) : 0;
+  if (notePage.spot !== foregroundId) setNotePage({ spot: foregroundId, page: 0 });
+  const pageIndex = activeNotes.length
+    ? Math.min(notePage.spot === foregroundId ? notePage.page : 0, activeNotes.length - 1)
+    : 0;
   const activeAside = activeNotes[pageIndex] ?? null;
 
-  useEffect(() => setNotePage(0), [foregroundId]);
+  // The note card is keyed on its page so the entrance replays, which takes the pager's own
+  // buttons with it — the chip the reader just pressed stops existing and focus falls to the
+  // document. Put it back on the chip that is now current.
+  useEffect(() => {
+    if (!pagedByHand.current) return;
+    pagedByHand.current = false;
+    noteNavRef.current?.querySelector<HTMLButtonElement>('button.is-now')?.focus();
+  }, [pageIndex]);
 
   // Which beats the reader has actually seen, in first-visit order — the session notes' spine.
   useEffect(() => {
@@ -656,14 +687,12 @@ export function StudyStage({
     [onNarrate],
   );
 
-  // A spot change the guide did not cause hands the wheel back: the walk is speaking, and the
-  // guide must not speak over it.
-  useEffect(() => {
-    if (!guiding) return;
-    if (foregroundId && guideMovedTo.current && foregroundId !== guideMovedTo.current) {
-      setGuiding(false);
-    }
-  }, [guiding, foregroundId]);
+  // A spot moved by something other than the guide — above all a follow-up's own spoken walk —
+  // does NOT switch the guide off. Guide me is a mode the reader chose; a follow-up is the same
+  // conversation, and making them press it again every turn reads as the app forgetting. The walk
+  // never gets talked over because the timer below waits out every audible line, and when the walk
+  // is done the guide resumes from wherever the walk left the desk. Only the reader's own pick
+  // (`choose`) or the end of the cast ends it.
   // Silence ACCRUES; it does not restart. `speaking` flips at every sentence boundary, and the
   // old effect re-armed the whole gap on each flip — so a voice that pauses more often than
   // GUIDE_GAP_MS left "Guide me" lit and advancing never, which reads as a dead control. Bank the
@@ -673,6 +702,12 @@ export function StudyStage({
     banked: 0,
     since: 0,
   });
+  // Every step re-arms the pacer, because a step is not guaranteed to move anything the effect
+  // watches. The FIRST one narrates the object already on the desk (that is the point — the walk
+  // starts where the reader is), so `foregroundId` holds still; and while Mavéa is muted nothing
+  // ever flips `speaking` either. With no dep changing, the one timer this effect had scheduled
+  // was the only one it would ever schedule, and "Guide me" sat lit and still forever.
+  const [guideTick, setGuideTick] = useState(0);
   useEffect(() => {
     if (!guiding) return;
     const quiet = quietRef.current;
@@ -699,9 +734,10 @@ export function StudyStage({
       guideStartRef.current = false;
       quietRef.current = { id: foregroundId, banked: 0, since: 0 };
       guideStep(fromStart);
+      setGuideTick((tick) => tick + 1);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [guiding, speaking, foregroundId, guideStep]);
+  }, [guiding, speaking, foregroundId, guideStep, guideTick]);
 
   if (!active) return null;
 
@@ -861,7 +897,12 @@ export function StudyStage({
                   data-spot-id={front ? id : undefined}
                   data-kind={block.type}
                   role={front ? undefined : 'button'}
-                  tabIndex={front ? undefined : 0}
+                  // -1 rather than undefined on the front card: React keeps the element alive
+                  // across a promotion, and REMOVING tabindex from the element the reader just
+                  // pressed Enter on blurs it — focus fell to the document and the next Tab
+                  // restarted at the top of the page. It keeps the focus it had, and stays out
+                  // of the tab order.
+                  tabIndex={front ? -1 : 0}
                   aria-label={front ? undefined : `Bring ${blockLabel(block)} forward`}
                   onClick={front ? undefined : (event) => onCardClick(event, block)}
                   onKeyDown={front ? undefined : (event) => onCardKey(event, block)}
@@ -939,15 +980,18 @@ export function StudyStage({
                         </span>
                         {/* One chip per note, wearing that note's own glyph — the reader picks
                             the KIND of thing they want to hear rather than paging blindly. */}
-                        <span className="study-note-nav">
+                        <span className="study-note-nav" ref={noteNavRef}>
                           {activeNotes.map((note, index) => (
                             <button
                               key={`${note.kind}-${index}`}
                               type="button"
                               className={index === pageIndex ? 'is-now' : undefined}
                               aria-current={index === pageIndex ? 'true' : undefined}
-                              onClick={() => setNotePage(index)}
-                              aria-label={NOTE_LABELS[note.kind]}
+                              onClick={() => {
+                                pagedByHand.current = true;
+                                setNotePage({ spot: foregroundId, page: index });
+                              }}
+                              aria-label={`${NOTE_LABELS[note.kind]}, note ${index + 1} of ${activeNotes.length}`}
                               title={NOTE_LABELS[note.kind]}
                             >
                               {NOTE_GLYPHS[note.kind]}
@@ -1064,6 +1108,18 @@ export function StudyStage({
           >
             {guiding ? '❚❚ Pause' : '▶ Guide me'}
           </button>
+          {onToggleMute && (
+            <button
+              type="button"
+              className="study-mute"
+              aria-pressed={!!muted}
+              aria-label={muted ? "Unmute Mavéa's voice" : "Mute Mavéa's voice"}
+              title={muted ? "Unmute Mavéa's voice" : "Mute Mavéa's voice"}
+              onClick={onToggleMute}
+            >
+              {muted ? <Icon.speakerOff /> : <Icon.speaker />}
+            </button>
+          )}
           <div className="study-beats-row" ref={attachBeatsRow}>
             {lessonBlocks.map((block, index) => {
               const now = block.id === active.id;

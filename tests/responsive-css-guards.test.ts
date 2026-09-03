@@ -90,13 +90,32 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(scene).toMatch(/COMPACT_W = 940/);
   });
 
+  it('returns the compact front card to flow POSITIONED and with the desk slot cleared', () => {
+    // Both halves or the pen misses. The card must stay a positioning context, because
+    // `.ink-layer` is `position: absolute; inset: 0` — a static card hands the layer to the stage
+    // instead, and every mark then draws at the stage's height against a viewBox cut to the
+    // card's. But `relative` alone obeys the `left`/`top` the desk states as its 3-D slot, which
+    // pushed the full-width column card a whole slot down and off the right edge, ink and all.
+    const front =
+      /\.study-stage\[data-compact\] \.study-card\.is-front\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(front).toMatch(/position:\s*relative/);
+    expect(front).toMatch(/inset:\s*auto/);
+    // The offsets it has to neutralise — if the desk ever stops speaking its slot in `left`/`top`,
+    // this guard should be re-read rather than quietly kept.
+    expect(css).toMatch(/\.study-card\s*\{[^}]*left:\s*var\(--sx\);\s*top:\s*var\(--sy\);/);
+    expect(read('src/live/annotate/annotate.css')).toMatch(
+      /\.ink-layer\s*\{[^}]*position:\s*absolute;\s*inset:\s*0;/,
+    );
+  });
+
   it('keeps the beat bar on one row, with the chip strip as the only thing that scrolls', () => {
     const beats = /\n\.study-beats\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(beats).toMatch(/flex-wrap:\s*nowrap/);
-    for (const sel of ['.study-guide', '.study-beat-next']) {
-      expect(new RegExp(`\\n\\${sel} \\{[^}]*flex: none`).test(css), `${sel} must not shrink`).toBe(
-        true,
-      );
+    // A control may share its rule with a sibling (the guide and the mute dress alike), so the
+    // selector is matched anywhere in a rule's selector list, not only at the start of a line.
+    for (const sel of ['.study-guide', '.study-mute', '.study-beat-next']) {
+      const rule = new RegExp(`\\n(?:[^{}\\n]*,\\n)*\\${sel}(?:,\\n[^{}\\n]*)* \\{[^}]*flex: none`);
+      expect(rule.test(css), `${sel} must not shrink`).toBe(true);
     }
     const row = /\n\.study-beats-row\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(row).toMatch(/overflow-x:\s*auto/);

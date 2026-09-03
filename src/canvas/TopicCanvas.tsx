@@ -294,6 +294,7 @@ interface Props {
   narratingId?: string | null;
   /** Live-only: output is muted. In Focus mode the stage reads calmly (no "Speaking" cue). */
   muted?: boolean;
+  onToggleMute?: () => void;
   /** Live-only: reserve the margin-note gutter beside the grid (padding-right on `.card-grid`,
    *  where MarginNoteRail portals its notes). Reserved as padding so the responsive grid's
    *  content-box measurement re-budgets the card tiling on its own. Absent → classic grid. */
@@ -351,6 +352,7 @@ export function TopicCanvas({
   onNarrate,
   narratingId,
   muted,
+  onToggleMute,
   noteGutter,
   walkNotes,
   voiceLine,
@@ -450,12 +452,14 @@ export function TopicCanvas({
   // Canvas is a per-answer view, never a sticky mode: when a NEW answer arrives, fall back to the
   // standing view so the board can't hijack the next reply (voice + spotlight run there,
   // and the page scrolls normally). Read viewMode via a ref so this fires only on the answer change,
-  // not the moment the user opens the canvas.
+  // not the moment the user opens the canvas. Keyed on the ANSWER, not `data.id` — that is the
+  // constant 'live', so this only ever ran on mount, and a follow-up that MERGES (no remount)
+  // landed on the board the previous answer had opened.
   const viewModeRef = useRef(viewMode);
   viewModeRef.current = viewMode;
   useEffect(() => {
     if (viewModeRef.current === 'canvas') onViewMode?.(savedViewMode());
-  }, [data.id, onViewMode]);
+  }, [answerSig, onViewMode]);
 
   // The Blank Space: card-into-hole drag is offered only in Live (blankFill present) and only when
   // this answer actually has a card-kind hole to receive a card. Tap-to-place is the touch fallback.
@@ -767,6 +771,7 @@ export function TopicCanvas({
           onNarrate={onNarrate}
           narratingId={narratingId}
           muted={muted}
+          onToggleMute={onToggleMute}
           walkNotes={walkNotes}
           voiceLine={voiceLine}
           speaking={speaking}
@@ -788,6 +793,7 @@ export function TopicCanvas({
           muted={muted}
           walkNotes={walkNotes}
           presenting={presenting}
+          answerEpoch={studyAnswerEpoch}
         />
       ) : (
         // ONE grid element for both the loading and the loaded state: two sibling .card-grid

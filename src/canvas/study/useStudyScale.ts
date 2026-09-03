@@ -40,7 +40,12 @@ export function useStudyScale(
 
     const apply = (): void => {
       const stageBox = stage.getBoundingClientRect();
-      const viewportBox = scrollViewport?.getBoundingClientRect();
+      // Full screen lifts the stage OUT of the reading column — it is `position: fixed; inset: 0`,
+      // with the column and height caps off — but it is still a DOM descendant of the scroller, so
+      // measuring the column there fitted the desk to a box it had already left: the scale sat
+      // pinned at its legibility floor with a band of empty parchment inside a full 1080px window.
+      const full = stage.matches(':fullscreen') || stage.classList.contains('is-fullscreen');
+      const viewportBox = full ? undefined : scrollViewport?.getBoundingClientRect();
       // The desk is drawn inside the frame, so the fit is measured against the stage's content
       // box; the border-box is two pixels wider than any room the composition actually has.
       const w =
@@ -49,16 +54,17 @@ export function useStudyScale(
         ? Math.min(viewportBox.bottom, window.innerHeight) - Math.max(viewportBox.top, 0)
         : Math.min(stageBox.height, window.innerHeight);
       // Both axes are fitted against the box the stage will ACTUALLY have — study.css caps the
-      // stage at the scroll column and at STAGE_H_MAX — rather than against the column alone,
-      // which let the vertical term claim room the frame was never going to give it.
-      const h = Math.max(0, Math.min(STAGE_H_MAX, availableH));
+      // in-canvas stage at the scroll column and at STAGE_H_MAX — rather than against the column
+      // alone, which let the vertical term claim room the frame was never going to give it. Full
+      // screen has no such cap (study.css: `height: 100dvh; max-height: none`), and applying one
+      // here is what made SCALE_MAX_FULL unreachable.
+      const h = Math.max(0, full ? availableH : Math.min(STAGE_H_MAX, availableH));
       if (!w || !h) return;
       // A container query cannot style its OWN container, so the stage's compact box (height,
       // padding) can never come from `@container study` — its children reflowed while the stage
       // itself kept a desk-sized height, leaving a page of empty parchment underneath. The
       // observer already measures this box; publishing the state as an attribute is what lets
       // the stage restyle itself.
-      const full = stage.matches(':fullscreen') || stage.classList.contains('is-fullscreen');
       const compact = !full && (w <= COMPACT_W || h < FIT_H * STUDY_FIT_FLOOR);
       stage.toggleAttribute('data-compact', compact);
       if (compact) {

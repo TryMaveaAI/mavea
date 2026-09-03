@@ -51,7 +51,7 @@ export const SHOWFRAME_REVEAL_CAP_MS = 3_000;
  *  the cap only binds before even that, where narration IS already on screen as the streaming
  *  lead text. Holding a voice 1.8s against words the reader can see was dead air, not sync:
  *  900ms still covers a card entrance (`--m-expressive`, 550ms) plus its commit. */
-export const FIRST_PAINT_CAP_MS = 900;
+export const FIRST_PAINT_CAP_MS = 2500;
 
 /** Failure-only ceiling on "line finished": double the word-count estimate (0.5× voice speed is
  *  the slowest a user can pick) plus synthesis slack. Real lines resolve `finished` themselves —
@@ -207,10 +207,22 @@ export async function awaitFirstPaint(
       // waving the voice through against it starts the walk under the overlay.
       const visible = (el: Element | null): Element | null =>
         el && !el.closest('[data-gathered]') ? el : null;
-      let card = visible(host()?.querySelector(cardSelector) ?? null);
+      // Wait for a card that was NOT already on the stage when the line formed. On a follow-up the
+      // previous answer's cards satisfy "any card" instantly, so the voice started describing new
+      // cards over the old ones while the new ones were still streaming in. A replace clears the
+      // stage first, so its first card is new by construction; an augment appends, so the old
+      // cards are excluded by identity rather than by count.
+      const before = new Set(host()?.querySelectorAll(cardSelector) ?? []);
+      const fresh = (): Element | null => {
+        for (const el of host()?.querySelectorAll(cardSelector) ?? []) {
+          if (!before.has(el) && visible(el)) return el;
+        }
+        return null;
+      };
+      let card = fresh();
       while (!card) {
         await nextFrame();
-        card = visible(host()?.querySelector(cardSelector) ?? null);
+        card = fresh();
       }
       // Poll a frame at a time rather than listening: a card's entrance is a TRANSITION whose
       // `transitionend` never fires if it had already finished when we looked, and several

@@ -61,6 +61,24 @@ describe('awaitFirstPaint waits for a card, then for it to finish appearing', ()
     expect(done).toBe(true);
   });
 
+  it('on a follow-up, waits for a card that was not there when the line formed', async () => {
+    // The previous answer's cards satisfy "any card" at once, so the voice used to start on the
+    // new cards while they were still streaming in over the old ones.
+    const host = document.createElement('div');
+    const old = document.createElement('div');
+    old.className = 'card';
+    host.appendChild(old);
+    let done = false;
+    const p = awaitFirstPaint(() => host).then(() => (done = true));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(done).toBe(false);
+    const fresh = document.createElement('div');
+    fresh.className = 'card';
+    host.appendChild(fresh);
+    await p;
+    expect(done).toBe(true);
+  });
+
   it('gives up at the cap rather than leaving a turn silent', async () => {
     const host = document.createElement('div'); // a card that never arrives
     const started = Date.now();

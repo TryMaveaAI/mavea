@@ -201,7 +201,9 @@ describe('StudyStage', () => {
     // (assumption · pattern · evidence · pressure-test), so the chips are a row you learn.
     expect(container.querySelector('.study-note-footer')?.textContent).toContain('01 / 04');
     expect(container.querySelectorAll('.study-note-nav button')).toHaveLength(4);
-    fireEvent.click(screen.getByRole('button', { name: 'Pressure-test' }));
+    // Each chip names its kind AND its place: the evidence check turns into a second 'caution'
+    // when it is flagged, and two identically-named buttons side by side name neither.
+    fireEvent.click(screen.getByRole('button', { name: 'Pressure-test, note 4 of 4' }));
     expect(screen.getByText('Pressure-test')).toBeTruthy();
     expect(container.querySelector('.study-note-nav .is-now')?.textContent).toBe('?');
     expect(container.querySelector('.study-card.is-front')?.textContent).toContain('Revenue');
@@ -732,6 +734,51 @@ describe('the desk resets per ANSWER, not per spec id', () => {
     );
   }
 
+  it('keeps a guided walk on when a follow-up moves the spot', () => {
+    // Guide me is a mode the reader chose. A follow-up's own walk moves the desk; that must not
+    // switch the guide off, or the reader presses it again every turn.
+    const blocks = [
+      block('live-1', 'A lead'),
+      block('live-2', 'A detail'),
+      block('live-3', 'More'),
+    ];
+    const at = (spot: string) => (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot={spot}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+    const { container, rerender } = render(at('live-1'));
+    const guide = () => container.querySelector('.study-guide');
+    fireEvent.click(guide() as Element);
+    expect(guide()?.getAttribute('aria-pressed')).toBe('true');
+    rerender(at('live-3'));
+    expect(guide()?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('offers a mute on the beat bar that reflects and flips the voice', () => {
+    const blocks = [block('live-1', 'A lead'), block('live-2', 'A detail')];
+    const onToggleMute = vi.fn();
+    const at = (muted: boolean) => (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot="live-1"
+        muted={muted}
+        onToggleMute={onToggleMute}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+    const { rerender } = render(at(false));
+    const mute = screen.getByRole('button', { name: "Mute Mavéa's voice" });
+    fireEvent.click(mute);
+    expect(onToggleMute).toHaveBeenCalledTimes(1);
+    rerender(at(true));
+    expect(screen.getByRole('button', { name: "Unmute Mavéa's voice" })).toBeInTheDocument();
+  });
+
   it('drops a guided walk when the next live answer arrives', () => {
     const first = [block('live-1', 'A lead'), block('live-2', 'A detail')];
     const second = [block('live-1', 'B lead'), block('live-2', 'B detail')];
@@ -750,6 +797,77 @@ describe('the desk resets per ANSWER, not per spec id', () => {
     fireEvent.click(container.querySelector('.study-guide') as Element);
     rerender(desk([...same]));
     expect(container.querySelector('.study-guide')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the session notes the walk already wrote when the desk remounts', () => {
+    // Flipping Study → Everything → Study unmounts the desk. The visited spine is seeded from the
+    // walk's own notes for exactly that case, and the per-answer reset — which also ran on mount —
+    // threw the seed away, so the pad came back empty in the middle of the same answer.
+    const bs = [block('live-1', 'A lead'), block('live-2', 'A detail')];
+    const walkNotes = [
+      { spot: 'live-1', text: 'ARR lands at sixteen point one million.' },
+      { spot: 'live-2', text: 'The slope softens in Q3.' },
+    ];
+    const { container } = render(
+      <StudyStage
+        data={spec(bs, 'live')}
+        blocks={bs}
+        spot="live-2"
+        walkNotes={walkNotes}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />,
+    );
+    const toggle = container.querySelector('.study-crib-toggle');
+    expect(toggle?.textContent).toContain('Notes (2)');
+    fireEvent.click(toggle as Element);
+    expect(container.querySelectorAll('.study-crib-line')).toHaveLength(2);
+  });
+});
+
+describe('"Guide me" is paced, not clocked — and never stalls', () => {
+  // The pacer waits for the voice, so it re-arms on `speaking` and on the desk moving. Neither
+  // changes on the FIRST step (which narrates the object already on the desk, on purpose) and
+  // neither ever changes while Mavéa is muted — so the one timer it had scheduled was the only
+  // one it would ever schedule, and the button sat lit with a desk that never moved.
+  function desk(blocks: Block[], onNarrate: (block: Block) => void, muted = true) {
+    return (
+      <StudyStage
+        data={spec(blocks, 'live')}
+        blocks={blocks}
+        spot={blocks[0]?.id ?? null}
+        muted={muted}
+        onNarrate={onNarrate}
+        renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+      />
+    );
+  }
+
+  it('walks the whole cast with no voice to pace it, then stops itself', () => {
+    vi.useFakeTimers();
+    try {
+      const bs = [block('live-1', 'A'), block('live-2', 'B'), block('live-3', 'C')];
+      const narrated: string[] = [];
+      const { container } = render(
+        desk(bs, (b) => {
+          if (b.id) narrated.push(b.id);
+        }),
+      );
+      const stage = () => container.querySelector('.study-stage');
+      fireEvent.click(container.querySelector('.study-guide') as Element);
+      // The first step lands at once and narrates where the reader already is.
+      act(() => void vi.advanceTimersByTime(50));
+      expect(stage()?.getAttribute('data-study-active')).toBe('live-1');
+      act(() => void vi.advanceTimersByTime(3000));
+      expect(stage()?.getAttribute('data-study-active')).toBe('live-2');
+      act(() => void vi.advanceTimersByTime(3000));
+      expect(stage()?.getAttribute('data-study-active')).toBe('live-3');
+      expect(narrated).toEqual(['live-1', 'live-2', 'live-3']);
+      // Nothing left to walk to: the guide ends rather than looping or hanging lit.
+      act(() => void vi.advanceTimersByTime(3000));
+      expect(container.querySelector('.study-guide')?.getAttribute('aria-pressed')).toBe('false');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
