@@ -1392,6 +1392,20 @@ describe('a block draws its own gestures, held to the tour-mark gate', () => {
     expect(marked([{ kind: 'circle', at: '$15.1M' }])).toEqual([{ kind: 'circle', at: '$15.1M' }]);
   });
 
+  it('bounds a long anchor at a word, so the pen does not stop mid-word', () => {
+    // The anchor is matched against the card by substring, so a shortened one still finds its
+    // target and the pen draws to wherever the cut landed. Cut mid-word and the stroke ends inside
+    // a word, which reads as a misplaced mark rather than a bounded one.
+    const long =
+      'Store client secrets securely in environment variables, never in client-side code at all';
+    const at = marked([{ kind: 'underline', at: long }], { summary: long })[0]?.at ?? '';
+    expect(at.length).toBeLessThanOrEqual(80);
+    expect(long.startsWith(at)).toBe(true);
+    expect(at.endsWith(' ')).toBe(false);
+    // The character after the cut is a space, so the anchor ended on a whole word.
+    expect(long[at.length]).toBe(' ');
+  });
+
   it('drops an unknown kind, a target-less mark, and a duplicate', () => {
     expect(marked([{ kind: 'sparkle', at: '$15.1M' }])).toHaveLength(0);
     expect(marked([{ kind: 'circle' }])).toHaveLength(0);

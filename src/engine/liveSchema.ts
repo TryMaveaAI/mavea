@@ -637,6 +637,19 @@ function capTweet(s: string, max = 140): string {
   const sp = cut.lastIndexOf(' ');
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + '…';
 }
+/** Bound a gesture's anchor text without cutting a word in half.
+ *
+ *  The anchor is matched against the rendered card by SUBSTRING, so a shortened one still finds its
+ *  target — it just stops wherever the cut landed, and the pen draws to there. Cut mid-word and the
+ *  underline ends inside a word, which reads as a misplaced mark rather than a bounded one. Falls
+ *  back to the hard cut only when the first word alone is longer than the bound. */
+function capAnchor(s: string, max = 80): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > 0 ? cut.slice(0, sp) : cut).trimEnd();
+}
+
 /** Snap any color-ish value to the nearest allowed token; default --presence. */
 function coerceColor(v: Json): AccentVar {
   const s = asStr(v, '').trim();
@@ -2635,7 +2648,7 @@ function coerceMark(raw: Json, blocks: Block[], stopIndex: number): TourMark | u
   // "note" is nothing without its words; drop a label-less one rather than draw a bare tick.
   const label = forDisplay(optStr(mo.label) ?? '').slice(0, 28);
   if (kind === 'note' && !label) return undefined;
-  const toRaw = forDisplay(optStr(mo.to) ?? '').slice(0, 80);
+  const toRaw = capAnchor(forDisplay(optStr(mo.to) ?? ''));
   // "question" may only doubt what the answer itself declared uncertain: the ? rides a block
   // whose own conf is an estimate. On a confident block it's hedging theater — the cheapest
   // possible hedge a model could sprinkle — so the gate is enforced here, not just taught.
@@ -2668,7 +2681,7 @@ function coerceMark(raw: Json, blocks: Block[], stopIndex: number): TourMark | u
   const span = kind === 'rising' || kind === 'falling' || kind === 'bracket' || kind === 'brace';
   return {
     kind,
-    at: forDisplay(at).slice(0, 80),
+    at: capAnchor(forDisplay(at)),
     ...((span || kind === 'connect') && toRaw ? { to: toRaw } : {}),
     ...((kind === 'note' || kind === 'bracket' || kind === 'brace') && label ? { label } : {}),
     ...(color ? { color } : {}),
