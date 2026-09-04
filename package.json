@@ -1,8 +1,8 @@
 {
   "name": "@mavea/mavea",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "type": "module",
-  "description": "Mav\u00e9a \u2014 an AI Presence interface. Talk to AI. See what it means.",
+  "description": "Mavéa — an AI Presence interface. Talk to AI. See what it means.",
   "keywords": [
     "ai",
     "assistant",

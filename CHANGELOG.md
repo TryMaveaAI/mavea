@@ -6,6 +6,46 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-09-04
+
+### Fixed
+
+- **Mavéa is fast and quiet on a small machine.** A 4-thread / 8 GB machine auto-tiers as lite, all
+  animation freezes on a hidden page, and neither the background perf probe nor the dashboard
+  preload runs on a low tier. Lite voice stays audible without the 60 fps analyser loop.
+- **The marketing landing sits behind its own lazy boundary**, so the product routes never parse it
+  — 19.4 kB gzip off the eager first paint, and a Live cold load of 5.4 s → 1.6 s on the machine
+  this was measured on. Heaps hold at 3–9 MB with no DOM or listener growth across four full route
+  cycles.
+- **Kokoro starts speaking in seconds, not half a minute.** It is fed short natural breaths (an
+  opening breath of 40 characters or less), taking first audio on a two-core Mac from 30 s+ to
+  ~2.5–4 s. A WAV is never retried after a PCM stream was accepted — that doubled the hottest work
+  and OOM-killed a small Docker VM.
+- **A busy voice is no longer read as a dead one.** This Kokoro build blocks `/health` while it
+  renders, which turned a working voice into captions-only for 20 s at a time; the health gate now
+  trusts in-band evidence and treats a probe timeout as busy.
+- **SVG figures stay inside their cards.** The legibility guard measures layout pixels and no longer
+  inflates an SVG under a CSS-scaled or rotated ancestor (the Study desk), and the 8.9 px tolerance
+  that quietly waived the 9 px floor is gone.
+- The Study keeps its authored desk in normal windows unless the container is genuinely narrow; the
+  replay's inactive composer leaves the layout; and the spoken bubble is fitted against its real
+  width, correct in full screen, and stands down where there is no room beside the front card.
+- The mobile shell carries a session row and a single-row demo transport, with no stacked chrome.
+- The README's Study screenshot scrolls the stage itself into frame, so the tile shows the desk from
+  its corner control to its beat bar instead of a top edge cut off at one window size.
+
+### Changed
+
+- The gallery gate audits real renderers rather than skeletons, one family at a time: 625/625 clean
+  at 390, 768 and 1280 px.
+- Audits and probes launch the system Chromium where Playwright's own build cannot run (macOS 13),
+  and the browser voice smoke is production-faithful.
+- The cached course lesson's route budget rises to 142 kB gzip. A route's incremental cost counts
+  only what is not already eager, so the shared modules the landing used to hold resident are now
+  priced into each route — the other side of taking 19.4 kB off every first visit.
+- The advisory dependency floors moved to the workspace manifest, where pnpm 11 actually reads them,
+  and the third-party notices were regenerated from the installed graph.
+
 ## [2.3.0] - 2026-09-03
 
 ### Added
