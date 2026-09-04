@@ -38,6 +38,8 @@ interface BaseShot {
    *  means "leave it where the replay put it" — the answer scrolls itself as it narrates, and
    *  yanking it back to the top would frame the wrong card. */
   scrollTop?: number;
+  /** Or: an element to bring whole into frame, its top just under the bar. Wins over scrollTop. */
+  scrollTo?: string;
 }
 
 /** Which key-free surface the shot comes from, and what it needs to get there. */
@@ -64,8 +66,9 @@ const SHOTS: Shot[] = [
     // Hold the replay before switching: its own choreography moves the view mode, so a click that
     // is not the last thing to happen lands on whatever beat runs next.
     then: ['Pause autoplay', 'Study'],
-    // Past the narration header, so the frame is the desk rather than the paragraph above it.
-    scrollTop: 430,
+    // Frame the desk itself, whole: a fixed offset cut its top edge off at one window size and
+    // left the paragraph above it in at another. The stage is scrolled to sit just under the bar.
+    scrollTo: '.study-stage',
   },
   // The settled thought map, from the dev-only harness (#/mindlab) rather than a live session:
   // its threads and themes come from a model, so a key-free tour chapter can only ever show the
@@ -317,7 +320,16 @@ async function main(): Promise<void> {
       );
       await openSurface(page, baseUrl, shot);
       await page.addStyleTag({ content: HIDE_HARNESS });
-      if (shot.scrollTop !== undefined) {
+      if (shot.scrollTo) {
+        await page.evaluate((sel) => {
+          const scroller = document.querySelector('.canvas-scroll');
+          const el = document.querySelector(sel);
+          if (!scroller || !el) return;
+          const top = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+          scroller.scrollTo({ top: scroller.scrollTop + top - 8 });
+          window.scrollTo({ top: 0 });
+        }, shot.scrollTo);
+      } else if (shot.scrollTop !== undefined) {
         await page.evaluate((top) => {
           document.querySelector('.canvas-scroll')?.scrollTo({ top });
           window.scrollTo({ top: 0 });
