@@ -241,7 +241,13 @@ const ROUTE_BUDGETS = [
   {
     label: 'Cached course lesson',
     roots: ['src/live/course/CourseLessonReader.tsx', 'src/canvas/TopicCanvas.tsx'],
-    gzip: 140,
+    // 142 (was 140): the marketing landing now sits behind its own lazy boundary, which took
+    // 19.4 kB gzip off the eager first paint (106.9 → 87.5). A route's incremental cost counts only
+    // what is NOT already eager, so the shared modules the landing used to hold resident are now
+    // priced into each route instead — Live +3.3, Gallery +1.1, Prism +1.1, and this one +3.4 kB.
+    // Spending ~1-3 kB per route once, to spare every first visitor 19.4 kB before they see
+    // anything, is the trade. Deliberate — revisit by changing the feature, not the number.
+    gzip: 142,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },

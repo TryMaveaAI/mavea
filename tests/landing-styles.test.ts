@@ -6,8 +6,15 @@
 // Explore dropdown borrowed Live's .tpl-menu, so on a first visit it had no `position` at all and
 // laid out inside the topbar's flex row with three of its rows above the top of the window.
 //
-// So: walk the eager module graph from the entry, collect the CSS it actually pulls in, and assert
-// the landing's own chrome is fully described by it.
+// The landing now renders behind its own lazy boundary, so its chunk's stylesheets arrive with it
+// and describing its chrome there is fine. What is still fatal is borrowing from a sheet only
+// ANOTHER route imports: that sheet is absent on a first visit and present once you have been to
+// Live. So the landing is judged against the eager sheets PLUS its own chunk's, while the document
+// reset is judged against the eager sheets alone — the first paint is the Suspense fallback, which
+// lands before the landing chunk does.
+//
+// So: walk the static module graph from each entry, collect the CSS it actually pulls in, and
+// assert the landing's own chrome is fully described by what the landing actually downloads.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
@@ -44,10 +51,10 @@ function staticSpecifiers(file: string): string[] {
   return specs;
 }
 
-/** Every stylesheet the first paint downloads, in no particular order. */
-function eagerStylesheets(): string[] {
-  const seen = new Set<string>([ENTRY]);
-  const queue = [ENTRY];
+/** Every stylesheet an entry's static graph downloads, in no particular order. */
+function stylesheetsFrom(entry: string): string[] {
+  const seen = new Set<string>([entry]);
+  const queue = [entry];
   const css: string[] = [];
   while (queue.length) {
     const file = queue.shift()!;
@@ -75,12 +82,18 @@ function rules(files: string[]): Array<{ selector: string; body: string }> {
   return out;
 }
 
-const SHEETS = eagerStylesheets();
-const RULES = rules(SHEETS);
+/** What the first paint downloads, before any route chunk resolves. */
+const SHEETS = stylesheetsFrom(ENTRY);
+/** What the landing itself has to work with: the eager sheets plus its own lazy chunk's. */
+const LANDING_SHEETS = [
+  ...new Set([...SHEETS, ...stylesheetsFrom(resolve(SRC, 'flagship/FlagshipHost.tsx'))]),
+];
+const EAGER_RULES = rules(SHEETS);
+const LANDING_RULES = rules(LANDING_SHEETS);
 
 /** Rules whose selector list names `selector` exactly (as one of its comma-separated parts). */
-function rulesFor(selector: string) {
-  return RULES.filter((r) =>
+function rulesFor(from: Array<{ selector: string; body: string }>, selector: string) {
+  return from.filter((r) =>
     r.selector.split(',').some((part) => part.trim().replace(/\s+/g, ' ') === selector),
   );
 }
@@ -91,13 +104,13 @@ describe('the landing paints from the eager stylesheets alone', () => {
   });
 
   it('carries the document reset — a first visit must not open in the browser default serif', () => {
-    const body = rulesFor('body');
+    const body = rulesFor(EAGER_RULES, 'body');
     expect(body.some((r) => /font-family\s*:/.test(r.body))).toBe(true);
     expect(body.some((r) => /margin\s*:\s*0/.test(r.body))).toBe(true);
   });
 
   it('describes the Explore dropdown\u2019s own popover, not Live\u2019s', () => {
-    const menu = rulesFor('.fl-explore-menu');
+    const menu = rulesFor(LANDING_RULES, '.fl-explore-menu');
     expect(menu.length).toBeGreaterThan(0);
     const declarations = menu.map((r) => r.body).join('\n');
     // Without these it lays out in the topbar's flex row instead of hanging under the trigger.
@@ -110,5 +123,8 @@ describe('the landing paints from the eager stylesheets alone', () => {
     // .tpl-menu is defined only in templates.css, which only Live and its sibling surfaces import.
     const nav = readFileSync(join(SRC, 'flagship/ExploreNav.tsx'), 'utf8');
     expect(nav).not.toContain('tpl-menu');
+    // And the landing's chunk must not drag a route-scoped sheet in to satisfy the check above —
+    // that would widen LANDING_SHEETS until borrowing from Live passed again.
+    expect(LANDING_SHEETS.some((f) => f.endsWith('templates.css'))).toBe(false);
   });
 });
