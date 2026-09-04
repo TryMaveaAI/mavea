@@ -44,6 +44,8 @@ const realIO = globalThis.IntersectionObserver;
 afterEach(() => {
   globalThis.IntersectionObserver = realIO;
   document.documentElement.style.removeProperty('--ambient-play');
+  document.documentElement.style.removeProperty('--reactive-play');
+  delete document.documentElement.dataset.pageHidden;
   cleanup();
   vi.restoreAllMocks();
 });
@@ -61,11 +63,15 @@ describe('hidden-tab driver', () => {
 
     setVisibility('hidden');
     expect(root.style.getPropertyValue('--ambient-play')).toBe('paused');
+    expect(root.style.getPropertyValue('--reactive-play')).toBe('paused');
+    expect(root.dataset.pageHidden).toBe('true');
 
     // Removed, not set to `running` — a lite tier's permanent pause must survive the tab coming
     // back, and it lives in the stylesheet, which an inline `running` would outrank.
     setVisibility('visible');
     expect(root.style.getPropertyValue('--ambient-play')).toBe('');
+    expect(root.style.getPropertyValue('--reactive-play')).toBe('');
+    expect(root.dataset.pageHidden).toBeUndefined();
     stop();
   });
 
@@ -73,8 +79,12 @@ describe('hidden-tab driver', () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     const stop = installAmbientPlayDriver();
     expect(document.documentElement.style.getPropertyValue('--ambient-play')).toBe('paused');
+    expect(document.documentElement.style.getPropertyValue('--reactive-play')).toBe('paused');
+    expect(document.documentElement.dataset.pageHidden).toBe('true');
     stop();
     expect(document.documentElement.style.getPropertyValue('--ambient-play')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--reactive-play')).toBe('');
+    expect(document.documentElement.dataset.pageHidden).toBeUndefined();
   });
 });
 

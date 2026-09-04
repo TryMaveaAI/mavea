@@ -17,6 +17,7 @@
 //     fixed-tempo fallback.
 
 import { useCallback, type RefCallback } from 'react';
+import { currentAppliedTier, type PerfTier } from '../lib/perfTier';
 
 /** Loudness (0..1) from a byte time-domain buffer (128 = silence), gained for a lively mouth. */
 export function rmsEnergy(samples: Uint8Array): number {
@@ -118,6 +119,16 @@ function reducedMotion(): boolean {
   }
 }
 
+/** Lip-sync is decorative. On the lite tier speech remains fully audible, but avoids the analyser,
+ *  60fps sampling loop, and per-frame style invalidation that make long answers expensive. */
+export function shouldSyncVoiceEnergy(tier: PerfTier, prefersReducedMotion: boolean): boolean {
+  return tier === 'full' && !prefersReducedMotion;
+}
+
+function energySyncEnabled(): boolean {
+  return shouldSyncVoiceEnergy(currentAppliedTier(), reducedMotion());
+}
+
 // Every CSS consumer of --voice-energy lives under a `.presence` subtree, so the per-frame
 // write only needs to reach the elements that WRAP a mounted face — writing it on :root
 // invalidates computed style for the whole document ~60×/s while a full canvas of blocks is
@@ -182,12 +193,24 @@ let ctx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let buf: Uint8Array<ArrayBuffer> | null = null;
 
-function ensureGraph(): boolean {
-  if (analyser) return true;
+/** Create only the audio context. Playback needs this; decorative waveform analysis does not. */
+function ensureContext(): boolean {
+  if (ctx) return true;
   const Ctor = audioCtor();
   if (!Ctor) return false;
   try {
     ctx = new Ctor();
+    return true;
+  } catch {
+    ctx = null;
+    return false;
+  }
+}
+
+function ensureGraph(): boolean {
+  if (analyser) return true;
+  if (!ensureContext() || !ctx) return false;
+  try {
     analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
     analyser.smoothingTimeConstant = 0.6;
@@ -280,7 +303,7 @@ function retainAudio(): () => void {
  */
 export function voiceEnergyTap(audio: HTMLAudioElement): () => void {
   const noop = (): void => {};
-  if (reducedMotion() || !ensureGraph() || !ctx || !analyser || !buf) return noop;
+  if (!energySyncEnabled() || !ensureGraph() || !ctx || !analyser || !buf) return noop;
   const releaseHold = retainAudio(); // wakes a context the idle timer suspended
   if (ctx.state !== 'running') {
     // Routing an element through a context that is not running SILENCES it, and resume() is async
@@ -324,7 +347,7 @@ export function voiceEnergyTap(audio: HTMLAudioElement): () => void {
  * reads — one context for the whole app, no duplicate graphs.
  */
 export function sharedAudioContext(): AudioContext | null {
-  if (!ensureGraph()) return null;
+  if (!ensureContext()) return null;
   // Handed out raw: whatever this consumer schedules, it schedules unobserved. Wake the context
   // and stand the idle timer down — see the idle-suspension notes above.
   handedOutRaw = true;
@@ -341,7 +364,7 @@ export function sharedAudioContext(): AudioContext | null {
  * audio thread alive until the tab closed. Same graph semantics, no side effect on the timer.
  */
 export function audioAvailable(): boolean {
-  return ensureGraph();
+  return ensureContext();
 }
 
 /**
@@ -351,7 +374,7 @@ export function audioAvailable(): boolean {
  * OfflineAudioContext must not be the reason the shared one can never park.
  */
 export function sharedSampleRate(): number | null {
-  return ensureGraph() && ctx ? ctx.sampleRate : null;
+  return ensureContext() && ctx ? ctx.sampleRate : null;
 }
 
 /**
@@ -362,7 +385,7 @@ export function sharedSampleRate(): number | null {
  * playing source and cut the tail off a spoken line.
  */
 export function leaseAudioContext(): { ctx: AudioContext; release: () => void } | null {
-  if (!ensureGraph() || !ctx) return null;
+  if (!ensureContext() || !ctx) return null;
   return { ctx, release: retainAudio() };
 }
 
@@ -378,7 +401,7 @@ export function leaseAudioContext(): { ctx: AudioContext; release: () => void } 
  * gesture confirms it — cheap to retry.
  */
 export function unlockAudio(): boolean {
-  if (!ensureGraph() || !ctx) return false;
+  if (!ensureContext() || !ctx) return false;
   // Unlocking is not using: wake it, then start the idle window, so a session that clicks once and
   // never speaks does not keep an audio thread alive for the rest of its life.
   resumeShared();
@@ -396,10 +419,26 @@ export function unlockAudio(): boolean {
  */
 export function tapPlaybackNode(node: AudioNode): () => void {
   const noop = (): void => {};
-  if (!ensureGraph() || !ctx || !analyser || !buf) return noop;
+  if (!ensureContext() || !ctx) return noop;
   const releaseHold = retainAudio(); // this clip is playing on the context — keep it awake
-  if (reducedMotion()) {
+  if (!energySyncEnabled()) {
     node.connect(ctx.destination); // heard, but not synced
+    const dest = ctx.destination;
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      releaseHold();
+      try {
+        node.disconnect(dest);
+      } catch {
+        /* no-op */
+      }
+    };
+  }
+  if (!ensureGraph() || !analyser || !buf) {
+    // Graph creation is optional decoration. If it fails, preserve audible playback directly.
+    node.connect(ctx.destination);
     const dest = ctx.destination;
     let done = false;
     return () => {

@@ -119,7 +119,10 @@ async function tryKokoroBlob(
 }
 
 async function playPreview(preset: VoicePreset, myGen: number): Promise<void> {
-  const streamed = await streamSpeak(SAMPLE, preset.kokoro);
+  let streamAccepted = false;
+  const streamed = await streamSpeak(SAMPLE, preset.kokoro, undefined, undefined, undefined, () => {
+    streamAccepted = true;
+  });
   if (!isCurrent(myGen)) {
     // A newer preview started while this one was streaming — stop whatever it produced instead
     // of letting it keep sounding alongside the newer clip.
@@ -127,6 +130,7 @@ async function playPreview(preset: VoicePreset, myGen: number): Promise<void> {
     return;
   }
   if (streamed) return; // played (or was cleanly cancelled) via the fast path
+  if (streamAccepted) return; // dropped after acceptance: never double-synthesize the audition
   // Streaming genuinely couldn't run — fall back to the whole-clip blob path.
   const ctrl = new AbortController();
   previewAbort = ctrl;

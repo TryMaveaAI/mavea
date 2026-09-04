@@ -18,20 +18,24 @@ export function onVisibility(cb: (hidden: boolean) => void): () => void {
 }
 
 /**
- * Freeze the app's ambient CSS loops while the tab is hidden. Every non-face infinite animation
- * declares `animation-play-state: var(--ambient-play, running)` (the same hook perf-lite.css
- * pauses through), so one inline `--ambient-play: paused` on the root stops all of them at once —
- * work no one can see, on a battery someone is paying for. The property is REMOVED (not set to
- * `running`) when the tab returns, so the stylesheet cascade — including a lite tier's permanent
- * pause — stays in charge whenever the driver has nothing to say. Install once at boot; the
- * returned disposer removes both the listener and the inline pause.
+ * Freeze CSS motion while the tab is hidden. The two variables cover animations that participate
+ * in the ambient/reactive contract; `data-page-hidden` is the safety net for gallery blocks and
+ * third-party surfaces that have not adopted those variables yet. Properties are REMOVED on return
+ * so the stylesheet cascade — including a lite tier's permanent pause — stays authoritative.
  */
 export function installAmbientPlayDriver(doc: Document = document): () => void {
   if (typeof doc === 'undefined') return () => {};
   const root = doc.documentElement;
   const sync = (hidden: boolean): void => {
-    if (hidden) root.style.setProperty('--ambient-play', 'paused');
-    else root.style.removeProperty('--ambient-play');
+    if (hidden) {
+      root.style.setProperty('--ambient-play', 'paused');
+      root.style.setProperty('--reactive-play', 'paused');
+      root.dataset.pageHidden = 'true';
+    } else {
+      root.style.removeProperty('--ambient-play');
+      root.style.removeProperty('--reactive-play');
+      delete root.dataset.pageHidden;
+    }
   };
   sync(doc.visibilityState === 'hidden');
   const handler = (): void => sync(doc.visibilityState === 'hidden');
@@ -39,6 +43,8 @@ export function installAmbientPlayDriver(doc: Document = document): () => void {
   return () => {
     doc.removeEventListener('visibilitychange', handler);
     root.style.removeProperty('--ambient-play');
+    root.style.removeProperty('--reactive-play');
+    delete root.dataset.pageHidden;
   };
 }
 

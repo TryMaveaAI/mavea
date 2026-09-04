@@ -5,9 +5,9 @@
 // apart at an unanticipated stage size — it only gets bigger or smaller. The numbers are the
 // design's own (measured off the approved mockup), not derived; change them only against it.
 //
-// Scale, not reflow, is the responsive story down to STUDY_FIT_FLOOR; below the floor the stage
-// crops rather than shrinking type past legibility, and a genuinely small container drops the
-// desk entirely for the flat column (study.css's compact block). The floor is DERIVED the way
+// Scale, not reflow, is the responsive story down to STUDY_FIT_FLOOR; a short stage crops only its
+// decorative floor rather than silently changing the whole experience, and a genuinely NARROW
+// container drops the desk for the flat column (study.css's compact block). The floor is DERIVED the way
 // the world's camera floor is: the smallest persistent type on a reading surface here is authored
 // at 11px (kickers, the note pager), and 9px is the app-wide rendered floor, so the desk may
 // shrink to 9/11 of its authored size and no further.
@@ -52,6 +52,11 @@ export const TAKEAWAY_BOTTOM = 74;
 /** Vertical crop (in design px) the stage will absorb before it declares itself shallow and
  *  study.css collapses the floor-grid band instead of cropping into the cards. */
 export const SHALLOW_CROP = 90;
+
+/** Short windows scroll the authored desk instead of crushing it below the point where the card
+ * arc survives. Derived from the same legibility floor and decorative crop allowance as the fit:
+ * (DESK_H - SHALLOW_CROP) * STUDY_FIT_FLOOR + the 2px frame. */
+export const STAGE_H_MIN = Math.ceil((DESK_H - SHALLOW_CROP) * STUDY_FIT_FLOOR) + 2;
 
 export interface DeskSlot {
   x: number;

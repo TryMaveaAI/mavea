@@ -163,6 +163,15 @@ function readMountAll(): boolean {
   return new URLSearchParams(q).get('mountall') === '1';
 }
 
+/** A family in the hash keeps the gallery/audit DOM bounded without inventing a second render
+ * path. Invalid or stale values fail open to the whole library. */
+function readFamily(): string {
+  if (typeof window === 'undefined') return 'all';
+  const q = window.location.hash.split('?')[1] ?? '';
+  const requested = new URLSearchParams(q).get('family');
+  return requested && ALL_SECTIONS.some((section) => section.id === requested) ? requested : 'all';
+}
+
 function writeHashQuery(updates: Record<string, string | null>): void {
   if (typeof window === 'undefined') return;
   const [route, query = ''] = window.location.hash.split('?');
@@ -319,7 +328,7 @@ export function GalleryApp() {
   // Back goes where you came from — Live if you have a session, the front door otherwise.
   const home = homeTarget();
   const [query, setQuery] = useState('');
-  const [family, setFamily] = useState('all');
+  const [family, setFamily] = useState(readFamily);
   const [theme, setTheme] = useState<Theme>(readTheme);
   // Map of block type → its worst overflow hit, set by the audit button (null = not yet run).
   const [flags, setFlags] = useState<Map<string, OverflowHit> | null>(null);
@@ -347,6 +356,7 @@ export function GalleryApp() {
     const sync = () => {
       setMountAll(readMountAll());
       setVariant(readFixtureVariant());
+      setFamily(readFamily());
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
@@ -564,7 +574,10 @@ export function GalleryApp() {
             role="radio"
             aria-checked={family === 'all'}
             className={`vlib-chip ${family === 'all' ? 'active' : ''}`}
-            onClick={() => setFamily('all')}
+            onClick={() => {
+              setFamily('all');
+              writeHashQuery({ family: null });
+            }}
           >
             All <span className="vlib-chip-n">{TOTAL}</span>
           </button>
@@ -575,7 +588,10 @@ export function GalleryApp() {
               role="radio"
               aria-checked={family === s.id}
               className={`vlib-chip ${family === s.id ? 'active' : ''}`}
-              onClick={() => setFamily(s.id)}
+              onClick={() => {
+                setFamily(s.id);
+                writeHashQuery({ family: s.id });
+              }}
             >
               {s.label} <span className="vlib-chip-n">{s.types.length}</span>
             </button>

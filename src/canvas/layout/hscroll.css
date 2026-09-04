@@ -17,6 +17,20 @@
   outline-offset: -2px;
 }
 
+/* Applied by the shared canvas observer only when an SVG's rendered labels would otherwise cross
+   below 9px. The diagram keeps a legible intrinsic width; this host supplies the explicit pan
+   viewport, which `useAccessibleScrollRegions` then names and makes keyboard/touch reachable. */
+.canvas-svg-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+svg[data-legibility-guard] {
+  max-width: none;
+  flex: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .canvas-hscroll {
     scroll-behavior: smooth;

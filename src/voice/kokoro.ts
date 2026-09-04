@@ -58,6 +58,52 @@ export function kokoroVoice(who: Speaker): string {
 const NORMALIZE_CACHE_MAX = 16;
 const normalizeCache = new Map<string, string>();
 
+// This CPU Kokoro server does not flush useful PCM until it has rendered the submitted text. A
+// paragraph-sized request therefore looks like broken audio on an older machine: the first word
+// can sit behind 30–60 seconds of synthesis. Feed it short natural clauses instead. Requests stay
+// strictly serial (the queue below is unchanged), so this improves time-to-first-audio without
+// increasing peak CPU or memory. 68 characters is roughly one 8–12 word breath.
+const SYNTH_CHUNK_MAX = 68;
+const SYNTH_CHUNK_MIN = 30;
+// The opening breath is the only one the user waits for in silence; every later breath renders
+// while the previous one plays. Measured on a 2-core Intel Mac (CPU Kokoro, 4 threads): a
+// 31-character clause is audible in ~2s, a 68-character one in ~5s and a whole paragraph in 20s+.
+// So the first breath is capped tighter than the rest. A fast machine pays one extra ~50ms request.
+const FIRST_CHUNK_MAX = 40;
+const FIRST_CHUNK_MIN = 18;
+
+export function splitSynthesisChunks(text: string): string[] {
+  const source = text.trim();
+  if (!source) return [];
+  const sentences = source.match(/[^.!?]+(?:[.!?]+["'’”]?|$)/g) ?? [source];
+  const chunks: string[] = [];
+
+  for (const raw of sentences) {
+    let rest = raw.trim();
+    for (;;) {
+      const first = chunks.length === 0;
+      const max = first ? FIRST_CHUNK_MAX : SYNTH_CHUNK_MAX;
+      const min = first ? FIRST_CHUNK_MIN : SYNTH_CHUNK_MIN;
+      if (rest.length <= max) break;
+      const window = rest.slice(0, max + 1);
+      let cut = -1;
+      // Prefer a real spoken pause, but never make a breath so tiny that request overhead
+      // dominates. Include the punctuation in the emitted chunk.
+      for (let index = min; index < window.length; index++) {
+        if (/[,;:—–]/.test(window[index]) && /\s/.test(window[index + 1] ?? '')) cut = index + 1;
+      }
+      if (cut < 0) {
+        const wordBreak = window.lastIndexOf(' ');
+        cut = wordBreak >= min ? wordBreak : max;
+      }
+      chunks.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) chunks.push(rest);
+  }
+  return chunks;
+}
+
 function normalizeForSpeech(text: string): string {
   const hit = normalizeCache.get(text);
   if (hit !== undefined) {
@@ -192,6 +238,7 @@ function prefetchNext(): void {
         signal: ctl.signal,
       });
       if (res.ok) {
+        noteKokoroAccepted();
         const bytes = new Uint8Array(await res.arrayBuffer());
         if (bytes.length) pcmCachePut(key, bytes);
       }
@@ -217,7 +264,9 @@ function prefetchNext(): void {
 export function primeKokoroLine(text: string, who: Speaker): void {
   const clean = normalizeForSpeech(text);
   if (!clean) return;
-  primed = { text: clean, voice: VOICE[who] ?? VOICE.mavea };
+  // Only prime the first breath. Once it starts, playJob sees the remaining real queue and primes
+  // the following breath in the ordinary one-ahead path.
+  primed = { text: splitSynthesisChunks(clean)[0] ?? clean, voice: VOICE[who] ?? VOICE.mavea };
   if (!synthActive) prefetchNext();
 }
 
@@ -255,6 +304,7 @@ async function playJob(job: Job): Promise<boolean> {
     }
     synthActive = true;
     try {
+      let streamAccepted = false;
       const streamed = await streamSpeak(
         job.text,
         job.voice,
@@ -265,8 +315,15 @@ async function playJob(job: Job): Promise<boolean> {
           prefetchNext();
         },
         speed,
+        () => {
+          streamAccepted = true;
+          noteKokoroAccepted();
+        },
       );
       if (streamed) return true;
+      // The server already spent (or is still spending) the synthesis work. A second WAV request
+      // is not a fallback here; it is duplicate CPU and memory pressure after a dropped stream.
+      if (streamAccepted) return false;
     } finally {
       synthActive = false;
     }
@@ -421,6 +478,7 @@ export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
   // out (CUDA → "Cooda"). Only the spoken audio changes — captions still show the real text.
   const clean = normalizeForSpeech(text);
   if (!clean) return { started: Promise.resolve(false), finished: Promise.resolve(false) };
+  const chunks = splitSynthesisChunks(clean);
   let resolveStart!: (heard: boolean) => void;
   const started = new Promise<boolean>((resolve) => {
     resolveStart = resolve;
@@ -434,8 +492,29 @@ export function speakKokoroLine(text: string, who: Speaker): KokoroLine {
     startSettled = true;
     resolveStart(heard);
   };
+  let startsRemaining = chunks.length;
+  let chunksRemaining = chunks.length;
+  let allPlayed = true;
   const finished = new Promise<boolean>((resolve) => {
-    queue.push({ text: clean, voice: VOICE[who] ?? VOICE.mavea, start, done: resolve });
+    for (const chunk of chunks) {
+      queue.push({
+        text: chunk,
+        voice: VOICE[who] ?? VOICE.mavea,
+        start: (heard) => {
+          startsRemaining -= 1;
+          if (heard) start(true);
+          else if (startsRemaining === 0) start(false);
+        },
+        done: (ok) => {
+          allPlayed &&= ok;
+          chunksRemaining -= 1;
+          if (chunksRemaining === 0) {
+            start(allPlayed);
+            resolve(allPlayed);
+          }
+        },
+      });
+    }
     emitSpeakingChange();
     void pump();
   });
@@ -531,6 +610,19 @@ export function subscribeKokoroSpeaking(listener: () => void): () => void {
 
 /** Don't re-check a known-down server more often than this — recovery without request-spam. */
 const PROBE_RETRY_MS = 20_000;
+/** A synthesis request Kokoro accepted this recently is in-band proof that it is up. The CPU
+ *  build renders each breath on its own event-loop thread, so `/health` goes unanswered for the
+ *  length of that breath; a probe issued mid-narration then times out and — without this — marks
+ *  a merely BUSY server down for PROBE_RETRY_MS. On a two-core machine that is the whole
+ *  experience: voice cuts out for twenty seconds at a time while the server is doing its job. */
+const IN_BAND_TRUST_MS = 90_000;
+/** Longer than one breath's render on the slowest supported machine, shorter than a user's patience. */
+const PROBE_TIMEOUT_MS = 8_000;
+let lastAcceptedAt = 0;
+/** Exported for tests only; production callers are the accepted-stream and prefetch paths. */
+export function noteKokoroAccepted(): void {
+  lastAcceptedAt = Date.now();
+}
 
 let probe: Promise<boolean> | null = null;
 let lastKnown: boolean | null = null;
@@ -545,12 +637,26 @@ let announcedDown = false;
  * so a doomed session costs one request per window rather than one per line.
  */
 export function kokoroAvailable(): Promise<boolean> {
+  // Kokoro is rendering for us right now, or did within the trust window: it is up, whatever a
+  // probe queued behind that render would say.
+  if (synthActive || Date.now() - lastAcceptedAt < IN_BAND_TRUST_MS) {
+    lastKnown = true;
+    announcedDown = false;
+    probeStaleAt = 0;
+    return Promise.resolve(true);
+  }
   if (probe && probeStaleAt !== 0 && Date.now() >= probeStaleAt) probe = null;
   if (!probe) {
     probeStaleAt = 0; // in flight — nothing to expire until it settles
     const attempt = (async (): Promise<boolean> => {
       try {
-        const res = await fetch('/tts/health', { method: 'GET' });
+        const res = await fetch('/tts/health', {
+          method: 'GET',
+          signal:
+            typeof AbortSignal.timeout === 'function'
+              ? AbortSignal.timeout(PROBE_TIMEOUT_MS)
+              : undefined,
+        });
         if (!res.ok && !announcedDown) {
           console.debug(
             '[kokoro] TTS health check returned',
@@ -560,6 +666,13 @@ export function kokoroAvailable(): Promise<boolean> {
         }
         return res.ok;
       } catch (err) {
+        // A timeout is a busy single-threaded server far more often than a dead one (this very
+        // session's previous breath, or another tab's). A refused connection is the "down" signal;
+        // a slow answer is not. Answer up and let the speech request itself be the arbiter — a
+        // request queued behind a render plays when it finishes, and one that truly fails marks
+        // the probe stale so the next line re-checks. Silence on a guess was the worse failure.
+        // Duck-typed: a DOMException is an Error in browsers but not in every test realm.
+        if ((err as { name?: unknown } | null)?.name === 'TimeoutError') return true;
         // Kokoro not running (expected in dev without Docker) — voice stays off, captions only.
         if (!announcedDown) {
           console.debug('[kokoro] TTS health check unreachable — voice off, captions only', err);
@@ -594,6 +707,7 @@ export function kokoroKnownAvailable(): boolean | null {
 
 /** Forget the cached probe so the next kokoroAvailable() re-checks (tests / manual re-probe). */
 export function resetKokoroProbe(): void {
+  lastAcceptedAt = 0;
   probe = null;
   lastKnown = null;
   probeStaleAt = 0;

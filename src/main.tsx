@@ -5,7 +5,6 @@ import './styles/styles.css';
 // template palettes remain route-scoped in LiveApp, so the landing does not download unused skins.
 import './styles/type-roles.css';
 import './styles/presence-styles.css';
-import { FlagshipHost } from './flagship/FlagshipHost';
 import { useResizeQuiet } from './lib/resizeQuiet';
 import { applyStartupTemplate } from './live/templates';
 import { readTheme, applyTheme } from './lib/theme';
@@ -28,6 +27,24 @@ const dashboardLoopGate = createPreloadableLazy(() =>
   import('./live/dashboards/DashboardLoopGate').then((m) => ({ default: m.DashboardLoopGate })),
 );
 const DashboardLoopGate = dashboardLoopGate.Component;
+// The marketing landing is sizeable and no product route needs it. Keeping it behind the same
+// route boundary as every other surface stops #/live, Gallery, Prism, etc. paying its parse and
+// download cost. The static #boot remains visible for the one extra module hop on `/`.
+const flagship = createPreloadableLazy(() =>
+  import('./flagship/FlagshipHost').then((m) => ({ default: m.FlagshipHost })),
+);
+const FlagshipHost = flagship.Component;
+const DASHBOARD_STORAGE_KEY = 'mavea-dashboards-v1';
+
+/** Cheap evidence that the dashboard engine may be needed. Avoid importing/decrypting its store
+ *  for the common case: a session that has never created a dashboard. */
+function hasPersistedDashboardData(): boolean {
+  try {
+    return window.localStorage.getItem(DASHBOARD_STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
 
 // No StrictMode: the choreography is timing-sensitive (the reveal walks drive real timers),
 // and development double-invocation would fire those effects twice.
@@ -75,17 +92,32 @@ function Root() {
   useResizeQuiet();
   const hash = useHashRoute();
   const Surface = routeFor(hash);
-  // Arm the refresh loop after first paint, never alongside it — the same delay the dashboards
-  // surface used when it owned the mount.
+  // Arm the refresh loop after first paint only when storage says a dashboard may exist. The
+  // dashboard event catches the first board created in this session, so new users never download
+  // or hydrate this background subsystem merely because Mavéa is open.
   const [startLoop, setStartLoop] = useState(false);
   useEffect(() => {
-    const timer = window.setTimeout(() => setStartLoop(true), 600);
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (startLoop) return;
+    let timer: number | null = null;
+    const arm = (): void => {
+      if (timer !== null) return;
+      timer = window.setTimeout(() => setStartLoop(true), 600);
+    };
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key === DASHBOARD_STORAGE_KEY && event.newValue !== null) arm();
+    };
+    window.addEventListener(DASHBOARD_STORAGE_KEY, arm);
+    window.addEventListener('storage', onStorage);
+    if (hasPersistedDashboardData()) arm();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener(DASHBOARD_STORAGE_KEY, arm);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [startLoop]);
   return (
     <RootBoundary>
-      {/* Suspense covers every lazy surface chunk; FlagshipHost (the landing) renders
-          synchronously and never suspends. */}
+      {/* Suspense covers every route-owned surface, including the landing. */}
       <Suspense fallback={<SurfaceFallback />}>
         <RetireBootSplash />
         {Surface ? (

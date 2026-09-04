@@ -51,6 +51,32 @@ function scrollCard(name: string): { card: HTMLElement; scroller: HTMLElement } 
   return { card, scroller };
 }
 
+function svgWithSmallLabel(
+  scroller: HTMLElement,
+  label: string,
+  nestedSize?: number,
+): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 400 200');
+  svg.getBoundingClientRect = () =>
+    ({ width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 }) as DOMRect;
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.style.fontSize = '10px';
+  text.getScreenCTM = () => ({ a: 0.5, b: 0, c: 0, d: 0.5 }) as unknown as DOMMatrix;
+  if (nestedSize) {
+    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    tspan.textContent = label;
+    tspan.style.fontSize = `${nestedSize}px`;
+    tspan.getScreenCTM = text.getScreenCTM;
+    text.append(tspan);
+  } else {
+    text.textContent = label;
+  }
+  svg.append(text);
+  scroller.append(svg);
+  return svg;
+}
+
 function labelCard(visible: string, full: string): { card: HTMLElement; label: HTMLElement } {
   const card = document.createElement('div');
   card.className = 'card';
@@ -118,6 +144,48 @@ describe('useAccessibleScrollRegions', () => {
     expect(first.scroller.hasAttribute('role')).toBe(false);
     expect(first.scroller.hasAttribute('tabindex')).toBe(false);
     expect(first.scroller.hasAttribute('aria-label')).toBe(false);
+    hook.unmount();
+  });
+
+  it('keeps SVG labels legible through one shared accessible pan region', async () => {
+    const scroller = document.createElement('div');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 200 });
+    Object.defineProperty(scroller, 'scrollWidth', {
+      configurable: true,
+      get: () =>
+        Math.max(
+          200,
+          ...[...scroller.querySelectorAll('svg')].map(
+            (svg) => parseFloat(svg.style.minWidth) || 0,
+          ),
+        ),
+    });
+    const first = svgWithSmallLabel(scroller, 'First axis');
+    const second = svgWithSmallLabel(scroller, 'Second axis', 5);
+    host.append(scroller);
+
+    const hook = renderHook(() => useAccessibleScrollRegions({ current: host }, 'svg'));
+    await flushScan();
+
+    expect(parseFloat(first.style.minWidth)).toBeGreaterThanOrEqual(364);
+    expect(parseFloat(first.style.minHeight)).toBeGreaterThanOrEqual(182);
+    expect(parseFloat(second.style.minWidth)).toBeGreaterThanOrEqual(728);
+    expect(parseFloat(second.style.minHeight)).toBeGreaterThanOrEqual(364);
+    expect(first.hasAttribute('data-legibility-guard')).toBe(true);
+    expect(scroller.classList.contains('canvas-svg-scroll')).toBe(true);
+    expect(scroller.classList.contains('canvas-hscroll')).toBe(true);
+    expect(scroller.getAttribute('role')).toBe('region');
+    expect(scroller.tabIndex).toBe(0);
+
+    first.remove();
+    await flushScan();
+    // Both diagrams share this viewport. Removing one must not tear down the other's guard.
+    expect(scroller.classList.contains('canvas-svg-scroll')).toBe(true);
+    expect(second.hasAttribute('data-legibility-guard')).toBe(true);
+
+    second.remove();
+    await flushScan();
+    expect(scroller.classList.contains('canvas-svg-scroll')).toBe(false);
     hook.unmount();
   });
 });

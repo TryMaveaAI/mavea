@@ -25,21 +25,16 @@ afterEach(() => {
 });
 
 describe('heuristicTier — the first-load guess', () => {
-  it('demotes only an unmistakable potato on core count (≤2 threads)', () => {
+  it('demotes low-end Intel-class hardware on core count (≤4 threads)', () => {
     expect(heuristicTier(2, undefined)).toBe('lite');
     expect(heuristicTier(1, 8)).toBe('lite');
+    expect(heuristicTier(4, 8)).toBe('lite');
+    expect(heuristicTier(4, undefined)).toBe('lite');
   });
 
   it('demotes on low reported memory', () => {
     expect(heuristicTier(8, 4)).toBe('lite');
     expect(heuristicTier(8, 2)).toBe('lite');
-  });
-
-  it('opens full on a dual-core 2018–2020 MacBook Air (4 threads, 8GB)', () => {
-    // hardwareConcurrency counts threads: these Airs report 4 and handle the full experience.
-    // Anything that merely LOOKS mid-range opens full; only measured jank may demote it.
-    expect(heuristicTier(4, 8)).toBe('full');
-    expect(heuristicTier(4, undefined)).toBe('full');
   });
 
   it('keeps a capable machine full (M1 reports 8 cores)', () => {
@@ -56,8 +51,8 @@ describe('heuristicTier — the first-load guess', () => {
 
 describe('resolveTier — precedence', () => {
   const sig = '8x8x2';
-  const verdictLite: PerfVerdict = { v: 2, tier: 'lite', sig };
-  const verdictFull: PerfVerdict = { v: 2, tier: 'full', sig };
+  const verdictLite: PerfVerdict = { v: 3, tier: 'lite', sig };
+  const verdictFull: PerfVerdict = { v: 3, tier: 'full', sig };
 
   it('honors an explicit full/lite override regardless of verdict or heuristic', () => {
     expect(resolveTier('full', verdictLite, sig, 'lite')).toBe('full');
@@ -71,7 +66,7 @@ describe('resolveTier — precedence', () => {
 
   it('under auto, a stale-signature verdict is ignored and the heuristic decides', () => {
     expect(resolveTier('auto', verdictLite, 'DIFFERENT-sig', 'full')).toBe('full');
-    expect(resolveTier('auto', { v: 2, tier: 'lite', sig: '4x4x1' }, sig, 'full')).toBe('full');
+    expect(resolveTier('auto', { v: 3, tier: 'lite', sig: '4x4x1' }, sig, 'full')).toBe('full');
   });
 
   it('under auto with no verdict, the heuristic decides', () => {
@@ -112,7 +107,7 @@ describe('readVerdict / writeVerdict', () => {
     expect(v).not.toBeNull();
     expect(v!.tier).toBe('lite');
     expect(v!.sig).toBe(hardwareSignature());
-    expect(v!.v).toBe(2);
+    expect(v!.v).toBe(3);
   });
 
   it('returns null for absent, malformed, or wrong-schema stored verdicts', () => {
@@ -121,7 +116,7 @@ describe('readVerdict / writeVerdict', () => {
     expect(readVerdict()).toBeNull();
     localStorage.setItem(PERF_VERDICT_KEY, JSON.stringify({ v: 99, tier: 'lite', sig: 'x' }));
     expect(readVerdict()).toBeNull();
-    localStorage.setItem(PERF_VERDICT_KEY, JSON.stringify({ v: 2, tier: 'zoom', sig: 'x' }));
+    localStorage.setItem(PERF_VERDICT_KEY, JSON.stringify({ v: 3, tier: 'zoom', sig: 'x' }));
     expect(readVerdict()).toBeNull();
   });
 
@@ -131,6 +126,14 @@ describe('readVerdict / writeVerdict', () => {
     localStorage.setItem(
       PERF_VERDICT_KEY,
       JSON.stringify({ v: 1, tier: 'lite', sig: hardwareSignature() }),
+    );
+    expect(readVerdict()).toBeNull();
+  });
+
+  it('discards v2 verdicts so four-thread machines receive the new policy', () => {
+    localStorage.setItem(
+      PERF_VERDICT_KEY,
+      JSON.stringify({ v: 2, tier: 'full', sig: hardwareSignature() }),
     );
     expect(readVerdict()).toBeNull();
   });

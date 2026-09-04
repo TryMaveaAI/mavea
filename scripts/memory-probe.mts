@@ -4,8 +4,9 @@
 // mounting and unmounting every public surface repeatedly in one real Chromium process, forcing
 // GC, and comparing the browser's own heap/DOM/listener counters after the lazy chunks and module
 // caches have already been warmed. Growth after that baseline is the suspicious part.
-import { chromium, type CDPSession, type Page } from 'playwright';
+import { type CDPSession, type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
+import { launchChromium } from './launch-chromium.mts';
 
 /** Connected-feature surfaces sit behind the one-time legal acknowledgement, so a fresh context
  *  renders the gate instead of the route and every wait times out. Seed the acceptance before any
@@ -134,7 +135,7 @@ async function main(): Promise<void> {
   const cycles = Math.max(1, Number(flag('cycles', '10')) || 10);
   const trace = process.argv.slice(2).includes('--trace');
   const heapSummary = process.argv.slice(2).includes('--heap-summary');
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
   await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
@@ -188,6 +189,7 @@ async function main(): Promise<void> {
       `listeners=${baseline.listeners} documents=${baseline.documents}`,
   );
 
+  let stabilized: Snapshot | null = null;
   for (let cycle = 1; cycle <= cycles; cycle++) {
     for (const route of ROUTES) {
       await visit(page, route);
@@ -202,21 +204,28 @@ async function main(): Promise<void> {
         );
       }
     }
-    if (cycle === cycles || cycle % Math.max(1, Math.floor(cycles / 3)) === 0) {
+    const shouldReport = cycle === cycles || cycle % Math.max(1, Math.floor(cycles / 3)) === 0;
+    // Cycle one is the first point at which delayed landing sections, route caches, and browser
+    // wrappers have all had a complete navigation loop to settle. Growth after THIS is a leak;
+    // growth from the early warm snapshot can simply be a legitimately fuller landing DOM.
+    if (cycle === 1 || shouldReport) {
       const current = await snapshot(cdp);
+      if (cycle === 1) stabilized = current;
       const growth = delta(current, baseline);
-      console.log(
-        `cycle ${String(cycle).padStart(2)} heap=${current.heapMb}MB (${growth.heapMb >= 0 ? '+' : ''}${growth.heapMb}) ` +
-          `nodes=${current.nodes} (${growth.nodes >= 0 ? '+' : ''}${growth.nodes}) ` +
-          `listeners=${current.listeners} (${growth.listeners >= 0 ? '+' : ''}${growth.listeners}) ` +
-          `documents=${current.documents} (${growth.documents >= 0 ? '+' : ''}${growth.documents})`,
-      );
+      if (shouldReport)
+        console.log(
+          `cycle ${String(cycle).padStart(2)} heap=${current.heapMb}MB (${growth.heapMb >= 0 ? '+' : ''}${growth.heapMb}) ` +
+            `nodes=${current.nodes} (${growth.nodes >= 0 ? '+' : ''}${growth.nodes}) ` +
+            `listeners=${current.listeners} (${growth.listeners >= 0 ? '+' : ''}${growth.listeners}) ` +
+            `documents=${current.documents} (${growth.documents >= 0 ? '+' : ''}${growth.documents})`,
+        );
     }
   }
 
   const final = await snapshot(cdp);
-  const growth = delta(final, baseline);
-  const heapLimit = Math.max(8, baseline.heapMb * 0.35);
+  const leakBaseline = stabilized ?? baseline;
+  const growth = delta(final, leakBaseline);
+  const heapLimit = Math.max(8, leakBaseline.heapMb * 0.35);
   const failures: string[] = [];
   if (growth.heapMb > heapLimit)
     failures.push(`heap grew ${growth.heapMb}MB (limit ${heapLimit.toFixed(1)}MB)`);

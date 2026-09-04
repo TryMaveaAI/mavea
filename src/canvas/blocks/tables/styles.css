@@ -9,6 +9,26 @@
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
+
+/* A table can be narrow inside a wide viewport (rail, Study card, split answer), so viewport media
+   queries cannot protect its heading. The card itself is an inline-size container. At this width,
+   put the title on a complete row and reserve the floating action cluster only once; the generic
+   interactive-card rules otherwise reserve it on BOTH the header and eyebrow, leaving a title a
+   one-character column while the card around it is healthy. */
+@container (max-width: 680px) {
+  .card.tbl .tbl-head {
+    padding-right: 0;
+  }
+  .card.tbl .tbl-head > .card-eyebrow {
+    box-sizing: border-box;
+    flex: 0 0 100%;
+    min-width: 100%;
+    padding-right: var(--block-actions-w, 0px);
+  }
+  .card.tbl .tbl-head > .card-eyebrow .ic {
+    flex: 0 0 15px;
+  }
+}
 .tbl .dt-scroll {
   overflow-x: auto;
   margin: 0 -4px;

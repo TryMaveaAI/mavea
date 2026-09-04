@@ -14,8 +14,9 @@
 //   pnpm build && pnpm preview
 //   pnpm perf -- --url http://localhost:4173
 //   pnpm perf -- --url http://localhost:4173 --throttle 4
-import { chromium, type Page, type CDPSession } from 'playwright';
+import { type Page, type CDPSession } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance.js';
+import { launchChromium } from './launch-chromium.mts';
 
 interface Scenario {
   name: string;
@@ -102,19 +103,28 @@ const OBSERVE = `
   }).observe({ type: 'paint', buffered: true });
 `;
 
-async function run(page: Page, cdp: CDPSession, s: Scenario, base: string, rate: number) {
+async function run(
+  page: Page,
+  cdp: CDPSession,
+  s: Scenario,
+  base: string,
+  rate: number,
+  slowNetwork: boolean,
+) {
   const requests: string[] = [];
   page.on('request', (r) => requests.push(r.url()));
   await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
   await page.addInitScript(OBSERVE);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
-  await cdp.send('Network.enable');
-  await cdp.send('Network.emulateNetworkConditions', {
-    offline: false,
-    latency: 150,
-    downloadThroughput: 1_600_000 / 8,
-    uploadThroughput: 750_000 / 8,
-  });
+  if (slowNetwork) {
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 150,
+      downloadThroughput: 1_600_000 / 8,
+      uploadThroughput: 750_000 / 8,
+    });
+  }
 
   const t0 = Date.now();
   await page.goto(base + s.path, { waitUntil: 'commit' });
@@ -162,7 +172,7 @@ async function run(page: Page, cdp: CDPSession, s: Scenario, base: string, rate:
  * time a real hash-router transition. The budget scales with CPU throttle: 150ms on a current
  * machine, 900ms at 6× slowdown. */
 async function runWarmTransitions(base: string, rate: number) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
@@ -213,10 +223,17 @@ async function runWarmTransitions(base: string, rate: number) {
 async function main(): Promise<void> {
   const base = readFlag('url', 'http://localhost:5173').replace(/\/$/, '');
   const rate = Number(readFlag('throttle', '6'));
+  const slowNetwork = readFlag('network', 'slow').toLowerCase() !== 'local';
+  const only = readFlag('surface', '').toLowerCase();
+  const scenarios = only
+    ? SCENARIOS.filter((scenario) => scenario.name.toLowerCase().includes(only))
+    : SCENARIOS;
+  if (!scenarios.length) throw new Error(`Unknown performance surface: ${only}`);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   console.log(
-    `\nCPU throttled ${rate}× — ${rate === 1 ? 'current-machine baseline' : 'slow-device simulation'}.\n`,
+    `\nCPU throttled ${rate}× — ${rate === 1 ? 'current-machine baseline' : 'slow-device simulation'}; ` +
+      `${slowNetwork ? 'constrained network' : 'local network'}.\n`,
   );
   console.log(
     'surface           shell  usable    FCP   worst-task  blocked  heap   eager-heavy-assets',
@@ -224,11 +241,11 @@ async function main(): Promise<void> {
   console.log('─'.repeat(88));
 
   let failures = 0;
-  for (const s of SCENARIOS) {
+  for (const s of scenarios) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
     const cdp = await ctx.newCDPSession(page);
-    const r = await run(page, cdp, s, base, rate);
+    const r = await run(page, cdp, s, base, rate, slowNetwork);
 
     const shellTxt = r.shell < 0 ? 'NEVER' : `${r.shell}ms`;
     const readyTxt = r.ready < 0 ? 'NEVER' : `${r.ready}ms`;
@@ -252,7 +269,7 @@ async function main(): Promise<void> {
   }
   await browser.close();
 
-  const warm = await runWarmTransitions(base, rate);
+  const warm = only ? [] : await runWarmTransitions(base, rate);
   console.log(`\nWarm in-app route response (budget ${rate >= 6 ? 500 : 150}ms at ${rate}× CPU):`);
   for (const r of warm) {
     const over = r.ms > r.budget;

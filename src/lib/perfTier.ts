@@ -29,15 +29,15 @@ const DEFAULT_MODE: PerfMode = 'auto';
 /** A firm tier verdict from the runtime probe, tied to the hardware it was measured on. */
 export interface PerfVerdict {
   /** Schema version — bump to invalidate every stored verdict after a probe-logic change. */
-  v: 2;
+  v: 3;
   tier: PerfTier;
   /** The hardware signature this verdict was measured on; a mismatch invalidates it. */
   sig: string;
 }
 
-// v2: the v1 policy demoted far too eagerly (any ≤4-thread machine opened lite, and one janky
-// session locked lite in permanently), so every v1 verdict is untrustworthy — discard them all.
-const VERDICT_VERSION = 2 as const;
+// v3: the full visual tier is too compositor-heavy on four-thread Intel laptops, even with 8GB
+// RAM. Invalidate v2's stored `full` verdicts so those machines receive the calmer default now.
+const VERDICT_VERSION = 3 as const;
 
 // ---- pure decision core (unit-tested directly) --------------------------------------------
 
@@ -47,12 +47,12 @@ const VERDICT_VERSION = 2 as const;
  *  (deviceMemory is clamped at 8 and absent in Safari), so we only ever demote on the low end and
  *  let the runtime probe catch a machine that looks capable on paper but janks in practice.
  *
- *  The bar is deliberately "unmistakable potato only". hardwareConcurrency counts THREADS, so a
- *  dual-core 2018–2020 MacBook Air reports 4 — and those machines run the full experience fine,
- *  so 4 must open full. Demoting up front is reserved for ≤2 threads (a 2015 12" MacBook) or ≤4GB
- *  reported RAM; everything else opens full and earns a demotion only from measured jank. */
+ *  hardwareConcurrency counts logical threads. Four-thread Intel laptops have enough CPU for the
+ *  product itself, but not for permanent blurred glass and ambient GPU animation without heat and
+ *  fan noise. They therefore open in lite; eight-thread Apple Silicon and stronger machines keep
+ *  the full treatment. Missing memory is common in Safari, so core count must stand on its own. */
 export function heuristicTier(cores: number | undefined, memGB: number | undefined): PerfTier {
-  if (typeof cores === 'number' && cores > 0 && cores <= 2) return 'lite';
+  if (typeof cores === 'number' && cores > 0 && cores <= 4) return 'lite';
   if (typeof memGB === 'number' && memGB > 0 && memGB <= 4) return 'lite';
   return 'full';
 }

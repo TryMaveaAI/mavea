@@ -12,6 +12,7 @@ import { getAdapter } from './providers';
 import { getLiveConfigV2, toModelConfig } from './useLiveConfig';
 import { hasLegalAcceptance } from '../legal/acceptance';
 import { providerGenerationAllowed } from './providers/spendPolicy';
+import { currentAppliedTier } from '../lib/perfTier';
 
 /** Don't re-warm more than once per this window — a focus/blur/refocus burst is one warm. */
 const COOLDOWN_MS = 20_000;
@@ -34,6 +35,11 @@ export function prewarmLive(opts: { force?: boolean } = {}): void {
   // Landing intent can load this module before the first-use gate. Never contact the configured
   // model or TTS service until the current Terms/Privacy acknowledgement has been recorded.
   if (!hasLegalAcceptance()) return;
+  // Prewarming deliberately trades CPU, memory, and network for latency. On a low-resource machine
+  // that is the wrong trade: focusing a text field must not parse the turn engine or cold-start a
+  // local speech model before the user has even submitted a question. The real submit path loads
+  // the same modules/services normally, so this changes readiness timing—not functionality.
+  if (currentAppliedTier() === 'lite') return;
   const now = Date.now();
   if (!opts.force && now - lastWarmAt < COOLDOWN_MS) return;
   lastWarmAt = now;

@@ -118,3 +118,34 @@
     overflow: hidden;
   }
 }
+
+/* In a phone dock this is disclosure chrome, not the document being read. Keep the complete copy
+   in the accessibility tree and one tap away under Details, but do not spend a quarter-screen on
+   it before the reader can see an answer. Actions remain in the same row at full touch size. */
+@media (max-width: 768px) {
+  .feature-use-notice {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 6px 8px;
+    line-height: 1.4;
+  }
+
+  .feature-use-notice p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .feature-use-notice-actions {
+    grid-column: auto;
+    justify-content: flex-end;
+    margin: -6px -4px;
+  }
+}
+
+@media (max-width: 768px) and (max-height: 700px) {
+  .feature-use-notice p {
+    -webkit-line-clamp: 1;
+  }
+}

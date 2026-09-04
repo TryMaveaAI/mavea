@@ -69,6 +69,17 @@ describe('the Study desk re-fits when the takeaway does', () => {
     document.body.replaceChildren();
   });
 
+  it('publishes how much room the spoken bubble has beside the front card', () => {
+    const stage = mountStage(() => 90);
+    const stageRef = { current: stage };
+    renderHook(({ rev }: { rev: string }) => useStudyScale(stageRef, rev), {
+      initialProps: { rev: 'live:live-1' },
+    });
+    // A 1600px stage leaves well over 230px left of the card at any in-canvas scale; the bubble
+    // may take its full width. (The floored desk in a 1366px window leaves ~120px — `none`.)
+    expect(stage.getAttribute('data-voice-room')).toBe('open');
+  });
+
   it('gives the front card less room once the sentence takes another line', () => {
     let takeawayH = 90;
     const stage = mountStage(() => takeawayH);
@@ -103,5 +114,17 @@ describe('the Study desk re-fits when the takeaway does', () => {
     takeawayH = 130;
     rerender({ rev: 'live:live-1' });
     expect(stage.style.getPropertyValue('--study-front-max')).toBe(first);
+  });
+
+  it('keeps the authored desk on a wide but short laptop viewport', () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 500 });
+    const stage = mountStage(() => 70);
+
+    renderHook(() => useStudyScale({ current: stage }, 'short-laptop'));
+
+    expect(stage.hasAttribute('data-compact')).toBe(false);
+    expect(stage.style.getPropertyValue('--study-scale')).not.toBe('1');
+    expect(stage.style.getPropertyValue('--study-stage-height')).toBe('534px');
+    expect(stage.hasAttribute('data-shallow')).toBe(false);
   });
 });

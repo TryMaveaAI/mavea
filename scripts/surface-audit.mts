@@ -18,12 +18,22 @@
 //   pnpm audit:surfaces -- --only study,ripple
 //
 // Exits 1 with a printed report if anything is flagged.
-import { chromium, type Page } from 'playwright';
+import { type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { launchChromium } from './launch-chromium.mts';
 
 /** The shapes that break things. The short laptop (1366×620) is the one a 1440×900 sweep never
  *  finds, and the ultrawide is where a fixed-width design strands its content in the middle. */
-const DEFAULT_SIZES = ['1024x768', '1280x720', '1366x620', '1440x900', '1920x1080', '2560x1080'];
+const DEFAULT_SIZES = [
+  '360x640',
+  '390x844',
+  '1024x768',
+  '1280x720',
+  '1366x620',
+  '1440x900',
+  '1920x1080',
+  '2560x1080',
+];
 
 /** Rendered px. Matches the app-wide floor `audit:ui` applies to block type. */
 const TYPE_FLOOR = 9;
@@ -140,6 +150,7 @@ const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string =>
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+    if (el.closest('[aria-hidden="true"]')) continue;
     const box = el.getBoundingClientRect();
     if (box.width < 1 || box.height < 1) continue;
 
@@ -147,14 +158,16 @@ const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string =>
     // by definition, so only the scrollers that actually exist count as a way back.
     const overRight = box.right - vw;
     const overBottom = box.bottom - vh;
-    if ((overRight > 2 || overBottom > 2) && el.children.length === 0) {
+    const overLeft = -box.left;
+    const overTop = -box.top;
+    if ((overRight > 2 || overBottom > 2 || overLeft > 2 || overTop > 2) && el.children.length === 0) {
       let scrollable = docScrolls;
       for (let p = el.parentElement; p && !scrollable; p = p.parentElement) {
         const ps = getComputedStyle(p);
         if (/(auto|scroll)/.test(ps.overflowY + ps.overflowX) &&
             (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) scrollable = true;
       }
-      if (!scrollable) outside.push(name(el) + ' outside by ' + Math.round(Math.max(overRight, overBottom)) + 'px');
+      if (!scrollable) outside.push(name(el) + ' outside by ' + Math.round(Math.max(overRight, overBottom, overLeft, overTop)) + 'px');
     }
 
     // Type below the floor, judged on what is rendered rather than what was authored.
@@ -176,15 +189,45 @@ const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string =>
       const t = getComputedStyle(c).transform;
       return t !== 'none' && t.startsWith('matrix(0');
     });
-    if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40 && !dragCamera && !scaledSnapshot && !lineClamped) {
+    // The Study camera deliberately clips only scenery outside its frame. Prove its four reading
+    // surfaces are wholly in-frame before treating that overflow as intentional; if any one escapes,
+    // this exception stands down and the audit reports it like every other trapped surface.
+    const studyEssentialsInFrame = el.matches('.study-stage:not([data-compact])') &&
+      ['.study-card.is-front', '.study-note-wrap', '.study-takeaway', '.study-beats'].every((selector) => {
+        const child = el.querySelector(selector);
+        if (!child) return false;
+        const cr = child.getBoundingClientRect();
+        return cr.top >= box.top - 2 && cr.bottom <= box.bottom + 2 && cr.left >= box.left - 2 && cr.right <= box.right + 2;
+      });
+    if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40 && !dragCamera && !scaledSnapshot && !lineClamped && !studyEssentialsInFrame) {
       trapped.push(name(el) + ' hides ' + Math.round(hidden) + 'px with overflow-y:' + style.overflowY);
     }
+  }
+  // Fixed shell bands are independent siblings. If their rectangles intersect, z-index merely
+  // decides which control/text becomes unusable. Nested dock rows are normal flow inside one
+  // reserved band and are deliberately not part of this comparison.
+  const fixedSelectors = ['.topbar', '.side-rail:not(.chat-open)', '.live-dock', '.demox-banner', '.demox-panel', '.demox-note'];
+  const fixed = fixedSelectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))
+    .filter((el) => {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 1 && r.height > 1;
+    });
+  const shellOverlaps = [];
+  for (let i = 0; i < fixed.length; i += 1) for (let j = i + 1; j < fixed.length; j += 1) {
+    const a = fixed[i], b = fixed[j];
+    if (a.contains(b) || b.contains(a)) continue;
+    const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+    const area = Math.max(0, Math.min(ar.right, br.right) - Math.max(ar.left, br.left)) *
+      Math.max(0, Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top));
+    if (area > 16) shellOverlaps.push(name(a) + ' overlaps ' + name(b) + ' by ' + Math.round(area) + 'px²');
   }
   const readingEl = ${readingSel ? `document.querySelector(${JSON.stringify(readingSel)})` : 'null'};
   return {
     outside: Array.from(new Set(outside)).slice(0, 8),
     tiny: Array.from(new Set(tiny)).slice(0, 8),
     trapped: Array.from(new Set(trapped)).slice(0, 8),
+    shellOverlaps: Array.from(new Set(shellOverlaps)).slice(0, 8),
     readingH: readingEl ? Math.round(readingEl.clientHeight) : null,
     viewportH: vh,
     bodyOverflowX: document.documentElement.scrollWidth > vw + 2,
@@ -204,7 +247,7 @@ async function main(): Promise<void> {
   const surfaces = SURFACES.filter((s) => !wanted || wanted.has(s.key));
 
   const findings: Finding[] = [];
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   try {
     for (const surface of surfaces) {
       for (const size of sizes) {
@@ -247,6 +290,7 @@ async function main(): Promise<void> {
               outside: string[];
               tiny: string[];
               trapped: string[];
+              shellOverlaps: string[];
               readingH: number | null;
               viewportH: number;
               bodyOverflowX: boolean;
@@ -254,6 +298,7 @@ async function main(): Promise<void> {
             for (const o of m.outside) issues.push(`unreachable: ${o}`);
             for (const t of m.trapped) issues.push(`trapped: ${t}`);
             for (const t of m.tiny) issues.push(`below ${TYPE_FLOOR}px: ${t}`);
+            for (const o of m.shellOverlaps) issues.push(`shell collision: ${o}`);
             if (m.bodyOverflowX) issues.push('page scrolls horizontally');
             if (m.readingH !== null) {
               const share = m.readingH / m.viewportH;

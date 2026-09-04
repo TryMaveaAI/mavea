@@ -48,6 +48,14 @@
   filter: none;
 }
 
+/* The full tier keeps the face on its own compositor layer so state changes start instantly.
+   Permanent promotion costs GPU memory on an idle low-end session; promote only while the face is
+   actually reacting. */
+:root[data-perf='lite'] .presence:not([data-state]),
+:root[data-perf='lite'] .presence[data-state='idle'] {
+  will-change: auto;
+}
+
 /* 4 — Opaque backgrounds for the frosted surfaces whose blur we just removed. Their translucent
    fills (surface-glass is only ~4.5% opacity) rely on the blur to read; without it they'd nearly
    vanish, so give them a solid surface. All via theme-aware surface tokens → light/dark automatic. */
@@ -94,4 +102,13 @@
 :root[data-perf='lite'] .fl-landing::before,
 :root[data-perf='lite'] .fl-landing::after {
   animation: none;
+}
+
+/* Background tabs get a strict fallback in addition to the variable-based animation contract.
+   This catches every gallery block and third-party widget, including future ones, and prevents
+   invisible CSS loops from consuming compositor time. */
+:root[data-page-hidden='true'] *,
+:root[data-page-hidden='true'] *::before,
+:root[data-page-hidden='true'] *::after {
+  animation-play-state: paused !important;
 }

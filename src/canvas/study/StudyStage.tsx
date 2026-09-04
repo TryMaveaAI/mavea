@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -36,7 +37,7 @@ import {
   type PenMark,
   type PenSlot,
 } from '../../live/content/penQuip';
-import { fitVoiceLine } from './voiceFit';
+import { fitVoiceLine, settleVoiceFit } from './voiceFit';
 import { useStudyScale } from './useStudyScale';
 import { useAmbientPause } from '../../hooks/useInView';
 import { useTruncatedTextDisclosures } from '../hooks/useTruncatedTextDisclosures';
@@ -195,6 +196,44 @@ export function StudyStage({
 }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [cribOpen, setCribOpen] = useState(false);
+  // The spoken line's bubble: an estimated fit for the first paint, settled against the rendered
+  // bubble before that paint lands. The estimate assumes the widest bubble; a compact laptop or a
+  // full-screen HUD offers far less, and at that width the same line wraps to nearly twice the
+  // rows — which is how an opener paragraph grew down over the front card and the scrawls.
+  const voiceTextRef = useRef<HTMLSpanElement>(null);
+  const estimatedVoiceFit = useMemo(
+    () => (voiceLine ? fitVoiceLine(voiceLine) : null),
+    [voiceLine],
+  );
+  const [settledVoiceFit, setSettledVoiceFit] = useState<{
+    line: string;
+    text: string;
+    size: number;
+  } | null>(null);
+  const voiceFit = settledVoiceFit?.line === voiceLine ? settledVoiceFit : estimatedVoiceFit;
+  const renderedVoiceFit = useRef(voiceFit);
+  renderedVoiceFit.current = voiceFit;
+  useLayoutEffect(() => {
+    const el = voiceTextRef.current;
+    if (!voiceLine || !el) return;
+    const settle = () => {
+      // Measure what is actually on screen: after a resize the rendered fit may already be the
+      // stepped-down (or first-sentence) one, and only it can be measured honestly.
+      const start = renderedVoiceFit.current;
+      if (!start) return;
+      const next = settleVoiceFit(el, voiceLine, start);
+      setSettledVoiceFit((prev) =>
+        prev?.line === voiceLine && prev.size === next.size && prev.text === next.text
+          ? prev
+          : { line: voiceLine, ...next },
+      );
+    };
+    settle();
+    if (typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(settle);
+    observer.observe(el.parentElement ?? el);
+    return () => observer.disconnect();
+  }, [voiceLine]);
   // Which of the active object's notes is face-up, and which object those pages belong to. The
   // pair is one piece of state on purpose: reset in an effect, the first paint after the desk
   // moved still used the previous object's page — a note of the wrong kind for one frame, and the
@@ -1042,19 +1081,17 @@ export function StudyStage({
               <i />
             </span>
           )}
-          {(() => {
-            const { text, size } = fitVoiceLine(voiceLine);
-            return (
-              <span
-                key={voiceLine}
-                className="study-voice-text"
-                style={{ '--study-voice-size': `${size}px` } as CSSProperties}
-              >
-                {text}
-                {speaking && <b className="study-voice-caret">▌</b>}
-              </span>
-            );
-          })()}
+          {voiceFit && (
+            <span
+              ref={voiceTextRef}
+              key={voiceLine}
+              className="study-voice-text"
+              style={{ '--study-voice-size': `${voiceFit.size}px` } as CSSProperties}
+            >
+              {voiceFit.text}
+              {speaking && <b className="study-voice-caret">▌</b>}
+            </span>
+          )}
         </div>
       )}
 

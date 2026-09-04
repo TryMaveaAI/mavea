@@ -14,8 +14,10 @@
 //   pnpm audit:ui -- --templates all --widths 390,768,1440,1920
 //
 // Exits 1 with a printed report if anything is flagged.
-import { chromium, type Page } from 'playwright';
+import { type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
+import { CATALOG_FACTS } from '../src/canvas/blocks/catalog';
+import { launchChromium } from './launch-chromium.mts';
 
 interface OverflowHit {
   type: string;
@@ -70,6 +72,7 @@ const RENDER_CONSOLE_FAILURE =
   /(?:same key|unique "key" prop|block render failed|failed to render|NaN is an invalid value|TypeError:)/i;
 const GALLERY_VARIANTS = ['base', 'verbose', 'minimal'] as const;
 type GalleryVariant = (typeof GALLERY_VARIANTS)[number];
+const GALLERY_FAMILIES = [...new Set(CATALOG_FACTS.map((fact) => fact.family))];
 
 function readFlag(name: string, fallback: string): string {
   const argv = process.argv.slice(2);
@@ -255,7 +258,7 @@ async function auditLiveTemplates(
   themes: string[],
   templates: string[],
 ): Promise<void> {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const findings: TemplateFinding[] = [];
   try {
     for (const template of templates) {
@@ -425,6 +428,14 @@ async function main(): Promise<void> {
     .filter(Boolean);
   const themes = readFlag('themes', 'dark,light').split(',');
   const variantFlag = readFlag('variants', 'base').trim();
+  const familyFlag = readFlag('family', 'all').trim();
+  const families = familyFlag === 'all' ? GALLERY_FAMILIES : familyFlag.split(',');
+  const unknownFamilies = families.filter((family) => !GALLERY_FAMILIES.includes(family));
+  if (unknownFamilies.length) {
+    throw new Error(
+      `Unknown gallery family "${unknownFamilies.join(', ')}". Use ${GALLERY_FAMILIES.join(',')} or all.`,
+    );
+  }
   const variants = (
     variantFlag === 'all' ? GALLERY_VARIANTS : variantFlag.split(',')
   ) as readonly string[];
@@ -442,7 +453,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const findings: Finding[] = [];
   try {
     for (const theme of themes) {
@@ -475,116 +486,162 @@ async function main(): Promise<void> {
             }
           });
           // Pin the theme before first paint so nothing is measured mid-swap.
-          await page.addInitScript((t) => localStorage.setItem('mavea-theme', t), theme);
-          await page.goto(`${baseUrl}/#/gallery?mountall=1&variant=${variant}`, {
-            waitUntil: 'load',
-          });
-          // Every tile must be mounted and settled before anything is measured.
-          await page.waitForFunction(
-            () =>
-              typeof window.__overflowAudit === 'function' &&
-              typeof window.__truncationAudit === 'function',
-            null,
-            { timeout: 30_000 },
-          );
-          await page.waitForFunction(
-            () => document.querySelectorAll('.vlib-tile').length > 100,
-            null,
-            {
-              timeout: 30_000,
-            },
-          );
-          // Catalog details and family renderers are route-scoped chunks. A fixed delay can audit
-          // skeletons on a slow machine or cold network and falsely report success. Require every
-          // listed tile to settle into its real renderer before measuring overflow/collisions.
-          await page.waitForFunction(
-            () => {
-              const tiles = document.querySelectorAll('.vlib-tile').length;
-              return (
-                tiles > 100 &&
-                document.querySelectorAll('.vlib-render--pending').length === 0 &&
-                document.querySelectorAll('.vlib-render').length === tiles
-              );
-            },
-            null,
-            { timeout: 60_000 },
-          );
-          // TopicCanvas performs one guaranteed post-lazy-paint accessibility pass at 700 ms to
-          // label/focus deliberate horizontal scroll regions and attach complete-text disclosures.
-          // Wait for that contract, otherwise a cold family chunk can be measured before the exact
-          // same DOM becomes keyboard/touch/screen-reader reachable and the result depends on cache
-          // warmth or theme order.
-          await page.waitForTimeout(850);
-          // The UI faces load with `font-display: swap`, so a cold run can paint fallback metrics
-          // and re-layout mid-measure — rects captured before the swap collide with rects captured
-          // after it, and fallback glyphs run wider than the real face. Measure only settled type.
-          await page.evaluate(() => document.fonts.ready);
-          // Even after the fonts land, a narrow viewport keeps reflowing for a beat: a lazily-mounted
-          // family chunk momentarily overflows its scroll pane before the pane resolves, which the
-          // sweep reads as a real horizontal scroll. It showed up as a handful of tiles flagged in
-          // ONE theme and not the other on the same run — the signature of a race, not a defect, and
-          // an intermittently red gate is one nobody trusts. Wait for the overflow picture itself to
-          // hold still rather than guessing at another fixed delay.
-          await page.waitForFunction(
-            () => {
-              const w = window as unknown as { __lastOverflow?: string; __stableTicks?: number };
-              const key = [...document.querySelectorAll<HTMLElement>('.vlib-tile *')]
-                .filter(
-                  (el) =>
-                    el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
-                )
-                .length.toString();
-              w.__stableTicks = key === w.__lastOverflow ? (w.__stableTicks ?? 0) + 1 : 0;
-              w.__lastOverflow = key;
-              return (w.__stableTicks ?? 0) >= 3;
-            },
-            null,
-            { timeout: 60_000, polling: 250 },
-          );
-
-          const renderErrors = await page
-            .locator('.vlib-render-error')
-            .evaluateAll((nodes) =>
-              nodes.map((node) => (node as HTMLElement).dataset.blockType ?? 'unknown'),
-            );
-          if (renderErrors.length) {
-            throw new Error(`Gallery render failures: ${renderErrors.join(', ')}`);
-          }
-          if (consoleFailures.length) {
-            const sample = [...new Set(consoleFailures)].slice(0, 8).join('\n  ');
-            throw new Error(
-              `Gallery console render failures (${theme}/${variant}/${width}px):\n  ${sample}`,
-            );
-          }
-
-          const report = (await page.evaluate('window.__overflowAudit()')) as Report;
-          const truncation = (await page.evaluate('window.__truncationAudit()')) as {
-            truncations: Truncation[];
-          };
-          const { overlaps, tiny } = await collide(page);
-
-          findings.push({
+          await page.addInitScript((t) => {
+            // This script also runs in sandboxed preview iframes. Their opaque origins may expose
+            // `localStorage` as null or throw on access; the top-level gallery is the only frame
+            // whose persisted theme matters to this audit.
+            try {
+              window.localStorage?.setItem('mavea-theme', t);
+            } catch {
+              // Browser-enforced iframe isolation, not a renderer failure.
+            }
+          }, theme);
+          const aggregate: Finding = {
             width,
             theme,
             variant,
-            scanned: report.scanned,
-            clipped: report.clip,
-            scrolled: report.scroll,
-            overlaps,
-            truncated: truncation.truncations,
-            tiny,
-          });
+            scanned: 0,
+            clipped: [],
+            scrolled: [],
+            overlaps: [],
+            truncated: [],
+            tiny: [],
+          };
+
+          // Audit one renderer family at a time. Mounting 625 TopicCanvas trees together made the
+          // audit itself consume hundreds of MB and, on an older dual-core Mac, left it measuring
+          // loading placeholders. The gallery's real family filter is the bounded production render
+          // path, so this still covers every catalog type while keeping peak DOM/memory proportional
+          // to the largest family instead of the entire library.
+          for (const family of families) {
+            consoleFailures.length = 0;
+            await page.goto(
+              `${baseUrl}/#/gallery?mountall=1&variant=${variant}&family=${encodeURIComponent(family)}`,
+              { waitUntil: 'load' },
+            );
+            // Every tile in this family must be mounted and settled before anything is measured.
+            await page.waitForFunction(
+              () =>
+                typeof window.__overflowAudit === 'function' &&
+                typeof window.__truncationAudit === 'function',
+              null,
+              { timeout: 30_000 },
+            );
+            await page.waitForFunction(
+              () => document.querySelectorAll('.vlib-tile').length > 0,
+              null,
+              { timeout: 30_000 },
+            );
+            // Catalog details and family renderers are route-scoped chunks. A fixed delay can audit
+            // skeletons on a slow machine or cold network and falsely report success. Require every
+            // listed tile to settle into its real renderer before measuring overflow/collisions.
+            // `.vlib-render` is only the OUTER host; TopicCanvas can still be aria-busy and full of
+            // `.skel-card` descendants inside it. The old gate checked only that outer host and
+            // reported blank placeholders as a clean gallery on slower machines.
+            await page.waitForFunction(
+              () => {
+                const tiles = document.querySelectorAll('.vlib-tile').length;
+                return (
+                  tiles > 0 &&
+                  document.querySelectorAll('.vlib-render--pending').length === 0 &&
+                  document.querySelectorAll('.vlib-render').length === tiles &&
+                  document.querySelectorAll('.vlib-render [aria-busy="true"]').length === 0 &&
+                  document.querySelectorAll('.vlib-render .skel-card').length === 0
+                );
+              },
+              null,
+              { timeout: 180_000 },
+            );
+            // TopicCanvas performs one guaranteed post-lazy-paint accessibility pass at 700 ms to
+            // label/focus deliberate horizontal scroll regions and attach complete-text disclosures.
+            // Wait for that contract, otherwise a cold family chunk can be measured before the exact
+            // same DOM becomes keyboard/touch/screen-reader reachable and the result depends on cache
+            // warmth or theme order.
+            await page.waitForTimeout(850);
+            // The UI faces load with `font-display: swap`, so a cold run can paint fallback metrics
+            // and re-layout mid-measure — rects captured before the swap collide with rects captured
+            // after it, and fallback glyphs run wider than the real face. Measure only settled type.
+            await page.evaluate(() => document.fonts.ready);
+            // Even after the fonts land, a narrow viewport keeps reflowing for a beat: a lazily-mounted
+            // family chunk momentarily overflows its scroll pane before the pane resolves, which the
+            // sweep reads as a real horizontal scroll. It showed up as a handful of tiles flagged in
+            // ONE theme and not the other on the same run — the signature of a race, not a defect, and
+            // an intermittently red gate is one nobody trusts. Wait for the overflow picture itself to
+            // hold still rather than guessing at another fixed delay.
+            await page.waitForFunction(
+              () => {
+                const w = window as unknown as { __lastOverflow?: string; __stableTicks?: number };
+                const key = [...document.querySelectorAll<HTMLElement>('.vlib-tile *')]
+                  .filter(
+                    (el) =>
+                      el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
+                  )
+                  .length.toString();
+                w.__stableTicks = key === w.__lastOverflow ? (w.__stableTicks ?? 0) + 1 : 0;
+                w.__lastOverflow = key;
+                return (w.__stableTicks ?? 0) >= 3;
+              },
+              null,
+              { timeout: 60_000, polling: 250 },
+            );
+
+            const renderErrors = await page
+              .locator('.vlib-render-error')
+              .evaluateAll((nodes) =>
+                nodes.map((node) => (node as HTMLElement).dataset.blockType ?? 'unknown'),
+              );
+            if (renderErrors.length) {
+              throw new Error(`Gallery render failures: ${renderErrors.join(', ')}`);
+            }
+            if (consoleFailures.length) {
+              const sample = [...new Set(consoleFailures)].slice(0, 8).join('\n  ');
+              throw new Error(
+                `Gallery console render failures (${theme}/${variant}/${width}px/${family}):\n  ${sample}`,
+              );
+            }
+
+            const report = (await page.evaluate('window.__overflowAudit()')) as Report;
+            const truncation = (await page.evaluate('window.__truncationAudit()')) as {
+              truncations: Truncation[];
+            };
+            const { overlaps, tiny } = await collide(page);
+            aggregate.scanned += report.scanned;
+            aggregate.clipped.push(...report.clip);
+            aggregate.scrolled.push(...report.scroll);
+            aggregate.overlaps.push(...overlaps);
+            aggregate.truncated.push(...truncation.truncations);
+            aggregate.tiny.push(...tiny);
+            if (families.length > 1) {
+              const familyIssues =
+                report.clip.length +
+                report.scroll.length +
+                overlaps.length +
+                truncation.truncations.length +
+                tiny.length;
+              console.log(
+                `  ${family.padEnd(18)} ${String(report.scanned).padStart(3)} tiles · ${familyIssues} issue${familyIssues === 1 ? '' : 's'}`,
+              );
+            }
+          }
+
+          const expected = CATALOG_FACTS.filter((fact) => families.includes(fact.family)).length;
+          if (aggregate.scanned !== expected) {
+            throw new Error(
+              `Gallery coverage mismatch: scanned ${aggregate.scanned} of ${expected}`,
+            );
+          }
+          findings.push(aggregate);
           const bad =
-            report.clip.length +
-            report.scroll.length +
-            overlaps.length +
-            truncation.truncations.length +
-            tiny.length;
+            aggregate.clipped.length +
+            aggregate.scrolled.length +
+            aggregate.overlaps.length +
+            aggregate.truncated.length +
+            aggregate.tiny.length;
           console.log(
-            `${theme.padEnd(5)} ${variant.padEnd(7)} ${String(width).padStart(4)}px — ${report.scanned} tiles · ` +
-              `${report.clip.length} clipped · ${report.scroll.length} scrolled · ` +
-              `${overlaps.length} overlapping · ${truncation.truncations.length} truncated · ` +
-              `${tiny.length} illegible` +
+            `${theme.padEnd(5)} ${variant.padEnd(7)} ${String(width).padStart(4)}px — ${aggregate.scanned} tiles · ` +
+              `${aggregate.clipped.length} clipped · ${aggregate.scrolled.length} scrolled · ` +
+              `${aggregate.overlaps.length} overlapping · ${aggregate.truncated.length} truncated · ` +
+              `${aggregate.tiny.length} illegible` +
               (bad === 0 ? '  ✓' : ''),
           );
           await ctx.close();
@@ -604,39 +661,15 @@ async function main(): Promise<void> {
       f.tiny.length,
   );
 
-  // KNOWN LIMIT, accepted 2026-08-08: a chart's SVG type is sized in viewBox USER UNITS, so a
-  // figure authored to fill a laptop card renders about a third of that on a phone and its labels
-  // land under the 9px floor. It is structural (161 blocks), not a per-block defect, and fixing it
-  // needs a per-chart small-screen decision rather than a size bump. Until that is made, narrow
-  // widths report but do not fail — otherwise this gate is red forever and, per weekly.yml's own
-  // comment, a permanently-red audit:ui is exactly what once masked every gate behind it.
-  // Deliberately narrow: ONLY sub-9px text, ONLY below laptop width. Clipping, scrolling,
-  // overlap and truncation still fail at every width, and legibility still fails at >= 1024.
-  const KNOWN_NARROW_SVG_TYPE = 1024;
-  const failing = dirty.filter(
-    (f) =>
-      f.clipped.length ||
-      f.scrolled.length ||
-      f.overlaps.length ||
-      f.truncated.length ||
-      (f.tiny.length && f.width >= KNOWN_NARROW_SVG_TYPE),
-  );
-  const excused = dirty
-    .filter((f) => f.width < KNOWN_NARROW_SVG_TYPE)
-    .reduce((sum, f) => sum + f.tiny.length, 0);
-  if (excused) {
-    console.log(
-      `\n! known limit: ${excused} sub-9px SVG label(s) below ${KNOWN_NARROW_SVG_TYPE}px — ` +
-        'charts scale with their viewBox on phones (accepted 2026-08-08, not failing this gate).',
-    );
-  }
-  if (failing.length === 0) {
+  // There are no accepted responsive exceptions. A report that says “clean” means every painted
+  // label met the same floor at every width exercised, including SVG user-space text on phones.
+  if (dirty.length === 0) {
     console.log('\n✓ Clean across every width and theme.');
     return;
   }
 
   console.log('\n─── findings ───');
-  for (const f of failing) {
+  for (const f of dirty) {
     console.log(`\n${f.theme} · ${f.variant} @ ${f.width}px`);
     for (const h of f.clipped)
       console.log(`  CLIPPED    ${h.type}: ${h.el} → ${h.clipper} (${h.px}px)`);

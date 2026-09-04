@@ -230,7 +230,7 @@ let active: ActiveStream | null = null;
 let streamEpoch = 0;
 let pendingAbort: AbortController | null = null;
 
-function teardown(state: ActiveStream): void {
+function teardown(state: ActiveStream, preserveAcceptedTransport = false): void {
   state.wakeBackPressure?.();
   // Only a clip still MID-WAVEFORM can click; one that simply ended has nothing left running, so
   // the fade below costs nothing on the normal path.
@@ -286,11 +286,16 @@ function teardown(state: ActiveStream): void {
   } catch {
     /* no-op */
   }
-  // Release any still-open response body (no-op once the stream has ended cleanly).
-  try {
-    state.abort.abort();
-  } catch {
-    /* no-op */
+  // Once Kokoro accepted a streamed request, disconnecting does not stop its current tensor
+  // render; it only hides the result. Let that one response reach its first/only PCM chunk before
+  // the queue advances, otherwise an immediate follow-up overlaps two model runs and can kill a
+  // small Docker VM. Normal completion and pre-header cancellation still close eagerly.
+  if (!preserveAcceptedTransport) {
+    try {
+      state.abort.abort();
+    } catch {
+      /* no-op */
+    }
   }
   if (active === state) active = null;
 }
@@ -305,7 +310,7 @@ export function cancelActiveStream(): void {
   if (!state) return;
   state.cancelled = true;
   state.finishEarly?.();
-  teardown(state);
+  teardown(state, true);
 }
 
 /**
@@ -333,6 +338,7 @@ export async function streamSpeak(
   onStart?: () => void,
   onSynthDone?: (pcm: Uint8Array | null) => void,
   speed?: number,
+  onAccepted?: () => void,
 ): Promise<boolean> {
   const lease = leaseAudioContext();
   if (!lease) return false; // no WebAudio → caller uses the blob path
@@ -395,6 +401,15 @@ export async function streamSpeak(
   }
   // No streaming body (old browser, or a proxy that won't stream) → fall back before any setup.
   if (!res.ok || !res.body) return bail(false);
+  // From this point Kokoro has accepted a synthesis job. If the stream later dies, retrying the
+  // same line as a whole WAV doubles the server's hottest work and can OOM a small Docker VM.
+  // Callers use this signal to reserve blob fallback for browsers/proxies that never accepted a
+  // stream at all.
+  try {
+    onAccepted?.();
+  } catch {
+    /* an observer must never break playback */
+  }
 
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();

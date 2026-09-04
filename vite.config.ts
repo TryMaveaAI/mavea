@@ -543,9 +543,9 @@ export default defineConfig({
               test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
               priority: 20,
             },
-            // The landing's whole eager graph in one file. `$initial` is exactly the set that
-            // is statically reachable from the HTML entry, so every route pays for all of it
-            // regardless — splitting it only turns one download into a dozen before first paint.
+            // The dependency-free bootstrap is needed by every hash route. Keep that graph in one
+            // request, but leave the marketing landing behind its own lazy boundary so product
+            // routes do not parse it.
             { name: 'app', tags: ['$initial'], priority: 10 },
           ],
         },

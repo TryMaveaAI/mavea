@@ -36,3 +36,37 @@ export function fitVoiceLine(line: string): { text: string; size: number } {
   const first = /^[^.!?]+[.!?]/.exec(line)?.[0].trim() ?? line;
   return { text: first, size: VOICE_SIZES[VOICE_SIZES.length - 1] };
 }
+
+/** Line-height of `.study-voice-text` (study.css). Kept here so the measured fit and the CSS brake
+ *  agree on what one line is. */
+export const VOICE_LINE_HEIGHT = 1.55;
+
+/**
+ * The estimate above assumes the widest bubble. The bubble's real width is a clamp on the stage
+ * width and desk scale — as little as 190px on a compact laptop or a full-screen HUD — and at
+ * that width the same line wraps to nearly twice the estimated rows, which is how an opener
+ * paragraph grew down over the front card and the desk's scrawls. This settles the estimate
+ * against the rendered element: it steps the type down until the line holds within VOICE_LINES
+ * measured rows, and falls back to the opening sentence only when even the floor size cannot.
+ * Pure DOM measurement, no React state of its own; the caller re-renders with the result.
+ */
+export function settleVoiceFit(
+  el: HTMLElement,
+  line: string,
+  start: { text: string; size: number },
+): { text: string; size: number } {
+  if (typeof getComputedStyle !== 'function') return start;
+  const rows = (size: number): number => {
+    el.style.setProperty('--study-voice-size', `${size}px`);
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || size * VOICE_LINE_HEIGHT;
+    return el.scrollHeight / lineHeight;
+  };
+  const candidates = VOICE_SIZES.filter((size) => size <= start.size);
+  for (const size of candidates) {
+    // A hair of tolerance: sub-pixel line boxes can report 5.02 rows for five painted lines.
+    if (rows(size) <= VOICE_LINES + 0.1) return { text: start.text, size };
+  }
+  if (start.text !== line) return { text: start.text, size: VOICE_SIZES[VOICE_SIZES.length - 1] };
+  const first = /^[^.!?]+[.!?]/.exec(line)?.[0].trim() ?? line;
+  return { text: first, size: VOICE_SIZES[VOICE_SIZES.length - 1] };
+}

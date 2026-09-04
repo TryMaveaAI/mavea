@@ -64,3 +64,6 @@ eval-out/
 
 # Internal security review — kept out of the repo (agent/working artifact, not a public doc).
 security_best_practices_report.md
+
+# Local pnpm content-addressable store when store-dir points into the workspace
+.pnpm-store/

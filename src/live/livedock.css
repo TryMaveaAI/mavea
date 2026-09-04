@@ -262,6 +262,12 @@
   .live-voice .vc-transcript {
     display: none;
   }
+  /* A spoken/preparing status plus four fixed setting controls cannot share a phone row with its
+     word label. The animated orb remains visible and the control keeps its complete accessible
+     name, so this removes only duplicated visual copy rather than state or functionality. */
+  .live-voice .vc-status-label {
+    display: none;
+  }
   .live-voice .voice-switch-label {
     display: none;
   }

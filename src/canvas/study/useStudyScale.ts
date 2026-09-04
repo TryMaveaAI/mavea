@@ -14,6 +14,7 @@ import {
   SCALE_MAX_FULL,
   SHALLOW_CROP,
   STAGE_H_MAX,
+  STAGE_H_MIN,
   STUDY_FIT_FLOOR,
   TAKEAWAY_BOTTOM,
 } from './slots';
@@ -58,14 +59,24 @@ export function useStudyScale(
       // alone, which let the vertical term claim room the frame was never going to give it. Full
       // screen has no such cap (study.css: `height: 100dvh; max-height: none`), and applying one
       // here is what made SCALE_MAX_FULL unreachable.
-      const h = Math.max(0, full ? availableH : Math.min(STAGE_H_MAX, availableH));
+      // Below STAGE_H_MIN the authored objects physically cannot stay both readable and in-frame.
+      // Keep the real desk at that floor and let the existing canvas scroller expose the rest;
+      // changing to the flat fallback is a WIDTH decision, never a short-window surprise.
+      const h = Math.max(
+        0,
+        full ? availableH : Math.max(STAGE_H_MIN, Math.min(STAGE_H_MAX, availableH)),
+      );
       if (!w || !h) return;
       // A container query cannot style its OWN container, so the stage's compact box (height,
       // padding) can never come from `@container study` — its children reflowed while the stage
       // itself kept a desk-sized height, leaving a page of empty parchment underneath. The
       // observer already measures this box; publishing the state as an attribute is what lets
       // the stage restyle itself.
-      const compact = !full && (w <= COMPACT_W || h < FIT_H * STUDY_FIT_FLOOR);
+      // Height alone must not replace the Study with a different UI. Compact laptops are often
+      // short but still wide enough for the authored desk; the scale floor + shallow treatment
+      // deliberately sacrifice decorative floor space there. Only a genuinely narrow container
+      // uses the flat reading column.
+      const compact = !full && w <= COMPACT_W;
       stage.toggleAttribute('data-compact', compact);
       if (compact) {
         stage.style.removeProperty('--study-stage-height');
@@ -73,6 +84,7 @@ export function useStudyScale(
         stage.style.setProperty('--study-hud', '1');
         stage.style.removeProperty('--study-front-max');
         stage.removeAttribute('data-shallow');
+        stage.removeAttribute('data-voice-room'); // the flat column flows the bubble in place
         return;
       }
       stage.style.setProperty('--study-stage-height', `${Math.round(h)}px`);
@@ -85,6 +97,22 @@ export function useStudyScale(
       const hud = full ? Math.max(1, scale) : 1;
       stage.style.setProperty('--study-scale', scale.toFixed(4));
       stage.style.setProperty('--study-hud', hud.toFixed(4));
+      // The spoken bubble lives in the room LEFT of the front card — the same room study.css
+      // clamps its width to (50cqw − 428.8px·scale − 64px, painted). Under 120px of it no type
+      // size holds a line beside the card, so the bubble stands down and the caption strip
+      // carries the words; between 120 and 170 it shows at the Study's floor size.
+      // `cqw` is the container's CONTENT box, so the stage's own padding comes off first; and a
+      // full-screen HUD scales the bubble's type with its box, so the room is judged in the
+      // bubble's own units. Under 170px no size holds five rows of a real line; to 230px the
+      // floor size does; past that the bubble may take its full width.
+      const padding = getComputedStyle(stage);
+      const contentW =
+        w - (parseFloat(padding.paddingLeft) || 0) - (parseFloat(padding.paddingRight) || 0);
+      const voiceRoom = (contentW / 2 - 428.8 * scale - 64) / hud;
+      stage.setAttribute(
+        'data-voice-room',
+        voiceRoom < 170 ? 'none' : voiceRoom < 230 ? 'tight' : 'open',
+      );
       // Reserve the takeaway's own band before solving the front card's projected height. It is
       // MEASURED, not assumed: handwriting wraps to two or three lines depending on the sentence,
       // and in full screen the HUD scales the whole band with the desk — an assumed height put

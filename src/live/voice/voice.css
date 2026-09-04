@@ -650,6 +650,25 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* Two first-use explanations in the same fixed dock read as breakage and consume the answer. The
+   legally important voice disclosure comes first; dismissing it reveals the one-time ink coach,
+   so neither capability is lost and each gets one clear moment. */
+.live-voice .dock-main:has(.feature-use-notice) .ink-coach {
+  display: none;
+}
+
+@media (max-height: 700px) {
+  .mavea-app.live-voice {
+    --canvas-dock-gap: 8px;
+  }
+  .live-voice .live-dock {
+    padding-block: 6px;
+  }
+  .live-voice .dock-main {
+    gap: 5px;
+  }
+}
 /* Every dock row shares ONE centered column — the same --canvas-col-max the answer grid and the
    composer capsule use — so the pinned-element chips, the attach strip, the listening badges, and
    the quick-follow-up buttons all line up under the composer instead of stranding at the far-left
@@ -755,7 +774,9 @@
    were not merely hidden but unclickable, mid-replay. */
 .mavea-app.live-voice.with-rail .canvas-stage,
 .mavea-app.live-voice.with-rail .presence-stage {
-  padding-bottom: calc(var(--dock-h) + 16px + var(--demo-h, 0px));
+  padding-bottom: calc(
+    var(--dock-h) + var(--canvas-dock-gap, 16px) + var(--demo-h, 0px) + var(--mobile-rail-h, 0px)
+  );
 }
 
 /* ===== slim session rail — a chaptered table of contents ===== */
@@ -1229,7 +1250,8 @@
   }
   /* the rail's bottom sheet stacks above the dock */
   .mavea-app.live-voice.with-rail .side-rail {
-    bottom: var(--dock-h);
+    bottom: calc(var(--dock-h) + var(--demo-h, 0px));
+    max-height: calc(100dvh - var(--dock-h) - var(--demo-h, 0px) - 8px);
   }
   .live-voice .dock-hint {
     display: none;

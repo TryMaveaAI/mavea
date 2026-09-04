@@ -45,7 +45,7 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(/height:\s*clamp\(534px/);
   });
 
-  it('sizes the stage from the measured chrome, and never past the column it sits in', () => {
+  it('sizes the stage from measured chrome and lets a short column scroll the intact desk', () => {
     // The height used to be `100dvh − 380px`, a guess at the top bar + dock that only cleared
     // real chrome above ~1006px of viewport — so every laptop got the floored desk inside a
     // column shorter than the stage. The dock publishes its own height into --dock-h.
@@ -53,7 +53,8 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(
       /height:\s*clamp\(534px, var\(--study-stage-height, var\(--study-column-h\)\), 820px\)/,
     );
-    expect(css).toMatch(/max-height:\s*var\(--study-column-h\)/);
+    const stage = /\.study-stage\s*\{[\s\S]*?\n\}/.exec(css)?.[0] ?? '';
+    expect(stage).not.toMatch(/max-height:\s*var\(--study-column-h\)/);
     // …and the two surfaces that ARE allowed past it say so explicitly.
     const compact = /\.study-stage\[data-compact\]\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(compact).toMatch(/max-height:\s*none/);
@@ -88,6 +89,12 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     // 1280 − 236 rail − 52 − 12 = 980.0 exactly, so a breakpoint of 980 decided the whole layout
     // on a sub-pixel: the most common laptop width was a coin toss between desk and column.
     expect(scene).toMatch(/COMPACT_W = 940/);
+  });
+
+  it('does not replace a wide Study with the flat fallback merely because the window is short', () => {
+    const scale = read('src/canvas/study/useStudyScale.ts');
+    expect(scale).toMatch(/const compact = !full && w <= COMPACT_W/);
+    expect(scale).not.toMatch(/const compact =[^;]*\|\|[^;]*h/);
   });
 
   it('returns the compact front card to flow POSITIONED and with the desk slot cleared', () => {
@@ -251,6 +258,76 @@ describe('phone utility controls — every icon-only action remains thumb-sized'
     );
     expect(read('src/canvas/blocks/charts1/styles.css')).toMatch(
       /@media \(pointer:\s*coarse\)[\s\S]*\.c1-crumb\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/,
+    );
+  });
+});
+
+describe('mobile session sheet — collapsed chrome never overlaps the answer', () => {
+  const css = read('src/styles/mobile.css');
+  const voice = read('src/live/voice/voice.css');
+  const mobile = css.slice(css.indexOf('@media (max-width: 768px)'));
+
+  it('hides the desktop Past conversations footer until the transcript sheet opens', () => {
+    // voice.css loads after the shared stylesheet and declares `.live-voice .rail-foot` as flex.
+    // The compound shell selector must therefore outrank it, not merely occur earlier.
+    expect(mobile).toMatch(
+      /\.mavea-app\.with-rail \.side-rail \.rail-foot\s*\{[^}]*display:\s*none/s,
+    );
+    expect(mobile).toMatch(
+      /\.mavea-app\.with-rail \.side-rail\.chat-open \.rail-foot\s*\{[^}]*display:\s*flex/s,
+    );
+  });
+
+  it('wins the route-loaded desktop rail cascade and becomes one real bottom row', () => {
+    const shell = /\.mavea-app\.with-rail \.side-rail\s*\{[^}]*\}/.exec(mobile)?.[0] ?? '';
+    expect(shell).toMatch(/top:\s*auto/);
+    expect(shell).toMatch(/width:\s*100%/);
+    expect(shell).toMatch(/height:\s*var\(--mobile-rail-h\)/);
+    expect(voice).toMatch(
+      /\.mavea-app\.live-voice\.with-rail \.side-rail\s*\{[^}]*bottom:\s*calc\(var\(--dock-h\) \+ var\(--demo-h, 0px\)\)/s,
+    );
+  });
+
+  it('reserves the collapsed sheet toggle as its own measured shell band', () => {
+    expect(mobile).toMatch(/\.mavea-app\.with-rail\s*\{[^}]*--mobile-rail-h:\s*44px/s);
+    expect(mobile).toMatch(/\.mavea-app\.with-rail\s*\{[^}]*--canvas-dock-gap:\s*4px/s);
+    expect(voice).toMatch(
+      /padding-bottom:\s*calc\([\s\S]{0,180}var\(--mobile-rail-h, 0px\)[\s\S]{0,40}\)/,
+    );
+  });
+});
+
+describe('mobile fixed chrome — disclosure and demo controls preserve the reading viewport', () => {
+  it('keeps the full voice disclosure available without laying every line into the dock', () => {
+    const css = read('src/legal/feature-use-notice.css');
+    const phone = css.slice(css.indexOf('@media (max-width: 768px) {'));
+    expect(phone).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
+    expect(phone).toMatch(/-webkit-line-clamp:\s*2/);
+    expect(phone).toMatch(/\.feature-use-notice-actions\s*\{[^}]*grid-column:\s*auto/s);
+  });
+
+  it('uses one touch-sized demo row with a step counter instead of a second dot row', () => {
+    const css = read('src/demo/demo.css');
+    const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+    expect(phone).toMatch(/grid-template-rows:\s*44px/);
+    expect(phone).toMatch(/\.demox-dots\s*\{[^}]*display:\s*none/s);
+    expect(phone).toMatch(/\.demox-progress\s*\{[^}]*display:\s*flex/s);
+    expect(phone).toMatch(
+      /\.demox-note\s*\{[^}]*var\(--demo-h, 74px\)[^}]*var\(--mobile-rail-h, 44px\)/s,
+    );
+    expect(css).toMatch(/\.mavea-app:has\(\.demox-panel\) \.live-dock\s*\{[^}]*display:\s*none/);
+  });
+
+  it('keeps a phone voice-status orb without overflowing its duplicate word label', () => {
+    const css = read('src/live/livedock.css');
+    const phone = css.slice(css.indexOf('@media (max-width: 560px)'));
+    expect(phone).toMatch(/\.live-voice \.vc-status-label\s*\{[^}]*display:\s*none/s);
+  });
+
+  it('reveals first-use disclosure and drawing coach sequentially in a fixed dock', () => {
+    const css = read('src/live/voice/voice.css');
+    expect(css).toMatch(
+      /\.live-voice \.dock-main:has\(\.feature-use-notice\) \.ink-coach\s*\{[^}]*display:\s*none/,
     );
   });
 });

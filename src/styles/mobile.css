@@ -23,6 +23,10 @@
      center caption) collapses to full width in one move */
   .mavea-app.with-rail {
     --rail-w: 0px;
+    /* The collapsed session sheet owns one row above the composer. Publish that band once so the
+       canvas can reserve it alongside the dock instead of letting answer/coach copy sit beneath it. */
+    --mobile-rail-h: 44px;
+    --canvas-dock-gap: 4px;
   }
 
   /* The desktop "This session" topbar toggle collapses the left rail — meaningless
@@ -32,10 +36,15 @@
   }
 
   /* ---- the rail becomes a bottom dock / sheet ---- */
-  .side-rail {
+  /* Compound shell selector deliberately outranks side-rail.css, which is route-loaded after the
+     shared stylesheet. The old equal-specificity rule lost the cascade: the rail stayed a 1px-wide
+     full-height desktop strip and its overflowing toggle landed on top of the brand and answer. */
+  .mavea-app.with-rail .side-rail {
+    left: 0;
     top: auto;
     right: 0;
-    width: auto;
+    width: 100%;
+    height: var(--mobile-rail-h);
     max-height: calc(100dvh - 64px);
     border-right: none;
     border-top: 1px solid var(--line);
@@ -43,10 +52,11 @@
   }
   /* transcript chrome is hidden until the user opens the sheet */
   .side-rail .rail-head,
-  .side-rail .rail-chat {
+  .side-rail .rail-chat,
+  .mavea-app.with-rail .side-rail .rail-foot {
     display: none;
   }
-  .side-rail.chat-open {
+  .mavea-app.with-rail .side-rail.chat-open {
     height: min(68dvh, 540px);
   }
   .side-rail.chat-open .rail-head {
@@ -55,6 +65,9 @@
   .side-rail.chat-open .rail-chat {
     display: flex;
     flex: 1 1 auto;
+  }
+  .mavea-app.with-rail .side-rail.chat-open .rail-foot {
+    display: flex;
   }
   .rail-mobile-toggle {
     display: inline-flex;

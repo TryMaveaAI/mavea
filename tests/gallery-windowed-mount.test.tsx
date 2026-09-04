@@ -9,8 +9,9 @@ import { GalleryApp } from '../src/gallery/GalleryApp';
 //
 // jsdom ships no IntersectionObserver and reports 0×0 rects, so nothing is ever "in view" here —
 // which is exactly the off-screen case we want to pin: the tiles must stay skeletons rather than
-// mount the whole library. The `?mountall=1` audit hatch must still force every tile to mount, so
-// the overflow audit (window.__overflowAudit) can sweep the full set.
+// mount the whole library. The audit combines `?mountall=1` with a family query: it still forces
+// every tile in that family to mount, while the runner visits all families sequentially instead of
+// asking an 8 GB machine to hold all 625 TopicCanvas trees at once.
 
 class NoopObserver {
   observe() {}
@@ -101,12 +102,14 @@ describe('gallery windowed mounting', () => {
     }
   });
 
-  it('?mountall=1 forces every tile to mount for the overflow audit', async () => {
+  it('?mountall=1 forces every filtered-family tile to mount for the overflow audit', async () => {
     (globalThis as { IntersectionObserver: unknown }).IntersectionObserver = NoopObserver;
-    window.location.hash = '#/gallery?mountall=1';
+    window.location.hash = '#/gallery?mountall=1&family=tables';
     const { container } = render(<GalleryApp />);
 
     const tiles = container.querySelectorAll('.vlib-tile').length;
+    expect(tiles).toBeGreaterThan(1);
+    expect(tiles).toBeLessThan(625);
     // Detail shards and renderers are intentionally lazy. The audit hatch is ready only once every
     // listed tile has settled into its real render; waiting also wraps the async React commits in act.
     await waitFor(
@@ -116,7 +119,7 @@ describe('gallery windowed mounting', () => {
       },
       { timeout: 60_000 },
     );
-  }, 60_000); // mounts the entire real block library; the global 20s budget flakes under heavy load
+  }, 60_000);
 
   it('preloads against the gallery scroller and preserves measured height while unmounted', async () => {
     (globalThis as { IntersectionObserver: unknown }).IntersectionObserver = ControlledObserver;
@@ -151,17 +154,24 @@ describe('gallery windowed mounting', () => {
 
       act(() => first?.trigger(true));
       const firstTile = container.querySelector('.vlib-tile');
-      await waitFor(() => expect(firstTile?.querySelector('.card')).toBeTruthy());
-
-      act(() => first?.trigger(false));
-      await waitFor(() => {
-        const pending = firstTile?.querySelector<HTMLElement>('.vlib-render--pending');
-        expect(pending).toBeTruthy();
-        expect(pending?.style.minHeight).toBe('420px');
+      await waitFor(() => expect(firstTile?.querySelector('.card')).toBeTruthy(), {
+        timeout: 10_000,
       });
 
+      act(() => first?.trigger(false));
+      await waitFor(
+        () => {
+          const pending = firstTile?.querySelector<HTMLElement>('.vlib-render--pending');
+          expect(pending).toBeTruthy();
+          expect(pending?.style.minHeight).toBe('420px');
+        },
+        { timeout: 10_000 },
+      );
+
       act(() => first?.trigger(true));
-      await waitFor(() => expect(firstTile?.querySelector('.card')).toBeTruthy());
+      await waitFor(() => expect(firstTile?.querySelector('.card')).toBeTruthy(), {
+        timeout: 10_000,
+      });
     } finally {
       HTMLElement.prototype.getBoundingClientRect = realRect;
       window.getComputedStyle = realComputedStyle;

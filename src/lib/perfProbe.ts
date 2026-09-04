@@ -14,14 +14,7 @@
 //   - Self-terminating: the rAF chain ends and the observer disconnects when the verdict lands.
 //   - Respects the user: it does nothing unless the mode is `auto`.
 
-import {
-  type PerfTier,
-  heuristicTierNow,
-  readPerfMode,
-  readVerdict,
-  writeVerdict,
-  hardwareSignature,
-} from './perfTier';
+import { type PerfTier, heuristicTierNow, readPerfMode, writeVerdict } from './perfTier';
 
 // Window sizing. A window is whichever comes first: MAX_FRAMES samples or MAX_WINDOW_MS elapsed.
 const MAX_FRAMES = 240; // ~4s at 60Hz, ~2s at 120Hz — a fixed-size ring buffer
@@ -84,21 +77,14 @@ export function startPerfProbe(onVerdict: (tier: PerfTier) => void): ProbeHandle
   // Only "auto" is probe-driven; an explicit user choice is never second-guessed.
   if (readPerfMode() !== 'auto') return inert;
 
-  // A stored `lite` is only final on a machine whose static signals AGREE it is weak. On hardware
-  // that looks capable on paper, the verdict was earned from measurement — and measurements can be
-  // poisoned (a background build, a tab left throttled, one heavy session). Locking such a machine
-  // into lite forever turns one bad afternoon into a permanently flattened app. So: heuristic-lite
-  // hardware keeps its verdict untouched; heuristic-full hardware re-audits every load, and a
-  // clean result records `full` for the NEXT load (a promotion is still never applied mid-session).
-  const existing = readVerdict();
-  if (
-    existing &&
-    existing.sig === hardwareSignature() &&
-    existing.tier === 'lite' &&
-    heuristicTierNow() === 'lite'
-  ) {
-    return inert;
-  }
+  // Do not benchmark hardware that the static policy already placed in lite. Sampling an already
+  // calmed-down page can only prove that *lite* is smooth; recording that as a `full` verdict would
+  // make the next launch heavy again. It also needlessly keeps an rAF chain and observer alive for
+  // up to 18 seconds on precisely the low-resource machines this tier protects.
+  if (heuristicTierNow() === 'lite') return inert;
+
+  // A capable-on-paper machine can re-audit a measured lite verdict: an old measurement may have
+  // coincided with a build or other temporary load. A clean result promotes only on the next load.
 
   let stopped = false;
   let rafId = 0;

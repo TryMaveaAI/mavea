@@ -6,6 +6,7 @@ import {
   smoothEnergy,
   makeEnergyPublisher,
   voiceEnergyTap,
+  shouldSyncVoiceEnergy,
   captureAudioStream,
   type EnergyHost,
 } from '../src/voice/voiceEnergy';
@@ -15,6 +16,8 @@ import {
   resetKokoroProbe,
   speakKokoroLine,
   speakKokoroResult,
+  splitSynthesisChunks,
+  noteKokoroAccepted,
   primeKokoroLine,
   cancelKokoro,
   kokoroSpeaking,
@@ -115,6 +118,14 @@ describe('smoothEnergy', () => {
     let v = 0;
     for (let i = 0; i < 30; i++) v = smoothEnergy(v, 1);
     expect(v).toBeCloseTo(1, 2);
+  });
+});
+
+describe('voice-energy performance policy', () => {
+  it('keeps speech audible but disables decorative waveform syncing in lite mode', () => {
+    expect(shouldSyncVoiceEnergy('lite', false)).toBe(false);
+    expect(shouldSyncVoiceEnergy('full', false)).toBe(true);
+    expect(shouldSyncVoiceEnergy('full', true)).toBe(false);
   });
 });
 
@@ -387,7 +398,10 @@ describe('voice-capability honesty', () => {
       await expect(kokoroAvailable()).resolves.toBe(true);
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(fetchMock).toHaveBeenCalledWith('/tts/health', { method: 'GET' });
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/tts/health',
+        expect.objectContaining({ method: 'GET' }),
+      );
     });
 
     it('shares one in-flight probe between concurrent callers', async () => {
@@ -409,6 +423,27 @@ describe('voice-capability honesty', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('trusts a server that just accepted synthesis while /health is busy rendering', async () => {
+      // The CPU Kokoro answers /health only between breaths. A probe that lands mid-render hangs;
+      // it must not turn a working voice into captions-only for the retry window.
+      const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+      vi.stubGlobal('fetch', fetchMock);
+
+      noteKokoroAccepted();
+      await expect(kokoroAvailable()).resolves.toBe(true);
+      expect(kokoroKnownAvailable()).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('treats a probe that times out as busy, not down', async () => {
+      const timeout = new DOMException('signal timed out', 'TimeoutError');
+      const fetchMock = vi.fn(() => Promise.reject(timeout));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(kokoroAvailable()).resolves.toBe(true);
+      expect(kokoroKnownAvailable()).toBe(true);
+    });
+
     it('gates playback on the probe — no speech requests fire while Kokoro is down', async () => {
       const fetchMock = vi.fn(() => Promise.reject(new Error('ECONNREFUSED')));
       vi.stubGlobal('fetch', fetchMock);
@@ -420,7 +455,10 @@ describe('voice-capability honesty', () => {
 
       // Only the single health probe — never POST /tts/v1/audio/speech per line.
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(fetchMock).toHaveBeenCalledWith('/tts/health', { method: 'GET' });
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/tts/health',
+        expect.objectContaining({ method: 'GET' }),
+      );
     });
 
     it('publishes speaking transitions without an idle polling timer', async () => {
@@ -639,6 +677,32 @@ describe('speakKokoroLine', () => {
       vi.fn(() => Promise.reject(new Error('down'))),
     );
     await expect(speakKokoroResult('Hello.', 'mavea')).resolves.toBe(false);
+  });
+
+  it('splits long narration into natural bounded breaths for fast first audio', () => {
+    const chunks = splitSynthesisChunks(
+      'Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I mapped out three balanced days for you.',
+    );
+    expect(chunks.length).toBeGreaterThan(2);
+    expect(chunks.join(' ')).toBe(
+      'Lisbon is all about pacing yourself between the steep hills, the incredible viewpoints, and the food. I mapped out three balanced days for you.',
+    );
+    expect(Math.max(...chunks.map((chunk) => chunk.length))).toBeLessThanOrEqual(68);
+    // The opening breath is capped tighter than the rest (it is the only one heard after
+    // silence), and falls back to a word boundary when no pause lands inside its window.
+    expect(chunks[0]).toBe('Lisbon is all about pacing yourself');
+    expect(chunks[0].length).toBeLessThanOrEqual(40);
+  });
+
+  it('opens on a real pause when one lands inside the first-breath window', () => {
+    const chunks = splitSynthesisChunks(
+      'Sure, here is the plan for today, and then a few thoughts about tomorrow morning as well.',
+    );
+    // The comma after "Sure" is too early to be worth a request of its own; the next one is not.
+    expect(chunks[0]).toBe('Sure, here is the plan for today,');
+    expect(chunks.join(' ')).toBe(
+      'Sure, here is the plan for today, and then a few thoughts about tomorrow morning as well.',
+    );
   });
 });
 

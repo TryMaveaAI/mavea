@@ -19,6 +19,17 @@ import { join } from 'path';
 const SOURCE = readFileSync(join(process.cwd(), 'scripts/ui-audit.mts'), 'utf8');
 
 describe('ui-audit collider', () => {
+  it('waits for real cards instead of auditing TopicCanvas loading skeletons', () => {
+    expect(SOURCE).toMatch(/\.vlib-render \[aria-busy=["']true["']\]/);
+    expect(SOURCE).toMatch(/\.vlib-render \.skel-card/);
+  });
+
+  it('bounds peak audit memory by visiting every renderer family separately', () => {
+    expect(SOURCE).toContain('for (const family of families)');
+    expect(SOURCE).toContain('family=${encodeURIComponent(family)}');
+    expect(SOURCE).toContain('Gallery coverage mismatch');
+  });
+
   it('does not blanket-skip text inside an <svg>', () => {
     expect(SOURCE).not.toMatch(/closest\(['"]svg['"]\)\)\s*continue/);
   });
@@ -26,6 +37,11 @@ describe('ui-audit collider', () => {
   it('measures legibility in rendered pixels, not raw user units', () => {
     // The screen matrix is what converts viewBox user units into on-screen px.
     expect(SOURCE).toContain('getScreenCTM');
+  });
+
+  it('has no accepted narrow-screen legibility waiver', () => {
+    expect(SOURCE).not.toMatch(/KNOWN_NARROW_SVG_TYPE|known limit:|accepted 2026-08-08/);
+    expect(SOURCE).toMatch(/if \(dirty\.length === 0\)/);
   });
 
   it('still excuses the stacking that is genuinely by design', () => {

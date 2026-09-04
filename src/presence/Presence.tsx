@@ -63,7 +63,7 @@ function PresenceImpl({
       role="img"
       aria-label={`Mavéa presence — ${state}`}
     >
-      <div className="aura"></div>
+      <div className="aura" aria-hidden="true"></div>
 
       <svg className="mascot" viewBox="0 0 200 220" aria-hidden="true" focusable="false">
         <defs>

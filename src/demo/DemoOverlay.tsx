@@ -287,6 +287,9 @@ export function DemoOverlay({
             />
           ))}
         </div>
+        <span className="demox-progress" aria-live="polite">
+          {driver.index + 1} / {driver.total}
+        </span>
         <button
           type="button"
           className="demox-skip"

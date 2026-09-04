@@ -95,16 +95,14 @@
      and grows with the composer. A hardcoded chrome guess only cleared the dock on a viewport
      taller than any laptop, so the desk sat at its scale floor everywhere else. */
   --study-column-h: calc(100dvh - 92px - var(--dock-h, 76px));
-  /* The floor is DERIVED, not chosen: below 534px the floored desk must crop deeper than its
-     decorative band can absorb and the frame starts slicing cards — 534 = (740 − SHALLOW_CROP) ×
-     STUDY_FIT_FLOOR + 2px border (slots.ts). The column caps it either way, so a short window
-     never gets a stage taller than the room it has; below the legible floor the scale hook
-     stands the desk down to the flat column (data-compact) instead. */
+  /* The floor is DERIVED, not chosen: below 534px the scale stays at its legibility floor and the
+     shallow treatment removes/lifts the decorative floor instead of replacing the Study with a
+     different UI. A shorter reading column scrolls this frame; it must not override the floor and
+     physically slice the cards. */
   width: 100%;
   max-width: var(--canvas-col-max);
   margin-inline: auto;
   height: clamp(534px, var(--study-stage-height, var(--study-column-h)), 820px);
-  max-height: var(--study-column-h);
   overflow: clip;
   border: 1px solid var(--study-frame);
   border-radius: 26px;
@@ -1194,7 +1192,18 @@
      bubble inset plus the parallax swing. On a wide stage the bubble hugs the desk's own edge
      rather than floating in the dead parchment. */
   left: max(22px, calc(50% - var(--study-scale, 1) * 720px + 16px));
-  max-width: clamp(190px, calc(50cqw - 428.8px * var(--study-scale, 1) - 64px), 340px);
+  /* The clamp is the PAINTED width the bubble may take before the card's edge, but the HUD scale
+     below multiplies whatever layout width it is given. In full screen (hud > 1) an unscaled clamp
+     painted 30-40% wider than it measured and walked straight over the card and the desk's
+     scrawls. Divide by the HUD so the painted edge is the one the clamp was written for. */
+  /* No 190px floor either: on a floored desk in a 1366px window the room beside the card is
+     ~120px, and a floor above it is exactly what pushed the bubble 27px into the card. Below 170px
+     the hook hides the bubble instead (data-voice-room="none"); the caption strip keeps the line. */
+  max-width: clamp(
+    calc(120px / var(--study-hud, 1)),
+    calc((50cqw - 428.8px * var(--study-scale, 1) - 64px) / var(--study-hud, 1)),
+    calc(340px / var(--study-hud, 1))
+  );
   padding: 9px 14px 10px;
   transform: scale(var(--study-hud, 1));
   transform-origin: top left;
@@ -1204,6 +1213,13 @@
   backdrop-filter: var(--glass-blur-soft);
   -webkit-backdrop-filter: var(--glass-blur-soft);
   pointer-events: none;
+}
+
+/* useStudyScale measures the same room the clamp above is written for. When there is not even
+   170px of it, no type size holds five rows of a real line beside the card; the strip below
+   still carries the words. (A floored desk in a 1366px window is this case.) */
+.study-stage[data-voice-room='none'] .study-voice {
+  display: none;
 }
 
 .study-voice-eq {
@@ -1257,7 +1273,9 @@
   font-size: var(--study-voice-size, 16px);
   line-height: 1.55;
   color: var(--study-ink-soft);
-  max-height: calc(7 * 1.55em);
+  /* One row above the five the measured fit (voiceFit.ts settleVoiceFit) guarantees: a cushion for
+     sub-pixel rounding, never a clamp on a fitted line. */
+  max-height: calc(6 * 1.55em);
   overflow: hidden;
 }
 
@@ -1682,8 +1700,9 @@
 }
 
 /* ── The compact stage: the desk stands down, the lesson stays ──────────────────────────────
-   Under 980px of container, or in a short laptop viewport, the 3-D composition has nothing to
-   offer but squinting. The Study reflows to a flat reading column — the front card full-width,
+   Under 940px of container the 3-D composition has nothing to offer but horizontal cropping.
+   Height never selects this alternate UI: a wide, short laptop keeps the real Study and spends
+   its decorative floor band first. A genuinely narrow Study reflows to a flat reading column — the front card full-width,
    Mavéa's note beneath it, and one unbroken beat bar. Background objects keep their names in the
    navigator, never as unreadable miniatures. The scale hook publishes the attribute because a
    container query cannot switch its own stage from fixed height to content height. */

@@ -11,6 +11,7 @@ import { configureProviderSpending } from '../src/live/providers/spendPolicy';
 // collapses a focus burst to a single round-trip.
 
 beforeEach(() => {
+  document.documentElement.dataset.perf = 'full';
   _resetPrewarmForTest();
   resetLegalAcceptance();
   expect(acceptLegalTerms(new Date('2026-07-16T12:00:00.000Z'))).toBe(true);
@@ -24,6 +25,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  delete document.documentElement.dataset.perf;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   resetLegalAcceptance();
@@ -32,6 +34,16 @@ afterEach(() => {
 });
 
 describe('prewarmLive', () => {
+  it('does no speculative work in lite mode; submit remains the load boundary', () => {
+    document.documentElement.dataset.perf = 'lite';
+    const probe = vi.spyOn(getAdapter('gemini'), 'probe');
+
+    prewarmLive({ force: true });
+
+    expect(probe).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('does not contact an unconfigured provider', () => {
     setLiveConfigV2({ keys: { gemini: '' } });
     const probe = vi.spyOn(getAdapter('gemini'), 'probe');
