@@ -55,11 +55,19 @@ function svgWithSmallLabel(
   scroller: HTMLElement,
   label: string,
   nestedSize?: number,
+  size: { width: number; height: number } = { width: 200, height: 100 },
 ): SVGSVGElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 400 200');
   svg.getBoundingClientRect = () =>
-    ({ width: 200, height: 100, left: 0, top: 0, right: 200, bottom: 100 }) as DOMRect;
+    ({
+      width: size.width,
+      height: size.height,
+      left: 0,
+      top: 0,
+      right: size.width,
+      bottom: size.height,
+    }) as DOMRect;
   const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   text.style.fontSize = '10px';
   text.getScreenCTM = () => ({ a: 0.5, b: 0, c: 0, d: 0.5 }) as unknown as DOMMatrix;
@@ -186,6 +194,30 @@ describe('useAccessibleScrollRegions', () => {
     second.remove();
     await flushScan();
     expect(scroller.classList.contains('canvas-svg-scroll')).toBe(false);
+    hook.unmount();
+  });
+
+  // The size test that decides whether a figure is even LOOKED at used to be
+  // `width < 80 || height < 24`, so a chart that is wide and short was skipped as if it were an
+  // inline glyph. A dotplot whose tallest stack is one dot is exactly that shape — a 520x55
+  // viewBox painting 208x22 in a phone-width card — and its tick labels reached the screen at
+  // 3.6px. An icon is small in BOTH axes; that is the argued case, and the only one.
+  it('guards a wide, short figure and still skips an inline glyph', async () => {
+    const host = document.createElement('div');
+    const scroller = document.createElement('div');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 208 });
+    host.append(scroller);
+
+    const strip = svgWithSmallLabel(scroller, '25', undefined, { width: 208, height: 22 });
+    const glyph = svgWithSmallLabel(scroller, '+', undefined, { width: 20, height: 20 });
+
+    const hook = renderHook(() => useAccessibleScrollRegions({ current: host }, 'wide-short'));
+    await flushScan();
+
+    expect(strip.hasAttribute('data-legibility-guard')).toBe(true);
+    expect(parseFloat(strip.style.minWidth)).toBeGreaterThan(208);
+    expect(glyph.hasAttribute('data-legibility-guard')).toBe(false);
+    expect(glyph.style.minWidth).toBe('');
     hook.unmount();
   });
 });

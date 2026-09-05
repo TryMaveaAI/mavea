@@ -112,7 +112,13 @@ export function useAccessibleScrollRegions(
         ].filter((text) => !text.closest('defs, clipPath, mask, pattern'));
         if (!textNodes.length) continue; // icon or decorative geometry
         const box = svg.getBoundingClientRect();
-        if (box.width < 80 || box.height < 24) continue;
+        // Skip inline glyphs, which are small in BOTH axes. The test used to be `width < 80 ||
+        // height < 24`, and the `||` exempted a whole shape rather than an argued case: a chart
+        // that is wide and short is still a chart. A dotplot whose tallest stack is one dot paints
+        // a 520x55 viewBox strip — 208x22 in a phone-width card — so it was skipped, and its tick
+        // labels reached the screen at 3.6px (9 user units x the 0.4 screen scale). That was the
+        // only defect in the whole 625-component library at 320px.
+        if (box.width < 80 && box.height < 24) continue;
         if (hasScaledAncestor(svg)) continue;
         // Layout px, not painted px: min-width is a layout property, and the two only agree when
         // no ancestor transform is in play (checked above). clientWidth is 0 in engines that do not
