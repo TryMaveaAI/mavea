@@ -29,10 +29,20 @@ Opens `http://localhost:4173` — no install, no account, no model key required.
 
 <sub>Runs locally · Your own API key · OpenAI, Claude, Gemini, Grok, OpenRouter</sub>
 
-<!-- The one image above the fold, so it uses the published CDN copy like the mascot does: npm's
-     registry page cannot resolve a repo-relative path, and a stranger meeting Mavéa on npm has to
-     see the thing it does before reading a word. The strip further down stays repo-relative. -->
-<img width="760" src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/answer-ink.jpg" alt="An answer on the Mavéa canvas — cards of evidence with the pen's underline and highlight landing on the exact line being narrated" />
+<!-- The images above the fold use the published CDN copy like the mascot does: npm's registry page
+     cannot resolve a repo-relative path, and a stranger meeting Mavéa on npm has to see the thing
+     it does before reading a word. The strip further down stays repo-relative. Two frames, because
+     one cannot carry both halves of the claim: an everyday question answered in the form that fits
+     it, and the thing no chat window does at all. -->
+<img width="760" src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/trip-plan.jpg" alt="A day-trip question answered on the Mavéa canvas: a route map with four numbered stops beside an hour-by-hour playbook, distance and elevation totals underneath, and the spoken line running in the dock" />
+
+<sub>**Ask "how do we plan a day trip?"** — and the answer arrives as a route map, an hour-by-hour
+playbook and the totals that matter. Mavéa picks the form each answer needs.</sub>
+
+<img width="760" src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/living-answer.jpg" alt="A causal web explaining the 2008 financial crisis: twelve causes linked by weighted arrows, with what-if sliders and an evidence panel beside them" />
+
+<sub>**Ask "why did it happen?"** — and the answer opens into the causal web behind it. Turn a cause
+down and the whole web re-weighs, with every link traceable to a real quote.</sub>
 
 **Talk to AI. See what it means.** If that is a direction worth exploring, a ⭐ helps other people
 find Mavéa.

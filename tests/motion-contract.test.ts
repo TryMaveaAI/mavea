@@ -17,6 +17,22 @@ const css = readFileSync(join(__dirname, '../src/canvas/lib/motion.css'), 'utf8'
 // comments first so every regex below only ever sees actual rules.
 const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
+// The draw-on rule's fallbacks decide what a path looks like when its length was never measured.
+// A dash fallback renders it invisible; the path must fall back to SOLID instead — an un-animated
+// line beats an absent one.
+describe('motion.css — a path with no measured length still paints', () => {
+  it('falls back to a solid stroke, never to a dash', () => {
+    const rule = /\.m-draw-path\s*\{([^}]*)\}/g;
+    const bodies = [...cssNoComments.matchAll(rule)].map((m) => m[1]);
+    expect(bodies.length).toBeGreaterThan(0);
+    for (const body of bodies) {
+      for (const fallback of body.matchAll(/var\(--path-len,\s*([^)]*)\)/g)) {
+        expect(['none', '0']).toContain(fallback[1].trim());
+      }
+    }
+  });
+});
+
 describe('motion.css — the four canonical keyframes exist', () => {
   for (const name of ['mavea-fade-rise', 'mavea-scale-in', 'mavea-draw', 'mavea-pulse-glow']) {
     it(`defines @keyframes ${name}`, () => {

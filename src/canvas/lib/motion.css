@@ -114,9 +114,13 @@
 
   /* `forwards` (not `backwards`) — the drawn state must persist once the animation ends, or the
      path would snap back to its pre-animation (retracted) dash offset the instant it finishes. */
+  /* The fallbacks render the path SOLID, never retracted. A 1px fallback dash was invisible: a
+     line that has the class but no measured `--path-len` was drawn as a 1px dash pushed 1px out
+     of view, so the chart painted its axes, gridlines and legend around nothing at all. A missing
+     measurement must fail visible — an un-animated line beats an absent one. */
   .m-draw-path {
-    stroke-dasharray: var(--path-len, 1px) var(--path-len, 1px);
-    stroke-dashoffset: var(--path-len, 1px);
+    stroke-dasharray: var(--path-len, none) var(--path-len, none);
+    stroke-dashoffset: var(--path-len, 0);
     animation: mavea-draw var(--draw-duration, var(--m-cinematic)) var(--ease-out) var(--delay, 0ms)
       forwards;
   }

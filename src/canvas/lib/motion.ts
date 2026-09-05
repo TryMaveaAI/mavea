@@ -97,6 +97,11 @@ export function usePathDraw(
     // environment degrades to "no animation" instead of throwing.
     if (typeof el.getTotalLength !== 'function') return;
     const len = el.getTotalLength();
+    // A path measured before its subtree is laid out reports no usable length, and there is no
+    // second measurement — the value would be wrong for as long as the element lives. Leave the
+    // animation off rather than drive it from a bad number: the path then keeps its ordinary
+    // solid stroke, which is what "fully drawn" looks like.
+    if (!Number.isFinite(len) || len < 1) return;
 
     el.style.setProperty('--path-len', `${len}px`);
     if (duration !== undefined) el.style.setProperty('--draw-duration', `${duration}ms`);

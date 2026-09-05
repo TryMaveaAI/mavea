@@ -119,6 +119,19 @@ describe('usePathDraw', () => {
     });
   });
 
+  // A path measured before its subtree is laid out reports 0, and nothing measures it again. The
+  // animation must not run off that number: driven by it, the line renders as a retracted dash and
+  // the chart paints its axes and legend around nothing at all.
+  it('leaves an unmeasurable path solid rather than animating a length of zero', () => {
+    mockReducedMotion(false);
+    withStubbedPath(0, (path) => {
+      const ref = { current: path };
+      renderHook(() => usePathDraw(ref));
+      expect(path.classList.contains('m-draw-path')).toBe(false);
+      expect(path.style.getPropertyValue('--path-len')).toBe('');
+    });
+  });
+
   it('degrades to a no-op when getTotalLength is unavailable, instead of throwing', () => {
     mockReducedMotion(false);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
