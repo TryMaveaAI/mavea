@@ -2,7 +2,7 @@
   "name": "@mavea/mavea",
   "version": "2.3.1",
   "type": "module",
-  "description": "Mavéa — a visual AI assistant. Ask a question and watch the answer draw itself: charts, timelines, maps, and evidence you can check. Runs on your machine, bring your own key.",
+  "description": "Mavéa — a visual AI assistant. Answers come back as charts, timelines, maps and evidence you can check. Runs on your machine, with your own API key.",
   "keywords": [
     "ai",
     "ai-assistant",

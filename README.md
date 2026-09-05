@@ -27,6 +27,8 @@ npx @mavea/mavea@latest
 
 Opens `http://localhost:4173` — no install, no account, no model key required.
 
+<sub>Runs locally · Your own API key · OpenAI, Claude, Gemini, Grok, OpenRouter</sub>
+
 <!-- The one image above the fold, so it uses the published CDN copy like the mascot does: npm's
      registry page cannot resolve a repo-relative path, and a stranger meeting Mavéa on npm has to
      see the thing it does before reading a word. The strip further down stays repo-relative. -->
