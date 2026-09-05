@@ -52,6 +52,22 @@ describe('ModelSelect', () => {
     ).toContain('Recommended');
   });
 
+  // A reader who never opens the menu still has to learn that this model was suggested rather than
+  // fixed, and where it sits in the provider's range — the id alone says neither.
+  it('says on the face of it that the filled-in model is a recommendation, and why', () => {
+    render(<Harness provider="gemini" initial={providerInfo('gemini').defaultModel} />);
+    const hint = screen.getByText(/Recommended/);
+    expect(hint).toBeVisible();
+    expect(hint).toHaveTextContent(/lightest model this provider offers/i);
+    expect(hint).toHaveTextContent(/cheapest to run/i);
+    expect(hint).toHaveTextContent(/change it any time/i);
+  });
+
+  it('drops the recommendation line once a different model is chosen', () => {
+    render(<Harness provider="gemini" initial="gemini-3.8-flash" />);
+    expect(screen.queryByText(/Recommended —/)).toBeNull();
+  });
+
   it('selecting an option writes the model id and closes the menu', () => {
     render(<Harness provider="anthropic" />);
     fireEvent.click(input());

@@ -40,7 +40,13 @@ function companyOf(label: string): string {
  *  stream invisibly (see the SSE note in providers/anthropic.ts), so the wait looks like dead air
  *  whoever is serving it. Naming the model CHOICE as the thing that moves the number is true for
  *  every provider, and singles out none. */
-function pickerHint(model: string): string {
+function pickerHint(model: string, recommended: boolean): string {
+  // Say that this one was suggested, and on what grounds. The id alone tells a reader nothing —
+  // not that anything else was on offer, and not which end of the provider's range they are on —
+  // so a field filled in for them would otherwise read as the only option there is.
+  const lead = recommended
+    ? 'Recommended — the lightest model this provider offers, and the cheapest to run. Change it any time. '
+    : '';
   const base =
     'Which model you pick changes how long a turn takes: from seconds to two minutes or more.';
   // A free variant is a different service from the paid model of the same name, on the provider’s
@@ -51,7 +57,8 @@ function pickerHint(model: string): string {
   // lives in providers/openaiCompatible.ts (FREE_ROUTE_STREAM_TOTAL_MS) and so is true only for the
   // adapters built on it — Gemini and Anthropic keep their own fixed ceilings. The smaller canvas
   // is provider-agnostic (`speedTierFor` in generateLive.ts), so it is the one that is always true.
-  return isFreeRoute(model) ? base + ' Free ones are rate-limited — smaller canvas.' : base;
+  const tail = isFreeRoute(model) ? base + ' Free ones are rate-limited — smaller canvas.' : base;
+  return lead + tail;
 }
 
 export function ModelSelect({
@@ -82,7 +89,7 @@ export function ModelSelect({
   // Nothing is marked current until the reader picks: no model is substituted at request time, so
   // showing one as selected would name a model that will not be used.
   const effective = value;
-  const hint = pickerHint(effective);
+  const hint = pickerHint(effective, !!effective && effective === info.defaultModel);
   const optionId = (index: number): string => `${listId}-opt-${index}`;
 
   const openMenu = (): void => {
