@@ -116,6 +116,26 @@ const SURFACES: Surface[] = [
     settleMs: 2500,
   },
   { key: 'legal', label: 'Legal', hash: '#/legal', ready: '.legal-app' },
+  // The rest of the app. These were never swept: a reader reaches Prism, Synthesis, the
+  // dashboards, the decks, the courses and the course reader exactly the way they reach Live, and
+  // nothing measured whether any of them held together at a phone width or on a short laptop.
+  // Ready selectors are the ones browser-matrix.mts already drives, so they are known-good.
+  { key: 'prism', label: 'Prism', hash: '#/prism', ready: '.prism-app', settleMs: 2500 },
+  { key: 'synthesis', label: 'Synthesis (empty)', hash: '#/synthesis', ready: '.prism-app' },
+  {
+    // ?demo=1 opens straight into the mapped overlay, past the .prism-app shell — so the settled
+    // corpus is a different surface from the dropzone, and both are states a reader reaches.
+    key: 'synthesis-map',
+    label: 'Synthesis · mapped',
+    hash: '#/synthesis?demo=1',
+    ready: '.syn-lenses',
+    settleMs: 4000,
+  },
+  { key: 'dashboards', label: 'Dashboards', hash: '#/dashboards', ready: '.dash-app' },
+  { key: 'flashcards', label: 'Flashcards', hash: '#/flashcards', ready: '.fc-app' },
+  { key: 'courses', label: 'Courses', hash: '#/courses', ready: '.cr-app' },
+  { key: 'course', label: 'Course reader', hash: '#/course', ready: '.clr-app' },
+  { key: 'terms', label: 'Terms', hash: '#/terms', ready: '.legal-app' },
 ];
 
 interface Finding {
