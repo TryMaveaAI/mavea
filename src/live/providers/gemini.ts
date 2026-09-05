@@ -45,6 +45,7 @@ import {
   noteRateLimited,
 } from './http';
 import { geminiUserParts } from './parts';
+import { thinkingReserve } from './budget';
 
 // Default base is the same-origin proxy prefix; cfg.baseUrl overrides with the
 // direct API base (https://generativelanguage.googleapis.com) for Node eval runs.
@@ -105,15 +106,30 @@ const noMinimal = new Set<string>();
 
 /** Gemini's thinkingConfig uses uppercase level names. Omit the whole config when no
  *  level is requested, so the model's own default (Flash-Lite = MINIMAL) applies. */
+/** The level this model will actually accept. `low` is the nearest thing a model with no MINIMAL
+ *  tier accepts, so the intent — think as little as this model can — survives the substitution
+ *  rather than being dropped. */
+function effectiveLevel(level: ThinkingLevel, model: string): ThinkingLevel {
+  return level === 'minimal' && noMinimal.has(model) ? 'low' : level;
+}
+
 function thinkingConfig(
   level: ThinkingLevel | undefined,
   model: string,
 ): { thinkingLevel: string } | undefined {
   if (!level) return undefined;
-  // `low` is the nearest thing these models accept, so the intent — think as little as this model
-  // can — survives the substitution rather than being dropped.
-  const effective = level === 'minimal' && noMinimal.has(model) ? 'low' : level;
-  return { thinkingLevel: effective.toUpperCase() };
+  return { thinkingLevel: effectiveLevel(level, model).toUpperCase() };
+}
+
+/** Extra output tokens the substitution above needs. Thinking is metered out of `maxOutputTokens`
+ *  here, and the ceiling upstream was sized for the level we ASKED for — so moving to a level that
+ *  thinks harder without raising the ceiling leaves the JSON's own allowance to the thought. The
+ *  answer then truncates mid-object on EVERY turn: the narration (emitted first) still reads
+ *  perfectly while the canvas collapses to the lone "Here's what I can say" card. Zero when nothing
+ *  was substituted; `maxOutputTokens` is a ceiling, so an unused reserve is never spent. */
+function substitutionHeadroom(level: ThinkingLevel | undefined, model: string): number {
+  if (!level) return 0;
+  return Math.max(0, thinkingReserve(effectiveLevel(level, model)) - thinkingReserve(level));
 }
 
 /** Whether a 400 is Gemini telling us this model has no MINIMAL tier, as opposed to any other
@@ -228,9 +244,10 @@ export const geminiAdapter: ProviderAdapter = {
       })),
       { role: 'user', parts: perTurn ? [{ text: perTurn }, ...userParts] : userParts },
     ];
+    const baseOutputTokens = req.maxTokens ?? 1024;
     const generationConfig: Record<string, unknown> = {
       temperature: req.temperature ?? 0.3,
-      maxOutputTokens: req.maxTokens ?? 1024,
+      maxOutputTokens: baseOutputTokens,
       // JSON mode guarantees parseable output. We deliberately DON'T send a responseSchema:
       // because each block's `props` is an open object (its shape varies per the 150+ block
       // types), a strict schema makes Gemini take the trivially-valid path and emit `props:{}`
@@ -241,16 +258,23 @@ export const geminiAdapter: ProviderAdapter = {
       responseMimeType: 'application/json',
     };
     const tools = buildTools(req);
-    // Rebuildable: a model that refuses MINIMAL is re-asked at `low` on the spot, and the only
-    // thing that differs between the two attempts is the thinking level.
+    // Rebuildable: a model that refuses MINIMAL is re-asked at `low` on the spot. The ask itself is
+    // untouched — only the thinking level moves, and the output ceiling that pays for it.
     const buildBody = (): string => {
       const thinking = thinkingConfig(req.thinkingLevel, cfg.model);
+      const headroom = substitutionHeadroom(req.thinkingLevel, cfg.model);
+      const generation =
+        thinking || headroom
+          ? {
+              ...generationConfig,
+              ...(thinking ? { thinkingConfig: thinking } : {}),
+              ...(headroom ? { maxOutputTokens: baseOutputTokens + headroom } : {}),
+            }
+          : generationConfig;
       return JSON.stringify({
         systemInstruction: { parts: [{ text: stableSystem }] },
         contents,
-        generationConfig: thinking
-          ? { ...generationConfig, thinkingConfig: thinking }
-          : generationConfig,
+        generationConfig: generation,
         ...(tools ? { tools } : {}),
       });
     };

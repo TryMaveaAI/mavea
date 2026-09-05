@@ -1828,7 +1828,8 @@ describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
     const second = JSON.parse(fetchMock.mock.calls[1][1]!.body as string);
     expect(first.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'MINIMAL' });
     expect(second.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'LOW' });
-    // Only the thinking level differs — the retry must not quietly re-shape the ask.
+    // Only the thinking level (and the ceiling that pays for it) differs — the retry must not
+    // quietly re-shape the ask.
     expect({ ...second, generationConfig: null }).toEqual({ ...first, generationConfig: null });
     expect(out.raw).toContain('"ok"');
   });
@@ -1852,6 +1853,22 @@ describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
     expect(again).toHaveBeenCalledTimes(1);
     const body = JSON.parse(again.mock.calls[0][1]!.body as string);
     expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'LOW' });
+  });
+
+  it('raises the output ceiling with the substituted level, so the answer still fits', async () => {
+    const fetchMock = refuseThenStream();
+    vi.stubGlobal('fetch', fetchMock);
+    // Its own model id — what the adapter learns is module state that outlives one test.
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.9-flash', apiKey: 'k' };
+    await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal', maxTokens: 2000 }, cfg);
+
+    const first = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+    const second = JSON.parse(fetchMock.mock.calls[1][1]!.body as string);
+    expect(first.generationConfig.maxOutputTokens).toBe(2000);
+    // LOW reserves more thinking than MINIMAL, and thinking is metered out of this same ceiling:
+    // held at 2000 the thought takes the JSON's allowance with it and the answer truncates
+    // mid-object on every turn, leaving a canvas with nothing on it.
+    expect(second.generationConfig.maxOutputTokens).toBeGreaterThan(2000);
   });
 
   it('leaves a model that does support MINIMAL alone', async () => {
