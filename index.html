@@ -37,8 +37,28 @@
     <title>Mavéa · Talk to AI. See what it means.</title>
     <meta
       name="description"
-      content="Mavéa is a voice-first AI presence. Talk to it and watch the answer appear as charts, timelines, and maps — running locally, with your own API key."
+      content="Mavéa is a visual AI assistant. Ask a question — typed or spoken — and watch the answer draw itself as charts, timelines, maps, and evidence you can check, running on your machine with your own API key."
     />
+    <!-- Link-preview cards. Crawlers read these from the served markup, so they are unaffected by
+         the CSP above (which governs what the running page may fetch). The image is the published
+         package copy on the CDN: an og:image has to be absolute, and a self-hosted deployment of
+         dist/ has no stable public path of its own. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mavéa" />
+    <meta property="og:title" content="Mavéa — an AI that draws the answer" />
+    <meta
+      property="og:description"
+      content="Ask a question and watch the answer draw itself as charts, timelines, maps, and evidence you can check. Runs on your machine, bring your own key."
+    />
+    <meta
+      property="og:image"
+      content="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/answer-ink.jpg"
+    />
+    <meta
+      property="og:image:alt"
+      content="An answer on the Mavéa canvas, with the pen marking the exact line being narrated"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Self-hosted fonts (public/fonts, OFL): no third-party request, and the app works offline.
          Preload only the compact UI face. Newsreader is display:swap and loads at normal priority;

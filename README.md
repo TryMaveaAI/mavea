@@ -7,10 +7,11 @@
   <img src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/mascot-light.svg" width="150" alt="The Mavéa presence" />
 </picture>
 
-### Talk to AI. See what it means.
+### An AI that draws the answer.
 
-It listens, speaks the headline the instant it forms, then draws the answer — in charts, timelines,
-and evidence you can check, marking the exact figure each line is about.
+Ask a question — type it or say it — and Mavéa builds the reply on a living canvas: charts,
+timelines, maps, and evidence you can check, with its pen circling the exact figure each line is
+about.
 [See it in motion →](docs/FEATURES.md)
 
 <p>
@@ -25,6 +26,14 @@ npx @mavea/mavea@latest
 ```
 
 Opens `http://localhost:4173` — no install, no account, no model key required.
+
+<!-- The one image above the fold, so it uses the published CDN copy like the mascot does: npm's
+     registry page cannot resolve a repo-relative path, and a stranger meeting Mavéa on npm has to
+     see the thing it does before reading a word. The strip further down stays repo-relative. -->
+<img width="760" src="https://cdn.jsdelivr.net/npm/@mavea/mavea@latest/docs/media/answer-ink.jpg" alt="An answer on the Mavéa canvas — cards of evidence with the pen's underline and highlight landing on the exact line being narrated" />
+
+**Talk to AI. See what it means.** If that is a direction worth exploring, a ⭐ helps other people
+find Mavéa.
 
 </div>
 
@@ -67,10 +76,10 @@ place of the spoken walk.
 
 ## What it does
 
-Mavéa is an AI you talk to and watch think. Ask out loud: a calm face listens, speaks the headline
-the instant it forms, then steps aside while a living canvas draws the answer in charts, timelines,
-and evidence you can check, choosing the right form for each one. As it talks, it draws
-on the answer, circling the exact figure each line is about. Sourced claims keep their links and
+Mavéa is an AI you watch think. Type a question or ask it out loud: a calm face takes it, says the
+headline the instant it forms, then steps aside while a living canvas draws the answer in charts,
+timelines, and evidence you can check, choosing the right form for each one. As it narrates, it
+draws on the answer, circling the exact figure each line is about. Sourced claims keep their links and
 estimates can be labelled.
 
 A few specific things worth trying:
