@@ -102,7 +102,7 @@ import type { WorldSpec } from './world/types';
 import { worldSubject } from './world/subject';
 import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
 import type { Representation } from '../canvas/spatial/morph/types';
-import { autoFix, recoverInstruction } from './verify';
+import { autoFix, dropUndrawable, recoverInstruction } from './verify';
 
 export type { ChatMessage };
 
@@ -1752,7 +1752,7 @@ export async function generateLive(
   // 100 and aligns chart data to labels, clearing the common structural issues with no round
   // trip. What it cannot fix is REPORTED, never re-asked: a second call to correct the answer
   // is the reader's to make. The already-spoken narration is kept so audio matches.
-  const result = autoFix(validated);
+  const result = dropUndrawable(autoFix(validated));
 
   // "Go deeper" drawers are authored ON OPEN (see depth/deepen) — a drawer nobody opens costs
   // nothing — so park what that later call needs: the ask, this turn's config, and the sections

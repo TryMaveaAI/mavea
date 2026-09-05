@@ -23,6 +23,8 @@ export { parseAmount };
 export interface Issue {
   code: string;
   detail: string;
+  /** Index of the block the issue is about, when it is about one block rather than the canvas. */
+  at?: number;
 }
 
 /** Shares can round; only flag a breakdown whose total is clearly not a whole. */
@@ -283,7 +285,7 @@ function checkValueConflicts(blocks: Block[]): Issue[] {
 export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'rich'): Issue[] {
   const issues: Issue[] = [];
 
-  for (const b of r.blocks) {
+  for (const [at, b] of r.blocks.entries()) {
     if (b.type === 'breakdown') {
       const rows = b.props.rows;
       if (rows.length >= 2) {
@@ -303,6 +305,7 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
         if (s.data.length < 2) {
           issues.push({
             code: 'chart-too-short',
+            at,
             detail: `chart "${b.props.title}" series "${s.name}" has fewer than 2 points — a chart is for a trend over time; use insight, kpi, or breakdown for a single value.`,
           });
         }
@@ -357,6 +360,7 @@ export function checkConsistency(r: LiveResponse, complexity: AskComplexity = 'r
       if (b.props.options.length < 2) {
         issues.push({
           code: 'compare-too-few',
+          at,
           detail: `compare "${b.props.eyebrow ?? ''}" needs at least 2 options.`,
         });
       }
@@ -485,6 +489,29 @@ export function hasHardIssue(issues: Issue[]): boolean {
  * without a round-trip, leaving only the rare semantic ones (HARD_ISSUE_CODES) for
  * the model. Pure.
  */
+/** Blocks that cannot be drawn honestly at all: a "trend" across a single point is not a trend,
+ *  and a comparison holding one option compares nothing. Both mislead by existing, and neither can
+ *  be rebuilt from what is on hand — the missing series points and the missing option are not
+ *  there to recover. */
+const UNDRAWABLE_ISSUE_CODES = new Set(['chart-too-short', 'compare-too-few']);
+
+/**
+ * Drop the blocks whose own shape makes them misleading. Deterministic, local, and pure — the
+ * companion to autoFix, which repairs what it can; this removes what it cannot.
+ *
+ * Never empties the canvas: if every block is undrawable the answer stands as it is, because a
+ * blank canvas tells the reader less than a flawed one.
+ */
+export function dropUndrawable(r: LiveResponse): LiveResponse {
+  const doomed = new Set<number>();
+  for (const i of checkConsistency(r)) {
+    if (i.at !== undefined && UNDRAWABLE_ISSUE_CODES.has(i.code)) doomed.add(i.at);
+  }
+  if (!doomed.size) return r;
+  const blocks = r.blocks.filter((_, at) => !doomed.has(at));
+  return blocks.length ? { ...r, blocks } : r;
+}
+
 export function autoFix(r: LiveResponse): LiveResponse {
   const blocks = r.blocks.map((b): LiveResponse['blocks'][number] => {
     if (b.type === 'breakdown') {
@@ -556,25 +583,6 @@ export function autoFix(r: LiveResponse): LiveResponse {
   }
 
   return { ...declaimed, blocks };
-}
-
-/** The user-turn instruction for a single self-correction pass. When the canvas collapsed to
- *  the staples (`low-variety`), `unusedHeroes` names the specialized components the turn offered
- *  but the model skipped, so the rebuild has concrete targets instead of a vague "vary it". */
-export function repairInstruction(issues: Issue[], unusedHeroes: readonly string[] = []): string {
-  const lines = ['Your previous answer had these problems:', ...issues.map((i) => `- ${i.detail}`)];
-  if (
-    issues.some((i) => i.code === 'low-variety' || i.code === 'no-visual') &&
-    unusedHeroes.length
-  ) {
-    lines.push(
-      `Reach for the specialized components you were offered but did not use — e.g. ${unusedHeroes.join(', ')} — wherever one presents the real data more clearly than a plain block. Add only the ones that genuinely FIT this answer's content; never force a component that doesn't fit just to raise the count.`,
-    );
-  }
-  lines.push(
-    'Return a corrected single JSON object (same schema, same narration) that fixes ALL of them. Keep everything that was already good.',
-  );
-  return lines.join('\n');
 }
 
 /**

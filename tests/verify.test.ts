@@ -1,4 +1,4 @@
-import { autoFix, checkConsistency, hasHardIssue, repairInstruction } from '../src/live/verify';
+import { autoFix, checkConsistency, dropUndrawable, hasHardIssue } from '../src/live/verify';
 import type { LiveResponse } from '../src/engine/liveSchema';
 
 // Locks the accuracy guardrail — the cheap checks that decide whether a turn needs
@@ -165,17 +165,6 @@ describe('checkConsistency', () => {
     const codes = checkConsistency(r).map((i) => i.code);
     expect(codes).toContain('no-variety');
   });
-
-  it('repairInstruction lists every detected problem', () => {
-    const issues = [
-      { code: 'breakdown-sum', detail: 'shares do not add up' },
-      { code: 'no-variety', detail: 'all blocks the same' },
-    ];
-    const text = repairInstruction(issues);
-    expect(text).toContain('shares do not add up');
-    expect(text).toContain('all blocks the same');
-    expect(text).toMatch(/corrected single JSON object/i);
-  });
 });
 
 describe('specialization floor — the "same ten components every time" collapse', () => {
@@ -255,22 +244,6 @@ describe('specialization floor — the "same ten components every time" collapse
 
   it('treats low-variety as a hard issue (worth one repair call)', () => {
     expect(hasHardIssue([{ code: 'low-variety', detail: 'collapsed to staples' }])).toBe(true);
-  });
-
-  it('repairInstruction names the unused hero components to reach for', () => {
-    const text = repairInstruction(
-      [{ code: 'low-variety', detail: 'collapsed' }],
-      ['scatter', 'sankey', 'radar'],
-    );
-    expect(text).toContain('scatter');
-    expect(text).toContain('sankey');
-    expect(text).toMatch(/did not use/i);
-  });
-
-  it('repairInstruction omits the hero line when there are no unused heroes', () => {
-    const text = repairInstruction([{ code: 'low-variety', detail: 'collapsed' }]);
-    expect(text).not.toMatch(/did not use/i);
-    expect(text).toMatch(/corrected single JSON object/i);
   });
 });
 
@@ -447,5 +420,48 @@ describe('fabricated action claims', () => {
     r.spoken = "I've booked the meeting for you.";
     const fixed = autoFix(r);
     expect(fixed.spoken).toBe('I can book the meeting for you.');
+  });
+});
+
+// A block whose own shape makes it misleading is removed rather than drawn: a "trend" across one
+// point is not a trend, and a comparison of one option compares nothing. Deterministic and local —
+// the canvas the reader already has is never re-composed to fix them.
+describe('dropUndrawable', () => {
+  const oneStop = block('chart', {
+    title: 'Revenue',
+    labels: ['2024'],
+    series: [{ name: 'Rev', color: 'var(--insight)', data: [42] }],
+  });
+  const lonelyCompare = block('compare', {
+    eyebrow: 'Options',
+    options: [{ name: 'Only one' }],
+    criteria: [],
+  });
+  const solid = block('insight', { title: 'The answer', summary: 'Plainly stated.' });
+
+  it('removes a chart that has no trend to draw', () => {
+    const out = dropUndrawable(resp([solid, oneStop]));
+    expect(out.blocks.map((b) => b.type)).toEqual(['insight']);
+  });
+
+  it('removes a comparison with nothing to compare', () => {
+    const out = dropUndrawable(resp([solid, lonelyCompare]));
+    expect(out.blocks.map((b) => b.type)).toEqual(['insight']);
+  });
+
+  it('drops each undrawable block and keeps the rest in order', () => {
+    const out = dropUndrawable(resp([oneStop, solid, lonelyCompare, solid]));
+    expect(out.blocks.map((b) => b.type)).toEqual(['insight', 'insight']);
+  });
+
+  it('leaves a canvas with nothing wrong with it exactly as it is', () => {
+    const input = resp([solid, solid]);
+    expect(dropUndrawable(input)).toBe(input);
+  });
+
+  // A blank canvas tells the reader less than a flawed one, so the last block stands.
+  it('never empties the canvas', () => {
+    const input = resp([oneStop, lonelyCompare]);
+    expect(dropUndrawable(input).blocks).toHaveLength(2);
   });
 });
