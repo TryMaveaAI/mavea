@@ -9,6 +9,7 @@
 //   · No layout flash: the budget is seeded from window.innerWidth before first paint
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { adaptiveCols, CORE_SPANS, type SpanLookup } from '../../live/layout';
+import { catalogSpan } from '../../live/select/catalog';
 import type { Block } from '../../data/conversation';
 
 /** Maps a container pixel width to a logical column budget (1–12).
@@ -22,18 +23,30 @@ function widthToBudget(width: number): number {
   return 4; // mobile — near single-column
 }
 
-/** SpanLookup that uses each block's existing `col` as the preferred width while
- *  letting CORE_SPANS supply height (grouping signal) and min (readability floor).
- *  This respects the original author/model intent for relative block importance. */
+/** SpanLookup that uses each block's existing `col` as the preferred width while the type's own
+ *  table supplies height (grouping signal) and min (readability floor).
+ *
+ *  The floor has to come from the CATALOG, not from CORE_SPANS alone. CORE_SPANS covers the 18
+ *  core types; every one of the 595 extended components declares its own `colMin` ("readable
+ *  minimum span … so a component is never squeezed into an unreadable sliver"), and `catalogSpan`
+ *  is what generateLive/deepen already tile with. Reading only CORE_SPANS here meant this re-tile
+ *  returned no `min` for an extended type, so resolveSpan substituted FALLBACK.min = 4 — and 541
+ *  of the 625 catalog types declare a floor above 4. A datatable that asked for 8 was rebuilt at 4
+ *  on mount and on every container resize, which is why the breakage was resize-shaped rather than
+ *  constant.
+ *
+ *  The spread order MATTERS and mirrors resolveSpan's own (`FALLBACK → CORE_SPANS → lookup`): the
+ *  catalog wins over CORE_SPANS, because that is already what happens on the generation path,
+ *  where catalogSpan IS the lookup. The two tables disagree for 8 core types (kpi, stack, bars,
+ *  list, checklist, flow, gallery — catalog stricter; insight — core stricter), so letting core
+ *  win here would make the re-tile silently contradict the first paint, which is the same class of
+ *  bug. CORE_SPANS still supplies `height`, the grouping signal catalogSpan has no opinion on. */
 const colPrefLookup: SpanLookup = (block) => {
   const type = (block as { type?: string }).type ?? '';
-  const core = CORE_SPANS[type];
+  const base = { ...CORE_SPANS[type], ...catalogSpan(type) };
   const pref = (block as { col?: number }).col;
-  if (pref !== undefined) {
-    // Keep the type-based height and min, but honour the author's intended width.
-    return core ? { ...core, pref } : { pref };
-  }
-  return core;
+  // Honour the author's intended width; resolveSpan still clamps it up to `min`.
+  return pref !== undefined ? { ...base, pref } : base;
 };
 
 /**

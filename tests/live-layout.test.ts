@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { adaptiveCols } from '../src/live/layout';
+import { adaptiveCols, CORE_SPANS } from '../src/live/layout';
 import { retileSection } from '../src/canvas/hooks/useResponsiveGrid';
 import { catalogSpan } from '../src/live/select/catalog';
+import { CATALOG_FACTS } from '../src/canvas/blocks/catalog/facts';
 import type { Block } from '../src/data/conversation';
 
 const blk = (type: string): Block =>
@@ -141,5 +142,76 @@ describe('retileSection — each concept section fills its own width', () => {
   });
   it('passes an empty section through unchanged', () => {
     expect(retileSection([], 12)).toEqual([]);
+  });
+});
+
+// The re-tile path is a SECOND layout pass with a DIFFERENT span lookup, and it is the one that
+// runs on every container resize (useResponsiveGrid's ResizeObserver). The suite above covers
+// adaptiveCols with the catalog lookup (the generateLive path) and retileSection with core types
+// only — insight/list/chart are all in CORE_SPANS. Neither combination can see an extended type
+// losing its floor, which is how `colMin` came to be honoured at generation and discarded on
+// resize for all 595 extended components.
+describe('retileSection — the catalog floor survives a resize', () => {
+  const floorOf = (type: string) => catalogSpan(type)?.min ?? 0;
+
+  it('keeps a dense block at its declared floor instead of the generic fallback', () => {
+    // datatable declares colMin 8; the generic FALLBACK is 4.
+    expect(floorOf('datatable')).toBeGreaterThan(4);
+    const out = retileSection([blkCol('datatable', 8), blkCol('insight', 4)], 12);
+    const table = out.find((b) => (b as { type: string }).type === 'datatable')!;
+    expect(table.col).toBeGreaterThanOrEqual(floorOf('datatable'));
+  });
+
+  it('never places ANY catalog type below its own declared floor, in the house silhouette', () => {
+    // The floor only binds when the row is under PRESSURE. A dense block alone in a 2-block row
+    // gets what it wants either way; put it beside two compact neighbours — insight + kpi, which
+    // is the house silhouette — and the tiler packs three across, so `min` is what decides whether
+    // the dense one keeps its width or is crushed to a quarter. Measured: at budgets 12 and 9 this
+    // is the difference for all 541 types whose declared floor exceeds the generic fallback of 4
+    // (e.g. `reasoning`, floor 6, was laid out at col-4).
+    for (const budget of [12, 9]) {
+      const offenders: string[] = [];
+      for (const facts of CATALOG_FACTS) {
+        const floor = floorOf(facts.type);
+        const out = retileSection(
+          [blkCol(facts.type, facts.colDefault), blkCol('insight', 4), blkCol('kpi', 4)],
+          budget,
+        );
+        if (out[0].col < floor) offenders.push(`${facts.type} ${out[0].col} < ${floor}`);
+      }
+      expect({ budget, offenders }).toEqual({ budget, offenders: [] });
+    }
+  });
+
+  it('holds the floor proportionally at every narrower budget', () => {
+    // scaleSpec scales min by budget/12, and adaptiveCols maps the result back to CSS 12-col —
+    // so a floor of 8 stays a floor of ~8 in CSS terms at budget 9, 6 and 4, not a collapse to 4.
+    for (const budget of [12, 9, 6, 4]) {
+      const out = retileSection([blkCol('datatable', 8), blkCol('insight', 4)], budget);
+      expect(out[0].col).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('is stable across a resize round-trip (12 → 6 → 12)', () => {
+    const start = [blkCol('datatable', 8), blkCol('insight', 4)];
+    const wide = retileSection(start, 12).map((b) => b.col);
+    const narrow = retileSection(start, 6);
+    const back = retileSection(narrow, 12).map((b) => b.col);
+    expect(back).toEqual(wide);
+  });
+
+  it('applies the catalog floor to a core type too, where the two tables disagree', () => {
+    // CORE_SPANS and the catalog disagree for 8 core types. generateLive passes catalogSpan AS the
+    // lookup, and resolveSpan's order is `FALLBACK → CORE_SPANS → lookup`, so the catalog already
+    // wins on the generation path. The re-tile has to enforce the same floor or the second pass
+    // contradicts the first. (It may still differ on PREF — honouring the author's `col` is what
+    // colPrefLookup is for — so this pins the floor, not the exact tiling.)
+    const disagree = ['kpi', 'stack', 'bars', 'list', 'checklist', 'flow', 'gallery'] as const;
+    for (const type of disagree) {
+      const catalogFloor = floorOf(type);
+      expect(catalogFloor).toBeGreaterThan(CORE_SPANS[type].min ?? 4);
+      const out = retileSection([blkCol(type, 6), blkCol('insight', 4), blkCol('kpi', 4)], 12);
+      expect({ type, belowFloor: out[0].col < catalogFloor }).toEqual({ type, belowFloor: false });
+    }
   });
 });
