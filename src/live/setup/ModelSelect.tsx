@@ -79,9 +79,9 @@ export function ModelSelect({
   );
 
   const models = info.suggestedModels;
-  // The empty field falls back to the provider default at request time (toModelConfig), so the
-  // menu marks that same effective model as current rather than showing nothing selected.
-  const effective = value || info.defaultModel;
+  // Nothing is marked current until the reader picks: no model is substituted at request time, so
+  // showing one as selected would name a model that will not be used.
+  const effective = value;
   const hint = pickerHint(effective);
   const optionId = (index: number): string => `${listId}-opt-${index}`;
 
@@ -197,7 +197,9 @@ export function ModelSelect({
                 >
                   <span className="drop-select-option-head">
                     <span className="drop-select-id">{m}</span>
-                    {m === info.defaultModel && <span className="drop-select-badge">Default</span>}
+                    {m === info.defaultModel && (
+                      <span className="drop-select-badge">Recommended</span>
+                    )}
                   </span>
                   {info.modelNotes?.[m] && (
                     <span className="drop-select-note">{info.modelNotes[m]}</span>

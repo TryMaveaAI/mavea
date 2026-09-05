@@ -238,9 +238,24 @@ function fromStorage(): LiveConfigV2 {
   }
 }
 
+/** Write the provider's recommended model into the config, so the model that will be used is
+ *  always the model on screen — in the settings field, on the Go hub's Model row and on the dock
+ *  chip. It is the lightest model the provider offers, and nothing is resolved behind the reader's
+ *  back: toModelConfig reads only what is stored here.
+ *
+ *  Keyed on the KEY being absent, not on an empty value: clearing the field is a deliberate act
+ *  and stays cleared (the surface then asks for a choice), which is also what keeps a backspace
+ *  from snapping the field back mid-edit. A gateway ships no recommendation, so its field stays
+ *  empty until one is typed. */
+function withChosenModel(c: LiveConfigV2): LiveConfigV2 {
+  if (Object.prototype.hasOwnProperty.call(c.models, c.provider)) return c;
+  const recommended = providerInfo(c.provider).defaultModel;
+  return recommended ? { ...c, models: { ...c.models, [c.provider]: recommended } } : c;
+}
+
 export function getLiveConfigV2(): LiveConfigV2 {
   if (memory) return memory;
-  memory = fromStorage();
+  memory = withChosenModel(fromStorage());
   return memory;
 }
 
@@ -404,7 +419,7 @@ async function hydrateSecrets(): Promise<void> {
 }
 
 export function setLiveConfigV2(patch: Partial<LiveConfigV2>): LiveConfigV2 {
-  const next: LiveConfigV2 = { ...getLiveConfigV2(), ...patch };
+  const next: LiveConfigV2 = withChosenModel({ ...getLiveConfigV2(), ...patch });
   memory = next;
   try {
     if (typeof localStorage !== 'undefined') {
@@ -470,11 +485,15 @@ export function setProviderField(
   } as Partial<LiveConfigV2>);
 }
 
-/** Derive the engine ModelConfig for the active provider. */
+/** Derive the engine ModelConfig for the active provider.
+ *
+ *  The model is whatever the reader actually chose — never a stand-in. An unset model leaves this
+ *  config unable to generate (modelCanGenerate gates on a non-empty id), so the surface asks for a
+ *  choice instead of running on one nobody made. */
 export function toModelConfig(c: LiveConfigV2): ModelConfig {
   return {
     provider: c.provider,
-    model: c.models[c.provider] || providerInfo(c.provider).defaultModel,
+    model: c.models[c.provider] ?? '',
     apiKey: c.keys[c.provider],
   };
 }

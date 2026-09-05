@@ -57,12 +57,10 @@ export function ConnectStep(): ReactElement {
   const [cfg] = useLiveConfig();
   const info = providerInfo(cfg.provider);
   // Raw is what the user actually typed (may be empty); `model` softly falls back to the
-  // provider's default for readiness checks and messaging — toModelConfig() does the same
-  // fallback for the real request, so this mirrors the effective model. The input itself must
-  // stay bound to `rawModel`: binding it to the defaulted `model` used to snap the field back to
-  // the default the instant a backspace emptied it, making it impossible to actually clear.
+  // stored value for readiness checks and messaging, with nothing substituted for it — an empty
+  // field means no model is chosen, and "Choose a model." below is the honest state for that.
   const rawModel = cfg.models[cfg.provider] ?? '';
-  const model = rawModel || info.defaultModel;
+  const model = rawModel;
   const key = cfg.keys[cfg.provider] ?? '';
 
   const [ready, setReady] = useState<{

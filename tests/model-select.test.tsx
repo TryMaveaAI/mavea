@@ -23,7 +23,7 @@ function Harness({
 const input = (): HTMLInputElement => screen.getByRole('combobox') as HTMLInputElement;
 
 describe('ModelSelect', () => {
-  it('presents every suggested model with its trait note and a Default marker', () => {
+  it('presents every suggested model with its trait note and a Recommended marker', () => {
     render(<Harness provider="anthropic" />);
     fireEvent.click(screen.getByRole('button', { name: 'Show model options' }));
 
@@ -31,18 +31,25 @@ describe('ModelSelect', () => {
     const options = screen.getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual(
       info.suggestedModels.map(
-        (m) => m + (m === info.defaultModel ? 'Default' : '') + (info.modelNotes?.[m] ?? ''),
+        (m) => m + (m === info.defaultModel ? 'Recommended' : '') + (info.modelNotes?.[m] ?? ''),
       ),
     );
   });
 
-  it('marks the effective model current even while the field is empty (default fallback)', () => {
+  // Nothing is current until the reader picks. The recommended model is LABELLED as a suggestion,
+  // never marked selected — no model is substituted at request time, so showing one as chosen
+  // would name a model that will not be used.
+  it('marks nothing current while the field is empty', () => {
     render(<Harness provider="gemini" />);
     fireEvent.click(input());
     const current = screen
       .getAllByRole('option')
       .find((o) => o.getAttribute('aria-selected') === 'true');
-    expect(current?.textContent).toContain(providerInfo('gemini').defaultModel);
+    expect(current).toBeUndefined();
+    expect(
+      screen.getByRole('option', { name: new RegExp(providerInfo('gemini').defaultModel) })
+        .textContent,
+    ).toContain('Recommended');
   });
 
   it('selecting an option writes the model id and closes the menu', () => {

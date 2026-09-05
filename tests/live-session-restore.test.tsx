@@ -409,7 +409,11 @@ describe('LiveApp — restore decision on mount (wizard vs conversation)', () =>
   it('with a stale session: falls back to the wizard (Go hub)', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
     // A model actually connected — otherwise "Start talking" is honestly gated, covered elsewhere.
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     saveSession(
       history('old question'),
       [frame('old question')],
@@ -422,7 +426,11 @@ describe('LiveApp — restore decision on mount (wizard vs conversation)', () =>
 
   it('with corrupt session storage: falls back silently to the wizard', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     localStorage.setItem(SESSION_STORAGE_KEY, '%%%definitely-not-json');
 
     expect(() => render(<LiveApp />)).not.toThrow();

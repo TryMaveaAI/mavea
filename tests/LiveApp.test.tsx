@@ -96,7 +96,11 @@ describe('LiveApp — mounts the setup wizard', () => {
     // Simulate a user who already completed setup, with a model actually connected (a stored
     // key makes the provider read as genuinely ready).
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     render(<LiveApp />);
 
     // Go hub checklist contains the Model row shortcut.
@@ -130,13 +134,18 @@ describe('LiveApp — mounts the setup wizard', () => {
     // the dock's voice strip once a turn exists — see below). Before any turn, the Go hub's own
     // checklist is that place: it's the step you'd revisit to change the model.
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     render(<LiveApp />);
     expect(screen.getByText(/gemini-3\.1-flash-lite/i)).toBeInTheDocument();
   });
 
   it('a landed turn: the model chip lives in the dock voice strip, not the topbar', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
+    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.1-flash-lite' } });
     savePriorSession('an old question about taxes');
     render(<LiveApp />);
 
@@ -240,7 +249,11 @@ describe('LiveApp — mobile session-rail toggle', () => {
 describe('LiveApp — local voice failures are visible', () => {
   it('wizard "Start talking" surfaces the unsupported-browser notice instead of a silent no-op', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     render(<LiveApp />);
 
     fireEvent.click(screen.getByRole('button', { name: /Start talking/i }));
@@ -251,7 +264,11 @@ describe('LiveApp — local voice failures are visible', () => {
 
   it('the composer mic button surfaces the same notice', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     render(<LiveApp />);
     // Leave the wizard so the rail composer is the active surface.
     fireEvent.click(screen.getByRole('button', { name: /Start talking/i }));
@@ -262,7 +279,11 @@ describe('LiveApp — local voice failures are visible', () => {
 
   it('the notice is dismissible', () => {
     localStorage.setItem('mavea-live-setup-v1', '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     render(<LiveApp />);
     fireEvent.click(screen.getByRole('button', { name: /Start talking/i }));
     expect(screen.getByText(MIC_UNSUPPORTED_MSG)).toBeInTheDocument();

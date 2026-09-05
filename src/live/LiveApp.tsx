@@ -529,7 +529,7 @@ function isContinuePhrase(text: string): boolean {
 export function LiveApp(): ReactElement {
   const [cfg] = useLiveConfig();
   const info = providerInfo(cfg.provider);
-  const connected = cfg.models[cfg.provider] || info.defaultModel;
+  const connected = cfg.models[cfg.provider] ?? '';
   // Hold the skin for as long as Live is mounted. Ref-counted (mountTemplateSkin) because the
   // setup wizard renders its own picker inside this surface: the picker's unmount used to strip
   // `data-template`, so the first answer after "New" rendered in the stock skin.
@@ -6157,7 +6157,7 @@ export function LiveApp(): ReactElement {
                     answers (shard provenance) — showing the visitor's own configured model
                     would claim it generated content it never saw. */}
                 <span className="chip-model">
-                  {demoPersona.current ? (demoDrive.model ?? '—') : connected}
+                  {demoPersona.current ? (demoDrive.model ?? '—') : connected || 'No model'}
                 </span>
                 <span className="chip-caret" aria-hidden="true" />
               </button>
@@ -6201,7 +6201,7 @@ export function LiveApp(): ReactElement {
             attachTitle={
               visionCaps
                 ? 'Attach an image or PDF'
-                : `Attach a doc or data file to explode — ${connected} can't read images/PDFs directly`
+                : `Attach a doc or data file to explode — ${connected || 'this model'} can't read images/PDFs directly`
             }
             onMicDown={() => {
               if (!sttOk) return; // the click handler (onMic) surfaces the unsupported notice

@@ -485,12 +485,10 @@ export function LiveSettings({
   const { style: studyStyle, newPerDay } = useStudyPrefs();
   const cardCounts = useCardCounts();
   const info = providerInfo(cfg.provider);
-  // Raw is what's actually stored (may be empty from a deliberate clear); `model` softly falls
-  // back to the provider's default for readiness checks — toModelConfig() does the same at
-  // request time. The model input below must bind to `rawModel`, not `model`: binding it to the
-  // defaulted value snapped the field back to the default the instant a backspace emptied it.
+  // What is actually stored, which may be empty from a deliberate clear. Nothing substitutes a
+  // model here — an empty field means no model is chosen, and the readiness dot says so.
   const rawModel = cfg.models[cfg.provider] ?? '';
-  const model = rawModel || info.defaultModel;
+  const model = rawModel;
   const key = cfg.keys[cfg.provider] ?? '';
   const caps = getAdapter(cfg.provider).capabilities;
   const facts = useMemory();

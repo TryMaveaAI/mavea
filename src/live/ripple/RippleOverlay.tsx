@@ -10,7 +10,6 @@
 // Nothing here is invented.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { ModelConfig } from '../../types/mavea';
-import { providerInfo } from '../providers/info';
 import { modelCanGenerate } from '../providers/spendPolicy';
 import type {
   Altitude,
@@ -500,13 +499,12 @@ export function RippleOverlay({
     }
   }, [model.provenance.example, showcase]);
 
-  // Ripple's analysis wants a CAPABLE model to write a deep read. If a Live model is connected,
-  // use it; otherwise fall back to Gemini's own Live default (taken from the registry so it can't
-  // drift) — the dev proxy injects the key, so an empty apiKey here is fine and the key never
-  // reaches the browser.
+  // Ripple's analysis runs on the connected model or not at all. With nothing connected it carries
+  // no model id, so modelCanGenerate refuses and the reader is asked to connect one — Ripple never
+  // reads a repo through a model they did not choose.
   const analysisCfg = useMemo<ModelConfig>(() => {
     if (cfg && CAPABLE_PROVIDERS.has(cfg.provider)) return cfg;
-    return { provider: 'gemini', model: providerInfo('gemini').defaultModel, apiKey: '' };
+    return { provider: cfg?.provider ?? 'gemini', model: '', apiKey: '' };
   }, [cfg]);
 
   // Size the work to the model WITHOUT ever changing it (token caps, course count, code-context gate,

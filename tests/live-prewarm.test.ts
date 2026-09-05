@@ -16,7 +16,11 @@ beforeEach(() => {
   resetLegalAcceptance();
   expect(acceptLegalTerms(new Date('2026-07-16T12:00:00.000Z'))).toBe(true);
   // Default provider is Gemini; pin it explicitly so the assertions don't drift with defaults.
-  setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+  setLiveConfigV2({
+    provider: 'gemini',
+    models: { gemini: 'gemini-3.1-flash-lite' },
+    keys: { gemini: 'test-key' },
+  });
   configureProviderSpending(false);
   vi.stubGlobal(
     'fetch',
@@ -160,7 +164,11 @@ describe('prewarmLive', () => {
   // the composer takes focus, and billing someone's key for that is indefensible. It must take the
   // adapter's free `warm()` path instead.
   it('warms Anthropic without spending a token on the generation endpoint', async () => {
-    setLiveConfigV2({ provider: 'anthropic', keys: { anthropic: 'sk-test' } });
+    setLiveConfigV2({
+      provider: 'anthropic',
+      models: { anthropic: 'claude-haiku-4-5' },
+      keys: { anthropic: 'sk-test' },
+    });
     const probe = vi.spyOn(getAdapter('anthropic'), 'probe');
 
     prewarmLive();

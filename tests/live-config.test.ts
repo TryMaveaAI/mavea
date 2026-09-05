@@ -9,7 +9,9 @@ import {
   importConfigWithSummary,
   whenSecretPersistenceSettled,
   hasModelConfigured,
+  toModelConfig,
 } from '../src/live/useLiveConfig';
+import { providerInfo } from '../src/live/providers';
 
 // The store keeps an in-memory source of truth + a localStorage mirror. Reset both before
 // each test so cases don't bleed. (jsdom provides localStorage.)
@@ -213,9 +215,33 @@ describe('hasModelConfigured — the sync "would this turn even try" check', () 
     expect(hasModelConfigured(getLiveConfigV2())).toBe(false);
   });
 
-  it('a hosted provider with a key is configured', () => {
+  // Picking a provider writes its recommended model into the config, so the model that will be
+  // used is the one shown on screen — nothing is resolved at request time.
+  it('a hosted provider with a key carries its recommended model, written down', () => {
     setLiveConfigV2({ provider: 'anthropic', keys: { anthropic: 'sk-ant-test' } });
-    expect(hasModelConfigured(getLiveConfigV2())).toBe(true);
+    const cfg = getLiveConfigV2();
+    expect(cfg.models.anthropic).toBe(providerInfo('anthropic').defaultModel);
+    expect(toModelConfig(cfg).model).toBe(cfg.models.anthropic);
+    expect(hasModelConfigured(cfg)).toBe(true);
+  });
+
+  // Every recommendation is the lightest model the provider offers, never a costlier one.
+  it("recommends the provider's own first suggestion for every hosted provider", () => {
+    for (const id of ['gemini', 'anthropic', 'openai', 'grok'] as const) {
+      const info = providerInfo(id);
+      expect(info.defaultModel).toBe(info.suggestedModels[0]);
+    }
+  });
+
+  // Clearing the field is a deliberate act: nothing refills it, and nothing is substituted for it
+  // at request time, so the surface asks for a choice instead of running on one nobody made.
+  it('a cleared model stays cleared, and cannot generate', () => {
+    setLiveConfigV2({ provider: 'anthropic', keys: { anthropic: 'sk-ant-test' } });
+    setLiveConfigV2({ models: { anthropic: '' } });
+    const cfg = getLiveConfigV2();
+    expect(cfg.models.anthropic).toBe('');
+    expect(toModelConfig(cfg).model).toBe('');
+    expect(hasModelConfigured(cfg)).toBe(false);
   });
 
   it('a stored provider that no longer exists coerces to the default instead of crashing', async () => {

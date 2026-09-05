@@ -58,7 +58,7 @@ export function GoStep({
   // Honest voice row: Kokoro is the only voice — when its service is down, nothing speaks.
   const kokoroOk = useKokoroAvailable();
   const info = providerInfo(cfg.provider);
-  const model = cfg.models[cfg.provider] || info.defaultModel;
+  const model = cfg.models[cfg.provider] ?? '';
   const company = info.label.split(' · ')[1] ?? (info.needsKey ? info.label : 'Local');
   // A key that never got entered (skipped past Connect, or since cleared) would otherwise make
   // "Start talking" a dead click — the turn fails the instant it reaches the model. Gate on it and

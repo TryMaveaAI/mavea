@@ -98,7 +98,11 @@ function erroredResult(): LiveResult {
 }
 
 beforeEach(() => {
-  setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } }); // "ready": key present
+  setLiveConfigV2({
+    provider: 'gemini',
+    models: { gemini: 'gemini-3.1-flash-lite' },
+    keys: { gemini: 'test-key' },
+  }); // "ready": key present
   capturedSignal = undefined;
   capturedCaps = undefined;
   resolveGenerate = null;

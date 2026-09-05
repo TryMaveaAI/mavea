@@ -156,19 +156,17 @@ describe('SetupWizard — the nav row holds together', () => {
 });
 
 describe('SetupWizard — Connect step model input', () => {
-  it('lets the model field go empty instead of snapping back to the provider default', () => {
+  it('shows the model it will actually use, and lets the field be cleared', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
     const input = screen.getByLabelText('Model') as HTMLInputElement;
-    // Nothing has been explicitly chosen yet, so the field is empty and shows the provider's
-    // default only as a placeholder — it must NOT be pre-filled as if it were the real value.
-    expect(input.value).toBe('');
-    expect(input.placeholder).toBe('gemini-3.1-flash-lite');
+    // The provider's recommendation is written into the config, so the field carries the real
+    // value rather than showing it greyed out as a placeholder while something else is used.
+    expect(input.value).toBe('gemini-3.1-flash-lite');
 
-    // Typing then backspacing back to empty used to immediately re-fill with the default because
-    // the input's `value` was bound to a `stored || defaultModel` fallback — an empty stored
-    // value fell straight back to the default on the very next render.
+    // Typing then backspacing back to empty must still leave it empty: clearing is deliberate,
+    // and nothing refills it.
     fireEvent.change(input, { target: { value: 'gemini-3.5-flash' } });
     expect(input.value).toBe('gemini-3.5-flash');
     fireEvent.change(input, { target: { value: '' } });
@@ -203,6 +201,7 @@ describe('SetupWizard — Connect step model input', () => {
           : Promise.reject(new Error('no network in test')),
       ),
     );
+    setLiveConfigV2({ provider: 'gemini', models: { gemini: 'gemini-3.1-flash-lite' } });
     render(<SetupWizard {...defaultProps} speak={mkSpeak()} />);
 
     fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'AIzaNOT-A-REAL-KEY' } });
@@ -232,7 +231,11 @@ describe('SetupWizard — returning user', () => {
     localStorage.setItem(SETUP_KEY, '1');
     // A model actually connected (a stored key) — otherwise "Start talking" is honestly
     // gated instead, which is covered separately below.
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
@@ -266,7 +269,11 @@ describe('SetupWizard — returning user', () => {
 
 describe('SetupWizard — landing seed', () => {
   it('a first-run user has the seed forwarded as their first turn once Go is reached', async () => {
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     const onStart = vi.fn();
     const speak = mkSpeak();
     render(
@@ -291,7 +298,11 @@ describe('SetupWizard — landing seed', () => {
   });
 
   it('forwards the seed only once, even if Go is re-entered', async () => {
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     const onStart = vi.fn();
     const speak = mkSpeak();
     render(
@@ -393,7 +404,11 @@ describe('SetupWizard — the Go hub with no model connected', () => {
   });
 
   it('lets every one of them through once a key is present', () => {
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     const onStart = vi.fn();
     render(<SetupWizard {...defaultProps} onStart={onStart} speak={mkSpeak()} />);
 
@@ -427,7 +442,11 @@ describe('SetupWizard — start over', () => {
 
   it('does nothing if the user cancels the confirm dialog', async () => {
     localStorage.setItem(SETUP_KEY, '1');
-    setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+    setLiveConfigV2({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.1-flash-lite' },
+      keys: { gemini: 'test-key' },
+    });
     vi.stubGlobal(
       'confirm',
       vi.fn(() => false),

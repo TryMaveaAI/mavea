@@ -92,7 +92,11 @@ import { buildDashboard } from '../src/live/dashboards/extract';
 
 beforeEach(() => {
   // A stored key makes the provider "ready" + the live session takes the async model path.
-  setLiveConfigV2({ provider: 'gemini', keys: { gemini: 'test-key' } });
+  setLiveConfigV2({
+    provider: 'gemini',
+    models: { gemini: 'gemini-3.1-flash-lite' },
+    keys: { gemini: 'test-key' },
+  });
   resolveExtract = null;
 });
 
