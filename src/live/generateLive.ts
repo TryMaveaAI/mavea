@@ -426,8 +426,8 @@ function outputBudget(
   // Thinking tokens draw from the SAME output budget on both Gemini and Anthropic.
   // Gemini always needs headroom (it thinks at every non-minimal level); Anthropic only
   // when thinking actually activates (adaptive mode fires on medium/high effort turns).
-  // The per-level reserve lives in effort.ts, which owns thinking levels — the Gemini adapter
-  // reads the same table to top this budget up when it substitutes a level the model supports.
+  // The per-level reserve lives in providers/budget.ts, a leaf both sides read: the Gemini adapter
+  // tops this ceiling up from the same table when it substitutes a level the model supports.
   const thinkHeadroom = thinkingReserve(thinkingLevel);
   // An OpenAI-style reasoning model (gpt-5.x, the o-series, Grok) is the harshest case of all: it
   // spends its reasoning tokens FIRST and out of this very budget, and if it runs out mid-thought it
