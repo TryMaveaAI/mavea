@@ -960,12 +960,12 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
     expect(fake.lastReq?.thinkingLevel).toBe('low');
   });
 
-  it('recovers a grounded turn from a 429 by retrying ungrounded, clearing the activity indicator exactly once', async () => {
+  it('surfaces a 429 on a grounded turn instead of re-running it ungrounded', async () => {
     // Free-tier keys throttle Google Search grounding separately from generation, so the FIRST
-    // (grounded) call can 429 while a plain retry succeeds. For a volatile ask we skip Wikipedia
-    // (an encyclopedia can't answer a live question) and just retry without tools. The activity
-    // indicator must end cleared — and, since the finally is the single clear point, it's set to
-    // null exactly ONCE per turn (no redundant per-branch clears).
+    // (grounded) call can 429 while a plain one would succeed. The turn is NOT re-run without its
+    // tools: an answer's basis is the one the ask chose, and a second attempt is the reader's to
+    // start from the error state. The activity indicator must still end cleared — and, since the
+    // finally is the single clear point, it's set to null exactly ONCE per turn.
     fake.nativeWebSearch = true;
     fake.throwFirstCall = true;
     fake.throwMessage = 'gemini 429';
@@ -976,12 +976,12 @@ describe('generateLive — search mode, thinking, and grounding (user-chosen, co
       repair: false,
       onActivity: (a) => activity.push(a),
     });
-    // The turn recovered into a real answer, not an error state.
-    expect(error).toBeUndefined();
-    expect(spec.id).toBe('live');
-    // First call grounded (429), second call the ungrounded retry — exactly two model calls.
-    expect(fake.calls).toBe(2);
-    expect(fake.lastReq?.tools).toBeUndefined();
+    // An honest, recoverable error state — and one model call, not two.
+    expect(error?.kind).toBe('quota');
+    expect(error?.status).toBe(429);
+    expect(error?.message).toMatch(/rate-limiting/i);
+    expect(spec.blocks).toHaveLength(0);
+    expect(fake.calls).toBe(1);
     // The indicator is left cleared, and cleared just once (the lone finally, no per-branch dups).
     expect(activity.at(-1)).toBeNull();
     expect(activity.filter((a) => a === null)).toHaveLength(1);

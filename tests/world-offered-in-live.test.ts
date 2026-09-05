@@ -39,7 +39,18 @@ const answer = (causal?: boolean): string =>
     ],
   });
 
-/** A canvas thick enough that no recovery or repair pass fires — and that says nothing about
+/** A first pass that produced no canvas at all: the model wrote the envelope, gave its verdict,
+ *  and emitted nothing renderable. This is the one shape that still earns a re-ask. */
+const collapsedAnswer = (causal: boolean): string =>
+  JSON.stringify({
+    title: 'The 2008 crisis',
+    sub: 'What happened',
+    narration: 'Cheap credit and loose lending built a bubble.',
+    causal,
+    blocks: [],
+  });
+
+/** A canvas thick enough that no re-ask fires — and that says nothing about
  *  whether the answer is causal, which is what a rewrite pass actually returns. */
 const richAnswer = (): string =>
   JSON.stringify({
@@ -55,49 +66,6 @@ const richAnswer = (): string =>
           unit: 'index',
           labels: ['2004', '2006', '2008'],
           series: [{ name: 'Index', color: 'var(--insight)', data: [100, 140, 95] }],
-        },
-      },
-      {
-        type: 'kpi',
-        props: {
-          title: 'The scale',
-          items: [
-            { label: 'Peak', value: '140', sub: 'index, 2006' },
-            { label: 'Trough', value: '95', sub: 'index, 2008' },
-          ],
-        },
-      },
-      {
-        type: 'timeline',
-        props: {
-          eyebrow: 'How it unfolded',
-          events: [
-            { time: '2004', title: 'Rates held low', detail: 'Credit got cheap.' },
-            { time: '2006', title: 'Prices peak', detail: 'Lending standards had fallen away.' },
-            { time: '2008', title: 'Defaults cascade', detail: 'Payments reset upward.' },
-          ],
-        },
-      },
-    ],
-  });
-
-/** Thick enough to skip recovery, but carrying a one-point "trend" — the semantic mistake only a
- *  model can fix, which is what earns the consistency repair call. */
-const brokenChartAnswer = (causal: boolean): string =>
-  JSON.stringify({
-    title: 'The 2008 crisis',
-    sub: 'What happened',
-    narration: 'Cheap credit and loose lending built a bubble.',
-    causal,
-    blocks: [
-      { type: 'insight', props: { title: 'Cheap credit', summary: 'Rates were held low.' } },
-      {
-        type: 'chart',
-        props: {
-          title: 'Home prices',
-          unit: 'index',
-          labels: ['2006'],
-          series: [{ name: 'Index', color: 'var(--insight)', data: [140] }],
         },
       },
       {
@@ -240,12 +208,12 @@ describe('the causal verdict survives the response schema and every rewrite', ()
     expect(schema.required).not.toContain('causal');
   });
 
-  it('survives a recovery pass that restructures the answer', async () => {
-    // Two blocks on a substantive ask collapses, so generateLive re-asks for the whole answer.
-    // The recovery instruction asks for blocks, not a causal judgement, so its silence must not
-    // withdraw the world the first pass earned.
+  it('survives the one re-ask a collapsed turn earns', async () => {
+    // A first pass with no renderable blocks is re-asked once. The recovery instruction asks for
+    // blocks, not a causal judgement, so its silence must not withdraw the world the first pass
+    // earned.
     generated
-      .mockResolvedValueOnce({ raw: answer(true) })
+      .mockResolvedValueOnce({ raw: collapsedAnswer(true) })
       .mockResolvedValueOnce({ raw: richAnswer() });
     const result = await generateLive(DEFINITION_ASK, [], cfg, undefined, {
       caps: { worldEnabled: true },
@@ -254,22 +222,14 @@ describe('the causal verdict survives the response schema and every rewrite', ()
     expect(worldBlocks(result.spec.blocks as { type: string }[])).toHaveLength(1);
   });
 
-  it('survives a consistency repair that rewrites the blocks', async () => {
-    // The repair pass rebuilds the response from the repaired one; it is never asked to re-emit
-    // the verdict, so the first pass's word has to be carried across.
-    generated
-      .mockResolvedValueOnce({ raw: brokenChartAnswer(true) })
-      .mockResolvedValueOnce({ raw: richAnswer() });
+  it('is never re-asked once a canvas rendered — the verdict rides the answer that shipped', async () => {
+    // A thin-but-real answer is the reader's answer. It is not re-composed, so the verdict it
+    // carried is simply the one that ships.
+    generated.mockResolvedValueOnce({ raw: answer(true) });
     const result = await generateLive(DEFINITION_ASK, [], cfg, undefined, {
       caps: { worldEnabled: true },
     });
-    expect(generated).toHaveBeenCalledTimes(2);
-    // The repaired canvas is the one that shipped — otherwise this proves nothing about carrying
-    // the verdict ACROSS a repair.
-    const chart = (
-      result.spec.blocks as unknown as { type: string; props: Record<string, unknown> }[]
-    ).find((b) => b.type === 'chart');
-    expect((chart?.props.labels as string[])?.length).toBe(3);
+    expect(generated).toHaveBeenCalledTimes(1);
     expect(worldBlocks(result.spec.blocks as { type: string }[])).toHaveLength(1);
   });
 });

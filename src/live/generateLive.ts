@@ -77,18 +77,11 @@ import { getConnectedMcps } from './actions/connected';
 import { targetBlockCount, countDirective } from './screen';
 import { rememberDeepenTurn } from './depth/deepenStore';
 import type { ChatMessage, LiveRequest, ThinkingLevel } from './providers/types';
+import { thinkingReserve } from './providers/budget';
 import { attachmentKind, type Attachment } from './attachments';
 import type { InkIntent } from './annotate/inkIntent';
 import { ArrayStreamScanner, StringFieldScanner } from './streamParse';
-import {
-  getSearchProvider,
-  needsFreshInfo,
-  needsLiveData,
-  searchQuery,
-  requestedResultCount,
-} from './search';
-import { buildSearchContext, toSources } from './search/inject';
-import { resultLimit } from './search/limit';
+import { needsFreshInfo, needsLiveData } from './search';
 import { blockLabel } from '../canvas/blockLabel';
 import {
   thinkingLevelFor,
@@ -109,13 +102,7 @@ import type { WorldSpec } from './world/types';
 import { worldSubject } from './world/subject';
 import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
 import type { Representation } from '../canvas/spatial/morph/types';
-import {
-  autoFix,
-  checkConsistency,
-  HARD_ISSUE_CODES,
-  repairInstruction,
-  recoverInstruction,
-} from './verify';
+import { autoFix, recoverInstruction } from './verify';
 
 export type { ChatMessage };
 
@@ -439,18 +426,9 @@ function outputBudget(
   // Thinking tokens draw from the SAME output budget on both Gemini and Anthropic.
   // Gemini always needs headroom (it thinks at every non-minimal level); Anthropic only
   // when thinking actually activates (adaptive mode fires on medium/high effort turns).
-  // 'low' reserves 1500, not 500: thinking is metered out of maxOutputTokens on Gemini, and a
-  // real low pass runs to the low hundreds-to-~1200 tokens — at 500 the pass could eat the
-  // JSON's own allowance, truncate the canvas, and buy a whole second call to recover it. The
-  // ceiling-not-a-purchase argument below applies here too: unused reserve costs nothing.
-  const thinkHeadroom =
-    thinkingLevel === 'high'
-      ? 1500
-      : thinkingLevel === 'medium'
-        ? 900
-        : thinkingLevel === 'low'
-          ? 1500
-          : 200;
+  // The per-level reserve lives in effort.ts, which owns thinking levels — the Gemini adapter
+  // reads the same table to top this budget up when it substitutes a level the model supports.
+  const thinkHeadroom = thinkingReserve(thinkingLevel);
   // An OpenAI-style reasoning model (gpt-5.x, the o-series, Grok) is the harshest case of all: it
   // spends its reasoning tokens FIRST and out of this very budget, and if it runs out mid-thought it
   // returns `status: incomplete` with NOTHING written — not a truncated answer, an empty one. On a
@@ -1496,18 +1474,18 @@ export async function generateLive(
   // internally within one call, so the tail path yields byte-identical blocks and ids to a
   // one-shot validation of the same reply.
   let buf = '';
-  let blockStream = new ArrayStreamScanner('blocks');
-  let narrationField = new StringFieldScanner('narration');
-  let titleField = new StringFieldScanner('title');
+  const blockStream = new ArrayStreamScanner('blocks');
+  const narrationField = new StringFieldScanner('narration');
+  const titleField = new StringFieldScanner('title');
   let lastCount = 0;
   let lastPending: string | null = null;
   // The blocks validated so far (same objects across partials), whether the single allowed
   // insight has landed (the one-insight rule spans the whole canvas), the holes gathered so
   // far (spec-level blanks derive from each block's slots), and the last successful
   // validation's top-level coercions (title/narration), reused when a tail closes no block.
-  let streamedBlocks: Block[] = [];
+  const streamedBlocks: Block[] = [];
   let streamedInsight = false;
-  let streamedBlanks: Blank[] = [];
+  const streamedBlanks: Blank[] = [];
   let streamedTop: LiveResponse | null = null;
   /** The canvas exactly as the progressive parse holds it right now: every block validated, in
    *  order, with the holes gathered so far. Streamed to the surface on each partial — and kept as
@@ -1683,84 +1661,19 @@ export async function generateLive(
     // cancelled is not salvaged: it was superseded, and rendering it would fight the turn after it.
     const kept = opts.signal?.aborted ? null : streamedSoFar();
     if (kept) streamSalvage = { ...kept, sub: CUT_SHORT_SUB };
-    // When native grounding hits a rate-limit (429) — the norm on a free-tier key, where
-    // Google Search grounding is throttled separately from ordinary generation — we recover
-    // WITHOUT surfacing an error. How we recover depends on what the question needs:
-    //
-    //  • An ENCYCLOPEDIC ask (population, capital, history) → fall back to keyless Wikipedia and
-    //    retry ungrounded. The user gets a real, cited answer on a small delay.
-    //  • A genuinely LIVE ask (score, price, today's news) → Wikipedia CANNOT answer it, and
-    //    citing an encyclopedia for a live question fakes grounding. So we DON'T fall back to
-    //    Wikipedia; we retry ungrounded and let the base prompt's "never fabricate live data"
-    //    rule make the model answer honestly, with no misleading citations.
-    const isRateLimit = err instanceof Error && /\b429\b/.test(err.message);
-    if (useNativeSearch && isRateLimit) {
-      const volatile = needsLiveData(userText);
-      try {
-        if (!volatile) {
-          opts.onActivity?.('searching');
-          const wikiProvider = getSearchProvider('wikipedia');
-          const wantCount = requestedResultCount(userText);
-          const cap = resultLimit(wantCount);
-          const fallbackResults = await wikiProvider.search(searchQuery(userText), {
-            signal: opts.signal,
-            limit: wantCount,
-          });
-          if (fallbackResults.length) {
-            userForModel = `${buildSearchContext(userText, fallbackResults, cap)}\n\nQuestion: ${userText}`;
-            sources = toSources(fallbackResults, cap);
-            opts.onSources?.(sources);
-          }
-        }
-        // Retry without native search tools so we don't hit the rate limit again. For a volatile
-        // ask this is an honest ungrounded retry (no fake Wikipedia citation).
-        // Reset the streaming-parse state first: the failed first attempt may already have
-        // streamed partial content into buf, and reusing streamDelta as-is would splice this
-        // retry's real output onto that stale prefix, corrupting the progressive block/narration
-        // parse (and the narration actually spoken, via onDelta) for a turn that never happened.
-        buf = '';
-        blockStream = new ArrayStreamScanner('blocks');
-        narrationField = new StringFieldScanner('narration');
-        titleField = new StringFieldScanner('title');
-        lastCount = 0;
-        lastPending = null;
-        streamedBlocks = [];
-        streamedInsight = false;
-        streamedBlanks = [];
-        streamedTop = null;
-        const out2 = await adapter.generate(
-          {
-            ...baseReq,
-            usageLabel: 'ungrounded-retry',
-            tools: undefined,
-            user: userForModel,
-          },
-          cfg,
-          streamDelta,
-        );
-        raw = out2.raw;
-      } catch (err2) {
-        // The friendly LiveError below deliberately hides provider wire detail from the user —
-        // log the real cause so a rejected request (a malformed field, an unsupported tool on
-        // this model) is diagnosable from devtools instead of just "couldn't answer".
-        console.error('[live] provider call failed', err2);
-        if (!streamSalvage) {
-          const error = describeLiveError(err2, cfg.provider);
-          return { spec: errorSpec(error), narration: '', tier, error };
-        }
-        raw = buf; // the partial answer; streamSalvage is what actually renders
-      }
-    } else {
-      // The provider call failed. With nothing salvaged there is NO answer — surface a typed error
-      // (mapped to plain language) so the UI renders an honest, recoverable error state, never a
-      // fake finding.
-      console.error('[live] provider call failed', err);
-      if (!streamSalvage) {
-        const error = describeLiveError(err, cfg.provider);
-        return { spec: errorSpec(error), narration: '', tier, error };
-      }
-      raw = buf; // the partial answer; streamSalvage is what actually renders
+    // The provider call failed. Mavéa never re-asks on its own — a turn is the one ask the
+    // reader made, and a second attempt (grounded or not) is theirs to start. With nothing
+    // salvaged there is NO answer, so surface a typed error (mapped to plain language) and let
+    // the surface offer Retry, never a fake finding.
+    // The provider call failed. With nothing salvaged there is NO answer — surface a typed error
+    // (mapped to plain language) so the UI renders an honest, recoverable error state, never a
+    // fake finding.
+    console.error('[live] provider call failed', err);
+    if (!streamSalvage) {
+      const error = describeLiveError(err, cfg.provider);
+      return { spec: errorSpec(error), narration: '', tier, error };
     }
+    raw = buf; // the partial answer; streamSalvage is what actually renders
   } finally {
     // Native search ran inside the call; clear the consent indicator now it's done. This is the
     // single clear point for every path (success, 429-recovery, Wikipedia fallback, hard
@@ -1774,22 +1687,13 @@ export async function generateLive(
   let validated =
     streamSalvage ?? validateLiveResponse(raw, allowed, maxBlocks, sources.length > 0);
 
-  // RECOVERY — a turn must never COLLAPSE to the lone "Here's what I can say" card. That happens when
-  // the first pass returns null (unparseable/truncated, or no title + no valid blocks), an empty
-  // canvas (0 blocks), or — for a SUBSTANTIVE ask — a single lone card (which the product already
-  // treats as a failure). Re-ask ONCE for the WHOLE answer with a firm floor before degrading to
-  // text. We target the COLLAPSE only — an ordinary thin-but-real 2+ block answer is left alone (the
-  // classifier + depth budget size that), so this adds a call only when the turn would otherwise be a
-  // non-answer.
+  // RECOVERY — one re-ask, and only when the turn produced NOTHING renderable: an unparseable or
+  // truncated reply, or a validated response with zero blocks. Same model, same ask, once. A turn
+  // that DID render is never re-composed — whatever autoFix cannot settle is left standing on the
+  // answer the reader already has.
   const RECOVERY_MIN_BLOCKS = 6;
-  const wouldCollapse =
-    !streamSalvage &&
-    (!validated ||
-      validated.blocks.length === 0 ||
-      (complexity === 'rich' && validated.blocks.length < 3));
-  let didRecover = false;
+  const wouldCollapse = !streamSalvage && (!validated || validated.blocks.length === 0);
   if (opts.repair !== false && wouldCollapse) {
-    didRecover = true;
     try {
       const recoverCap = Math.max(maxBlocks, RECOVERY_MIN_BLOCKS);
       const floor = complexity === 'rich' ? 5 : 3;
@@ -1844,95 +1748,11 @@ export async function generateLive(
     return { spec: fallbackSpec(summary), narration: salvaged, tier, collapsed: true };
   }
 
-  // Accuracy guardrail, COST-AWARE — two tiers so we spend model calls sparingly:
-  //  1) autoFix: deterministic, FREE. Normalizes breakdown shares to 100 and aligns
-  //     chart data to labels — clears the COMMON issues with no round-trip.
-  //  2) self-correction: ONE extra model call, and ONLY for the rare semantic
-  //     issues code can't fix (a 1-point "trend", a 1-option comparison).
-  // Net: a normal turn = a single call; most repairs cost nothing; only a true
-  // mistake costs one more. We keep the already-spoken narration so audio matches.
-  let result = autoFix(validated);
-  const issues = checkConsistency(result, complexity);
-  // Skip the consistency repair when recovery already fired a second call — bounds a collapsed turn
-  // to at most TWO model calls (initial + recovery), never three. autoFix still ran, so the common
-  // structural issues are already fixed deterministically.
-  // A lone 'low-variety' doesn't buy the round trip either: it is the dominant repair trigger and
-  // the most stylistic of the hard issues — a canvas of staples is a worse LOOK, not a wrong
-  // answer — and its repair routinely failed the hardAfter gate below, so the call bought nothing.
-  // It still rides along in the instruction (and still counts in the accept gate) whenever a
-  // genuinely wrong answer is being repaired anyway. What counts as HARD is unchanged (verify.ts);
-  // this only gates what we PAY to fix.
-  const repairWorthy = issues.some((i) => HARD_ISSUE_CODES.has(i.code) && i.code !== 'low-variety');
-  // A salvaged turn is skipped for the same reason recovery is: its issues ARE the truncation
-  // (a canvas cut off before its charts landed reads as all-prose and too sparse), so the repair
-  // would bill a second full call to the route that just ran out of time, to fix something the
-  // answer already admits to in its own subtitle.
-  if (!didRecover && !streamSalvage && opts.repair !== false && repairWorthy) {
-    try {
-      const priorJson = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      // Reuse the compacted send-history (cheap), then append THIS turn + the answer being
-      // corrected, so the repair sees exactly what to fix without resending the whole chat.
-      const repairHistory: ChatMessage[] = [
-        ...sendHistory,
-        { role: 'user', content: userForModel },
-        { role: 'assistant', content: priorJson },
-      ];
-      // For a staple-collapse (low-variety), hand the repair the specialized components this turn
-      // offered but the model skipped — concrete targets beat a vague "vary it". Heroes = the
-      // selected types that aren't part of the always-on standard dozen.
-      const usedTypes = new Set(result.blocks.map((b) => (b as { type: string }).type));
-      const unusedHeroes = selection.types
-        .filter((t) => !FRONTIER_BLOCK_TYPES.has(t) && !usedTypes.has(t))
-        .slice(0, 8);
-      // No tools on the repair pass — it fixes block structure, it doesn't re-search (so a
-      // grounded turn is never billed a second search query just to correct a chart). The system
-      // also collapses to the stable cached base: the repair corrects the blocks it is shown, it
-      // never composes from the menu, so resending the ~6,700-token per-turn component menu (plus
-      // the directive suffix) paid full input price for text the fix cannot use. blockTypes stays
-      // — constrained-decoding adapters still need the full enum, or a rebuilt specialized block
-      // would be schema-rejected on arrival. Attachments stay home too: the prior JSON already
-      // carries the answer being corrected.
-      const out2 = await adapter.generate(
-        {
-          ...baseReq,
-          usageLabel: 'consistency-repair',
-          system: baseReq.systemBase ?? baseReq.system,
-          history: repairHistory,
-          user: repairInstruction(issues, unusedHeroes),
-          tools: undefined,
-          attachments: undefined,
-          // A repair is a mechanical restructure of JSON it is handed verbatim — inheriting the
-          // turn's reasoning level paid a hidden thinking pass (seconds, plus billed tokens) to
-          // NOT think. Every other mechanical caller already pins this.
-          thinkingLevel: 'minimal',
-        },
-        cfg,
-      );
-      const repaired = validateLiveResponse(out2.raw, allowed, maxBlocks, sources.length > 0);
-      if (repaired) {
-        const fixed2 = autoFix(repaired);
-        const hardBefore = issues.filter((i) => HARD_ISSUE_CODES.has(i.code)).length;
-        const hardAfter = checkConsistency(fixed2).filter((i) =>
-          HARD_ISSUE_CODES.has(i.code),
-        ).length;
-        // Keep the already-spoken narration AND the facts the first response surfaced — the
-        // repair only fixes block consistency and isn't asked to re-emit memory, so without
-        // this the original turn's real facts would be silently dropped.
-        if (hardAfter < hardBefore)
-          result = {
-            ...fixed2,
-            narration: result.narration,
-            memory: result.memory ?? fixed2.memory,
-            understood: result.understood ?? fixed2.understood,
-            corrects: result.corrects ?? fixed2.corrects,
-            spoken: result.spoken ?? fixed2.spoken,
-            causal: result.causal ?? fixed2.causal,
-          };
-      }
-    } catch {
-      /* repair is best-effort — keep the deterministically-fixed answer */
-    }
-  }
+  // Accuracy guardrail: autoFix is deterministic and local — it normalizes breakdown shares to
+  // 100 and aligns chart data to labels, clearing the common structural issues with no round
+  // trip. What it cannot fix is REPORTED, never re-asked: a second call to correct the answer
+  // is the reader's to make. The already-spoken narration is kept so audio matches.
+  const result = autoFix(validated);
 
   // "Go deeper" drawers are authored ON OPEN (see depth/deepen) — a drawer nobody opens costs
   // nothing — so park what that later call needs: the ask, this turn's config, and the sections

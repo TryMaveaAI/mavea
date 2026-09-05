@@ -60,6 +60,49 @@ const run = (opts: Record<string, unknown> = {}) =>
     ...opts,
   });
 
+/** The same truncated JSON, but the call RETURNS it instead of throwing: the model stopped
+ *  emitting because the output ceiling ran out, so there is no stall and no error — nothing in the
+ *  catch path runs. A reply cut off this way still has to reach the reader as the blocks it did
+ *  finish, never as an empty canvas under a headline that reads perfectly. */
+const streamsThenReturns = (text: string) =>
+  generated.mockImplementation(
+    async (
+      _req: unknown,
+      _cfg: unknown,
+      onDelta?: (chunk: string, meta?: { reasoning?: boolean }) => void,
+    ) => {
+      for (let i = 0; i < text.length; i += 40) onDelta?.(text.slice(i, i + 40));
+      return { raw: text };
+    },
+  );
+
+describe('a turn whose JSON is cut off by the output ceiling', () => {
+  it('keeps the blocks that were finished instead of collapsing to a text card', async () => {
+    streamsThenReturns(TRUNCATED);
+    const result = await run();
+
+    expect(result.collapsed).toBeFalsy();
+    expect(result.spec.blocks.length).toBeGreaterThanOrEqual(3);
+    expect(result.spec.title).toBe('Photosynthesis');
+  });
+
+  it('drops the half-written trailing block rather than rendering a fragment', async () => {
+    streamsThenReturns(TRUNCATED);
+    const titles = (await run()).spec.blocks.map(
+      (b) => (b as unknown as { props?: { title?: string } }).props?.title,
+    );
+    expect(titles).toContain('Outputs');
+    expect(titles.some((t) => t?.startsWith('Ste'))).toBe(false);
+  });
+
+  it('needs no second call to read a cut-off reply', async () => {
+    streamsThenReturns(TRUNCATED);
+    const before = generated.mock.calls.length;
+    await run({ repair: undefined }); // recovery ENABLED — a readable answer must not re-ask
+    expect(generated.mock.calls.length - before).toBe(1);
+  });
+});
+
 describe('a turn whose stream dies mid-answer', () => {
   it('keeps the blocks that already streamed instead of showing an error card', async () => {
     streamsThenDies(TRUNCATED);
