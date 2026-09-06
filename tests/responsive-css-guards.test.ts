@@ -627,8 +627,13 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(voice).toMatch(
       /min\(100%, var\(--live-content-max\)\) - var\(--focus-rail-w\) - var\(--focus-rail-gap\)/,
     );
-    // Left, not centred: the hero starts at the stage's first column.
-    expect(voice).toMatch(/margin-inline:\s*0 auto/);
+    // Aligned to the STAGE's left edge, not the wrapper's. The stage is on the shared axis, so it
+    // centres itself once .topic-wrap is wider than the measure; a sibling pinned flush left then
+    // sits left of the card by half that spare space — a gap down one side and none down the
+    // other. Both rules therefore carry the stage's own centring term, and the notes rule adds the
+    // trail's column on top. Measured at 1920 and 1661, with the trail and without: 0px each side.
+    expect(voice).toMatch(/\(100% - min\(100%, var\(--live-content-max\)\)\) \/ 2/);
+    expect(voice).not.toMatch(/margin-inline:\s*0 auto/);
     // Below 921px the rail stacks under the hero, so the correction must stop there.
     expect(voice).toMatch(/@media \(min-width: 921px\)/);
     expect(focus).toMatch(/@media \(max-width: 920px\)/);
@@ -645,9 +650,8 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(voice).toMatch(
       /var\(--focus-notes-w\) - var\(--focus-rail-w\) - 2 \*\s*var\(--focus-rail-gap\)/,
     );
-    expect(voice).toMatch(
-      /margin-inline:\s*calc\(var\(--focus-notes-w\) \+ var\(--focus-rail-gap\)\) auto/,
-    );
+    // The notes rule carries the same centring term, plus the trail's own column on top.
+    expect(voice).toMatch(/var\(--focus-notes-w\) \+\s*var\(--focus-rail-gap\)/);
     // …and it must stop where the trail itself does: below 1260px the column is display:none but
     // the aside is still in the DOM, so correcting for it put every sibling 244px right of the
     // hero. Measured at 1100px before this bound was added.
