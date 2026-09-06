@@ -201,7 +201,11 @@ describe('AreaRange', () => {
 // fixture typically shows fewer.
 describe('BigO', () => {
   const W = 340; // must track BigO.tsx's internal W — fixed-viewBox, not measured live.
-  const H = 230;
+  // 234 (was 230): the x-axis title's baseline sat 1 unit above the floor, so its descenders hung
+  // outside the box — 4px of "input size (n)" clipped by its own SVG, on Linux metrics only. The
+  // room is reserved rather than borrowed, so H and PAD_B moved together and the plot floor and
+  // tick row are unchanged; see BigO.tsx's AXLBL_DROP.
+  const H = 234;
 
   it('parks every curve label inside the fixed viewBox, even the longest class label', () => {
     const { container } = render(

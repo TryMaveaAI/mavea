@@ -9,11 +9,24 @@ import { richInnerHtml } from '../../../lib/richText';
 type Props = BigOProps & { delay?: number };
 
 const W = 340;
-const H = 230;
+const H = 234;
 const PAD_L = 38; // y tick labels
 const PAD_R = 56; // room for the curve label that sits at the right edge
 const PAD_T = 14;
-const PAD_B = 26; // x tick labels + axis title
+const PAD_B = 30; // x tick labels + axis title
+/** How far the x-axis title's BASELINE sits above the viewBox floor.
+ *
+ *  It was 1, which is a baseline sitting on the floor — and a baseline is not the bottom of the
+ *  text. .bgo-axlbl is a 9.5-unit italic carrying ~3 units of descent, so the tail of a "(n)" hung
+ *  outside the box entirely. macOS metrics happened to absorb it and Linux's did not, so it only
+ *  ever showed up where the audit ran: 4px of "input size (n)" clipped by its own SVG.
+ *
+ *  The room is RESERVED rather than borrowed. Squeezing the title upward instead runs it into the
+ *  tick labels at H - PAD_B + 12, which is why PAD_B and H moved together: the plot floor
+ *  (H - PAD_B = 204) and the tick row are exactly where they were, and the extra 4 units are new
+ *  space under the title. That leaves ~2.8 units of clearance, so a font stack with deeper
+ *  descenders than either of the two measured still fits. */
+const AXLBL_DROP = 6;
 
 // The six canonical complexity classes, each a pure growth function of n. Counts are the
 // raw operation estimate f(n); the chart caps the y-axis so the relative ORDER reads true
@@ -174,8 +187,17 @@ export function BigO({
           <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} className="bgo-axis" />
           <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} className="bgo-axis" />
 
-          {/* axis titles */}
-          <text x={(PAD_L + W - PAD_R) / 2} y={H - 1} className="bgo-axlbl" textAnchor="middle">
+          {/* axis titles. The baseline sits AXLBL_DROP above the viewBox floor, not 1 unit above
+              it: a baseline is not the bottom of the text, and .bgo-axlbl is a 9.5-unit italic
+              whose descenders then hang outside the box. macOS metrics happened to fit and Linux's
+              did not, so this only ever failed where the audit ran — 4px of "input size (n)" cut
+              off its own SVG at 1280 and 1920. */}
+          <text
+            x={(PAD_L + W - PAD_R) / 2}
+            y={H - AXLBL_DROP}
+            className="bgo-axlbl"
+            textAnchor="middle"
+          >
             {xLabel}
           </text>
           <text
