@@ -109,7 +109,7 @@
   grid-area: badge;
   align-self: center;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   border-radius: 4px;
@@ -330,7 +330,7 @@
 .ripple-ws-caller-badge {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: right;

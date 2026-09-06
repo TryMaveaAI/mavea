@@ -367,7 +367,7 @@
 /* a lesson row whose real files changed since the course was built */
 .ripple-course-item-stale {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -595,7 +595,7 @@
 /* the beginner → intermediate → expert rung, on a course track */
 .ripple-course-level {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

@@ -233,7 +233,7 @@
   background: color-mix(in oklab, var(--insight) 6%, var(--surface-deep));
 }
 .prism-ask-outside-tag {
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

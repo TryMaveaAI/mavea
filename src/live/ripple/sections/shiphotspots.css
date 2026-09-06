@@ -56,7 +56,7 @@
   grid-area: cls;
   align-self: center;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -147,7 +147,7 @@
 }
 .ripple-hot-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--surface-deep);
@@ -232,7 +232,7 @@
 }
 .ripple-hot-event-kind {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;

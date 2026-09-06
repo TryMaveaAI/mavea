@@ -672,7 +672,7 @@
 }
 .ripple-node-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 700;
   color: #fff;
   border-radius: var(--r-full);
@@ -685,7 +685,7 @@
 }
 .ripple-node-repo {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 7.5px;
+  font-size: 9px;
   color: var(--warning);
   background: color-mix(in oklab, var(--warning) 14%, transparent);
   border-radius: 4px;
@@ -743,7 +743,7 @@
 }
 .ripple-inspect-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   color: #fff;
   border-radius: var(--r-full);

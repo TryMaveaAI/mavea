@@ -387,7 +387,7 @@
   background: color-mix(in oklab, var(--warning) 16%, transparent);
   border: 1px solid color-mix(in oklab, var(--warning) 40%, transparent);
   font-family: var(--font-data);
-  font-size: 7.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -426,7 +426,7 @@
   background: rgba(255, 255, 255, 0.08);
   color: #b6bccb;
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.06em;
 }
@@ -452,7 +452,7 @@
   width: 100%;
   text-align: center;
   font-family: var(--font-data);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: #b9bffb;
@@ -594,7 +594,7 @@
 }
 .atlas-night-date {
   font-family: var(--font-data);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -773,7 +773,7 @@
   background: color-mix(in oklab, var(--hood-color, var(--presence)) 14%, transparent);
   border: 1px solid color-mix(in oklab, var(--hood-color, var(--presence)) 30%, transparent);
   font-family: var(--font-data);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--hood-color, var(--presence));
 }
@@ -977,7 +977,7 @@
 }
 .atlas-noticed-kind {
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--ins-color, var(--presence));
@@ -1029,7 +1029,7 @@
 }
 .atlas-range-label {
   font-family: var(--font-data);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.4);

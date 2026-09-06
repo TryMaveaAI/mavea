@@ -263,7 +263,7 @@
 }
 .dlg-enforced {
   font-family: var(--font-data, inherit);
-  font-size: 8.5px;
+  font-size: 9px;
   letter-spacing: 0.12em;
   color: var(--warning);
   background: color-mix(in oklab, var(--warning) 16%, transparent);
@@ -399,7 +399,7 @@
 }
 .dlg-seat-tag {
   font-family: var(--font-data, inherit);
-  font-size: 8.5px;
+  font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1226,7 +1226,7 @@
     max-width: 64px;
   }
   .dlg-seat-tag {
-    font-size: 8px;
+    font-size: 9px;
     padding: 1px 5px;
   }
 }

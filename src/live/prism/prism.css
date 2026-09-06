@@ -536,7 +536,7 @@
 }
 .prism-slide-quote-label {
   font-family: var(--font-data);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -959,7 +959,7 @@
 }
 .prism-doc-eyebrow {
   font-family: var(--font-data);
-  font-size: 7px;
+  font-size: 9px;
   letter-spacing: 0.12em;
   color: var(--text-muted);
 }
@@ -1301,7 +1301,7 @@
   width: 100%;
   text-align: center;
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--thread-color) 70%, var(--text-primary) 30%);
@@ -1399,7 +1399,7 @@
 /* the KEY badge on a load-bearing card — the at-a-glance "this is what the document leans on" */
 .prism-claim-key {
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: color-mix(in oklab, var(--kind-color) 80%, var(--text-primary) 20%);
@@ -1416,7 +1416,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--kind-color);
@@ -1429,7 +1429,7 @@
 }
 .prism-claim-page {
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -1472,7 +1472,7 @@
    A neutral anchored card reads quiet; a threaded one is tinted by its relation so it stands out. */
 .prism-claim-state {
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: lowercase;
@@ -1503,7 +1503,7 @@
   border: 1px solid color-mix(in oklab, var(--seal-color) 42%, transparent);
   background: color-mix(in oklab, var(--seal-color) 14%, transparent);
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: color-mix(in oklab, var(--seal-color) 78%, var(--text-primary) 22%);
@@ -1539,7 +1539,7 @@
 }
 .prism-verdict-label {
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: color-mix(in oklab, var(--seal-color) 82%, var(--text-primary) 18%);
@@ -1577,7 +1577,7 @@
   margin-top: 2px;
   font-style: normal;
   font-family: var(--font-data);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--seal-color) 70%, var(--text-muted) 30%);
