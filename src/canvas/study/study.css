@@ -1222,6 +1222,43 @@
   display: none;
 }
 
+/* Said, not speaking. The bubble stands down to a quote mark the reader can press to bring the
+   line back — so a finished line stops covering the desk's spare room and the pen's path to the
+   card, without throwing the words away. Both interactive states opt back into pointer events;
+   the resting bubble stays inert so it can never eat a click meant for an object behind it. */
+.study-voice--said,
+.study-voice[role='button'] {
+  pointer-events: auto;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.study-voice--said {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--r-full);
+  font-family: var(--study-serif);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--study-ink-soft, var(--study-ink));
+  opacity: 0.72;
+  transition:
+    opacity var(--m-fast, 140ms) ease,
+    transform var(--m-fast, 140ms) ease;
+}
+.study-voice--said:hover,
+.study-voice--said:focus-visible {
+  opacity: 1;
+}
+.study-voice--said:hover {
+  transform: scale(var(--study-hud, 1)) translateY(-1px);
+}
+
 .study-voice-eq {
   display: flex;
   align-items: flex-end;

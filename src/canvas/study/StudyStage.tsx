@@ -211,6 +211,15 @@ export function StudyStage({
     size: number;
   } | null>(null);
   const voiceFit = settledVoiceFit?.line === voiceLine ? settledVoiceFit : estimatedVoiceFit;
+  // The bubble IS the voice: while Mavéa is speaking it belongs on the desk. Once the line has
+  // been said it is a leftover, and it sits in the one piece of room the desk has spare — over
+  // the pen's path to the card it was drawn to point at. So it stands down when the voice stops.
+  // Clearing it outright would be worse: the words are often worth re-reading and the caption
+  // strip scrolls away, so what is left is a quote mark the reader can press to bring it back.
+  // A new line is a new decision — Mavéa is talking about something else now.
+  const [voiceHeld, setVoiceHeld] = useState(false);
+  useEffect(() => setVoiceHeld(false), [voiceLine]);
+  const voiceOpen = speaking === true || voiceHeld;
   const renderedVoiceFit = useRef(voiceFit);
   renderedVoiceFit.current = voiceFit;
   useLayoutEffect(() => {
@@ -1070,30 +1079,59 @@ export function StudyStage({
         </div>
       )}
 
-      {voiceLine && !gathered && (
-        <div className="study-voice" aria-hidden="true">
-          {speaking && (
-            <span className="study-voice-eq">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          )}
-          {voiceFit && (
-            <span
-              ref={voiceTextRef}
-              key={voiceLine}
-              className="study-voice-text"
-              style={{ '--study-voice-size': `${voiceFit.size}px` } as CSSProperties}
-            >
-              {voiceFit.text}
-              {speaking && <b className="study-voice-caret">▌</b>}
-            </span>
-          )}
-        </div>
-      )}
+      {voiceLine &&
+        !gathered &&
+        (voiceOpen ? (
+          <div
+            className="study-voice"
+            aria-hidden={speaking ? 'true' : undefined}
+            {...(speaking
+              ? {}
+              : {
+                  role: 'button',
+                  tabIndex: 0,
+                  'aria-label': 'Hide what Mavéa said',
+                  onClick: () => setVoiceHeld(false),
+                  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setVoiceHeld(false);
+                    }
+                  },
+                })}
+          >
+            {speaking && (
+              <span className="study-voice-eq">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+            )}
+            {voiceFit && (
+              <span
+                ref={voiceTextRef}
+                key={voiceLine}
+                className="study-voice-text"
+                aria-hidden="true"
+                style={{ '--study-voice-size': `${voiceFit.size}px` } as CSSProperties}
+              >
+                {voiceFit.text}
+                {speaking && <b className="study-voice-caret">▌</b>}
+              </span>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="study-voice study-voice--said"
+            aria-label="Show what Mavéa said"
+            onClick={() => setVoiceHeld(true)}
+          >
+            <span aria-hidden="true">❞</span>
+          </button>
+        ))}
 
       {gathered && (
         <div className="study-intro" role="status">

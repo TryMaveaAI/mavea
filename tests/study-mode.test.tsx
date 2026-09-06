@@ -1066,3 +1066,65 @@ describe('the first Study entrance waits for the complete cast', () => {
     }
   });
 });
+
+// The bubble IS the voice. While Mavéa speaks it belongs on the desk; once the line has been said
+// it becomes a leftover sitting in the one piece of room the desk has spare — over the pen's path
+// to the card it points at. Clearing it would be worse (the words are worth re-reading and the
+// caption strip scrolls away), so it stands down to a mark the reader can press.
+describe('the spoken bubble stands down when the voice stops', () => {
+  const renderBlock = (item: Block) => (
+    <div className="card">
+      <span>{item.id}</span>
+    </div>
+  );
+
+  it('shows the bubble while speaking and collapses it when the voice stops', () => {
+    const props = {
+      data: spec(blocks),
+      blocks,
+      spot: 'a',
+      renderBlock,
+      voiceLine: 'Retention is the number that pays for everything else.',
+    } as const;
+    const { container, rerender } = render(<StudyStage {...props} speaking />);
+    expect(container.querySelector('.study-voice')).not.toBeNull();
+    expect(container.querySelector('.study-voice--said')).toBeNull();
+
+    rerender(<StudyStage {...props} speaking={false} />);
+    const said = container.querySelector('.study-voice--said');
+    expect(said).not.toBeNull();
+    // The words are gone from the desk, so the control must say what it does.
+    expect(said?.getAttribute('aria-label')).toBe('Show what Mavéa said');
+  });
+
+  it('brings the line back when the reader presses it, and hides it again', () => {
+    const props = {
+      data: spec(blocks),
+      blocks,
+      spot: 'a',
+      renderBlock,
+      voiceLine: 'Retention is the number that pays for everything else.',
+      speaking: false,
+    } as const;
+    const { container } = render(<StudyStage {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show what Mavéa said' }));
+    expect(container.querySelector('.study-voice--said')).toBeNull();
+    expect(container.querySelector('.study-voice-text')?.textContent).toContain('Retention');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide what Mavéa said' }));
+    expect(container.querySelector('.study-voice--said')).not.toBeNull();
+  });
+
+  it('reopens for a NEW line — Mavéa is talking about something else now', () => {
+    const base = { data: spec(blocks), blocks, spot: 'a', renderBlock } as const;
+    const { container, rerender } = render(
+      <StudyStage {...base} voiceLine="First line." speaking={false} />,
+    );
+    expect(container.querySelector('.study-voice--said')).not.toBeNull();
+
+    rerender(<StudyStage {...base} voiceLine="A second, different line." speaking />);
+    expect(container.querySelector('.study-voice--said')).toBeNull();
+    expect(container.querySelector('.study-voice-text')?.textContent).toContain('second');
+  });
+});
