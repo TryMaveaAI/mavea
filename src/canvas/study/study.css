@@ -526,7 +526,22 @@
 
 .study-note-wrap {
   position: absolute;
-  left: 1165px;
+  /* The note is the composition's rightmost object, so it is the one the frame cuts first.
+     `useStudyScale` fits the desk with `min(w / FIT_W, h / FIT_H)` but then floors the result at
+     STUDY_FIT_FLOOR, because below it no type survives — and the floor is a HEIGHT bargain: it
+     accepts cropping the decorative floor band. Horizontally there is no such bargain. The stage
+     clips, so a short window paints a 1440-wide composition into a narrower frame and takes the
+     note's right edge off with it (measured: 18px lost at 1280x720, and COMPACT_W lets the desk
+     stand until the stage is 940px).
+
+     So the note's own position carries the constraint. Below a 1022px stage the scale is ALWAYS
+     the floor — reaching a higher one needs w > FIT_W * 9/11 = 1203px — which makes the geometry
+     an exact relationship rather than a breakpoint: a design pixel paints at 9/11 x 1.048 (the
+     translateZ(75px) projection), so the note's right edge fits while it stays within
+     50cqw / 0.8575 of the desk's centre. Above 1022px the min() yields the authored 1165px and
+     nothing moves. Derived, not chosen — and continuous, so dragging a window edge slides the
+     note rather than snapping it. */
+  left: min(1165px, calc(569px + 58.3cqw));
   top: 392px;
   width: 302px;
   z-index: 11;

@@ -600,4 +600,18 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(css).not.toMatch(/align-self:\s*center;\n\s*transform-origin/);
     expect(/\.dz-level\s*\{[^}]*align-self:\s*safe center/.test(css)).toBe(true);
   });
+
+  it('the Study note carries its own fit rather than being cropped by the frame', () => {
+    // useStudyScale floors the desk scale at 9/11 so type stays legible, and that floor is a
+    // HEIGHT bargain — it accepts cropping the decorative floor band. Horizontally the stage just
+    // clips, so a short window cut the note's right edge off (measured: 18px lost at 1280x720).
+    // Below a 1022px stage the scale is ALWAYS the floor — a higher one needs w > 1470*9/11 =
+    // 1203px — so the correction is an exact relationship, not a breakpoint, and it is continuous.
+    const css = read('src/canvas/study/study.css');
+    expect(
+      /\.study-note-wrap\s*\{[^}]*left:\s*min\(1165px, calc\(569px \+ 58\.3cqw\)\)/.test(css),
+    ).toBe(true);
+    // The stage is the named container the cqw resolves against.
+    expect(css).toMatch(/container-name:\s*study/);
+  });
 });
