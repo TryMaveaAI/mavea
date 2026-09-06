@@ -247,7 +247,19 @@ const ROUTE_BUDGETS = [
     // priced into each route instead — Live +3.3, Gallery +1.1, Prism +1.1, and this one +3.4 kB.
     // Spending ~1-3 kB per route once, to spare every first visitor 19.4 kB before they see
     // anything, is the trade. Deliberate — revisit by changing the feature, not the number.
-    gzip: 142,
+    //
+    // 157 (was 142): the responsive re-tile now reads each component's declared readable minimum
+    // instead of a blanket 4, so useResponsiveGrid reaches catalogSpan and this route carries the
+    // facts index — 13.8 kB gzip, measured, which is the whole of the +14.4. Without it 541 of the
+    // 625 types lose their floor on every container resize and get rebuilt at a quarter of the
+    // grid, which is what crushed a card until its text broke one character per line.
+    //
+    // It was worth checking whether the route could pay less: a type -> [min, pref] table is 4.6 kB
+    // rather than 13.8. It was not worth SHIPPING — that is a second answer to "how wide must this
+    // be", sitting beside the catalog's own, kept honest only by a staleness test. One source of
+    // truth is worth 9 kB on a secondary route. Revisit by changing the feature: if the tiler ever
+    // stops needing per-type widths, this goes back down.
+    gzip: 157,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
