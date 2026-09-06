@@ -525,9 +525,18 @@ export function StudyStage({
     if (!stage) return;
     const face = stage.querySelector<HTMLElement>('.study-card.is-front .study-card-face');
     if (!face) return;
+    const card = face.closest<HTMLElement>('.study-card');
     const judge = (): void => {
       const more = face.scrollHeight - face.clientHeight - face.scrollTop > 8;
       face.toggleAttribute('data-more-below', more);
+      // The pen's scrawls are remarks about the CARD — a PenMark is {text, slot}, dropped into one
+      // of five slots so the spacing holds at any card size. It carries no anchor and never
+      // referred to a particular line. But an arrow reaching toward the card lands on one, and
+      // once the reader scrolls the face a different line sits under that arrowhead, so the mark
+      // starts making a claim nobody wrote. Stand them down while the face is away from rest and
+      // bring them back when it settles; 6px so a rubber-band or a sub-pixel rest is not mistaken
+      // for scrolling.
+      card?.toggleAttribute('data-face-scrolled', face.scrollTop > 6);
     };
     let scrollTimer = 0;
     const onScroll = (): void => {
@@ -549,6 +558,7 @@ export function StudyStage({
       cancelAnimationFrame(frame);
       window.clearTimeout(scrollTimer);
       face.removeAttribute('data-scrolling');
+      card?.removeAttribute('data-face-scrolled');
       face.removeEventListener('scroll', onScroll);
       ro?.disconnect();
     };

@@ -1128,3 +1128,57 @@ describe('the spoken bubble stands down when the voice stops', () => {
     expect(container.querySelector('.study-voice-text')?.textContent).toContain('second');
   });
 });
+
+// A PenMark is {text, slot}: a remark about the CARD, dropped into one of five slots so the
+// spacing holds at any card size. It carries no anchor and never referred to a particular line.
+// But an arrow reaching toward the card lands on one, and once the reader scrolls the face a
+// different line sits under that arrowhead — so the mark starts making a claim nobody wrote.
+describe('the pen scrawls stand down while the card face is scrolled', () => {
+  const renderBlock = (item: Block) => (
+    <div className="card">
+      <span>{item.id}</span>
+    </div>
+  );
+
+  /** jsdom computes no layout, so the overflow the effect measures is staged by hand. */
+  function stageOverflow(face: HTMLElement, scrollTop: number): void {
+    Object.defineProperty(face, 'scrollHeight', { configurable: true, value: 900 });
+    Object.defineProperty(face, 'clientHeight', { configurable: true, value: 400 });
+    Object.defineProperty(face, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: scrollTop,
+    });
+  }
+
+  it('flags the card while the face is away from rest, and clears it when it settles', () => {
+    const { container } = render(
+      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
+    );
+    const card = container.querySelector('.study-card.is-front') as HTMLElement;
+    const face = container.querySelector('.study-card.is-front .study-card-face') as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(face).not.toBeNull();
+    expect(card.hasAttribute('data-face-scrolled')).toBe(false);
+
+    stageOverflow(face, 120);
+    fireEvent.scroll(face);
+    expect(card.hasAttribute('data-face-scrolled')).toBe(true);
+
+    stageOverflow(face, 0);
+    fireEvent.scroll(face);
+    expect(card.hasAttribute('data-face-scrolled')).toBe(false);
+  });
+
+  it('ignores a rubber-band or sub-pixel rest rather than flickering the ink', () => {
+    const { container } = render(
+      <StudyStage data={spec(blocks)} blocks={blocks} spot="a" renderBlock={renderBlock} />,
+    );
+    const card = container.querySelector('.study-card.is-front') as HTMLElement;
+    const face = container.querySelector('.study-card.is-front .study-card-face') as HTMLElement;
+
+    stageOverflow(face, 4);
+    fireEvent.scroll(face);
+    expect(card.hasAttribute('data-face-scrolled')).toBe(false);
+  });
+});

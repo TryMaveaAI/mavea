@@ -927,6 +927,19 @@
   position: absolute;
   z-index: 6;
   pointer-events: none;
+  transition: opacity var(--m-normal, 240ms) var(--ease-out, ease);
+}
+
+/* The scrawls stand down while the card's face is scrolled. They are marginalia about the CARD —
+   a PenMark is {text, slot}, dropped into one of five slots so the spacing holds at any card size
+   — and they carry no anchor, so they never referred to a particular line. But an arrow reaching
+   toward the card lands on one, and after a scroll that is a different line than the one on
+   screen when the remark was written, so the mark starts making a claim nobody wrote. Fading is
+   the honest state: the remark still applies to the card, it just stops appearing to indict a
+   row. Opacity only — nothing leaves the layout, so no reflow while the reader scrolls. */
+.study-card[data-face-scrolled] .study-mark {
+  opacity: 0;
+  transition-duration: var(--m-fast, 160ms);
 }
 
 .study-mark-text {
