@@ -44,6 +44,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* The head carries the document name on the left and the controls — including Close — on the
+     right. Without a wrap the row can only grow, and on a phone it grew right off the panel:
+     measured at 360px, the right-hand group sat 196px outside the window with nothing to scroll
+     to it, so the overlay could not be dismissed at all. */
+  flex-wrap: wrap;
   gap: 16px;
   padding: 13px 20px;
   background: var(--surface-deep);
@@ -121,8 +126,12 @@
 .prism-head-right {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
-  flex: none;
+  /* Was `flex: none`, which is why the group could not give way — it kept its full content width
+     and pushed Close past the edge. It may still refuse to grow; it may no longer refuse to fit. */
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .prism-phase {
   display: inline-flex;
@@ -1708,6 +1717,9 @@
 .prism-foot-group {
   display: flex;
   align-items: center;
+  /* The footer wraps; this group inside it did not, so it stayed one long row and carried its
+     buttons off the edge anyway — 87px past a 360px window, measured. */
+  flex-wrap: wrap;
   gap: 6px;
   padding: 4px 8px 4px 3px;
   border-radius: 12px;

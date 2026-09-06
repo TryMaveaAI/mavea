@@ -12,9 +12,13 @@
   padding: 3px;
   background: var(--surface-deep);
   border: 1px solid var(--line);
-  border-radius: var(--r-full, 999px);
+  border-radius: var(--r-full);
   max-width: 100%;
-  overflow: hidden;
+  /* A lens the reader cannot reach is a lens they do not have. `hidden` clipped the strip at
+     360px and took the last lenses with it; scrolling keeps every one of them reachable, which
+     is the WCAG 1.4.10 answer for a control strip that cannot honestly reflow. */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 .syn-lens {
   display: inline-flex;
