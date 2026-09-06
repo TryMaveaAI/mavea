@@ -1257,10 +1257,6 @@
   min-width: 0;
   padding: 0;
   border-radius: var(--r-full);
-  font-family: var(--study-serif);
-  font-size: 15px;
-  line-height: 1;
-  color: var(--study-ink-soft, var(--study-ink));
   opacity: 0.72;
   transition:
     opacity var(--m-fast, 140ms) ease,
@@ -1272,6 +1268,28 @@
 }
 .study-voice--said:hover {
   transform: scale(var(--study-hud, 1)) translateY(-1px);
+}
+
+/* At rest the bars hold a settled waveform rather than a flat row — a flat row reads as a
+   disabled control, and three even bars read as a pause button. They do not animate: the motion
+   is what distinguishes speaking from spoken, so taking it away is the whole signal. */
+.study-voice-eq.is-said {
+  height: 11px;
+  gap: 2px;
+}
+.study-voice-eq.is-said i {
+  width: 2.5px;
+  animation: none;
+  transform: none;
+}
+.study-voice-eq.is-said i:nth-child(1) {
+  height: 6px;
+}
+.study-voice-eq.is-said i:nth-child(2) {
+  height: 11px;
+}
+.study-voice-eq.is-said i:nth-child(3) {
+  height: 8px;
 }
 
 .study-voice-eq {

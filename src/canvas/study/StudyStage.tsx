@@ -1129,7 +1129,14 @@ export function StudyStage({
             aria-label="Show what Mavéa said"
             onClick={() => setVoiceHeld(true)}
           >
-            <span aria-hidden="true">❞</span>
+            {/* The same three bars the Speaking pill uses, at rest. A quote glyph read as the
+                number 99 at this size; the bars say "this is the voice" in the vocabulary the
+                surface already speaks, and standing still is what says it has stopped. */}
+            <span className="study-voice-eq is-said" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
           </button>
         ))}
 
