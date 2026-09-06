@@ -6,6 +6,55 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-09-06
+
+### Added
+
+- **Mavéa shows the model a turn will actually use**, and names the filled-in one as a
+  recommendation where the choice is made — so a field filled in for you no longer reads as the
+  only option there is. The hint says the field takes free text: any model id can be typed, not
+  only the ones listed.
+- **The spoken bubble stands down when the voice stops.** While Mavéa is speaking it belongs on the
+  desk; once the line has been said it is a leftover sitting in the room the desk has spare, over
+  the pen's path to the card it points at. It collapses to a mark you can press to bring the words
+  back, because the caption strip has scrolled on by then.
+
+### Fixed
+
+- **A block keeps its readable width when the window changes size.** Every component declares the
+  narrowest span it can be read at, and the responsive re-tile was discarding that number and
+  rebuilding at a blanket quarter-grid — 541 of the 625 types, on every resize. A card crushed that
+  far breaks its text one or two characters per line.
+- **Charts are legible on a phone.** The guard that catches sub-9px labels skipped any figure under
+  24px tall, so a wide, short chart was treated as an inline icon; a dot plot was painting its axis
+  at 3.6px. Measured across the whole library — 625 components at four widths in both themes — the
+  count of illegible labels is now zero.
+- **Prism and Synthesis can be closed on a phone.** The overlay head could not wrap, so at 360px
+  its controls sat 196px outside the window with nothing to scroll to them — the overlay could not
+  be dismissed at all. The lens strip scrolls rather than clipping its last lenses.
+- **34 labels that had drifted under the legibility floor** — down to 7px — across Prism, Ripple,
+  Atlas and Delegate, on surfaces no gate had ever visited.
+- **The Study keeps its margin note.** A short window painted the desk wider than its frame and cut
+  the note's right edge off; the note now carries the constraint itself, continuously, so dragging
+  a window edge slides it rather than cropping it.
+- **The pen's scrawls stand down while a card is scrolled.** They are remarks about the card, not
+  pointers at a line — but an arrow reaching toward the card lands on one, and after a scroll that
+  is a different line than the remark was written about.
+- **Focus reads as one column.** The stage was the only answer surface off the shared alignment
+  axis, so the scrubber above the hero and the footer below it ran past the card — on both sides
+  once the note trail was up.
+- **A Big-O chart no longer clips its own axis title**, whose descenders hung outside the viewBox.
+
+### Changed
+
+- **The layout gates run on every push** rather than once a week, so a regression is caught against
+  the change that caused it instead of a week of them. That needed the verdicts to be reproducible
+  first: text rendering is now pinned for audit runs, and the same commit audits identically across
+  repeated runs. The exhaustive sweep — every width from 280 to 3840, both themes, every variant —
+  still runs weekly, now with the surface sweep on its own runner.
+- **The surface sweep covers the whole app.** It visited nine surfaces; Prism, Synthesis, the
+  dashboards, the decks, the courses and the course reader had never been measured.
+
 ## [2.3.1] - 2026-09-04
 
 ### Fixed
