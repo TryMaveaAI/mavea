@@ -636,6 +636,23 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     // The view has to reach the DOM for any of it to apply — a class set in JS rather than a CSS
     // `:has()`, the same reason FocusStage sets `has-notes` itself.
     expect(live).toMatch(/className="topic-wrap" data-view=\{viewMode\}/);
+
+    // A live turn with a muted walk adds a THIRD column on the LEFT, so the reading column is
+    // inset as well as narrowed. walkNotes only reaches TopicCanvas when the reader is on a live
+    // turn, so no demo replay can render this shape — which is exactly how it went unhandled.
+    expect(tokens).toMatch(/--focus-notes-w:\s*216px/);
+    expect(voice).toMatch(/\[data-view='focus'\]:has\(\.focus-notes\)/);
+    expect(voice).toMatch(
+      /var\(--focus-notes-w\) - var\(--focus-rail-w\) - 2 \*\s*var\(--focus-rail-gap\)/,
+    );
+    expect(voice).toMatch(
+      /margin-inline:\s*calc\(var\(--focus-notes-w\) \+ var\(--focus-rail-gap\)\) auto/,
+    );
+    // …and it must stop where the trail itself does: below 1260px the column is display:none but
+    // the aside is still in the DOM, so correcting for it put every sibling 244px right of the
+    // hero. Measured at 1100px before this bound was added.
+    expect(voice).toMatch(/@media \(min-width: 1260px\)/);
+    expect(focus).toMatch(/@media \(max-width: 1259px\)/);
   });
 
   it('the Study note carries its own fit rather than being cropped by the frame', () => {

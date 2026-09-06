@@ -1372,6 +1372,42 @@
   }
 }
 
+/* A live session with a muted walk adds a THIRD column on the LEFT — the note trail — so the
+   reading column is inset there as well as narrowed. `walkNotes` only reaches TopicCanvas when
+   the reader is on a live turn (LiveApp passes it `viewingLive ? walkNotes : undefined`), which
+   is why no demo replay can show this shape and why it went unhandled: subtracting only the rail
+   left every sibling a whole notes column left of the card.
+
+   `:has(.focus-notes)` rather than a class on the wrapper, and it is the safer form here rather
+   than the looser one: FocusStage decides the trail from its own prop and renders the column
+   itself, so matching on the column's PRESENCE is the render condition, not a copy of it that
+   could drift from it.
+
+   1260px, not 921px: below that the trail steps aside and the grid reverts to two columns
+   (focus.css `@media (max-width: 1259px)`), so the element is still in the DOM while its column
+   is gone — measured at 1100px, correcting for a column that is not there put every sibling 244px
+   right of the hero. The presence of the aside is the render condition; the width is the LAYOUT
+   condition, and both have to hold. */
+@media (min-width: 1260px) {
+  .mavea-app.live-voice
+    .topic-wrap[data-view='focus']:has(.focus-notes)
+    :is(
+      .answer-hero,
+      .voice-scrub,
+      .canvas-header,
+      .context-row,
+      .answer-footer,
+      .understood,
+      .ask-hint
+    ) {
+    max-width: calc(
+      min(100%, var(--live-content-max)) - var(--focus-notes-w) - var(--focus-rail-w) - 2 *
+        var(--focus-rail-gap)
+    );
+    margin-inline: calc(var(--focus-notes-w) + var(--focus-rail-gap)) auto;
+  }
+}
+
 .mavea-app.live-voice .focus-hero {
   justify-content: flex-start;
 }

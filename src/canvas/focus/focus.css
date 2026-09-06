@@ -390,8 +390,9 @@
    newest-first, the active card's note lit. The full spatial handout lives in Everything view;
    this is its Focus-sized cut, doubling as navigation (a note tap re-stages its card). */
 .focus-stage.has-notes {
-  --focus-notes-w: 216px;
-  grid-template-columns: var(--focus-notes-w) minmax(0, 1fr) var(--focus-rail-w);
+  /* --focus-notes-w lives in tokens-base.css beside --focus-rail-w: the surfaces that must line
+     up with this column are the STAGE's siblings, and they cannot read a variable set here. */
+  grid-template-columns: var(--focus-notes-w, 216px) minmax(0, 1fr) var(--focus-rail-w, 268px);
 }
 .focus-notes {
   display: flex;

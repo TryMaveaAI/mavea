@@ -153,6 +153,8 @@
      and a sibling cannot read a variable declared on the stage. One source, two readers. */
   --focus-rail-w: 268px;
   --focus-rail-gap: 28px;
+  /* …and the note trail Focus adds on the LEFT during a live turn, for the same reason. */
+  --focus-notes-w: 216px;
 
   /* --- motion --- */
   --m-instant: 80ms;
