@@ -1,0 +1,167 @@
+name: Responsive gate
+
+# The layout gates, on every push that can change layout.
+#
+# They used to run only in weekly.yml, and that is why breakage reached readers instead of CI: a
+# regression could sit on main for seven days, by which point the diff is large and a finding is
+# cheap to wave through. The block library and every surface are clean today; keeping them clean
+# is a per-push job.
+#
+# weekly.yml gave two reasons for not doing this, and both are answered rather than ignored:
+#
+#   Determinism — its checks measure RENDERED GEOMETRY, so a verdict could flip on a 1px platform
+#   font difference. scripts/launch-chromium.mts now disables hinting, subpixel positioning and
+#   LCD text, which is what made glyph metrics vary between runs. Measured after that change: the
+#   same commit audited three times returns identical verdicts. It is a reduction in variance, not
+#   a proof — ubuntu-latest is a rolling image, so a fontconfig or font-package bump can still move
+#   metrics with no code change. That is the case to re-measure against, not to pre-empt here.
+#
+#   Cost — the weekly sweep is 9-15 minutes because it drives all 625 tiles at five widths in
+#   three variants, plus the reel, export, perf and memory probes. This runs the layout subset
+#   only, at the widths this product is actually read at, and only when something that can move a
+#   pixel changed. The full matrix, the phone-width tail and everything else stays weekly.
+#
+# Every job in this file runs on every trigger of it — a different cadence is a different file.
+on:
+  push:
+    # main only, matching ci.yml. Without it a feature branch matches BOTH this and the
+    # pull_request trigger, and the concurrency groups cannot dedupe them (refs/heads/foo vs
+    # refs/pull/N/merge), so every push to an open PR would run this whole job twice.
+    branches: [main]
+    # Duplicated rather than shared with a YAML anchor: anchors are valid YAML but GitHub's
+    # workflow parser does not resolve them, so the alias would silently become an empty filter.
+    paths:
+      - 'src/**/*.css'
+      - 'src/**/*.tsx'
+      - 'src/**/*.ts'
+      # The font files and the preloads that fetch them: swapping a face moves every metric these
+      # gates measure, with no diff under src/.
+      - 'index.html'
+      - 'public/fonts/**'
+      - 'vite.config.ts'
+      # A Playwright or renderer bump changes glyph metrics with an empty src/ diff.
+      - 'pnpm-lock.yaml'
+      - 'scripts/ui-audit.mts'
+      - 'scripts/surface-audit.mts'
+      - 'scripts/launch-chromium.mts'
+      - '.github/workflows/responsive.yml'
+  pull_request:
+    paths:
+      - 'src/**/*.css'
+      - 'src/**/*.tsx'
+      - 'src/**/*.ts'
+      # The font files and the preloads that fetch them: swapping a face moves every metric these
+      # gates measure, with no diff under src/.
+      - 'index.html'
+      - 'public/fonts/**'
+      - 'vite.config.ts'
+      # A Playwright or renderer bump changes glyph metrics with an empty src/ diff.
+      - 'pnpm-lock.yaml'
+      - 'scripts/ui-audit.mts'
+      - 'scripts/surface-audit.mts'
+      - 'scripts/launch-chromium.mts'
+      - '.github/workflows/responsive.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: responsive-${{ github.ref }}
+  # Never cancel a push to main — that commit's check would be left cancelled, which reads the
+  # same as "never ran". Superseding a PR's own earlier run is free. (ci.yml states this rule.)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  layout:
+    name: Blocks · Surfaces
+    runs-on: ubuntu-latest
+    # Measured end to end on a developer laptop: audit:ui at three widths is ~132s and
+    # audit:surfaces at two sizes ~191s, so ~5.5 min of gate. The rest of the budget is checkout,
+    # install, the Chromium fetch on a cache miss, and a runner slower than a laptop.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Restore Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # `--with-deps` stays unconditional: it installs apt libraries in /usr, which the cache above
+      # does not hold, so skipping it on a cache hit leaves the browser unable to launch.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      # These gates drive the DEV server, so this job pays Vite's optimizeDeps pass — ~500s cold,
+      # per ci.yml. Its OWN key, deliberately: ci.yml's `vite-deps-*` cache is written by jobs that
+      # never populate deps/, and actions/cache skips the save on an exact key hit, so sharing the
+      # key would restore an empty cache forever and never write a useful one.
+      - name: Restore Vite dependency pre-bundle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.vite
+          key: vite-devdeps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
+      - name: Run the layout gates
+        shell: bash
+        run: |
+          # `shell: bash` already runs this with `-eo pipefail`, and `set -u` does NOT clear
+          # errexit — so errexit is turned off EXPLICITLY here. These are independent checks, and
+          # stopping at the first means a run can only ever reveal a single problem. Run both, then
+          # fail once with the full list — the rule weekly.yml follows, for the same reason.
+          set +e
+          set -uo pipefail
+          # strictPort: without it an occupied 5173 silently binds 5174, and the readiness loop
+          # below then fails against a server whose log looks perfectly healthy.
+          pnpm exec vite --host 127.0.0.1 --strictPort > /tmp/mavea-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
+            if ! kill -0 "$vite_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/ >/dev/null || { cat /tmp/mavea-vite.log; exit 1; }
+          # index.html is served as a static file BEFORE dep optimization finishes, so the curl
+          # above proves the port is open and nothing more. A module request blocks until the
+          # optimizer is ready — pay that here rather than inside a 30s Playwright navigation.
+          curl --fail --silent http://127.0.0.1:5173/src/main.tsx >/dev/null || {
+            cat /tmp/mavea-vite.log; exit 1; }
+
+          failed=()
+          gate() {
+            local name="$1"; shift
+            echo "::group::gate: $name"
+            if "$@"; then echo "✓ $name"; else echo "✗ $name"; failed+=("$name"); fi
+            echo "::endgroup::"
+          }
+
+          # Sized from measurement: audit:ui at these three widths is ~132s and audit:surfaces at
+          # these two sizes ~191s on a developer laptop, both over the full 625-component catalog
+          # and all 17 surfaces. Per-push buys fast feedback on the likely regression, not
+          # coverage — the 280-3840 matrix, both themes, the verbose/minimal variants and the
+          # remaining sizes stay in weekly.yml, where a broad marginal finding is a report to act
+          # on rather than a blocked push.
+          #
+          # One theme is enough HERE because every check in these two gates measures geometry —
+          # boxes, overlap, clip, rendered type size — and geometry does not change with the
+          # palette. The theme sweep still runs weekly, because contrast-dependent exemptions
+          # (a faded run, a paint-alpha skip) do.
+          gate audit:ui \
+            pnpm audit:ui -- --url http://127.0.0.1:5173 --widths 390,1280,1920 --themes dark
+          # 1366x620 is the short laptop a 1440x900 sweep never finds; 1920x1080 is where a
+          # surface that only knows how to grow shows it.
+          gate audit:surfaces \
+            pnpm audit:surfaces -- --url http://127.0.0.1:5173 --sizes 1366x620,1920x1080 --themes dark
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::Failing gates (${#failed[@]}): ${failed[*]}"
+            exit 1
+          fi
+          echo "All layout gates clean."
