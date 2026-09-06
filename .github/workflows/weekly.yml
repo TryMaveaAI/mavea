@@ -135,9 +135,11 @@ jobs:
           }
 
           gate audit:ui           pnpm audit:ui -- --widths 280,390,768,1280,1920 --variants all
-          # The rooms the cards sit in, not the cards: the block sweep above cannot see a
-          # reading column squeezed to a porthole, or a panel with no way to scroll it.
-          gate audit:surfaces     pnpm audit:surfaces -- --url http://127.0.0.1:5173
+          # audit:surfaces used to run here. It sweeps every reader-facing surface, and that list
+          # went from 9 to 16 — Prism, Synthesis, the dashboards, the decks, the courses and the
+          # course reader had never been measured — which is 272 combinations and no longer fits
+          # beside a 24-minute block sweep. It has its own job below rather than a bigger budget
+          # here: the two are independent, so running them in parallel costs wall-clock nothing.
           gate audit:tap          pnpm audit:tap
           gate audit:interactions pnpm audit:interactions -- --slow-machine
           gate slides:gate        pnpm slides:gate
@@ -160,6 +162,60 @@ jobs:
           fi
           echo ""
           echo "All browser release gates passed."
+
+  # The rooms the cards sit in, not the cards: the block sweep cannot see a reading column
+  # squeezed to a porthole, a panel with no way to scroll it, or a control stranded off the edge.
+  # Its own job because it is its own axis — 16 surfaces x 8 sizes x both themes — and because
+  # sharing browser-quality's runner made that job overrun a 35-minute budget and get killed
+  # mid-sweep, which reports as "cancelled" and tells nobody anything.
+  #
+  # responsive.yml already runs a 2-size, 1-theme cut of this on every push. This is the full
+  # matrix: the phone and ultrawide tails, and the light theme.
+  surface-sweep:
+    name: Surfaces · every size, both themes
+    runs-on: ubuntu-latest
+    # Measured: 272 combinations at roughly 5s each plus per-surface settle time, on a runner
+    # several times slower than the laptop the ~25-minute local figure came from.
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Restore Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Restore Vite dependency pre-bundle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.vite
+          key: vite-devdeps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
+      - name: Sweep every surface
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          pnpm exec vite --host 127.0.0.1 --strictPort > /tmp/mavea-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
+            if ! kill -0 "$vite_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
+            sleep 1
+          done
+          # index.html is static; a module request is what blocks until optimizeDeps is ready.
+          curl --fail --silent http://127.0.0.1:5173/src/main.tsx >/dev/null || {
+            cat /tmp/mavea-vite.log; exit 1; }
+          pnpm audit:surfaces -- --url http://127.0.0.1:5173
 
   # Forward-compat only. Per-push CI runs every gate once, on the Node the project targets;
   # running the identical gates a second time on Node 26 answered one question — "does the
