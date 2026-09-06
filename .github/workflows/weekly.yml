@@ -147,13 +147,10 @@ jobs:
           gate audit:reel         pnpm audit:reel
           gate perf               pnpm perf -- --url http://127.0.0.1:4173 --throttle 1
           gate perf:memory        pnpm perf:memory -- --url http://127.0.0.1:4173 --cycles 6
-          # The living world's two instruments. They drive the dev-only #/worldlab, so this job —
-          # which already has a dev server up — is the only place they can run at all; until now
-          # they ran nowhere, and an instrument nothing invokes measures nothing. The audit sweeps
-          # the whole scenario corpus in both themes; the smoke is one world in a SHORT window at
-          # CPU ×4, which is where the camera sits lowest and the layout costs most.
-          gate audit:world        pnpm audit:world -- --url http://127.0.0.1:5173 --theme dark,light
-          gate world:smoke        pnpm world:smoke -- --url http://127.0.0.1:5173
+          # The living world's two instruments moved to their own job below. audit:world sweeps the
+          # whole scenario corpus in both themes and is roughly half an hour on its own, which this
+          # job could not absorb beside a 24-minute block sweep: the run was killed at 35 minutes
+          # having just reached it, so the world went unmeasured while everything else had passed.
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo ""
@@ -162,6 +159,69 @@ jobs:
           fi
           echo ""
           echo "All browser release gates passed."
+
+  # The living world, on its own runner. Both instruments drive the dev-only #/worldlab, so they
+  # need a dev server; and audit:world sweeps the whole scenario corpus in both themes, which is
+  # roughly half an hour by itself. Sharing browser-quality's 35 minutes meant it was reached and
+  # then killed — the worst outcome, because a cancelled job reports nothing at all.
+  world-sweep:
+    name: Living world · corpus + slow machine
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Restore Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Restore Vite dependency pre-bundle
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules/.vite
+          key: vite-devdeps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
+      - name: Sweep the world
+        shell: bash
+        run: |
+          # Not `set -e`: the smoke is worth running even when the corpus sweep finds something.
+          set +e
+          set -uo pipefail
+          pnpm exec vite --host 127.0.0.1 --strictPort > /tmp/mavea-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
+            if ! kill -0 "$vite_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/src/main.tsx >/dev/null || {
+            cat /tmp/mavea-vite.log; exit 1; }
+
+          failed=()
+          gate() {
+            local name="$1"; shift
+            echo "::group::gate: $name"
+            if "$@"; then echo "✓ $name"; else echo "✗ $name"; failed+=("$name"); fi
+            echo "::endgroup::"
+          }
+          gate audit:world pnpm audit:world -- --url http://127.0.0.1:5173 --theme dark,light
+          # One world in a SHORT window at CPU ×4 — where the camera sits lowest and layout costs most.
+          gate world:smoke pnpm world:smoke -- --url http://127.0.0.1:5173
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::Failing gates (${#failed[@]}): ${failed[*]}"
+            exit 1
+          fi
+          echo "World gates clean."
 
   # The rooms the cards sit in, not the cards: the block sweep cannot see a reading column
   # squeezed to a porthole, a panel with no way to scroll it, or a control stranded off the edge.
