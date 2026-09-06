@@ -54,10 +54,20 @@ function pickerHint(model: string, recommended: boolean): string {
   // picked, which is ours to state and cannot go stale. Same rule as the free-route note below —
   // make the claim that stays true, not the one that is true today.
   const lead = recommended
-    ? 'Recommended as a starting point — a lightweight model chosen to balance speed and quality. Change it any time. '
+    ? 'Recommended — a lightweight model chosen to balance speed and quality. '
     : '';
+  // The field is a text input, not a menu: whatever is typed is what gets sent. Nothing on screen
+  // said so — the list reads as the set of options and the placeholder reads as a value — so a
+  // reader wanting a model Mavéa does not list had no reason to think they could ask for it.
+  //
+  // It sits in `base`, not `lead`, so it survives the reader having already chosen once; that is
+  // exactly who is most likely to want a model of their own. Phrased as an instruction about THIS
+  // field ("type any model id") rather than a promise about what some provider will accept, which
+  // is not ours to make. The whole hint has a 100-character budget it has overrun once already,
+  // and the free-route note appends to this same line, so the duration clause is trimmed to fit
+  // rather than dropped — `how long a turn takes` is the phrase that note is asserted against.
   const base =
-    'Which model you pick changes how long a turn takes: from seconds to two minutes or more.';
+    'Type any model id. Which one you pick changes how long a turn takes: seconds to two minutes or more.';
   // A free variant is a different service from the paid model of the same name, on the provider’s
   // own rate limits. Mavéa answers it with a smaller canvas — say so, so a shorter answer reads as
   // the deliberate trade it is rather than as Mavéa misbehaving.

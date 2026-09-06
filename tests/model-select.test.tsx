@@ -63,9 +63,11 @@ describe('ModelSelect', () => {
     // knowable here — Mavéa holds no rate card, and on BYOK the reader is billed on their own
     // terms. The hint says what was chosen and why, which is ours to state and cannot go stale.
     expect(hint).toHaveTextContent(/a lightweight model chosen to balance speed and quality/i);
-    expect(hint).toHaveTextContent(/change it any time/i);
     expect(hint).not.toHaveTextContent(/cheapest|lightest/i);
-    expect(hint).toHaveTextContent(/change it any time/i);
+    // The field takes free text, and nothing else on screen says so — the suggestions read as the
+    // set of options and the placeholder reads as a value. Say it, and say it where a reader who
+    // has ALREADY chosen still sees it, which is why it is asserted on the un-recommended hint too.
+    expect(hint).toHaveTextContent(/type any model id/i);
   });
 
   it('drops the recommendation line once a different model is chosen', () => {
