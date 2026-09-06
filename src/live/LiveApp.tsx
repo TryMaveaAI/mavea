@@ -6331,7 +6331,12 @@ export function LiveApp(): ReactElement {
                 : undefined
             }
           >
-            <div className="topic-wrap">
+            {/* The view is published onto the DOM because the answer page's alignment axis
+                depends on it: Focus keeps a filmstrip beside the reading column, so the surfaces
+                that must line up with that column are narrower there than in any other view. An
+                attribute set here rather than a CSS `:has()` for the same reason FocusStage sets
+                `has-notes` in JS — the layout can then never split from the render condition. */}
+            <div className="topic-wrap" data-view={viewMode}>
               {/* Lives INSIDE the scrolled content (not the fixed stage) so strokes and
                   confirm-highlights scroll along with the text they were drawn over instead of
                   staying pinned to the viewport while the answer moves underneath. Pointer events

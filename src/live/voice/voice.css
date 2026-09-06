@@ -1327,11 +1327,49 @@
 .mavea-app.live-voice .context-row,
 .mavea-app.live-voice .answer-footer,
 .mavea-app.live-voice .understood,
-.mavea-app.live-voice .ask-hint {
+.mavea-app.live-voice .ask-hint,
+/* The Focus stage was the one primary answer surface missing from this list, so on a screen
+   wider than the measure it alone kept growing and its reading column started left of every
+   other surface. It belongs on the axis like the rest; the rule below then narrows its
+   siblings to the column the filmstrip leaves it. */
+.mavea-app.live-voice .focus-stage {
   box-sizing: border-box;
   width: 100%;
   max-width: var(--live-content-max);
   margin-inline: auto;
+}
+
+/* Focus is the one view whose reading column is NOT the full measure: it hands a filmstrip the
+   right-hand 268px + 28px gap, so its hero ends ~296px short of the scrubber above it and the
+   footer below it. On a wide screen that reads as the card being misaligned rather than as a
+   column with a rail beside it — and with a note trail on the left as well, the card is inset on
+   both sides. Hold the same axis by narrowing it to what the stage actually leaves for reading.
+   Below 920px the rail stacks under the hero (focus.css) and the stage is one column again, so
+   the correction has to stop exactly where that begins. */
+@media (min-width: 921px) {
+  .mavea-app.live-voice
+    .topic-wrap[data-view='focus']
+    :is(
+      .answer-hero,
+      .voice-scrub,
+      .canvas-header,
+      .context-row,
+      .answer-footer,
+      .understood,
+      .ask-hint
+    ) {
+    /* `min(100%, measure)` is what the stage itself resolves to — capped by the measure on a wide
+       screen, by the scroll column on a narrower one. Subtracting the rail from the same base is
+       what makes these edges exact rather than close: taking the measure alone left the siblings
+       3px wide of the hero wherever the column was narrower than the cap. */
+    max-width: calc(
+      min(100%, var(--live-content-max)) - var(--focus-rail-w) - var(--focus-rail-gap)
+    );
+    /* Left, not centred: the hero sits at the START of the stage's first column
+       (`.focus-hero { justify-content: flex-start }` below), so a centred sibling would clear the
+       rail and still fail to line up with the card it belongs to. */
+    margin-inline: 0 auto;
+  }
 }
 
 .mavea-app.live-voice .focus-hero {

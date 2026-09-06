@@ -147,6 +147,12 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
+  /* Focus keeps a filmstrip beside the answer, so its reading column is this much narrower than
+     the measure above. It lives here rather than on `.focus-stage` because the surfaces that must
+     line up with that column — the scrubber, the canvas header, the footer — are its SIBLINGS,
+     and a sibling cannot read a variable declared on the stage. One source, two readers. */
+  --focus-rail-w: 268px;
+  --focus-rail-gap: 28px;
 
   /* --- motion --- */
   --m-instant: 80ms;

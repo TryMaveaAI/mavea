@@ -4,15 +4,17 @@
    (--focus-rail-w) so it never collides with the left conversation rail's --rail-w. */
 
 .focus-stage {
-  --focus-rail-w: 268px;
+  /* --focus-rail-w / --focus-rail-gap live in tokens-base.css: the surfaces that must line up
+     with this stage's reading column are its SIBLINGS, and a sibling cannot read a variable
+     declared here. The fallbacks keep an isolated mount (gallery, tests) self-contained. */
   /* The canvas column the stage lives in, stated in the chrome's own terms: the top bar and
      canvas inset (92px) and the dock, which measures its own height into --dock-h. The rail and
      the notes list cap themselves against THIS, not the window — a 100vh cap measured a box
      roughly three times the one they actually have, so neither ever scrolled. */
   --focus-col-h: calc(100dvh - 92px - var(--dock-h, 76px));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--focus-rail-w);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) var(--focus-rail-w, 268px);
+  gap: var(--focus-rail-gap, 28px);
   align-items: start;
 }
 

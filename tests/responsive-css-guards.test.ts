@@ -601,6 +601,43 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(/\.dz-level\s*\{[^}]*align-self:\s*safe center/.test(css)).toBe(true);
   });
 
+  it('Focus keeps the answer page on ONE alignment axis, rail included', () => {
+    // The stage was the only primary answer surface missing from the shared axis, and its reading
+    // column is narrower than the measure because the filmstrip takes the right 268px + 28px gap.
+    // So the scrubber above the hero and the footer below it ran ~296px past the card — read as
+    // the card being misaligned, and with a note trail on the left it was inset on both sides.
+    const voice = read('src/live/voice/voice.css');
+    const tokens = read('src/styles/tokens-base.css');
+    const focus = read('src/canvas/focus/focus.css');
+    const live = read('src/live/LiveApp.tsx');
+
+    // The rail measure is shared, because a SIBLING cannot read a variable set on the stage.
+    expect(tokens).toMatch(/--focus-rail-w:\s*268px/);
+    expect(tokens).toMatch(/--focus-rail-gap:\s*28px/);
+    expect(focus).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) var\(--focus-rail-w, 268px\)/);
+
+    // The stage joins the axis rather than sprawling past the measure on a wide display.
+    expect(voice).toMatch(
+      /\.mavea-app\.live-voice \.focus-stage[\s\S]{0,120}?max-width:\s*var\(--live-content-max\)/,
+    );
+
+    // …and in Focus the siblings step back by exactly the rail column, off the SAME base the
+    // stage resolves against — `min(100%, measure)`, not the measure alone, or they sit 3px wide.
+    expect(voice).toMatch(/\[data-view='focus'\]/);
+    expect(voice).toMatch(
+      /min\(100%, var\(--live-content-max\)\) - var\(--focus-rail-w\) - var\(--focus-rail-gap\)/,
+    );
+    // Left, not centred: the hero starts at the stage's first column.
+    expect(voice).toMatch(/margin-inline:\s*0 auto/);
+    // Below 921px the rail stacks under the hero, so the correction must stop there.
+    expect(voice).toMatch(/@media \(min-width: 921px\)/);
+    expect(focus).toMatch(/@media \(max-width: 920px\)/);
+
+    // The view has to reach the DOM for any of it to apply — a class set in JS rather than a CSS
+    // `:has()`, the same reason FocusStage sets `has-notes` itself.
+    expect(live).toMatch(/className="topic-wrap" data-view=\{viewMode\}/);
+  });
+
   it('the Study note carries its own fit rather than being cropped by the frame', () => {
     // useStudyScale floors the desk scale at 9/11 so type stays legible, and that floor is a
     // HEIGHT bargain — it accepts cropping the decorative floor band. Horizontally the stage just
