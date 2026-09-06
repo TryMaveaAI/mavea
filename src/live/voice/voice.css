@@ -1365,10 +1365,13 @@
     max-width: calc(
       min(100%, var(--live-content-max)) - var(--focus-rail-w) - var(--focus-rail-gap)
     );
-    /* Left, not centred: the hero sits at the START of the stage's first column
-       (`.focus-hero { justify-content: flex-start }` below), so a centred sibling would clear the
-       rail and still fail to line up with the card it belongs to. */
-    margin-inline: 0 auto;
+    /* Align to the STAGE's left edge, which is not the same as the wrapper's. The stage is on the
+       shared axis above, so it centres itself once `.topic-wrap` is wider than the measure — and a
+       sibling pinned to 0 then sits to the LEFT of the card by half that difference, which reads as
+       a gap on one side and none on the other. Re-create the stage's own centring offset instead:
+       half of whatever the wrapper has spare. Below the measure the term is 0 and this is exactly
+       the flush-left it replaces. */
+    margin-inline: calc((100% - min(100%, var(--live-content-max))) / 2) auto;
   }
 }
 
@@ -1404,7 +1407,12 @@
       min(100%, var(--live-content-max)) - var(--focus-notes-w) - var(--focus-rail-w) - 2 *
         var(--focus-rail-gap)
     );
-    margin-inline: calc(var(--focus-notes-w) + var(--focus-rail-gap)) auto;
+    /* Same centring term as above, plus the note trail's own column. */
+    margin-inline: calc(
+        (100% - min(100%, var(--live-content-max))) / 2 + var(--focus-notes-w) +
+          var(--focus-rail-gap)
+      )
+      auto;
   }
 }
 
