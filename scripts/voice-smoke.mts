@@ -36,6 +36,10 @@ try {
   // A real trusted gesture gives WebAudio the same autoplay permission as the user's first tap.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   const result = await page.evaluate(async () => {
+    // Absolute, Vite-served specifiers: this runs INSIDE the page, so the dev server resolves
+    // them, not Node. knip walks the same file statically and cannot follow a leading slash, so
+    // both are listed under `ignoreUnresolved` in knip.json — named individually rather than by
+    // ignoring this file, which would also stop knip seeing anything else that rots in here.
     const energy = await import('/src/voice/voiceEnergy.ts');
     const kokoro = await import('/src/voice/kokoro.ts');
     energy.unlockAudio();

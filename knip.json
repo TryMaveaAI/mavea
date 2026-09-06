@@ -15,5 +15,6 @@
     "tests/**/*.{ts,tsx}",
     "scripts/**/*.{mts,mjs}",
     "bin/*.mjs"
-  ]
+  ],
+  "ignoreUnresolved": ["/src/voice/voiceEnergy.ts", "/src/voice/kokoro.ts"]
 }
