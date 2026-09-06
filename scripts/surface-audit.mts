@@ -175,7 +175,11 @@ const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string =>
     if (box.width < 1 || box.height < 1) continue;
 
     // Outside the window with nothing able to bring it back. A box inside a scroller is reachable
-    // by definition, so only the scrollers that actually exist count as a way back.
+    // by definition, so only the scrollers that actually exist count as a way back — and a drag
+    // camera is one of them. A map the reader pans (Synthesis' world is 1488px of graph inside a
+    // 340px stage) is deliberately larger than its frame, and it declares that by taking a grab
+    // cursor; the world sweep excuses exactly this shape. Judged on what the element DECLARES,
+    // never on what it is called, and only for a pannable ancestor — an ordinary clip still fails.
     const overRight = box.right - vw;
     const overBottom = box.bottom - vh;
     const overLeft = -box.left;
@@ -186,6 +190,7 @@ const MEASURE_SCRIPT = (readingSel: string | null, typeFloor: number): string =>
         const ps = getComputedStyle(p);
         if (/(auto|scroll)/.test(ps.overflowY + ps.overflowX) &&
             (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) scrollable = true;
+        if (ps.cursor === 'grab' || ps.cursor === 'grabbing') scrollable = true;
       }
       if (!scrollable) outside.push(name(el) + ' outside by ' + Math.round(Math.max(overRight, overBottom, overLeft, overTop)) + 'px');
     }

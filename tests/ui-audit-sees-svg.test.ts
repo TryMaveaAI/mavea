@@ -51,3 +51,28 @@ describe('ui-audit collider', () => {
     expect(SOURCE).toMatch(/position === 'absolute'/);
   });
 });
+
+// The surface sweep (scripts/surface-audit.mts) has the same failure mode available to it: an
+// exception written one word too wide turns the gate green over a real defect. Its "unreachable"
+// check excuses an ancestor that can bring content back — a scroller, and now a drag camera, which
+// is how Synthesis' 1488px map lives honestly inside a 340px stage. That has to stay an argued
+// case: judged on the grab cursor the element DECLARES, never on a class name, and never widened
+// into "anything that clips is fine".
+describe('the surface sweep keeps its unreachable check honest', () => {
+  const SURFACE = readFileSync(join(process.cwd(), 'scripts/surface-audit.mts'), 'utf8');
+
+  it('excuses a drag camera the way the world sweep does — by cursor, not by name', () => {
+    expect(SURFACE).toMatch(/ps\.cursor === 'grab' \|\| ps\.cursor === 'grabbing'/);
+    // Never by selector: a class-name allowlist is how a category exemption gets in.
+    expect(SURFACE).not.toMatch(/outside[\s\S]{0,400}?\.closest\('\./);
+  });
+
+  it('still fails an ordinary clip, so the exception cannot swallow the check', () => {
+    // The scroller test must remain a real geometry test rather than "declares overflow".
+    expect(SURFACE).toMatch(
+      /scrollHeight > p\.clientHeight \+ 2 \|\| p\.scrollWidth > p\.clientWidth \+ 2/,
+    );
+    // And the finding must still exist to be reported.
+    expect(SURFACE).toMatch(/outside\.push\(/);
+  });
+});
