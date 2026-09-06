@@ -44,8 +44,17 @@ function pickerHint(model: string, recommended: boolean): string {
   // Say that this one was suggested, and on what grounds. The id alone tells a reader nothing —
   // not that anything else was on offer, and not which end of the provider's range they are on —
   // so a field filled in for them would otherwise read as the only option there is.
+  // What this says has to stay true without anyone re-checking it, so it makes no ranking claim.
+  // "The lightest this provider offers" and "the cheapest to run" both rank against a lineup and a
+  // rate card that move without us — a provider adds a tier, re-prices one, or retires the model
+  // underneath the sentence, and the copy is quietly wrong. Price is not knowable here in any
+  // case: Mavéa holds no rate card, and on BYOK the reader is billed on their own terms.
+  //
+  // So the claim is about the CHOICE rather than about the field: what was picked, and why it was
+  // picked, which is ours to state and cannot go stale. Same rule as the free-route note below —
+  // make the claim that stays true, not the one that is true today.
   const lead = recommended
-    ? 'Recommended — the lightest model this provider offers, and the cheapest to run. Change it any time. '
+    ? 'Recommended as a starting point — a lightweight model chosen to balance speed and quality. Change it any time. '
     : '';
   const base =
     'Which model you pick changes how long a turn takes: from seconds to two minutes or more.';

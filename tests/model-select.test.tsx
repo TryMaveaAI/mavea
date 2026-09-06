@@ -58,8 +58,13 @@ describe('ModelSelect', () => {
     render(<Harness provider="gemini" initial={providerInfo('gemini').defaultModel} />);
     const hint = screen.getByText(/Recommended/);
     expect(hint).toBeVisible();
-    expect(hint).toHaveTextContent(/lightest model this provider offers/i);
-    expect(hint).toHaveTextContent(/cheapest to run/i);
+    // Deliberately NOT a ranking claim. "the lightest this provider offers" and "the cheapest to
+    // run" both rank against a lineup and a rate card that change without us, and neither is
+    // knowable here — Mavéa holds no rate card, and on BYOK the reader is billed on their own
+    // terms. The hint says what was chosen and why, which is ours to state and cannot go stale.
+    expect(hint).toHaveTextContent(/a lightweight model chosen to balance speed and quality/i);
+    expect(hint).toHaveTextContent(/change it any time/i);
+    expect(hint).not.toHaveTextContent(/cheapest|lightest/i);
     expect(hint).toHaveTextContent(/change it any time/i);
   });
 
