@@ -98,4 +98,11 @@ describe('the perf gate times the shell the splash actually paints', () => {
   it('never waits for the Suspense fallback on a cold load — it does not exist there', () => {
     expect(probeSrc).not.toContain('surface-fallback');
   });
+
+  it("stamps the surface's arrival on the page's clock, not on a harness wait", () => {
+    // Playwright's selector wait first notices a freshly mounted surface up to ~450ms late here,
+    // so a wall-clock read of when it returned would charge the surface for the harness.
+    expect(probeSrc).toContain('window.__perf.usable = Math.round(performance.now())');
+    expect(probeSrc).not.toMatch(/waitFor\(\{ state: 'visible'[\s\S]*?Date\.now\(\) - t0/);
+  });
 });

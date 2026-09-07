@@ -94,9 +94,16 @@ const SEED_LEGAL_ACCEPTANCE = `
 
 /** Long tasks are what a stutter actually is: the main thread held for >50ms, unable to answer a click.
  *  Both paint marks are kept: first-paint is the boot splash (a background and a gradient orb,
- *  which first-CONTENTFUL-paint does not count — that one lands with the surface's first text). */
-const OBSERVE = `
-  window.__perf = { long: [], fp: 0, fcp: 0 };
+ *  which first-CONTENTFUL-paint does not count — that one lands with the surface's first text).
+ *
+ *  The surface's own arrival is stamped here too, by the page's clock. Playwright's selector wait
+ *  first notices a freshly mounted surface up to ~450ms late on this page (measured: the DOM had
+ *  it at 350ms and the wait returned at 800ms, while the same wait started after the element
+ *  exists returns in 2ms), so reading a wall clock when the wait returns charges the surface for
+ *  the harness. A frame poll costs one querySelector per frame and stops as soon as the surface
+ *  has a box — the same test the selector wait applies. */
+const observeScript = (ready: string) => `
+  window.__perf = { long: [], fp: 0, fcp: 0, usable: 0 };
   new PerformanceObserver((l) => {
     for (const e of l.getEntries()) window.__perf.long.push(Math.round(e.duration));
   }).observe({ entryTypes: ['longtask'] });
@@ -106,6 +113,16 @@ const OBSERVE = `
       if (e.name === 'first-contentful-paint') window.__perf.fcp = Math.round(e.startTime);
     }
   }).observe({ type: 'paint', buffered: true });
+  const poll = () => {
+    const el = document.querySelector(${JSON.stringify(ready)});
+    const box = el && el.getBoundingClientRect();
+    if (box && box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden') {
+      window.__perf.usable = Math.round(performance.now());
+      return;
+    }
+    requestAnimationFrame(poll);
+  };
+  requestAnimationFrame(poll);
 `;
 
 async function run(
@@ -119,7 +136,7 @@ async function run(
   const requests: string[] = [];
   page.on('request', (r) => requests.push(r.url()));
   await page.addInitScript(SEED_LEGAL_ACCEPTANCE);
-  await page.addInitScript(OBSERVE);
+  await page.addInitScript(observeScript(s.ready));
   await cdp.send('Emulation.setCPUThrottlingRate', { rate });
   if (slowNetwork) {
     await cdp.send('Network.enable');
@@ -133,15 +150,15 @@ async function run(
 
   const t0 = Date.now();
   await page.goto(base + s.path, { waitUntil: 'commit' });
-  let ready = -1;
-  try {
-    await page
-      .locator(s.ready)
-      .first()
-      .waitFor({ state: 'visible', timeout: s.budgetMs * 4 });
-    ready = Date.now() - t0;
-  } catch {
-    /* left as -1: it never got there inside four times its own budget */
+  // Polled from here rather than with page.waitForFunction: started this close to the commit,
+  // that wait can reject at once as the document's context is replaced, and a rejection read as
+  // "never" would fail the route. The mark is stamped by the page, so how often it is read does
+  // not touch the number; a read that lands in the swap is just a miss.
+  const deadline = t0 + s.budgetMs * 4;
+  while (Date.now() < deadline) {
+    const usable = (await page.evaluate('window.__perf.usable').catch(() => 0)) as number;
+    if (usable > 0) break;
+    await page.waitForTimeout(25);
   }
   // Let anything deferred settle, so idle work shows up in the long-task list too.
   await page.waitForTimeout(2500);
@@ -150,9 +167,13 @@ async function run(
     long: number[];
     fp: number;
     fcp: number;
+    usable: number;
   };
-  // Paint marks count from the navigation and the waits from t0; put the shell on the waits' clock.
+  // The page's marks count from its navigation and t0 is the harness clock; report on the latter.
   const navigationStart = (await page.evaluate('performance.timeOrigin')) as number;
+  const sinceStart = (mark: number): number =>
+    mark > 0 ? Math.round(navigationStart + mark - t0) : -1;
+  const ready = sinceStart(perf.usable);
   // The shell is what a reader sees while the route's own code is still on the wire. On a product
   // route that is the static boot splash (index.html #boot), painted from inline markup before a
   // byte of JavaScript has arrived — so its moment is the browser's first-paint mark, and nothing
@@ -160,8 +181,7 @@ async function run(
   // indicator for one wait — tests/boot-handoff), so on a cold load the Suspense fallback never
   // exists, and a selector wait on it only ever returned the finished surface. The landing has no
   // separate shell by design: it is the front door, and the hero itself has to land in budget.
-  const shell =
-    s.path === '/' ? ready : perf.fp > 0 ? Math.round(navigationStart + perf.fp - t0) : -1;
+  const shell = s.path === '/' ? ready : sinceStart(perf.fp);
   const heap = (await page.evaluate(
     '(performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0)',
   )) as number;
