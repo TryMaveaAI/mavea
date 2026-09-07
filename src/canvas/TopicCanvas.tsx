@@ -413,6 +413,27 @@ export function TopicCanvas({
     if (studyStreaming) return;
     setDroppedIds((prev) => (prev.size ? new Set() : prev));
   }, [answerSig, studyStreaming]);
+
+  // The bloom's hidden FROM frames — a retracted trend line, an unwiped bar, a number resolving
+  // out of a blur — are only safe while their animations are actually running. `bloom-on` is a
+  // remembered preference, so on its own it holds those frames for the life of the grid, and a
+  // `backwards` fill keeps showing the 0% frame for as long as its animation has not started. An
+  // animation that never starts therefore hides its content for good: a chart paints its axes,
+  // gridlines and legend around a line retracted out of view. Scope them to the window the
+  // choreography needs and let every element rest settled afterwards.
+  //
+  // The window covers the longest chain the layer can draw: the lead (150ms) + the per-card
+  // stagger cap (560ms, see generateLive's block delays) + a cinematic draw (900ms) at the calm
+  // motion scale, with room to spare. Anything still moving at the end is already on its settled
+  // frame, so dropping the class cannot leave a gap.
+  const BLOOM_WINDOW_MS = 4000;
+  const [blooming, setBlooming] = useState(false);
+  useEffect(() => {
+    if (!bloomOn) return;
+    setBlooming(true);
+    const timer = setTimeout(() => setBlooming(false), BLOOM_WINDOW_MS);
+    return () => clearTimeout(timer);
+  }, [answerSig, bloomOn]);
   const markUnrenderable = useCallback((id: string) => {
     setDroppedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
@@ -807,7 +828,10 @@ export function TopicCanvas({
         // width never jumps when cards land.
         <div
           className={
-            'card-grid' + (bloomOn ? ' bloom-on' : '') + (noteGutter ? ' note-gutter' : '')
+            'card-grid' +
+            (bloomOn ? ' bloom-on' : '') +
+            (bloomOn && blooming ? ' blooming' : '') +
+            (noteGutter ? ' note-gutter' : '')
           }
           ref={gridRef}
           role={familiesLoaded ? undefined : 'status'}

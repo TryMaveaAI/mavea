@@ -18,9 +18,17 @@
    (`backwards`/`both` fill), so a paused, unsupported, printed or reduced-motion
    render shows the settled answer, never a stuck-empty one.
 
-   Everything is gated three ways: the `.bloom-on` flag (useBloomMode — off ==
-   today's plain reveal, byte-for-byte), `prefers-reduced-motion: no-preference`,
-   and the per-card `--delay` the canvas already staggers by. Timings fold in the
+   Everything is gated four ways: the `.bloom-on` flag (useBloomMode — off ==
+   today's plain reveal, byte-for-byte), the TRANSIENT `.blooming` flag, `prefers-reduced-motion:
+   no-preference`, and the per-card `--delay` the canvas already staggers by.
+
+   `.blooming` is what makes the promise above true rather than merely intended. `bloom-on` is a
+   remembered preference, so it is on the grid forever; a `backwards` fill holds the FROM frame
+   for as long as its animation has not started, and an animation that never starts holds it
+   indefinitely. A chart then paints its axes, gridlines and legend around a line retracted out of
+   view. The canvas drops `.blooming` once the choreography's window has passed, so from that
+   point no element's visibility depends on an animation having run — which is the whole
+   guarantee. Anything still mid-animation is already at its settled frame by then. Timings fold in the
    Tweaks calm/cinematic knob (--motion-scale). Keyframe names are `mb-*` to avoid
    the existing barGrow / donutPop / cardUp / bloomPulse. */
 
@@ -40,74 +48,74 @@
      resting shadow. A box-shadow (not a bleeding pseudo-element) so it can NEVER
      add horizontal overflow — a Mavéa card must stay inside its box. --delay lives
      on the card, so the seeds cascade in step with the reveal. */
-  .card-grid.bloom-on .card.reveal {
+  .card-grid.bloom-on.blooming .card.reveal {
     animation: mb-seed var(--mb-seed-dur) var(--ease-out) var(--delay, 0ms) backwards;
   }
 
   /* --- NUMBER: the headline figure resolves into focus (blurred → sharp),
      the way the reference reveal lands a value. Works for any string, so no
      digit-parsing. Covers the insight stat, KPI values and the gauge readout. */
-  .card-grid.bloom-on [data-kind='insight'] .big,
-  .card-grid.bloom-on [data-kind='kpi'] .kpi-val,
-  .card-grid.bloom-on [data-kind='gauge'] .gauge-num {
+  .card-grid.bloom-on.blooming [data-kind='insight'] .big,
+  .card-grid.bloom-on.blooming [data-kind='kpi'] .kpi-val,
+  .card-grid.bloom-on.blooming [data-kind='gauge'] .gauge-num {
     animation: mb-number var(--mb-num-dur) var(--ease-out) calc(var(--delay, 0ms) + var(--mb-lead))
       backwards;
   }
 
   /* --- HORIZONTAL BARS: each fill wipes out from zero, row by row. Rests on the
      authored inline width, so print/reduced-motion show the full bar. */
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-bar i {
     animation: mb-wipe var(--mb-fill-dur) var(--ease-out) calc(var(--delay, 0ms) + var(--mb-lead))
       backwards;
   }
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-row:nth-of-type(2) .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-row:nth-of-type(2) .cat-bar i {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 60ms);
   }
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-row:nth-of-type(3) .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-row:nth-of-type(3) .cat-bar i {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 120ms);
   }
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-row:nth-of-type(4) .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-row:nth-of-type(4) .cat-bar i {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 180ms);
   }
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-row:nth-of-type(5) .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-row:nth-of-type(5) .cat-bar i {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 240ms);
   }
-  .card-grid.bloom-on [data-kind='breakdown'] .cat-row:nth-of-type(n + 6) .cat-bar i {
+  .card-grid.bloom-on.blooming [data-kind='breakdown'] .cat-row:nth-of-type(n + 6) .cat-bar i {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 300ms);
   }
 
   /* --- VERTICAL BARS: columns rise from the baseline via clip-path (no layout
      thrash, and the value label rides up with the bar instead of squashing). */
-  .card-grid.bloom-on [data-kind='bars'] .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-fill {
     animation: mb-rise var(--mb-fill-dur) var(--ease-out) calc(var(--delay, 0ms) + var(--mb-lead))
       backwards;
   }
-  .card-grid.bloom-on [data-kind='bars'] .bar-col:nth-of-type(2) .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-col:nth-of-type(2) .bar-fill {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 55ms);
   }
-  .card-grid.bloom-on [data-kind='bars'] .bar-col:nth-of-type(3) .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-col:nth-of-type(3) .bar-fill {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 110ms);
   }
-  .card-grid.bloom-on [data-kind='bars'] .bar-col:nth-of-type(4) .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-col:nth-of-type(4) .bar-fill {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 165ms);
   }
-  .card-grid.bloom-on [data-kind='bars'] .bar-col:nth-of-type(5) .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-col:nth-of-type(5) .bar-fill {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 220ms);
   }
-  .card-grid.bloom-on [data-kind='bars'] .bar-col:nth-of-type(n + 6) .bar-fill {
+  .card-grid.bloom-on.blooming [data-kind='bars'] .bar-col:nth-of-type(n + 6) .bar-fill {
     animation-delay: calc(var(--delay, 0ms) + var(--mb-lead) + 275ms);
   }
 
   /* --- TREND LINE: the path draws itself left-to-right; the fill fades in behind
      it. pathLength=1 (set on the element) normalises the dash so this needs no
      JS length measurement. Rests drawn (offset 0), so exports show the full line. */
-  .card-grid.bloom-on [data-kind='chart'] .tc-line {
+  .card-grid.bloom-on.blooming [data-kind='chart'] .tc-line {
     stroke-dasharray: 1;
     stroke-dashoffset: 0;
     animation: mb-draw var(--mb-draw-dur) var(--ease-out) calc(var(--delay, 0ms) + var(--mb-lead))
       backwards;
   }
-  .card-grid.bloom-on [data-kind='chart'] .tc-area {
+  .card-grid.bloom-on.blooming [data-kind='chart'] .tc-area {
     animation: mb-fade var(--mb-fill-dur) var(--ease-out)
       calc(var(--delay, 0ms) + var(--mb-lead) + var(--mb-draw-dur) * 0.45) backwards;
   }
@@ -116,14 +124,14 @@
      (set on the element) lets the keyframe start from a full offset without
      knowing the circumference; the arc rests on its authored inline offset, so
      the existing value-change transition still owns later updates. */
-  .card-grid.bloom-on [data-kind='gauge'] .gauge-arc {
+  .card-grid.bloom-on.blooming [data-kind='gauge'] .gauge-arc {
     animation: mb-arc var(--mb-draw-dur) var(--ease-out) calc(var(--delay, 0ms) + var(--mb-lead))
       backwards;
   }
 
   /* --- LAND: the one-line takeaway settles last, after its card's numbers have
      resolved — so the eye finishes on the insight, not the chrome. */
-  .card-grid.bloom-on [data-kind] .insight-summary {
+  .card-grid.bloom-on.blooming [data-kind] .insight-summary {
     animation: mb-cap var(--mb-cap-dur) var(--ease-out)
       calc(var(--delay, 0ms) + var(--mb-lead) + 140ms) backwards;
   }

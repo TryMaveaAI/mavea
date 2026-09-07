@@ -6,6 +6,13 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **A chart no longer hides its line when the bloom never played.** The draw-in holds its hidden
+  first frame until its animation starts, and the bloom preference never leaves the grid, so a
+  backgrounded or paused tab could keep a trend line retracted for good while its axes and legend
+  painted around it. The draw-in now rests once its window has passed, whether or not it ran.
+
 ## [2.4.0] - 2026-09-06
 
 ### Added
