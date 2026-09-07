@@ -5,12 +5,12 @@
 // gathered behind `import.meta.env.DEV`: that condition is a compile-time constant, so a
 // production build proves the branch unreachable and drops every chunk it references entirely —
 // a stray lab link can never strand a real visitor on a screen with no way back.
-import type { ComponentType, LazyExoticComponent } from 'react';
+import type { ComponentType } from 'react';
 import { createPreloadableLazy } from './lib/preloadableLazy';
 
 export interface RouteEntry {
   prefix: string;
-  Component: LazyExoticComponent<ComponentType>;
+  Component: ComponentType;
   preload: () => Promise<void>;
 }
 
@@ -158,7 +158,7 @@ const LAB_ROUTES: RouteEntry[] = import.meta.env.DEV
 const ROUTES: RouteEntry[] = [...PUBLIC_ROUTES, ...LAB_ROUTES];
 
 /** The surface for a hash, or null when nothing matches (the caller falls back to the landing). */
-export function routeFor(hash: string): LazyExoticComponent<ComponentType> | null {
+export function routeFor(hash: string): ComponentType | null {
   return ROUTES.find((route) => hash.startsWith(route.prefix))?.Component ?? null;
 }
 

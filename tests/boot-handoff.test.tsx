@@ -65,6 +65,22 @@ describe('the splash is retired by the SURFACE, not by the root', () => {
   });
 });
 
+// The same reasoning fixes the boot order. The splash is already covering the wait for the first
+// surface's chunk, and SurfaceFallback paints nothing beneath it — so rendering Root before that
+// chunk has settled shows the reader nothing new and costs a fallback commit, after which React
+// holds the real commit for 300ms (its retry throttle). The entry therefore renders only once the
+// surface the URL names is in hand; a failed import still renders, so RootBoundary reports it.
+describe('the entry renders only once the surface the URL names is in hand', () => {
+  it('chains createRoot on the initial surface preload, settled either way', () => {
+    expect(mainSrc).toMatch(
+      /const initialSurface = routeFor\(initialHash\) \? preloadRoute\(initialHash\) : flagship\.preload\(\);/,
+    );
+    expect(mainSrc).toMatch(
+      /\(initialSurface \?\? Promise\.resolve\(\)\)\s*\.catch\(\(\) => undefined\)\s*\.then\(\(\) => \{\s*createRoot\(/,
+    );
+  });
+});
+
 // The perf gate (scripts/perf-probe.mts) consumes this contract. Its shell wait used to be
 // `.surface-fallback, <surface>`: with the fallback never mounting under the splash, that wait only
 // ever returned the finished surface, so the 2s shell budget was judging the whole route — Live's

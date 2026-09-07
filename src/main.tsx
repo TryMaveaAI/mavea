@@ -13,7 +13,7 @@ import { onAudioSuspended, unlockAudio } from './voice/voiceEnergy';
 import { installLastResort } from './lib/lastResort';
 import { installAmbientPlayDriver } from './lib/pageVisibility';
 import { RootBoundary, SurfaceFallback } from './RootBoundary';
-import { routeFor } from './routes';
+import { preloadRoute, routeFor } from './routes';
 import { LegalGate } from './legal/LegalGate';
 import { isLegalGateBypassed, isNoSpendRoute } from './legal/routePolicy';
 import { configureProviderSpending } from './live/providers/spendPolicy';
@@ -188,23 +188,35 @@ if (typeof window !== 'undefined') {
   onAudioSuspended(arm);
 }
 
-createRoot(document.getElementById('root')!).render(<Root />);
+// Render only once the surface the URL names is in hand. The static #boot splash already covers
+// this wait and SurfaceFallback paints nothing beneath it, so an earlier render buys no pixel —
+// and costs one: a lazy surface mounted before its module settles suspends, commits the empty
+// fallback, and React then holds the real commit until 300ms after that fallback (its retry
+// throttle). Measured on loopback, the network was done at 25ms and the first commit landed at
+// 330ms. A failed import renders anyway: the lazy path reports it through RootBoundary as before.
+const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
+const initialSurface = routeFor(initialHash) ? preloadRoute(initialHash) : flagship.preload();
 
-// Adaptive perf-tier probe: under `auto`, watch real frame pacing for a few seconds once the app
-// is up, and DEMOTE to lite mid-session if this machine janks under the full experience (a
-// promotion is only recorded for next load, never applied now). No-ops unless the mode is auto.
-// Its own warm-up delay skips the boot burst, so starting it here — right after render — is safe.
-// The probe ignores the first eight seconds by design. Load its implementation after the critical
-// render too, so cold-start parsing never competes with the first usable frame on a slow device.
-if (typeof window !== 'undefined') {
-  window.setTimeout(() => {
-    void import('./lib/perfProbe').then(({ startPerfProbe }) => {
-      startPerfProbe((tier) => {
-        if (tier === 'lite' && currentAppliedTier() === 'full') applyPerfTier('lite');
+void (initialSurface ?? Promise.resolve())
+  .catch(() => undefined)
+  .then(() => {
+    createRoot(document.getElementById('root')!).render(<Root />);
+
+    // Adaptive perf-tier probe: under `auto`, watch real frame pacing for a few seconds once the
+    // app is up, and DEMOTE to lite mid-session if this machine janks under the full experience (a
+    // promotion is only recorded for next load, never applied now). No-ops unless the mode is
+    // auto. Its own warm-up delay skips the boot burst, so starting it here — right after render —
+    // is safe. The probe ignores the first eight seconds by design. Load its implementation after
+    // the critical render too, so cold-start parsing never competes with the first usable frame on
+    // a slow device.
+    window.setTimeout(() => {
+      void import('./lib/perfProbe').then(({ startPerfProbe }) => {
+        startPerfProbe((tier) => {
+          if (tier === 'lite' && currentAppliedTier() === 'full') applyPerfTier('lite');
+        });
       });
-    });
-  }, 0);
-}
+    }, 0);
+  });
 
 // Retire the cache-first worker shipped by older releases. The browser HTTP cache already keeps
 // content-hashed /assets/* files immutable; duplicating them in Cache Storage retained obsolete

@@ -1,4 +1,10 @@
-import { lazy, type ComponentType, type DOMAttributes, type LazyExoticComponent } from 'react';
+import {
+  createElement,
+  lazy,
+  type ComponentProps,
+  type ComponentType,
+  type DOMAttributes,
+} from 'react';
 import { cachedImport } from './cachedImport';
 import { lazyRetry } from './lazyRetry';
 
@@ -6,7 +12,7 @@ import { lazyRetry } from './lazyRetry';
 // each imported component's exact props instead of inferring the props parameter as `never`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface PreloadableLazy<Component extends ComponentType<any>> {
-  Component: LazyExoticComponent<Component>;
+  Component: ComponentType<ComponentProps<Component>>;
   /** Starts the same import promise React.lazy will consume. This never mounts the module. */
   preload: () => Promise<void>;
 }
@@ -23,10 +29,24 @@ export function createPreloadableLazy<Component extends ComponentType<any>>(
   // retries for real on the next intent. The React.lazy Component keeps its own one-shot state —
   // its recovery is lazyRetry's single reload, then the error boundary.
   const load = cachedImport(lazyRetry(factory));
+  // A module already in hand still suspends under React.lazy: its initializer learns the promise
+  // has settled one microtask after the first render, so that render throws, the fallback commits,
+  // and React then holds the real commit until 300ms after that fallback (its retry throttle). On
+  // a cold load that is most of the boot — measured on loopback, the network was done at 25ms and
+  // the first commit landed at 330ms. So keep the module the moment it arrives and render it
+  // straight through from then on; the lazy path is only for a surface nothing preloaded.
+  let loaded: Component | null = null;
+  const settle = () =>
+    load().then((mod) => {
+      loaded = mod.default;
+      return mod;
+    });
+  const Lazy = lazy(settle);
+  const Preloadable = (props: ComponentProps<Component>) => createElement(loaded ?? Lazy, props);
 
   return {
-    Component: lazy(load),
-    preload: () => load().then(() => undefined),
+    Component: Preloadable,
+    preload: () => settle().then(() => undefined),
   };
 }
 
