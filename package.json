@@ -1,6 +1,6 @@
 {
   "name": "@mavea/mavea",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "type": "module",
   "description": "Mavéa — a visual AI assistant. Answers come back as charts, timelines, maps and evidence you can check. Runs on your machine, with your own API key.",
   "keywords": [

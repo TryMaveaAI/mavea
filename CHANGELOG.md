@@ -44,6 +44,11 @@ All notable changes to Mavéa are documented here. The format is based on
   axis, so the scrubber above the hero and the footer below it ran past the card — on both sides
   once the note trail was up.
 - **A Big-O chart no longer clips its own axis title**, whose descenders hung outside the viewBox.
+- **A cold load no longer waits on React's fallback throttle.** Every surface rendered before its
+  own code had arrived, so it suspended, an empty fallback committed, and React held the real commit
+  for 300ms after it. The entry now renders once the surface the URL names is in hand — the boot
+  splash was already covering that wait — and a preloaded surface renders straight through. On a
+  local install every surface is usable within about 100ms of navigation, down from about 350ms.
 
 ### Changed
 
@@ -54,6 +59,10 @@ All notable changes to Mavéa are documented here. The format is based on
   still runs weekly, now with the surface sweep on its own runner.
 - **The surface sweep covers the whole app.** It visited nine surfaces; Prism, Synthesis, the
   dashboards, the decks, the courses and the course reader had never been measured.
+- **The performance gate measures what a reader sees.** Its "shell" moment had quietly become the
+  whole surface once the boot splash took over the loading orb, and its "usable" moment was read
+  off a harness wait that noticed a mounted surface up to 450ms late. Both are now stamped by the
+  page's own clock: the splash's first paint, and the frame in which the surface has a box.
 
 ## [2.3.1] - 2026-09-04
 
