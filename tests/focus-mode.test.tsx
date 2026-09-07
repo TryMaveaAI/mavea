@@ -28,29 +28,36 @@ function blk(type: string, id?: string, props: Record<string, unknown> = {}): Bl
 describe('useFocusMode store', () => {
   beforeEach(() => {
     localStorage.clear();
-    setViewMode('everything'); // reset the in-session cache to the default
+    setViewMode('board'); // reset the in-session cache to the default
     localStorage.clear();
   });
 
-  it('defaults to Everything — a reader with no preference gets the whole answer', () => {
-    expect(getViewMode()).toBe('everything');
+  it('defaults to the board — a reader with no preference gets the whole answer', () => {
+    expect(getViewMode()).toBe('board');
   });
 
-  it("migrates a stored pre-rename 'room' preference to 'study' on read", async () => {
-    localStorage.setItem('mavea-view-mode', 'room');
-    // A fresh module instance, so the read really comes from storage rather than the
-    // in-session cache the beforeEach just seeded.
-    vi.resetModules();
-    const fresh = await import('../src/canvas/focus/useFocusMode');
-    expect(fresh.getViewMode()).toBe('study');
-    // Migrated on read only — the stored value is never rewritten behind the user's back.
-    expect(localStorage.getItem('mavea-view-mode')).toBe('room');
-  });
+  it.each(['room', 'study', 'focus', 'everything'])(
+    'reads a retired %s preference as the board',
+    async (stored) => {
+      localStorage.setItem('mavea-view-mode', stored);
+      // A fresh module instance, so the read really comes from storage rather than the
+      // in-session cache the beforeEach just seeded.
+      vi.resetModules();
+      const fresh = await import('../src/canvas/focus/useFocusMode');
+      expect(fresh.getViewMode()).toBe('board');
+      // Migrated on read only — the stored value is never rewritten behind the user's back.
+      expect(localStorage.getItem('mavea-view-mode')).toBe(stored);
+    },
+  );
 
-  it('persists the chosen mode to localStorage under the shared key', () => {
-    setViewMode('focus');
-    expect(getViewMode()).toBe('focus');
-    expect(localStorage.getItem('mavea-view-mode')).toBe('focus');
+  it('writes the board and nothing else — every other view is a takeover', () => {
+    setViewMode('board');
+    expect(localStorage.getItem('mavea-view-mode')).toBe('board');
+    for (const takeover of ['study', 'focus', 'canvas', 'world'] as const) {
+      setViewMode(takeover);
+      expect(getViewMode()).toBe(takeover); // shown this session…
+      expect(localStorage.getItem('mavea-view-mode')).toBe('board'); // …never saved
+    }
   });
 
   it('ignores an invalid value', () => {
@@ -168,20 +175,23 @@ function spec(blocks: Block[], id = 't'): ConversationSpec {
 describe('TopicCanvas — Focus mode', () => {
   const three = () => [insight('a1', 'Alpha'), insight('b2', 'Beta'), insight('c3', 'Gamma')];
 
-  it('renders the full grid (no stage) in everything mode, with the toggle offered', () => {
+  it('renders the full grid (no stage) on the board, with the door to the desk offered', () => {
     const { container } = render(
       <TopicCanvas
         data={spec(three())}
         spot={null}
         built={{}}
         onProve={() => {}}
-        viewMode="everything"
+        viewMode="board"
         onViewMode={() => {}}
       />,
     );
     expect(container.querySelector('.card-grid')).not.toBeNull();
     expect(container.querySelector('.focus-stage')).toBeNull();
-    expect(container.querySelector('.focus-toggle')).not.toBeNull();
+    expect(container.querySelector('.guide-me')).not.toBeNull();
+    // The board is where the canvas rests: no view switch to read, and nothing to exit.
+    expect(container.querySelector('.focus-toggle')).toBeNull();
+    expect(container.querySelector('.study-exit')).toBeNull();
   });
 
   it('renders the stage + a filmstrip of every id-bearing card in focus mode', () => {
@@ -218,8 +228,7 @@ describe('TopicCanvas — Focus mode', () => {
     );
     expect(container.querySelector('.focus-stage')).toBeNull();
     expect(container.querySelector('.card-grid')).not.toBeNull();
-    expect(container.querySelector('.focus-toggle')).not.toBeNull();
-    expect(container.querySelector('button[aria-label="Focus"]')).toBeNull();
+    expect(container.querySelector('.guide-me')).not.toBeNull();
   });
 
   it('rests on the lead insight, then follows the conversation as spot moves', () => {
@@ -369,7 +378,7 @@ describe('TopicCanvas — Focus mode', () => {
     expect(hero()).toContain('Delta');
   });
 
-  it('reports the chosen mode when the toggle is clicked', () => {
+  it('asks for the desk when the board’s one door is clicked', () => {
     const onViewMode = vi.fn();
     const { getByRole } = render(
       <TopicCanvas
@@ -377,12 +386,12 @@ describe('TopicCanvas — Focus mode', () => {
         spot={null}
         built={{}}
         onProve={() => {}}
-        viewMode="everything"
+        viewMode="board"
         onViewMode={onViewMode}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Focus' }));
-    expect(onViewMode).toHaveBeenCalledWith('focus');
+    fireEvent.click(getByRole('button', { name: /Guide me/ }));
+    expect(onViewMode).toHaveBeenCalledWith('study');
   });
 
   it('asks the surface to narrate the card the user taps', () => {
@@ -529,27 +538,31 @@ describe('Focus swap — outgoing overlay stays out of flow (no half-width slide
   });
 });
 
-describe('a chosen view is kept — forever, not for the session', () => {
-  it('survives a full reload: the choice is read back from storage, not re-defaulted', async () => {
+describe('the board is where every visit starts', () => {
+  it('rests on the board after a reload, whatever takeover was last on screen', async () => {
     localStorage.clear();
     vi.resetModules();
     const first = await import('../src/canvas/focus/useFocusMode');
-    expect(first.getViewMode()).toBe('everything');
-    first.setViewMode('study');
+    expect(first.getViewMode()).toBe('board');
+    first.setViewMode('study'); // a takeover of one answer, not a preference
 
     // A new session reads the same storage with an empty in-session cache.
     vi.resetModules();
     const later = await import('../src/canvas/focus/useFocusMode');
-    expect(later.getViewMode()).toBe('study');
+    expect(later.getViewMode()).toBe('board');
   });
 
-  it('never persists a per-answer takeover over that standing choice', async () => {
+  it('never persists a per-answer takeover over the standing choice', async () => {
     localStorage.clear();
     vi.resetModules();
     const m = await import('../src/canvas/focus/useFocusMode');
-    m.setViewMode('focus');
-    m.setViewMode('canvas'); // opening a board is about ONE answer
-    expect(localStorage.getItem('mavea-view-mode')).toBe('focus');
-    expect(m.savedViewMode()).toBe('focus');
+    m.setViewMode('board');
+    // Every one of these is about ONE answer — the desk, the single card, the spatial canvas and
+    // the causal world. Focus joined them when Present stopped leaving it behind as a preference.
+    for (const takeover of ['study', 'focus', 'canvas', 'world'] as const) {
+      m.setViewMode(takeover);
+      expect(localStorage.getItem('mavea-view-mode')).toBe('board');
+      expect(m.savedViewMode()).toBe('board');
+    }
   });
 });

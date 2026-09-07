@@ -360,8 +360,8 @@ export const FEATURES: Feature[] = [
   },
   {
     id: 'board',
-    label: 'Board view',
-    blurb: "Spread this answer's cards on a spatial board you can wander",
+    label: 'Canvas view',
+    blurb: "Spread this answer's cards in space, on a canvas you can wander",
     group: 'This session',
     surface: 'live',
     tourChapter: 'canvas',

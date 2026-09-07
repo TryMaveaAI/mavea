@@ -86,12 +86,12 @@ describe("ViewMode 'canvas' is a transient, opt-in view (never sticky)", () => {
     expect(localStorage.getItem('mavea-view-mode')).not.toBe('canvas'); // but never saved
   });
 
-  it('opening canvas does not clobber the saved focus/everything preference', async () => {
+  it('opening canvas does not clobber the reader’s standing choice', async () => {
     const m = await import('../src/canvas/focus/useFocusMode');
-    m.setViewMode('focus');
+    m.setViewMode('board');
     m.setViewMode('canvas');
     expect(m.getViewMode()).toBe('canvas');
-    expect(localStorage.getItem('mavea-view-mode')).toBe('focus'); // preference preserved
+    expect(localStorage.getItem('mavea-view-mode')).toBe('board'); // preference preserved
   });
 });
 
@@ -103,12 +103,12 @@ describe('showViewMode — a scripted view is never the reader’s preference', 
 
   it('shows the view in-session but leaves the saved choice alone', async () => {
     const m = await import('../src/canvas/focus/useFocusMode');
-    m.setViewMode('focus');
+    m.setViewMode('board');
     // What the walkthrough and the curated demos drive — a visitor who closes the tab mid-run
     // never reaches the restore, so this must not have written anything.
     m.showViewMode('study');
     expect(m.getViewMode()).toBe('study');
-    expect(m.savedViewMode()).toBe('focus');
-    expect(localStorage.getItem('mavea-view-mode')).toBe('focus');
+    expect(m.savedViewMode()).toBe('board');
+    expect(localStorage.getItem('mavea-view-mode')).toBe('board');
   });
 });

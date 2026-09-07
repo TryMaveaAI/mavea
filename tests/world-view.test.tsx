@@ -203,12 +203,12 @@ describe("the 'world' view mode is transient, like the spatial canvas", () => {
   it('is active in-session but never written to storage', async () => {
     vi.resetModules();
     const m = await import('../src/canvas/focus/useFocusMode');
-    m.setViewMode('focus');
+    m.setViewMode('board');
     m.setViewMode('world');
     expect(m.getViewMode()).toBe('world');
     // The reader's own choice is untouched — a look at the world can't rewrite their preference.
-    expect(localStorage.getItem(VIEW_MODE_KEY)).toBe('focus');
-    expect(m.savedViewMode()).toBe('focus');
+    expect(localStorage.getItem(VIEW_MODE_KEY)).toBe('board');
+    expect(m.savedViewMode()).toBe('board');
   });
 
   it('a stored world mode restores to the default, not to a blank screen', async () => {
@@ -217,7 +217,7 @@ describe("the 'world' view mode is transient, like the spatial canvas", () => {
     localStorage.setItem(VIEW_MODE_KEY, 'world');
     vi.resetModules();
     const m = await import('../src/canvas/focus/useFocusMode');
-    expect(m.getViewMode()).toBe('everything');
+    expect(m.getViewMode()).toBe('board');
   });
 });
 
@@ -317,10 +317,10 @@ describe('what entering the view costs', () => {
   it('falls back out of the view when the answer it belonged to is gone', () => {
     // The canvas moved on under an open world (a replacing turn): the mode has nothing to show, so
     // the reader is put back where they were instead of staring at the answer through a dead mode.
-    setViewMode('focus');
+    setViewMode('board');
     setViewMode('world');
     saveSessionWith(nextQuestion(), [insight()]);
     render(<LiveApp />);
-    expect(getViewMode()).toBe('focus');
+    expect(getViewMode()).toBe('board');
   });
 });

@@ -68,9 +68,12 @@ const SURFACES: Surface[] = [
     reading: '.canvas-scroll',
   },
   {
-    key: 'everything',
-    label: 'Answer · Everything',
-    hash: '#/live?demo=dev',
+    key: 'board',
+    // Every view row names itself in the URL. The curated replay re-asserts its own view on each
+    // step, so a row that only clicks "Start demo" measures whatever the script is showing —
+    // which is how this row and the two below were all measuring the desk.
+    label: 'Answer · the board',
+    hash: '#/live?demo=dev&view=board',
     ready: '.mavea-app',
     click: ['Start demo'],
     reading: '.canvas-scroll',
@@ -79,18 +82,19 @@ const SURFACES: Surface[] = [
   {
     key: 'study',
     label: 'Answer · Study',
-    hash: '#/live?demo=dev',
+    hash: '#/live?demo=dev&view=study',
     ready: '.mavea-app',
-    click: ['Start demo', 'Study'],
+    click: ['Start demo'],
     reading: '.canvas-scroll',
     settleMs: 14_000,
   },
   {
     key: 'focus',
+    // Focus has no control of its own now — Present drives it, plus ⌘K.
     label: 'Answer · Focus',
-    hash: '#/live?demo=dev',
+    hash: '#/live?demo=dev&view=focus',
     ready: '.mavea-app',
-    click: ['Start demo', 'Focus'],
+    click: ['Start demo'],
     reading: '.canvas-scroll',
     settleMs: 14_000,
   },

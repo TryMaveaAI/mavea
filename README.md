@@ -101,10 +101,9 @@ A few specific things worth trying:
   row, or number.
 - **It draws while it talks.** It speaks each headline as it streams, then lands hand-style circles
   and arrows on the figure it's narrating.
-- **Three ways to read one answer.** _Everything_ — the default — lays the whole canvas out at
-  once. _The Study_ puts one card on a lamplit desk with Mavéa's notes in the margin and walks you
-  through the rest. _Focus_ pages a single hero card with a filmstrip of the others. The switch sits
-  on the canvas, and your choice is remembered.
+- **One board, and a desk you can ask for.** The board lays the whole canvas out at once — nothing
+  staged, nothing to pick. When you want Mavéa to take you through it, _Guide me_ pulls the answer
+  onto a lamplit desk, one card at a time with her notes in the margin.
 - **It answers while you talk.** Mid-sentence, dashed ghost cards sketch the answer taking shape
   behind your words, reshaping as your question turns.
 - **It maps your thinking.** Ramble for a minute and Mavéa clusters your words into the themes that

@@ -812,8 +812,9 @@ describe('the study invitation', () => {
     sessionStorage.clear();
     __resetSrsCacheForTests();
     resetLiveConfig();
-    // localStorage.clear() above wipes the remembered view, which then defaults to the Study.
-    setViewMode('everything');
+    // localStorage.clear() above wipes the remembered view; this resets the module's in-session
+    // cache too, so a takeover left on screen by an earlier test cannot leak into this one.
+    setViewMode('board');
     clearSession();
     priorSession();
   });

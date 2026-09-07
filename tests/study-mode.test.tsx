@@ -325,8 +325,11 @@ describe('TopicCanvas — Live Study path', () => {
     fireEvent.click(back as Element, { shiftKey: true });
     expect(onAskBlock).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Everything' }));
-    expect(onViewMode).toHaveBeenCalledWith('everything');
+    // The desk carries its own door back. It used to borrow the view toggle's "Everything"
+    // button; when that toggle became a single door INTO the desk, the way out had to come with
+    // it — a takeover with no exit is a room with no handle on the inside.
+    fireEvent.click(screen.getByRole('button', { name: /Back to the board/ }));
+    expect(onViewMode).toHaveBeenCalledWith('board');
   });
 });
 

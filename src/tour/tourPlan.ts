@@ -257,7 +257,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'The Study',
     mode: 'explain',
     coach: 'The Study puts one object on a desk, with my notes in the margin beside it.',
-    spotlight: '.focus-toggle',
+    spotlight: '.guide-me',
     action: { kind: 'showcase', featureId: 'study' },
     // The seeded answer (0.9s), the desk's own entrance — a 3.4s intro gate and a 0.9s fan-out
     // — then long enough to read one object and the note beside it.
@@ -270,7 +270,9 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'One card at a time',
     mode: 'explain',
     coach: 'Feeling overwhelmed? Focus puts one card center stage, one at a time.',
-    spotlight: '.focus-toggle',
+    // No spotlight: Focus is something the walkthrough SHOWS rather than a control to point at —
+    // the ring would have nothing to sit on now the view switch is a single door to the desk.
+    spotlight: undefined,
     action: { kind: 'focusWalk', convoId: 'money' },
     // Room for the hold-then-transform beat before Focus dims the canvas (see useTourDriver's
     // 'focusWalk' handling) plus the per-card walk after it.

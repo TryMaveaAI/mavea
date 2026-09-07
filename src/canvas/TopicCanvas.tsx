@@ -77,7 +77,6 @@ import { blockLabel } from './blockLabel';
 import { BlankFillContext, type BlankFillState } from './lib';
 import { useCardDrag } from './dnd/useCardDrag';
 import { FocusStage } from './focus/FocusStage';
-import { FocusToggle } from './focus/FocusToggle';
 import { savedViewMode, type ViewMode } from './focus/useFocusMode';
 import { StudyStage } from './study/StudyStage';
 import { deskObjects } from './study/scene';
@@ -722,12 +721,30 @@ export function TopicCanvas({
                   {readingMode ? 'Collapse sections' : 'Expand sections'}
                 </button>
               )}
-              {studyCapable && onViewMode && (
-                <FocusToggle
-                  value={inStudy ? 'study' : focused ? 'focus' : 'everything'}
-                  onChange={onViewMode}
-                  focusCapable={focusCapable}
-                />
+              {/* The desk and the single-card stage are takeovers of THIS answer, so each carries
+                  its own door back. The board itself needs no control: it is where the canvas
+                  rests, and reading one card closer is a gesture on the card. */}
+              {onViewMode && (inStudy || focused) && (
+                <button
+                  type="button"
+                  className="study-exit"
+                  onClick={() => onViewMode(savedViewMode())}
+                >
+                  <span aria-hidden>←</span> Back to the board
+                </button>
+              )}
+              {studyCapable && onViewMode && !inStudy && !focused && (
+                <button
+                  type="button"
+                  className="guide-me"
+                  onClick={() => onViewMode('study')}
+                  title="Pull this answer onto one desk and walk it with Mavéa"
+                >
+                  <span className="guide-me-glyph" aria-hidden>
+                    ◐
+                  </span>{' '}
+                  Guide me
+                </button>
               )}
               {viewSlot}
               {/* Canvas is an OPT-IN alternate view of this one answer, not a sticky mode: a button

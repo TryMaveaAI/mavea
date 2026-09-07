@@ -61,8 +61,13 @@ export function peekDemoStep(): number | null {
  *  it left off on. */
 export function syncDemoUrl(id: string, step: number): void {
   try {
-    const path = window.location.hash.split('?')[0] || '#/live';
-    window.history.replaceState(null, '', `${path}?demo=${id}&step=${step}`);
+    const [path, query] = window.location.hash.split('?');
+    // Carry a `?view=` pin across the rewrite. This rebuilds the query from scratch, so anything
+    // it does not own is dropped — and dropping the view left the layout gate measuring whatever
+    // the replay happened to be showing instead of the view its row is named for.
+    const view = /(?:^|&)view=([a-z]+)(?:&|$)/.exec(query ?? '')?.[1];
+    const pin = view ? `&view=${view}` : '';
+    window.history.replaceState(null, '', `${path || '#/live'}?demo=${id}&step=${step}${pin}`);
   } catch {
     /* history API unavailable — the demo still plays, it just won't survive a reload */
   }

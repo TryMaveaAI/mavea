@@ -754,7 +754,7 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  /* ONE row at every width: Guide me, the scrolling chip strip, Next. The controls are fixed-size
+  /* ONE row at every width: the walk control, the scrolling chip strip, Next. The controls are fixed-size
      (`flex: none`), the strip is the only thing allowed to shrink, and nothing may drop to a
      second line — a wrapped transport strands its own primary action under the bar it belongs to. */
   flex-wrap: nowrap;

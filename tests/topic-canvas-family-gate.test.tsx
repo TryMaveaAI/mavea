@@ -159,7 +159,7 @@ describe('TopicCanvas — family-gate skeletons', () => {
           spot={null}
           built={{}}
           onProve={() => {}}
-          viewMode="everything"
+          viewMode="board"
           onViewMode={() => {}}
         />,
       );
@@ -186,7 +186,7 @@ describe('TopicCanvas — family-gate skeletons', () => {
           spot={null}
           built={{}}
           onProve={() => {}}
-          viewMode="everything"
+          viewMode="board"
           onViewMode={() => {}}
         />,
       );

@@ -44,6 +44,7 @@ import {
   useViewMode,
   type ViewMode,
 } from '../canvas/focus/useFocusMode';
+import { deskFirst, markDeskFirst } from './study/deskHabit';
 import { answerSignature } from '../data/conversation';
 import type { StudyAside } from '../canvas/study/types';
 import { deskObjects } from '../canvas/study/scene';
@@ -526,6 +527,28 @@ function isContinuePhrase(text: string): boolean {
   return /\b(keep going|go on|continue|carry on|go ahead|please continue|please go on)\b/.test(t);
 }
 
+/**
+ * A takeover asked for in the URL — `#/live?demo=dev&view=focus`. The Study and Focus are entered
+ * by a control and left by one; Focus no longer has a control of its own outside Present, so this
+ * is how the layout gates reach it (a gate cannot see a surface it does not visit) and how a
+ * takeover is deep-linked while debugging. SHOWN, never saved: it must not become a preference.
+ */
+function viewFromHash(): ViewMode | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const asked = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('view');
+    return asked === 'board' ||
+      asked === 'study' ||
+      asked === 'focus' ||
+      asked === 'canvas' ||
+      asked === 'world'
+      ? asked
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function LiveApp(): ReactElement {
   const [cfg] = useLiveConfig();
   const info = providerInfo(cfg.provider);
@@ -576,6 +599,7 @@ export function LiveApp(): ReactElement {
     })(),
   );
   const demoStartStep = useRef(demoPersona.current ? peekDemoStep() : null);
+  const askedView = useRef(viewFromHash());
   const replayBlocksSpending = tourMode.current || !!demoPersona.current;
   const modelCallsAllowed = !replayBlocksSpending && hasModelConfigured(cfg);
   useEffect(() => {
@@ -1683,7 +1707,7 @@ export function LiveApp(): ReactElement {
   // Generosity costs no model call: with no model-authored mark for a stop, `revealInkPlan`
   // falls through to the component's OWN stamped salient node (BarChart's tallest bar,
   // BreakdownCard's largest row, Donut's biggest slice), which is already there in the DOM.
-  const teachSurface = teachTurn || savedViewMode() === 'study';
+  const teachSurface = teachTurn || deskFirst();
   // A ref so the tour loop (which runs once per turn) always reads the live toggle value.
   const annotationsEnabledRef = useRef(cfg.annotationsEnabled);
   annotationsEnabledRef.current = cfg.annotationsEnabled;
@@ -1817,6 +1841,11 @@ export function LiveApp(): ReactElement {
   }, []);
 
   const [viewMode, setViewMode] = useViewMode();
+  // Apply a URL-asked takeover once, after mount: showViewMode (not setViewMode) so a deep link
+  // is never mistaken for the visitor's standing choice.
+  useEffect(() => {
+    if (askedView.current) showViewMode(askedView.current);
+  }, []);
 
   // What the pen may draw right now. The Study has no margin rail — the walk's written asides
   // land in its session-notes crib instead — so their requests never reach MarginNoteRail while
@@ -1886,9 +1915,13 @@ export function LiveApp(): ReactElement {
   // Study never trips this and is never billed for it, which is the whole reason the notes left
   // the answer turn in the first place.
   const studyOpenedRef = useRef<boolean | null>(null);
-  if (studyOpenedRef.current === null) studyOpenedRef.current = savedViewMode() === 'study';
+  if (studyOpenedRef.current === null) studyOpenedRef.current = deskFirst();
   useEffect(() => {
-    if (viewMode === 'study') studyOpenedRef.current = true;
+    if (viewMode === 'study') {
+      studyOpenedRef.current = true;
+      // Persist the habit: the desk is a takeover now, so nothing else remembers it was opened.
+      markDeskFirst();
+    }
   }, [viewMode]);
 
   useEffect(() => {
@@ -2188,10 +2221,14 @@ export function LiveApp(): ReactElement {
     },
     cancelSpeech,
     setMuted,
-    // A scripted view is choreography, not a choice: showViewMode drives the toggle without
+    // A scripted view is choreography, not a choice: showViewMode drives the view without
     // writing the reader's remembered mode, which a run that ends by closing the tab never
-    // restores.
-    setViewMode: showViewMode,
+    // restores. A view named in the URL outranks it — the replay re-asserts its own view on
+    // every step, so without this a `?view=` deep link is silently overwritten a second later,
+    // which is how three of the layout gate's rows ended up measuring the same screen.
+    setViewMode: (mode: ViewMode) => {
+      if (!askedView.current) showViewMode(mode);
+    },
     setInkArmed,
     setPresenting,
     setShareOpen,
@@ -2383,7 +2420,9 @@ export function LiveApp(): ReactElement {
       turn.setSpot(null);
       setPinned([]);
       setValue('');
-      showViewMode('everything');
+      // Back to the resting view — which is the pinned one when a view was named in the URL,
+      // or a `?view=` deep link would be undone by the next chapter/step change.
+      showViewMode(askedView.current ?? 'board');
       setInkArmed(false);
       clearInkRef.current();
       // The pen's drawn marks belong to the chapter that drew them — leaving them in `inked`
@@ -2548,7 +2587,7 @@ export function LiveApp(): ReactElement {
         block.note ??
         (block.id ? tourSpokenById.get(block.id) : undefined) ??
         speakableLine(block),
-      // A tapped card — and every stop of the Study's "Guide me", which walks the desk through
+      // A tapped card — and every stop of the Study's "Walk me through", which walks the desk through
       // this same path — is a spoken line like any other. The caption strip and the Study's voice
       // bubble both read `spokenNow`, so without this the caption kept reading the answer's opener
       // while Mavéa was audibly three cards further on, and the bubble never appeared at all: the
@@ -2673,9 +2712,7 @@ export function LiveApp(): ReactElement {
     // down is a lecture you cannot re-read. Latched here — before the first stop — and held for
     // the turn, so the gutter reserves once and a later mute flip changes only what is inked next.
     const withNotes =
-      (mutedRef.current || savedViewMode() === 'study') &&
-      spokenWalk &&
-      annotationsEnabledRef.current;
+      (mutedRef.current || deskFirst()) && spokenWalk && annotationsEnabledRef.current;
     setNoteGutterTurn(withNotes);
     // Both paths below read stops off the same reduced beat list.
     const stops = beats.map((beat) => ({
@@ -3761,7 +3798,7 @@ export function LiveApp(): ReactElement {
   // cleanup, because by then the presented view is the current one — and it is captured in this
   // effect rather than the surface effect below so that switching surfaces mid-show cannot be
   // mistaken for an exit (which would drop fullscreen and remember the wrong view).
-  const restoreViewRef = useRef<ViewMode>('everything');
+  const restoreViewRef = useRef<ViewMode>('board');
   useEffect(() => {
     if (!presenting) return;
     restoreViewRef.current = viewModeRef.current;
@@ -4782,8 +4819,9 @@ export function LiveApp(): ReactElement {
     },
     [setViewMode],
   );
-  // Back to the reader's OWN standing choice, never a blind 'everything' — a Focus reader who looks
-  // at a world must land back in Focus.
+  // Back to the reader's OWN standing choice rather than a hardcoded view. Every takeover is
+  // transient now, so that choice is the board — but reading it keeps the exit correct on its own
+  // terms rather than by coincidence, the way the canvas and Study exits already do.
   enterWorldRef.current = enterWorld;
   const leaveWorldView = useCallback(() => setViewMode(savedViewMode()), [setViewMode]);
   useEffect(() => registerWorldOpener(enterWorld), [enterWorld]);
@@ -6502,7 +6540,7 @@ export function LiveApp(): ReactElement {
                   flashedIds={flashedIds}
                   belowHeaderSlot={
                     // The scrubber belongs to the FLAT views, where the voice is the only thing
-                    // moving. The Study paces itself — Guide me walks the desk and the beat bar
+                    // moving. The Study paces itself — "Walk me through" walks the desk and the beat bar
                     // is the transport — so a second, wider transport above it competes with the
                     // one control that actually drives the lesson.
                     hero && viewedAudio && viewMode !== 'study' ? (

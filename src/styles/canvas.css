@@ -57,10 +57,13 @@
   min-width: min-content;
 }
 
-/* Enter/leave the spatial Canvas view — a header pill each. "View as canvas" is a gentle,
-   presence-tinted invite; "Back to answer" is a plain return. */
+/* Enter/leave a takeover of this one answer — a header pill each. "View as canvas" and
+   "Guide me" are gentle, presence-tinted invites; the two returns are plain. One family, so a
+   reader learns the shape once and every door reads the same. */
 .canvas-open,
-.canvas-exit {
+.canvas-exit,
+.guide-me,
+.study-exit {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -79,20 +82,25 @@
     color var(--m-fast);
 }
 .canvas-open:hover,
-.canvas-exit:hover {
+.canvas-exit:hover,
+.guide-me:hover,
+.study-exit:hover {
   background: var(--surface-glass);
   border-color: var(--line-strong);
   color: var(--text-primary);
 }
-.canvas-open {
+.canvas-open,
+.guide-me {
   border-color: color-mix(in oklab, var(--presence) 40%, var(--line));
   color: var(--presence-soft);
 }
-.canvas-open:hover {
+.canvas-open:hover,
+.guide-me:hover {
   border-color: var(--presence);
   color: var(--presence);
 }
-.canvas-open-glyph {
+.canvas-open-glyph,
+.guide-me-glyph {
   font-size: 13px;
   line-height: 1;
 }

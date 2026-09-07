@@ -85,4 +85,21 @@ describe('syncDemoUrl — a reload mid-demo must resume, not drop out', () => {
     syncDemoUrl('cfo', 1);
     expect(window.location.hash).toBe('#/live?demo=cfo&step=1');
   });
+
+  // The rewrite rebuilds the query from scratch, so anything it does not own is dropped. A
+  // `?view=` pin names which view a layout-gate row is measuring; dropping it left three rows
+  // measuring whichever view the replay happened to be showing — the same screen, three times.
+  it('carries a ?view= pin across the rewrite', () => {
+    window.location.hash = '#/live?demo=dev&view=focus';
+    syncDemoUrl('dev', 3);
+    expect(window.location.hash).toBe('#/live?demo=dev&step=3&view=focus');
+    expect(peekDemoStep()).toBe(3);
+    expect(peekDemoPersona()).toBe('dev');
+  });
+
+  it('adds nothing when no view was pinned', () => {
+    window.location.hash = '#/live?demo=dev';
+    syncDemoUrl('dev', 1);
+    expect(window.location.hash).toBe('#/live?demo=dev&step=1');
+  });
 });

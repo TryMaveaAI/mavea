@@ -254,7 +254,7 @@ export function StudyStage({
   // Set when the reader pressed a pager chip, so focus can follow the note card's remount.
   const pagedByHand = useRef(false);
   const noteNavRef = useRef<HTMLSpanElement | null>(null);
-  // "Guide me": the desk walks itself, one object every GUIDE_MS. It never talks over the
+  // "Walk me through": the desk walks itself, one object every GUIDE_MS. It never talks over the
   // voice (a tick while Mavéa is speaking simply waits), never fights the reader (any manual
   // pick stops it), and stops itself at the last object rather than looping forever.
   const [guiding, setGuiding] = useState(false);
@@ -746,14 +746,14 @@ export function StudyStage({
   );
 
   // A spot moved by something other than the guide — above all a follow-up's own spoken walk —
-  // does NOT switch the guide off. Guide me is a mode the reader chose; a follow-up is the same
+  // does NOT switch the guide off. The walk is a mode the reader chose; a follow-up is the same
   // conversation, and making them press it again every turn reads as the app forgetting. The walk
   // never gets talked over because the timer below waits out every audible line, and when the walk
   // is done the guide resumes from wherever the walk left the desk. Only the reader's own pick
   // (`choose`) or the end of the cast ends it.
   // Silence ACCRUES; it does not restart. `speaking` flips at every sentence boundary, and the
   // old effect re-armed the whole gap on each flip — so a voice that pauses more often than
-  // GUIDE_GAP_MS left "Guide me" lit and advancing never, which reads as a dead control. Bank the
+  // GUIDE_GAP_MS left "Walk me through" lit and advancing never, which reads as a dead control. Bank the
   // quiet between flickers, and still never fire WHILE a line is audible.
   const quietRef = useRef<{ id: string | null; banked: number; since: number }>({
     id: null,
@@ -764,7 +764,7 @@ export function StudyStage({
   // watches. The FIRST one narrates the object already on the desk (that is the point — the walk
   // starts where the reader is), so `foregroundId` holds still; and while Mavéa is muted nothing
   // ever flips `speaking` either. With no dep changing, the one timer this effect had scheduled
-  // was the only one it would ever schedule, and "Guide me" sat lit and still forever.
+  // was the only one it would ever schedule, and the control sat lit and still forever.
   const [guideTick, setGuideTick] = useState(0);
   useEffect(() => {
     if (!guiding) return;
@@ -1198,7 +1198,7 @@ export function StudyStage({
               })
             }
           >
-            {guiding ? '❚❚ Pause' : '▶ Guide me'}
+            {guiding ? '❚❚ Pause' : '▶ Walk me through'}
           </button>
           {onToggleMute && (
             <button

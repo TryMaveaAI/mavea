@@ -18,46 +18,6 @@
   align-items: start;
 }
 
-/* ---- the Focus / Everything switch (lives in the canvas header) ---- */
-.focus-toggle {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-self: flex-end;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--r-full);
-  background: var(--surface-glass);
-  box-shadow: inset 0 0 0 1px var(--line-soft);
-}
-/* Win over `.canvas-header > div { flex-direction: column }` when docked in the header. */
-.canvas-header > .focus-toggle {
-  flex-direction: row;
-}
-.focus-toggle-opt {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 5px 13px;
-  border-radius: var(--r-full);
-  font: 500 12.5px/1 var(--font);
-  color: var(--text-muted);
-  transition:
-    background var(--m-fast) var(--ease-out),
-    color var(--m-fast) var(--ease-out);
-}
-.focus-toggle-opt:hover {
-  color: var(--text-secondary);
-}
-.focus-toggle-opt:focus-visible {
-  outline: 2px solid var(--presence);
-  outline-offset: 1px;
-}
-.focus-toggle-opt.active {
-  background: var(--surface-elevated);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-raised);
-}
-
 /* ---- the stage ---- */
 /* The hero column: the card on the stage with its per-slide caption stacked beneath it. A wrapper
    (not two grid children) so the caption always tracks the hero's column and the rail is untouched. */
