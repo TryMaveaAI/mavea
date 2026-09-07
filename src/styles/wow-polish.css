@@ -323,8 +323,8 @@
   opacity: 0;
   transition: opacity var(--m-fast) var(--ease-out);
 }
-:where(.askable, .addable, .flashcardable):hover > .block-actions,
-:where(.askable, .addable, .flashcardable):focus-within > .block-actions,
+:where(.askable, .addable, .flashcardable, .lensable):hover > .block-actions,
+:where(.askable, .addable, .flashcardable, .lensable):focus-within > .block-actions,
 .focus-hero-card:hover .block-actions,
 .block-actions:has(.is-flashed) {
   opacity: 1;
@@ -411,8 +411,8 @@
 }
 /* Brighten the WHOLE cluster on a card hover/focus, and keep each button keyboard-usable — the
    single rule that makes all the pills light up together. */
-:where(.askable, .addable, .flashcardable):hover .block-action-pill,
-:where(.askable, .addable, .flashcardable) .block-action-pill:focus-visible,
+:where(.askable, .addable, .flashcardable, .lensable):hover .block-action-pill,
+:where(.askable, .addable, .flashcardable, .lensable) .block-action-pill:focus-visible,
 .focus-hero-card:hover .block-action-pill {
   border-color: var(--presence);
   color: var(--text-primary);
@@ -440,6 +440,18 @@
   color: var(--insight);
   background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
   border-color: var(--insight);
+}
+/* The Lens is held: the button becomes the way back, and says so. Same standing-badge shape as
+   the flashcard state above, in the face's own colour rather than the insight accent — this is
+   Mavéa's attention on one card, not a thing that was added to a deck. */
+.block-lens.is-lensed,
+:where(.askable, .addable, .flashcardable, .lensable):hover .block-lens.is-lensed {
+  color: var(--presence);
+  background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
+  border-color: var(--presence);
+}
+.block-lens.is-lensed .block-pill-label {
+  display: inline;
 }
 .block-cards.is-flashed .block-pill-label {
   display: inline;

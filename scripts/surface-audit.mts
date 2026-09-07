@@ -80,6 +80,20 @@ const SURFACES: Surface[] = [
     settleMs: 14_000,
   },
   {
+    key: 'lens',
+    // The Lens is a STATE of the board, not a view of its own — but it is the state with new
+    // layout in it (one card forward, the rest dimmed, notes beside it), so it needs its own row.
+    // The settle is short on purpose: the curated replay moves on after a few seconds and takes
+    // the spotlight back, and a row that measures the board while claiming to measure the Lens is
+    // worse than no row at all.
+    label: 'Answer · the Lens',
+    hash: '#/live?demo=dev&view=board',
+    ready: '.mavea-app',
+    click: ['Start demo', 'Look closer'],
+    reading: '.canvas-scroll',
+    settleMs: 2500,
+  },
+  {
     key: 'study',
     label: 'Answer · Study',
     hash: '#/live?demo=dev&view=study',

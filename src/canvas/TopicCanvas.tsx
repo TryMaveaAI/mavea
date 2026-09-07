@@ -89,7 +89,12 @@ import type {
   AccentVar,
 } from '../data/conversation';
 import { answerSignature } from '../data/conversation';
-import type { ReactNode, CSSProperties } from 'react';
+import type {
+  ReactNode,
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 
 // A replay extra is rare and opt-in; keeping its story composer out of the canvas's static graph
 // avoids making every answer, course lesson, and Gallery tile download the reel runtime up front.
@@ -102,6 +107,38 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 1.75;
 const ZOOM_STEP = 0.15;
 const ZOOM_DEFAULT = 1.15;
+
+// The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
+// gesture rides the cell, not the card, because the cell is what carries `.spotlit`/`.dimmed`.
+//
+// A card is not a button — it is full of links, controls and selectable prose — so the click has
+// to prove it MEANT the card. Everything below is a way of not stealing a gesture that was aimed
+// at something else; the keyboard route is a real button in the action cluster, never this.
+const LENS_SLOP = 6; // px of travel still counted as a click, not a drag
+
+/** Anything that owns its own click. A near-miss on the action cluster's padding is a miss, not
+ *  an invitation to open the Lens, so the cluster itself is listed alongside real controls. */
+const LENS_IGNORE = [
+  'a',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'summary',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="tab"]',
+  '[role="checkbox"]',
+  '[role="switch"]',
+  '[role="slider"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+  '.block-actions',
+  '[data-no-lens]',
+].join(',');
 
 /** Clamp a composite region's span to the 1..12 sub-grid; default to a readable half-width. */
 function clampSpan(span: number | undefined): number {
@@ -326,6 +363,12 @@ interface Props {
   /** Optional node rendered between the canvas header and the card grid. Used by Live to
    *  place the voice scrubber below the Pen/Focus/Everything controls. */
   belowHeaderSlot?: ReactNode;
+  /** Live-only: bring ONE card forward and dim the rest — the Lens. Absent (the Demo, the
+   *  gallery, clips) → cards are not clickable and no affordance renders, exactly as before. */
+  onLens?: (b: Block) => void;
+  /** The card the READER has brought forward, if any. The walk lights cards too (`spot`), but
+   *  only the reader's is a Lens: it is what the pill reports and what the notes will follow. */
+  lensId?: string | null;
   /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
   presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
@@ -364,6 +407,8 @@ export function TopicCanvas({
   headerSlot,
   viewSlot,
   belowHeaderSlot,
+  onLens,
+  lensId,
   presenting,
   blankFill,
 }: Props) {
@@ -563,6 +608,35 @@ export function TopicCanvas({
   // deeper" drawer to open — otherwise it's a no-op that confuses. Show it only then.
   const hasDeeper = sections.some((s) => s.deeper.length > 0);
 
+  // Where a press started, so a click can prove it began on the card it ended on. A drag released
+  // past the card's edge, and a click whose target unmounted mid-gesture (the browser retargets to
+  // the nearest survivor), both read as "I clicked a thing and it did something else".
+  const lensDown = useRef<{ id: string; x: number; y: number } | null>(null);
+
+  const lensPointerDown = (b: Block) => (e: ReactPointerEvent<HTMLDivElement>) => {
+    lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
+  };
+
+  const lensClick = (b: Block) => (e: ReactMouseEvent<HTMLDivElement>) => {
+    const start = lensDown.current;
+    lensDown.current = null;
+    if (!onLens || !b.id || !start || start.id !== b.id) return;
+    // A modified click belongs to the browser: ⌘/ctrl opens a link in a tab, shift extends a
+    // selection. Only a plain primary click is ours.
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > LENS_SLOP) return;
+    // A reader who just dragged out a sentence to copy did not ask for the Lens.
+    const sel = typeof window !== 'undefined' ? window.getSelection?.() : null;
+    if (sel && !sel.isCollapsed && sel.toString().trim() !== '') return;
+    if ((e.target as HTMLElement | null)?.closest(LENS_IGNORE)) return;
+    // The Lens has taken this click, so nothing above may also act on it. The surface hangs a
+    // click-away dismiss on the scroller — "a click outside the spotlit card puts the board
+    // back" — and this click IS outside the previously spotlit card, so without this the two
+    // handlers run in order and cancel each other out: the card lights and goes dark again.
+    e.stopPropagation();
+    onLens(b);
+  };
+
   // renderCard wraps a block in its col div + spotlight/dim/ask/flashcard chrome.
   // Both the flat card-grid and SectionGroup section paths use the same function so
   // block chrome is identical whether a block lives on the main canvas or in a drawer.
@@ -581,7 +655,15 @@ export function TopicCanvas({
     const zoomable = isCard && (askable || addable || flashcardable);
     // A real answer card can be dragged into a card-kind hole (never the holes card itself).
     const draggable = canDragCards && isCard && b.type !== 'blanks';
+    const lensable = isCard && !!onLens;
+    const lensed = lensable && lensId === b.id;
     return (
+      // The cell takes a pointer gesture but is NOT given a role or a tab stop: it holds buttons
+      // and links, so calling it a button would be an ARIA lie, and 16 new tab stops in front of
+      // the composer would be worse than no shortcut at all. The keyboard (and screen-reader)
+      // route to the same thing is the "Look closer" button in the action cluster below — which
+      // is why this disable is safe, and the same trade `.canvas-scroll` already makes.
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
       <div
         className={
           'col-' +
@@ -592,15 +674,19 @@ export function TopicCanvas({
           (addable ? ' addable' : '') +
           (flashcardable ? ' flashcardable' : '') +
           (zoomable ? ' zoomable' : '') +
-          (picked ? ' picked' : '')
+          (picked ? ' picked' : '') +
+          (lensable ? ' lensable' : '') +
+          (lensed ? ' lensed' : '')
         }
         key={b.id || i}
         data-spot-id={b.id}
         data-kind={b.type}
+        onPointerDown={lensable ? lensPointerDown(b) : undefined}
+        onClick={lensable ? lensClick(b) : undefined}
       >
         <BlockBoundary fallback={<FallbackCard block={b} />}>{renderBlock(b)}</BlockBoundary>
         {bend && bend.blockId === b.id && <BendStrip bend={bend} />}
-        {(askable || addable || flashcardable || zoomable || draggable) && (
+        {(askable || addable || flashcardable || zoomable || draggable || lensable) && (
           <div className="block-actions" ref={measureActionsWidth}>
             {draggable && (
               <button
@@ -611,6 +697,22 @@ export function TopicCanvas({
                 {...cardDrag.handleProps(b)}
               >
                 <span aria-hidden>⠿</span>
+              </button>
+            )}
+            {lensable && (
+              <button
+                type="button"
+                className={'block-action-pill block-lens' + (lensed ? ' is-lensed' : '')}
+                aria-expanded={lensed}
+                title={lensed ? `Back to the board` : `Bring ${blockLabel(b)} forward, on its own`}
+                aria-label={lensed ? `Back to the board` : `Look closer at ${blockLabel(b)}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLens!(b);
+                }}
+              >
+                <Icon.eye />
+                <span className="block-pill-label">{lensed ? 'Back' : 'Look closer'}</span>
               </button>
             )}
             {askable && (

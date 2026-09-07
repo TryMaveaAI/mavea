@@ -2552,6 +2552,23 @@ export function LiveApp(): ReactElement {
   }, [tourDrive.done, tourDashId]);
   useEffect(() => () => restorePenConfig(), [restorePenConfig]);
 
+  // The Lens: the reader brings ONE card forward and the rest of the board dims behind it. It
+  // takes the wheel from a running walk exactly as a tapped filmstrip card does — but it does not
+  // speak and does not ink. On the filmstrip a tap IS a request for the line; on the board a click
+  // means "let me look at this", and Mavéa talking (or scribbling) every time a card is clicked
+  // makes the board unusable in a quiet room. Clicking the held card again puts it back.
+  const openLens = useCallback(
+    (block: Block) => {
+      const id = block.id ?? null;
+      if (!id) return;
+      const held = turn.spotBy === 'reader' && turn.spot === id;
+      tourDismissed.current = true;
+      readerTookOver.current = true;
+      turn.setSpot(held ? null : id, 'reader');
+    },
+    [turn],
+  );
+
   const { narrate: narrateBlock, narratingId } = useTapNarration(
     {
       takeWheel: () => {
@@ -3139,6 +3156,10 @@ export function LiveApp(): ReactElement {
     const spot = turn.spot;
     const spec = turn.spec;
     if (!spec || !spot) return;
+    // Only for a spotlight the WALK moved: that card may be anywhere on the page, so it has to
+    // come to the reader. A card the reader just clicked is already under their eyes — scrolling
+    // it to centre would yank the page out from under the gesture that asked for it.
+    if (turn.spotBy === 'reader') return;
     let tries = 0;
     let id = 0;
     const attempt = (): void => {
@@ -3179,7 +3200,7 @@ export function LiveApp(): ReactElement {
     };
     id = window.setTimeout(attempt, 90);
     return () => window.clearTimeout(id);
-  }, [turn.spot, turn.spec, tourMarksById]);
+  }, [turn.spot, turn.spotBy, turn.spec, tourMarksById]);
 
   // Dismiss the guided spotlight: end the walk early and clear the dimmed state so the
   // whole canvas is interactive again. Safe to call when nothing is spotlit (no-op).
@@ -6503,6 +6524,18 @@ export function LiveApp(): ReactElement {
                   studyAnswerEpoch={turn.answerEpoch}
                   viewMode={viewMode}
                   onViewMode={setViewMode}
+                  // The Lens is a gesture on the resting board, so it is offered only there: the
+                  // desk and the single-card stage already show one object at a time, and the
+                  // spatial views own their own selection. Withheld while a turn streams (the
+                  // grid re-tiles and ids are renumbered at settle, so a card held now would be
+                  // dragged onto another one) and while the pen is armed, since an armed tap is
+                  // already an ink gesture — the two are literally the same press.
+                  onLens={
+                    viewingLive && viewMode === 'board' && !turn.busy && !inkArmed
+                      ? openLens
+                      : undefined
+                  }
+                  lensId={viewingLive && turn.spotBy === 'reader' ? turn.spot : null}
                   presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and

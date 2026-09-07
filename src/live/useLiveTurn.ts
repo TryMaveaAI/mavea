@@ -83,6 +83,13 @@ export interface LiveTurnState {
   activity: LiveActivity;
   /** The block id currently spotlit (null = the whole canvas, at rest). */
   spot: string | null;
+  /**
+   * WHO lit it. The walk moves the spotlight as it narrates; the reader moves it by clicking a
+   * card, which is the Lens. Same highlight, same CSS, two very different intents — the page
+   * glides to a walk's spot (the card is off screen, it has to come to you) and must NOT glide to
+   * the reader's (they are already looking at it), and only the reader's opens the margin notes.
+   */
+  spotBy: 'walk' | 'reader' | null;
   /** What this turn did to the canvas: clear-and-rebuild, add to it, or update it. */
   mode: Mode;
   /** Bumped ONLY on replace, so the canvas remounts for a fresh set but reconciles
@@ -345,6 +352,7 @@ export const INITIAL: LiveTurnState = {
   busy: false,
   activity: null,
   spot: null,
+  spotBy: null,
   mode: 'replace',
   replaceEpoch: 0,
   answerEpoch: 0,
@@ -413,7 +421,7 @@ type Action =
   | { type: 'idle' }
   // The turn FAILED (provider error): show the error state, keep the prior canvas untouched.
   | { type: 'error'; error: FailedTurn }
-  | { type: 'spot'; spot: string | null }
+  | { type: 'spot'; spot: string | null; by?: 'walk' | 'reader' }
   // The streaming block's type (skeleton label) and the mid-turn search sources.
   | { type: 'pending'; pending: string | null }
   // The model is (or is no longer) emitting reasoning tokens before any answer content.
@@ -444,6 +452,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         understood: [],
         activity: null,
         spot: null,
+        spotBy: null,
         viewIndex: null,
         viewOverride: null,
         error: null,
@@ -514,8 +523,9 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         replaceEpoch: a.mode === 'replace' && !a.streamed ? s.replaceEpoch + 1 : s.replaceEpoch,
         answerEpoch: a.mode === 'replace' && !a.streamed ? s.answerEpoch + 1 : s.answerEpoch,
         // The surface already chose where to open the spotlight (lead block, or the
-        // first newly-added block on an augment).
+        // first newly-added block on an augment) — that is the walk's, not the reader's.
         spot: a.spot,
+        spotBy: a.spot ? 'walk' : null,
         // The fresh canvas is the live head — clear any scrubber jump or composed-thread view.
         viewIndex: null,
         viewOverride: null,
@@ -547,7 +557,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         liveSources: [],
       };
     case 'spot':
-      return { ...s, spot: a.spot };
+      return { ...s, spot: a.spot, spotBy: a.spot ? (a.by ?? 'walk') : null };
     case 'pending':
       return { ...s, pendingShape: a.pending };
     case 'thinking':
@@ -778,7 +788,8 @@ export interface UseLiveTurn extends LiveTurnState {
    *  the question a second time. Ask FIRST, and either clear the composer or say why not. */
   refuseReason: (text: string, hasAttachments: boolean) => TurnRefusal | null;
   /** Move the spotlight (the surface drives the reveal tour through this). */
-  setSpot: (spot: string | null) => void;
+  /** Move the spotlight. `by` says who: the walk narrating, or the reader opening the Lens. */
+  setSpot: (spot: string | null, by?: 'walk' | 'reader') => void;
   /** Re-open a saved canvas from the Library (no model call). */
   restore: (spec: ConversationSpec, question: string) => void;
   /** Jump the canvas to a past moment (the scrubber); out-of-range is a no-op. */
@@ -1580,7 +1591,10 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
     usedTypesRef.current.clear();
     dispatch({ type: 'reset' });
   }, []);
-  const setSpot = useCallback((spot: string | null) => dispatch({ type: 'spot', spot }), []);
+  const setSpot = useCallback(
+    (spot: string | null, by?: 'walk' | 'reader') => dispatch({ type: 'spot', spot, by }),
+    [],
+  );
   const jumpTo = useCallback((index: number) => dispatch({ type: 'jump', index }), []);
   // Show a composed-thread spec on the canvas (see composeThread.ts), or null to return to live.
   const previewSpec = useCallback((spec: ConversationSpec | null) => {
