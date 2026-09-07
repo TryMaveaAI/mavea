@@ -92,14 +92,19 @@ const SEED_LEGAL_ACCEPTANCE = `
   } catch { /* a context without storage still measures the landing route */ }
 `;
 
-/** Long tasks are what a stutter actually is: the main thread held for >50ms, unable to answer a click. */
+/** Long tasks are what a stutter actually is: the main thread held for >50ms, unable to answer a click.
+ *  Both paint marks are kept: first-paint is the boot splash (a background and a gradient orb,
+ *  which first-CONTENTFUL-paint does not count — that one lands with the surface's first text). */
 const OBSERVE = `
-  window.__perf = { long: [], fcp: 0 };
+  window.__perf = { long: [], fp: 0, fcp: 0 };
   new PerformanceObserver((l) => {
     for (const e of l.getEntries()) window.__perf.long.push(Math.round(e.duration));
   }).observe({ entryTypes: ['longtask'] });
   new PerformanceObserver((l) => {
-    for (const e of l.getEntries()) if (e.name === 'first-contentful-paint') window.__perf.fcp = Math.round(e.startTime);
+    for (const e of l.getEntries()) {
+      if (e.name === 'first-paint') window.__perf.fp = Math.round(e.startTime);
+      if (e.name === 'first-contentful-paint') window.__perf.fcp = Math.round(e.startTime);
+    }
   }).observe({ type: 'paint', buffered: true });
 `;
 
@@ -128,17 +133,6 @@ async function run(
 
   const t0 = Date.now();
   await page.goto(base + s.path, { waitUntil: 'commit' });
-  let shell = -1;
-  const shellSelector = s.path === '/' ? s.ready : `.surface-fallback, ${s.ready}`;
-  try {
-    await page
-      .locator(shellSelector)
-      .first()
-      .waitFor({ state: 'visible', timeout: s.budgetMs * 3 });
-    shell = Date.now() - t0;
-  } catch {
-    /* left as -1: even the dependency-free route shell missed its budget window */
-  }
   let ready = -1;
   try {
     await page
@@ -147,12 +141,27 @@ async function run(
       .waitFor({ state: 'visible', timeout: s.budgetMs * 4 });
     ready = Date.now() - t0;
   } catch {
-    /* left as -1: it never got there inside three times its own budget */
+    /* left as -1: it never got there inside four times its own budget */
   }
   // Let anything deferred settle, so idle work shows up in the long-task list too.
   await page.waitForTimeout(2500);
 
-  const perf = (await page.evaluate('window.__perf')) as { long: number[]; fcp: number };
+  const perf = (await page.evaluate('window.__perf')) as {
+    long: number[];
+    fp: number;
+    fcp: number;
+  };
+  // Paint marks count from the navigation and the waits from t0; put the shell on the waits' clock.
+  const navigationStart = (await page.evaluate('performance.timeOrigin')) as number;
+  // The shell is what a reader sees while the route's own code is still on the wire. On a product
+  // route that is the static boot splash (index.html #boot), painted from inline markup before a
+  // byte of JavaScript has arrived — so its moment is the browser's first-paint mark, and nothing
+  // in the DOM stands in for it: SurfaceFallback renders nothing while the splash is up (one
+  // indicator for one wait — tests/boot-handoff), so on a cold load the Suspense fallback never
+  // exists, and a selector wait on it only ever returned the finished surface. The landing has no
+  // separate shell by design: it is the front door, and the hero itself has to land in budget.
+  const shell =
+    s.path === '/' ? ready : perf.fp > 0 ? Math.round(navigationStart + perf.fp - t0) : -1;
   const heap = (await page.evaluate(
     '(performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : 0)',
   )) as number;
@@ -281,8 +290,8 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    '\nshell = immediate route acknowledgement; usable = the real surface is there. blocked = main-thread\n' +
-      'time over the 50ms bar, i.e. how long\n' +
+    '\nshell = the first pixels a reader sees: the boot splash on a product route, the hero itself on the\n' +
+      'landing. usable = the real surface is there. blocked = main-thread time over the 50ms bar, i.e. how long\n' +
       'the page could not answer a click. eager-heavy-assets = the voice model / WASM / block library pulled\n' +
       'down before the user asked for anything. Warm route response is measured after its code is cached;\n' +
       'it is intentionally separate from a cold network load and is the only sub-150ms claim this gate makes.\n',

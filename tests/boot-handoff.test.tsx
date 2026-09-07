@@ -64,3 +64,22 @@ describe('the splash is retired by the SURFACE, not by the root', () => {
     expect(rootBody).not.toContain("getElementById('boot')");
   });
 });
+
+// The perf gate (scripts/perf-probe.mts) consumes this contract. Its shell wait used to be
+// `.surface-fallback, <surface>`: with the fallback never mounting under the splash, that wait only
+// ever returned the finished surface, so the 2s shell budget was judging the whole route — Live's
+// ~350 kB over ~100 requests on an emulated 1.6 Mbps line — and three routes read red for a shell
+// that, to a reader, had been the splash all along. On a cold load the shell IS the splash, and its
+// moment is the browser's first-paint mark; the contentful mark does not count a background or a
+// gradient orb, so it lands with the surface's first text instead.
+describe('the perf gate times the shell the splash actually paints', () => {
+  const probeSrc = readFileSync(join(__dirname, '../scripts/perf-probe.mts'), 'utf8');
+
+  it('reads the first-paint mark, not only first-contentful-paint', () => {
+    expect(probeSrc).toContain("e.name === 'first-paint'");
+  });
+
+  it('never waits for the Suspense fallback on a cold load — it does not exist there', () => {
+    expect(probeSrc).not.toContain('surface-fallback');
+  });
+});
