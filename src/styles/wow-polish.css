@@ -612,6 +612,11 @@
    for the side of a page; here it lies down. Only the axis changes — the entries, their live
    miniatures, the roving tab stop and the arrow-key walking are all its own. */
 .lens-strip {
+  /* Tile width as a UNITLESS number, because the miniature's scale has to be derived from it:
+     FilmstripThumb renders a real card at a 340px design width and shrinks it with a transform,
+     so the scale IS width ÷ 340. Hard-coding both (150px and scale(.441)) meant the tiles could
+     never rescale — the two numbers had to agree and only one of them could move. */
+  --lens-tile: 150;
   width: var(--zoom-sheet-w);
   flex: none;
   padding: 12px 16px 14px;
@@ -631,11 +636,19 @@
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x proximity;
-  padding-bottom: 4px;
+  scroll-behavior: smooth;
+  /* No scrollbar under the tiles. A native bar across a row of thumbnails reads as a stray piece
+     of browser chrome rather than part of the strip; the fade at the trailing edge is what says
+     there is more, and the wheel, a trackpad swipe, the arrow keys and clicking a tile (which
+     scrolls it into view) all still move it. */
+  scrollbar-width: none;
+}
+.lens-strip .filmstrip-list::-webkit-scrollbar {
+  display: none;
 }
 .lens-strip .filmstrip-entry {
   flex: 0 0 auto;
-  width: 168px;
+  width: calc(var(--lens-tile) * 1px + 16px); /* the tile, plus its own 8px padding either side */
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
@@ -646,12 +659,30 @@
    half the tile empty beside it. The scale has to track that width — 150 / 340 (FilmstripThumb's
    design width) — or the miniature stops filling the frame it was given. */
 .lens-strip .filmstrip-thumb {
-  width: 150px;
-  height: 92px;
+  width: calc(var(--lens-tile) * 1px);
+  height: calc(var(--lens-tile) * 0.613px); /* the frame's own 1.63:1, held at every size */
   border-radius: var(--r-sm);
 }
 .lens-strip .filmstrip-thumb-design {
-  transform: scale(0.441);
+  transform: scale(calc(var(--lens-tile) / 340)); /* 340 = FilmstripThumb's design width */
+}
+/* Rescale with the room. The sheet above already tracks the viewport (min(1120px, 92vw)), so the
+   strip's WIDTH followed it while its tiles did not — on a phone that left two fixed tiles in a
+   359px strip, and on a large monitor a row of small ones with space going spare. */
+@media (min-width: 1600px) {
+  .lens-strip {
+    --lens-tile: 178;
+  }
+}
+@media (max-width: 1099px) {
+  .lens-strip {
+    --lens-tile: 128;
+  }
+}
+@media (max-width: 767px) {
+  .lens-strip {
+    --lens-tile: 108;
+  }
 }
 /* One line each, so the row of tiles has a straight bottom edge instead of a ragged one. */
 .lens-strip .filmstrip-title {
@@ -701,7 +732,10 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  padding: 28px;
+  /* Clear of the dock, which floats over the page at the bottom. Without this the strip — the
+     lowest thing on the stage — sits underneath it on a short window, and the tiles nearest the
+     middle are the ones covered. */
+  padding: 28px 28px calc(28px + var(--dock-h, 76px));
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
   backdrop-filter: var(--glass-blur, blur(2px));
 }
