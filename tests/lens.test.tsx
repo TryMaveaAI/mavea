@@ -175,6 +175,53 @@ describe('clicks the Lens must not take', () => {
   });
 });
 
+describe('reaching the rest of the answer', () => {
+  /** jsdom reports every scroll metric as 0, so overflow has to be stated for it to exist. */
+  function fakeOverflow(container: HTMLElement, scrollLeft: number, clientWidth = 400) {
+    const list = container.querySelector('.filmstrip-list') as HTMLElement;
+    Object.defineProperty(list, 'scrollWidth', { value: 1200, configurable: true });
+    Object.defineProperty(list, 'clientWidth', { value: clientWidth, configurable: true });
+    Object.defineProperty(list, 'scrollLeft', {
+      value: scrollLeft,
+      writable: true,
+      configurable: true,
+    });
+    list.scrollBy = vi.fn();
+    fireEvent.scroll(list);
+    return list;
+  }
+
+  it('offers no control when the whole answer already fits', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    // A control that can never do anything teaches the reader to stop looking at controls.
+    expect(container.querySelector('.lens-strip-nudge')).toBeNull();
+    expect(container.querySelector('.lens-strip')!.getAttribute('data-edge')).toBeNull();
+  });
+
+  it('offers the way forward when there is more to the right, and scrolls on press', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const list = fakeOverflow(container, 0);
+    expect(screen.getByRole('button', { name: 'Show later cards' })).toBeTruthy();
+    // Nothing behind you yet, so nothing offers to take you there.
+    expect(screen.queryByRole('button', { name: 'Show earlier cards' })).toBeNull();
+    // And only the side that can move is faded — dimming the first tile at rest would dim the
+    // card the reader is most likely looking at.
+    expect(container.querySelector('.lens-strip')!.getAttribute('data-edge')).toBe('end');
+    fireEvent.click(screen.getByRole('button', { name: 'Show later cards' }));
+    expect(list.scrollBy).toHaveBeenCalled();
+  });
+
+  it('offers the way back once it has been scrolled', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fakeOverflow(container, 400);
+    expect(screen.getByRole('button', { name: 'Show earlier cards' })).toBeTruthy();
+    expect(container.querySelector('.lens-strip')!.getAttribute('data-edge')).toBe('both');
+  });
+});
+
 describe('Mavéa\u2019s notes follow the Lens', () => {
   const notes = [
     { text: 'assumes April fares hold', kind: 'caution' as const },

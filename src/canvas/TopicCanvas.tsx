@@ -67,7 +67,7 @@ import './layout/textDisclosure.css';
 import { BlockBoundary } from './BlockBoundary';
 import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
-import { FilmstripRail } from './focus/FilmstripRail';
+import { LensStrip } from './lens/LensStrip';
 import { skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
@@ -1275,17 +1275,15 @@ export function TopicCanvas({
                 // away with the card and never competes with the notes for the sheet's height.
                 // Focus's own rail, reused whole: real miniatures, a roving tab stop and
                 // arrow-key walking all come with it.
-                <div className="lens-strip">
-                  <FilmstripRail
-                    blocks={lensSteps}
-                    activeId={zoomedBlock.id ?? null}
-                    onPick={(id) => {
-                      const b = lensSteps.find((x) => x.id === id);
-                      if (b) openLens(b);
-                    }}
-                    renderBlock={renderBlock}
-                  />
-                </div>
+                <LensStrip
+                  blocks={lensSteps}
+                  activeId={zoomedBlock.id ?? null}
+                  onPick={(id) => {
+                    const b = lensSteps.find((x) => x.id === id);
+                    if (b) openLens(b);
+                  }}
+                  renderBlock={renderBlock}
+                />
               )}
             </div>
           );
