@@ -22,8 +22,13 @@ function guarded(id: ProviderId, adapter: ProviderAdapter): ProviderAdapter {
     },
     async generate(req, cfg, onDelta) {
       assertProviderGenerationAllowed(cfg);
+      // Timed here rather than in each adapter: this facade already wraps every one of them, so
+      // one clock covers them all and none can forget. It measures the whole call — the request,
+      // the model's thinking, and the stream — which is what the reader actually waits through.
+      const started = Date.now();
       const result = await ADAPTERS[id].generate(req, cfg, onDelta);
-      recordUsage(req.usageLabel ?? 'model-call', result.usage);
+      const at = Date.now();
+      recordUsage(req.usageLabel ?? 'model-call', result.usage, at, at - started);
       return result;
     },
   };

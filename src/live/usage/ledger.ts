@@ -16,6 +16,10 @@ export interface UsageEntry {
   /** Input tokens billed at the cheap cached rate — the number that proves caching is working. */
   cachedInput: number;
   output: number;
+  /** Of `output`, the slice spent thinking before the answer began. 0 = none, or not reported. */
+  thinking: number;
+  /** Wall time for the call, first byte of the request to last of the stream. 0 = not timed. */
+  ms: number;
 }
 
 /** Mirrors ANSWER_CACHE_MAX — plenty for a long session, bounded so the ledger can't grow forever. */
@@ -56,13 +60,18 @@ function notify(): void {
   for (const fn of Array.from(listeners)) fn();
 }
 
-function count(v: number): number {
-  return Number.isFinite(v) && v > 0 ? v : 0;
+function count(v: number | undefined): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
 }
 
 /** Record one billed call. Takes the adapter's `usage` as-is — undefined (a provider that
  *  doesn't report accounting) is a silent no-op, so call sites need no guard. */
-export function recordUsage(label: string, usage: TokenUsage | undefined, at = Date.now()): void {
+export function recordUsage(
+  label: string,
+  usage: TokenUsage | undefined,
+  at = Date.now(),
+  ms = 0,
+): void {
   if (!usage) return;
   const entry: UsageEntry = {
     at,
@@ -70,6 +79,8 @@ export function recordUsage(label: string, usage: TokenUsage | undefined, at = D
     input: count(usage.input),
     cachedInput: count(usage.cachedInput),
     output: count(usage.output),
+    thinking: count(usage.thinking),
+    ms: count(ms),
   };
   const next = [...entries, entry];
   entries = next.length > USAGE_LEDGER_MAX ? next.slice(-USAGE_LEDGER_MAX) : next;

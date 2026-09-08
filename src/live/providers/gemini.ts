@@ -352,6 +352,9 @@ export const geminiAdapter: ProviderAdapter = {
                 // understated the expensive half of the reader's own bill.
                 output: num(obj(u).candidatesTokenCount) + num(obj(u).thoughtsTokenCount),
                 cachedInput: num(obj(u).cachedContentTokenCount),
+                // Named apart from the rest of `output` because it is the slice that lands on
+                // time-to-first-byte: the model emits every thought before the first answer token.
+                thinking: num(obj(u).thoughtsTokenCount),
               };
             }
           });

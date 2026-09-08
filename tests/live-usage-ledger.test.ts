@@ -29,6 +29,10 @@ describe('usage ledger', () => {
       input: 1200,
       cachedInput: 0,
       output: 800,
+      // Absent from what the provider reported: recorded as 0 rather than left undefined, so a
+      // reader of the ledger never has to guess whether a blank means "none" or "not measured".
+      thinking: 0,
+      ms: 0,
     });
     expect(entries[1].label).toBe('consistency-repair');
   });
@@ -106,5 +110,34 @@ describe('usage ledger', () => {
   it('coerces a malformed count to 0 instead of storing garbage', () => {
     recordUsage('canvas', usage(Number.NaN, -3, 100));
     expect(getUsageLedger()[0]).toMatchObject({ input: 0, output: 0, cachedInput: 100 });
+  });
+});
+
+describe('what a slow turn was made of', () => {
+  // The ledger is module state; without this the first entry read below is a leftover.
+  beforeEach(() => resetUsageLedgerForTest());
+
+  // Thinking is emitted before the first answer token, so it lands entirely on the reader's wait.
+  // Naming it apart from the rest of `output` is what lets a slow turn be attributed at all:
+  // a big answer and a big thought cost the same in tokens and feel completely different.
+  it('keeps the thinking slice and the wall time of each call', () => {
+    recordUsage(
+      'canvas',
+      { input: 900, output: 2400, cachedInput: 0, thinking: 1500 },
+      1000,
+      14200,
+    );
+    const [entry] = getUsageLedger();
+    expect(entry.thinking).toBe(1500);
+    expect(entry.ms).toBe(14200);
+    // Thinking is part of output, not on top of it — double-counting would overstate the bill.
+    expect(entry.output).toBe(2400);
+  });
+
+  it('degrades to 0 when a provider reports neither', () => {
+    recordUsage('canvas', { input: 10, output: 20, cachedInput: 0 }, 1000);
+    const [entry] = getUsageLedger();
+    expect(entry.thinking).toBe(0);
+    expect(entry.ms).toBe(0);
   });
 });

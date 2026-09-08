@@ -133,6 +133,16 @@ export interface TokenUsage {
   output: number;
   /** Input tokens served from cache (billed ~10% of normal). 0 = cold / no cache hit. */
   cachedInput: number;
+  /**
+   * Output tokens the model spent THINKING before writing a word of the answer, when the provider
+   * reports them separately. Already counted inside `output` — this names the slice.
+   *
+   * It is the one number that explains time-to-first-byte: thinking is emitted before any answer
+   * token, so a turn that asked for the cheapest tier and comes back with a thousand thought
+   * tokens has been silently upgraded somewhere, and the reader paid for it in seconds as well as
+   * in tokens. 0 or absent = the provider did not say.
+   */
+  thinking?: number;
 }
 
 /** Raw model output for one turn: a JSON string, or an already-parsed object

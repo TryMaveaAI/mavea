@@ -82,6 +82,12 @@ export function UsagePanel(): ReactElement {
               <span className="usage-call-tokens">
                 {NUM.format(entry.input)} in · {NUM.format(entry.cachedInput)} cached ·{' '}
                 {NUM.format(entry.output)} out
+                {/* What the wait was made of. Thinking is emitted before the first answer token,
+                    so a call that spent a thousand tokens thinking spent that time before
+                    anything reached the screen — the two numbers together say whether a slow
+                    turn was slow because of the answer or because of the thought. */}
+                {entry.thinking > 0 && <> · {NUM.format(entry.thinking)} thinking</>}
+                {entry.ms > 0 && <> · {(entry.ms / 1000).toFixed(1)}s</>}
               </span>
             </li>
           ))}

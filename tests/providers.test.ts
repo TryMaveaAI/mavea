@@ -635,7 +635,9 @@ describe('token usage capture — the cost signal the eval reads', () => {
     );
     const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.1-flash-lite', apiKey: 'k' };
     const { usage } = await geminiAdapter.generate(req, cfg);
-    expect(usage).toEqual({ input: 140, output: 260, cachedInput: 60 });
+    // `thinking` names the slice of `output` spent before the answer began — reported apart so a
+    // slow turn can be attributed, and counted INSIDE output so the bill is not doubled.
+    expect(usage).toEqual({ input: 140, output: 260, cachedInput: 60, thinking: 250 });
   });
 
   it('chat-completions requests usage and reads the post-finish summary frame', async () => {
