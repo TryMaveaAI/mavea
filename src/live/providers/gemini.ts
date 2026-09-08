@@ -51,13 +51,13 @@ import { thinkingReserve } from './budget';
 // direct API base (https://generativelanguage.googleapis.com) for Node eval runs.
 const PROXY_BASE = '/llm/gemini';
 const API_BASE = '/v1beta';
-const GEN_TIMEOUT_MS = 60_000;
+const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
 /** Hard ceiling on one turn's whole stream. GEN_TIMEOUT_MS only guards time-to-first-BYTE and the
  *  SSE idle timer only catches a stream that has gone silent — neither stops one that trickles
  *  forever. Matches the ceiling openaiCompatible has always had; generous, because the face shows a
  *  live thinking state throughout. */
-const STREAM_TOTAL_MS = 180_000;
+const STREAM_TOTAL_MS = 90_000;
 /** Transient statuses worth one more try: 429 is a per-minute rate limit, 503 is Google's
  *  "model overloaded". Both clear on their own; failing the turn on them makes the user do by hand
  *  exactly what this loop does. */
@@ -102,7 +102,38 @@ async function errorDetail(res: Response): Promise<string> {
  *  Learned rather than listed: the model field is free text and Google ships a new Flash roughly
  *  every quarter, so a hand-kept set of ids would rot into the same outage it was added to fix.
  *  The first rejection for a model is remembered and every later call opens at `low`. */
-const noMinimal = new Set<string>();
+/** The rejection is remembered ACROSS sessions, not just within one. It used to live only in the
+ *  Set below, so every page load spent one whole request re-learning it — and on a key already
+ *  near its quota that wasted request is exactly what tipped the next one into a 429. Measured
+ *  live on gemini-3.8-flash: 400 (MINIMAL refused), then 429, then 429, then the turn died. Same
+ *  never-throwing localStorage idiom as the small preferences; a list, because the model field is
+ *  free text and there will be more than one.
+ *
+ *  Declared ABOVE the Set that reads it at module init: a `const` referenced before its line is a
+ *  temporal-dead-zone throw, and the try/catch that keeps this from ever throwing would have
+ *  swallowed exactly that — the learning would have looked persisted and never been read back. */
+const NO_MINIMAL_KEY = 'mavea-gemini-no-minimal';
+function readNoMinimal(): string[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = JSON.parse(localStorage.getItem(NO_MINIMAL_KEY) ?? '[]') as unknown;
+    return Array.isArray(raw) ? raw.filter((m): m is string => typeof m === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function rememberNoMinimal(model: string): void {
+  noMinimal.add(model);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(NO_MINIMAL_KEY, JSON.stringify([...noMinimal]));
+    }
+  } catch {
+    /* storage unavailable — the in-session Set still holds */
+  }
+}
+
+const noMinimal = new Set<string>(readNoMinimal());
 
 /** Gemini's thinkingConfig uses uppercase level names. Omit the whole config when no
  *  level is requested, so the model's own default (Flash-Lite = MINIMAL) applies. */
@@ -308,7 +339,16 @@ export const geminiAdapter: ProviderAdapter = {
             // recentlyRateLimited() before spending, and quota contention is per-minute.
             noteRateLimited(res.status);
             if (RETRY_STATUSES.has(res.status) && tries < TRANSIENT_RETRIES && !signal.aborted) {
-              await sleepAbortable(retryAfterMs(res, tries), signal);
+              // Say so. This sleep can run to 10s per attempt, and it used to pass in silence
+              // under "Composing your answer" — which reads as the model being slow, when the
+              // model has not been asked yet.
+              const wait = retryAfterMs(res, tries);
+              req.onWait?.(wait);
+              try {
+                await sleepAbortable(wait, signal);
+              } finally {
+                req.onWait?.(null);
+              }
               continue;
             }
             const detail = await errorDetail(res);
@@ -316,7 +356,7 @@ export const geminiAdapter: ProviderAdapter = {
             // tier. Learn it and re-ask at `low` rather than failing a turn over a level nobody
             // chose — every turn asks for MINIMAL, so without this the model never works at all.
             if (rejectsMinimal(res.status, detail) && !noMinimal.has(cfg.model)) {
-              noMinimal.add(cfg.model);
+              rememberNoMinimal(cfg.model);
               requestInit.body = buildBody();
               continue;
             }

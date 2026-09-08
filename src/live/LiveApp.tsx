@@ -45,6 +45,7 @@ import {
   type ViewMode,
 } from '../canvas/focus/useFocusMode';
 import { deskFirst, markDeskFirst } from './study/deskHabit';
+import { recentlyRateLimited } from './providers/http';
 import { answerSignature } from '../data/conversation';
 import type { StudyAside } from '../canvas/study/types';
 import { deskObjects } from '../canvas/study/scene';
@@ -1934,6 +1935,11 @@ export function LiveApp(): ReactElement {
     if (viewMode !== 'study' && !studyOpenedRef.current) return;
     if (tourMode.current || demoPersona.current || !hasModelConfigured(cfg)) return;
     if (!studySpec || !studySpecId) return;
+    // Speculative work checks the guard before spending, like every other prefetch. This is a
+    // second request behind every settled answer, and on a key that has just answered 429 it
+    // was the request that kept it there. The desk loses nothing: it derives its notes locally
+    // until a later answer buys them.
+    if (recentlyRateLimited()) return;
     // Never buy notes for an answer still streaming: every partial would be its own "answer"
     // (the signature grows per block) and each would bill a full annotate call — measured as
     // one paid generation per streamed block. The settled answer buys once.
@@ -6660,7 +6666,7 @@ export function LiveApp(): ReactElement {
                   {/* The unmistakable "still streaming" cue: keyed straight to busy (no mount
                       delay), so a partial canvas never reads as finished. Says "Thinking…" while a
                       reasoning model is still reasoning, so a long pre-answer phase never looks stuck. */}
-                  <ComposingStatus thinking={turn.reasoning} />
+                  <ComposingStatus thinking={turn.reasoning} activity={turn.activity} />
                 </div>
               )}
               {viewingLive && !turn.busy && (

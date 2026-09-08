@@ -47,6 +47,13 @@ export interface LiveRequestTools {
 
 /** Everything an adapter needs to produce one Live turn. */
 export interface LiveRequest {
+  /**
+   * Called by an adapter before it sleeps out a rate-limit backoff, with the wait in ms, and again
+   * with null when the wait ends. Optional: an adapter that never retries never calls it. Exists so
+   * the surface can say "rate-limited, retrying" instead of letting a ten-second sleep pass under
+   * "composing" — the reader cannot tell a slow model from a request that was never sent.
+   */
+  onWait?: (ms: number | null) => void;
   /** Human-readable ledger attribution for this billed call. Provider facades record it centrally. */
   usageLabel?: string;
   /** System prompt (LIVE_SYSTEM_PROMPT, possibly tier-tuned). Providers cache this. */

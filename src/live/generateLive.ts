@@ -149,7 +149,7 @@ export interface LiveCaps {
 
 /** A coarse, user-visible activity so the surface can show what's happening and make
  *  any billable action obvious: 'searching' the web, then null when idle. */
-export type LiveActivity = 'searching' | null;
+export type LiveActivity = 'searching' | 'rate-limited' | null;
 
 export interface GenerateLiveOpts {
   repair?: boolean;
@@ -1598,6 +1598,8 @@ export async function generateLive(
   // system into a cached first block + uncached per-turn suffix (see anthropic.ts).
   const baseReq: Omit<LiveRequest, 'user'> = {
     usageLabel: 'canvas',
+    // A backoff is the one wait the reader should be told about by name: it is not the model.
+    onWait: (ms) => opts.onActivity?.(ms == null ? null : 'rate-limited'),
     system,
     systemBase: turnSystem.systemBase,
     systemStable: turnSystem.systemStable,

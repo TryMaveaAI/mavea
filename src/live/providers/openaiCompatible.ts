@@ -21,14 +21,14 @@ import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, arr, num } fr
 import { openaiUserContent, textOnlyUser } from './parts';
 import { isFreeRoute } from './route';
 
-const GEN_TIMEOUT_MS = 60_000;
+const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
 /** Hard ceiling on a single turn's whole stream (headers + body). GEN_TIMEOUT_MS only guards
  *  time-to-first-byte and the SSE idle timer only catches a DEAD stream — but a reasoning model
  *  (e.g. a stealth OpenRouter model) can trickle "thinking" tokens that keep resetting the idle
  *  timer indefinitely. This cap aborts so the turn always finalizes recoverably instead of
  *  spinning forever. Generous, because the UI shows a live "Thinking…" state meanwhile. */
-const STREAM_TOTAL_MS = 180_000;
+const STREAM_TOTAL_MS = 90_000;
 /** The same ceiling for a free gateway route, which is queued behind every other free user and
  *  streams a fraction as fast. 180s cut real answers off mid-canvas there — and since the turn
  *  keeps whatever streamed (generateLive salvages the parsed blocks rather than discarding them),

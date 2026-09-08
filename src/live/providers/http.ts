@@ -96,7 +96,7 @@ export function looksLikeBadKey(text: string | undefined): boolean {
  *  and then goes quiet — without closing the connection — would otherwise hang the read loop (and
  *  the turn) forever on "Composing your answer…". Healthy streams emit tokens/keep-alives every
  *  few seconds, so a 30s gap with zero bytes is a genuine stall, not a slow-but-live generation. */
-export const STREAM_IDLE_MS = 30_000;
+export const STREAM_IDLE_MS = 15_000;
 
 /** Max silence before the FIRST chunk, which is a different wait from the gaps that follow.
  *  Once a stream is flowing, 30s of nothing means it died. But the first frame is preceded by the
@@ -105,7 +105,7 @@ export const STREAM_IDLE_MS = 30_000;
  *  frame of the turn. Holding it to the mid-stream budget turned an ordinary cold start into
  *  "stream stalled", which carries no status and so surfaced as "couldn't reach the provider" —
  *  and the retry the user then typed by hand succeeded, because by then the prefix was cached. */
-export const STREAM_FIRST_CHUNK_MS = 75_000;
+export const STREAM_FIRST_CHUNK_MS = 25_000;
 
 /** Thrown when a stream goes quiet past its budget. Named so a caller can tell a stall — which is
  *  worth one retry when nothing arrived — from a real provider error, which is not. */

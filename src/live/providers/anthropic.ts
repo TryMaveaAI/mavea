@@ -31,12 +31,12 @@ const PROXY_BASE = '/llm/anthropic';
 const MESSAGES = '/v1/messages';
 const MODELS = '/v1/models';
 const VERSION = '2023-06-01';
-const GEN_TIMEOUT_MS = 60_000;
+const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
 /** Hard ceiling on one turn's whole stream. GEN_TIMEOUT_MS only guards time-to-first-BYTE and the
  *  SSE idle timer only catches a stream that has gone silent — neither stops one that trickles
  *  thinking deltas forever. Matches the ceiling openaiCompatible has always had. */
-const STREAM_TOTAL_MS = 180_000;
+const STREAM_TOTAL_MS = 90_000;
 
 function headers(cfg: ModelConfig): Record<string, string> {
   return {

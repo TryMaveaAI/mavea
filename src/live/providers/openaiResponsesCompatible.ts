@@ -45,7 +45,7 @@ import {
 } from './openaiCompatible';
 import { liveJsonSchema } from './schema';
 
-const GEN_TIMEOUT_MS = 60_000;
+const GEN_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 4_000;
 
 /** How many times to retry a transient 429 (rate limit) before surfacing it. */
