@@ -1252,8 +1252,14 @@ export function TopicCanvas({
                     </button>
                   </div>
                 </div>
-                <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
-                  {renderBlock(zoomedBlock)}
+                {/* The ONE thing that scrolls and scales. The toolbar above and the notes below sit
+                    outside it, so magnifying the card can never move, shrink or scroll the
+                    controls — a sticky toolbar inside the scroller was sized to the sheet and, once
+                    the zoomed card overflowed, its right end (and the close button) went with it. */}
+                <div className="zoom-sheet-scroll">
+                  <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
+                    {renderBlock(zoomedBlock)}
+                  </div>
                 </div>
                 {lensNotes.length > 0 && (
                   <aside

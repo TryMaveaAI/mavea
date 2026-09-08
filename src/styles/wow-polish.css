@@ -551,10 +551,11 @@
    flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding
    with and nothing to reserve space against. */
 .lens-notes {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 20px;
+  margin: 20px 32px 32px;
   padding: 14px 18px 16px;
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -787,36 +788,26 @@
 }
 .zoom-sheet {
   position: relative;
-  /* One source for the sheet's width, because .zoom-sheet-body has to state the SAME length in its
-     own box (see there) and the two drifting apart is the whole bug.
-
-     92vw is the real size — it tracks the screen — and 1120 is where it stops. The cap moved down
-     from 1440 when this became the Lens: the sheet used to exist only to magnify a diagram, so
-     the widest thing that fitted was the right answer. It now opens ANY card, and most cards are
-     prose — at 1440 a two-line insight was set across a ~1370px measure, which is unreadable in a
-     different way. A reader who wants a diagram bigger than this still has zoom, which magnifies
-     past the sheet and pans.
-
-     The ceiling is not timidity, it is measured. A block inside this sheet fills the width it is
-     given (`width: fit-content` on the sheet resolves straight back to the maximum — tried, on
-     three different block types, all three unchanged), so the sheet's width IS the line length. At
-     2560×1440 an uncapped version came out 2304px wide holding one sentence: a ~2300px measure with
-     the close button at the far edge. Growing past roughly this point stops helping the diagrams and
-     starts hurting everything else, and the reader who wants more still has zoom, which now
-     enlarges the drawing itself and pans. */
   width: var(--zoom-sheet-w);
-  /* Leaves room for the strip below without either of them scrolling the page. */
+  /* A column: toolbar, the scroll box, the notes. Only the middle scrolls — the sheet itself is
+     clipped, never scrolled, so the toolbar and the notes are fixed whatever the card does. */
+  display: flex;
+  flex-direction: column;
   max-height: 72vh;
-  overflow: auto;
-  /* No padding at the top: the toolbar band IS the top of the sheet. It is sticky, and a sticky
-     box paints at the scrollport's edge no matter what its top margin claims — so a negative
-     margin pulling it into the padding only desynced where it painted from where the layout
-     thought it was, and it covered the first 20px of the card underneath. */
-  padding: 0 32px 32px;
+  overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-modal);
+}
+/* Where the magnified card lives: the only scroll container on the stage. `min-height: 0` lets it
+   shrink inside the flex column so the notes below keep their place instead of pushing the sheet
+   past its ceiling. */
+.zoom-sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 32px;
 }
 /* The close + zoom controls sit in their own sticky row so they stay reachable while a scaled-up
    block is scrolled/panned, instead of being absolutely positioned over content that can scroll
@@ -825,19 +816,14 @@
    with the horizontal pan — the controls drifted inward and the band behind them stopped covering
    the width it sits over, which is the same defect this row was introduced to fix. */
 .zoom-sheet-toolbar {
-  position: sticky;
-  top: 0;
-  left: 0;
-  width: var(--zoom-sheet-w);
-  z-index: 1;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 -32px 16px;
+  margin: 0 0 16px;
   padding: 14px 12px 14px 32px;
   background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
-  backdrop-filter: var(--glass-blur, blur(4px));
   border-bottom: 1px solid var(--line);
 }
 .zoom-sheet-tools {

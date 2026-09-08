@@ -222,6 +222,23 @@ describe('reaching the rest of the answer', () => {
   });
 });
 
+describe('magnifying the card leaves the controls alone', () => {
+  it('scrolls and scales only the card; the toolbar and the notes sit outside that box', () => {
+    const notes = [{ text: 'a note', kind: 'insight' as const }];
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    const scroll = container.querySelector('.zoom-sheet-scroll')!;
+    expect(scroll.contains(container.querySelector('.zoom-sheet-body'))).toBe(true);
+    expect(scroll.contains(container.querySelector('.zoom-sheet-toolbar'))).toBe(false);
+    expect(scroll.contains(container.querySelector('.lens-notes'))).toBe(false);
+    // And the zoom is applied to the body alone.
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const body = container.querySelector('.zoom-sheet-body') as HTMLElement;
+    expect(body.style.zoom).not.toBe('');
+    expect((container.querySelector('.zoom-sheet-toolbar') as HTMLElement).style.zoom).toBe('');
+  });
+});
+
 describe('Mavéa\u2019s notes follow the Lens', () => {
   const notes = [
     { text: 'assumes April fares hold', kind: 'caution' as const },

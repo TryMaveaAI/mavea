@@ -508,18 +508,20 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     // The strip is the third consumer, and the one that would be visibly wrong if it drifted.
     const strip = /\.lens-strip\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(strip).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
-    // The pan the magnified block now needs.
-    expect(sheet).toMatch(/overflow:\s*auto/);
+    // The pan the magnified block needs lives in its own box, not on the sheet: the sheet is a
+    // clipped column so the toolbar above and the notes below never scroll with the card.
+    const scroll = /\.zoom-sheet-scroll\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(scroll).toMatch(/overflow:\s*auto/);
+    expect(sheet).toMatch(/overflow:\s*hidden/);
   });
 
-  it('keeps the controls pinned while a magnified block is panned sideways', () => {
-    // Sticky on the top axis alone rode away with the horizontal scroll once the content could
-    // actually be wider than the sheet.
+  it('keeps the controls out of the scroller altogether', () => {
+    // They used to be pinned INSIDE it with position: sticky, sized to the sheet — and once the
+    // zoomed card overflowed, the toolbar's right end and its close button went with the
+    // overflow. Outside the scroll box there is nothing to pin against.
     const bar = /\.zoom-sheet-toolbar\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(bar).toMatch(/position:\s*sticky/);
-    expect(bar).toMatch(/top:\s*0/);
-    expect(bar).toMatch(/left:\s*0/);
-    expect(bar).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
+    expect(bar).not.toMatch(/position:\s*sticky/);
+    expect(bar).toMatch(/flex:\s*none/);
   });
 });
 
