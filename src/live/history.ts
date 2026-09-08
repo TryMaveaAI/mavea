@@ -21,7 +21,7 @@ import { fnv1a } from '../lib/hash';
 import type { ChatMessage } from './providers/types';
 import type { ConversationSpec } from '../data/conversation';
 import type { CorrectsNote, TourMark } from '../engine/liveSchema';
-import type { Mode } from './lifecycle';
+import type { Mode, MergeDelta } from './lifecycle';
 import type { MindShapeSpec } from './mindshape/types';
 
 /** How many of the most recent turns to keep verbatim in the resent history. One "turn" is
@@ -69,6 +69,11 @@ export interface TurnFrame {
   spec: ConversationSpec;
   /** When the turn settled (ms epoch). Stamped by the caller (no clock in here). */
   at: number;
+  /** What this turn did to the canvas, slot by slot: which cards it edited and which it added.
+   *  Scoped to THIS frame's `spec.blocks` — block ids are positional and reused across turns, so
+   *  it means nothing anywhere else. Absent on frames settled before it existed (and on turns
+   *  that changed nothing), so every reader must tolerate that rather than assume. */
+  revision?: MergeDelta;
   /** Set when this turn declared it corrects an earlier answer — the rail/recap mark the
    *  earlier moment CORRECTED instead of letting history silently disagree with itself. */
   corrects?: CorrectsNote;

@@ -111,6 +111,57 @@ describe('settleTurn', () => {
     expect(settled.frame.spec.blocks).toHaveLength(2);
     // Overflow is a crowding fallback, not a change of subject.
     expect(settled.frame.topicShift).toBe(false);
+    // The delta must come from the merge that actually produced this canvas — the SECOND one.
+    // The first merge appended two cards; reporting those would tell the board about additions
+    // it never rendered.
+    expect(settled.delta).toEqual({ changedIds: [], addedIds: [], unchangedCount: 0 });
+    expect(settled.frame.revision).toBeUndefined();
+  });
+
+  describe('what the turn says it did to the canvas', () => {
+    const priorBlocks = [
+      { ...blk('insight', 'Budget'), id: 'live-1' },
+      { ...blk('barchart', 'Spend'), id: 'live-2' },
+    ];
+
+    it('carries an augment’s additions onto the frame', () => {
+      const r = result([blk('table', 'Flights')], { continuity: 'augment' });
+      const settled = settleTurn(
+        prior('tokyo budget breakdown for the trip'),
+        priorBlocks,
+        'tokyo budget breakdown — and the flights',
+        r,
+      );
+      expect(settled.mode).toBe('augment');
+      expect(settled.delta.addedIds).toEqual(['live-3']);
+      expect(settled.frame.revision?.addedIds).toEqual(['live-3']);
+      // Every id it names has to exist on the canvas the frame carries.
+      const ids = settled.frame.spec.blocks.map((b) => b.id);
+      expect(ids).toContain('live-3');
+    });
+
+    it('carries a refine’s edits onto the frame', () => {
+      const edited = { ...blk('insight', 'Budget'), props: { title: 'Budget', total: 2020 } };
+      const r = result([edited as Block], { continuity: 'refine' });
+      const settled = settleTurn(
+        prior('tokyo budget breakdown for the trip'),
+        priorBlocks,
+        'tokyo budget breakdown, make it $2,000',
+        r,
+      );
+      expect(settled.mode).toBe('refine');
+      expect(settled.delta.changedIds).toEqual(['live-1']);
+      expect(settled.frame.revision?.changedIds).toEqual(['live-1']);
+      expect(settled.delta.unchangedCount).toBe(1);
+    });
+
+    // Frames baked before this existed carry no `revision`, and so do turns that changed
+    // nothing — every reader has to tolerate its absence rather than assume it.
+    it('leaves the frame unmarked when a turn changed nothing', () => {
+      const settled = settleTurn(null, [], 'first ask', result([blk('stat', 'Total')]));
+      expect(settled.frame.revision).toBeUndefined();
+      expect(settled.delta.changedIds).toEqual([]);
+    });
   });
 
   it('drops a bend on non-replace turns (its block id belongs to the unmerged canvas)', () => {

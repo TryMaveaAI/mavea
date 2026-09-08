@@ -10,6 +10,7 @@ import {
   topicCohesion,
   SAME_SUBJECT_FLOOR,
   type Mode,
+  type MergeDelta,
   type TurnSnapshot,
 } from './lifecycle';
 import { remapTour } from './tourRemap';
@@ -26,6 +27,8 @@ export interface SettledTurn {
    *  block on a follow-up — never a prior block the user has already seen. */
   spot: string | null;
   snap: TurnSnapshot;
+  /** What this turn did to the canvas, slot by slot — scoped to `frame.spec.blocks` alone. */
+  delta: MergeDelta;
 }
 
 /**
@@ -93,6 +96,13 @@ export function settleTurn(
     // A declared correction rides with the frame so the rail/recap can mark the
     // earlier moment it corrects (self-healing history, never a silent rewrite).
     ...(result.corrects ? { corrects: result.corrects } : {}),
+    // Optional: frames baked before this existed carry none, and every reader of it must
+    // tolerate that rather than assume — a replay of an older shard must not throw.
+    ...(merge.delta.changedIds.length || merge.delta.addedIds.length
+      ? { revision: merge.delta }
+      : {}),
   };
-  return { frame, mode, spot, snap };
+  // The delta of the merge that actually produced the canvas — on an overflow fallback that is
+  // the SECOND merge, not the first, or the board would be told about edits it never rendered.
+  return { frame, mode, spot, snap, delta: merge.delta };
 }

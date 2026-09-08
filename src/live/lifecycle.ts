@@ -290,6 +290,38 @@ export function diffBlocks(prior: Block[], next: Block[]): BlockDiff {
 /** Past this many blocks, an augment is too crowded — the caller should REPLACE instead. */
 export const AUGMENT_CAP = 16;
 
+/**
+ * What a merge did to each slot of the canvas it produced.
+ *
+ * Ids here are POSITIONAL and are reused across turns (`renumber` hands slot 3 the id `live-3`
+ * whatever now sits there), so this describes ONLY the block list it is returned beside. Never
+ * store it, never carry it to another answer, and never apply it to a canvas whose shape has
+ * moved on — `live-3` in one turn is a different object from `live-3` in the next.
+ */
+export interface MergeDelta {
+  /** Ids whose slot held DIFFERENT content before this merge — a refine overwrote it in place. */
+  changedIds: readonly string[];
+  /** Ids that were not on the prior canvas: appended by an augment or a refine. */
+  addedIds: readonly string[];
+  /** Prior blocks that came through untouched — the "and the rest held still" half of the story. */
+  unchangedCount: number;
+}
+
+const NO_DELTA: MergeDelta = { changedIds: [], addedIds: [], unchangedCount: 0 };
+
+/**
+ * Did this turn actually change the block already in that slot?
+ *
+ * Compares PROPS, not signatures. `blockSignature` is `type:headline`, so a slot can match and
+ * carry byte-identical content — counting that as an edit would report "6 edits" on a turn that
+ * moved one number, which is worse than saying nothing. Both objects come out of the same
+ * validator, so their key order is stable enough for this to mean what it says.
+ */
+function contentDiffers(before: Block | undefined, after: Block): boolean {
+  if (!before) return true;
+  return JSON.stringify(before.props) !== JSON.stringify(after.props);
+}
+
 export interface MergeResult {
   /** The merged blocks, re-numbered live-1.. */
   blocks: Block[];
@@ -297,6 +329,8 @@ export interface MergeResult {
   firstNewId: string | null;
   /** True when the merge grew past AUGMENT_CAP — the caller should fall back to REPLACE. */
   overflow: boolean;
+  /** What this merge did, slot by slot — read off `blocks`, so it cannot disagree with them. */
+  delta: MergeDelta;
 }
 
 function renumber(blocks: Block[]): Block[] {
@@ -320,7 +354,9 @@ function renumber(blocks: Block[]): Block[] {
 export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeResult {
   if (mode === 'replace' || prior.length === 0) {
     const blocks = renumber(next);
-    return { blocks, firstNewId: blocks[0]?.id ?? null, overflow: false };
+    // A replace is a turn-level statement ("this is a different subject"), not a per-card one:
+    // every card is new, so marking them all would be noise on a board with nothing to compare to.
+    return { blocks, firstNewId: blocks[0]?.id ?? null, overflow: false, delta: NO_DELTA };
   }
 
   if (mode === 'refine') {
@@ -328,14 +364,27 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
     prior.forEach((b, i) => slotBySig.set(blockSignature(b), i));
     const merged = [...prior];
     const appended: Block[] = [];
+    const changedSlots: number[] = [];
     for (const nb of next) {
       const slot = slotBySig.get(blockSignature(nb));
-      if (slot !== undefined) merged[slot] = nb;
-      else appended.push(nb);
+      if (slot !== undefined) {
+        // Compare before overwriting — afterwards there is nothing left to compare against.
+        if (contentDiffers(merged[slot], nb)) changedSlots.push(slot);
+        merged[slot] = nb;
+      } else appended.push(nb);
     }
     const blocks = renumber([...merged, ...appended]);
     const firstNewId = appended.length ? (blocks[merged.length]?.id ?? null) : null;
-    return { blocks, firstNewId, overflow: blocks.length > AUGMENT_CAP };
+    // Read the ids off the RENUMBERED array by index, so the delta cannot drift from the blocks
+    // it ships beside — it is the same list, addressed the same way.
+    const delta: MergeDelta = {
+      changedIds: changedSlots.map((i) => blocks[i]?.id).filter((id): id is string => !!id),
+      addedIds: appended
+        .map((_, k) => blocks[merged.length + k]?.id)
+        .filter((id): id is string => !!id),
+      unchangedCount: Math.max(0, prior.length - changedSlots.length),
+    };
+    return { blocks, firstNewId, overflow: blocks.length > AUGMENT_CAP, delta };
   }
 
   // augment
@@ -343,5 +392,11 @@ export function mergeForMode(prior: Block[], next: Block[], mode: Mode): MergeRe
   const fresh = next.filter((b) => !seen.has(blockSignature(b)));
   const blocks = renumber([...prior, ...fresh]);
   const firstNewId = fresh.length ? (blocks[prior.length]?.id ?? null) : null;
-  return { blocks, firstNewId, overflow: blocks.length > AUGMENT_CAP };
+  // An augment never touches what is already there — that is its whole promise.
+  const delta: MergeDelta = {
+    changedIds: [],
+    addedIds: fresh.map((_, k) => blocks[prior.length + k]?.id).filter((id): id is string => !!id),
+    unchangedCount: prior.length,
+  };
+  return { blocks, firstNewId, overflow: blocks.length > AUGMENT_CAP, delta };
 }

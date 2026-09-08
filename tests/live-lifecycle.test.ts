@@ -172,6 +172,48 @@ describe('mergeForMode', () => {
     expect(r.firstNewId).toBe('live-3');
   });
 
+  describe('the delta it reports', () => {
+    // Ids are POSITIONAL and reused across turns, so the only safe way to name what moved is to
+    // read the ids off the array the merge actually returned. These lock that they agree.
+    const idsExist = (ids: readonly string[], blocks: { id?: string }[]) =>
+      ids.every((id) => blocks.some((b) => b.id === id));
+
+    it('says nothing per-card on a replace — the whole canvas is new', () => {
+      const r = mergeForMode(prior, next, 'replace');
+      expect(r.delta).toEqual({ changedIds: [], addedIds: [], unchangedCount: 0 });
+    });
+
+    it('reports what an augment appended, and that it touched nothing else', () => {
+      const r = mergeForMode(prior, next, 'augment');
+      expect(r.delta.addedIds).toEqual(['live-3']);
+      expect(r.delta.changedIds).toEqual([]);
+      expect(r.delta.unchangedCount).toBe(2);
+      expect(idsExist(r.delta.addedIds, r.blocks)).toBe(true);
+    });
+
+    it('reports a refined slot as CHANGED and a fresh block as ADDED', () => {
+      const edited = [
+        { ...blk('insight', 'A'), props: { title: 'A', total: 2020 } } as Block,
+        blk('kpi', 'C'),
+      ];
+      const r = mergeForMode(prior, edited, 'refine');
+      expect(r.delta.changedIds).toEqual(['live-1']);
+      expect(r.delta.addedIds).toEqual(['live-3']);
+      expect(r.delta.unchangedCount).toBe(1);
+      expect(idsExist([...r.delta.changedIds, ...r.delta.addedIds], r.blocks)).toBe(true);
+    });
+
+    // The signature is `type:headline`, so a slot can match while carrying identical content.
+    // Counting that as an edit would report "1 edit" on a turn that changed nothing — and the
+    // whole point of the pill is that the reader can believe it.
+    it('does not call a byte-identical re-send an edit', () => {
+      const r = mergeForMode(prior, [blk('insight', 'A')], 'refine');
+      expect(r.delta.changedIds).toEqual([]);
+      expect(r.delta.addedIds).toEqual([]);
+      expect(r.delta.unchangedCount).toBe(2);
+    });
+  });
+
   it('treats the first turn (empty prior) as a replace regardless of mode', () => {
     const r = mergeForMode([], next, 'augment');
     expect(r.blocks.map((b) => b.type)).toEqual(['insight', 'kpi']);
