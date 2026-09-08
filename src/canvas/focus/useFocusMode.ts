@@ -14,8 +14,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 /** The storage key, exported so the desk-habit flag can read the value this one used to hold. */
 export const VIEW_MODE_KEY = 'mavea-view-mode';
-/** Broadcast on every write so live views re-read (same key, so it's self-describing). */
-export const VIEW_MODE_EVENT = VIEW_MODE_KEY;
+/** Broadcast on every write so live views re-read. Named apart from the key it reports on: the
+ *  two were the same string until the key had to be exported too, and one value under two
+ *  exported names is a thing a reader has to check rather than read. */
+export const VIEW_MODE_EVENT = 'mavea-view-mode:changed';
 
 export type ViewMode = 'board' | 'study' | 'focus' | 'canvas' | 'world';
 
