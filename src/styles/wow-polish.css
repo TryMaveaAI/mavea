@@ -442,6 +442,82 @@
   border-color: var(--insight);
 }
 
+/* ── What the last turn did ───────────────────────────────────────────────────
+   A card the turn EDITED wears an inset rule down its left edge, not a background wash: a whole
+   card tinted amber is an ERROR state in every interface the reader has met, and this is a margin
+   mark. --warning is the system's attention colour (there is no red token at all, which is what
+   keeps it reading as attention rather than alarm); --insight, the findings colour, marks what is
+   new. Two signals, two tokens — collapsing them onto one would say less than saying nothing.
+
+   The bar is drawn on the CELL, not as an inset shadow on the card. The spotlight sets the card's
+   whole box-shadow at the same specificity, so an inset rule there simply vanished on whichever
+   card the walk happened to be lighting — which is very often the card the turn just edited. */
+.card-grid > div[data-rev]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: var(--r-full);
+  z-index: 3;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--warning) 70%, transparent);
+}
+.card-grid > div[data-rev='add']::before {
+  background: color-mix(in oklab, var(--insight) 65%, transparent);
+}
+.rev-chip {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  z-index: 4;
+  padding: 2px 8px 2px 14px;
+  border-radius: 0 var(--r-full) var(--r-full) 0;
+  font-family: var(--font-data);
+  font-size: calc(11px * var(--fs-scale, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 14%, var(--surface-elevated));
+  border: 1px solid color-mix(in oklab, var(--warning) 30%, transparent);
+  border-left: 0;
+  pointer-events: none;
+}
+.rev-chip.is-add {
+  color: var(--insight);
+  background: color-mix(in oklab, var(--insight) 14%, var(--surface-elevated));
+  border-color: color-mix(in oklab, var(--insight) 30%, transparent);
+}
+/* One line for the whole turn, beside the answer's title. tabular-nums so the count does not
+   jitter as it changes. */
+.rev-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in oklab, var(--warning) 40%, var(--line));
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+  font-size: calc(11.5px * var(--fs-scale, 1));
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--m-fast),
+    color var(--m-fast);
+}
+.rev-pill:hover:not(:disabled) {
+  border-color: var(--warning);
+  color: var(--text-primary);
+}
+.rev-pill:disabled {
+  cursor: default;
+}
+
 /* ── The Lens: Mavéa's notes, on the stage beside the card ────────────────────
    The stage is the zoom sheet: one card, centred, over a blurred board. These sit under it, in
    flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding

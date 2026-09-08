@@ -5,6 +5,7 @@
 // blocks are still arriving. When the spec resolves, the canvas reveals.
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type { Block, ConversationSpec, WebSource, FillValue } from '../data/conversation';
+import { answerSignature } from '../data/conversation';
 import { blockLabel } from '../canvas/blockLabel';
 import { preloadBlockFamilies } from '../canvas/blocks/loader';
 import { usableBlock } from '../canvas/lib/empty';
@@ -83,6 +84,16 @@ export interface LiveTurnState {
   activity: LiveActivity;
   /** The block id currently spotlit (null = the whole canvas, at rest). */
   spot: string | null;
+  /**
+   * What the last turn did to the canvas now on screen — which cards it edited, which it added.
+   *
+   * Scoped by `sig`, the canvas's own answerSignature, and that scope is the whole safety
+   * mechanism: block ids are POSITIONAL and reused, so `live-3` in one turn is a different object
+   * from `live-3` in the next. A reader must apply these ONLY to a canvas whose signature still
+   * matches, or the board marks an unrelated card as edited — a lie about the content, which is
+   * worse than no chrome at all.
+   */
+  revision: { sig: string; changedIds: readonly string[]; addedIds: readonly string[] } | null;
   /** What this turn did to the canvas: clear-and-rebuild, add to it, or update it. */
   mode: Mode;
   /** Bumped ONLY on replace, so the canvas remounts for a fresh set but reconciles
@@ -345,6 +356,7 @@ export const INITIAL: LiveTurnState = {
   busy: false,
   activity: null,
   spot: null,
+  revision: null,
   mode: 'replace',
   replaceEpoch: 0,
   answerEpoch: 0,
@@ -444,6 +456,7 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         understood: [],
         activity: null,
         spot: null,
+        revision: null,
         viewIndex: null,
         viewOverride: null,
         error: null,
@@ -516,6 +529,8 @@ export function reducer(s: LiveTurnState, a: Action): LiveTurnState {
         // The surface already chose where to open the spotlight (lead block, or the
         // first newly-added block on an augment).
         spot: a.spot,
+        // Stamped with the canvas it describes, so it can never be applied to another one.
+        revision: a.frame.revision ? { sig: answerSignature(a.spec), ...a.frame.revision } : null,
         // The fresh canvas is the live head — clear any scrubber jump or composed-thread view.
         viewIndex: null,
         viewOverride: null,

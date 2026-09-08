@@ -371,6 +371,10 @@ interface Props {
    *  block when the stage opens and with null when it closes, so the surface can prepare that
    *  one card's notes. Absent (the Demo, the gallery, clips) → no gesture, no affordance. */
   onLens?: (b: Block | null) => void;
+  /** Live-only: what the last turn did to THIS canvas — which cards it edited, which it added,
+   *  stamped with the canvas's own signature. Applied only when that signature still matches, so
+   *  a delta can never paint on an answer it did not describe. */
+  revision?: { sig: string; changedIds: readonly string[]; addedIds: readonly string[] } | null;
   /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
   presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
@@ -410,6 +414,7 @@ export function TopicCanvas({
   viewSlot,
   belowHeaderSlot,
   onLens,
+  revision,
   presenting,
   blankFill,
 }: Props) {
@@ -635,6 +640,11 @@ export function TopicCanvas({
   // deeper" drawer to open — otherwise it's a no-op that confuses. Show it only then.
   const hasDeeper = sections.some((s) => s.deeper.length > 0);
 
+  // A delta only means anything on the canvas it was measured against — block ids are positional
+  // and reused, so `live-3` here is a different object from `live-3` a turn ago. The signature is
+  // the guard, and it is the bug class this codebase has already lost four separate effects to.
+  const revOps = revision && revision.sig === answerSig ? revision : null;
+
   // Where a press started, so a click can prove it began on the card it ended on. A drag released
   // past the card's edge, and a click whose target unmounted mid-gesture (the browser retargets to
   // the nearest survivor), both read as "I clicked a thing and it did something else".
@@ -701,6 +711,14 @@ export function TopicCanvas({
     // A real answer card can be dragged into a card-kind hole (never the holes card itself).
     const draggable = canDragCards && isCard && b.type !== 'blanks';
     const lensable = isCard && !!onLens;
+    const revKind =
+      revOps && b.id
+        ? revOps.changedIds.includes(b.id)
+          ? 'edit'
+          : revOps.addedIds.includes(b.id)
+            ? 'add'
+            : null
+        : null;
     return (
       // The cell takes a pointer gesture but is NOT given a role or a tab stop: it holds buttons
       // and links, so calling it a button would be an ARIA lie, and 16 new tab stops in front of
@@ -720,12 +738,24 @@ export function TopicCanvas({
           (picked ? ' picked' : '') +
           (lensable ? ' lensable' : '')
         }
-        key={b.id || i}
+        // An EDITED card is remounted, by keying it on the revision as well as its slot. A refine
+        // swaps props under the same id, so the component instance survives — and 252 of the
+        // extended components hold their own state, so a card edited from five rows to three can
+        // be left pointing at row four. Remounting discards that uniformly, and gives the edit
+        // the entrance it otherwise never gets. Unchanged cards keep their plain id, so the rest
+        // of the board does not churn.
+        key={revKind === 'edit' && b.id ? `${b.id}:${revOps!.sig}` : b.id || i}
         data-spot-id={b.id}
         data-kind={b.type}
+        data-rev={revKind ?? undefined}
         onPointerDown={lensable ? lensPointerDown(b) : undefined}
         onClick={lensable ? lensClick(b) : undefined}
       >
+        {revKind && (
+          <aside className={'rev-chip is-' + revKind}>
+            {revKind === 'edit' ? 'Edited' : 'New'}
+          </aside>
+        )}
         <BlockBoundary fallback={<FallbackCard block={b} />}>{renderBlock(b)}</BlockBoundary>
         {bend && bend.blockId === b.id && <BendStrip bend={bend} />}
         {(askable || addable || flashcardable || draggable || lensable) && (
@@ -824,6 +854,28 @@ export function TopicCanvas({
           <div className="canvas-sub">{data.sub}</div>
         </div>
         <div className="canvas-header-actions">
+          {revOps && (revOps.changedIds.length > 0 || revOps.addedIds.length > 0) && (
+            <button
+              type="button"
+              className="rev-pill"
+              // Dead text naming something you cannot reach is worse than no text: this takes
+              // you to the first card the turn touched.
+              title="Show me what changed"
+              onClick={() => {
+                const id = revOps.changedIds[0] ?? revOps.addedIds[0];
+                const block = displayBlocks.find((x) => x.id === id);
+                if (block && onLens) openLens(block);
+              }}
+              disabled={!onLens}
+            >
+              {[
+                revOps.changedIds.length > 0 && `${revOps.changedIds.length} edited`,
+                revOps.addedIds.length > 0 && `${revOps.addedIds.length} new`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </button>
+          )}
           {headerSlot}
           {canvasView ? (
             <button

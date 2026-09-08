@@ -6529,6 +6529,9 @@ export function LiveApp(): ReactElement {
                       ? openLens
                       : undefined
                   }
+                  // Only on the live head: a scrubbed-back frame is a different canvas, and the
+                  // signature gate would refuse it anyway — this just says so out loud.
+                  revision={viewingLive ? turn.revision : null}
                   presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and
