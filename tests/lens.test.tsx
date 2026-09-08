@@ -41,6 +41,9 @@ function spec(blocks: Block[], id = 't'): ConversationSpec {
 
 const two = () => [insight('a', 'Alpha'), insight('b', 'Beta')];
 
+const cellOf = (root: HTMLElement, id: string) =>
+  root.querySelector(`[data-spot-id="${id}"]`) as HTMLElement;
+
 function mount(over: Partial<Parameters<typeof TopicCanvas>[0]> = {}) {
   const onLens = vi.fn();
   const utils = render(
@@ -137,6 +140,42 @@ describe('clicks the Lens must not take', () => {
     cleanClick(cell('a'));
     expect(onLens).not.toHaveBeenCalled();
     vi.restoreAllMocks();
+  });
+});
+
+describe('Mavéa\u2019s notes follow the Lens', () => {
+  const notes = [
+    { text: 'assumes April fares hold', kind: 'caution' as const },
+    { text: 'lodging moves the total, food barely does', kind: 'insight' as const },
+    { text: 'Nothing here is checked against a source.', kind: 'evidence' as const },
+    { text: 'What would have to be true for this to be wrong?', kind: 'question' as const },
+  ];
+
+  it('writes them beside the held card, and nowhere else', () => {
+    const { container } = mount({ lensId: 'a', spot: 'a', studyAsides: { a: notes, b: notes } });
+    const panels = container.querySelectorAll('.lens-notes');
+    expect(panels).toHaveLength(1);
+    expect(cellOf(container, 'a').contains(panels[0])).toBe(true);
+    expect(container.querySelectorAll('.lens-note')).toHaveLength(4);
+    expect(container.textContent).toContain('lodging moves the total');
+  });
+
+  // A div child of a grid cell inherits the cell's transform transition and drifts under the
+  // spotlight choreography — the same reason MarginNoteRail is an <aside>.
+  it('is an <aside>, never a div', () => {
+    const { container } = mount({ lensId: 'a', spot: 'a', studyAsides: { a: notes } });
+    expect(container.querySelector('.lens-notes')!.tagName).toBe('ASIDE');
+  });
+
+  it('keeps each voice distinguishable, so the evidence check reads as a receipt', () => {
+    const { container } = mount({ lensId: 'a', spot: 'a', studyAsides: { a: notes } });
+    expect(container.querySelector('.lens-note.is-evidence')).not.toBeNull();
+    expect(container.querySelector('.lens-note.is-question')).not.toBeNull();
+  });
+
+  it('writes nothing when no card is held', () => {
+    const { container } = mount({ studyAsides: { a: notes } });
+    expect(container.querySelector('.lens-notes')).toBeNull();
   });
 });
 

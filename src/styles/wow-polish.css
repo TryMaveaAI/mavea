@@ -453,6 +453,85 @@
 .block-lens.is-lensed .block-pill-label {
   display: inline;
 }
+
+/* The notes hang past the bottom of their own card, so everything between them and the page has
+   to let them out. Two things trap them: each grid cell is its own stacking context, and a
+   sectioned answer wraps each section in a `.depth-section` that sets `contain: layout` — also a
+   stacking context, at z-index auto. So the panel's own z-index cannot escape the section, and
+   the NEXT section paints straight over it. Lift both, only while a card is actually held. */
+.card-grid:has(> div.lensed),
+.depth-section:has(.lensed) {
+  position: relative;
+  z-index: 5;
+}
+
+/* ── The Lens: Mavéa's notes on the card the reader is holding up ─────────────
+   Absolutely positioned so it costs the grid NOTHING. The note gutter reserves its width as
+   padding on .card-grid and useResponsiveGrid re-tiles off the content box, so a panel in flow
+   would re-flow every card the moment one was clicked — the opposite of the promise this gesture
+   makes. It floats under its own card, over scenery that is already dimmed to 0.34. */
+.lens-notes {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 7; /* above the spotlit cell (6) and the walk's own note rail */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-radius: var(--r-md);
+  border-left: 2px solid color-mix(in oklab, var(--presence) 55%, transparent);
+  background: color-mix(in oklab, var(--surface-elevated) 92%, var(--presence) 8%);
+  box-shadow: var(--shadow-floating);
+  animation: lens-notes-in var(--m-normal) var(--ease-out) both;
+}
+@keyframes lens-notes-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+/* 11px, not 10: --fs-reader bottoms out at 0.9, so a 10px label renders at exactly 9.0px —
+   a coin flip against the audit's 9px legibility floor. */
+.lens-notes-eyebrow {
+  font-family: var(--font-data);
+  font-size: calc(11px * var(--fs-scale, 1));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* Her voice, so it reads as a different speaker from the card's own words. The serif alone
+   cannot carry that — several templates set a serif --font — so the rule, the eyebrow and the
+   raised surface carry it too. */
+.lens-note {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: calc(15px * var(--fs-scale, 1));
+  line-height: 1.45;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+/* The evidence check is a receipt, not a remark: it is always Mavéa's own and is often
+   negative ("nothing here is checked against a source"). Set it as data, not as prose. */
+.lens-note.is-evidence {
+  font-family: var(--font-data);
+  font-style: normal;
+  font-size: calc(11.5px * var(--fs-scale, 1));
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.lens-note.is-question {
+  color: var(--text-secondary);
+  border-top: 1px solid var(--grid-line);
+  padding-top: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lens-notes {
+    animation: none;
+  }
+}
 .block-cards.is-flashed .block-pill-label {
   display: inline;
 }

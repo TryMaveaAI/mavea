@@ -1870,9 +1870,14 @@ export function LiveApp(): ReactElement {
   // Falls back to the block's own words when it carries no readable figures (prose, a list, a
   // diagram): silence there would be right, but the block's summary is better than nothing and is
   // what the study showed before.
+  // The card the READER brought forward. The desk shows one object at a time by construction;
+  // on the board, this is the one object Mavéa is being asked about.
+  const lensedId = turn.spotBy === 'reader' ? turn.spot : null;
   const studyContent = useMemo(() => {
     const spec = turn.viewSpec ?? turn.spec;
-    if (viewMode !== 'study' || !spec) return null;
+    // Wanted by the desk, and by a single lensed card — both are asking the same question of a
+    // block. Pure and local either way: a walk over the turn's own sources, no model call.
+    if ((viewMode !== 'study' && !lensedId) || !spec) return null;
     const corpus = (spec.sources ?? [])
       .map((src) => src.snippet ?? '')
       .filter(Boolean)
@@ -1882,7 +1887,7 @@ export function LiveApp(): ReactElement {
     // and prompt voices carry the desk instead.
     if (!corpus) return null;
     return answerToContent(spec, corpus);
-  }, [viewMode, turn.viewSpec, turn.spec]);
+  }, [viewMode, lensedId, turn.viewSpec, turn.spec]);
 
   // The Study's model-written notes for the answer on screen, fetched the first time the reader
   // actually opens the desk. Never blocking: the derived voices paint immediately and these
@@ -2015,7 +2020,10 @@ export function LiveApp(): ReactElement {
     // The spec the canvas is SHOWING — block ids repeat across turns, so notes derived from
     // the live spec would file the current answer's remarks onto a scrubbed older frame.
     const spec = turn.viewSpec ?? turn.spec;
-    if (viewMode !== 'study' || !spec) return undefined;
+    if ((viewMode !== 'study' && !lensedId) || !spec) return undefined;
+    // The desk writes for every object it can deal; the board writes for the one card the reader
+    // is holding up. Same voices, same cache, one block's worth of work.
+    const onlyId = viewMode === 'study' ? null : lensedId;
     const out: Record<string, StudyAside[]> = {};
     const authoredIds = new Set<string>();
     const nextCache = new Map<
@@ -2038,6 +2046,7 @@ export function LiveApp(): ReactElement {
         : undefined;
     spec.blocks.forEach((block, index) => {
       if (!block.id) return;
+      if (onlyId && block.id !== onlyId) return;
       // The model's notes for THIS answer, when the desk has bought them; otherwise the block's
       // own (which an older answer may carry inline), and failing both, Mavéa's derived reading.
       const authored = block.study ?? written?.get(block.id);
@@ -2063,7 +2072,7 @@ export function LiveApp(): ReactElement {
       });
     });
     return { asides: out, authoredIds, cache: nextCache };
-  }, [studyContent, turn.viewSpec, turn.spec, viewMode, explainLevel, studyNotes]);
+  }, [studyContent, turn.viewSpec, turn.spec, viewMode, lensedId, explainLevel, studyNotes]);
   useEffect(() => {
     if (studyAsideBundle) studyAsideCacheRef.current = studyAsideBundle.cache;
   }, [studyAsideBundle]);
@@ -6535,7 +6544,7 @@ export function LiveApp(): ReactElement {
                       ? openLens
                       : undefined
                   }
-                  lensId={viewingLive && turn.spotBy === 'reader' ? turn.spot : null}
+                  lensId={viewingLive ? lensedId : null}
                   presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and

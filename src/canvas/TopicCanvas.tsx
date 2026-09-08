@@ -657,6 +657,10 @@ export function TopicCanvas({
     const draggable = canDragCards && isCard && b.type !== 'blanks';
     const lensable = isCard && !!onLens;
     const lensed = lensable && lensId === b.id;
+    // Mavéa's four voices on this one card. They always exist — studyVoices derives every slot
+    // it has no written note for — so the Lens never opens onto an empty margin and never waits
+    // on a model call. A written upgrade appears for a reader who has opened the desk.
+    const lensNotes = lensed && b.id ? (studyAsides?.[b.id] ?? []) : [];
     return (
       // The cell takes a pointer gesture but is NOT given a role or a tab stop: it holds buttons
       // and links, so calling it a button would be an ARIA lie, and 16 new tab stops in front of
@@ -686,6 +690,22 @@ export function TopicCanvas({
       >
         <BlockBoundary fallback={<FallbackCard block={b} />}>{renderBlock(b)}</BlockBoundary>
         {bend && bend.blockId === b.id && <BendStrip bend={bend} />}
+        {lensed && lensNotes.length > 0 && (
+          // OUT OF FLOW, on purpose. The margin-note gutter reserves its width as padding on
+          // .card-grid, and useResponsiveGrid re-tiles off the grid's content box — so a panel
+          // that took real space would re-flow every card at the exact moment the reader clicked
+          // one. An <aside> rather than a div for the same reason MarginNoteRail is one: a div
+          // child of a grid cell inherits the cell's transform transition and drifts under the
+          // spotlight choreography.
+          <aside className="lens-notes" aria-label={`Mavéa's notes on ${blockLabel(b)}`}>
+            <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
+            {lensNotes.map((n, ni) => (
+              <p key={ni} className={'lens-note is-' + n.kind}>
+                {n.text}
+              </p>
+            ))}
+          </aside>
+        )}
         {(askable || addable || flashcardable || zoomable || draggable || lensable) && (
           <div className="block-actions" ref={measureActionsWidth}>
             {draggable && (
