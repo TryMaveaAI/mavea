@@ -106,7 +106,11 @@ const ReplayCard = lazy(() =>
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 1.75;
 const ZOOM_STEP = 0.15;
-const ZOOM_DEFAULT = 1.15;
+// The Lens opens a card at its OWN size: the point is to see it alone and undistracted, not
+// bigger. Magnification is a control on the stage for when the reader wants it — and starting
+// above 1 also pushed the body wider than the sheet, which clipped the card's right edge and
+// carried the toolbar's close button off with it.
+const ZOOM_DEFAULT = 1;
 
 // The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
 // gesture rides the cell, not the card, because the cell is what carries `.spotlit`/`.dimmed`.
@@ -363,12 +367,10 @@ interface Props {
   /** Optional node rendered between the canvas header and the card grid. Used by Live to
    *  place the voice scrubber below the Pen/Focus/Everything controls. */
   belowHeaderSlot?: ReactNode;
-  /** Live-only: bring ONE card forward and dim the rest — the Lens. Absent (the Demo, the
-   *  gallery, clips) → cards are not clickable and no affordance renders, exactly as before. */
-  onLens?: (b: Block) => void;
-  /** The card the READER has brought forward, if any. The walk lights cards too (`spot`), but
-   *  only the reader's is a Lens: it is what the pill reports and what the notes will follow. */
-  lensId?: string | null;
+  /** Live-only: enables the Lens — clicking a card opens it on its own stage. Called with the
+   *  block when the stage opens and with null when it closes, so the surface can prepare that
+   *  one card's notes. Absent (the Demo, the gallery, clips) → no gesture, no affordance. */
+  onLens?: (b: Block | null) => void;
   /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
   presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
@@ -408,7 +410,6 @@ export function TopicCanvas({
   viewSlot,
   belowHeaderSlot,
   onLens,
-  lensId,
   presenting,
   blankFill,
 }: Props) {
@@ -428,11 +429,37 @@ export function TopicCanvas({
   useEffect(() => {
     if (!zoomedBlock) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomedBlock(null);
+      if (e.key === 'Escape') {
+        setZoomedBlock(null);
+        return;
+      }
+      // Never steal the arrows from something the reader is typing in, or from a control that
+      // uses them itself (a slider, a tab strip) inside the card on stage.
+      // On a window keydown the target can be the document itself, which has no `closest` —
+      // hence the instanceof rather than a cast.
+      const t = e.target;
+      if (
+        t instanceof Element &&
+        t.closest('input, textarea, select, [contenteditable="true"], [role="slider"]')
+      ) {
+        return;
+      }
+      if (e.key === 'ArrowRight') stepLens(1);
+      else if (e.key === 'ArrowLeft') stepLens(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [zoomedBlock]);
+  });
+  // The surface writes Mavéa's notes for whichever card is on the Lens stage, so it has to be
+  // told when that changes — including on close, so it stops.
+  const lensedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = zoomedBlock?.id ?? null;
+    if (lensedIdRef.current === id) return;
+    lensedIdRef.current = id;
+    onLens?.(zoomedBlock);
+  }, [zoomedBlock, onLens]);
+
   const gridRef = useRef<HTMLDivElement>(null);
   // The "answers bloom" reveal choreography (off == today's plain .reveal entrance).
   const [bloomOn] = useBloomMode();
@@ -612,9 +639,26 @@ export function TopicCanvas({
   // past the card's edge, and a click whose target unmounted mid-gesture (the browser retargets to
   // the nearest survivor), both read as "I clicked a thing and it did something else".
   const lensDown = useRef<{ id: string; x: number; y: number } | null>(null);
+  /** Whether the press that may become a backdrop click actually began on the backdrop. */
+  const scrimDown = useRef(false);
 
   const lensPointerDown = (b: Block) => (e: ReactPointerEvent<HTMLDivElement>) => {
     lensDown.current = e.button === 0 && b.id ? { id: b.id, x: e.clientX, y: e.clientY } : null;
+  };
+
+  /** Open the Lens on a block: its own stage, over a board faded back behind it. */
+  const openLens = (b: Block): void => {
+    setZoomedBlock(b);
+    setZoomLevel(ZOOM_DEFAULT);
+  };
+  // Every card the Lens can step to, in reading order. Switching without leaving the stage is the
+  // half of Focus worth keeping: one object at a time, and the others still within reach.
+  const lensSteps = displayBlocks.filter((b) => b.id);
+  const lensAt = zoomedBlock ? lensSteps.findIndex((b) => b.id === zoomedBlock.id) : -1;
+  // Clamped, never wrapping: wrapping in a reading surface quietly loses your place.
+  const stepLens = (d: number): void => {
+    const next = lensAt >= 0 ? lensSteps[lensAt + d] : undefined;
+    if (next) openLens(next);
   };
 
   const lensClick = (b: Block) => (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -634,7 +678,7 @@ export function TopicCanvas({
     // back" — and this click IS outside the previously spotlit card, so without this the two
     // handlers run in order and cancel each other out: the card lights and goes dark again.
     e.stopPropagation();
-    onLens(b);
+    openLens(b);
   };
 
   // renderCard wraps a block in its col div + spotlight/dim/ask/flashcard chrome.
@@ -650,17 +694,13 @@ export function TopicCanvas({
     const flashcardable = isCard && !!onAddToFlashcard;
     const flashed = flashcardable && !!flashedIds?.has(b.id!);
     const picked = askable && !!selectedBlockIds?.has(b.id!);
-    // Zoom rides alongside the other Live-only pills — offered wherever the action cluster
-    // already appears, never on its own in the Demo/Gallery's non-interactive cards.
-    const zoomable = isCard && (askable || addable || flashcardable);
+    // Magnification is a control ON the Lens stage now, not a second pill beside it: two
+    // adjacent buttons for "show me this card alone" is the mode-picker problem one level down,
+    // and the sheet they both opened was always the same sheet.
+
     // A real answer card can be dragged into a card-kind hole (never the holes card itself).
     const draggable = canDragCards && isCard && b.type !== 'blanks';
     const lensable = isCard && !!onLens;
-    const lensed = lensable && lensId === b.id;
-    // Mavéa's four voices on this one card. They always exist — studyVoices derives every slot
-    // it has no written note for — so the Lens never opens onto an empty margin and never waits
-    // on a model call. A written upgrade appears for a reader who has opened the desk.
-    const lensNotes = lensed && b.id ? (studyAsides?.[b.id] ?? []) : [];
     return (
       // The cell takes a pointer gesture but is NOT given a role or a tab stop: it holds buttons
       // and links, so calling it a button would be an ARIA lie, and 16 new tab stops in front of
@@ -677,10 +717,8 @@ export function TopicCanvas({
           (askable ? ' askable' : '') +
           (addable ? ' addable' : '') +
           (flashcardable ? ' flashcardable' : '') +
-          (zoomable ? ' zoomable' : '') +
           (picked ? ' picked' : '') +
-          (lensable ? ' lensable' : '') +
-          (lensed ? ' lensed' : '')
+          (lensable ? ' lensable' : '')
         }
         key={b.id || i}
         data-spot-id={b.id}
@@ -690,23 +728,7 @@ export function TopicCanvas({
       >
         <BlockBoundary fallback={<FallbackCard block={b} />}>{renderBlock(b)}</BlockBoundary>
         {bend && bend.blockId === b.id && <BendStrip bend={bend} />}
-        {lensed && lensNotes.length > 0 && (
-          // OUT OF FLOW, on purpose. The margin-note gutter reserves its width as padding on
-          // .card-grid, and useResponsiveGrid re-tiles off the grid's content box — so a panel
-          // that took real space would re-flow every card at the exact moment the reader clicked
-          // one. An <aside> rather than a div for the same reason MarginNoteRail is one: a div
-          // child of a grid cell inherits the cell's transform transition and drifts under the
-          // spotlight choreography.
-          <aside className="lens-notes" aria-label={`Mavéa's notes on ${blockLabel(b)}`}>
-            <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
-            {lensNotes.map((n, ni) => (
-              <p key={ni} className={'lens-note is-' + n.kind}>
-                {n.text}
-              </p>
-            ))}
-          </aside>
-        )}
-        {(askable || addable || flashcardable || zoomable || draggable || lensable) && (
+        {(askable || addable || flashcardable || draggable || lensable) && (
           <div className="block-actions" ref={measureActionsWidth}>
             {draggable && (
               <button
@@ -722,17 +744,16 @@ export function TopicCanvas({
             {lensable && (
               <button
                 type="button"
-                className={'block-action-pill block-lens' + (lensed ? ' is-lensed' : '')}
-                aria-expanded={lensed}
-                title={lensed ? `Back to the board` : `Bring ${blockLabel(b)} forward, on its own`}
-                aria-label={lensed ? `Back to the board` : `Look closer at ${blockLabel(b)}`}
+                className="block-action-pill block-lens"
+                title={`Look closer at ${blockLabel(b)}`}
+                aria-label={`Look closer at ${blockLabel(b)}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onLens!(b);
+                  openLens(b);
                 }}
               >
                 <Icon.eye />
-                <span className="block-pill-label">{lensed ? 'Back' : 'Look closer'}</span>
+                <span className="block-pill-label">Look closer</span>
               </button>
             )}
             {askable && (
@@ -784,22 +805,6 @@ export function TopicCanvas({
               >
                 {flashed ? <Icon.check /> : <Icon.layers />}
                 <span className="block-pill-label">{flashed ? 'Added' : 'Cards'}</span>
-              </button>
-            )}
-            {zoomable && (
-              <button
-                type="button"
-                className="block-action-pill block-zoom"
-                title={`Zoom into ${blockLabel(b)}`}
-                aria-label={`Zoom into ${blockLabel(b)}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setZoomedBlock(b);
-                  setZoomLevel(ZOOM_DEFAULT);
-                }}
-              >
-                <Icon.zoomIn />
-                <span className="block-pill-label">Zoom</span>
               </button>
             )}
           </div>
@@ -1110,65 +1115,121 @@ export function TopicCanvas({
         </div>
       )}
 
-      {zoomedBlock && (
-        <div
-          className="zoom-scrim"
-          role="button"
-          tabIndex={0}
-          aria-label="Close zoomed view"
-          onClick={() => setZoomedBlock(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setZoomedBlock(null);
-            }
-          }}
-        >
-          <div
-            className="zoom-sheet"
-            role="button"
-            tabIndex={0}
-            aria-label={blockLabel(zoomedBlock)}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
-            }}
-          >
-            <div className="zoom-sheet-toolbar">
-              <button
-                type="button"
-                className="zoom-sheet-zoom-btn"
-                aria-label="Zoom out"
-                disabled={zoomLevel <= ZOOM_MIN}
-                onClick={() => setZoomLevel((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
+      {zoomedBlock &&
+        (() => {
+          const lensNotes = zoomedBlock.id ? (studyAsides?.[zoomedBlock.id] ?? []) : [];
+          return (
+            // Close only on a gesture that BEGAN and ENDED on the backdrop. A plain onClick also
+            // fires for a drag released past the sheet's edge (selecting text inside it, say) and
+            // for a click whose target unmounted mid-gesture, and both read as "I clicked a thing
+            // and it shut".
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+            <div
+              className="zoom-scrim"
+              onPointerDown={(e) => {
+                scrimDown.current = e.target === e.currentTarget;
+              }}
+              onClick={(e) => {
+                const began = scrimDown.current;
+                scrimDown.current = false;
+                if (began && e.target === e.currentTarget) setZoomedBlock(null);
+              }}
+            >
+              <div
+                className="zoom-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-label={blockLabel(zoomedBlock)}
               >
-                <Icon.zoomOut />
-              </button>
-              <span className="zoom-sheet-zoom-level">{Math.round(zoomLevel * 100)}%</span>
-              <button
-                type="button"
-                className="zoom-sheet-zoom-btn"
-                aria-label="Zoom in"
-                disabled={zoomLevel >= ZOOM_MAX}
-                onClick={() => setZoomLevel((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
-              >
-                <Icon.zoomIn />
-              </button>
-              <button
-                type="button"
-                className="zoom-sheet-x"
-                aria-label="Close"
-                onClick={() => setZoomedBlock(null)}
-              >
-                <Icon.x />
-              </button>
+                <div className="zoom-sheet-toolbar">
+                  {/* What you are looking at. The row was controls-only and right-aligned, which
+                      left the top of the stage reading as an empty band. */}
+                  {/* One quiet label. The card states its own kind and headline immediately
+                      below, and the controls already say which card of how many — anything more
+                      here is the same sentence twice. */}
+                  <div className="zoom-sheet-title">Looking closer</div>
+                  <div className="zoom-sheet-tools">
+                    {/* Step through the board without leaving the stage — the half of Focus worth
+                      keeping. Clamped at both ends; the count says where you are. */}
+                    {lensSteps.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="zoom-sheet-zoom-btn"
+                          aria-label="Previous card"
+                          disabled={lensAt <= 0}
+                          onClick={() => stepLens(-1)}
+                        >
+                          <Icon.chevL />
+                        </button>
+                        <span className="zoom-sheet-step">
+                          {lensAt + 1} / {lensSteps.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="zoom-sheet-zoom-btn"
+                          aria-label="Next card"
+                          disabled={lensAt < 0 || lensAt >= lensSteps.length - 1}
+                          onClick={() => stepLens(1)}
+                        >
+                          <Icon.chevR />
+                        </button>
+                        <span className="zoom-sheet-sep" aria-hidden />
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="zoom-sheet-zoom-btn"
+                      aria-label="Zoom out"
+                      disabled={zoomLevel <= ZOOM_MIN}
+                      onClick={() =>
+                        setZoomLevel((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))
+                      }
+                    >
+                      <Icon.zoomOut />
+                    </button>
+                    <span className="zoom-sheet-zoom-level">{Math.round(zoomLevel * 100)}%</span>
+                    <button
+                      type="button"
+                      className="zoom-sheet-zoom-btn"
+                      aria-label="Zoom in"
+                      disabled={zoomLevel >= ZOOM_MAX}
+                      onClick={() =>
+                        setZoomLevel((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))
+                      }
+                    >
+                      <Icon.zoomIn />
+                    </button>
+                    <button
+                      type="button"
+                      className="zoom-sheet-x"
+                      aria-label="Back to the board"
+                      onClick={() => setZoomedBlock(null)}
+                    >
+                      <Icon.x />
+                    </button>
+                  </div>
+                </div>
+                <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
+                  {renderBlock(zoomedBlock)}
+                </div>
+                {lensNotes.length > 0 && (
+                  <aside
+                    className="lens-notes"
+                    aria-label={`Mavéa's notes on ${blockLabel(zoomedBlock)}`}
+                  >
+                    <div className="lens-notes-eyebrow">Mavéa&rsquo;s notes</div>
+                    {lensNotes.map((n, ni) => (
+                      <p key={ni} className={'lens-note is-' + n.kind}>
+                        {n.text}
+                      </p>
+                    ))}
+                  </aside>
+                )}
+              </div>
             </div>
-            <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
-              {renderBlock(zoomedBlock)}
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </BlankFillContext.Provider>
   );
 }

@@ -1870,9 +1870,9 @@ export function LiveApp(): ReactElement {
   // Falls back to the block's own words when it carries no readable figures (prose, a list, a
   // diagram): silence there would be right, but the block's summary is better than nothing and is
   // what the study showed before.
-  // The card the READER brought forward. The desk shows one object at a time by construction;
-  // on the board, this is the one object Mavéa is being asked about.
-  const lensedId = turn.spotBy === 'reader' ? turn.spot : null;
+  // The card the reader has open in the Lens — the canvas owns the sheet itself and reports
+  // which block is in it, so this side only has to write that one card's notes.
+  const [lensedId, setLensedId] = useState<string | null>(null);
   const studyContent = useMemo(() => {
     const spec = turn.viewSpec ?? turn.spec;
     // Wanted by the desk, and by a single lensed card — both are asking the same question of a
@@ -2561,22 +2561,11 @@ export function LiveApp(): ReactElement {
   }, [tourDrive.done, tourDashId]);
   useEffect(() => () => restorePenConfig(), [restorePenConfig]);
 
-  // The Lens: the reader brings ONE card forward and the rest of the board dims behind it. It
-  // takes the wheel from a running walk exactly as a tapped filmstrip card does — but it does not
-  // speak and does not ink. On the filmstrip a tap IS a request for the line; on the board a click
-  // means "let me look at this", and Mavéa talking (or scribbling) every time a card is clicked
-  // makes the board unusable in a quiet room. Clicking the held card again puts it back.
-  const openLens = useCallback(
-    (block: Block) => {
-      const id = block.id ?? null;
-      if (!id) return;
-      const held = turn.spotBy === 'reader' && turn.spot === id;
-      tourDismissed.current = true;
-      readerTookOver.current = true;
-      turn.setSpot(held ? null : id, 'reader');
-    },
-    [turn],
-  );
+  // The Lens: the canvas opens one card on its own stage and tells us which. It deliberately
+  // does NOT speak and does not ink — on the filmstrip a tap IS a request for the line, but on
+  // the board a click means "let me look at this", and Mavéa talking every time a card is opened
+  // makes the board unusable in a quiet room.
+  const openLens = useCallback((block: Block | null) => setLensedId(block?.id ?? null), []);
 
   const { narrate: narrateBlock, narratingId } = useTapNarration(
     {
@@ -3165,10 +3154,6 @@ export function LiveApp(): ReactElement {
     const spot = turn.spot;
     const spec = turn.spec;
     if (!spec || !spot) return;
-    // Only for a spotlight the WALK moved: that card may be anywhere on the page, so it has to
-    // come to the reader. A card the reader just clicked is already under their eyes — scrolling
-    // it to centre would yank the page out from under the gesture that asked for it.
-    if (turn.spotBy === 'reader') return;
     let tries = 0;
     let id = 0;
     const attempt = (): void => {
@@ -3209,7 +3194,7 @@ export function LiveApp(): ReactElement {
     };
     id = window.setTimeout(attempt, 90);
     return () => window.clearTimeout(id);
-  }, [turn.spot, turn.spotBy, turn.spec, tourMarksById]);
+  }, [turn.spot, turn.spec, tourMarksById]);
 
   // Dismiss the guided spotlight: end the walk early and clear the dimmed state so the
   // whole canvas is interactive again. Safe to call when nothing is spotlit (no-op).
@@ -6544,7 +6529,6 @@ export function LiveApp(): ReactElement {
                       ? openLens
                       : undefined
                   }
-                  lensId={viewingLive ? lensedId : null}
                   presenting={presenting}
                   // The margin-note gutters (one per side): latched once per turn at walk
                   // start — only turns that ARRIVED muted with a spoken tour reserve them, and

@@ -441,49 +441,21 @@
   background: color-mix(in oklab, var(--insight) 18%, var(--surface-elevated));
   border-color: var(--insight);
 }
-/* The Lens is held: the button becomes the way back, and says so. Same standing-badge shape as
-   the flashcard state above, in the face's own colour rather than the insight accent — this is
-   Mavéa's attention on one card, not a thing that was added to a deck. */
-.block-lens.is-lensed,
-:where(.askable, .addable, .flashcardable, .lensable):hover .block-lens.is-lensed {
-  color: var(--presence);
-  background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
-  border-color: var(--presence);
-}
-.block-lens.is-lensed .block-pill-label {
-  display: inline;
-}
 
-/* The notes hang past the bottom of their own card, so everything between them and the page has
-   to let them out. Two things trap them: each grid cell is its own stacking context, and a
-   sectioned answer wraps each section in a `.depth-section` that sets `contain: layout` — also a
-   stacking context, at z-index auto. So the panel's own z-index cannot escape the section, and
-   the NEXT section paints straight over it. Lift both, only while a card is actually held. */
-.card-grid:has(> div.lensed),
-.depth-section:has(.lensed) {
-  position: relative;
-  z-index: 5;
-}
-
-/* ── The Lens: Mavéa's notes on the card the reader is holding up ─────────────
-   Absolutely positioned so it costs the grid NOTHING. The note gutter reserves its width as
-   padding on .card-grid and useResponsiveGrid re-tiles off the content box, so a panel in flow
-   would re-flow every card the moment one was clicked — the opposite of the promise this gesture
-   makes. It floats under its own card, over scenery that is already dimmed to 0.34. */
+/* ── The Lens: Mavéa's notes, on the stage beside the card ────────────────────
+   The stage is the zoom sheet: one card, centred, over a blurred board. These sit under it, in
+   flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding
+   with and nothing to reserve space against. */
 .lens-notes {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  right: 0;
-  z-index: 7; /* above the spotlit cell (6) and the walk's own note rail */
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 16px 14px;
+  margin-top: 20px;
+  padding: 14px 18px 16px;
   border-radius: var(--r-md);
+  border: 1px solid var(--line);
   border-left: 2px solid color-mix(in oklab, var(--presence) 55%, transparent);
-  background: color-mix(in oklab, var(--surface-elevated) 92%, var(--presence) 8%);
-  box-shadow: var(--shadow-floating);
+  background: color-mix(in oklab, var(--surface-deep) 55%, var(--surface-elevated));
   animation: lens-notes-in var(--m-normal) var(--ease-out) both;
 }
 @keyframes lens-notes-in {
@@ -532,6 +504,21 @@
     animation: none;
   }
 }
+/* Stepping between cards without leaving the stage. */
+.zoom-sheet-step {
+  font-family: var(--font-data);
+  font-size: calc(11.5px * var(--fs-scale, 1));
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: center;
+}
+.zoom-sheet-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 2px;
+}
 .block-cards.is-flashed .block-pill-label {
   display: inline;
 }
@@ -568,9 +555,12 @@
   /* One source for the sheet's width, because .zoom-sheet-body has to state the SAME length in its
      own box (see there) and the two drifting apart is the whole bug.
 
-     920px was a cap set when this sheet only ever had to hold a card's text, and it is why a
-     magnified diagram still felt small: on a 1449px window the sheet was 920 of it. 92vw is the
-     real size — it tracks the screen — and 1440 is where it stops.
+     92vw is the real size — it tracks the screen — and 1120 is where it stops. The cap moved down
+     from 1440 when this became the Lens: the sheet used to exist only to magnify a diagram, so
+     the widest thing that fitted was the right answer. It now opens ANY card, and most cards are
+     prose — at 1440 a two-line insight was set across a ~1370px measure, which is unreadable in a
+     different way. A reader who wants a diagram bigger than this still has zoom, which magnifies
+     past the sheet and pans.
 
      The ceiling is not timidity, it is measured. A block inside this sheet fills the width it is
      given (`width: fit-content` on the sheet resolves straight back to the maximum — tried, on
@@ -579,11 +569,15 @@
      the close button at the far edge. Growing past roughly this point stops helping the diagrams and
      starts hurting everything else, and the reader who wants more still has zoom, which now
      enlarges the drawing itself and pans. */
-  --zoom-sheet-w: min(1440px, 92vw);
+  --zoom-sheet-w: min(1120px, 92vw);
   width: var(--zoom-sheet-w);
   max-height: 88vh;
   overflow: auto;
-  padding: 32px;
+  /* No padding at the top: the toolbar band IS the top of the sheet. It is sticky, and a sticky
+     box paints at the scrollport's edge no matter what its top margin claims — so a negative
+     margin pulling it into the padding only desynced where it painted from where the layout
+     thought it was, and it covered the first 20px of the card underneath. */
+  padding: 0 32px 32px;
   border-radius: var(--r-lg);
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
@@ -603,13 +597,32 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin: -32px -32px 12px;
-  padding: 12px;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 -32px 16px;
+  padding: 14px 12px 14px 32px;
   background: color-mix(in oklab, var(--surface-elevated) 92%, transparent);
   backdrop-filter: var(--glass-blur, blur(4px));
   border-bottom: 1px solid var(--line);
+}
+.zoom-sheet-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+/* One quiet label, so the band reads as the top of the stage rather than as controls floating
+   in space. 11px, not 10: --fs-reader bottoms out at 0.9, which would put 10px at the audit's
+   9px legibility floor exactly. */
+.zoom-sheet-title {
+  font-family: var(--font-data);
+  font-size: calc(11px * var(--fs-scale, 1));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .zoom-sheet-zoom-btn,
 .zoom-sheet-x {

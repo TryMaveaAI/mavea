@@ -9,8 +9,9 @@ import { primeExtendedRegistry } from '../src/canvas/blocks/loader';
 // synchronous, exactly like the gallery.
 primeExtendedRegistry(EXTENDED_REGISTRY);
 
-// The zoom pill rides alongside Ask/Dashboard/Cards: it only shows on a card where the action
-// cluster already renders for another reason (Live-only), never on its own in the Demo.
+// Magnification is a control ON the Lens stage now, not a pill of its own — two adjacent buttons
+// for "show me this card alone" opened the same sheet. The way in is the Lens's own pill, gated on
+// the Live-only onLens callback, so the Demo and the gallery still offer nothing.
 function spec(blocks: Block[]): ConversationSpec {
   return {
     id: 't',
@@ -36,15 +37,16 @@ const withId: Block = {
   props: { title: 'Revenue', summary: 's', conf: 'inferred' },
 } as Block;
 
-describe('TopicCanvas — zoom affordance', () => {
-  it('renders no zoom pill in the Demo (no Live-only callbacks)', () => {
+describe('TopicCanvas — the way onto the Lens stage', () => {
+  it('offers nothing in the Demo (no Live-only callbacks)', () => {
     const { container } = render(
       <TopicCanvas data={spec([withId])} spot={null} built={{}} onProve={() => {}} />,
     );
+    expect(container.querySelectorAll('.block-lens')).toHaveLength(0);
     expect(container.querySelectorAll('.block-zoom')).toHaveLength(0);
   });
 
-  it('renders the zoom pill once a Live-only affordance is offered on the block', () => {
+  it('offers one way in — the Lens pill — once Live wires it up', () => {
     const { container } = render(
       <TopicCanvas
         data={spec([withId])}
@@ -52,12 +54,15 @@ describe('TopicCanvas — zoom affordance', () => {
         built={{}}
         onProve={() => {}}
         onAskBlock={() => {}}
+        onLens={() => {}}
       />,
     );
-    expect(container.querySelectorAll('.block-zoom')).toHaveLength(1);
+    expect(container.querySelectorAll('.block-lens')).toHaveLength(1);
+    // The second pill is gone: magnification lives on the stage the first one opens.
+    expect(container.querySelectorAll('.block-zoom')).toHaveLength(0);
   });
 
-  it('opens the zoomed sheet on click and closes it on the close button', () => {
+  it('opens the stage on click and closes it on the close button', () => {
     const { container } = render(
       <TopicCanvas
         data={spec([withId])}
@@ -65,16 +70,17 @@ describe('TopicCanvas — zoom affordance', () => {
         built={{}}
         onProve={() => {}}
         onAskBlock={() => {}}
+        onLens={() => {}}
       />,
     );
     expect(container.querySelector('.zoom-sheet')).toBeNull();
-    fireEvent.click(container.querySelector('.block-zoom') as HTMLButtonElement);
+    fireEvent.click(container.querySelector('.block-lens') as HTMLButtonElement);
     expect(container.querySelector('.zoom-sheet')).not.toBeNull();
     fireEvent.click(container.querySelector('.zoom-sheet-x') as HTMLButtonElement);
     expect(container.querySelector('.zoom-sheet')).toBeNull();
   });
 
-  it('closes the zoomed sheet on Escape', () => {
+  it('closes the stage on Escape', () => {
     const { container } = render(
       <TopicCanvas
         data={spec([withId])}
@@ -82,9 +88,10 @@ describe('TopicCanvas — zoom affordance', () => {
         built={{}}
         onProve={() => {}}
         onAskBlock={() => {}}
+        onLens={() => {}}
       />,
     );
-    fireEvent.click(container.querySelector('.block-zoom') as HTMLButtonElement);
+    fireEvent.click(container.querySelector('.block-lens') as HTMLButtonElement);
     expect(container.querySelector('.zoom-sheet')).not.toBeNull();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(container.querySelector('.zoom-sheet')).toBeNull();
