@@ -165,3 +165,42 @@ describe('an edited card starts again', () => {
     expect(container.querySelector('[data-spot-id="live-2"]')).toBe(before.untouched);
   });
 });
+
+describe('a correction the answer declares about itself', () => {
+  // It was computed, validated and carried on the frame all along — and shown only inside a
+  // `title` tooltip on one rail row, which is invisible on a touch device and to anyone not
+  // hovering exactly there. A correction nobody can see is a silent rewrite.
+  const corrects = { what: 'Total', was: '$2,480', now: '$2,020' };
+
+  it('states the old value and the new one, in the open', () => {
+    const { container } = render(
+      <TopicCanvas
+        data={spec(three())}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+        viewMode="board"
+        onViewMode={() => {}}
+        corrects={corrects}
+      />,
+    );
+    const line = container.querySelector('.rev-corrects')!;
+    expect(line.textContent).toContain('Total');
+    expect(line.querySelector('.rev-corrects-was')!.textContent).toBe('$2,480');
+    expect(line.querySelector('.rev-corrects-now')!.textContent).toBe('$2,020');
+  });
+
+  it('says nothing when the turn declared no correction', () => {
+    const { container } = render(
+      <TopicCanvas
+        data={spec(three())}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+        viewMode="board"
+        onViewMode={() => {}}
+      />,
+    );
+    expect(container.querySelector('.rev-corrects')).toBeNull();
+  });
+});

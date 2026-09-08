@@ -375,6 +375,9 @@ interface Props {
    *  stamped with the canvas's own signature. Applied only when that signature still matches, so
    *  a delta can never paint on an answer it did not describe. */
   revision?: { sig: string; changedIds: readonly string[]; addedIds: readonly string[] } | null;
+  /** Live-only: this turn declared it corrects an earlier answer. Rendered as an honest
+   *  was → now line, because a correction the reader cannot see is a silent rewrite. */
+  corrects?: { what: string; was: string; now: string } | null;
   /** Present mode: forwarded to FocusStage to hide the filmstrip and show the slide nav bar. */
   presenting?: boolean;
   /** Live-only: "The Blank Space" fill wiring (filled values, the armed hole, and how a fill
@@ -415,6 +418,7 @@ export function TopicCanvas({
   belowHeaderSlot,
   onLens,
   revision,
+  corrects,
   presenting,
   blankFill,
 }: Props) {
@@ -852,6 +856,19 @@ export function TopicCanvas({
         <div>
           <div className="canvas-title">{data.title}</div>
           <div className="canvas-sub">{data.sub}</div>
+          {corrects && (
+            // Owning it out loud. This was computed, validated and carried on the frame all
+            // along, and shown only inside a `title` tooltip — which is invisible on a touch
+            // device and invisible to anyone not hovering the right row of the rail.
+            <p className="rev-corrects">
+              <span className="rev-corrects-what">{corrects.what}</span>
+              <span className="rev-corrects-was">{corrects.was}</span>
+              <span className="rev-corrects-arrow" aria-hidden>
+                →
+              </span>
+              <span className="rev-corrects-now">{corrects.now}</span>
+            </p>
+          )}
         </div>
         <div className="canvas-header-actions">
           {revOps && (revOps.changedIds.length > 0 || revOps.addedIds.length > 0) && (

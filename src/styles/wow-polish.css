@@ -489,6 +489,34 @@
   background: color-mix(in oklab, var(--insight) 14%, var(--surface-elevated));
   border-color: color-mix(in oklab, var(--insight) 30%, transparent);
 }
+/* A correction the answer declared about itself. Old value struck through, new value plain —
+   the reader should be able to see what moved without being told to trust that something did. */
+.rev-corrects {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-family: var(--font-data);
+  font-size: calc(12px * var(--fs-scale, 1));
+  color: var(--text-muted);
+}
+.rev-corrects-what {
+  color: var(--text-secondary);
+}
+.rev-corrects-was {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--warning) 60%, transparent);
+  text-decoration-thickness: 1px;
+}
+.rev-corrects-arrow {
+  color: var(--text-faint, var(--text-muted));
+}
+.rev-corrects-now {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* One line for the whole turn, beside the answer's title. tabular-nums so the count does not
    jitter as it changes. */
 .rev-pill {
