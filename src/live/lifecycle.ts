@@ -216,6 +216,10 @@ export function resolveMode(
   next: TurnSnapshot,
   hint: Mode | undefined,
   tier: 'frontier' | 'mid' | 'small',
+  /** The reader's own words asked for a REVISION of what is on screen (classifyRevision).
+   *  Optional and defaulted off, so every existing caller — including the demo baker — decides
+   *  exactly what it decided before. */
+  askRevision = false,
 ): Mode {
   if (!prior) return 'replace';
   const overlap = topicOverlap(prior, next);
@@ -227,6 +231,14 @@ export function resolveMode(
   }
   // An explicit 'replace', or a topic shift with no keep-hint, clears the canvas.
   if (tier !== 'small' && hint === 'replace') return 'replace';
+  // The reader told a value on screen to be different. This is the only route to 'refine' that
+  // does not need a frontier model to volunteer the hint — which is why refine had never once
+  // fired across every recorded session. Gated hard: the ask has to be anaphoric (likelyFollowUp
+  // is what stops "actually, what's the capital of France" refining a budget) and about the same
+  // subject, because a wrong refine rewrites the card the reader was reading.
+  if (askRevision && overlap >= UNRELATED_FLOOR && likelyFollowUp(prior, next.question)) {
+    return 'refine';
+  }
   return overlap < TOPIC_SHIFT_BELOW ? 'replace' : 'augment';
 }
 

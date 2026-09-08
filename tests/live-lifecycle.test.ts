@@ -148,6 +148,42 @@ describe('content diffing', () => {
   });
 });
 
+describe('resolveMode — a revision the READER asked for', () => {
+  // Before this, 'refine' was only reachable when a frontier model volunteered the hint, and the
+  // prompt tells it to prefer 'augment' whenever a follow-up could go either way. Across every
+  // recorded session this repo ships: 26 replace, 2 augment, 0 refine.
+  const prior = snap('five days in tokyo on a budget', 'here is the shape of it', 'Tokyo');
+  const same = snap('tokyo budget, make it $2,000', '', 'Tokyo');
+
+  it('reaches refine from the reader’s words alone', () => {
+    expect(resolveMode(prior, same, undefined, 'frontier', true)).toBe('refine');
+  });
+
+  it('reaches it on a small local model too, where the hint is discarded', () => {
+    // The local signal is the ONLY one a small model's turn has, which is exactly why it exists.
+    expect(resolveMode(prior, same, 'replace', 'small', true)).toBe('refine');
+  });
+
+  it('changes nothing for callers that do not pass it', () => {
+    expect(resolveMode(prior, same, undefined, 'frontier')).toBe('augment');
+  });
+
+  it('never refines across a topic shift', () => {
+    const elsewhere = snap('actually, make it a cheese souffle', '', 'Cooking');
+    expect(resolveMode(prior, elsewhere, undefined, 'frontier', true)).toBe('replace');
+  });
+
+  it('leaves an explicit model replace alone', () => {
+    // The model looked at its own answer and said this is a fresh canvas; a word-match must not
+    // overrule that and update cards the new answer was never written against.
+    expect(resolveMode(prior, same, 'replace', 'frontier', true)).toBe('replace');
+  });
+
+  it('honours a keep-hint over the local guess', () => {
+    expect(resolveMode(prior, same, 'augment', 'frontier', true)).toBe('augment');
+  });
+});
+
 describe('mergeForMode', () => {
   const prior = [blk('insight', 'A'), blk('chart', 'B')];
   const next = [blk('insight', 'A'), blk('kpi', 'C')]; // A repeats, C is new

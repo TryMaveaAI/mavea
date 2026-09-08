@@ -14,6 +14,7 @@ import {
   type TurnSnapshot,
 } from './lifecycle';
 import { remapTour } from './tourRemap';
+import { classifyRevision } from './revise/classifyRevision';
 import { createTurnFrameId, type TurnFrame } from './history';
 import type { LiveResult } from './generateLive';
 
@@ -55,7 +56,14 @@ export function settleTurn(
   // The turn's canvas relation, decided from the full answer and the model's own continuity
   // hint. Kept separate from the render mode below: a streamed turn must RENDER as a replace
   // (it already revealed a fresh canvas), and an overcrowded augment falls back to one.
-  const naturalMode = resolveMode(prior, snap, result.continuity, result.tier);
+  // Live and the demo baker both settle through here, so they make the identical decision.
+  const naturalMode = resolveMode(
+    prior,
+    snap,
+    result.continuity,
+    result.tier,
+    classifyRevision(displayText),
+  );
   // The SUBJECT boundary the session rail chapters on. The canvas hint is not the subject: a
   // model may legitimately ask to REPLACE the canvas for a fresh take on the same thread
   // ("plan it" after an itinerary), or omit the hint entirely (smaller models often do) — and

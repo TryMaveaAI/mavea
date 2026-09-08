@@ -8,6 +8,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { TopicCanvas } from '../src/canvas/TopicCanvas';
+import { settleTurn } from '../src/live/settleTurn';
+import type { TurnSnapshot } from '../src/live/lifecycle';
+import type { LiveResult } from '../src/live/generateLive';
 import { answerSignature } from '../src/data/conversation';
 import type { Block, ConversationSpec } from '../src/data/conversation';
 import { EXTENDED_REGISTRY } from '../src/canvas/blocks';
@@ -202,5 +205,73 @@ describe('a correction the answer declares about itself', () => {
       />,
     );
     expect(container.querySelector('.rev-corrects')).toBeNull();
+  });
+});
+
+// End to end, with no model in the loop: the reader's words decide the mode, the merge records
+// what it did, and the board paints it. Each half is unit-tested above and in live-lifecycle;
+// this is the seam between them, which is where a feature like this actually breaks.
+describe('from what the reader typed to what the board shows', () => {
+  const prior: TurnSnapshot = {
+    question: 'five days in tokyo on a budget',
+    narration: 'here is the shape of it',
+    title: 'Tokyo',
+    blockTypes: ['insight', 'insight'],
+  };
+  const priorBlocks = [insight('live-1', 'Budget'), insight('live-2', 'Itinerary')];
+
+  const answer = (blocks: Block[]): LiveResult =>
+    ({
+      spec: { ...spec(blocks), title: 'Tokyo' },
+      narration: 'Done — the stay came down.',
+      tier: 'frontier',
+    }) as unknown as LiveResult;
+
+  it('an edit lands as an EDIT on the card it changed', () => {
+    // Same headline, different content: the merge matches the slot by signature and overwrites it.
+    const edited = {
+      ...insight('x', 'Budget'),
+      props: { title: 'Budget', body: 'Stay is now $240.' },
+    } as Block;
+    const settled = settleTurn(
+      prior,
+      priorBlocks,
+      'tokyo budget — make it $2,000',
+      answer([edited]),
+    );
+
+    expect(settled.mode).toBe('refine');
+    expect(settled.frame.revision?.changedIds).toEqual(['live-1']);
+
+    const shown = settled.frame.spec;
+    const { container } = render(
+      <TopicCanvas
+        data={shown}
+        spot={null}
+        built={{}}
+        onProve={() => {}}
+        viewMode="board"
+        onViewMode={() => {}}
+        revision={{ sig: answerSignature(shown), ...settled.frame.revision! }}
+      />,
+    );
+    expect(container.querySelector('[data-spot-id="live-1"]')!.getAttribute('data-rev')).toBe(
+      'edit',
+    );
+    expect(container.querySelector('.rev-pill')!.textContent).toBe('1 edited');
+    // The card the turn did not touch stays unmarked — "the rest held still" has to be true.
+    expect(container.querySelector('[data-spot-id="live-2"]')!.getAttribute('data-rev')).toBeNull();
+  });
+
+  it('a plain follow-up still lands as an ADD, not an edit', () => {
+    const settled = settleTurn(
+      prior,
+      priorBlocks,
+      'tokyo budget — and the weather that week?',
+      answer([insight('y', 'Weather')]),
+    );
+    expect(settled.mode).toBe('augment');
+    expect(settled.frame.revision?.addedIds).toEqual(['live-3']);
+    expect(settled.frame.revision?.changedIds).toEqual([]);
   });
 });
