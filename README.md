@@ -102,9 +102,10 @@ A few specific things worth trying:
 - **It draws while it talks.** It speaks each headline as it streams, then lands hand-style circles
   and arrows on the figure it's narrating.
 - **One board, and a card you can look closer at.** The board lays the whole canvas out at once —
-  nothing staged, nothing to pick. Click any card and it comes forward while the rest dims, with
-  Mavéa's notes beside it: what it assumes, the pattern she sees, what the sources actually back,
-  and the question that would break it. Click again and you're back. When you'd rather be walked
+  nothing staged, nothing to pick. Click any card and it opens on its own stage, centred over the
+  blurred board, with Mavéa's notes beside it: what it assumes, the pattern she sees, what the
+  sources actually back, and the question that would break it. Step through the rest with the
+  arrows, magnify if you want to, and Escape puts you back. When you'd rather be walked
   through the whole thing, _Guide me_ pulls the answer onto a lamplit desk.
 - **It answers while you talk.** Mid-sentence, dashed ghost cards sketch the answer taking shape
   behind your words, reshaping as your question turns.
