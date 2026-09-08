@@ -1132,10 +1132,10 @@ export function LiveApp(): ReactElement {
     // (it is declared below, and the stage it belongs to only mounts once a turn has a spec).
     // Skipped when nothing will be heard anyway — the same test the pre-walk barrier uses — since a
     // muted or captions-only turn must not wait on audio that will never come.
-    canvasReady: () =>
+    canvasReady: (turnEnded) =>
       mutedRef.current || kokoroKnownAvailable() === false
         ? Promise.resolve()
-        : awaitFirstPaint(() => scrollRef.current),
+        : awaitFirstPaint(() => scrollRef.current, '.card', undefined, turnEnded),
     getCaps: () => toCaps(getLiveConfigV2()),
     speak,
     cancelSpeak: cancelSpeech,

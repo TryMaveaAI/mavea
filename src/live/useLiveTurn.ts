@@ -737,7 +737,9 @@ export interface UseLiveTurnArgs {
    *  sentences flow as they arrive, because by then the canvas is filling behind the voice.
    *  Must be bounded by the host: a silent turn is far worse than an early one. Omit it and the
    *  voice starts the instant the first sentence forms, as it always did. */
-  canvasReady?: () => Promise<void>;
+  /** Resolves when the canvas has something on screen to talk about. Handed the turn's own
+   *  end signal so an answer that finishes with nothing to show still releases the voice. */
+  canvasReady?: (turnEnded: AbortSignal) => Promise<void>;
   /** Read the active capabilities at call time (web search / image gen toggles). */
   getCaps?: () => LiveCaps;
   /** Speak a line (the surface wires this to TTS). The surface's wrapper may return the line's
@@ -965,6 +967,12 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       showFrameCancelRef.current = null;
       const ctrl = new AbortController();
       abortRef.current = ctrl;
+      // The turn's END, as distinct from its abort: settled, failed, or superseded. The speech
+      // gate below waits on the first card OR this, so a turn that produces no card — a collapse,
+      // an error, a retry — cannot hold the voice on a card that is never coming.
+      const ended = new AbortController();
+      const endTurn = (): void => ended.abort();
+      ctrl.signal.addEventListener('abort', endTurn, { once: true });
       // Busy from the instant the turn is committed, BEFORE the first await below. The guard at the
       // top of this function reads busyRef, so a start deferred even one microtask would let a
       // second Enter in the same tick open a second turn — and would leave the surface looking idle
@@ -983,7 +991,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           speak?.(text);
           return;
         }
-        speechGate = (speechGate ?? canvasReady()).then(() => {
+        speechGate = (speechGate ?? canvasReady(ended.signal)).then(() => {
           if (ctrl.signal.aborted) return; // a superseded turn must not speak over its replacement
           speak?.(text);
         });
@@ -1121,6 +1129,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
           engine = await enginePromise;
         } catch {
           if (ctrl.signal.aborted) return;
+          endTurn();
           dispatch({
             type: 'error',
             error: {
@@ -1325,6 +1334,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       if (result.error) {
         // `question` is the label the card shows; `retry` is the real prompt the button re-runs
         // (for an ordinary turn they're identical; for a synthetic turn the prompt must run, not show).
+        endTurn();
         dispatch({
           type: 'error',
           error: { ...result.error, ...asked },
@@ -1384,6 +1394,9 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         // walk's readiness barrier to the network on a cold cache.
         preloadBlockFamilies(renderedSpec.blocks);
 
+        // Settled. If no fresh card ever painted (an answer with nothing to draw), this is what
+        // lets the voice go; if one did, the gate has long since resolved and this is a no-op.
+        endTurn();
         dispatch({
           type: 'show',
           spec: renderedSpec,
@@ -1421,6 +1434,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       } catch {
         // Never leave the turn spinning: a spec that can't be merged/toured is treated like any
         // other failed turn — an honest, recoverable error, retry carrying the real question.
+        endTurn();
         dispatch({
           type: 'error',
           error: {

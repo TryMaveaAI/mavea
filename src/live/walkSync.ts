@@ -51,7 +51,15 @@ export const SHOWFRAME_REVEAL_CAP_MS = 3_000;
  *  the cap only binds before even that, where narration IS already on screen as the streaming
  *  lead text. Holding a voice 1.8s against words the reader can see was dead air, not sync:
  *  900ms still covers a card entrance (`--m-expressive`, 550ms) plus its commit. */
-export const FIRST_PAINT_CAP_MS = 2500;
+/** A last resort, not the thing that normally ends the wait. The first spoken line now holds
+ *  until the answer's first card has painted OR the turn itself has ended (settled, failed, or
+ *  superseded) — so this only fires if neither ever happens, which the stream's own ceilings
+ *  (25s to first byte, 90s total) already prevent. It sits above them on purpose.
+ *
+ *  It was 2500ms, tuned when a first card arrived in ~2s. Measured on a reader's key the first
+ *  card now lands 5–16s after send, so the hold expired every time and Mavéa narrated the whole
+ *  answer over empty skeletons — the voice and the canvas visibly out of step. */
+export const FIRST_PAINT_CAP_MS = 90_000;
 
 /** Failure-only ceiling on "line finished": double the word-count estimate (0.5× voice speed is
  *  the slowest a user can pick) plus synthesis slack. Real lines resolve `finished` themselves —
@@ -193,6 +201,9 @@ export async function awaitFirstPaint(
   host: () => Element | null,
   cardSelector = '.card',
   capMs: number = FIRST_PAINT_CAP_MS,
+  /** Fires when the turn has ended — settled, failed, or superseded. An answer that ends with no
+   *  card must still release the voice, or it waits on a card that is never coming. */
+  release?: AbortSignal,
 ): Promise<void> {
   await bounded(
     (async () => {
@@ -221,6 +232,13 @@ export async function awaitFirstPaint(
       };
       let card = fresh();
       while (!card) {
+        // The turn is over and no fresh card ever came: whatever the canvas has is all it will
+        // have. Two more frames, so a card committed at settle still gets its paint.
+        if (release?.aborted) {
+          await nextFrame();
+          await nextFrame();
+          return;
+        }
         await nextFrame();
         card = fresh();
       }
