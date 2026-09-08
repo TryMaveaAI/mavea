@@ -99,17 +99,28 @@ describe('the Lens gesture', () => {
     expect(cell0(container, 'a').getAttribute('tabindex')).toBeNull();
   });
 
-  it('steps to the next card without leaving the stage, and stops at the ends', () => {
+  it('keeps the rest of the answer within reach, and switches to the one you pick', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    const strip = container.querySelector('.lens-strip')!;
+    expect(strip.querySelectorAll('.filmstrip-entry')).toHaveLength(2);
+    fireEvent.click(strip.querySelectorAll('.filmstrip-entry')[1]);
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
-    // Clamped, never wrapping: wrapping in a reading surface loses your place.
-    expect(screen.getByRole('button', { name: 'Next card' })).toBeDisabled();
+  });
+
+  it('walks the board with the arrow keys, clamped rather than wrapping', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+    // Wrapping in a reading surface loses your place, so the ends hold.
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Previous card' })).toBeDisabled();
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
   });
 
   it('keeps magnification as a control ON the stage, not a second pill beside it', () => {

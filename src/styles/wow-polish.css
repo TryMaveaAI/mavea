@@ -608,20 +608,65 @@
     animation: none;
   }
 }
-/* Stepping between cards without leaving the stage. */
-.zoom-sheet-step {
-  font-family: var(--font-data);
-  font-size: calc(11.5px * var(--fs-scale, 1));
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  min-width: 44px;
-  text-align: center;
+/* The rest of the answer, along the foot of the stage. Focus's rail is built as a tall column
+   for the side of a page; here it lies down. Only the axis changes — the entries, their live
+   miniatures, the roving tab stop and the arrow-key walking are all its own. */
+.lens-strip {
+  width: var(--zoom-sheet-w);
+  flex: none;
+  padding: 12px 16px 14px;
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--surface-elevated) 88%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: var(--glass-blur, blur(4px));
 }
-.zoom-sheet-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--line);
-  margin: 0 2px;
+.lens-strip .filmstrip-rail {
+  position: static;
+  max-height: none;
+  gap: 8px;
+}
+.lens-strip .filmstrip-list {
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+}
+.lens-strip .filmstrip-entry {
+  flex: 0 0 auto;
+  width: 168px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  scroll-snap-align: start;
+}
+/* A tile, not a row: the thumbnail fills the entry's width instead of sitting in a 76px box with
+   half the tile empty beside it. The scale has to track that width — 150 / 340 (FilmstripThumb's
+   design width) — or the miniature stops filling the frame it was given. */
+.lens-strip .filmstrip-thumb {
+  width: 150px;
+  height: 92px;
+  border-radius: var(--r-sm);
+}
+.lens-strip .filmstrip-thumb-design {
+  transform: scale(0.441);
+}
+/* One line each, so the row of tiles has a straight bottom edge instead of a ragged one. */
+.lens-strip .filmstrip-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lens-strip .filmstrip-entry.active {
+  border-color: color-mix(in oklab, var(--presence) 55%, transparent);
+}
+/* The strip scrolls, and a tile cut flat at the edge reads as broken rather than as "there is
+   more". Fading the last few pixels says which it is. */
+.lens-strip .filmstrip-list {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
 }
 .block-cards.is-flashed .block-pill-label {
   display: inline;
@@ -648,8 +693,14 @@
   position: fixed;
   inset: 0;
   z-index: 80;
-  display: grid;
-  place-items: center;
+  /* Two stacked things now — the sheet, and the strip of the rest of the answer beneath it. The
+     width lives here rather than on the sheet so both can measure against the same number. */
+  --zoom-sheet-w: min(1120px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   padding: 28px;
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
   backdrop-filter: var(--glass-blur, blur(2px));
@@ -673,9 +724,9 @@
      the close button at the far edge. Growing past roughly this point stops helping the diagrams and
      starts hurting everything else, and the reader who wants more still has zoom, which now
      enlarges the drawing itself and pans. */
-  --zoom-sheet-w: min(1120px, 92vw);
   width: var(--zoom-sheet-w);
-  max-height: 88vh;
+  /* Leaves room for the strip below without either of them scrolling the page. */
+  max-height: 72vh;
   overflow: auto;
   /* No padding at the top: the toolbar band IS the top of the sheet. It is sticky, and a sticky
      box paints at the scrollport's edge no matter what its top margin claims — so a negative

@@ -67,6 +67,7 @@ import './layout/textDisclosure.css';
 import { BlockBoundary } from './BlockBoundary';
 import { BlockEmpty } from './lib/BlockEmpty';
 import { FallbackCard } from './FallbackCard';
+import { FilmstripRail } from './focus/FilmstripRail';
 import { skeletonCell } from './CanvasSkeleton';
 import { measureActionsWidth } from './layout/measureActionsWidth';
 import { depthLens, hasSections } from '../live/depth/depthLens';
@@ -1218,34 +1219,6 @@ export function TopicCanvas({
                       here is the same sentence twice. */}
                   <div className="zoom-sheet-title">Looking closer</div>
                   <div className="zoom-sheet-tools">
-                    {/* Step through the board without leaving the stage — the half of Focus worth
-                      keeping. Clamped at both ends; the count says where you are. */}
-                    {lensSteps.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          className="zoom-sheet-zoom-btn"
-                          aria-label="Previous card"
-                          disabled={lensAt <= 0}
-                          onClick={() => stepLens(-1)}
-                        >
-                          <Icon.chevL />
-                        </button>
-                        <span className="zoom-sheet-step">
-                          {lensAt + 1} / {lensSteps.length}
-                        </span>
-                        <button
-                          type="button"
-                          className="zoom-sheet-zoom-btn"
-                          aria-label="Next card"
-                          disabled={lensAt < 0 || lensAt >= lensSteps.length - 1}
-                          onClick={() => stepLens(1)}
-                        >
-                          <Icon.chevR />
-                        </button>
-                        <span className="zoom-sheet-sep" aria-hidden />
-                      </>
-                    )}
                     <button
                       type="button"
                       className="zoom-sheet-zoom-btn"
@@ -1296,6 +1269,24 @@ export function TopicCanvas({
                   </aside>
                 )}
               </div>
+              {lensSteps.length > 1 && (
+                // Under the sheet, on the backdrop — not inside it. The stage is one card; the
+                // strip is the rest of the answer, and keeping it outside means it never scrolls
+                // away with the card and never competes with the notes for the sheet's height.
+                // Focus's own rail, reused whole: real miniatures, a roving tab stop and
+                // arrow-key walking all come with it.
+                <div className="lens-strip">
+                  <FilmstripRail
+                    blocks={lensSteps}
+                    activeId={zoomedBlock.id ?? null}
+                    onPick={(id) => {
+                      const b = lensSteps.find((x) => x.id === id);
+                      if (b) openLens(b);
+                    }}
+                    renderBlock={renderBlock}
+                  />
+                </div>
+              )}
             </div>
           );
         })()}

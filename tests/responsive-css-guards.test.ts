@@ -498,10 +498,16 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     expect(body).toMatch(/width:\s*calc\(var\(--zoom-sheet-w\)/);
   });
 
-  it('drives that width and the sheet’s from one custom property, so they cannot drift', () => {
+  it('drives every width on the stage from one custom property, so they cannot drift', () => {
+    // Declared on the SCRIM rather than the sheet: the filmstrip under the sheet has to line up
+    // with it, and a sibling cannot read a variable declared on the box beside it.
+    const scrim = /\.zoom-scrim\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(scrim).toMatch(/--zoom-sheet-w:/);
     const sheet = /\.zoom-sheet\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(sheet).toMatch(/--zoom-sheet-w:/);
     expect(sheet).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
+    // The strip is the third consumer, and the one that would be visibly wrong if it drifted.
+    const strip = /\.lens-strip\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(strip).toMatch(/width:\s*var\(--zoom-sheet-w\)/);
     // The pan the magnified block now needs.
     expect(sheet).toMatch(/overflow:\s*auto/);
   });
