@@ -259,7 +259,11 @@ const ROUTE_BUDGETS = [
     // be", sitting beside the catalog's own, kept honest only by a staleness test. One source of
     // truth is worth 9 kB on a secondary route. Revisit by changing the feature: if the tiler ever
     // stops needing per-type widths, this goes back down.
-    gzip: 157,
+    //
+    // 159 (was 157): the measured parent closure already rounds to 157.5 kB, beyond the integer
+    // ceiling. The live latency work adds another ~0.5 kB through TopicCanvas's shared closure while
+    // keeping the first-turn engine nearly flat; 159 restores a narrow, measured margin.
+    gzip: 159,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
