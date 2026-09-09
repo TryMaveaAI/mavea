@@ -130,10 +130,10 @@ describe('capSpoken — conversational, never a wall of text', () => {
 });
 
 describe('shared narration directives — one source of truth for generateLive AND the eval harness', () => {
-  it('gives lean/brief the one-sentence spec and rich the two-or-three-sentence spec', () => {
+  it('gives lean/brief the one-sentence spec and rich the two-sentence spec', () => {
     expect(spokenLineDirective('lean')).toMatch(/ONE short sentence/);
     expect(spokenLineDirective('brief')).toMatch(/ONE short sentence/);
-    expect(spokenLineDirective('rich')).toMatch(/two or three short sentences/);
+    expect(spokenLineDirective('rich')).toMatch(/at most two short sentences/);
     // never both in the same directive.
     expect(spokenLineDirective('lean')).not.toMatch(/two or three/);
     expect(spokenLineDirective('rich')).not.toMatch(/ONE short sentence/);

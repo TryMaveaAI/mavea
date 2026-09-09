@@ -86,11 +86,11 @@ describe('useLiveTurn — the streaming feed respects the spoken-length cap', ()
     expect(queued).not.toContain(sentences[5]);
   });
 
-  it('keeps a rich (non-lean) ask to its larger 320-character budget', async () => {
+  it('keeps a rich (non-lean) ask to its larger 220-character budget', async () => {
     const speak = vi.fn();
     const { result } = renderHook(() => useLiveTurn({ getConfig: () => cfg, speak }));
 
-    // Nothing in this ask trips the trivial/brevity classifiers, so it stays 'rich' (320 chars).
+    // Nothing in this ask trips the trivial/brevity classifiers, so it stays 'rich' (220 chars).
     await act(async () => {
       void result.current.run('tell me about the history of ancient Rome');
     });

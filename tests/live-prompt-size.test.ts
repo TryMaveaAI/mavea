@@ -9,7 +9,7 @@ describe('Live prompt size budgets', () => {
         for (const generativeOn of [false, true]) {
           const prompt = liveSystemPrompt(tier, complexity, generativeOn);
           expect(prompt.length, `${tier}/${complexity}/generative=${generativeOn}`).toBeLessThan(
-            42_000,
+            38_500,
           );
         }
       }
@@ -25,7 +25,7 @@ describe('Live prompt size budgets', () => {
       rotation: 7,
     });
 
-    expect(menuFor(choice).length).toBeLessThan(28_000);
+    expect(menuFor(choice).length).toBeLessThan(10_000);
   });
 
   it('prints runtime-enforced limits only on the leading heroes', () => {
@@ -41,7 +41,7 @@ describe('Live prompt size budgets', () => {
     const withLimits = heroLines.filter((line) => line.includes(' · limits:'));
 
     expect(withLimits.length).toBeGreaterThan(0);
-    expect(withLimits.length).toBeLessThanOrEqual(6);
-    expect(heroLines.slice(6).every((line) => !line.includes(' · limits:'))).toBe(true);
+    expect(withLimits.length).toBeLessThanOrEqual(3);
+    expect(heroLines.slice(3).every((line) => !line.includes(' · limits:'))).toBe(true);
   });
 });

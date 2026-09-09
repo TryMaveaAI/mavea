@@ -42,6 +42,7 @@ import {
   isMinimalGlimpse,
   inBandErrorMessage,
   NO_THINKING_EFFORT,
+  supportsNoThinkingTier,
 } from './openaiCompatible';
 import { liveJsonSchema } from './schema';
 
@@ -50,6 +51,24 @@ const PROBE_TIMEOUT_MS = 4_000;
 
 /** How many times to retry a transient 429 (rate limit) before surfacing it. */
 const RATE_LIMIT_RETRIES = 3;
+
+/** OpenAI added caller-selected cache breakpoints in GPT-5.6. Older models accept only implicit
+ *  caching, so never send the new request fields to them. Provider prefixes are tolerated. */
+function supportsExplicitPromptCaching(model: string): boolean {
+  const name = model.split('/').at(-1) ?? model;
+  const match = /^gpt-(\d+)(?:\.(\d+))?(?:[-.]|$)/i.exec(name);
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2] ?? 0);
+  return major > 5 || (major === 5 && minor >= 6);
+}
+
+/** xAI's current text models expose Responses-style reasoning controls even though their ids do
+ *  not look like OpenAI reasoning-model ids. Grok 4.3 can disable thought; 4.5/4.6 bottom out at
+ *  low. Unknown/free-text Grok ids retain their previous request shape rather than risking a 400. */
+function isConfigurableGrokModel(provider: string, model: string): boolean {
+  return provider === 'grok' && /^grok-4\.(?:3|5|6)(?:[-.]|$)/i.test(model);
+}
 
 /** Pull the real reason out of a non-200 response body so a 400 ("Unsupported parameter" etc.)
  *  isn't a silent, undebuggable "openai 400" — mirrors gemini.ts's errorDetail. Never throws,
@@ -150,7 +169,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
     async generate(req: LiveRequest, cfg: ModelConfig, onDelta?: DeltaFn): Promise<RawResult> {
       const base = cfg.baseUrl ?? proxyBase;
       const searchTool = webSearchTool && req.tools?.webSearch ? webSearchTool() : undefined;
-      const reasoning = isReasoningModel(cfg.model);
+      const reasoning = isReasoningModel(cfg.model) || isConfigurableGrokModel(id, cfg.model);
 
       // History replays as plain {role, content: string} "easy" input messages — content here
       // is OUR resent text, not the API's own canonical output item, so it must stay on the
@@ -221,27 +240,47 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           ? []
           : [{ role: 'system' as const, content: 'Respond in JSON.' }];
 
-      // Reasoning effort. Canvas turns stay pinned to 'low' (see the note by the request body):
-      // 'medium' lets the reasoning run away on the large canvas prompt and produce nothing. But web
-      // search is reasoning-gated — OpenAI's own guidance is that the tool "doesn't engage reliably"
-      // below 'medium', which is precisely why a low-effort dashboard refresh so often comes back
-      // ungrounded ("couldn't verify with sources"). A SEARCH turn that is NOT a canvas turn — a
-      // dashboard refresh, an on-demand grounded metric — is small (a short prompt and a few JSON
-      // values), so the runaway doesn't apply: give it enough effort to actually search. Default
-      // 'medium'; a caller (the grounding retry) can push 'high' via thinkingLevel. Everything else
-      // stays 'low' — except a GLIMPSE (see isMinimalGlimpse): a disposable, self-sized ask that
-      // declared it needs no deliberation at all. The ghost speculation fires up to three of those
-      // per listen off a half-spoken sentence, and paying for a hidden thinking pass to produce
-      // three six-word titles is the clearest waste on the turn path. Never a search turn (the tool
-      // doesn't engage reliably at the lowest tier) and never a canvas turn (blockTypes excludes it,
-      // so a lean ask — which also asks for minimal thinking — keeps today's floor and effort).
+      // GPT-5.6+ otherwise writes an implicit breakpoint through the changing user suffix, which
+      // means the next turn cannot reuse the large stable system prefix. Put that prefix in a
+      // developer input block where OpenAI permits an explicit breakpoint. Earlier OpenAI models
+      // and xAI keep the compatible top-level instructions field and their implicit cache path.
+      const explicitPromptCache =
+        id === 'openai' &&
+        !!req.promptCacheKey &&
+        !!sysBase &&
+        supportsExplicitPromptCaching(cfg.model);
+      const stableInput = explicitPromptCache
+        ? [
+            {
+              role: 'developer' as const,
+              content: [
+                {
+                  type: 'input_text' as const,
+                  text: stableSystem,
+                  prompt_cache_breakpoint: { mode: 'explicit' as const },
+                },
+              ],
+            },
+          ]
+        : [];
+
+      // An ordinary canvas the shared classifier marks `minimal` skips the hidden pass on models
+      // that document the `none` tier; hard or thorough asks stay at `low`. Glimpses use the same
+      // fast rung. Web search is reasoning-gated, so non-canvas search calls instead receive
+      // medium/high effort to make the tool engage reliably.
       const glimpse = !searchTool && isMinimalGlimpse(req, cfg.model);
+      const fastCanvas =
+        !searchTool &&
+        isCanvasTurn &&
+        req.thinkingLevel === 'minimal' &&
+        supportsNoThinkingTier(cfg.model);
+      const noThinking = glimpse || fastCanvas;
       const effort: typeof NO_THINKING_EFFORT | 'low' | 'medium' | 'high' =
         searchTool && !isCanvasTurn
           ? req.thinkingLevel === 'high'
             ? 'high'
             : 'medium'
-          : glimpse
+          : noThinking
             ? NO_THINKING_EFFORT
             : 'low';
 
@@ -254,9 +293,18 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // provider-side response object after this stream ends, so opt out explicitly. xAI's
           // compatible endpoint does not document this field and must not receive it.
           ...(id === 'openai' ? { store: false } : {}),
-          instructions: stableSystem,
-          input: [...jsonNudge, ...historyInput, { role: 'user', content: userContent }],
+          ...(!explicitPromptCache ? { instructions: stableSystem } : {}),
+          input: [
+            ...stableInput,
+            ...jsonNudge,
+            ...historyInput,
+            { role: 'user', content: userContent },
+          ],
           text: { format: textFormat },
+          ...(req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
+          ...(explicitPromptCache
+            ? { prompt_cache_options: { mode: 'explicit', ttl: '30m' } }
+            : {}),
           // A reasoning model meters hidden thinking tokens out of THIS budget, so a small cap
           // (the tiny on-demand callers pass 150–500) can be spent entirely on reasoning, ending
           // the turn `incomplete` with no answer. The floor scales with the effort chosen ABOVE,
@@ -285,14 +333,13 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
             : (req.maxTokens ?? 1024),
           // Reasoning models (gpt-5.x) reject a custom temperature (fixed at 1) and use
           // `reasoning.effort` instead; classic models keep `temperature`. `effort` (computed above)
-          // is 'low' for a canvas turn, lifted for a search-metric turn, and dropped to 'minimal'
-          // for a glimpse — the two forces that shape the default are both measured:
-          //  · Canvas turns MUST stay 'low'. Letting the API default ('medium') apply destroys them:
+          // is the caller's supported minimum for a canvas, and is lifted for a search-metric turn.
+          // The two forces that shape the default are both measured:
+          //  · Canvas turns must never use the API default ('medium'), which destroys them:
           //    a canvas turn hands the model a very large instruction prompt and asks for structured
           //    JSON, and at medium the reasoning ran away and consumed the whole output budget before
           //    writing a character (ended `incomplete`, empty; ~18k tokens, thought 119s, produced
-          //    nothing). At 'low' the same ask streams first words in ~6s and lands an eight-block
-          //    canvas in ~20s. So the quality dial buys a richer canvas, not reasoning depth, here.
+          //    nothing). Ordinary composition now uses `none`; genuinely hard asks keep `low`.
           //  · Search-metric turns (a dashboard refresh) MUST NOT stay 'low'. Web search is
           //    reasoning-gated — it "doesn't engage reliably" below 'medium' — so a low-effort refresh
           //    kept coming back ungrounded ("couldn't verify"). These turns are small (short prompt,

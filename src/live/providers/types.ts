@@ -67,6 +67,10 @@ export interface LiveRequest {
    *  session-stable feature/menu guidance; Anthropic marks both segments independently, while
    *  implicit-cache providers send the combined prefix before history. */
   systemStable?: string;
+  /** Stable cache namespace for Live prompts. Providers that support cache routing use it to keep
+   *  related requests on one worker; their actual leading tokens still decide whether a prefix
+   *  matches, so lean/rich variants can safely share it. Others ignore it. */
+  promptCacheKey?: string;
   /** Rolling history (excludes the system prompt and the current user turn). */
   history: ChatMessage[];
   /** The current user question. */

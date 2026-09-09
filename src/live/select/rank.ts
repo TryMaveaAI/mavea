@@ -47,9 +47,8 @@ export interface SelectionResult {
   stablePromptSnippet: string;
   /** Only the selected hero lines; this is the turn-varying part of the menu. */
   heroPromptSnippet: string;
-  /** The three heroes the menu LEADS with — the ones that carry a dense example and that the
-   *  turn names as its targets. One ordering, read from one place, so the targets the model is
-   *  told to build around are the same three it sees at the top of the menu. */
+  /** The heroes the menu leads with and the turn names as its targets. One ordering, read from
+   *  one place, keeps the named targets aligned with the top of the menu. */
   leads: string[];
   /** The gate validateLiveResponse uses — exactly the types we exposed. */
   allowed: ReadonlySet<string>;
@@ -63,14 +62,13 @@ export interface SelectionResult {
 // gets a generous, varied menu (the model picks the fitting few); a lean ask (trivial
 // fact / arithmetic) gets a small focused one so a one-line answer isn't padded out.
 //
-// SIZED BY MEASUREMENT, not generosity. At 30 heroes the menu ran 25-31k chars — over half the
-// entire request, all of it OUTSIDE the provider's cached prefix, so every turn re-paid ~7k
-// tokens of prompt processing for lines the model read once and mostly ignored (a canvas builds
-// ~9 blocks). 16 keeps the variety mandate real — the base floor rides on top, pins and strong
-// fits are unaffected — while cutting the single largest slice of time-to-first-token.
-// mid keeps its proven 24: the reachability suite shows 18 stops the battery from ever surfacing
-// the quieter status/display visuals, and mid models are not the latency path measured above.
-const K_BY_TIER: Record<ModelTier, number> = { small: 8, mid: 24, frontier: 18 };
+// SIZED BY MEASUREMENT, not generosity. Every hero adds uncached prompt bytes and may load another
+// catalog shard before the request can even start. Eight still sits on top of the always-present
+// base floor, explicit pins, and strong-fit picks, while keeping cold-start I/O and first-token work
+// bounded for every hosted provider. Variety comes from rotation across turns, not from making one
+// model scan choices it will not render. Mid stays broad for weaker/local routing, where component
+// reachability matters more than hosted time-to-first-token and the existing battery requires it.
+const K_BY_TIER: Record<ModelTier, number> = { small: 8, mid: 24, frontier: 8 };
 const LEAN_K = 3;
 /** Keep the menu broad across the library: at most this many picks from any one family… */
 const FAMILY_CAP = 2;
@@ -453,7 +451,7 @@ function propHintsClause(m: ComponentMeta): string {
  *  chars/turn — the largest clause on the menu — with 76% of it on ranks the model rarely picks.
  *  The leads keep every hint (the canvas is built around them); the tail keeps the contracts
  *  that prevent a broken card (`needs`, item shapes, required paths) and sheds the guidance. */
-const TEACH_HINTS = 6;
+const TEACH_HINTS = 3;
 
 function requiredPathsClause(m: ComponentMeta): string {
   return m.requiredPaths?.length ? ` · required nested: ${m.requiredPaths.join(', ')}` : '';
@@ -500,9 +498,11 @@ function commonLines(): string {
  *  impressive first, so the model reads the wow options before the staples), then the
  *  common blocks that are always available. Only the chosen few rich components appear, so
  *  prompt size stays flat as the library grows. Lead with the cool, but use both. */
-// The header orders the model to build the canvas AROUND the top 2-3 heroes — give exactly those
-// a demo-grade (denser) example so it fills them deeply; the rest stay thin so the menu stays small.
-const LEAD_DENSE = 3;
+// Keep three explicit targets for the response, but teach only the first with a concrete shape.
+// Additional dense examples were thousands of uncached characters and delayed every provider
+// before it could emit the first card.
+const LEAD_COUNT = 3;
+const LEAD_DENSE = 1;
 
 const HERO_MENU_HEADER = [
   'HERO COMPONENTS for THIS answer — your most impressive options, best first. Build the',
@@ -545,12 +545,12 @@ export function leadsOf(choice: {
 }): string[] {
   return [...choice.chosen]
     .sort(leadOrder(choice.fitOf))
-    .slice(0, LEAD_DENSE)
+    .slice(0, LEAD_COUNT)
     .map((m) => m.type);
 }
 
-/** How the menu orders its heroes — and therefore which three lead it, get the dense worked
- *  example, and are named as the turn's targets. Fit comes FIRST, in half-point bands, and wow
+/** How the menu orders its heroes — and therefore which one gets the dense worked example and
+ *  which candidates are named as the turn's targets. Fit comes FIRST, in half-point bands, and wow
  *  only breaks ties within a band. Fit used to collapse to a yes/no before the wow sort, so a
  *  budget question led with moodboard, burn-runway and sunburst ahead of a stacked bar that fit
  *  three times better: the model rightly rejected the loud trio and fell back to the same generic
@@ -875,7 +875,7 @@ export async function selectComponents(input: SelectionInput): Promise<Selection
   // Only the LEAD_DENSE heroes ever render an example (buildMenu), and their order is computed
   // from the always-resident facts (fit + wow) — so fetch exactly those shards, not one per
   // offered type. At a 30-type menu this was ~26 shard round-trips on the critical path ahead of
-  // the first request byte, to render three examples.
+  // the first request byte, to render multiple examples.
   const leads = [...choice.chosen]
     .sort(leadOrder(choice.fitOf))
     // +2 margin: buildMenu re-sorts AFTER catalogMeta has filtered, so if a lead's family chunk

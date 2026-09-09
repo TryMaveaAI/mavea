@@ -115,14 +115,14 @@ export function temperatureFor(
   return TEMP_DEFAULT;
 }
 
-// Spoken-line ceilings (characters). A tweet-ish floor for trivial asks; up to ~2–3 short
-// sentences for substantive ones. Hard ceiling so a model can never monologue.
+// Spoken-line ceilings (characters). Keep the opener short because blocks cannot begin streaming
+// until this field closes; the canvas carries the depth.
 const SPOKEN_LEAN = 140;
-const SPOKEN_RICH = 320;
+const SPOKEN_RICH = 220;
 
 /**
  * Cap the narrated line to a conversational length for the ask. Lean → ~140 chars; rich →
- * up to ~320 (a couple of sentences). The canvas carries the depth, so the voice stays
+ * up to ~220 (a couple of short sentences). The canvas carries the depth, so the voice stays
  * human and short. Never throws; empty stays empty.
  */
 export function capSpoken(text: string, complexity: AskComplexity): string {
@@ -149,5 +149,5 @@ export const NARRATION_FIRST_LINE =
 export function spokenLineDirective(complexity: AskComplexity): string {
   return complexity === 'lean' || complexity === 'brief'
     ? `SPOKEN LINE ("narration") — keep it to ONE short sentence (≈${spokenBudget(complexity)} characters). Right to the point.`
-    : `SPOKEN LINE ("narration") — at most two or three short sentences (≈${spokenBudget('rich')} characters), like a person talking. The visuals carry the detail; never narrate the whole canvas.`;
+    : `SPOKEN LINE ("narration") — at most two short sentences (≈${spokenBudget('rich')} characters), like a person talking. The visuals carry the detail; never narrate the whole canvas.`;
 }

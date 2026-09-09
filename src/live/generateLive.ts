@@ -17,6 +17,7 @@ import type {
 } from '../data/conversation';
 import {
   validateLiveResponse,
+  LIVE_SYSTEM_PROMPT,
   liveSystemPrompt,
   blockTypesForTier,
   FRONTIER_BLOCK_TYPES,
@@ -103,6 +104,7 @@ import { worldSubject } from './world/subject';
 import type { WorldPreviewProps } from '../canvas/blocks/diagrams/types';
 import type { Representation } from '../canvas/spatial/morph/types';
 import { autoFix, dropUndrawable, recoverInstruction } from './verify';
+import { fnv1a } from '../lib/hash';
 
 export type { ChatMessage };
 
@@ -1327,8 +1329,8 @@ export async function generateLive(
   const maxBlocks =
     (tier === 'small' ? Math.min(9, target) : target) + (deepen ? (tier === 'small' ? 1 : 3) : 0);
   // Reasoning effort: cheapest level that fits the ask, nudged by the user's quality dial.
-  // Most turns are visual composition → minimal; a hard ask → a notch up. Providers
-  // without the knob (everything but Gemini today) simply ignore it.
+  // Most turns are visual composition → minimal; a hard ask → a notch up. Each adapter maps the
+  // shared intent to the cheapest supported provider-native tier.
   const thinkingLevel = thinkingLevelFor(complexity, userText, caps.quality);
   // Sampling temperature from the same zero-cost classifiers: precise asks (math, debug)
   // run cold for a repeatable answer; creative asks (brainstorm) run hot for variety; the
@@ -1603,6 +1605,10 @@ export async function generateLive(
     system,
     systemBase: turnSystem.systemBase,
     systemStable: turnSystem.systemStable,
+    // Keep every Live prompt variant on the same cache worker: the actual leading tokens still
+    // decide whether a prefix hits, while the shared core hash rolls the route when that contract
+    // changes. Hashing the full complexity/menu prefix here would scatter related turns.
+    promptCacheKey: `mavea-live:${fnv1a(LIVE_SYSTEM_PROMPT)}`,
     history: sendHistory,
     blockTypes,
     complexity,

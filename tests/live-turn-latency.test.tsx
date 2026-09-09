@@ -57,16 +57,17 @@ describe('a model with no MINIMAL tier is learned once, not once per page load',
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it('pays the refusal once, remembers it, and a fresh session opens at LOW directly', async () => {
+  it('learns an unknown model refusal once, then a fresh session opens at LOW directly', async () => {
+    const futureCfg = { ...cfg, model: 'gemini-future-flash' };
     const fetch1 = vi.fn().mockResolvedValueOnce(refusesMinimal()).mockResolvedValueOnce(ok());
     vi.stubGlobal('fetch', fetch1);
     const { geminiAdapter } = await import('../src/live/providers/gemini');
-    await geminiAdapter.generate(req, cfg);
+    await geminiAdapter.generate(req, futureCfg);
     expect(fetch1).toHaveBeenCalledTimes(2);
     expect(sentLevel(fetch1.mock.calls[0])).toBe('MINIMAL');
     expect(sentLevel(fetch1.mock.calls[1])).toBe('LOW');
     expect(JSON.parse(localStorage.getItem('mavea-gemini-no-minimal') ?? '[]')).toContain(
-      'gemini-3.8-flash',
+      'gemini-future-flash',
     );
 
     // The next page load. This used to re-spend a whole request re-learning the same fact —
@@ -75,9 +76,21 @@ describe('a model with no MINIMAL tier is learned once, not once per page load',
     const fetch2 = vi.fn().mockResolvedValueOnce(ok());
     vi.stubGlobal('fetch', fetch2);
     const fresh = await import('../src/live/providers/gemini');
-    await fresh.geminiAdapter.generate(req, cfg);
+    await fresh.geminiAdapter.generate(req, futureCfg);
     expect(fetch2).toHaveBeenCalledTimes(1);
     expect(sentLevel(fetch2.mock.calls[0])).toBe('LOW');
+  });
+
+  it('opens known 3.7/3.8 Flash models at LOW without paying a rejected request', async () => {
+    for (const model of ['gemini-3.7-flash', 'gemini-3.8-flash']) {
+      const fetch1 = vi.fn().mockResolvedValueOnce(ok());
+      vi.stubGlobal('fetch', fetch1);
+      const { geminiAdapter } = await import('../src/live/providers/gemini');
+      await geminiAdapter.generate(req, { ...cfg, model });
+      expect(fetch1).toHaveBeenCalledTimes(1);
+      expect(sentLevel(fetch1.mock.calls[0])).toBe('LOW');
+      vi.unstubAllGlobals();
+    }
   });
 
   it('does not remember it for a different model', async () => {

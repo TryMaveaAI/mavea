@@ -923,7 +923,7 @@ describe('capability-tiered block exposure (Phase 4)', () => {
   });
   it('does not give its own conflicting narration-length spec (that lives in one place: spokenLine)', () => {
     // Regression: the base prompt used to say "a friendly sentence or two", while generateLive's
-    // per-turn SPOKEN LINE directive separately said "two or three short sentences" for the same
+    // per-turn SPOKEN LINE directive separately gave a different sentence count for the same
     // rich turn — two different counts in the same system prompt. The base prompt now defers to
     // that single, complexity-scaled directive instead of stating its own count.
     const base = liveSystemPrompt('frontier');
@@ -933,13 +933,9 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     // SPOKEN LINE section (see the test in live.test.ts that locks that directive).
     expect(base).toMatch(/SPOKEN LINE/);
   });
-  it('gates the spotlight-tour / drawn-gesture teaching away from BRIEF turns only', () => {
-    // A 'brief' turn never wants a walkthrough tour (the base prompt itself says "omit the tour
-    // for a one-glance answer"), so the ~1,400-token teaching is dropped there rather than sent
-    // and then told to ignore it. It was briefly withheld from 'lean' as well — and that quietly
-    // removed spotlights and pen marks from a large share of real turns, because a lean canvas of
-    // a few focused blocks is still very much worth walking. USER-DIRECTED: the gestures are a
-    // headline behaviour and are not what we save 1.2k tokens on.
+  it('gates the spotlight-tour / drawn-gesture teaching to substantive rich turns', () => {
+    // Brief and lean answers are only a few focused blocks, so a multi-stop tour would not render.
+    // Keep its sizeable instructions off their latency-critical prompt.
     const brief = liveSystemPrompt('frontier', 'brief');
     expect(brief).not.toContain('SPOTLIGHT TOUR');
     expect(brief).not.toContain('DRAWN GESTURE');
@@ -949,25 +945,24 @@ describe('capability-tiered block exposure (Phase 4)', () => {
     expect(rich).toContain('SPOTLIGHT TOUR');
     expect(rich).toContain('DRAWN GESTURE');
     const lean = liveSystemPrompt('frontier', 'lean');
-    expect(lean).toContain('SPOTLIGHT TOUR');
-    expect(lean).toContain('DRAWN GESTURE');
+    expect(lean).not.toContain('SPOTLIGHT TOUR');
+    expect(lean).not.toContain('DRAWN GESTURE');
     // default (no complexity passed) matches the common, richer case.
     expect(liveSystemPrompt('frontier')).toContain('SPOTLIGHT TOUR');
     // small tier never gets the frontier addendum at all, tour teaching included.
     expect(liveSystemPrompt('small', 'rich')).not.toContain('SPOTLIGHT TOUR');
   });
-  // The tour is the ONLY part of the prompt that varies with complexity, and it rides LAST — so
-  // the brief prompt is an exact byte-prefix of the rich one, and a session that flips complexity
-  // extends one provider cache entry instead of paying a cache-write on every flip. Lean carries
-  // the tour (it earns spotlights and pen marks), so it is byte-IDENTICAL to rich — which is the
-  // best case for the cache, not a worse one: those two share a single entry outright.
-  it('brief is an exact byte-prefix of rich, and lean shares rich outright (one cache entry per tier)', () => {
+  // Complexity-specific material appends to the same base so provider caches can reuse the longest
+  // matching prefix even as an answer moves between brief, lean, and rich.
+  it('keeps brief and lean as exact prefixes of rich', () => {
     for (const tier of ['frontier', 'mid'] as const) {
       const rich = liveSystemPrompt(tier, 'rich');
       const brief = liveSystemPrompt(tier, 'brief');
       expect(rich.startsWith(brief)).toBe(true);
       expect(brief.length).toBeLessThan(rich.length); // brief really is the shorter prefix
-      expect(liveSystemPrompt(tier, 'lean')).toBe(rich);
+      const lean = liveSystemPrompt(tier, 'lean');
+      expect(rich.startsWith(lean)).toBe(true);
+      expect(lean.length).toBeLessThan(rich.length);
     }
   });
   it('moves safety and honesty rules to the top of the prompt', () => {
@@ -1319,7 +1314,7 @@ describe('the answer example carries the answer, and nothing else', () => {
   // turn pays for, so it has to be the answer.
   function example(): { blocks: { type: string; note?: string; study?: unknown }[] } {
     const line = LIVE_SYSTEM_PROMPT.split('\n').find(
-      (l) => l.startsWith('{"title":') && l.trimEnd().endsWith('}'),
+      (l) => l.startsWith('{"narration":"') && l.trimEnd().endsWith('}'),
     );
     if (!line) throw new Error('the prompt no longer carries a one-line example object');
     return JSON.parse(line) as { blocks: { type: string; note?: string; study?: unknown }[] };
@@ -1332,7 +1327,7 @@ describe('the answer example carries the answer, and nothing else', () => {
     expect(LIVE_SYSTEM_PROMPT).toContain("THE FIRST BLOCK'S NOTE IS THE ANSWER");
     const first = example().blocks[0].note ?? '';
     // The exemplar's own first note states the plan, not the card.
-    expect(first).toMatch(/whole plan in one line/);
+    expect(first).toMatch(/starting plan/);
   });
 
   it('parses, and gives every block a note', () => {

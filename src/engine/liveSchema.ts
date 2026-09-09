@@ -461,7 +461,7 @@ ANSWER THE QUESTION — FIRST, IN FULL, AND IN THE REQUESTED FORM. This is the f
 
 Example (aim for this density and variety):
 User: How should I budget a $5000 monthly income?
-{"title":"Your $5,000 monthly budget","sub":"50/30/20 — needs, wants, future.","narration":"Here's your money mapped out — half to needs, a third to wants, and the rest building your future.","blocks":[{"type":"insight","props":{"title":"50/30/20 keeps it simple and proven","stat":"$5,000/mo","summary":"Half to essentials, a third to lifestyle, a fifth to savings and debt payoff."},"note":"This is the whole plan in one line — half to needs, a third to wants, a fifth to your future — simple enough that you'll actually stick with it."},{"type":"kpi","props":{"title":"The three buckets","items":[{"label":"Needs","value":"$2,500","sub":"50% — non-negotiable"},{"label":"Wants","value":"$1,500","sub":"30% — lifestyle"},{"label":"Future","value":"$1,000","sub":"20% — savings + debt"}]},"note":"Your $5,000 split into three real targets: $2,500 for needs, $1,500 for wants, $1,000 toward savings and debt — the numbers everything else flows from."},{"type":"compare","props":{"eyebrow":"Savings strategy","options":[{"name":"50/30/20","sub":"balanced","pick":true},{"name":"70/20/10","sub":"leaner"},{"name":"Zero-based","sub":"strict"}],"criteria":[{"label":"Flexibility","cells":[{"v":"High","win":true},{"v":"Medium"},{"v":"Low"}]},{"label":"Savings rate","cells":[{"v":"20%","win":true},{"v":"10%"},{"v":"Variable"}]},{"label":"Complexity","cells":[{"v":"Low","win":true},{"v":"Low"},{"v":"High"}]}],"recommendation":"50/30/20 is the best starting point — adjust once you've tracked a month."},"note":"If you're weighing methods, 50/30/20 wins on flexibility and still keeps a healthy 20% savings rate — without the daily grind of zero-based budgeting."},{"type":"breakdown","props":{"title":"Needs: where the $2,500 goes","rows":[{"name":"Rent","val":"$1,200","pct":48,"hot":true},{"name":"Groceries","val":"$400","pct":16},{"name":"Transport","val":"$300","pct":12},{"name":"Utilities","val":"$150","pct":6},{"name":"Insurance","val":"$250","pct":10},{"name":"Other","val":"$200","pct":8}]},"note":"Inside that $2,500, rent is nearly half at $1,200 — it's the one number worth fighting to keep down, since everything else here is already lean."},{"type":"chart","props":{"title":"Savings growth over 12 months","unit":"$","labels":["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],"series":[{"name":"Savings","color":"var(--insight)","data":[1000,2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000]}],"footer":"$1,000/month compounding — no timing, just consistency."},"note":"Saving $1,000 every month, your balance climbs in a steady line to $12,000 by December — no clever timing, just showing up each month."},{"type":"timeline","props":{"eyebrow":"Your 12-month plan","events":[{"time":"Month 1–2","title":"Build $2,000 emergency buffer","detail":"Covers surprises before you invest a single dollar."},{"time":"Month 3–6","title":"Reach 3-month emergency fund","detail":"$7,500 total — keep it in a high-yield savings account."},{"time":"Month 7–9","title":"Max out Roth IRA","detail":"$1,000/month for 3 months — $3,000 in, well inside the annual cap."},{"time":"Month 10–12","title":"Invest remainder in index funds","detail":"Low-cost, diversified — set and forget."}]},"note":"The order that matters: buffer first, then a full emergency fund, then max the Roth IRA, and only then index funds — safety before growth."}],"chips":["How do I stick to this budget?","What if rent takes more than 48%?","Best apps to track spending?","How much to invest vs save?"]}`;
+{"narration":"Start with 50% for needs, 30% for wants, and 20% for savings or debt.","title":"Your $5,000 monthly budget","sub":"A practical starting split","topic":"Finance","continuity":"replace","causal":false,"blocks":[{"type":"insight","props":{"title":"Start with 50/30/20","stat":"$5,000/mo"},"note":"Use 50/30/20 as the starting plan, then adjust it to your real costs."},{"type":"kpi","props":{"title":"Three targets","items":[{"label":"Needs","value":"$2,500"},{"label":"Wants","value":"$1,500"},{"label":"Future","value":"$1,000"}]},"note":"These are the three monthly targets everything else follows."},{"type":"breakdown","props":{"title":"Needs","rows":[{"name":"Rent","val":"$1,200","pct":48},{"name":"Other needs","val":"$1,300","pct":52}]},"note":"Rent is the largest fixed cost to watch."},{"type":"compare","props":{"options":[{"name":"50/30/20","pick":true},{"name":"Zero-based"}],"criteria":[{"label":"Effort","cells":[{"v":"Low","win":true},{"v":"High"}]}]},"note":"50/30/20 is the easier plan to sustain."},{"type":"timeline","props":{"events":[{"time":"First","title":"Build a cash buffer"},{"time":"Then","title":"Save and repay debt"}]},"note":"Build safety before taking more investment risk."}],"chips":["Adapt this to my rent","Make a weekly plan"]}`;
 
 /** Extra block types exposed to frontier models, appended to the base prompt. */
 /** The frontier cousins' block shapes + THE BLANK SPACE — always relevant once a model is
@@ -482,10 +482,7 @@ THE BLANK SPACE — when a value is the USER'S to give, leave a glowing hole ins
 VARIETY IN SERVICE OF THE ANSWER — aim for 4-5+ different block types drawn from the per-turn menu and the preferred list above; when a richer component presents the data as clearly as a plain one, choose the richer one. Never add one that carries no real content just to vary — substance first, always.`;
 
 /** The spotlight-tour + drawn-gesture teaching (~1,400 tokens) — genuinely only pays for
- *  itself on a multi-part answer worth walking through. Kept out of 'brief' AND 'lean' prompts
- *  entirely (see liveSystemPrompt below) rather than sent every time and then told to omit it:
- *  a 'brief' reply is by definition the one-or-few-glance case the tour skips anyway, and a
- *  'lean' canvas is a couple of focused blocks no walkthrough would ever tour. */
+ *  itself on a substantive, multi-part answer worth walking through. */
 const TOUR_GESTURE_ADDENDUM = `
 
 SPOTLIGHT TOUR — for any SUBSTANTIVE answer (a recipe, how-to, explanation, plan, comparison, or anything with a few distinct parts), INCLUDE a "tour": an array of {"index": <0-based block index>, "say": <one warm spoken line>} walking 3-5 KEY blocks in order. Each "say" is SPOKEN ALOUD the instant its block is spotlighted, so write it ABOUT that block's content — like a friend pointing at the screen and talking you through it: "First, here's everything you'll need…", "Now the steps — start by browning the onions…", "And this is how the flavors balance out." Make each line flow into the next, and keep them conversational, not labels. Lead with the most important block. A canvas with several distinct parts GETS a tour — that is the normal case, not the exception; omit it ONLY when the whole answer is a single block or one figure taken in at a glance. Never tour every block — spotlight only the stops that genuinely deserve a beat.
@@ -562,13 +559,9 @@ export function liveSystemPrompt(
     .join('\n\n');
   if (tier === 'small') return `${LIVE_SYSTEM_PROMPT}${stableAddendum}`;
   const base = `${LIVE_SYSTEM_PROMPT}${FRONTIER_BLOCKS_ADDENDUM}${stableAddendum}`;
-  // Only a 'brief' ask goes without the tour teaching. It was briefly withheld from 'lean' too,
-  // on the theory that a couple of focused blocks would never be walked — but lean answers DO
-  // earn spotlights and pen marks, and dropping the teaching quietly removed them from a large
-  // share of turns. The gestures are a headline behaviour; ~1.2k tokens is the wrong thing to
-  // save them on. 'brief' still skips it, and the addendum still rides LAST so brief stays a
-  // byte-prefix of the others for prompt caching.
-  return complexity === 'brief' ? base : base + TOUR_GESTURE_ADDENDUM;
+  // A brief or lean canvas is only a couple of focused blocks. Paying ~1.4k input tokens to teach
+  // a multi-stop walkthrough delays the answer for behavior that the renderer would not use.
+  return complexity === 'rich' ? base + TOUR_GESTURE_ADDENDUM : base;
 }
 
 /* ------------------------------------------------------------------ *
@@ -2821,7 +2814,7 @@ export function validateLiveResponse(
     maxGraphemes: 180,
     maxLines: 4,
   });
-  // Outer safety bound only — the precise, ask-aware spoken cap (lean ~140 / rich ~320) is
+  // Outer safety bound only — the precise, ask-aware spoken cap (lean ~140 / rich ~220) is
   // applied in generateLive via capSpoken, where the ask complexity is known. Here we just
   // stop a runaway narration, without pre-truncating a legitimately longer rich line.
   // The narration may carry inline [[shown|said]] annotations: the screen gets the shown side,

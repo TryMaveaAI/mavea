@@ -16,6 +16,7 @@ import type {
   DeltaFn,
   RawResult,
   TokenUsage,
+  ThinkingLevel,
 } from './types';
 import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, arr, num } from './http';
 import { openaiUserContent, textOnlyUser } from './parts';
@@ -90,12 +91,33 @@ export function isReasoningModel(model: string): boolean {
 export const NO_THINKING_EFFORT = 'none';
 
 /** Whether this model has the sub-`low` rung above. Matched by NAME rather than by "is a reasoning
- *  model" — the o-series rejects the value outright, and a gateway route can point at any vendor's
- *  model — so the tier is only ever requested where it is documented. Same name-boundary rule as
- *  isReasoningModel, so a gateway id ("openai/gpt-5.6-luna") matches while "acme-gpt-5-clone"
- *  does not. */
-function supportsNoThinkingTier(model: string): boolean {
-  return /(?:^|\/)gpt-5/i.test(model);
+ *  model" — the o-series and newer reasoning-only Grok models reject the value outright, while
+ *  Grok 4.3 calls the rung `none`. Same name-boundary rule as isReasoningModel, so provider-
+ *  qualified ids match while lookalike names do not. */
+export function supportsNoThinkingTier(model: string): boolean {
+  return /(?:^|\/)gpt-5/i.test(model) || /(?:^|\/)grok-4\.3(?:[-.]|$)/i.test(model);
+}
+
+/** OpenRouter's unified reasoning control for non-OpenAI families whose defaults otherwise add a
+ *  hidden pass before any content. The gateway maps unsupported Gemini levels to the nearest
+ *  accepted one; Grok 4.3 can disable reasoning while newer Grok floors at low. */
+function gatewayReasoning(
+  model: string,
+  level: LiveRequest['thinkingLevel'],
+): { effort: ThinkingLevel | typeof NO_THINKING_EFFORT } | undefined {
+  if (!level) return undefined;
+  if (/^google\/gemini-3(?:[.-]|$)/i.test(model)) return { effort: level };
+  if (/^google\/gemini-2\.5-pro(?:[-.]|$)/i.test(model)) {
+    return { effort: level === 'minimal' ? 'low' : level };
+  }
+  if (/^google\/gemini-2\.5-flash(?:-lite)?(?:[-.]|$)/i.test(model)) {
+    return { effort: level === 'minimal' ? NO_THINKING_EFFORT : level };
+  }
+  if (/^(?:x-ai\/)?grok(?:[.-]|$)/i.test(model)) {
+    if (level !== 'minimal') return { effort: level };
+    return { effort: supportsNoThinkingTier(model) ? NO_THINKING_EFFORT : 'low' };
+  }
+  return undefined;
 }
 
 /** A GLIMPSE: a small, self-sized, disposable ask (the ghost speculation off a half-spoken
@@ -104,9 +126,7 @@ function supportsNoThinkingTier(model: string): boolean {
  *
  *   · `thinkingLevel: 'minimal'` — it declared that this ask needs no deliberation, and
  *   · `maxTokens` — it sized its own budget rather than taking the adapter's default, and
- *   · no `blockTypes` — it is not a Live canvas turn (a lean canvas turn also asks for minimal
- *     thinking, and that one MUST keep the reasoning floor: it hands the model a very large
- *     prompt whose structured answer is worth reserving room for).
+ *   · no `blockTypes` — it is not a Live canvas turn, whose output budget is sized independently.
  *
  *  A search turn is excluded at the call sites, not here: web search is reasoning-gated and does
  *  not engage reliably at the lowest tier, so grounding always outranks the saving.
@@ -216,6 +236,17 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
       // and keeps its own budget. Never on a search turn: search is reasoning-gated and doesn't
       // engage reliably at the lowest tier, so an ungrounded answer would be the "saving".
       const glimpse = !searchTool && isMinimalGlimpse(req, cfg.model);
+      // An ordinary canvas explicitly classified as minimal should not pay for an invisible
+      // reasoning pass either. Its own output budget is already sized for the full JSON canvas.
+      const fastCanvas =
+        !searchTool &&
+        !!req.blockTypes?.length &&
+        req.thinkingLevel === 'minimal' &&
+        supportsNoThinkingTier(cfg.model);
+      const noThinking = glimpse || fastCanvas;
+      const routedReasoning = reasoning
+        ? undefined
+        : gatewayReasoning(cfg.model, req.thinkingLevel);
 
       // Prompt caching keys on the request's leading tokens, so anything that varies turn-to-turn
       // poisons everything behind it. req.system is the stable base (liveSystemPrompt) followed by
@@ -285,12 +316,10 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
                     // be spent entirely on thinking → empty answer. Floor to 1500 (the tiny
                     // on-demand callers pass 150–500) so a low-effort think still leaves room to
                     // write; the big canvas turn already passes far more, so max() is a no-op there.
-                    // A glimpse is the one case with nothing to reserve — it runs at the `minimal`
-                    // tier below, where there is no hidden pass to leave room for — so its own
-                    // budget stands. Floor and tier move together, never separately: dropping the
-                    // floor while still asking for a `low` think is how a small caller ends up
-                    // billed for reasoning and handed an empty completion.
-                    max_completion_tokens: glimpse
+                    // A no-thinking call has nothing to reserve, so its own budget stands. Floor
+                    // and tier move together: dropping the floor while still asking for `low`
+                    // reasoning is how a small caller gets billed for thought and no answer.
+                    max_completion_tokens: noThinking
                       ? (req.maxTokens ?? 1024)
                       : Math.max(req.maxTokens ?? 1024, 1500),
                     // reasoning_effort takes low|medium|high across OpenAI-compatible reasoning
@@ -299,14 +328,18 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
                     // output budget thinking about the large canvas prompt and returns an empty
                     // answer (see the measured note in openaiResponsesCompatible). The rung below
                     // it is NOT universally accepted, so it goes out only where the model family
-                    // documents it and the caller asked for a glimpse (isMinimalGlimpse) — never
-                    // on a search turn, whose reasoning-gated tool wants the higher tier.
-                    reasoning_effort: glimpse ? NO_THINKING_EFFORT : 'low',
+                    // documents it and the caller classified the work as minimal — never on a
+                    // search turn, whose reasoning-gated tool wants a higher tier.
+                    reasoning_effort: noThinking ? NO_THINKING_EFFORT : 'low',
                   }
                 : { max_tokens: req.maxTokens ?? 1024, temperature: req.temperature ?? 0.3 }),
+              ...(routedReasoning ? { reasoning: routedReasoning } : {}),
               // json_object mode coexists with the search tool — the model still emits JSON;
               // citations come back as separate delta.annotations entries.
               response_format: { type: 'json_object' },
+              // OpenRouter accepts this OpenAI-compatible field as a sticky routing key. The
+              // explicit system breakpoint above then lands on the same cache across turns.
+              ...(split && req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
               stream: true,
               // Ask for the token-usage summary frame (input/output/cached counts) — the only way
               // Chat Completions reports usage while streaming. It arrives after the finish frame;

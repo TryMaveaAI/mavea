@@ -169,9 +169,9 @@ there `pnpm gen:catalog` derives:
   selector ranks over, and it is always resident: ~51 KB of source, ~14 KB gzipped, for 625
   components. Objects with repeated keys would be ~130 KB.
 - **`catalog/details/shard*.ts`** — the blurbs, optional props, item shapes and prop hints. These are
-  ~70% of the catalog's bytes and are read by only two consumers: the prompt menu (for the ≤30
-  components a turn offers) and the generic coercer (for the handful it produces). They are fetched
-  in small canonical-order shards, on demand.
+  ~70% of the catalog's bytes and are read by only two consumers: the bounded per-turn prompt menu
+  and the generic coercer (for the handful it produces). They are fetched in small canonical-order
+  shards, on demand.
 
 Sharding, rather than splitting by family, is deliberate and was chosen by measurement. The selector
 caps its picks at two per family for visual variety, so a menu spans ~17 of the 24 families; a
@@ -370,11 +370,12 @@ A few ideas make it feel instant, stay safe, and stay cheap:
   (`canvas/lib/projectText.ts`). Content never silently vanishes, and a concept-section header
   can never sit orphaned above an empty grid. Enforced across the whole catalog by
   `tests/live-coercion-gauntlet.test.tsx` and `tests/catalog-string-items.test.ts`.
-- **Cheap for a long conversation.** `live/history.ts` resends only the last few turns verbatim and
-  folds older ones into a short recap, so per-turn input cost stays roughly flat however long the
-  chat runs; reasoning effort scales to the ask (`live/effort.ts`, mapped to a provider's thinking
-  dial, default minimal); and the stable system prompt is sent first so a provider's implicit cache
-  (Gemini) absorbs the large prefix after the first turn.
+- **Cheap and fast for a long conversation.** `live/history.ts` resends only the last few turns
+  verbatim and folds older ones into a short recap, so per-turn input cost stays roughly flat however
+  long the chat runs. Ordinary composition maps to each provider's lowest supported thinking tier;
+  harder asks keep a reasoning pass. The stable system prefix is sent first and routed with one
+  cache identity: Anthropic and OpenRouter mark their breakpoints, GPT-5.6+ uses OpenAI's explicit
+  breakpoint, and Gemini, Grok, and older OpenAI models retain their compatible prefix-cache paths.
 - **Grounding is the user's choice.** A `SearchMode` (off / free Wikipedia retrieve-then-read /
   real-time provider grounding) gated by a freshness check decides whether a turn searches at all.
   When an adapter reports `nativeWebSearch`, `generateLive` lets it ground itself (Gemini's

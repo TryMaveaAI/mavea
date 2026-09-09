@@ -3,7 +3,8 @@
 // is deprecated (shutdown 2026-07-23) with no replacement tool on that endpoint. JSON is
 // guaranteed via text.format:json_object, streams response.output_text.delta so narration
 // arrives first, Bearer key through the same-origin /llm/openai proxy (no CORS). OpenAI
-// applies prompt caching automatically to the repeated system prefix.
+// applies prompt caching automatically, and GPT-5.6+ receives an explicit breakpoint at the end
+// of the repeated system prefix so changing per-turn guidance cannot move it.
 //
 // The shared transport detects reasoning models (gpt-5.x / o-series) and swaps in
 // `reasoning.effort` + omits the (fixed-at-1) temperature, so the current GPT-5 defaults
@@ -11,9 +12,8 @@
 //
 // Native web search: `{type:'web_search'}` in tools[], only injected when the turn asks
 // for fresh data. OpenAI's own docs caution that search doesn't engage reliably at 'minimal'
-// reasoning effort — the shared transport clamps 'minimal' to 'low' for every reasoning-model
-// call EXCEPT a disposable glimpse (tiny explicit cap, no block types, gpt-5 family), and a
-// search turn is excluded from that exemption by name, so it never lands at the unsupported tier.
+// reasoning effort — the shared transport uses the provider's no-thinking tier for ordinary
+// composition and disposable glimpses, while a search turn stays above it so the tool engages.
 import { openaiResponsesCompatible } from './openaiResponsesCompatible';
 
 export const openaiAdapter = openaiResponsesCompatible({

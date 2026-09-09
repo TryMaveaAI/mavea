@@ -92,22 +92,9 @@ async function errorDetail(res: Response): Promise<string> {
   }
 }
 
-/** Models this session has learned do not accept `thinkingLevel: MINIMAL`.
- *
- *  Gemini 3's Flash line split on this: 3.5/3.6-flash and the flash-lites take MINIMAL, while
- *  3.7-flash, 3.8-flash and 3.1-pro-preview take only low/medium/high and answer a MINIMAL request
- *  with `400 INVALID_ARGUMENT: Thinking level MINIMAL is not supported for this model`. Every turn
- *  asks for MINIMAL, so on those models EVERY call failed and the surface simply did not work.
- *
- *  Learned rather than listed: the model field is free text and Google ships a new Flash roughly
- *  every quarter, so a hand-kept set of ids would rot into the same outage it was added to fix.
- *  The first rejection for a model is remembered and every later call opens at `low`. */
-/** The rejection is remembered ACROSS sessions, not just within one. It used to live only in the
- *  Set below, so every page load spent one whole request re-learning it — and on a key already
- *  near its quota that wasted request is exactly what tipped the next one into a 429. Measured
- *  live on gemini-3.8-flash: 400 (MINIMAL refused), then 429, then 429, then the turn died. Same
- *  never-throwing localStorage idiom as the small preferences; a list, because the model field is
- *  free text and there will be more than one.
+/** Models this browser has learned do not accept `thinkingLevel: MINIMAL`. Known current families
+ *  are handled synchronously below; this set covers new/free-text ids whose capability cannot be
+ *  known in advance. A rejection is remembered across sessions so only the first request pays it.
  *
  *  Declared ABOVE the Set that reads it at module init: a `const` referenced before its line is a
  *  temporal-dead-zone throw, and the try/catch that keeps this from ever throwing would have
@@ -135,20 +122,49 @@ function rememberNoMinimal(model: string): void {
 
 const noMinimal = new Set<string>(readNoMinimal());
 
-/** Gemini's thinkingConfig uses uppercase level names. Omit the whole config when no
- *  level is requested, so the model's own default (Flash-Lite = MINIMAL) applies. */
+/** Current Gemini families whose published thinking table starts at LOW. Keep the learned set
+ *  above for future/free-text model ids, but do not spend a guaranteed 400 discovering a known
+ *  capability on a new browser. Versioned aliases match after the family name as well. */
+function isKnownWithoutMinimal(model: string): boolean {
+  const name = model.replace(/^models\//, '');
+  return /^gemini-(?:3\.(?:7|8)-flash|3\.1-pro|3-pro)(?:-|$)/i.test(name);
+}
+
+function gemini25Family(model: string): 'pro' | 'flash' | 'flash-lite' | null {
+  const match = /^gemini-2\.5-(pro|flash-lite|flash)(?:-|$)/i.exec(model.replace(/^models\//, ''));
+  return (match?.[1]?.toLowerCase() as 'pro' | 'flash' | 'flash-lite' | undefined) ?? null;
+}
+
 /** The level this model will actually accept. `low` is the nearest thing a model with no MINIMAL
  *  tier accepts, so the intent — think as little as this model can — survives the substitution
  *  rather than being dropped. */
 function effectiveLevel(level: ThinkingLevel, model: string): ThinkingLevel {
-  return level === 'minimal' && noMinimal.has(model) ? 'low' : level;
+  return level === 'minimal' && (isKnownWithoutMinimal(model) || noMinimal.has(model))
+    ? 'low'
+    : level;
 }
 
 function thinkingConfig(
   level: ThinkingLevel | undefined,
   model: string,
-): { thinkingLevel: string } | undefined {
+): { thinkingLevel: string } | { thinkingBudget: number } | undefined {
   if (!level) return undefined;
+  const family25 = gemini25Family(model);
+  if (family25) {
+    // Generate Content rejects thinkingLevel on Gemini 2.5. Flash and Flash-Lite can disable
+    // thinking; Pro cannot, so its latency-sensitive floor is the documented 128-token minimum.
+    const budget =
+      level === 'high'
+        ? 24_576
+        : level === 'medium'
+          ? 8_192
+          : family25 === 'pro'
+            ? 128
+            : level === 'low'
+              ? 1_024
+              : 0;
+    return { thinkingBudget: budget };
+  }
   return { thinkingLevel: effectiveLevel(level, model).toUpperCase() };
 }
 

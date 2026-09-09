@@ -158,7 +158,7 @@ describe('component examples (the gauntlet)', () => {
   });
 });
 
-// Phase 2c: the LEAD heroes (top-3 wow) get a DENSER example so the model fills the block at
+// Phase 2c: the leading hero gets a DENSER example so the model fills the block at
 // demo-grade depth (the demos run ~4-5 items/block; the old 2-item cap taught thin canvases).
 // These lock that the dense tier truly adds items, never breaks an example, and never regresses
 // the default (thin) tier the gauntlet above relies on.

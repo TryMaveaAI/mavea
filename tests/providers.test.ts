@@ -529,13 +529,12 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     expect(body.max_output_tokens).toBe(1500);
   });
 
-  it('Responses: a real canvas turn asking for minimal thinking keeps low effort AND the floor', async () => {
-    // A lean ask legitimately asks for minimal thinking (effort.ts pins it there), so blockTypes
-    // is what separates the turn the reader is waiting on from a disposable glimpse. Without this
-    // the cheapest, most common turn would lose the protection the floor exists for.
+  it('Responses: an ordinary canvas asking for minimal thinking skips the hidden pass', async () => {
+    // Canvas output has its own full-size budget. Paying for hidden reasoning before the first
+    // visible token only delays an ordinary composition turn.
     const body = await responsesBody('gpt-5.6-luna', { ...glimpse, blockTypes: ['insight'] });
-    expect(body.reasoning).toEqual({ effort: 'low' });
-    expect(body.max_output_tokens).toBe(1500);
+    expect(body.reasoning).toEqual({ effort: 'none' });
+    expect(body.max_output_tokens).toBe(150);
   });
 
   it('Responses: a glimpse that also wants web search stays at medium — grounding outranks it', async () => {
@@ -573,6 +572,61 @@ describe('a glimpse costs what it asked for (no-thinking tier, no floor)', () =>
     const oSeries = await bodyFor('openai/o4-mini');
     expect(oSeries.reasoning_effort).toBe('low');
     expect(oSeries.max_completion_tokens).toBe(1500);
+  });
+
+  it('chat-completions: an ordinary GPT-5 canvas also skips hidden reasoning', async () => {
+    const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openrouterAdapter.generate(
+      { ...req, blockTypes: ['insight'], maxTokens: 2200, thinkingLevel: 'minimal' },
+      { provider: 'openrouter', model: 'openai/gpt-5.6-luna', apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.reasoning_effort).toBe('none');
+    expect(body.max_completion_tokens).toBe(2200);
+  });
+
+  it('OpenRouter maps minimal effort onto Gemini instead of accepting its slower default', async () => {
+    const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openrouterAdapter.generate(
+      { ...req, blockTypes: ['insight'], maxTokens: 2200, thinkingLevel: 'minimal' },
+      { provider: 'openrouter', model: 'google/gemini-3.8-flash', apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.reasoning).toEqual({ effort: 'minimal' });
+    expect(body.max_tokens).toBe(2200);
+  });
+
+  it.each([
+    ['google/gemini-2.5-flash-lite', 'none'],
+    ['google/gemini-2.5-flash', 'none'],
+    ['google/gemini-2.5-pro', 'low'],
+  ])('OpenRouter maps minimal to the fastest supported tier for %s', async (model, effort) => {
+    const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openrouterAdapter.generate(
+      { ...req, blockTypes: ['insight'], maxTokens: 2200, thinkingLevel: 'minimal' },
+      { provider: 'openrouter', model, apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.reasoning).toEqual({ effort });
+  });
+
+  it('OpenRouter disables reasoning for Grok 4.3 composition', async () => {
+    const fetchMock = vi.fn(async () => streamResponse(['data: [DONE]\n'], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openrouterAdapter.generate(
+      { ...req, blockTypes: ['insight'], maxTokens: 2200, thinkingLevel: 'minimal' },
+      { provider: 'openrouter', model: 'x-ai/grok-4.3', apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.reasoning).toEqual({ effort: 'none' });
+    expect(body.max_tokens).toBe(2200);
   });
 
   it('the ghost glimpse itself lands on the wire as one — and still parses its cards', async () => {
@@ -913,6 +967,24 @@ describe('gemini adapter — candidates parts streaming', () => {
     expect(body.tools).toEqual([{ google_search: {} }, { url_context: {} }]);
   });
 
+  it.each([
+    ['gemini-2.5-flash-lite', 0],
+    ['gemini-2.5-flash', 0],
+    ['gemini-2.5-pro', 128],
+  ])('uses the Generate Content thinking budget for %s', async (model, thinkingBudget) => {
+    const fetchMock = vi.fn(async () => streamResponse([TEXT_FRAME], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await geminiAdapter.generate(
+      { ...req, thinkingLevel: 'minimal' },
+      { provider: 'gemini', model, apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as {
+      generationConfig: { thinkingConfig?: Record<string, unknown> };
+    };
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget });
+  });
+
   it('parses groundingMetadata into deduped sources (real-time citations)', async () => {
     mockFetchOnce(
       streamResponse(
@@ -1087,6 +1159,38 @@ describe('openai Responses API — reasoning-model params (gpt-5.x / o-series)',
 
   it('declares native web search', () => {
     expect(openaiAdapter.capabilities.nativeWebSearch).toBe(true);
+  });
+});
+
+describe('Grok Responses API — latency-sensitive reasoning', () => {
+  async function bodyFor(model: string): Promise<Record<string, unknown>> {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await grokAdapter.generate(
+      {
+        ...req,
+        blockTypes: ['insight'],
+        maxTokens: 2200,
+        thinkingLevel: 'minimal',
+      },
+      { provider: 'grok', model, apiKey: 'k' },
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    return JSON.parse(init.body as string) as Record<string, unknown>;
+  }
+
+  it('disables reasoning on Grok 4.3, whose lowest tier is none', async () => {
+    const body = await bodyFor('grok-4.3');
+    expect(body.reasoning).toEqual({ effort: 'none' });
+    expect(body.max_output_tokens).toBe(2200);
+    expect(body.temperature).toBeUndefined();
+  });
+
+  it('uses low on Grok 4.6, whose reasoning cannot be disabled', async () => {
+    const body = await bodyFor('grok-4.6');
+    expect(body.reasoning).toEqual({ effort: 'low' });
+    expect(body.max_output_tokens).toBe(2200);
+    expect(body.temperature).toBeUndefined();
   });
 });
 
@@ -1411,6 +1515,7 @@ describe('prompt-cache prefix split', () => {
     system: `${STABLE_PREFIX}\n\n${PER_TURN}`,
     systemBase: BASE,
     systemStable: STABLE_PREFIX,
+    promptCacheKey: 'mavea-live:test-prefix',
     history: [{ role: 'user', content: 'earlier question' }],
     user: 'How should I budget?',
   };
@@ -1426,11 +1531,50 @@ describe('prompt-cache prefix split', () => {
 
     const body = bodyOf(fetchMock);
     expect(body.instructions).toBe(STABLE_PREFIX);
+    expect(body.prompt_cache_key).toBe('mavea-live:test-prefix');
     const input = body.input as { role: string; content: unknown }[];
     const userTurn = input[input.length - 1];
     const parts = userTurn.content as { type: string; text: string }[];
     expect(parts[0].text).toBe(PER_TURN);
     expect(parts.some((p) => p.text === 'How should I budget?')).toBe(true);
+  });
+
+  it('OpenAI 5.6 marks the stable prefix explicitly instead of caching the changing suffix', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await openaiAdapter.generate(splitReq, { provider: 'openai', model: 'gpt-5.6-luna' });
+
+    const body = bodyOf(fetchMock);
+    expect(body.instructions).toBeUndefined();
+    expect(body.prompt_cache_key).toBe('mavea-live:test-prefix');
+    expect(body.prompt_cache_options).toEqual({ mode: 'explicit', ttl: '30m' });
+    const input = body.input as { role: string; content: unknown }[];
+    expect(input[0]).toEqual({
+      role: 'developer',
+      content: [
+        {
+          type: 'input_text',
+          text: STABLE_PREFIX,
+          prompt_cache_breakpoint: { mode: 'explicit' },
+        },
+      ],
+    });
+    const userParts = input.at(-1)!.content as { text: string }[];
+    expect(userParts[0].text).toBe(PER_TURN);
+  });
+
+  it('Grok and OpenRouter receive the same stable sticky-routing key', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await grokAdapter.generate(splitReq, { provider: 'grok', model: 'grok-4.6' });
+    expect(bodyOf(fetchMock).prompt_cache_key).toBe('mavea-live:test-prefix');
+
+    fetchMock.mockClear();
+    await openrouterAdapter.generate(splitReq, {
+      provider: 'openrouter',
+      model: 'google/gemini-3.1-flash-lite',
+    });
+    expect(bodyOf(fetchMock).prompt_cache_key).toBe('mavea-live:test-prefix');
   });
 
   it('Anthropic marks base, session extension, and history as three 1h cache breakpoints', async () => {
@@ -1533,8 +1677,9 @@ describe('OpenRouter cache breakpoint stays scoped to the split (canvas) turn', 
 // instruction prompt, and at 'medium' the reasoning ran away: on "plan a 3-day trip to Chicago" it
 // burned the whole budget and produced zero blocks, twice over once recovery re-asked, taking ~72s
 // to hand back the honest-fallback card. Raising the ceiling did not rescue it (~18k tokens → 119s,
-// still empty). At 'low' the same ask streams in ~6s and lands a full canvas in ~20s.
-describe('reasoning effort is pinned to low on reasoning models', () => {
+// still empty). Hard asks therefore stay at 'low'; ordinary composition uses the supported
+// no-thinking tier so its first visible token is not held behind an unnecessary pass.
+describe('reasoning effort is bounded on reasoning models', () => {
   const canvasReq: LiveRequest = {
     system: 'sys',
     history: [],
@@ -1562,7 +1707,7 @@ describe('reasoning effort is pinned to low on reasoning models', () => {
     }
   });
 
-  it('still raises minimal to low, so search reliably engages', async () => {
+  it('honors minimal on an ordinary GPT-5 canvas', async () => {
     const fetchMock = vi.fn((_u: RequestInfo | URL, _i?: RequestInit) =>
       Promise.resolve(streamResponse([], 'text/event-stream')),
     );
@@ -1571,7 +1716,7 @@ describe('reasoning effort is pinned to low on reasoning models', () => {
       { ...canvasReq, thinkingLevel: 'minimal' },
       { provider: 'openai', model: 'gpt-5.4-mini' },
     );
-    expect((bodyOf(fetchMock).reasoning as { effort: string }).effort).toBe('low');
+    expect((bodyOf(fetchMock).reasoning as { effort: string }).effort).toBe('none');
   });
 
   it('leaves a classic (non-reasoning) model on temperature, untouched', async () => {
@@ -1786,13 +1931,9 @@ describe('requiring the search tool, not merely offering it', () => {
 });
 
 describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
-  // Gemini 3's Flash line split on this. 3.5/3.6-flash and the flash-lites accept
-  // `thinkingLevel: MINIMAL`; 3.7-flash, 3.8-flash and 3.1-pro-preview accept only low/medium/high
-  // and answer MINIMAL with `400 INVALID_ARGUMENT: Thinking level MINIMAL is not supported for
-  // this model`. Nothing user-facing selects `minimal` — `effort.ts` picks it for every ask that
-  // is not a hard problem, and a dozen call sites hardcode it — so on those models EVERY call
-  // failed and the whole surface was dead. Learned, not listed: the model field is free text and
-  // a hand-kept set of ids would rot into the same outage the day the next Flash ships.
+  // The current families are mapped up front, but the model field is free text. Keep the learned
+  // fallback for a future id whose published tiers are not yet in the adapter: the first rejected
+  // MINIMAL request retries at LOW, and later turns skip the doomed request entirely.
   const REFUSAL = JSON.stringify({
     error: {
       code: 400,
@@ -1822,7 +1963,7 @@ describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
   it('re-asks at low instead of failing the turn', async () => {
     const fetchMock = refuseThenStream();
     vi.stubGlobal('fetch', fetchMock);
-    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.8-flash', apiKey: 'k' };
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-4.0-flash-exp-a', apiKey: 'k' };
     const out = await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -1841,7 +1982,7 @@ describe('gemini adapter — a model with no MINIMAL thinking tier', () => {
     vi.stubGlobal('fetch', fetchMock);
     // Its OWN model id: what the adapter learns is module state that outlives one test, which is
     // the whole point of the feature and would otherwise let this test pass on the last one's work.
-    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-3.7-flash', apiKey: 'k' };
+    const cfg: ModelConfig = { provider: 'gemini', model: 'gemini-4.0-flash-exp-b', apiKey: 'k' };
     await geminiAdapter.generate({ ...canvasReq, thinkingLevel: 'minimal' }, cfg);
 
     const again = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>

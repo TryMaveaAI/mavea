@@ -497,7 +497,7 @@ describe('selectComponents — menu teaches components AND fields (demo-grade)',
         expect(metaFor(cur)?.wowWeight ?? 0).toBeLessThanOrEqual(metaFor(prev)?.wowWeight ?? 0);
       }
     }
-    // The turn's named targets ARE the menu's first three — one set of targets, not two.
+    // The turn's named targets ARE the menu's first three heroes — one set of targets, not two.
     expect(r.leads).toEqual(heroes.slice(0, 3));
   });
 });
@@ -576,8 +576,8 @@ describe('selectComponents — excludes UI chrome from Live answers', () => {
 });
 
 describe('lead heroes carry a DENSE example in the menu (Phase 2c)', () => {
-  // The top-3 wow-sorted heroes should teach a FULLER example than the thin default, so the model
-  // fills them at demo depth. Parse the per-turn menu and confirm at least one lead-hero example
+  // The top hero should teach a FULLER example than the thin default, so the model fills it at
+  // demo depth. Parse the per-turn menu and confirm at least one lead-hero example
   // exceeds its compact form across a varied battery (some lead types are atomic and won't grow).
   const ASKS = [
     'give me a detailed recipe for chicken biryani',
@@ -597,7 +597,7 @@ describe('lead heroes carry a DENSE example in the menu (Phase 2c)', () => {
       const leadLines = heroPart
         .split('\n')
         .filter((l) => HERO_LINE.test(l))
-        .slice(0, 3); // LEAD_DENSE = 3
+        .slice(0, 1); // LEAD_DENSE = 1
       for (const line of leadLines) {
         const m = HERO_LINE.exec(line);
         if (!m) continue;
@@ -620,10 +620,10 @@ describe('lead heroes carry a DENSE example in the menu (Phase 2c)', () => {
       }).promptSnippet;
       const heroPart = snippet.split('ALWAYS AVAILABLE')[0];
       const heroLines = heroPart.split('\n').filter((l) => /^- \w+ — /.test(l));
-      expect(heroLines.length).toBeGreaterThan(3); // the cap is actually exercised
+      expect(heroLines.length).toBeGreaterThan(1); // the cap is actually exercised
       heroLines.forEach((line, idx) => {
         const type = /^- (\w+) — /.exec(line)![1];
-        if (idx < 3) {
+        if (idx < 1) {
           // A lead carries its dense example exactly when the corpus has one for it.
           expect(line.includes('· example: '), `lead hero '${type}'`).toBe(
             !!exampleFor(type, true),

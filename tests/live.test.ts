@@ -440,12 +440,12 @@ describe('generateLive — output budget scales with a named item count (complet
 });
 
 describe('generateLive — narration length is specified exactly ONE way per turn', () => {
-  it('gives a rich ask the "two or three sentences" spec and no conflicting count', async () => {
+  it('gives a rich ask the "two sentences" spec and no conflicting count', async () => {
     fake.raw = OK_RESPONSE;
     await generateLive('tell me about the history of jazz', [], cfg);
     const system = fake.lastReq!.system;
     expect(system).toContain('SPOKEN LINE');
-    expect(system).toMatch(/two or three short sentences/);
+    expect(system).toMatch(/at most two short sentences/);
     // the base prompt's own narration bullet no longer states a competing count. Scoped to the
     // stable base: a catalog prop hint in the per-turn menu may legitimately say "sentence or
     // two" about a FIELD (longread's standfirst), which is not a narration-length spec.
@@ -458,7 +458,18 @@ describe('generateLive — narration length is specified exactly ONE way per tur
     await generateLive('what is 12*9', [], cfg);
     const system = fake.lastReq!.system;
     expect(system).toMatch(/ONE short sentence/);
-    expect(system).not.toMatch(/two or three short sentences/);
+    expect(system).not.toMatch(/at most two short sentences/);
+  });
+});
+
+describe('generateLive — provider prompt-cache identity', () => {
+  it('reuses one routing key across rich and lean variants of the shared Live prefix', async () => {
+    fake.raw = OK_RESPONSE;
+    await generateLive('tell me about the history of ballet', [], cfg);
+    const first = fake.lastReq!.promptCacheKey;
+    await generateLive('what is 12*9', [], cfg);
+    expect(first).toMatch(/^mavea-live:/);
+    expect(fake.lastReq!.promptCacheKey).toBe(first);
   });
 });
 

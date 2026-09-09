@@ -79,7 +79,7 @@ export function spokenMs(text: string, dwell = 1700): number {
 }
 
 /** The same curve WITHOUT the 7s cap — for the one wait that is genuinely about a long text:
- *  holding the walk while the opener (a rich narration can run ~320 chars) finishes. Capping
+ *  holding the walk while the opener (a rich narration can run ~220 chars) finishes. Capping
  *  that estimate at 7s let the failure-only ceiling cut a real opener mid-read on long answers
  *  at slow voice speeds. Everything else keeps spokenMs's cap: a per-stop line is short by
  *  construction, and the cap is what stops a bad estimate stalling a walk. */
