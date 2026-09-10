@@ -45,7 +45,7 @@ interface BaseShot {
 /** Which key-free surface the shot comes from, and what it needs to get there. */
 type Shot = BaseShot &
   (
-    | { from: 'demo'; persona: string; then?: string[] }
+    | { from: 'demo'; persona: string; view?: 'board' | 'study' | 'focus'; then?: string[] }
     | { from: 'tour'; chapter: string; then?: string[]; awaitWalk?: boolean }
     | { from: 'ripple'; section: string; then?: string[] }
     | { from: 'route'; hash: string; ready: string; click?: string[] }
@@ -54,7 +54,9 @@ type Shot = BaseShot &
 const SHOTS: Shot[] = [
   // Row 1 — an answer, three ways: narrated and marked up, spread out as a board, and forming
   // live while someone is still talking.
-  { name: 'answer-ink', from: 'demo', persona: 'dev', settleMs: 20_000 },
+  // Pinned to the board: a replay re-asserts its own reading mode, and without the pin these three
+  // tiles were all shots of the desk.
+  { name: 'answer-ink', from: 'demo', persona: 'dev', view: 'board', settleMs: 20_000 },
   // The desk, one object at a time. The reading modes are what an answer IS now — Study, Focus and
   // Everything — and none of them had a tile; the board view this replaced is a per-answer takeover
   // that is never even remembered, and the causal web below already carries the spatial reading.
@@ -65,7 +67,8 @@ const SHOTS: Shot[] = [
     settleMs: 26_000,
     // Hold the replay before switching: its own choreography moves the view mode, so a click that
     // is not the last thing to happen lands on whatever beat runs next.
-    then: ['Pause autoplay', 'Study'],
+    view: 'study',
+    then: ['Pause autoplay'],
     // Frame the desk itself, whole: a fixed offset cut its top edge off at one window size and
     // left the paragraph above it in at another. The stage is scrolled to sit just under the bar.
     scrollTo: '.study-stage',
@@ -93,7 +96,14 @@ const SHOTS: Shot[] = [
   },
   // The settled answer's own spoken track, as a waveform you can drag: the canvas un-builds to
   // what had been SAID by that moment, then rebuilds as the voice replays.
-  { name: 'voice-scrub', from: 'demo', persona: 'dev', settleMs: 42_000, scrollTop: 0 },
+  {
+    name: 'voice-scrub',
+    from: 'demo',
+    persona: 'dev',
+    view: 'board',
+    settleMs: 42_000,
+    scrollTop: 0,
+  },
   // The export studio, reached the way a person reaches it — the replay's own export beat is
   // minutes in, and waiting for it would make `pnpm gen:media` a coffee break.
   {
@@ -105,7 +115,7 @@ const SHOTS: Shot[] = [
     // The studio's own chrome is a fixed dark lightbox (ExportModal's panel is hardcoded), so the
     // Document tab — a white page filling the preview — is what keeps this from reading as a
     // different product than the tiles beside it.
-    then: ['Share', 'Choose a template and export', 'Document'],
+    then: ['Share', 'Export', 'Document'],
   },
   {
     name: 'deck-export',
@@ -116,7 +126,7 @@ const SHOTS: Shot[] = [
     // past it to a content slide, which is what someone is deciding about when they look at this.
     then: [
       'Share',
-      'Choose a template and export',
+      'Export',
       // A light deck skin, so the tile sits with the others rather than reading as a dark outlier.
       'Lumen',
       'Next slide',
@@ -127,7 +137,14 @@ const SHOTS: Shot[] = [
   },
   // The trip, drawn: a real map with its stops numbered beside the hour-by-hour plan. Late in the
   // replay, where the second answer has built — the frame is the answer, not the reveal.
-  { name: 'trip-plan', from: 'demo', persona: 'traveler', settleMs: 72_000, scrollTop: 650 },
+  {
+    name: 'trip-plan',
+    from: 'demo',
+    persona: 'traveler',
+    view: 'board',
+    settleMs: 72_000,
+    scrollTop: 650,
+  },
   {
     name: 'deep-zoom',
     from: 'route',
@@ -202,7 +219,10 @@ async function retryOnce(page: Page, waitMs: number): Promise<void> {
 /** Drive one shot's surface up to the moment before the frame is taken. */
 async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<void> {
   if (shot.from === 'demo') {
-    await page.goto(`${baseUrl}/#/live?demo=${shot.persona}`, { waitUntil: 'load' });
+    // A reading mode is a takeover the URL can pin (`?view=`), the same way the geometry sweep
+    // reaches the desk: there is no standing "Study" control to click any more.
+    const view = shot.view ? `&view=${shot.view}` : '';
+    await page.goto(`${baseUrl}/#/live?demo=${shot.persona}${view}`, { waitUntil: 'load' });
     const start = page.getByRole('button', { name: /start demo/i });
     await start.waitFor({ state: 'visible', timeout: 30_000 });
     await start.click();
