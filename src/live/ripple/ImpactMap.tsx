@@ -65,7 +65,10 @@ export function ImpactMap({
 
   // A fitted node must remain a real touch target. Denser maps pan at this floor instead of
   // shrinking interactive cards into untappable miniatures.
-  const spatial = useSpatialCanvas({ clamp: { min: 0.7, max: 2.2 }, margin: 56 });
+  // The floor is derived, not chosen: 9px legibility ÷ the ramp's 10px smallest label. Below it a
+  // fitted map paints its verbs and status lines under 9px; the camera stops there and the map
+  // pans instead, the same rule the living world's camera follows.
+  const spatial = useSpatialCanvas({ clamp: { min: 0.9, max: 2.2 }, margin: 56 });
   const { fitTo } = spatial;
   useEffect(() => {
     fitTo(view.bbox);
