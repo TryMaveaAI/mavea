@@ -1,3 +1,4 @@
+import { FitBox } from '../layout/FitBox';
 import {
   useCallback,
   useEffect,
@@ -967,7 +968,10 @@ export function StudyStage({
                 >
                   <div className="study-card-face" aria-hidden={front ? undefined : true}>
                     <BlockBoundary fallback={<FallbackCard block={block} />}>
-                      {renderBlock(block)}
+                      {/* The front card is a bounded box (useStudyScale caps its height): a
+                          block taller than it is fitted — type and chrome together, down to
+                          the legibility floor — before the face is ever asked to scroll. */}
+                      {front ? <FitBox fitHeight>{renderBlock(block)}</FitBox> : renderBlock(block)}
                     </BlockBoundary>
                   </div>
                   <div className="study-card-mute" aria-hidden="true" />

@@ -214,7 +214,19 @@ export function resolvesCompareCells(type: string, props: unknown): boolean {
   if (type !== 'compare') return true;
   const criteria = asArray(asRecord(props).criteria).map(asRecord);
   if (criteria.length === 0) return true;
-  return criteria.some((c) => asArray(c.cells).some((cell) => readableText(asRecord(cell).v)));
+  return comparesColumns(criteria.map((c) => asArray(c.cells).map((cell) => asRecord(cell).v)));
+}
+
+/**
+ * A comparison compares: its filled cells have to fall in at least TWO columns. A rubric that
+ * only ever describes its HIGH level — three rows, each with two blank cells and one written one —
+ * passed the "some cell has text" test and reached the screen as two columns of dashes beside a
+ * list, which reads as a table that failed to load. `cells` is each row's values in column order.
+ */
+export function comparesColumns(cells: readonly (readonly unknown[])[]): boolean {
+  const columns = new Set<number>();
+  for (const row of cells) row.forEach((v, i) => readableText(v) && columns.add(i));
+  return columns.size >= 2;
 }
 
 /** Zero-share judgement for the pure-share visuals, where every share at zero DEFINITIONALLY

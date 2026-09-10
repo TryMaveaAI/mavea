@@ -297,9 +297,14 @@ const MEASURE_SCRIPT = (
     // Type below the floor, judged on what is rendered rather than what was authored. SVG text
     // is in user units: convert through the screen matrix, exactly as audit:ui does.
     if (leaf && text.length > 1) {
+      // Judged as it PAINTS: SVG text through its screen matrix, HTML text through whatever
+      // transform scales its ancestors (the Study's desk sits at 0.9 on a short laptop, and a
+      // 10px label there is a 9px label to the eye). offsetWidth is the layout width, the rect
+      // the painted one; their ratio is the scale every ancestor contributed.
       let scale = 1;
       const ctm = el.ownerSVGElement && el.getScreenCTM ? el.getScreenCTM() : null;
       if (ctm) { const det = Math.abs(ctm.a * ctm.d - ctm.b * ctm.c); if (det > 0) scale = Math.sqrt(det); }
+      else if (el.offsetWidth > 0) { const r = box.width / el.offsetWidth; if (r > 0 && Math.abs(r - 1) > 0.01) scale = r; }
       const size = parseFloat(style.fontSize) * scale;
       if (CHECK.has('tiny') && size && size < ${typeFloor} && !thumbnail(el)) tiny.push(name(el) + ' ' + size.toFixed(1) + 'px');
 

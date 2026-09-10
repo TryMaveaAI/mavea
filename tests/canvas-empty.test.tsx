@@ -1,3 +1,4 @@
+import { comparesColumns, resolvesCompareCells } from '../src/canvas/lib/empty';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { hasData, magnitudeOf, resolvesDeclaredItems } from '../src/canvas/lib/empty';
@@ -88,5 +89,35 @@ describe('magnitudes — items drawn from a number', () => {
     expect(
       resolvesDeclaredItems({ layers: [{ name: 'Crust' }] }, [{ prop: 'layers', text: 'name' }]),
     ).toBe(true);
+  });
+});
+
+// A rubric that only described its HIGH level reached the screen as three rows of dash, dash,
+// sentence — a comparison has to compare, which means filled cells in at least two columns.
+describe('compare — filled cells in at least two columns', () => {
+  it('refuses a grid whose only written cells share a column', () => {
+    expect(
+      comparesColumns([
+        ['', '', 'Very close'],
+        ['', '', 'Abundant'],
+      ]),
+    ).toBe(false);
+    expect(
+      resolvesCompareCells('compare', {
+        criteria: [{ cells: [{ v: '' }, { v: '' }, { v: 'x' }] }],
+      }),
+    ).toBe(false);
+  });
+  it('accepts two columns with something to compare, wherever the blanks fall', () => {
+    expect(
+      comparesColumns([
+        ['Low', '', 'High'],
+        ['', 'Some', ''],
+      ]),
+    ).toBe(true);
+    expect(
+      resolvesCompareCells('compare', { criteria: [{ cells: [{ v: 'a' }, { v: 'b' }] }] }),
+    ).toBe(true);
+    expect(resolvesCompareCells('compare', { criteria: [] })).toBe(true);
   });
 });

@@ -94,6 +94,7 @@ import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.gener
 import { enumValuesFromHint } from '../canvas/blocks/catalog/propHints';
 import {
   resolvesCellMatrix,
+  comparesColumns,
   magnitudeOf,
   resolvesDeclaredItems,
   resolvesKeyedRows,
@@ -1189,6 +1190,9 @@ function buildCompare(p: Record<string, Json>): CompareProps | null {
     // headers — drop the row, and if none survive, the block (a comparison IS its cells).
     .filter((c) => c.cells.some((cell) => cell.v.trim() !== ''));
   if (options.length < 2 || !criteria.length) return null;
+  // …and a comparison compares: filled cells in one column only is a list wearing a grid, and it
+  // rendered as two columns of dashes beside it (the model describing only a rubric's top level).
+  if (!comparesColumns(criteria.map((c) => c.cells.map((cell) => cell.v)))) return null;
   const out: CompareProps = { options, criteria };
   const eyebrow = optStr(p.eyebrow);
   if (eyebrow) out.eyebrow = eyebrow;

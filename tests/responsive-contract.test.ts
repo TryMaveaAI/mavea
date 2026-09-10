@@ -55,6 +55,12 @@ describe('the fluid type ramp', () => {
     for (const step of RAMP) expect(tokenFloorPx(`--fs-${step}`), step).toBeDefined();
   });
 
+  it('is the floor the Study derives its own scale floor from', async () => {
+    const { RAMP_FLOOR_PX, STUDY_FIT_FLOOR } = await import('../src/canvas/study/slots');
+    expect(tokenFloorPx('--fs-2xs')).toBe(RAMP_FLOOR_PX);
+    expect(STUDY_FIT_FLOOR).toBeCloseTo(9 / RAMP_FLOOR_PX);
+  });
+
   it('floors at 10px, so the reader’s 0.9 knob renders exactly the 9px legibility floor', () => {
     for (const step of RAMP) expect(tokenFloorPx(`--fs-${step}`)! * 0.9).toBeGreaterThanOrEqual(9);
   });

@@ -2,7 +2,7 @@
 
    The desk is AUTHORED at a fixed 1440×740 (slots.ts) and scaled to the stage like a piece of
    print, so the composition cannot come apart at an unanticipated size — the scale clamps at
-   STUDY_FIT_FLOOR (9px rendered ÷ 11px authored) and the stage crops rather than shrinking type
+   STUDY_FIT_FLOOR (9px rendered ÷ the ramp's 10px floor) and the stage crops rather than shrinking type
    past legibility. The palette is the Study's own identity (the approved design, verbatim in
    light), scoped as custom properties on the stage: dark is the same room after dark — warm
    umber, the same amber lamp — never a grey inversion. Blocks rendered on the desk harmonize by
@@ -10,7 +10,7 @@
 
    Legibility contract: reading surfaces (the front card, Mavéa's note, the beat bar, the
    takeaway) author no persistent type below 11px, because the desk may legally shrink to
-   9/11 of authored size. Back-arc cards are deliberately illegible — blurred, dimmed scenery
+   9/10 of authored size. Back-arc cards are deliberately illegible — blurred, dimmed scenery
    whose accessible name lives on the card button and whose readable name lives in the beat
    bar — and are exempt by construction, the way the world's faded decoration is. */
 
@@ -95,14 +95,14 @@
      and grows with the composer. A hardcoded chrome guess only cleared the dock on a viewport
      taller than any laptop, so the desk sat at its scale floor everywhere else. */
   --study-column-h: calc(100dvh - 92px - var(--dock-h, 76px));
-  /* The floor is DERIVED, not chosen: below 534px the scale stays at its legibility floor and the
+  /* The floor is DERIVED, not chosen: below 587px the scale stays at its legibility floor and the
      shallow treatment removes/lifts the decorative floor instead of replacing the Study with a
      different UI. A shorter reading column scrolls this frame; it must not override the floor and
      physically slice the cards. */
   width: 100%;
   max-width: var(--canvas-col-max);
   margin-inline: auto;
-  height: clamp(534px, var(--study-stage-height, var(--study-column-h)), 820px);
+  height: clamp(587px, var(--study-stage-height, var(--study-column-h)), 820px);
   overflow: clip;
   border: 1px solid var(--study-frame);
   border-radius: 26px;
@@ -536,14 +536,15 @@
      note's right edge off with it (measured: 18px lost at 1280x720, and COMPACT_W lets the desk
      stand until the stage is 940px).
 
-     So the note's own position carries the constraint. Below a 1022px stage the scale is ALWAYS
-     the floor — reaching a higher one needs w > FIT_W * 9/11 = 1203px — which makes the geometry
-     an exact relationship rather than a breakpoint: a design pixel paints at 9/11 x 1.048 (the
+     So the note's own position carries the constraint. Below a 1125px stage the scale is ALWAYS
+     the floor — reaching a higher one needs w > FIT_W * 9/10 = 1323px — which makes the geometry
+     an exact relationship rather than a breakpoint: a design pixel paints at 9/10 x 1.048 (the
      translateZ(75px) projection), so the note's right edge fits while it stays within
-     50cqw / 0.8575 of the desk's centre. Above 1022px the min() yields the authored 1165px and
+     50cqw / 0.9432 of the desk's centre. Above 1125px the min() yields the authored 1165px and
      nothing moves. Derived, not chosen — and continuous, so dragging a window edge slides the
-     note rather than snapping it. */
-  left: min(1165px, calc(569px + 58.3cqw));
+     note rather than snapping it. (The floor was 9/11 when the desk's smallest label was an
+     authored 11px; the ramp's 10px floor moved every number in this comment, none by hand.) */
+  left: min(1165px, calc(569px + 53cqw));
   top: 392px;
   /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   width: 302px;
@@ -731,7 +732,7 @@
   display: inline-block;
   font-weight: 500;
   /* Tracks the desk's scale so the handwriting cannot out-shout the object it summarizes;
-     ≥17.2px at the 9/11 floor, comfortably above the legibility line. */
+     ≥15.3px at the 9/10 floor, comfortably above the legibility line. */
   font-size: calc(var(--fs-xl) * var(--study-scale, 1));
   line-height: 1.3;
   color: var(--study-hand-ink);

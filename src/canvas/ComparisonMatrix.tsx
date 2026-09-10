@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { richInnerHtml } from '../lib/richText';
 import type { CSSProperties } from 'react';
 import { Icon } from '../icons/icons';
+import { comparesColumns } from './lib/empty';
 import { BlockEmpty } from './lib/BlockEmpty';
 import type { CompareProps } from '../data/conversation';
 
@@ -16,7 +17,9 @@ export function ComparisonMatrix({ eyebrow, options, criteria, recommendation, d
   // the same judgement lives here: a row whose cells are all blank paints nothing between its
   // label and the headers, and a comparison with no such rows is a header over an empty grid.
   const filled = criteria.filter((c) => c.cells.some((cell) => cell.v.trim() !== ''));
-  if (filled.length === 0) return <BlockEmpty message="No comparison to show" />;
+  if (filled.length === 0 || !comparesColumns(filled.map((c) => c.cells.map((cell) => cell.v)))) {
+    return <BlockEmpty message="No comparison to show" />;
+  }
   return (
     <div className="card reveal" style={{ '--delay': (delay || 0) + 'ms' } as CSSProperties}>
       <div className="card-eyebrow">

@@ -70,3 +70,55 @@ describe('FitBox', () => {
     vi.stubGlobal('ResizeObserver', RealRO);
   });
 });
+
+// The height fit: a block taller than its bounded host is scaled down until it fits, and never
+// past the point where its smallest type would paint under the 9px floor. jsdom has no layout,
+// so the box, the content and the type sizes are stated on the elements directly.
+describe('FitBox — fitting a bounded box’s height', () => {
+  const geometry = (el: Element, values: Record<string, number>) => {
+    for (const [key, value] of Object.entries(values)) {
+      Object.defineProperty(el, key, { configurable: true, get: () => value });
+    }
+  };
+  function mount(contentH: number, boxH: number, fontPx: number) {
+    const tree = () => (
+      <div className="box" style={{ overflowY: 'auto', maxHeight: `${boxH}px` }}>
+        <FitBox fitHeight>
+          <p style={{ fontSize: `${fontPx}px` }}>tall block</p>
+        </FitBox>
+      </div>
+    );
+    const { container, rerender } = render(tree());
+    const box = container.querySelector('.box') as HTMLElement;
+    const host = container.querySelector('.fit-box') as HTMLElement;
+    const inner = host.firstElementChild as HTMLElement;
+    geometry(box, { clientHeight: boxH, scrollHeight: contentH, scrollTop: 0 });
+    geometry(host, { clientWidth: 400, offsetWidth: 400 });
+    geometry(inner, { scrollWidth: 400, scrollHeight: contentH });
+    host.getBoundingClientRect = () =>
+      ({ top: 0, left: 0, width: 400, height: contentH }) as DOMRect;
+    box.getBoundingClientRect = () => ({ top: 0, left: 0, width: 400, height: boxH }) as DOMRect;
+    // The mount measured before the geometry above existed; a fresh children reference re-runs
+    // the measure the way the shared resize observer would in a browser.
+    rerender(tree());
+    return { container, inner };
+  }
+  it('scales a tall block down to its box', async () => {
+    // 20px type at 0.5 is 10px, above the floor, so the fit is free to reach the box.
+    const { inner } = mount(800, 400, 20);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toMatch(/scale\(0\.5\)/);
+    expect(inner.style.marginBottom).toMatch(/^-400(\.0)?px$/);
+  });
+  it('stops at the legibility floor and leaves the rest to the host', async () => {
+    // 800 into 400 wants 0.5, but 12px type at 0.5 is 6px: the fit stops at 9/12 = 0.75.
+    const { inner } = mount(800, 400, 12);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toMatch(/scale\(0\.75\)/);
+  });
+  it('leaves a block that fits untouched', async () => {
+    const { inner } = mount(300, 400, 12);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toBe('');
+  });
+});

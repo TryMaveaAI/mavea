@@ -34,16 +34,17 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   });
 
   it('derives the scale floor from the legibility floor rather than choosing it', () => {
-    // 9px rendered ÷ 11px authored: if either number moves, the floor must be recomputed. The
-    // constant lives beside the slots so the CSS and the arithmetic cannot drift apart.
-    expect(scene).toMatch(/STUDY_FIT_FLOOR = 9 \/ 11/);
+    // 9px rendered ÷ the ramp's 10px floor: if either number moves, the floor must be recomputed.
+    // The constant lives beside the slots so the CSS and the arithmetic cannot drift apart.
+    expect(scene).toMatch(/RAMP_FLOOR_PX = 10/);
+    expect(scene).toMatch(/STUDY_FIT_FLOOR = 9 \/ RAMP_FLOOR_PX/);
     expect(css).toMatch(/9\/11 of authored size|STUDY_FIT_FLOOR/);
   });
 
   it('derives the stage-height floor the same way — below it the frame slices cards', () => {
-    // 534 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border. A 390px floor let 1366×768
+    // 587 = (740 − SHALLOW_CROP) × STUDY_FIT_FLOOR + 2px border. A 390px floor let 1366×768
     // crop 266 design px into the composition — the front card's top edge left the stage.
-    expect(css).toMatch(/height:\s*clamp\(534px/);
+    expect(css).toMatch(/height:\s*clamp\(587px/);
   });
 
   it('sizes the stage from measured chrome and lets a short column scroll the intact desk', () => {
@@ -52,7 +53,7 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     // column shorter than the stage. The dock publishes its own height into --dock-h.
     expect(css).toMatch(/--study-column-h:\s*calc\(100dvh - 92px - var\(--dock-h, 76px\)\)/);
     expect(css).toMatch(
-      /height:\s*clamp\(534px, var\(--study-stage-height, var\(--study-column-h\)\), 820px\)/,
+      /height:\s*clamp\(587px, var\(--study-stage-height, var\(--study-column-h\)\), 820px\)/,
     );
     const stage = /\.study-stage\s*\{[\s\S]*?\n\}/.exec(css)?.[0] ?? '';
     expect(stage).not.toMatch(/max-height:\s*var\(--study-column-h\)/);
@@ -671,14 +672,15 @@ describe('feature overlays scroll their own content instead of cropping it', () 
   });
 
   it('the Study note carries its own fit rather than being cropped by the frame', () => {
-    // useStudyScale floors the desk scale at 9/11 so type stays legible, and that floor is a
+    // useStudyScale floors the desk scale at 9/10 so type stays legible, and that floor is a
     // HEIGHT bargain — it accepts cropping the decorative floor band. Horizontally the stage just
     // clips, so a short window cut the note's right edge off (measured: 18px lost at 1280x720).
-    // Below a 1022px stage the scale is ALWAYS the floor — a higher one needs w > 1470*9/11 =
-    // 1203px — so the correction is an exact relationship, not a breakpoint, and it is continuous.
+    // Below a 1125px stage the scale is ALWAYS the floor — a higher one needs w > 1470*9/10 =
+    // 1323px — so the correction is an exact relationship, not a breakpoint, and it is continuous:
+    // 50cqw ÷ (0.9 × 1.048) = 53cqw of the desk's centre.
     const css = read('src/canvas/study/study.css');
     expect(
-      /\.study-note-wrap\s*\{[^}]*left:\s*min\(1165px, calc\(569px \+ 58\.3cqw\)\)/.test(css),
+      /\.study-note-wrap\s*\{[^}]*left:\s*min\(1165px, calc\(569px \+ 53cqw\)\)/.test(css),
     ).toBe(true);
     // The stage is the named container the cqw resolves against.
     expect(css).toMatch(/container-name:\s*study/);

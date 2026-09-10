@@ -3,6 +3,7 @@
 // line more without moving a single box the ResizeObserver watches — so the fit has to re-run on a
 // re-cast, or the card's lower edge is solved against the previous sentence and lands in the
 // handwriting. jsdom has no layout, so the boxes the hook reads are stated here.
+import { STAGE_H_MIN } from '../src/canvas/study/slots';
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useStudyScale } from '../src/canvas/study/useStudyScale';
@@ -124,7 +125,7 @@ describe('the Study desk re-fits when the takeaway does', () => {
 
     expect(stage.hasAttribute('data-compact')).toBe(false);
     expect(stage.style.getPropertyValue('--study-scale')).not.toBe('1');
-    expect(stage.style.getPropertyValue('--study-stage-height')).toBe('534px');
+    expect(stage.style.getPropertyValue('--study-stage-height')).toBe(`${STAGE_H_MIN}px`);
     expect(stage.hasAttribute('data-shallow')).toBe(false);
   });
 });

@@ -1258,7 +1258,9 @@ export function TopicCanvas({
                     the zoomed card overflowed, its right end (and the close button) went with it. */}
                 <div className="zoom-sheet-scroll">
                   <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
-                    {renderBlock(zoomedBlock)}
+                    {/* At the card's own size the sheet fits the card to its height before it
+                        scrolls; once the reader magnifies, scrolling is the point. */}
+                    <FitBox fitHeight={zoomLevel === 1}>{renderBlock(zoomedBlock)}</FitBox>
                   </div>
                 </div>
                 {lensNotes.length > 0 && (

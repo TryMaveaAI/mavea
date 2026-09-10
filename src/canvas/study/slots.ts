@@ -10,7 +10,7 @@
 // container drops the desk for the flat column (study.css's compact block). The floor is DERIVED the way
 // the world's camera floor is: the smallest persistent type on a reading surface here is authored
 // at 11px (kickers, the note pager), and 9px is the app-wide rendered floor, so the desk may
-// shrink to 9/11 of its authored size and no further.
+// shrink to 9/10 of its authored size and no further.
 
 /** The authored height of the desk composition, in design px. */
 export const DESK_H = 740;
@@ -28,9 +28,13 @@ export const SCALE_MAX = 1.12;
  *  slightly larger picture. */
 export const SCALE_MAX_FULL = 1.6;
 
-/** 9px app legibility floor ÷ 11px smallest persistent reading type on the desk. If either
- *  number changes, this moves — recompute it, never tune it. */
-export const STUDY_FIT_FLOOR = 9 / 11;
+/** The smallest type the desk paints: the fluid ramp's bottom step, `--fs-2xs`, whose floor is
+ *  10px (tokens-base.css; tests/responsive-contract.test.ts pins both numbers together). */
+export const RAMP_FLOOR_PX = 10;
+/** 9px app legibility floor ÷ the smallest reading type on the desk. If either number changes,
+ *  this moves — recompute it, never tune it. It was 9/11 when the desk's smallest label was an
+ *  authored 11px; on the ramp that label is 10px at a phone width, so the desk stops sooner. */
+export const STUDY_FIT_FLOOR = 9 / RAMP_FLOOR_PX;
 
 /** The width at which the 3-D desk stands down for the flat reading column: below it the floored
  *  desk crops Mavéa's note card — real reading content — off the right edge. Held clear of the
