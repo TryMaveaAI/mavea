@@ -7,8 +7,10 @@
   /* The top pad clears the fixed 60px topbar, so only the gap under the bar rides --vp-scale —
      scaling the clearance itself would let a card slide under the chrome on a short laptop.
      The sides and the floor scale outright. */
-  padding: calc(60px + 16px * var(--vp-scale)) calc(26px * var(--vp-scale))
-    calc(112px * var(--vp-scale));
+  /* …plus the replay's banner when one is up: it is fixed under the bar and publishes its own
+     height (--demo-banner-h, DemoOverlay), the way the transport publishes --demo-h below. */
+  padding: calc(60px + 16px * var(--vp-scale) + var(--demo-banner-h, 0px))
+    calc(26px * var(--vp-scale)) calc(112px * var(--vp-scale));
   display: grid;
   grid-template-columns: 1fr;
   overflow: hidden;
@@ -73,7 +75,8 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   color: var(--text-secondary);
-  font: 600 12.5px / 1 var(--font);
+  font: 600 var(--fs-sm) / 1 var(--font);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -101,7 +104,7 @@
 }
 .canvas-open-glyph,
 .guide-me-glyph {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
 }
 .canvas-title {
@@ -112,7 +115,7 @@
 }
 .canvas-sub {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 /* context pills row */
@@ -126,13 +129,14 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   height: 30px;
   padding: 0 11px;
   border-radius: var(--r-full);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .context-pill .fdot {
@@ -161,7 +165,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 .cat-top > span:first-child {
   display: inline-flex;
@@ -177,6 +181,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .cat-top .cat-tag {
@@ -184,14 +189,16 @@
 }
 .cat-top .tab-num {
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
 }
 .cat-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--warning);
   background: rgba(245, 185, 92, 0.12);
@@ -290,13 +297,13 @@
   border: 1px solid var(--line-soft);
 }
 .tl-time {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 .tl-title {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   letter-spacing: -0.01em;
   margin-top: 3px;
@@ -310,7 +317,7 @@
   margin-left: 0 !important;
 }
 .tl-detail {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin-top: 4px;
   line-height: 1.45;
@@ -338,7 +345,7 @@
   display: flex;
   gap: 11px;
   align-items: flex-start;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -360,9 +367,17 @@
 
 /* A short window gives the reading column back its top and bottom air: on the most common
    laptop the chrome was taking over half the screen, and this pad was the last of it. */
-@media (max-height: 820px) {
+@media (height <= 820px) {
   .canvas-stage {
-    padding-top: calc(60px + 8px * var(--vp-scale, 1));
+    padding-top: calc(60px + 8px * var(--vp-scale, 1) + var(--demo-banner-h, 0px));
     padding-bottom: calc(var(--dock-h, 76px) + 12px);
+  }
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .study-exit {
+    min-height: var(--tap-min);
   }
 }

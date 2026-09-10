@@ -15,13 +15,13 @@
 }
 
 .blank-label {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   color: var(--text-secondary);
 }
 
 .blank-hint {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   min-width: 0;
   overflow: hidden;
@@ -81,7 +81,7 @@
   border: none;
   outline: none;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   height: 100%;
 }
@@ -89,7 +89,7 @@
   color: var(--text-muted);
 }
 .blank-unit {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -102,7 +102,7 @@
 }
 .blank-chip {
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 7px 12px;
   border-radius: var(--r-full);
   cursor: pointer;
@@ -140,7 +140,7 @@
   background: color-mix(in oklab, var(--blank-accent) 14%, transparent);
 }
 .blank-drop-hint {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   min-width: 0;
   overflow: hidden;
@@ -163,8 +163,9 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -175,7 +176,7 @@
 }
 .blank-mini {
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   padding: 3px 8px;
   border-radius: var(--r-sm);
   cursor: pointer;
@@ -195,7 +196,7 @@
   align-items: center;
   justify-content: center;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   padding: 4px 7px;
   border-radius: var(--r-sm);
@@ -269,7 +270,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-right: auto;
 }
@@ -293,7 +294,7 @@
 }
 .blank-complete-btn {
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   padding: 9px 16px;
   border-radius: var(--r-md);
@@ -322,10 +323,11 @@
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   padding: 6px 10px;
   border-radius: var(--r-sm);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   background: var(--surface-elevated);

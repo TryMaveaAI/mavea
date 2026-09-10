@@ -52,6 +52,7 @@
 .nv-brand-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .nv-brand-glyph {
@@ -101,6 +102,7 @@
   font: inherit;
   font-size: var(--fs-sm);
   font-weight: 500;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-secondary);
   background: transparent;
@@ -326,6 +328,7 @@
   font-weight: 650;
   font-size: var(--fs-md);
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
   overflow: hidden;
@@ -438,6 +441,7 @@
 .sn-item-label {
   flex: 1;
   min-width: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -511,6 +515,7 @@
   background: transparent;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   transition:
     color var(--m-fast),
@@ -579,7 +584,7 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 61;
-  min-width: 180px;
+  min-width: min(180px, 100%);
   padding: 5px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
@@ -773,6 +778,7 @@
   background: transparent;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   transition:
     color var(--m-fast),
@@ -791,7 +797,7 @@
   top: calc(100% + 5px);
   left: 0;
   z-index: 62;
-  min-width: 218px;
+  min-width: min(218px, 100%);
   padding: 5px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
@@ -909,6 +915,7 @@
   background: transparent;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   transition:
     color var(--m-fast),
@@ -1039,6 +1046,7 @@
   padding: 1px 6px;
   border-radius: var(--r-full);
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--insight);
   background: color-mix(in oklab, var(--insight) 16%, transparent);
@@ -1165,6 +1173,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 5px 9px;
   border-radius: var(--r-sm);
@@ -1265,6 +1274,7 @@
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .cb-row-meta {
@@ -1323,6 +1333,7 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
   overflow: hidden;
@@ -1332,6 +1343,7 @@
   font-size: var(--fs-xs);
   color: var(--nav-c);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1367,6 +1379,7 @@
   font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1501,6 +1514,7 @@
 .tv-label {
   flex: 1;
   min-width: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1666,6 +1680,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 

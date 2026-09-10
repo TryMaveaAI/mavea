@@ -10,7 +10,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 9vh 24px 24px;
+  padding: 9dvh 24px 24px;
   background: rgba(var(--scrim-rgb), 0.62);
   backdrop-filter: var(--glass-blur, blur(6px));
   overflow-y: auto;
@@ -40,7 +40,7 @@
 .recap-meta {
   margin: 0;
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -76,7 +76,7 @@
   flex-direction: column;
   gap: 2px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -89,7 +89,7 @@
 .recap-row-line {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 .recap-actions {
@@ -102,7 +102,7 @@
   padding: 10px 18px;
   background: var(--presence);
   color: #fff;
-  font: 600 13.5px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   cursor: pointer;
 }
 .recap-keep {
@@ -111,11 +111,11 @@
   padding: 10px 18px;
   background: color-mix(in oklab, var(--surface-elevated) 80%, transparent);
   color: var(--text-primary);
-  font: 500 13.5px/1 var(--font);
+  font: 500 var(--fs-md)/1 var(--font);
   cursor: pointer;
 }
 
-@media (max-width: 600px) {
+@media (width <= 640px) {
   .recap-row {
     flex-direction: column;
     gap: 6px;
@@ -131,7 +131,7 @@
 .recap-row-corrected {
   display: block;
   margin-top: 4px;
-  font: 600 10.5px/1.4 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1.4 var(--font-data, var(--font));
   letter-spacing: 0.04em;
   color: var(--warning);
 }

@@ -509,6 +509,9 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--reel-accent) 18%, transparent);
   color: var(--reel-accent);
+  /*
+  stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose 
+ */
   white-space: nowrap;
 }
 

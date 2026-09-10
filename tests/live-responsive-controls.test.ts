@@ -34,7 +34,7 @@ describe('composer — narrow-viewport control sizing', () => {
   });
 
   it('gives typing a full row instead of squeezing it between five phone controls', () => {
-    const phone = dockCss.slice(dockCss.indexOf('@media (max-width: 420px)'));
+    const phone = dockCss.slice(dockCss.indexOf('@media (width <= 430px)'));
     expect(phone).toMatch(/grid-template-columns:\s*44px 38px 38px 38px 44px/);
     expect(phone).toMatch(/grid-column:\s*1 \/ -1/);
     expect(phone).toMatch(/\.mark-toggle-label\s*\{[^}]*display:\s*none/s);
@@ -42,11 +42,11 @@ describe('composer — narrow-viewport control sizing', () => {
   });
 
   it('makes the model label width-constrained before hiding it on the narrowest phones', () => {
-    const compact = dockCss.slice(dockCss.indexOf('@media (max-width: 560px)'));
+    const compact = dockCss.slice(dockCss.indexOf('@media (width <= 560px)'));
     expect(compact).toMatch(/\.vc-transcript\s*\{[^}]*display:\s*none/s);
     expect(compact).toMatch(/\.chip-model\s*\{[^}]*display:\s*block[^}]*max-width:\s*64px/s);
     expect(compact).toMatch(
-      /@media \(max-width:\s*360px\)[\s\S]*\.chip-model\s*\{[^}]*display:\s*none/,
+      /@media \(width <= 360px\)[\s\S]*\.chip-model\s*\{[^}]*display:\s*none/,
     );
   });
 });
@@ -54,7 +54,7 @@ describe('composer — narrow-viewport control sizing', () => {
 describe('Live topbar — compact laptops keep every primary control reachable', () => {
   it('drops the duplicated canvas title before the standing menus clip', () => {
     const css = read('src/styles/mobile.css');
-    expect(css).toMatch(/@media \(min-width:\s*769px\) and \(max-width:\s*1120px\)/);
+    expect(css).toMatch(/@media \(width > 768px\) and \(width <= 1200px\)/);
     expect(css).toMatch(
       /\.with-rail \.topbar \.workspace-name,[\s\S]*\.with-rail \.topbar \.brand-sep\s*\{[^}]*display:\s*none/,
     );
@@ -85,7 +85,7 @@ describe('SRS review — grade row restructures on a narrow shell', () => {
   it('switches the four grade buttons to a 2x2 grid under the narrow-shell breakpoint', () => {
     const idx = css.indexOf('.srs-grades {');
     const region = css.slice(idx, idx + 500);
-    expect(region).toMatch(/@media \(max-width:\s*480px\)/);
+    expect(region).toMatch(/@media \(width <= 480px\)/);
     expect(region).toMatch(/display:\s*grid/);
     expect(region).toMatch(/grid-template-columns:\s*1fr 1fr/);
   });

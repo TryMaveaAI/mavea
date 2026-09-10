@@ -48,7 +48,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text-primary);
@@ -67,7 +67,7 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   padding: 4px 6px;
   border-radius: 6px;
@@ -90,7 +90,7 @@
 
 .prism-ask-empty {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -106,7 +106,7 @@
   align-self: flex-end;
   max-width: 92%;
   padding: 7px 11px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
@@ -119,7 +119,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .prism-ask-dot {
@@ -148,7 +148,7 @@
 
 .prism-ask-err {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: color-mix(in oklab, var(--danger) 80%, var(--text-primary));
 }
 
@@ -164,7 +164,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 9px;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -185,7 +185,7 @@
 
 .prism-ask-text {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -199,7 +199,7 @@
   appearance: none;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   padding: 3px 9px;
@@ -233,7 +233,7 @@
   background: color-mix(in oklab, var(--insight) 6%, var(--surface-deep));
 }
 .prism-ask-outside-tag {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -241,12 +241,12 @@
 }
 .prism-ask-outside-fact {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
 }
 .prism-ask-outside-cite {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-style: italic;
   line-height: 1.4;
   color: color-mix(in oklab, var(--insight) 60%, var(--text-secondary));
@@ -273,7 +273,7 @@
   resize: none;
   max-height: 96px;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   background: var(--surface-elevated);
@@ -299,7 +299,7 @@
   border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
   background: color-mix(in oklab, var(--presence) 22%, var(--surface-elevated));
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1;
 }
 .prism-ask-send:hover:not(:disabled) {
@@ -313,7 +313,7 @@
 /* Below tablet width, `42vw` shrinks the whole thread — question, answer, page chips, the input row —
    into a sliver too narrow to actually read or type into. The dock restructures to a near-full-width
    sheet anchored to both edges instead of scaling the same cramped column down further. */
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .prism-ask {
     left: 12px;
     right: 12px;

@@ -121,6 +121,7 @@ export function MindShapeLab(): ReactElement {
           top: 8,
           left: 8,
           display: 'flex',
+          flexWrap: 'wrap',
           gap: 8,
           fontSize: 12,
         }}

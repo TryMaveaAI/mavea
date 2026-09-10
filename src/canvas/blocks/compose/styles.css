@@ -425,6 +425,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -435,6 +436,7 @@
   font-style: italic;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .vst-baf {
@@ -612,6 +614,7 @@
   color: var(--sp-accent);
   background: color-mix(in oklab, var(--sp-accent) 10%, transparent);
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -667,6 +670,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 100%;
   min-width: 0;
@@ -676,6 +680,7 @@
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
@@ -726,6 +731,7 @@
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 100%;
 }

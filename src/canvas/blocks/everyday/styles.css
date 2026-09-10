@@ -590,10 +590,11 @@
 .bb-label {
   font-size: var(--fs-sm, 13px);
   color: var(--text-primary);
-  min-width: 80px;
+  min-width: min(80px, 100%);
   max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -648,7 +649,7 @@
   gap: 16px;
   margin-top: 2px;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .rc2-body {
     grid-template-columns: 1fr;
   }
@@ -681,6 +682,7 @@
 .rc2-qty {
   font-weight: 700;
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 36px;
@@ -904,6 +906,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ms-times {
@@ -1240,6 +1243,7 @@
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
 }
@@ -1644,6 +1648,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lvs-score {
@@ -1724,6 +1729,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .alp-count {
@@ -1915,6 +1921,7 @@
 }
 .nl-n-amount {
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .nl-n-dv {
@@ -2042,6 +2049,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .pl-overall-count {
@@ -2088,6 +2096,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .pl-group-count {
@@ -2154,6 +2163,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   color: var(--text-primary);
 }
@@ -2369,11 +2379,12 @@
    a stylesheet declaration would beat the element's own text-anchor attribute. */
 .ct-today-label {
   fill: var(--presence);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 .ct-axis {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
   text-anchor: middle;
@@ -2482,6 +2493,7 @@
   font-size: var(--fs-2xs, 10px);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cn-gap-label {
@@ -2547,6 +2559,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .pt-loc .ic {
@@ -2588,11 +2601,13 @@
   stroke-width: 1.5;
 }
 .pt-name {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
   fill: var(--text-primary);
 }
 .pt-time {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   fill: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -2638,6 +2653,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   font-weight: 600;
   color: var(--text-primary);
@@ -2661,6 +2677,7 @@
   letter-spacing: 0.04em;
   color: var(--warning);
   background: color-mix(in oklab, var(--warning) 18%, transparent);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -2762,6 +2779,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .wn-hour-icon {
@@ -3073,6 +3091,7 @@
   font-size: var(--fs-2xs, 10px);
   font-weight: 700;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   margin-bottom: 2px;
 }
@@ -3100,6 +3119,7 @@
   flex: none;
 }
 .tb-leg-range {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .tb-leg-rate {
@@ -3203,6 +3223,7 @@
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .mc-desc {
@@ -3246,6 +3267,7 @@
 }
 .ft-gen {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 700;
   font-variant: small-caps;
@@ -3271,6 +3293,7 @@
 }
 .ft-card-name {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10.5px;
   font-weight: 700;
 }
@@ -3279,6 +3302,7 @@
 }
 .ft-card-dates {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -3331,6 +3355,7 @@
 }
 .sc-table-label {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 700;
 }
@@ -3388,6 +3413,7 @@
 }
 .rm-node-label {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10.5px;
   transition: opacity var(--m-fast);
 }
@@ -3546,6 +3572,7 @@
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .mn-badge--owner {
@@ -3597,6 +3624,7 @@
   letter-spacing: 0.03em;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sk-person {
@@ -3606,6 +3634,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sk-cell {
@@ -3724,6 +3753,7 @@
   background: color-mix(in oklab, var(--presence) 10%, transparent);
   border-radius: var(--r-sm, 4px);
   padding: 1px 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .labp-reagent-name {
@@ -3834,10 +3864,11 @@
   border: 1px solid var(--grid-line);
   border-radius: var(--r-full);
   padding: 1px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .labp-cond--sm {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   padding: 1px 6px;
 }
 .labp-caution {
@@ -3984,6 +4015,7 @@
   background: var(--surface-glass);
   border: 1px solid var(--line);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cg-taken-by {
@@ -3991,6 +4023,7 @@
   font-weight: 600;
   color: var(--insight);
   margin-left: auto;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cg-appt-row {
@@ -4007,7 +4040,7 @@
 }
 .cg-appt-date {
   flex-shrink: 0;
-  min-width: 76px;
+  min-width: min(76px, 100%);
   font-weight: 700;
   color: var(--presence);
   font-variant-numeric: tabular-nums;
@@ -4051,6 +4084,7 @@
   margin-left: auto;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -4107,6 +4141,7 @@
   padding: 2px 7px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, currentColor 14%, transparent);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   margin-left: auto;
 }
@@ -4126,6 +4161,7 @@
   font-size: var(--fs-xs, 12px);
   line-height: 1;
   letter-spacing: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .rl-stars-track {
@@ -4179,6 +4215,7 @@
   font-size: var(--fs-md, 15px);
   line-height: 1;
   letter-spacing: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cc-stars-track {
@@ -4234,6 +4271,7 @@
 .cc-pour-qty {
   font-weight: 700;
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 44px;
@@ -4313,6 +4351,7 @@
 .rn-route {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .rn-elev {
@@ -4362,6 +4401,7 @@
   stroke-width: 1;
 }
 .rn-tick {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }
@@ -4437,7 +4477,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .up-columns {
     grid-template-columns: 1fr;
   }
@@ -4612,7 +4652,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   color: var(--surface-elevated);
   background: var(--presence-soft);
@@ -4844,6 +4884,7 @@
   stroke-width: 1;
 }
 .cac-tick {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }

@@ -40,6 +40,100 @@
      that knob is --fs-reader (wow-polish.css), which composes with this. */
   --vp-type-scale: max(1, var(--vp-scale));
 
+  /* --- layout contract ---
+     ONE breakpoint ladder for the whole app, stated in range syntax (`width <= 720px`, never
+     `max-width: 720px`) so a pair of complementary rules cannot leave a one-pixel gap. Every value
+     is a window shape the app is actually read at, and stylelint (media-feature-name-value-
+     allowed-list) refuses any other number — a one-off breakpoint needs a disable comment with
+     its measurement. The ladder cannot be a custom property (a var() is not valid inside
+     @media), so this comment IS the source of truth and stylelint.config.js mirrors it.
+       width:  360 small phone · 430 phone · 480 phone landscape · 560 large phone ·
+               640 phablet / narrow window · 720 small tablet · 768 tablet portrait ·
+               900 laptop compact · 1024 tablet landscape · 1200 small laptop ·
+               1280 laptop · 1600 desktop · 1920 wide
+       height: 650 short landscape phone · 700 short laptop · 820 laptop · 900 reference
+     1200, not 1280, is where a "compact" treatment must stop: a 1280px window resolves to ~1265
+     CSS px once the scrollbar is counted, so `width <= 1280px` would hand the most common laptop
+     the phone layout. Rules meant for tablets end at 1200.
+     Two Live thresholds (920/921 and 1259/1260, voice.css ↔ focus.css) are measured layout
+     pairs pinned by tests and stay off the ladder, each carrying its disable comment. */
+  --content-max: 68ch; /* one reading column — prose measure, not a pixel width */
+  --tap-min: 44px; /* the smallest hit box a thumb lands on reliably (audit:surfaces enforces it) */
+
+  /* Fluid type scale, Utopia's method (utopia.fyi): every step names a size at the 320px viewport
+     and one at 1920px, and the preferred term is the straight line between them —
+       slope     = (max − min) / (1920 − 320)
+       intercept = min − slope × 320
+       value     = clamp(min, intercept + slope × 100vi, max)
+     — so a step can be regenerated from its two endpoints alone (scripts/utopia-scale.mjs prints
+     this block). Endpoints are the ones the block library was tuned on. The bottom step's floor is
+     10px because the reader's "smaller" knob is 0.9 and 10 × 0.9 = 9.0 is exactly the rendered
+     legibility floor audit:ui enforces; nothing below it can be authored through a token.
+     Every bound multiplies --fs-scale: the reader's text-size choice times the viewport's upward
+     scale, composed once here so no call site can forget half of it. --fs-reader is set by the
+     Appearance → Text size knob (wow-polish.css). */
+  --fs-reader: 1;
+  --fs-scale: calc(var(--fs-reader) * var(--vp-type-scale, 1));
+  --fs-2xs: clamp(
+    calc(10px * var(--fs-scale)),
+    calc((9.9px + 0.0313vi) * var(--fs-scale)),
+    calc(10.5px * var(--fs-scale))
+  );
+  --fs-xs: clamp(
+    calc(10.5px * var(--fs-scale)),
+    calc((10.3px + 0.0625vi) * var(--fs-scale)),
+    calc(11.5px * var(--fs-scale))
+  );
+  --fs-sm: clamp(
+    calc(11.5px * var(--fs-scale)),
+    calc((11.2px + 0.0938vi) * var(--fs-scale)),
+    calc(13px * var(--fs-scale))
+  );
+  --fs-md: clamp(
+    calc(12.5px * var(--fs-scale)),
+    calc((12.1px + 0.125vi) * var(--fs-scale)),
+    calc(14.5px * var(--fs-scale))
+  );
+  --fs-lg: clamp(
+    calc(14px * var(--fs-scale)),
+    calc((13.4px + 0.1875vi) * var(--fs-scale)),
+    calc(17px * var(--fs-scale))
+  );
+  --fs-xl: clamp(
+    calc(17px * var(--fs-scale)),
+    calc((16px + 0.3125vi) * var(--fs-scale)),
+    calc(22px * var(--fs-scale))
+  );
+  --fs-2xl: clamp(
+    calc(22px * var(--fs-scale)),
+    calc((19.6px + 0.75vi) * var(--fs-scale)),
+    calc(34px * var(--fs-scale))
+  );
+  /* Display sizes for hero numbers — the widest range on the ladder, so a big stat fills a
+     display and still fits a phone. */
+  --fs-stat: clamp(
+    calc(28px * var(--fs-scale)),
+    calc((22.4px + 1.75vi) * var(--fs-scale)),
+    calc(56px * var(--fs-scale))
+  );
+  --fs-hero: clamp(
+    calc(34px * var(--fs-scale)),
+    calc((26.4px + 2.375vi) * var(--fs-scale)),
+    calc(72px * var(--fs-scale))
+  );
+
+  /* Fluid spacing, container-relative on purpose: padding and gaps tighten as the CARD narrows,
+     not as the window does, because the same block sits in a col-3 slot and a col-12 slot on one
+     screen. cqi resolves against the nearest query container (.card, the Lens stage, the Study
+     slot, the world's parts rail — declared below) and falls back to the viewport outside one.
+     Left off --fs-scale: layout rhythm should not balloon because the reading text got bigger. */
+  --sp-fluid-2xs: clamp(2px, 0.8cqi, 4px);
+  --sp-fluid-xs: clamp(4px, 1.4cqi, 7px);
+  --sp-fluid-sm: clamp(7px, 2.4cqi, 11px);
+  --sp-fluid-md: clamp(11px, 3.4cqi, 16px);
+  --sp-fluid-lg: clamp(16px, 4.6cqi, 24px);
+  --sp-fluid-xl: clamp(22px, 6cqi, 32px);
+
   /* --- surfaces --- */
   --surface-default: #0a0e15;
   --surface-deep: #070a10;
@@ -191,4 +285,25 @@
   --slide-bg: linear-gradient(150deg, #11182a, #0a0e15);
   --replay-bg: linear-gradient(165deg, #15122a, #0a0e15);
   --replay-stage-bg: radial-gradient(80% 80% at 50% 30%, #1a2342, #0a0e15);
+}
+
+/* Query containers. A block answers to the box it is drawn in, never to the window: the same
+   component renders in a card on the board, on the Lens stage, in the Study slot, in the world's
+   parts rail and in a gallery tile, and each is a different width on one screen. `inline-size`,
+   not `size`, everywhere — block height stays content-driven; only width drives the cqi units the
+   tokens above are built on. Each of these boxes has a definite inline size of its own (a fixed
+   rail width, `width: 100%`, or left/right pinning), which is what makes containment safe: an
+   element sized by its content would collapse to zero under it.
+   `.card-grid` is re-tiled by useResponsiveGrid from its CONTENT box (a ResizeObserver
+   contentRect); inline-size containment leaves that box exactly where it was. */
+.card,
+.card-grid,
+.zoom-sheet-scroll,
+.study-slot,
+.wo-parts,
+.side-rail,
+.topbar,
+.live-dock,
+.transcript {
+  container-type: inline-size;
 }

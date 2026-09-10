@@ -140,9 +140,10 @@
   padding: 7px 8px;
 }
 .live-voice .vc-status-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* Speaking orb: a 22px gradient disc with a pulsing halo and three dancing equalizer bars. */
@@ -195,7 +196,7 @@
 .live-voice .vc-transcript {
   flex: 1;
   min-width: 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-muted);
   overflow: hidden;
@@ -250,7 +251,7 @@
 /* Phones: the status strip's settings get tight. Drop the voice switch's text to just its
    speaker icon + toggle, cap the model name, and pull the row's padding in — so the capsule
    stays clean and never overflows on a narrow screen. */
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .live-voice .voice-strip {
     padding: 8px 12px;
     gap: 6px;
@@ -285,7 +286,7 @@
    320–390px row with a useful input; squeezing the field to a few pixels made typing look broken
    even though every button technically fit. The dock measures its rendered height, so the canvas
    and the mobile session sheet automatically clear this taller two-row capsule. */
-@media (max-width: 420px) {
+@media (width <= 430px) {
   /* Four labelled settings cannot share a 280px status row. Keep every control, but remove the
      repeated noun from the explanation-level chip; its accessible name remains explicit and the
      visible value (Standard / In-depth / Simple) is the information that changes. */
@@ -322,7 +323,7 @@
   }
 }
 
-@media (max-width: 360px) {
+@media (width <= 360px) {
   .live-voice .voice-strip .chip-model {
     display: none;
   }
@@ -340,7 +341,7 @@
   border-radius: 15px;
   border: 1px solid var(--line-strong);
   background: var(--surface-elevated);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
@@ -362,6 +363,7 @@
   border-color: color-mix(in oklab, var(--warning) 45%, var(--line));
 }
 .voice-switch-label {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .voice-switch-track {
@@ -451,7 +453,7 @@
   left: 0;
   bottom: calc(100% + 10px);
   z-index: 60;
-  width: 220px;
+  width: min(220px, 100%);
   padding: 6px;
   border-radius: var(--r-md);
   background: var(--surface-elevated);
@@ -513,7 +515,7 @@
 .live-error-msg {
   margin: 0;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 .live-error-actions {
@@ -527,7 +529,7 @@
   background: var(--surface-elevated);
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 .live-error-btn:hover {
@@ -573,7 +575,7 @@
   border-radius: 10px;
   background: var(--surface-elevated);
   color: var(--warning);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
 }
 .voice-notice > svg {
@@ -621,7 +623,7 @@
   border: 1px solid var(--presence);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   box-shadow: var(--shadow-raised);
   pointer-events: none;
@@ -638,7 +640,7 @@
    and answers are captions-only. */
 .voice-off-hint {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }

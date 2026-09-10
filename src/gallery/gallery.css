@@ -47,13 +47,14 @@
   border-radius: var(--r-full);
   color: var(--text-secondary);
   cursor: pointer;
-  font: 13px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   min-height: 44px;
   padding: 7px var(--s-md);
   transition:
     border-color var(--m-fast),
     color var(--m-fast),
     background var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .vlib-back:hover {
@@ -63,7 +64,7 @@
 }
 
 .vlib-headline h1 {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0;
@@ -71,7 +72,7 @@
 .vlib-subtitle {
   margin: var(--s-xs) 0 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-md);
   max-width: 54ch;
   text-wrap: pretty;
 }
@@ -93,7 +94,7 @@
   border: 1px solid var(--line);
   background: var(--surface-default);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-family: var(--font);
   outline: none;
   transition: border-color var(--m-fast) var(--ease-out);
@@ -120,7 +121,7 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  font: 12px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   min-height: 44px;
   padding: 8px 10px;
   border-radius: var(--r-sm);
@@ -204,9 +205,10 @@
   border: 1px solid var(--line);
   background: var(--surface-default);
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-family: var(--font);
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
   min-height: 44px;
@@ -225,7 +227,7 @@
   color: var(--text-primary);
 }
 .vlib-chip-n {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
 }
 .vlib-chip.active .vlib-chip-n {
@@ -250,7 +252,7 @@
   border-bottom: 1px solid var(--line-soft);
 }
 .vlib-section-head h2 {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -258,7 +260,7 @@
   margin: 0;
 }
 .vlib-count {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-faint);
   background: var(--surface-elevated);
   border-radius: var(--r-full);
@@ -279,7 +281,7 @@
 .vlib-tile.vlib-full {
   grid-column: 1 / -1;
 }
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .vlib-tile.vlib-wide,
   .vlib-tile.vlib-full {
     grid-column: auto;
@@ -322,20 +324,20 @@
 }
 .vlib-type {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .vlib-fam {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   flex-shrink: 0;
   text-align: right;
 }
 
-@media (max-width: 600px) {
+@media (width <= 640px) {
   .vlib-audit {
     display: none;
   }
@@ -345,7 +347,7 @@
    body, 24px again inside every tile — which on a 320px screen is ~96px, nearly a third of the
    viewport, gone before a single card is drawn. Every block then had to fit in ~170px and the whole
    library read as broken. Give the content the screen; the cards are what people came to see. */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .vlib-body {
     padding: var(--s-lg) var(--s-md) var(--s-2xl);
   }
@@ -392,9 +394,10 @@
   border: 1px solid var(--line);
   background: var(--surface-default);
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition:
     border-color var(--m-fast) var(--ease-out),
@@ -410,7 +413,7 @@
 }
 .vlib-flag {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: var(--r-sm, 6px);

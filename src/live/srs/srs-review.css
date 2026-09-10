@@ -30,14 +30,14 @@
 }
 
 .srs-eyebrow {
-  font: 700 10.5px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.14em;
   color: var(--text-muted);
 }
 
 .srs-progress {
   margin-left: auto;
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-secondary);
 }
 
@@ -50,7 +50,7 @@
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   display: flex;
   align-items: center;
@@ -79,7 +79,7 @@
 }
 
 .srs-tag {
-  font: 600 10.5px/1 var(--font);
+  font: 600 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--presence-soft);
@@ -133,14 +133,14 @@
 }
 
 .srs-face-label {
-  font: 700 9.5px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 
 .srs-face-text {
-  font: 450 18px/1.55 var(--font);
+  font: 450 var(--fs-lg)/1.55 var(--font);
   color: var(--text-primary);
   flex: 1;
   word-break: break-word;
@@ -155,7 +155,7 @@
   padding: 0;
   border: 0;
   background: none;
-  font: 450 11.5px/1 var(--font);
+  font: 450 var(--fs-xs)/1 var(--font);
   color: var(--text-faint);
   text-align: right;
 }
@@ -168,7 +168,7 @@
 /* Four-in-a-row only has room for "Again" (the longest label) on a wide-enough shell — below
    that the row cramps into wrapped, uneven-height buttons. A 2x2 grid keeps every button roomy
    and equal-sized instead of just shrinking the same layout. */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .srs-grades {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -201,19 +201,19 @@
 
 .srs-grade-label {
   display: block;
-  font: 600 13.5px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   color: var(--text-primary);
 }
 
 .srs-grade-key {
   display: block;
-  font: 500 10px/1 var(--font);
+  font: 500 var(--fs-2xs)/1 var(--font);
   color: var(--text-muted);
   margin-top: 4px;
 }
 
 .srs-flip-prompt {
-  font: 450 11.5px/1 var(--font);
+  font: 450 var(--fs-xs)/1 var(--font);
   color: var(--text-faint);
   text-align: center;
 }
@@ -229,18 +229,18 @@
 }
 
 .srs-big-icon {
-  font-size: 48px;
+  font-size: var(--fs-stat);
   line-height: 1;
   color: var(--text-secondary);
 }
 
 .srs-done-head {
-  font: 700 22px/1.2 var(--font);
+  font: 700 var(--fs-xl)/1.2 var(--font);
   color: var(--text-primary);
 }
 
 .srs-done-sub {
-  font: 450 14px/1.55 var(--font);
+  font: 450 var(--fs-md)/1.55 var(--font);
   color: var(--text-secondary);
   max-width: 320px;
 }
@@ -261,12 +261,12 @@
   padding: 5px 11px;
   border: 1px solid var(--line-mid);
   border-radius: var(--r-full);
-  font: 500 12px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--text-secondary);
 }
 
 .srs-done-chip-n {
-  font: 700 13px/1 var(--font);
+  font: 700 var(--fs-sm)/1 var(--font);
   color: var(--text-primary);
 }
 
@@ -277,7 +277,7 @@
   border: 1px solid var(--line-mid);
   background: none;
   color: var(--text-primary);
-  font: 600 14px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   cursor: pointer;
   transition:
     background var(--m-quick),

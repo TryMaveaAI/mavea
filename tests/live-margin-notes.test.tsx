@@ -245,7 +245,7 @@ describe('margin-note gutter — the belt below the fit threshold releases both 
     expect(base).toMatch(/padding-left:\s*218px/);
     expect(base).toMatch(/padding-right:\s*218px/);
     const belt =
-      /@media \(max-width: 1279px\)\s*\{[\s\S]*?\.live-voice \.card-grid\.note-gutter\s*\{([^}]*)\}/.exec(
+      /@media \(width <= 1280px\)\s*\{[\s\S]*?\.live-voice \.card-grid\.note-gutter\s*\{([^}]*)\}/.exec(
         css,
       )?.[1] ?? '';
     expect(belt).toMatch(/padding-left:\s*0/);

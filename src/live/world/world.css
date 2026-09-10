@@ -37,6 +37,10 @@
 
 .wo-head {
   display: flex;
+  /* Title on the left, the reading chips and actions on the right — until a phone cannot hold
+     both, when the actions drop under the title. Measured at 320: without this the chip row ran
+     169px past the panel's edge, two reading chips and the close button unreachable. */
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--s-md);
@@ -45,7 +49,7 @@
 }
 .wo-kicker,
 .wo-rail-kicker {
-  font: 600 11px/1.4 var(--font-data, var(--font));
+  font: 600 var(--fs-xs)/1.4 var(--font-data, var(--font));
   letter-spacing: 0.12em;
   color: var(--text-muted);
 }
@@ -59,12 +63,22 @@
   display: flex;
   align-items: center;
   gap: var(--s-sm);
-  flex-shrink: 0;
+  /* Shrinkable, and never wider than the head: a row that refused to shrink sized itself to its
+     five chips plus the close button (453px in a 310px panel at 320) and carried them off the
+     edge; the head wraps it under the title, and the chip group wraps inside it. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   flex-wrap: wrap;
 }
 
 .wo-views {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
+  /* Five reading chips do not fit a phone's panel head on one line; a pill group that wraps is
+     still a pill group, where one that runs past the panel's edge is two chips nobody can press. */
+  flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--line);
@@ -72,7 +86,7 @@
   background: var(--surface-elevated);
 }
 .wo-chip {
-  font: 500 12px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--text-secondary);
   background: none;
   border: 0;
@@ -109,6 +123,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
@@ -118,10 +133,12 @@
      (lanes.ts) is derived from. At 9.5 it painted 7.8px on a spheres view at 0.58× and the world
      audit failed it. The alternative was raising FIT_FLOOR to 0.68, which would stop the camera
      earlier for EVERY world to accommodate one caption. Do not shrink this without moving that. */
+  /*  stylelint-disable-next-line declaration-property-value-disallowed-list -- camera-scaled stage: the counter-scale multiplies this and the fit floor (FIT_FLOOR in the spatial lanes) is derived from these literal sizes, so a viewport-fluid token would move the floor  */
   font: 500 11px/1 var(--font);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -131,7 +148,7 @@
 }
 
 .wo-btn {
-  font: 500 13px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-elevated);
   border: 1px solid var(--line);
@@ -153,7 +170,7 @@
 
 .wo-banner {
   padding: 8px var(--s-lg);
-  font: 500 12.5px/1.4 var(--font);
+  font: 500 var(--fs-sm)/1.4 var(--font);
   border-bottom: 1px solid var(--line-soft);
 }
 /* The accents are one set across both themes, so warning-on-light is pale enough to read as an
@@ -188,13 +205,13 @@
 }
 .wo-shell-line {
   margin: 0;
-  font: 600 15px/1.4 var(--font);
+  font: 600 var(--fs-md)/1.4 var(--font);
   color: var(--text-primary);
 }
 .wo-shell-note {
   margin: 0;
   max-width: 46ch;
-  font: 400 13px/1.55 var(--font);
+  font: 400 var(--fs-sm)/1.55 var(--font);
   color: var(--text-muted);
 }
 .wo-shell .wo-btn {
@@ -223,7 +240,7 @@
 .wo-legend {
   margin: 0;
   padding: 7px var(--s-lg) 9px;
-  font: 400 12px/1.45 var(--font);
+  font: 400 var(--fs-sm)/1.45 var(--font);
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-soft);
 }
@@ -289,7 +306,7 @@
   gap: 4px;
 }
 .wo-part-list li {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   padding-left: 10px;
@@ -338,10 +355,12 @@
   /* 11.5px, not 10.5: this is the only thing on a timeline entry that says WHEN, and the camera on
      a wide world settles around 0.6× — where the counter-scale leaves a 10.5px chip at 8.7px, just
      under the legibility floor. The audit caught it on the seed world's own timeline. */
+  /*  stylelint-disable-next-line declaration-property-value-disallowed-list -- camera-scaled stage: the counter-scale multiplies this and the fit floor (FIT_FLOOR in the spatial lanes) is derived from these literal sizes, so a viewport-fluid token would move the floor  */
   font: 500 11.5px/1.3 var(--font);
   letter-spacing: 0.02em;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* A date a source actually states reads as established; one only the model knows stays quiet and
@@ -370,6 +389,7 @@
    (it opens the receipt), and generated content lands in a button's accessible name — a screen
    reader would have read "approximately 500, source available" from a decoration. */
 .wo-num {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- camera-scaled stage: the counter-scale multiplies this and the fit floor (FIT_FLOOR in the spatial lanes) is derived from these literal sizes, so a viewport-fluid token would move the floor  */
   font-size: 12.5px;
   font-weight: 600;
   color: var(--insight);
@@ -393,6 +413,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
@@ -429,8 +450,9 @@
   border-color: transparent;
 }
 .wo-play-aside {
-  font: 400 11.5px/1 var(--font);
+  font: 400 var(--fs-xs)/1 var(--font);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -443,7 +465,7 @@
 
 .wo-invite {
   margin: 0 0 6px;
-  font: 400 13px/1.45 var(--font);
+  font: 400 var(--fs-sm)/1.45 var(--font);
   color: var(--text-primary);
 }
 .wo-invite strong {
@@ -485,6 +507,7 @@
    and disabled states are untouched: a chip that is WAITING should be loud. */
 .wo-expand {
   flex: none;
+  /*  stylelint-disable-next-line declaration-property-value-disallowed-list -- camera-scaled stage: the counter-scale multiplies this and the fit floor (FIT_FLOOR in the spatial lanes) is derived from these literal sizes, so a viewport-fluid token would move the floor  */
   font: 500 9.5px/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -570,7 +593,7 @@
 .wo-rail .viz-ctl-label {
   grid-area: 1 / 1;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
@@ -608,7 +631,7 @@
   gap: 2px;
 }
 .wo-facts dt {
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -616,13 +639,13 @@
 }
 .wo-facts dd {
   margin: 0;
-  font: 600 17px/1.1 var(--font);
+  font: 600 var(--fs-lg)/1.1 var(--font);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 .wo-standing-outcome {
   margin: 0;
-  font: 500 13.5px/1.45 var(--font);
+  font: 500 var(--fs-md)/1.45 var(--font);
   color: var(--text-primary);
 }
 .wo-standing-lead {
@@ -631,7 +654,7 @@
 .wo-standing-note {
   display: block;
   margin-top: 4px;
-  font: 400 12.5px/1.5 var(--font);
+  font: 400 var(--fs-sm)/1.5 var(--font);
   color: var(--text-secondary);
 }
 
@@ -645,13 +668,13 @@
 }
 .wo-detail-title {
   margin: 2px 0 0;
-  font: 600 14px/1.3 var(--font);
+  font: 600 var(--fs-md)/1.3 var(--font);
   color: var(--text-primary);
 }
 .wo-detail-note,
 .wo-hint {
   margin: 0;
-  font: 400 12.5px/1.5 var(--font);
+  font: 400 var(--fs-sm)/1.5 var(--font);
   color: var(--text-secondary);
 }
 .wo-hint {
@@ -659,7 +682,7 @@
 }
 .wo-detail-figure {
   margin: 0;
-  font: 600 18px/1.2 var(--font);
+  font: 600 var(--fs-lg)/1.2 var(--font);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   /* The rail is where a figure is read in FULL, so it wraps rather than clips — but a run of
@@ -679,7 +702,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--s-sm);
-  font: 400 12px/1.6 var(--font-data, var(--font));
+  font: 400 var(--fs-sm)/1.6 var(--font-data, var(--font));
   font-variant-numeric: tabular-nums;
   border-bottom: 1px solid color-mix(in oklab, var(--line-soft) 60%, transparent);
 }
@@ -687,7 +710,7 @@
   color: var(--text-muted);
 }
 
-@media (max-width: 960px) {
+@media (width <= 1024px) {
   .wo-body {
     flex-direction: column;
   }
@@ -711,9 +734,11 @@
   position: absolute;
   top: calc(100% + 3px);
   left: 2px;
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- camera-scaled stage: the counter-scale multiplies this and the fit floor (FIT_FLOOR in the spatial lanes) is derived from these literal sizes, so a viewport-fluid token would move the floor  */
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-muted);
 }
@@ -736,6 +761,12 @@
 
    It is a constant height whether or not a line is showing: a band that grew when the walk started
    would re-fit the whole world at the exact moment the reader pressed play. */
+/* The band is a strip of the stage the world never renders into: the camera's viewport stops
+   above it (WorldOverlay sets --wo-transport-h on the stage), so a card cannot end up under the
+   play pill however far a large world pans. */
+.wo-stage .mv-viewport {
+  height: calc(100% - var(--wo-transport-h, 54px));
+}
 .wo-transport {
   position: absolute;
   inset: auto 0 0 0;

@@ -9,7 +9,7 @@
 }
 
 .understood-label {
-  font: 600 9.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -41,7 +41,7 @@
   background: color-mix(in oklab, var(--surface-elevated) 72%, transparent);
   color: var(--text-muted);
   cursor: help;
-  font: 700 10px/1 var(--font-data, var(--font));
+  font: 700 var(--fs-2xs)/1 var(--font-data, var(--font));
 }
 
 .understood-help-btn:hover,
@@ -63,7 +63,7 @@
   background: var(--surface-elevated);
   color: var(--text-secondary);
   box-shadow: var(--shadow-floating);
-  font: 500 12px/1.35 var(--font);
+  font: 500 var(--fs-sm)/1.35 var(--font);
   letter-spacing: 0;
   text-transform: none;
   opacity: 0;
@@ -87,7 +87,7 @@
 }
 
 .understood-chip {
-  font: 600 11px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-glass);
   border: 1px solid var(--line);
@@ -108,7 +108,7 @@
 }
 
 .understood-edit {
-  font: 700 11px/1 var(--font);
+  font: 700 var(--fs-xs)/1 var(--font);
   color: var(--presence);
   background: var(--surface-elevated);
   border: 1.5px solid var(--presence);

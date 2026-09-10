@@ -26,6 +26,9 @@ export function PeriodicTileSlide({ slots }: SlideProps<'concept'>) {
   const symbolRu = head.tier <= 1 && (!sub || sub.tier === 0) ? 26 : head.tier <= 2 ? 18 : 13;
   return (
     <div
+      // An element tile is a display lockup: the symbol's line box overlaps the name tucked under
+      // it by design, while the ink stays clear — the same declaration the canvas's stat cards make.
+      data-tight-lockup=""
       style={{
         position: 'relative',
         width: 'calc(var(--ru) * 62)',

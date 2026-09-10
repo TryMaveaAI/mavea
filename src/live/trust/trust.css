@@ -43,6 +43,7 @@ button.tr-num:focus-visible {
   margin: -1px;
   overflow: hidden;
   clip-path: inset(50%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   border: 0;
 }
@@ -74,7 +75,7 @@ button.tr-num:focus-visible {
   gap: 4px;
 }
 .tr-back {
-  font: 500 11px/1.2 var(--font);
+  font: 500 var(--fs-xs)/1.2 var(--font);
   color: var(--text-secondary);
   background: none;
   border: 0;
@@ -89,7 +90,7 @@ button.tr-num:focus-visible {
 }
 
 .tr-badge {
-  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1.4 var(--font-data, var(--font));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 2px 6px;
@@ -112,12 +113,12 @@ button.tr-num:focus-visible {
 
 .tr-figure {
   margin: 0;
-  font: 700 20px/1.15 var(--font-data, var(--font));
+  font: 700 var(--fs-xl)/1.15 var(--font-data, var(--font));
   color: var(--text-primary);
 }
 .tr-label {
   margin: 0;
-  font: 500 12px/1.35 var(--font);
+  font: 500 var(--fs-sm)/1.35 var(--font);
   color: var(--text-secondary);
 }
 
@@ -127,14 +128,14 @@ button.tr-num:focus-visible {
 }
 .tr-sec-title {
   margin: 0 0 6px;
-  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1.4 var(--font-data, var(--font));
   letter-spacing: 0.12em;
   color: var(--text-muted);
 }
 .tr-quote {
   margin: 0;
   padding: 6px 9px;
-  font: 400 12px/1.5 var(--font);
+  font: 400 var(--fs-sm)/1.5 var(--font);
   color: var(--text-secondary);
   background: var(--surface-elevated);
   border-left: 2px solid var(--presence);
@@ -142,7 +143,7 @@ button.tr-num:focus-visible {
 }
 .tr-host {
   margin: 6px 0 0;
-  font: 500 11px/1.35 var(--font-data, var(--font));
+  font: 500 var(--fs-xs)/1.35 var(--font-data, var(--font));
   color: var(--text-muted);
 }
 .tr-host a {
@@ -159,7 +160,7 @@ button.tr-num:focus-visible {
   margin: 0;
 }
 .tr-chip {
-  font: 500 11px/1.3 var(--font-data, var(--font));
+  font: 500 var(--fs-xs)/1.3 var(--font-data, var(--font));
   color: var(--text-secondary);
   background: var(--surface-elevated);
   border: 1px solid var(--line-soft);
@@ -169,7 +170,7 @@ button.tr-num:focus-visible {
 
 .tr-formula {
   margin: 0 0 6px;
-  font: 500 12px/1.45 var(--font-data, var(--font));
+  font: 500 var(--fs-sm)/1.45 var(--font-data, var(--font));
   color: var(--text-primary);
 }
 .tr-inputs,
@@ -187,7 +188,7 @@ button.tr-num:focus-visible {
   gap: 8px;
   width: 100%;
   text-align: left;
-  font: 500 12px/1.4 var(--font);
+  font: 500 var(--fs-sm)/1.4 var(--font);
   color: var(--text-secondary);
   background: none;
   border: 0;
@@ -217,17 +218,17 @@ button.tr-num:focus-visible {
 .tr-more,
 .tr-note {
   margin: 5px 0 0;
-  font: 400 11px/1.4 var(--font);
+  font: 400 var(--fs-xs)/1.4 var(--font);
   color: var(--text-muted);
 }
 .tr-caveat {
   margin: 0;
-  font: 400 11px/1.45 var(--font);
+  font: 400 var(--fs-xs)/1.45 var(--font);
   color: var(--warning);
 }
 .tr-hint {
   margin: 0;
-  font: 400 11px/1.4 var(--font);
+  font: 400 var(--fs-xs)/1.4 var(--font);
   color: var(--text-faint);
 }
 
@@ -253,11 +254,11 @@ button.tr-num:focus-visible {
   flex-wrap: wrap;
 }
 .tr-rel {
-  font: 600 12px/1.3 var(--font);
+  font: 600 var(--fs-sm)/1.3 var(--font);
   color: var(--text-primary);
 }
 .tr-sign {
-  font: 600 13px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-sm)/1 var(--font-data, var(--font));
   color: var(--text-secondary);
 }
 .tr-sign[data-sign='1'] {
@@ -297,14 +298,14 @@ button.tr-num:focus-visible {
 }
 .tr-unverified {
   margin: 0;
-  font: 400 12px/1.5 var(--font);
+  font: 400 var(--fs-sm)/1.5 var(--font);
   font-style: italic;
   color: var(--text-faint);
 }
 /* Always present, always last: what the arrow does NOT claim. */
 .tr-not-as {
   margin: 0;
-  font: 400 11px/1.45 var(--font);
+  font: 400 var(--fs-xs)/1.45 var(--font);
   color: var(--text-muted);
 }
 
@@ -328,7 +329,7 @@ button.tr-num:focus-visible {
   border-left: 1px dashed var(--line);
 }
 .tr-wi-chip {
-  font: 600 9.5px/1.4 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1.4 var(--font-data, var(--font));
   letter-spacing: 0.1em;
   color: var(--text-muted);
   background: var(--surface-elevated);
@@ -360,16 +361,16 @@ button.tr-num:focus-visible {
 }
 /* Words, not a measurement — sized down so prose never wears a figure's weight. */
 .tr-wi-figure.tr-wi-phrase {
-  font: 600 15px/1.3 var(--font);
+  font: 600 var(--fs-md)/1.3 var(--font);
 }
 .tr-wi-delta {
   margin: 0;
-  font: 600 13px/1.2 var(--font-data, var(--font));
+  font: 600 var(--fs-sm)/1.2 var(--font-data, var(--font));
   color: var(--text-secondary);
 }
 .tr-wi-note {
   margin: 0;
-  font: 500 11px/1.35 var(--font);
+  font: 500 var(--fs-xs)/1.35 var(--font);
   color: var(--text-muted);
 }
 /* A dash on its own reads as a failure; this is the line that says which rung of the ladder the
@@ -399,7 +400,7 @@ button.tr-num:focus-visible {
 }
 .tr-levers-empty {
   margin: 0;
-  font: 400 12.5px/1.5 var(--font);
+  font: 400 var(--fs-sm)/1.5 var(--font);
   color: var(--text-muted);
 }
 /* A lever is the ONE control on this surface a reader is meant to drag, and the shared ParamSlider
@@ -426,7 +427,7 @@ button.tr-num:focus-visible {
   min-height: 24px;
 }
 .tr-reset {
-  font: 500 12px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-elevated);
   border: 1px solid var(--line);

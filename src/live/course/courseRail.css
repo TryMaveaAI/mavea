@@ -28,7 +28,7 @@
   color: var(--text-muted);
   /* 13px/15px matches .cr-nav-back on the courses home: the same "go back" action reading at the
      same size on both course surfaces, rather than a pill on one and fine print on the other. */
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   padding: 0;
 }
@@ -40,7 +40,7 @@
   color: var(--text-primary);
 }
 .cx-position {
-  font: 700 12px/1 var(--font);
+  font: 700 var(--fs-sm)/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--presence);
@@ -50,7 +50,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font: 700 11px/1 var(--font);
+  font: 700 var(--fs-xs)/1 var(--font);
   color: var(--insight);
 }
 .cx-done svg {
@@ -64,11 +64,11 @@
   gap: 2px;
 }
 .cx-course-title {
-  font: 600 11.5px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
   color: var(--text-muted);
 }
 .cx-lesson-title {
-  font: 700 19px/1.25 var(--font);
+  font: 700 var(--fs-xl)/1.25 var(--font);
   letter-spacing: -0.01em;
   color: var(--text-primary);
   margin: 0;
@@ -80,7 +80,7 @@
   gap: 4px;
   margin: 2px 0 0;
   padding-left: 18px;
-  font: 450 13px/1.45 var(--font);
+  font: 450 var(--fs-sm)/1.45 var(--font);
   color: var(--text-secondary);
 }
 .cx-objectives li {
@@ -91,7 +91,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
 }
 .cx-untaken {
   color: var(--text-muted);
@@ -106,7 +106,7 @@
   border: none;
   background: none;
   color: var(--presence);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   padding: 0;
 }
@@ -125,17 +125,17 @@
   background: var(--surface-elevated-2, var(--surface-glass));
 }
 .cx-check-progress {
-  font: 700 10px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 .cx-check-q {
-  font: 600 14px/1.4 var(--font);
+  font: 600 var(--fs-md)/1.4 var(--font);
   color: var(--text-primary);
 }
 .cx-check-a {
-  font: 450 13.5px/1.5 var(--font);
+  font: 450 var(--fs-md)/1.5 var(--font);
   color: var(--text-secondary);
   padding-top: 2px;
   border-top: 1px dashed var(--line-soft);
@@ -151,7 +151,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-muted);
 }
 .cx-check-spinner {
@@ -173,7 +173,7 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 10px;
-  font: 600 12.5px/1.4 var(--font);
+  font: 600 var(--fs-sm)/1.4 var(--font);
 }
 .cx-check-failed-msg {
   color: var(--warning);
@@ -194,7 +194,7 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 8px 14px;
   cursor: pointer;
   transition:
@@ -240,7 +240,7 @@
   align-items: center;
   gap: 6px;
   align-self: flex-start;
-  font: 600 12px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-muted);
   text-decoration: none;
 }
@@ -264,7 +264,7 @@
   align-items: center;
   gap: 6px;
   align-self: flex-start;
-  font: 600 12px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-muted);
   background: none;
   border: none;

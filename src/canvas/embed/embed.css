@@ -12,7 +12,7 @@
 /* Skin-styled label above the figure (replaces the component's own card eyebrow). */
 .figure-embed__eyebrow {
   font-family: var(--mono, inherit);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.13em;
@@ -34,7 +34,7 @@
 }
 
 .figure-embed__caption {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
 }

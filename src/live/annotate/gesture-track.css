@@ -43,7 +43,7 @@
 }
 
 .gesture-track-eyebrow {
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -58,7 +58,7 @@
   padding: 3px 8px 3px 6px;
   border-radius: 20px;
   border: 1px solid transparent;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -81,7 +81,7 @@
 }
 
 .gesture-track-toggle-icon {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   line-height: 1;
 }
 
@@ -156,7 +156,7 @@
   cursor: pointer;
   text-align: left;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   color: var(--text-secondary);
   transition: background 0.12s;
@@ -174,31 +174,32 @@
 .gesture-track-time {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 .gesture-track-icon {
   color: var(--ink-gesture);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-align: center;
 }
 
 .gesture-track-desc {
   color: var(--text-secondary);
   overflow: hidden;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .gesture-track-verb {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 
 /* "Step N" prefix on an entry that's part of a multi-mark teaching sequence. */
 .gesture-track-step {
   color: var(--ink-gesture);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   margin-right: 3px;
 }
@@ -245,7 +246,7 @@
 /* ── Hint ── */
 
 .gesture-track-hint {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   line-height: 1.45;
   margin: 0;
@@ -264,7 +265,7 @@
 .gesture-track-btn {
   padding: 5px 10px;
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -294,7 +295,7 @@
   border-color: transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
 }
 
@@ -303,7 +304,7 @@
 }
 
 /* Narrow viewports: stretch full-width so the panel doesn't feel cramped. */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .gesture-track {
     max-width: 100%;
     margin-left: 0;
@@ -324,7 +325,7 @@
   top: calc(100% + 8px);
   right: 0;
   z-index: 200;
-  min-width: 260px;
+  min-width: min(260px, 100%);
   max-width: 320px;
   animation: gesture-track-in 0.2s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
@@ -349,7 +350,7 @@
   padding: 0 13px;
   border-radius: var(--r-full);
   border: 1px solid transparent;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -357,6 +358,7 @@
     background 0.15s,
     color 0.15s,
     border-color 0.15s;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-family: inherit;
 }
@@ -397,7 +399,7 @@
   border-radius: var(--r-full);
   background: var(--ink-gesture);
   color: var(--surface-default);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -409,5 +411,13 @@
   .gesture-track,
   .pen-popover {
     animation: none;
+  }
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .pen-toggle-pill {
+    min-height: var(--tap-min);
   }
 }

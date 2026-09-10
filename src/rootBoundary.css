@@ -22,7 +22,7 @@
 
 .root-fallback-title {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 600;
 }
 
@@ -30,7 +30,7 @@
   max-width: 46ch;
   margin: 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -41,7 +41,7 @@
   border-radius: 999px;
   background: var(--presence);
   color: var(--surface-default);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
 }

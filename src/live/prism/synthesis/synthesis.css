@@ -29,9 +29,10 @@
   border-radius: var(--r-full, 999px);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition:
     background 0.15s,
@@ -55,7 +56,7 @@
   background: var(--presence);
   color: #fff;
   font-family: var(--font-data, monospace);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -69,9 +70,10 @@
   max-width: 220px;
   padding: 7px 12px;
   border-radius: var(--r-full, 999px);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,8 +138,9 @@
   background: var(--insight);
   color: #fff;
   font-family: var(--font-data, monospace);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -166,7 +169,7 @@
 .syn-detail-kind {
   align-self: flex-start;
   font-family: var(--font-data, monospace);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -188,7 +191,7 @@
   background: color-mix(in srgb, var(--insight) 12%, transparent);
 }
 .syn-detail-title {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   line-height: 1.3;
   margin: 0;
@@ -200,7 +203,7 @@
   background: color-mix(in srgb, var(--warning) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--line));
   color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .syn-tape,
 .syn-members {
@@ -227,17 +230,17 @@
 }
 .syn-tape-cite {
   font-family: var(--font-data, monospace);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .syn-tape-quote {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
 }
 .syn-delta {
   margin: 0;
   font-family: var(--font-data, monospace);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -250,7 +253,7 @@
   background: color-mix(in srgb, var(--presence) 12%, transparent);
   color: var(--presence);
   font-weight: 650;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 .syn-interrogate:hover {
@@ -259,11 +262,11 @@
 .syn-receipt,
 .syn-consensus-count {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .syn-searched-label {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .syn-searched {
@@ -276,7 +279,7 @@
 }
 .syn-searched li {
   font-family: var(--font-data, monospace);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 3px 9px;
   border-radius: var(--r-full, 999px);
   background: var(--surface-deep);
@@ -285,12 +288,23 @@
 }
 .syn-proposition {
   margin: 0;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   line-height: 1.4;
 }
 .syn-note,
 .syn-proposition-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .syn-lenses {
+    gap: 6px;
+  }
+  .syn-lens {
+    min-height: var(--tap-min);
+  }
 }

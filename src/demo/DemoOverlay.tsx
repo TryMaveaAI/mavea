@@ -66,6 +66,23 @@ export function DemoOverlay({
   // itself: the pill's height moves with the theme's type. Only its height is watched, because
   // only its height is its own — where it sits is --dock-h's business, and the column reserves
   // that separately.
+  // The banner is the same kind of chrome at the TOP of the column: fixed under the bar, and on a
+  // phone two lines tall, which put it over the first card's action pills. Published the same
+  // way, so the column can reserve it beside the bar rather than paint the answer underneath.
+  const attachBanner = useCallback((banner: HTMLDivElement | null) => {
+    const app = banner?.closest<HTMLElement>('.mavea-app');
+    if (!banner || !app) return;
+    const apply = (): void =>
+      app.style.setProperty('--demo-banner-h', `${Math.round(banner.offsetHeight) + 8}px`);
+    apply();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
+    observer?.observe(banner);
+    return () => {
+      observer?.disconnect();
+      app.style.removeProperty('--demo-banner-h');
+    };
+  }, []);
+
   const attachPanel = useCallback((panel: HTMLDivElement | null) => {
     const app = panel?.closest<HTMLElement>('.mavea-app');
     if (!panel || !app) return;
@@ -208,7 +225,7 @@ export function DemoOverlay({
   return (
     <div className="demox" data-covered={covered ? '' : undefined} aria-live="polite">
       {/* What this replay shows (the fictional persona is supporting detail) — top-left. */}
-      <div className="demox-banner" style={accentStyle}>
+      <div className="demox-banner" style={accentStyle} ref={attachBanner}>
         <span className={'demox-avatar' + (isEmojiAvatar(member.avatar) ? ' emoji' : '')}>
           {member.avatar}
         </span>

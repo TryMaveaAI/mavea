@@ -12,6 +12,7 @@
   left: 0;
   top: 0;
   /* The virtual world (VW×VH in MindShape.tsx). The camera scales it down to fit the viewport. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- pannable stage: deliberately larger than its frame, the reader drags it */
   width: 1000px;
   height: 700px;
   transform-origin: 0 0;

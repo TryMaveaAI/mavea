@@ -120,7 +120,7 @@ describe('Atlas header restructures on mobile instead of just shrinking', () => 
     expect(wrapperRule![0]).toContain('display: contents');
 
     const mobileBlock = css.match(
-      /@media \(max-width: 768px\) \{[\s\S]*?\n\}\n\n\/\* ---- the stage/,
+      /@media \(width <= 768px\) \{[\s\S]*?\n\}\n\n\/\* ---- the stage/,
     );
     expect(mobileBlock).not.toBeNull();
     expect(mobileBlock![0]).toContain('.atlas-head-search');
@@ -198,7 +198,7 @@ describe('Prism chrome overflow (footer, header, split, docks)', () => {
     const nameRule = prismCss.match(/\.prism-file-name\s*\{[^}]*\}/);
     expect(nameRule).not.toBeNull();
     expect(nameRule![0]).toMatch(/min-width/);
-    const narrowHead = prismCss.match(/@media \(max-width: 560px\) \{[\s\S]*?\n\}/);
+    const narrowHead = prismCss.match(/@media \(width <= 560px\) \{[\s\S]*?\n\}/);
     expect(narrowHead).not.toBeNull();
     expect(narrowHead![0]).toContain('.prism-phase-label');
     expect(narrowHead![0]).toContain('.prism-replay-label');
@@ -209,7 +209,7 @@ describe('Prism chrome overflow (footer, header, split, docks)', () => {
     // page now takes the full stage and the map (plus the now-meaningless drag divider) steps
     // aside; the page's own close button is the way back.
     const stackRule = prismCss.match(
-      /@media \(max-width: 720px\) \{[\s\S]*?\.prism-split\[data-split='true'\] \.prism-stage[\s\S]*?\n\}/,
+      /@media \(width <= 720px\) \{[\s\S]*?\.prism-split\[data-split='true'\] \.prism-stage[\s\S]*?\n\}/,
     );
     expect(stackRule).not.toBeNull();
     expect(stackRule![0]).toContain('display: none');
@@ -228,7 +228,7 @@ describe('Prism chrome overflow (footer, header, split, docks)', () => {
     ];
     for (const [path, cls] of docks) {
       const css = read(path);
-      const narrow = css.match(/@media \(max-width: 560px\) \{[\s\S]*?\n\}/);
+      const narrow = css.match(/@media \(width <= 560px\) \{[\s\S]*?\n\}/);
       expect(narrow, `${path} is missing its narrow-viewport override`).not.toBeNull();
       expect(narrow![0]).toContain(cls);
       expect(narrow![0]).toContain('width: auto');

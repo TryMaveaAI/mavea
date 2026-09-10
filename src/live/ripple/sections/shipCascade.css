@@ -17,14 +17,14 @@
 .ripple-casc-lede {
   margin: 0;
   max-width: 60ch;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
 }
 
 .ripple-casc-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -64,7 +64,7 @@
 .ripple-casc-bar-sev {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--casc-sev);
@@ -76,7 +76,7 @@
 .ripple-casc-bar-text {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -91,7 +91,7 @@
 .ripple-casc-bar-toggle {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -139,7 +139,7 @@
   flex-direction: column;
   gap: 6px;
   flex: 1 1 200px;
-  min-width: 184px;
+  min-width: min(184px, 100%);
   max-width: 320px;
   padding: 11px 13px;
   border-radius: var(--r-md);
@@ -169,8 +169,9 @@
   flex: 1;
   min-width: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -180,7 +181,7 @@
 }
 .ripple-casc-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
@@ -191,7 +192,7 @@
 /* the incident — a deliberately darker, heavier card; this is where it lands */
 .ripple-casc-incident {
   flex: 1 1 200px;
-  min-width: 184px;
+  min-width: min(184px, 100%);
   max-width: 320px;
   background: var(--surface-elevated-2);
   border: 1px solid color-mix(in oklab, var(--danger) 30%, var(--line));
@@ -206,7 +207,7 @@
 }
 .ripple-casc-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--casc-sev);
@@ -220,7 +221,7 @@
 }
 .ripple-casc-incident-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   line-height: 1.35;
   color: var(--text-primary);
@@ -250,7 +251,7 @@
   height: 18px;
 }
 .ripple-casc-resolution-text {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;

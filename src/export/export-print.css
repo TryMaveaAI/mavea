@@ -128,7 +128,7 @@
   }
 
   .mavea-export-slides-notes .slide-notes-label {
-    font-size: 16px;
+    font-size: var(--fs-lg);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -138,7 +138,7 @@
 
   .mavea-export-slides-notes .slide-notes-text {
     margin: 0;
-    font-size: 30px;
+    font-size: var(--fs-2xl);
     line-height: 1.45;
   }
 }

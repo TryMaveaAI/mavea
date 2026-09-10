@@ -255,7 +255,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(440px, calc(100vw - 40px));
-  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
   display: flex;
   flex-direction: column;
   background: var(--surface-elevated);
@@ -625,7 +625,7 @@
   top: calc(100% + 12px);
   left: 0;
   z-index: 60;
-  width: 264px;
+  width: min(264px, 100%);
   padding: 16px;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
@@ -757,7 +757,7 @@
   top: calc(100% + 10px);
   left: 0;
   z-index: 60;
-  width: 280px;
+  width: min(280px, 100%);
   display: block;
   padding: 16px;
   background: var(--surface-elevated);
@@ -1011,7 +1011,7 @@
   top: calc(100% + 8px);
   left: 0;
   z-index: 60;
-  min-width: 230px;
+  min-width: min(230px, 100%);
   padding: 6px;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
@@ -1137,7 +1137,7 @@
 .ov-ctx {
   position: absolute;
   z-index: 60;
-  min-width: 190px;
+  min-width: min(190px, 100%);
   padding: 6px;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
@@ -1165,11 +1165,11 @@
 }
 .ov-ck {
   position: fixed;
-  top: 16vh;
+  top: 16dvh;
   left: 50%;
   transform: translateX(-50%);
   width: min(540px, calc(100vw - 32px));
-  max-height: 64vh;
+  max-height: 64dvh;
   display: flex;
   flex-direction: column;
   background: var(--surface-elevated);

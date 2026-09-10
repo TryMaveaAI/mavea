@@ -46,6 +46,8 @@ export function PodiumSlide({ slots }: SlideProps<'ranked'>) {
           const color = MEDAL[rank];
           return (
             <div
+              // A podium block is a display lockup (label, score, bar): boxes may touch, the ink does not.
+              data-tight-lockup=""
               key={rank}
               style={{
                 display: 'flex',

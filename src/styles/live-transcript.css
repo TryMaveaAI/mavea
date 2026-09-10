@@ -4,6 +4,7 @@
   left: 0;
   top: 60px;
   bottom: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   width: 320px;
   z-index: 39;
   display: flex;
@@ -25,7 +26,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -35,7 +36,7 @@
   color: var(--presence-soft);
 }
 .transcript-sub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .transcript-x {
@@ -66,7 +67,7 @@
   gap: 12px;
 }
 .transcript-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.5;
   margin: auto 0;
@@ -123,7 +124,7 @@
   max-width: 230px;
   padding: 9px 13px;
   border-radius: 16px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   /* A pasted URL or long identifier has no natural break point — without this it
      overflows the bubble's fixed max-width instead of wrapping inside it. */
@@ -148,7 +149,7 @@
 .mavea-app.with-transcript .canvas-stage {
   padding-left: 346px;
 }
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .transcript {
     width: 84vw;
   }

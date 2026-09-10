@@ -124,13 +124,13 @@ textarea:focus-visible,
 
 .card-eyebrow {
   font-family: var(--font-data);
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .live-badge {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

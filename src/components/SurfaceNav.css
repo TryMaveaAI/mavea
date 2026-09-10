@@ -20,12 +20,13 @@
   color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
-  font: 13px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   padding: 7px var(--s-md);
   transition:
     border-color var(--m-fast),
     color var(--m-fast),
     background var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .surface-nav-back:hover {
@@ -36,6 +37,6 @@
 
 .surface-nav-title {
   color: var(--text-muted);
-  font: 500 12px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   letter-spacing: 0.04em;
 }

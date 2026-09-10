@@ -28,15 +28,15 @@
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 22%, transparent);
 }
 .ripple-sg-count {
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 .ripple-sg-count strong {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   color: var(--text-primary);
 }
 .ripple-sg-muted {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .ripple-sg-grounded {
@@ -45,7 +45,7 @@
   gap: 6px;
   margin-left: auto;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -104,7 +104,7 @@
 .ripple-sg-cat {
   grid-column: 1;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -112,7 +112,7 @@
 }
 .ripple-sg-title {
   grid-column: 1;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 650;
   line-height: 1.35;
   color: var(--text-primary);
@@ -120,7 +120,7 @@
 }
 .ripple-sg-gist {
   grid-column: 1;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -154,7 +154,7 @@
 }
 .ripple-sg-why {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -171,7 +171,7 @@
 .ripple-sg-evidence-text {
   margin: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.65;
   color: var(--text-muted);
   /* mono refs run long; wrap them rather than clip or overflow the card */
@@ -200,7 +200,7 @@
 }
 .ripple-sg-fix-text {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -212,7 +212,7 @@
 
 /* ── the deliberate floor: what Mavéa chose not to spend your attention on ── */
 .ripple-sg-suppressed {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-muted);
   border: 1px dashed var(--line-strong);
@@ -226,7 +226,7 @@
 }
 
 .ripple-sg-empty {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-muted);
   border: 1px solid var(--line);

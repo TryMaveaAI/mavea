@@ -2,6 +2,7 @@
 // engine (vitest runs with `css: false`, so no stylesheet is even parsed), so these are pinned by
 // scanning the source text, the same idiom canvas-svg-label-patterns.test.ts uses for a layout bug
 // that's likewise invisible to a jsdom render.
+import { fontSizeFloorPx } from './helpers/fluidType';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -230,7 +231,7 @@ describe('gallery family chips — a sticky filter bar must never out-grow the v
 
 describe('gallery controls — phone layouts keep the density switch and theme control together', () => {
   const css = read('src/gallery/gallery.css');
-  const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+  const phone = css.slice(css.indexOf('@media (width <= 640px)'));
 
   it('lets the segmented control share the row instead of forcing the theme button below it', () => {
     expect(phone).toMatch(/\.vlib-variants\s*\{[^}]*flex:\s*1 1 0[^}]*min-width:\s*0/s);
@@ -248,7 +249,7 @@ describe('gallery controls — phone layouts keep the density switch and theme c
 describe('phone utility controls — every icon-only action remains thumb-sized', () => {
   it('keeps setup search, provider chevron, legal details, and treemap crumbs at 44px', () => {
     expect(read('src/styles/setup-wizard.css')).toMatch(
-      /@media \(max-width:\s*430px\)[\s\S]*\.setup-nav \.topbar-search-btn\s*\{[^}]*height:\s*44px[^}]*width:\s*44px/,
+      /@media \(width <= 430px\)[\s\S]*\.setup-nav \.topbar-search-btn\s*\{[^}]*height:\s*44px[^}]*width:\s*44px/,
     );
     expect(read('src/live/setup/drop-select.css')).toMatch(
       /\.drop-select-chevron\s*\{[^}]*width:\s*44px/s,
@@ -265,7 +266,7 @@ describe('phone utility controls — every icon-only action remains thumb-sized'
 describe('mobile session sheet — collapsed chrome never overlaps the answer', () => {
   const css = read('src/styles/mobile.css');
   const voice = read('src/live/voice/voice.css');
-  const mobile = css.slice(css.indexOf('@media (max-width: 768px)'));
+  const mobile = css.slice(css.indexOf('@media (width <= 768px)'));
 
   it('hides the desktop Past conversations footer until the transcript sheet opens', () => {
     // voice.css loads after the shared stylesheet and declares `.live-voice .rail-foot` as flex.
@@ -289,7 +290,9 @@ describe('mobile session sheet — collapsed chrome never overlaps the answer', 
   });
 
   it('reserves the collapsed sheet toggle as its own measured shell band', () => {
-    expect(mobile).toMatch(/\.mavea-app\.with-rail\s*\{[^}]*--mobile-rail-h:\s*44px/s);
+    expect(mobile).toMatch(
+      /\.mavea-app\.with-rail\s*\{[^}]*--mobile-rail-h:\s*calc\(var\(--tap-min\) \+ 1px\)/s,
+    );
     expect(mobile).toMatch(/\.mavea-app\.with-rail\s*\{[^}]*--canvas-dock-gap:\s*4px/s);
     expect(voice).toMatch(
       /padding-bottom:\s*calc\([\s\S]{0,180}var\(--mobile-rail-h, 0px\)[\s\S]{0,40}\)/,
@@ -300,7 +303,7 @@ describe('mobile session sheet — collapsed chrome never overlaps the answer', 
 describe('mobile fixed chrome — disclosure and demo controls preserve the reading viewport', () => {
   it('keeps the full voice disclosure available without laying every line into the dock', () => {
     const css = read('src/legal/feature-use-notice.css');
-    const phone = css.slice(css.indexOf('@media (max-width: 768px) {'));
+    const phone = css.slice(css.indexOf('@media (width <= 768px) {'));
     expect(phone).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\) auto/);
     expect(phone).toMatch(/-webkit-line-clamp:\s*2/);
     expect(phone).toMatch(/\.feature-use-notice-actions\s*\{[^}]*grid-column:\s*auto/s);
@@ -308,7 +311,7 @@ describe('mobile fixed chrome — disclosure and demo controls preserve the read
 
   it('uses one touch-sized demo row with a step counter instead of a second dot row', () => {
     const css = read('src/demo/demo.css');
-    const phone = css.slice(css.indexOf('@media (max-width: 640px)'));
+    const phone = css.slice(css.indexOf('@media (width <= 640px)'));
     expect(phone).toMatch(/grid-template-rows:\s*44px/);
     expect(phone).toMatch(/\.demox-dots\s*\{[^}]*display:\s*none/s);
     expect(phone).toMatch(/\.demox-progress\s*\{[^}]*display:\s*flex/s);
@@ -320,7 +323,7 @@ describe('mobile fixed chrome — disclosure and demo controls preserve the read
 
   it('keeps a phone voice-status orb without overflowing its duplicate word label', () => {
     const css = read('src/live/livedock.css');
-    const phone = css.slice(css.indexOf('@media (max-width: 560px)'));
+    const phone = css.slice(css.indexOf('@media (width <= 560px)'));
     expect(phone).toMatch(/\.live-voice \.vc-status-label\s*\{[^}]*display:\s*none/s);
   });
 
@@ -354,9 +357,9 @@ describe('landing captions — reading text stays on the 9px legibility floor', 
   // vignettes (.fs-* i) are not reading text and are deliberately left alone.
   it.each(['.fl-rail-title', '.fl-demo-badge', '.fl-map-attr'])('%s is 9px or larger', (sel) => {
     const body = new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
-    const size = /font-size:\s*([\d.]+)px/.exec(body)?.[1];
+    const size = /font-size:\s*([^;]+)/.exec(body)?.[1];
     expect(size, `${sel} declares no font-size`).toBeDefined();
-    expect(Number(size)).toBeGreaterThanOrEqual(9);
+    expect(fontSizeFloorPx(size ?? '')).toBeGreaterThanOrEqual(9);
   });
 });
 
@@ -364,13 +367,13 @@ describe('landing hero — short laptop windows keep the primary input in the op
   const css = read('src/flagship/flagship.css');
 
   it('uses height-aware laptop tiers instead of scaling the hero from width alone', () => {
-    expect(css).toMatch(/@media \(min-width:\s*761px\) and \(max-height:\s*900px\)/);
-    expect(css).toMatch(/@media \(min-width:\s*761px\) and \(max-height:\s*650px\)/);
+    expect(css).toMatch(/@media \(width > 768px\) and \(height <= 900px\)/);
+    expect(css).toMatch(/@media \(width > 768px\) and \(height <= 650px\)/);
     expect(css).toMatch(/font-size:\s*clamp\(50px,\s*min\(6vw,\s*9dvh\),\s*72px\)/);
   });
 
   it('also bounds ultrawide hero scaling by viewport height', () => {
-    const wide = css.slice(css.indexOf('@media (min-width: 1920px)'));
+    const wide = css.slice(css.indexOf('@media (width > 1920px)'));
     expect(wide).toMatch(/height:\s*clamp\(170px,\s*16dvh,\s*230px\)/);
     expect(wide).toMatch(/font-size:\s*clamp\(92px,\s*min\(5vw,\s*10dvh\),\s*116px\)/);
   });
@@ -559,7 +562,7 @@ describe('the demo replay\u2019s chrome sits beside the app, never on top of it'
   it('anchors the transport and its caption to the dock\u2019s measured height', () => {
     // The dock is 220\u2013360px tall depending on composer, caption and voice controls, so a
     // fixed 96px offset put the transport pill INSIDE it, over the spoken line and the toggles.
-    expect(rule('.demox-panel')).toMatch(/bottom:\s*calc\(var\(--dock-h, 76px\) \+ 16px\)/);
+    expect(rule('.demox-panel')).toMatch(/bottom:\s*calc\(var\(--dock-h, 76px\) \+ 12px\)/);
     expect(rule('.demox-note')).toMatch(/bottom:\s*calc\(var\(--dock-h, 76px\) \+ 78px\)/);
   });
 
@@ -643,8 +646,8 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(voice).toMatch(/\(100% - min\(100%, var\(--live-content-max\)\)\) \/ 2/);
     expect(voice).not.toMatch(/margin-inline:\s*0 auto/);
     // Below 921px the rail stacks under the hero, so the correction must stop there.
-    expect(voice).toMatch(/@media \(min-width: 921px\)/);
-    expect(focus).toMatch(/@media \(max-width: 920px\)/);
+    expect(voice).toMatch(/@media \(width >= 921px\)/);
+    expect(focus).toMatch(/@media \(width <= 920px\)/);
 
     // The view has to reach the DOM for any of it to apply — a class set in JS rather than a CSS
     // `:has()`, the same reason FocusStage sets `has-notes` itself.
@@ -663,8 +666,8 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     // …and it must stop where the trail itself does: below 1260px the column is display:none but
     // the aside is still in the DOM, so correcting for it put every sibling 244px right of the
     // hero. Measured at 1100px before this bound was added.
-    expect(voice).toMatch(/@media \(min-width: 1260px\)/);
-    expect(focus).toMatch(/@media \(max-width: 1259px\)/);
+    expect(voice).toMatch(/@media \(width >= 1260px\)/);
+    expect(focus).toMatch(/@media \(width <= 1259px\)/);
   });
 
   it('the Study note carries its own fit rather than being cropped by the frame', () => {

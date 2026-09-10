@@ -2,3 +2,13 @@
 # on every push and PR, so re-running it here just burns local CPU for no extra safety.
 pnpm typecheck
 pnpm lint
+
+# The geometry suite's fast cut: the surfaces whose own CSS/TSX changed against origin/main, at a
+# phone, the short laptop and a desktop, for horizontal scroll, clipping, overlap and off-window
+# boxes — about a minute, and skipped outright when nothing under src/ that can move a pixel changed.
+# The full matrix (every width, both zooms, both themes, the block library) is CI's job.
+if git diff --quiet origin/main...HEAD -- 'src/**/*.css' 'src/**/*.tsx' 2>/dev/null; then
+  echo "pre-push: no src/**/*.{css,tsx} changed against origin/main — skipping audit:responsive:fast"
+else
+  pnpm audit:responsive:fast
+fi

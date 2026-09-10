@@ -33,7 +33,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -49,7 +49,7 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 4px 6px;
   border-radius: 6px;
   cursor: pointer;
@@ -62,7 +62,7 @@
 .prism-xe-standing {
   margin: 0;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--line);
@@ -85,7 +85,7 @@
 }
 .prism-xe-empty {
   margin: 6px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
   display: inline-flex;
@@ -106,7 +106,7 @@
 }
 .prism-xe-group {
   margin: 6px 4px 2px;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -147,7 +147,7 @@
 }
 .prism-xe-kind {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -157,12 +157,12 @@
   color: var(--text-muted);
 }
 .prism-xe-q {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
 }
 .prism-xe-where {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .prism-xe-answered {
@@ -172,7 +172,7 @@
 /* Below tablet width, `44vw` shrinks the whole objections list into a sliver too narrow to actually
    read. The dock restructures to a near-full-width sheet anchored to both edges instead of scaling
    the same cramped column down further. */
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .prism-xe {
     left: 12px;
     right: 12px;

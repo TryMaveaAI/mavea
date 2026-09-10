@@ -262,10 +262,10 @@ describe('template persona and local-font manifest', () => {
       /\.setup-nav > \.appearance-picker\s*\{[^}]*justify-self:\s*end/s,
     );
     expect(setupWizardCss).toMatch(
-      /@media \(max-width: 430px\)[\s\S]*\.setup-back\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s,
+      /@media \(width <= 430px\)[\s\S]*\.setup-back\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s,
     );
     expect(setupWizardCss).toMatch(
-      /@media \(max-width: 430px\)[\s\S]*\.const-step \+ \.const-step::before\s*\{[^}]*width:\s*4px/s,
+      /@media \(width <= 430px\)[\s\S]*\.const-step \+ \.const-step::before\s*\{[^}]*width:\s*4px/s,
     );
   });
 });

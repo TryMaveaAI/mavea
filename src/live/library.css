@@ -15,7 +15,7 @@
   margin: 0;
 }
 .library-sub {
-  font: 400 13.5px/1.4 var(--font);
+  font: 400 var(--fs-md)/1.4 var(--font);
   color: var(--text-secondary);
   margin: 4px 0 0;
 }
@@ -81,18 +81,19 @@
   box-shadow: 0 0 8px color-mix(in oklab, var(--lib-accent) 60%, transparent);
 }
 .lib-card-title {
-  font: 600 14px/1.3 var(--font);
+  font: 600 var(--fs-md)/1.3 var(--font);
   color: var(--text-primary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
 .lib-count {
   margin-left: auto;
   flex: 0 0 auto;
-  font: 600 10.5px/1 var(--font);
+  font: 600 var(--fs-2xs)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-glass-strong);
   border-radius: var(--r-full);
@@ -113,7 +114,7 @@
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  font: 400 11.5px/1.4 var(--font);
+  font: 400 var(--fs-xs)/1.4 var(--font);
   color: var(--text-secondary);
   min-width: 0;
 }
@@ -131,6 +132,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lib-moment-more {
@@ -143,7 +145,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font: 500 11.5px/1 var(--font);
+  font: 500 var(--fs-xs)/1 var(--font);
   color: var(--text-muted);
 }
 .lib-resume {
@@ -188,6 +190,7 @@
 
 /* ---- By-topic: a thread of related canvases collapsed into one card ---- */
 .lib-count {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* The count pill on a thread reads as "how many conversations" — tint it with the accent so it's
@@ -235,8 +238,9 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
-  font: 500 12.5px/1.35 var(--font);
+  font: 500 var(--fs-sm)/1.35 var(--font);
   color: var(--text-secondary);
   transition: color var(--m-fast) var(--ease-out);
 }
@@ -246,7 +250,7 @@
 }
 .lib-session-ago {
   flex: 0 0 auto;
-  font: 500 10.5px/1 var(--font);
+  font: 500 var(--fs-2xs)/1 var(--font);
   color: var(--text-muted);
 }
 
@@ -287,7 +291,7 @@
   margin-top: 2px;
   border: none;
   background: none;
-  font: 500 11.5px/1.4 var(--font);
+  font: 500 var(--fs-xs)/1.4 var(--font);
   color: var(--text-muted);
   padding: 5px 8px;
   border-radius: var(--r-sm);
@@ -300,7 +304,7 @@
 
 .lib-group-count {
   font-family: var(--font-data, inherit);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -310,7 +314,7 @@
 .library-count {
   margin: 2px 0 0;
   font-family: var(--font-data, inherit);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -345,7 +349,7 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   outline: none;
 }
@@ -364,7 +368,7 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 4px 12px;
   border-radius: var(--r-full);
@@ -377,14 +381,14 @@
 }
 .library-none {
   margin: 16px 2px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .lib-more-btn {
   margin: 16px auto 4px;
   display: block;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: var(--surface-elevated);
   border: 1px solid var(--line);

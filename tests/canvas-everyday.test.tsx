@@ -1,3 +1,4 @@
+import { fontSizeFloorPx } from './helpers/fluidType';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
@@ -416,8 +417,8 @@ describe('CycleTrack', () => {
     const css = readFileSync(join(__dirname, '../src/canvas/blocks/everyday/styles.css'), 'utf8');
     const fontSize = (selector: string): number => {
       const rule = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(css);
-      const px = rule ? /font-size:\s*([\d.]+)px/.exec(rule[1])?.[1] : undefined;
-      return px === undefined ? Number.NaN : Number(px);
+      const value = rule ? /font-size:\s*([^;]+)/.exec(rule[1])?.[1] : undefined;
+      return value === undefined ? Number.NaN : fontSizeFloorPx(value);
     };
     for (const selector of ['.ct-today-label', '.ct-axis']) {
       expect(fontSize(selector), `${selector} font-size`).toBeGreaterThanOrEqual(9);

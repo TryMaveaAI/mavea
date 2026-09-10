@@ -12,7 +12,7 @@
   min-width: 0;
 }
 /* Below the three-pane breakpoint the columns stack rather than crush their content. */
-@media (max-width: 1080px) {
+@media (width <= 1200px) {
   .ripple-ws {
     grid-template-columns: 1fr;
   }
@@ -48,7 +48,7 @@
 }
 .ripple-ws-group-count {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -89,7 +89,7 @@
 .ripple-ws-row-title {
   grid-area: title;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
@@ -99,8 +99,9 @@
   grid-area: file;
   min-width: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -109,11 +110,12 @@
   grid-area: badge;
   align-self: center;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   border-radius: 4px;
   padding: 2px 5px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -126,7 +128,7 @@
 }
 .ripple-ws-detail-title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -141,7 +143,7 @@
 }
 .ripple-ws-block p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -166,9 +168,10 @@
 .ripple-ws-diff-file {
   min-width: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -179,7 +182,7 @@
   gap: 8px;
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .ripple-ws-diff-add {
@@ -200,7 +203,7 @@
   column-gap: 4px;
   padding: 1px 12px 1px 8px;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
 }
 .ripple-ws-diff-sign {
@@ -275,7 +278,7 @@
   border-color: color-mix(in oklab, var(--danger) 30%, transparent);
 }
 .ripple-ws-tile-num {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   line-height: 1;
   color: var(--text-primary);
@@ -285,7 +288,7 @@
   color: var(--danger);
 }
 .ripple-ws-tile-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.3;
   color: var(--text-secondary);
 }
@@ -314,15 +317,16 @@
   flex: 1;
 }
 .ripple-ws-caller-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   text-wrap: pretty;
 }
 .ripple-ws-caller-ref {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -330,7 +334,7 @@
 .ripple-ws-caller-badge {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: right;
@@ -340,7 +344,7 @@
   text-wrap: balance;
 }
 .ripple-ws-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
   background: var(--surface-elevated);
@@ -372,7 +376,7 @@
   flex: none;
 }
 .ripple-ws-risk-text {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-primary);
   text-wrap: pretty;

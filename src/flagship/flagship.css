@@ -24,7 +24,7 @@
    (surface-fallback-pulse, rootBoundary.css); the transform lives on the ghost itself, which is
    REPLACED by the face — never an ancestor of .presence. */
 .presence-ghost {
-  width: 132px;
+  width: min(132px, 100%);
   height: 132px;
   border-radius: 50%;
   background: radial-gradient(
@@ -59,7 +59,7 @@
 /* Past ~2200px the frame is wider than any glow should chase: add a soft edge vignette so the
    far left/right recede intentionally instead of just running out of light. --surface-deep
    inverts per theme, deepening dark mode and cooling light mode without new tokens. */
-@media (min-width: 2200px) {
+@media (width > 1920px) {
   .fl-landing {
     background:
       linear-gradient(
@@ -99,7 +99,7 @@
   position: absolute;
   top: -160px;
   width: min(78vw, 1400px);
-  height: min(72vh, 860px);
+  height: min(72dvh, 860px);
   border-radius: 46% 54% 60% 40%;
   filter: var(--fl-aurora-blur);
   opacity: 0.32;
@@ -242,7 +242,7 @@
 }
 .fl-eyebrow {
   font-family: var(--font-data);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -262,7 +262,7 @@
 .fl-sub {
   margin: 16px auto 0;
   max-width: 52ch;
-  font-size: 16.5px;
+  font-size: var(--fs-lg);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -292,7 +292,7 @@
 /* Room for the hero mascot — she's the opening statement now (the old eyebrow line repeated
    the H1), so give the full jelly, trailing curtains included, space to hang. */
 .fl-hero-orbspace {
-  height: clamp(118px, 16vh, 154px);
+  height: clamp(118px, 16dvh, 154px);
 }
 .fl-hero-title {
   font-family: var(--font-voice);
@@ -306,7 +306,7 @@
   text-wrap: balance;
   color: var(--text-primary);
 }
-@media (min-width: 900px) {
+@media (width > 900px) {
   .fl-hero-title {
     font-size: clamp(52px, 5.6vw, 72px);
   }
@@ -326,7 +326,7 @@
 .fl-hero-lede {
   margin-top: 16px;
   max-width: 60ch;
-  font-size: 16.5px;
+  font-size: var(--fs-lg);
   line-height: 1.52;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -374,7 +374,7 @@
   background: transparent;
   border: 0;
   outline: none;
-  font: 16.5px var(--font);
+  font: var(--fs-lg) var(--font);
   color: var(--text-primary);
 }
 /* The example prompt is an overlay span, not the placeholder attribute, so each rotation
@@ -384,8 +384,9 @@
   inset: 0;
   align-content: center;
   color: var(--text-muted);
-  font: 16.5px var(--font);
+  font: var(--fs-lg) var(--font);
   pointer-events: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -436,7 +437,7 @@
 .fl-privacy-line {
   max-width: 62ch;
   margin: 10px 0 0;
-  font: 500 11.5px/1.45 var(--font);
+  font: 500 var(--fs-xs)/1.45 var(--font);
   /* Not --text-faint: this line, .fl-cta-note, .fl-seen-note and .fl-fig-note carry the page's
      permission, cost and this-is-invented claims, and faint ink measured 1.9-2.3:1 against the
      surfaces behind them. --text-muted is the token that was tuned to clear AA on both. */
@@ -446,7 +447,7 @@
 .fl-hero-hint {
   font-family: var(--font-data);
   margin-top: 14px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-faint);
 }
 .fl-chips {
@@ -461,7 +462,7 @@
   border-radius: var(--r-full);
   border: 1px solid var(--line);
   background: var(--surface-glass);
-  font: 13px var(--font);
+  font: var(--fs-sm) var(--font);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -514,7 +515,7 @@
   left: auto;
   top: calc(100% + 10px);
   z-index: 60;
-  min-width: 240px;
+  min-width: min(240px, 100%);
   max-width: min(300px, calc(100vw - 24px));
   display: flex;
   flex-direction: column;
@@ -544,12 +545,12 @@
   background: var(--surface-glass-strong);
 }
 .fl-explore-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .fl-explore-sub {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.3;
 }
@@ -668,7 +669,7 @@
 }
 .fl-window-brand {
   font-weight: 800;
-  font-size: 14px;
+  font-size: var(--fs-md);
   letter-spacing: -0.02em;
   flex: none;
 }
@@ -677,9 +678,10 @@
   flex: none;
 }
 .fl-window-topic {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -690,7 +692,7 @@
   gap: 5px;
   flex: none;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--fl-ink-insight);
 }
 .fl-live-dot {
@@ -718,7 +720,7 @@
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -741,7 +743,7 @@
 .fl-rail-title {
   font-family: var(--font-data);
   /* 9px is the legibility floor for rendered reading text — nothing on the landing goes under it */
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--tone, var(--text-secondary));
@@ -754,15 +756,16 @@
 }
 .fl-rail-time {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   flex: none;
 }
 .fl-rail-text {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
@@ -783,7 +786,7 @@
   align-items: center;
   gap: 7px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--fl-ink-insight);
@@ -796,13 +799,13 @@
 }
 .fl-finding-title {
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   letter-spacing: -0.01em;
   margin-bottom: 7px;
   color: var(--text-primary);
 }
 .fl-finding-text {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   max-width: 62ch;
@@ -824,7 +827,7 @@
   padding: 4px 9px;
   border-radius: var(--r-sm);
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -851,7 +854,7 @@
   align-items: center;
   gap: 7px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -926,7 +929,7 @@
   height: 24px;
   background: var(--surface-elevated);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--fs-md);
 }
 .fl-map-zoom span:first-child {
   border-bottom: 1px solid var(--line-soft);
@@ -938,7 +941,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: #fff;
   background: var(--tone, var(--presence));
@@ -950,12 +953,12 @@
   bottom: 5px;
   font-family: var(--font-data);
   /* the 9px legibility floor — an attribution line still has to be readable */
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
 }
 .fl-fig-note {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   margin-top: 8px;
 }
@@ -1079,7 +1082,7 @@
 }
 .fl-mini-label {
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -1091,7 +1094,7 @@
 .fl-bar-top {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   margin-bottom: 6px;
 }
 .fl-bar-name {
@@ -1128,7 +1131,7 @@
   stroke-width: 2.6;
 }
 .fl-tip span {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -1177,11 +1180,12 @@
 }
 .fl-dock-text {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-faint);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-dock-mark {
@@ -1190,7 +1194,7 @@
   gap: 6px;
   flex: none;
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 7px 13px;
   border-radius: var(--r-full);
   border: 1px solid var(--line);
@@ -1225,7 +1229,7 @@
 }
 .fl-panel-eyebrow {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--tone, var(--presence));
@@ -1240,7 +1244,7 @@
   color: var(--text-primary);
 }
 .fl-panel-body {
-  font-size: 16.5px;
+  font-size: var(--fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
   max-width: 42ch;
@@ -1258,7 +1262,7 @@
 /* ink */
 .fl-ink-label {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -1318,7 +1322,7 @@
   border: 1px solid var(--line);
   background: color-mix(in oklab, var(--surface-elevated-2) 92%, transparent);
   box-shadow: var(--shadow-raised);
-  font: 600 12px var(--font);
+  font: 600 var(--fs-sm) var(--font);
   color: var(--text-primary);
   animation: fl-hlchip 6.5s ease-in-out infinite;
   animation-play-state: var(--ambient-play, running);
@@ -1381,11 +1385,11 @@
   display: inline-flex;
   align-items: baseline;
   gap: 7px;
-  font: 700 15px var(--font);
+  font: 700 var(--fs-md) var(--font);
   color: var(--text-primary);
 }
 .fl-pen-delta {
-  font: 600 10px var(--font-data);
+  font: 600 var(--fs-2xs) var(--font-data);
   font-style: normal;
   letter-spacing: 0.04em;
   color: var(--insight);
@@ -1427,6 +1431,7 @@
 }
 .fl-pen-axis text {
   font-family: var(--font-data);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   letter-spacing: 0.06em;
   fill: var(--text-faint);
@@ -1466,7 +1471,7 @@
   border-radius: var(--r-full);
   border: 1px solid var(--line);
   background: var(--surface-default);
-  font: 600 12.5px var(--font);
+  font: 600 var(--fs-sm) var(--font);
   color: var(--text-secondary);
 }
 .fl-pen-chip.kept {
@@ -1523,7 +1528,7 @@
 .fl-walk-line {
   position: absolute;
   inset: 0;
-  font: 500 13px/1.35 var(--font);
+  font: 500 var(--fs-sm)/1.35 var(--font);
   color: var(--text-primary);
   opacity: 0;
   animation: fl-walkcap 9s ease-in-out infinite;
@@ -1570,18 +1575,18 @@
   background: var(--surface-default);
 }
 .fl-walk-k {
-  font: 600 10.5px var(--font-data);
+  font: 600 var(--fs-2xs) var(--font-data);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 .fl-walk-v {
-  font: 700 16px var(--font);
+  font: 700 var(--fs-lg) var(--font);
   color: var(--text-primary);
 }
 .fl-walk-up {
   margin-left: auto;
-  font: 600 11px var(--font-data);
+  font: 600 var(--fs-xs) var(--font-data);
   color: var(--insight);
 }
 .fl-walk-spark {
@@ -1652,7 +1657,7 @@
   border-radius: var(--r-md);
   border: 1px solid var(--line-soft);
   background: var(--surface-default);
-  font: 500 10px var(--font-data);
+  font: 500 var(--fs-2xs) var(--font-data);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1701,7 +1706,7 @@
   animation-play-state: var(--ambient-play, running);
 }
 .fl-ghost-words {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
 }
 .fl-ghost-cards {
@@ -1723,7 +1728,7 @@
 }
 .fl-ghost-tag {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   margin-bottom: 8px;
 }
@@ -1784,18 +1789,19 @@
   -webkit-backdrop-filter: var(--glass-blur-faint);
   border: 1px solid color-mix(in oklab, var(--tone, var(--presence)) 45%, transparent);
   box-shadow: var(--shadow-raised);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   animation: fl-float 7s ease-in-out infinite;
   animation-play-state: var(--ambient-play, running);
 }
 .fl-node-label {
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .fl-node-meta {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--tone, var(--presence));
   margin-top: 2px;
 }
@@ -1845,7 +1851,7 @@
   background: var(--surface-glass);
   color: var(--text-secondary);
   cursor: pointer;
-  font: 600 13.5px var(--font);
+  font: 600 var(--fs-md) var(--font);
   transition: background var(--m-fast);
 }
 .fl-blank-btn:hover {
@@ -1885,7 +1891,7 @@
 }
 .fl-compare-label {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -1941,7 +1947,7 @@
   bottom: 18px;
   font-family: var(--font-voice);
   font-style: italic;
-  font-size: 21px;
+  font-size: var(--fs-xl);
   color: var(--danger);
   transform: rotate(-7deg);
   opacity: 0;
@@ -1956,7 +1962,7 @@
 }
 .fl-seen-num {
   font-family: var(--font-voice);
-  font-size: 46px;
+  font-size: var(--fs-stat);
   line-height: 1;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -1964,14 +1970,14 @@
 .fl-seen-delta {
   color: var(--fl-ink-insight);
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-md);
   opacity: 0;
 }
 .fl-compare.sd-play .fl-seen-delta {
   animation: fs-pop 420ms var(--ease-out) 2.15s forwards;
 }
 .fl-seen-cap {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin: 6px 0 18px;
 }
@@ -1997,7 +2003,7 @@
 }
 .fl-seen-note {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   margin-top: 10px;
 }
@@ -2123,7 +2129,7 @@
 }
 .fl-src-chip {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding: 5px 9px;
   border-radius: var(--r-sm);
   border: 1px solid color-mix(in oklab, var(--insight) 30%, var(--line));
@@ -2136,7 +2142,7 @@
   animation-delay: calc(0.8s + var(--src-i, 0) * 0.14s);
 }
 .fl-stamp-value {
-  font: 600 13.5px var(--font);
+  font: 600 var(--fs-md) var(--font);
   color: var(--text-primary);
 }
 .fl-stamp-badge {
@@ -2169,7 +2175,7 @@
   top: -7px;
   left: 10px;
   padding: 0 5px;
-  font: 500 9px var(--font-data);
+  font: 500 var(--fs-2xs) var(--font-data);
   font-style: normal;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2237,12 +2243,12 @@
 }
 .fl-trust-title {
   font-weight: 700;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   margin-bottom: 8px;
   color: var(--text-primary);
 }
 .fl-trust-body {
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -2299,7 +2305,7 @@
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-md);
   color: #fff;
   background: linear-gradient(
     135deg,
@@ -2308,7 +2314,7 @@
   );
 }
 .fl-demo-avatar.emoji {
-  font-size: 19px;
+  font-size: var(--fs-xl);
   color: var(--text-primary);
   background: color-mix(in oklab, var(--accent, var(--presence)) 18%, transparent);
 }
@@ -2321,7 +2327,7 @@
 }
 .fl-demo-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.25;
   color: var(--text-primary);
   /* The title is the session's USE CASE ("Reason about architecture") — it wraps rather than
@@ -2331,7 +2337,7 @@
 /* Wraps rather than truncating: at 1366 and 1440 every one of these overflowed, and the word it
    cut was "Fictional" — the disclosure the card exists to carry. */
 .fl-demo-role {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -2340,17 +2346,18 @@
   align-self: flex-start;
   font-family: var(--font-data);
   /* the 9px legibility floor */
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 3px 7px;
   border-radius: var(--r-sm);
   background: color-mix(in oklab, var(--accent, var(--presence)) 16%, transparent);
   color: var(--accent-ink, var(--accent, var(--presence)));
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fl-demo-blurb {
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
   margin-bottom: 18px;
@@ -2360,7 +2367,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--accent-ink, var(--accent, var(--presence)));
   margin-top: auto;
@@ -2416,7 +2423,7 @@
 }
 .fl-surface-tag {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 14px;
@@ -2429,13 +2436,13 @@
 }
 .fl-surface-title {
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--fs-xl);
   letter-spacing: -0.01em;
   margin-bottom: 10px;
   color: var(--text-primary);
 }
 .fl-surface-body {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   margin-bottom: 18px;
@@ -2453,7 +2460,7 @@
 }
 .fl-surface-chip {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 6px 11px;
   border-radius: var(--r-sm);
   background: var(--surface-glass-strong);
@@ -2469,7 +2476,7 @@
   background: var(--surface-glass);
   color: var(--text-primary);
   cursor: pointer;
-  font: 600 14px var(--font);
+  font: 600 var(--fs-md) var(--font);
   transition: background var(--m-fast);
 }
 .fl-ghost-btn:hover {
@@ -2495,7 +2502,7 @@
    the separate translate property, so the two never fight over one channel. */
 .fl-cta-ghost {
   position: absolute;
-  width: 74px;
+  width: min(74px, 100%);
   height: 54px;
   transform: translate(-50%, -50%);
   color: var(--text-primary);
@@ -2565,7 +2572,7 @@
   border-radius: var(--r-full);
   border: none;
   cursor: pointer;
-  font: 700 17px var(--font);
+  font: 700 var(--fs-lg) var(--font);
   color: #fff;
   /* Same lit-from-above ramp as .fl-nav-cta — the two "Open Mavéa" buttons must read as one. */
   background: linear-gradient(
@@ -2597,7 +2604,7 @@
 .fl-cta-note {
   font-family: var(--font-data);
   margin-top: 18px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 /* ===================== topbar nav (home only) ===================== */
@@ -2614,7 +2621,7 @@
   min-height: 48px;
   padding: 0 4px;
   font-family: var(--font-data);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   /* --text-muted reads fine against a flat surface (its own WCAG note is scoped to that), but
@@ -2639,7 +2646,7 @@
   border-radius: var(--r-full);
   border: none;
   cursor: pointer;
-  font: 700 13px var(--font);
+  font: 700 var(--fs-sm) var(--font);
   color: #fff;
   background: linear-gradient(
     180deg,
@@ -2650,6 +2657,7 @@
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent),
     0 8px 22px -8px var(--glow-presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition: transform var(--m-fast);
 }
@@ -2697,7 +2705,7 @@
   justify-content: center;
   min-width: 48px;
   min-height: 48px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 400;
   color: var(--text-secondary);
 }
@@ -2746,7 +2754,7 @@
 /* Monitors and ultrawides: the type clamps hit their px caps by ~1370px, so beyond that the
    page froze at "1440 size" inside an ever-larger frame. One deliberate tier scales the column,
    type, and grid density together; ch/max-width bounds downstream keep the measure intact. */
-@media (min-width: 1920px) {
+@media (width > 1920px) {
   .fl-landing {
     --fl-col: min(74vw, 1280px);
     --fl-col-wide: min(78vw, 1480px);
@@ -2764,13 +2772,13 @@
     font-size: clamp(92px, min(5vw, 10dvh), 116px);
   }
   .fl-hero-lede {
-    font-size: 19px;
+    font-size: var(--fs-xl);
   }
   .fl-title {
     font-size: clamp(52px, 2.6vw, 62px);
   }
   .fl-sub {
-    font-size: 17.5px;
+    font-size: var(--fs-lg);
   }
   .fl-cta-title {
     font-size: clamp(72px, 4vw, 92px);
@@ -2787,7 +2795,7 @@
    Width-only hero scaling made a 1024×600 or 1366×768 window render desktop-size display type,
    pushing the page's primary input below the first screen. Keep the face's reserved slot intact,
    then compress the surrounding rhythm and let the headline respond to BOTH axes. */
-@media (min-width: 761px) and (max-height: 900px) {
+@media (width > 768px) and (height <= 900px) {
   .fl-hero {
     padding-top: 40px;
   }
@@ -2799,7 +2807,7 @@
   }
   .fl-hero-lede {
     margin-top: 16px;
-    font-size: 16.5px;
+    font-size: var(--fs-lg);
     line-height: 1.48;
   }
   .fl-composer {
@@ -2807,7 +2815,7 @@
   }
 }
 
-@media (min-width: 761px) and (max-height: 650px) {
+@media (width > 768px) and (height <= 650px) {
   .fl-hero {
     padding-top: 32px;
   }
@@ -2821,7 +2829,7 @@
   }
   .fl-hero-lede {
     margin-top: 14px;
-    font-size: 16px;
+    font-size: var(--fs-lg);
     line-height: 1.42;
   }
   .fl-composer {
@@ -2831,7 +2839,7 @@
 
 /* Tablet: three trust cards at ~210px each squeeze the copy to a ~158px measure — step to two
    columns with the third card full-width before the phone tier stacks them all. */
-@media (max-width: 980px) {
+@media (width <= 1024px) {
   .fl-trust {
     grid-template-columns: 1fr 1fr;
   }
@@ -2840,7 +2848,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (width <= 768px) {
   .fl-nav {
     gap: 8px;
   }
@@ -2902,7 +2910,7 @@
     max-width: 40vw;
   }
   .fl-node-label {
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .fs-grid {
     grid-template-columns: 1fr;
@@ -2912,7 +2920,7 @@
 /* Small phones: tighten the bar's fixed-width entries (brand + search + Explore + CTA — the theme
    toggle lives in the corner fab) so the CTA never clips off the bar. The gap floor is 8px: two
    adjacent hit boxes closer than 6px fail the tap audit, and the spacer still has slack to give. */
-@media (max-width: 430px) {
+@media (width <= 430px) {
   .fl-nav {
     gap: 8px;
   }
@@ -2926,10 +2934,10 @@
   }
   .fl-nav-cta {
     padding: 10px 13px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 }
-@media (max-width: 390px) {
+@media (width <= 430px) {
   .fl-section {
     padding: 0 16px;
   }
@@ -2938,7 +2946,7 @@
     display: none;
   }
 }
-@media (max-width: 360px) {
+@media (width <= 360px) {
   /* The docked jelly still marks the brand; the wordmark is the one thing that can go. */
   .topbar .brand-name {
     display: none;
@@ -3184,13 +3192,13 @@
 }
 .fs-card-name {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 650;
   color: var(--text-primary);
 }
 .fs-card-line {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -3208,7 +3216,7 @@
   border: 1px solid var(--line);
   background: transparent;
   color: var(--fl-ink-presence);
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   transition:
     border-color var(--m-fast),
@@ -3281,7 +3289,7 @@
 }
 .fs-prism-region {
   position: absolute;
-  font: 700 9px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--fl-ink-presence) 55%, var(--text-muted));
@@ -3300,7 +3308,7 @@
   flex-direction: column;
   justify-content: space-between;
   /* the 9px legibility floor — these labels are meant to be read, not just sensed */
-  font: 500 9px/1 var(--font-data, var(--font));
+  font: 500 var(--fs-2xs)/1 var(--font-data, var(--font));
   color: var(--text-faint);
   text-align: right;
   opacity: 0;
@@ -3347,12 +3355,12 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-raised);
-  font: 600 10.5px/1.3 var(--font);
+  font: 600 var(--fs-2xs)/1.3 var(--font);
   color: var(--text-primary);
   opacity: 0;
 }
 .fs-prism-claim i {
-  font: 700 9px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   font-style: normal;
   letter-spacing: 0.12em;
   color: var(--fl-ink-presence);
@@ -3447,7 +3455,7 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-raised);
-  font: 600 9.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.06em;
   color: var(--text-secondary);
   opacity: 0;
@@ -3529,7 +3537,7 @@
   border-radius: 50%;
   border: 1px solid color-mix(in oklab, var(--insight) 55%, var(--line));
   background: var(--surface-elevated);
-  font: 700 9px/1 var(--font-data, var(--font));
+  font: 700 var(--fs-2xs)/1 var(--font-data, var(--font));
   color: var(--fl-ink-insight);
   opacity: 0;
 }
@@ -3543,7 +3551,7 @@
   border-radius: var(--r-full);
   border: 1px solid var(--line);
   background: var(--surface-elevated);
-  font: 600 10.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   color: var(--text-primary);
   box-shadow: var(--shadow-raised);
   opacity: 0;
@@ -3571,7 +3579,7 @@
 .fs-ripple-node i {
   font-style: normal;
   margin-right: 4px;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 
 /* Watch Me Think — a breathing orb; speech drifts out of it and dissolves into structure. */
@@ -3612,8 +3620,9 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  font: 500 9px/1 var(--font-data, var(--font));
+  font: 500 var(--fs-2xs)/1 var(--font-data, var(--font));
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   opacity: 0;
 }
@@ -3685,12 +3694,12 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-raised);
-  font: 600 10.5px/1.25 var(--font);
+  font: 600 var(--fs-2xs)/1.25 var(--font);
   color: var(--text-primary);
   opacity: 0;
 }
 .fs-think-atom i {
-  font: 700 9px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   font-style: normal;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -3777,7 +3786,7 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   box-shadow: var(--shadow-raised);
-  font: 700 10px/1 var(--font-data, var(--font));
+  font: 700 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-primary);
@@ -3806,7 +3815,7 @@
 }
 .fs-after-kicker {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -3818,7 +3827,7 @@
   border: 1px solid var(--line);
   background: var(--surface-glass);
   cursor: pointer;
-  font: 600 12.5px var(--font);
+  font: 600 var(--fs-sm) var(--font);
   color: var(--text-secondary);
   transition:
     border-color var(--m-fast),
@@ -3863,7 +3872,7 @@
   border: 1px solid var(--line);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 600 14px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   cursor: pointer;
   transition:
     border-color var(--m-fast),
@@ -3884,12 +3893,12 @@
   border-radius: 50%;
   background: var(--presence);
   color: #fff;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 .fl-hero-watch .fl-hero-watch-time {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 /* Hero: the first-run tour invite — a dismissible offer in the exact slot "Watch it work" holds
@@ -3905,7 +3914,7 @@
 }
 .fl-tour-invite-text {
   margin: 0 0 12px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -3939,7 +3948,7 @@
   border: 1px solid var(--presence);
   background: color-mix(in oklab, var(--presence) 12%, var(--surface-elevated));
   color: var(--text-primary);
-  font: 600 13.5px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   cursor: pointer;
   transition:
     background var(--m-fast),
@@ -3960,7 +3969,7 @@
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text-secondary);
-  font: 600 13.5px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   cursor: pointer;
   transition:
     border-color var(--m-fast),
@@ -3980,7 +3989,7 @@
   border: none;
   padding: 4px 2px;
   color: var(--text-muted);
-  font: 500 13px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   transition: color var(--m-fast);
 }
@@ -4064,7 +4073,7 @@
   justify-content: space-between;
   gap: 18px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .fl-legal-footer nav {
@@ -4084,7 +4093,7 @@
   color: var(--text-primary);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .fl-legal-footer {
     width: min(100% - 28px, 1120px);
     align-items: flex-start;

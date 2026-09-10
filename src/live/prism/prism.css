@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5vh 2.5vw;
+  padding: 2.5dvh 2.5vw;
   background: rgba(var(--scrim-rgb), 0.72);
   backdrop-filter: var(--glass-blur, blur(8px));
 }
@@ -19,7 +19,7 @@
    "expand" toggle pushes it edge-to-edge. */
 .prism-panel {
   width: min(1700px, 100%);
-  height: 95vh;
+  height: 95dvh;
   display: flex;
   flex-direction: column;
   border-radius: var(--r-xl);
@@ -77,16 +77,17 @@
   flex: none;
 }
 .prism-legend-name {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .prism-legend-count {
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   padding: 1px 6px;
   border-radius: var(--r-full);
@@ -95,7 +96,7 @@
 .prism-legend-cross {
   margin-left: auto;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--danger) 80%, white 20%);
 }
@@ -108,10 +109,11 @@
 }
 .prism-file-name {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   /* a flex item shrinks to zero width by default once its siblings (the mode buttons on the right)
      run out of room — without a floor the name doesn't just truncate, it disappears entirely. */
@@ -119,7 +121,7 @@
 }
 .prism-file-pages {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   flex: none;
 }
@@ -138,7 +140,7 @@
   align-items: center;
   gap: 7px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   color: var(--text-muted);
 }
@@ -173,7 +175,7 @@
 .prism-replay {
   padding: 6px 13px;
   border-radius: var(--r-full);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .prism-replay:hover {
@@ -184,7 +186,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   color: var(--text-muted);
 }
@@ -262,7 +264,7 @@
    just need smaller text, it needs to stop being two panes. So the source page takes the FULL stage
    and the map (plus the drag divider, meaningless without room to drag) steps aside; the page's own
    ✕ close button is already the way back to the map, so no new "switch pane" control is needed. */
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .prism-split[data-split='true'] .prism-stage {
     display: none;
   }
@@ -281,7 +283,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .prism-page-nav-btn {
@@ -295,7 +297,7 @@
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   transition: background 0.12s ease;
 }
@@ -307,6 +309,7 @@
   background: var(--surface-elevated);
 }
 .prism-page-nav-at {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-family: var(--font-data);
   letter-spacing: 0.04em;
@@ -340,6 +343,10 @@
 }
 .prism-page-head {
   display: flex;
+  /* The page's tag, title and nav share one row until the row cannot hold them; then the nav
+     drops under the title rather than off the window's right edge (measured at every phone
+     width in the page viewer). */
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
@@ -347,19 +354,21 @@
 }
 .prism-page-tag {
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.12em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-page-title {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .prism-page-zoom {
@@ -376,7 +385,7 @@
   border: none;
   background: none;
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1;
   cursor: pointer;
 }
@@ -396,7 +405,7 @@
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1;
 }
 .prism-page-close:hover {
@@ -448,7 +457,7 @@
 .prism-page-status {
   padding: 40px 24px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-muted);
 }
@@ -470,7 +479,7 @@
 }
 .prism-page-fallback-kicker {
   font-family: var(--font-data, var(--font));
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 650;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -494,7 +503,7 @@
   border-left: 3px solid color-mix(in srgb, var(--presence) 70%, transparent);
 }
 .prism-page-fallback-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-muted);
 }
@@ -535,7 +544,7 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-primary);
   padding: 11px 14px;
@@ -545,7 +554,7 @@
 }
 .prism-slide-quote-label {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -569,6 +578,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   width: 960px;
   height: 540px;
   transform-origin: 0 0;
@@ -735,7 +745,7 @@
 .prism-pen-caption-text {
   flex: 1;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -750,7 +760,7 @@
   border: 1px solid var(--line-strong);
   background: var(--surface-elevated);
   color: inherit;
-  font-size: 14px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 .prism-pen-mute:hover {
@@ -768,7 +778,7 @@
   flex: none;
   padding: 10px 16px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 /* Shared highlight styling for a `<mark>` run in a reflowable text surface (TextSurface) — the box/
@@ -851,6 +861,7 @@
   padding: 7px 12px;
   text-align: left;
   vertical-align: baseline;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--line);
@@ -884,7 +895,7 @@
 }
 .prism-sheet-truncated {
   margin: 8px 2px 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -902,7 +913,7 @@
 .prism-page-conns-label {
   flex: none;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -916,13 +927,14 @@
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   padding: 4px 10px;
   border-radius: var(--r-full);
   border: 1px solid var(--line-strong);
   background: none;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
@@ -951,7 +963,7 @@
   }
 }
 .prism-doc-page {
-  width: 196px;
+  width: min(196px, 100%);
   height: 256px;
   padding: 20px 18px;
   border-radius: 6px;
@@ -968,12 +980,12 @@
 }
 .prism-doc-eyebrow {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.12em;
   color: var(--text-muted);
 }
 .prism-doc-title {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.25;
@@ -993,7 +1005,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 200px;
+  width: min(200px, 100%);
   height: 200px;
   border-radius: 50%;
   border: 1.5px solid var(--presence);
@@ -1082,7 +1094,7 @@
 }
 .prism-bloom-label {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
@@ -1101,7 +1113,7 @@
 }
 .prism-error-msg {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -1112,7 +1124,7 @@
   background: none;
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -1186,7 +1198,7 @@
   border: none;
   background: none;
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
 }
@@ -1209,6 +1221,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   width: 340px;
   height: 260px;
   transform: translate(-50%, -50%);
@@ -1232,11 +1245,12 @@
   background: color-mix(in oklab, var(--surface-deep) 85%, transparent);
   border: 1px solid color-mix(in oklab, var(--region-color) 30%, var(--line-strong));
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--region-color) 70%, var(--text-primary) 30%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -1310,10 +1324,11 @@
   width: 100%;
   text-align: center;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--thread-color) 70%, var(--text-primary) 30%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -1397,7 +1412,7 @@
   z-index: 8;
 }
 .prism-claim[data-role='load-bearing'] .prism-claim-title {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .prism-claim[data-role='context']:not(.is-dim):not(.is-open) {
   opacity: 0.84;
@@ -1408,10 +1423,11 @@
 /* the KEY badge on a load-bearing card — the at-a-glance "this is what the document leans on" */
 .prism-claim-key {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: color-mix(in oklab, var(--kind-color) 80%, var(--text-primary) 20%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-claim-head {
@@ -1425,7 +1441,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--kind-color);
@@ -1438,12 +1454,12 @@
 }
 .prism-claim-page {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
 }
 .prism-claim-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
@@ -1455,7 +1471,7 @@
   margin-top: 4px;
 }
 .prism-claim-quote {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-style: italic;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -1466,12 +1482,12 @@
   display: inline-flex;
   align-items: center;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: color-mix(in oklab, var(--danger) 70%, var(--text-primary) 30%);
 }
 .prism-claim-hint {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--kind-color);
@@ -1481,7 +1497,7 @@
    A neutral anchored card reads quiet; a threaded one is tinted by its relation so it stands out. */
 .prism-claim-state {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: lowercase;
@@ -1512,7 +1528,7 @@
   border: 1px solid color-mix(in oklab, var(--seal-color) 42%, transparent);
   background: color-mix(in oklab, var(--seal-color) 14%, transparent);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: color-mix(in oklab, var(--seal-color) 78%, var(--text-primary) 22%);
@@ -1548,13 +1564,13 @@
 }
 .prism-verdict-label {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: color-mix(in oklab, var(--seal-color) 82%, var(--text-primary) 18%);
 }
 .prism-verdict-note {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   line-height: 1.35;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -1567,7 +1583,7 @@
   border: 1px dashed color-mix(in oklab, var(--seal-color) 40%, transparent);
   border-radius: var(--r-xs, 6px);
   background: color-mix(in oklab, var(--seal-color) 6%, transparent);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-style: italic;
   line-height: 1.4;
   color: var(--text-secondary);
@@ -1586,7 +1602,7 @@
   margin-top: 2px;
   font-style: normal;
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--seal-color) 70%, var(--text-muted) 30%);
@@ -1602,9 +1618,10 @@
   border: 1px solid color-mix(in oklab, var(--insight) 24%, transparent);
   background: color-mix(in oklab, var(--insight) 8%, transparent);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.03em;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-counter strong {
@@ -1616,7 +1633,7 @@
 /* the header packs a lot on the right (counter · phase · read/replay · fullscreen · close); below
    tablet width the full sentence-length chrome no longer fits next to the filename, so it sheds down
    to its icons — the tooltip/aria-label still carries the full word for anyone who needs it. */
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .prism-counter,
   .prism-phase-label,
   .prism-replay-label {
@@ -1658,7 +1675,7 @@
   animation: prism-standing-pulse 1.4s ease-in-out infinite;
 }
 .prism-standing-text {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
@@ -1699,9 +1716,10 @@
    the panel's right edge (the flex:none + no-wrap combo did exactly that once ~10 buttons were live). */
 .prism-foot-stat {
   flex: 1 1 200px;
-  min-width: 160px;
-  font-size: 11.5px;
+  min-width: min(160px, 100%);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-foot-actions {
@@ -1727,12 +1745,13 @@
 }
 .prism-foot-group-label {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 0 1px 0 5px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-foot-group--quiet {
@@ -1749,9 +1768,10 @@
   background: none;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prism-foot-btn:hover:not(:disabled) {
@@ -1786,7 +1806,7 @@
   background: var(--surface-deep);
   border-top: 1px solid var(--line);
 }
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .prism-legend-panel {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -1799,7 +1819,7 @@
 }
 .prism-legend-title {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--text-muted);
@@ -1821,7 +1841,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
 }
 .prism-legend-kind-dot {
   width: 9px;
@@ -1859,7 +1879,7 @@
 }
 .prism-legend-note {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -1886,7 +1906,7 @@
   background: color-mix(in oklab, var(--note-c, var(--presence)) 6%, var(--surface-elevated));
   box-shadow: var(--shadow-raised);
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   font-style: italic;
   display: -webkit-box;
@@ -1956,4 +1976,31 @@
 }
 .prism-page-unit > .prism-page-frame {
   margin: 0;
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .prism-replay,
+  .prism-close,
+  .prism-foot-btn {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+  .prism-foot,
+  .prism-foot-group {
+    gap: 8px;
+  }
+}
+
+/* On the narrowest phone the footer's three groups wrap into a block taller than the split above
+   can give back, and the last row was pushed out of the panel's clip. Let the foot scroll once it
+   would take more than a third of the window; the map and the page keep the rest. */
+@media (width <= 360px) {
+  .prism-foot {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 34dvh;
+    overflow-y: auto;
+  }
 }

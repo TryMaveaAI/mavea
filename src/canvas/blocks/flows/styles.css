@@ -33,18 +33,19 @@
   flex-shrink: 0;
 }
 .fl-kb-name {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .fl-kb-count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   background: var(--track);
   padding: 1px 7px;
@@ -81,18 +82,19 @@
   min-height: 14px;
 }
 .fl-kb-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-kb-pts {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   background: var(--track);
   border-radius: var(--r-full);
@@ -101,7 +103,7 @@
   flex-shrink: 0;
 }
 .fl-kb-card-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1.35;
@@ -115,8 +117,9 @@
   gap: 6px;
 }
 .fl-kb-who {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -159,7 +162,7 @@
 .fl-kb-empty {
   border: 1px dashed var(--line);
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
   padding: 10px 6px;
@@ -211,7 +214,7 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   border: 2px solid var(--line-strong);
   background: var(--surface-elevated);
@@ -234,7 +237,7 @@
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--presence) 14%, transparent);
 }
 .fl-wz-lbl {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-muted);
   text-align: center;
@@ -242,6 +245,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-wz-node.is-active .fl-wz-lbl {
@@ -255,7 +259,7 @@
   animation: flFade var(--m-normal) var(--ease-out);
 }
 .fl-wz-cap {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -276,7 +280,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.45;
   min-width: 0;
@@ -571,14 +575,14 @@
   flex: 1;
 }
 .fl-goal-name {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .fl-goal-owner {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 1px;
   overflow-wrap: anywhere;
@@ -590,7 +594,7 @@
   flex-shrink: 0;
 }
 .fl-goal-bar {
-  width: 70px;
+  width: min(70px, 100%);
   height: 6px;
   border-radius: var(--r-full);
   background: var(--track);
@@ -617,7 +621,7 @@
   transition: width var(--m-expressive) var(--ease-out);
 }
 .fl-goal-pct {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   min-width: 34px;
@@ -637,7 +641,7 @@
   margin-bottom: 5px;
 }
 .fl-kr-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.3;
   min-width: 0;
@@ -645,7 +649,8 @@
 }
 .fl-kr-target {
   margin-left: auto;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -668,7 +673,7 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -733,9 +738,10 @@
   flex-shrink: 0;
 }
 .fl-dag-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   line-height: 1.1;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -744,8 +750,9 @@
 .fl-dag-meta {
   /* 8.5px is not small type, it is type nobody reads — and the owner of a step is the whole point of
      putting it on the node. Sized to be read; it still ellipsises when the node is too narrow for it. */
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -854,11 +861,11 @@
   text-align: center;
 }
 .fl-ms-date {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .fl-ms-label {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-secondary);
   line-height: 1.2;
@@ -871,6 +878,7 @@
 .fl-ms-label.is-clipped {
   max-width: 100%;
   overflow: hidden;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -889,11 +897,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   margin-bottom: 6px;
 }
 .fl-ms-pill {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -903,7 +911,7 @@
   border-radius: var(--r-full);
 }
 .fl-ms-detail-title {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -932,7 +940,7 @@
 .fl-pf-step {
   position: relative;
   flex: 1 1 0; /* share the width evenly — fills the card, no trailing gap */
-  min-width: 116px; /* …until they'd be too cramped, then the row scrolls instead */
+  min-width: min(116px, 100%); /* …until they'd be too cramped, then the row scrolls instead */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -981,7 +989,7 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--surface-deep);
   background: var(--presence);
@@ -1003,14 +1011,14 @@
   height: 18px;
 }
 .fl-pf-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
 .fl-pf-detail {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.4;
   max-width: 22ch; /* keep lines readable when a column grows wide */
@@ -1035,7 +1043,7 @@
   border-radius: var(--r-full);
 }
 .fl-pf-branch-txt {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--warning);
   background: color-mix(in oklab, var(--warning) 13%, transparent);
@@ -1050,7 +1058,7 @@
    ============================================================ */
 .fl-jm-persona {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--presence-soft);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
@@ -1083,7 +1091,7 @@
   grid-column: 2;
 }
 .fl-jm-rowlbl {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1096,7 +1104,7 @@
 }
 .fl-jm-cell {
   padding: 9px 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.35;
   border-right: 1px solid var(--line);
@@ -1117,7 +1125,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
@@ -1132,7 +1140,7 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--presence-soft);
   background: color-mix(in oklab, var(--presence) 16%, transparent);
 }
@@ -1172,7 +1180,7 @@
   min-width: 0;
 }
 .fl-jm-tp {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   background: var(--track);
   padding: 2px 7px;
@@ -1180,6 +1188,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-jm-opp {
@@ -1191,7 +1200,7 @@
   border-radius: var(--r-md);
   border: 1px solid color-mix(in oklab, var(--warning) 35%, transparent);
   background: color-mix(in oklab, var(--warning) 9%, transparent);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.45;
   animation: flFade var(--m-normal) var(--ease-out);
@@ -1225,7 +1234,7 @@
 }
 .fl-org-box {
   position: relative;
-  min-width: 116px;
+  min-width: min(116px, 100%);
   max-width: 170px;
   padding: 9px 12px 9px 14px;
   border: 1px solid var(--line);
@@ -1235,18 +1244,20 @@
   text-align: center;
 }
 .fl-org-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .fl-org-role {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   margin-top: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1265,7 +1276,7 @@
   border: 1px solid var(--line-strong);
   background: var(--surface-elevated-2);
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   cursor: pointer;
   z-index: 2;
@@ -1359,7 +1370,7 @@
   grid-template-columns: repeat(var(--nq), 1fr);
 }
 .fl-rm-qrow .fl-rm-q {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1369,7 +1380,7 @@
   border-left: 1px solid var(--line);
 }
 .fl-rm-lanelbl {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   padding: 0 10px;
@@ -1380,6 +1391,7 @@
   overflow: hidden;
 }
 .fl-rm-lanetoggle {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1459,15 +1471,16 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--c, var(--presence)) 16%, transparent);
 }
 .fl-rm-bar-label {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .fl-rm-detail {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -1481,7 +1494,7 @@
   color: var(--text-primary);
 }
 .fl-rm-pill {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1548,9 +1561,10 @@
   overflow: hidden;
 }
 .fl-ct-era-lbl {
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1595,8 +1609,9 @@
   transform: scale(1.3);
 }
 .fl-ct-date {
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   /* --dw narrows as event count grows (ChronologicalTimeline.tsx dateWidth) so a longer date
      string or a dense event list clips to one line instead of colliding with the next marker. */
@@ -1607,7 +1622,7 @@
 .fl-ct-ends {
   display: flex;
   justify-content: space-between;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   margin-top: 2px;
 }
 .fl-ct-card {
@@ -1623,7 +1638,7 @@
   animation: flFade var(--m-normal) var(--ease-out);
 }
 .fl-ct-card-date {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: var(--c);
 }
@@ -1813,6 +1828,7 @@
 .fl-sk {
   position: relative;
   width: 100%;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   min-width: 380px;
   max-width: 620px;
   margin-inline: auto;
@@ -1825,10 +1841,11 @@
   overflow: hidden;
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   /* These visuals encode position. Preserve enough intrinsic width for their labels and let the
      shared Canvas scroll enhancer provide touch, keyboard and screen-reader access. */
   .fl-dag {
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
     width: 620px;
     max-width: none;
   }
@@ -1838,9 +1855,11 @@
   }
   .fl-rm-header,
   .fl-rm-lane {
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
     min-width: 620px;
   }
   .fl-sk {
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
     min-width: 620px;
   }
 }
@@ -1904,6 +1923,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   line-height: 1.15;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1911,7 +1931,7 @@
 }
 .fl-sk-cost {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   background: var(--track);
@@ -1964,7 +1984,7 @@
    HEADCOUNT PLAN
    ============================================================ */
 .fl-hc-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
@@ -1987,14 +2007,15 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .fl-hc-count {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -2019,7 +2040,7 @@
   align-items: center;
   gap: 3px;
   margin-top: 4px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--presence-soft);
 }
@@ -2036,20 +2057,20 @@
   border-top: 1px solid var(--line);
 }
 .fl-hc-totals-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 .fl-hc-totals-count {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .fl-hc-totals-reqs {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--presence-soft);
 }
@@ -2058,7 +2079,7 @@
    ISSUE TREE
    ============================================================ */
 .fl-it-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
@@ -2079,7 +2100,7 @@
 }
 .fl-it-box {
   position: relative;
-  min-width: 116px;
+  min-width: min(116px, 100%);
   max-width: 176px;
   padding: 9px 12px;
   border: 1px solid var(--line);
@@ -2093,19 +2114,19 @@
   font-weight: 700;
 }
 .fl-it-label {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
 .fl-it-box.fl-it-root .fl-it-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 .fl-it-finding {
   margin-top: 4px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-style: italic;
   line-height: 1.35;
   color: var(--text-muted);
@@ -2187,7 +2208,7 @@
   gap: 5px;
   min-width: 0;
   margin-bottom: 9px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2204,6 +2225,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-lm-arrow {
@@ -2226,12 +2248,12 @@
   border-radius: var(--r-sm);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 .fl-lm-empty {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-style: italic;
 }
 
@@ -2239,7 +2261,7 @@
    CONTENT CALENDAR
    ============================================================ */
 .fl-cc-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
@@ -2264,7 +2286,7 @@
   border-left: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2283,10 +2305,11 @@
   border-top: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fl-cc-cell {
@@ -2317,9 +2340,10 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   color: var(--text-primary);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 .fl-cc-legend {
@@ -2333,7 +2357,7 @@
   align-items: center;
   gap: 5px;
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 .fl-cc-legend-dot {
@@ -2350,7 +2374,7 @@
    ============================================================ */
 .fl-bc-variant {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--presence-soft);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
@@ -2442,7 +2466,7 @@
   gap: 6px;
   min-width: 0;
   margin-bottom: 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2485,7 +2509,7 @@
   align-items: flex-start;
   gap: 7px;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -2500,7 +2524,7 @@
   background: var(--c);
 }
 .fl-bc-value .fl-bc-item {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-primary);
 }

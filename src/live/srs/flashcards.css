@@ -34,7 +34,7 @@
   border-radius: var(--r-full);
   background: none;
   color: var(--text-secondary);
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 7px 13px 7px 9px;
   cursor: pointer;
   transition:
@@ -55,12 +55,12 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font: 700 18px/1 var(--font);
+  font: 700 var(--fs-lg)/1 var(--font);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 .fc-nav-sub {
-  font: 500 12.5px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--text-muted);
 }
 .fc-nav-actions {
@@ -81,7 +81,7 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 9px 15px;
   cursor: pointer;
   transition:
@@ -114,7 +114,7 @@
 }
 .fc-btn-sm {
   padding: 6px 11px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .fc-btn-danger {
   border-color: color-mix(in oklab, var(--danger) 55%, transparent);
@@ -135,7 +135,7 @@
 
 .fc-side {
   flex: none;
-  width: 232px;
+  width: min(232px, 100%);
   overflow-y: auto;
   border-right: 1px solid var(--line-soft);
   padding: 18px 14px 40px;
@@ -149,7 +149,7 @@
   gap: 6px;
 }
 .fc-side-eyebrow {
-  font: 700 10px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -164,7 +164,7 @@
   border-radius: var(--r-sm);
   background: none;
   color: var(--text-secondary);
-  font: 550 13.5px/1.2 var(--font);
+  font: 550 var(--fs-md)/1.2 var(--font);
   text-align: left;
   padding: 8px 10px;
   min-height: 44px;
@@ -184,18 +184,19 @@
 .fc-side-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fc-side-count {
   margin-left: auto;
-  font: 600 12px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-muted);
 }
 .fc-side-badge {
   margin-left: auto;
   min-width: 20px;
   text-align: center;
-  font: 700 11px/1 var(--font);
+  font: 700 var(--fs-xs)/1 var(--font);
   color: var(--presence);
   background: color-mix(in oklab, var(--presence) 16%, transparent);
   border-radius: var(--r-full);
@@ -215,7 +216,7 @@
   border-radius: var(--r-full);
   background: none;
   color: var(--text-secondary);
-  font: 550 12px/1 var(--font);
+  font: 550 var(--fs-sm)/1 var(--font);
   padding: 4px 9px;
   cursor: pointer;
   transition:
@@ -233,7 +234,7 @@
   background: color-mix(in oklab, var(--presence) 12%, transparent);
 }
 .fc-tag-n {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
 }
 
@@ -262,7 +263,7 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 450 14px/1 var(--font);
+  font: 450 var(--fs-md)/1 var(--font);
   padding: 10px 16px;
 }
 .fc-search input::placeholder {
@@ -277,7 +278,7 @@
   border: none;
   background: none;
   color: var(--text-muted);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   padding: 6px;
 }
@@ -297,7 +298,7 @@
   background: var(--surface-elevated);
 }
 .fc-bulk-n {
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-primary);
 }
 .fc-bulk-input {
@@ -305,9 +306,9 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated-2, var(--surface-elevated));
   color: var(--text-primary);
-  font: 450 13px/1 var(--font);
+  font: 450 var(--fs-sm)/1 var(--font);
   padding: 7px 12px;
-  width: 160px;
+  width: min(160px, 100%);
 }
 .fc-bulk-input:focus-visible {
   outline: none;
@@ -318,7 +319,7 @@
   border: none;
   background: none;
   color: var(--text-muted);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
   padding: 6px;
 }
@@ -370,7 +371,7 @@
   gap: 5px;
 }
 .fc-row-front {
-  font: 600 14.5px/1.4 var(--font);
+  font: 600 var(--fs-md)/1.4 var(--font);
   color: var(--text-primary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -378,7 +379,7 @@
   overflow: hidden;
 }
 .fc-row-back {
-  font: 450 13px/1.45 var(--font);
+  font: 450 var(--fs-sm)/1.45 var(--font);
   color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -393,7 +394,7 @@
   margin-top: 2px;
 }
 .fc-status {
-  font: 700 9.5px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border-radius: var(--r-full);
@@ -422,7 +423,7 @@
   background: var(--surface-glass);
 }
 .fc-row-deck {
-  font: 600 11.5px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-glass);
   border-radius: var(--r-full);
@@ -430,11 +431,12 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fc-row-tag {
   border: none;
-  font: 500 11.5px/1 var(--font);
+  font: 500 var(--fs-xs)/1 var(--font);
   color: var(--text-muted);
   background: none;
   cursor: pointer;
@@ -448,7 +450,7 @@
   color: var(--presence);
 }
 .fc-row-origin {
-  font: 600 9.5px/1 var(--font);
+  font: 600 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -509,11 +511,11 @@
   height: 38px;
 }
 .fc-empty-head {
-  font: 700 17px/1.2 var(--font);
+  font: 700 var(--fs-lg)/1.2 var(--font);
   color: var(--text-primary);
 }
 .fc-empty-sub {
-  font: 450 13.5px/1.5 var(--font);
+  font: 450 var(--fs-md)/1.5 var(--font);
   color: var(--text-secondary);
 }
 
@@ -530,7 +532,7 @@
 }
 .fc-ed-shell {
   width: min(560px, 100%);
-  max-height: min(88vh, 760px);
+  max-height: min(88dvh, 760px);
   display: flex;
   flex-direction: column;
   background: var(--surface-elevated);
@@ -548,11 +550,11 @@
   border-bottom: 1px solid var(--line-soft);
 }
 .fc-ed-title {
-  font: 700 16px/1 var(--font);
+  font: 700 var(--fs-lg)/1 var(--font);
   color: var(--text-primary);
 }
 .fc-ed-drafting {
-  font: 500 12px/1 var(--font);
+  font: 500 var(--fs-sm)/1 var(--font);
   color: var(--presence);
   animation: fc-pulse 1.4s ease-in-out infinite;
 }
@@ -574,7 +576,7 @@
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .fc-ed-close:hover {
   color: var(--text-primary);
@@ -603,7 +605,7 @@
   justify-content: space-between;
 }
 .fc-ed-card-n {
-  font: 700 10.5px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -612,7 +614,7 @@
   border: none;
   background: none;
   color: var(--text-muted);
-  font: 600 12px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   cursor: pointer;
 }
 .fc-ed-row-remove:hover {
@@ -624,7 +626,7 @@
   gap: 5px;
 }
 .fc-ed-label {
-  font: 700 9.5px/1 var(--font);
+  font: 700 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -635,7 +637,7 @@
   border-radius: var(--r-sm);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 450 14px/1.5 var(--font);
+  font: 450 var(--fs-md)/1.5 var(--font);
   padding: 9px 12px;
   resize: vertical;
 }
@@ -649,7 +651,7 @@
   border-radius: var(--r-full);
   background: none;
   color: var(--text-secondary);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 8px 14px;
   cursor: pointer;
 }
@@ -662,7 +664,7 @@
   grid-template-columns: 1fr 1.4fr;
   gap: 14px;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .fc-ed-meta {
     grid-template-columns: 1fr;
   }
@@ -682,7 +684,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font: 550 12px/1 var(--font);
+  font: 550 var(--fs-sm)/1 var(--font);
   color: var(--text-primary);
   background: color-mix(in oklab, var(--presence) 12%, transparent);
   border-radius: var(--r-full);
@@ -693,7 +695,7 @@
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   line-height: 1;
   padding: 2px;
 }
@@ -702,11 +704,11 @@
 }
 .fc-ed-tag-input {
   flex: 1;
-  min-width: 80px;
+  min-width: min(80px, 100%);
   border: none;
   background: none;
   color: var(--text-primary);
-  font: 450 13px/1 var(--font);
+  font: 450 var(--fs-sm)/1 var(--font);
   padding: 4px;
 }
 .fc-ed-tag-input:focus-visible {
@@ -722,7 +724,7 @@
 }
 
 /* ── narrow screens: collapse the sidebar above the list ───────────────────────────────────── */
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .fc-body {
     flex-direction: column;
     overflow-y: auto;
@@ -765,7 +767,7 @@
   border-radius: calc(var(--r-md) - 4px);
   background: none;
   color: var(--text-secondary);
-  font: 600 11.5px/1.2 var(--font);
+  font: 600 var(--fs-xs)/1.2 var(--font);
   cursor: pointer;
   transition:
     color var(--m-quick),
@@ -784,6 +786,14 @@
 }
 .fc-style-note {
   margin: 8px 2px 0;
-  font: 450 11.5px/1.45 var(--font);
+  font: 450 var(--fs-xs)/1.45 var(--font);
   color: var(--text-muted);
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .fc-nav-back {
+    min-height: var(--tap-min);
+  }
 }

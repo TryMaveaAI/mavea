@@ -54,7 +54,7 @@
 
 .scrub-track {
   flex: 1 1 0;
-  min-width: 72px;
+  min-width: min(72px, 100%);
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -162,12 +162,13 @@
 }
 
 .scrub-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--track-c) 58%, var(--text-muted));
   text-align: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -194,7 +195,7 @@
     0 1px 4px color-mix(in oklab, var(--surface-deep) 10%, transparent);
   -webkit-backdrop-filter: var(--glass-blur-faint);
   backdrop-filter: var(--glass-blur-faint);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   line-height: 1.4;
   color: var(--text-primary);
@@ -244,7 +245,7 @@
   z-index: 90;
   display: grid;
   place-items: start center;
-  padding: clamp(24px, 6vh, 72px) 24px;
+  padding: clamp(24px, 6dvh, 72px) 24px;
   overflow-y: auto;
   background: color-mix(in oklab, var(--surface-default) 68%, transparent);
   -webkit-backdrop-filter: var(--glass-blur, blur(18px)) saturate(1.05);
@@ -268,7 +269,7 @@
 }
 .ovw-sub {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
@@ -306,16 +307,17 @@
   margin: 0;
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .ovw-card-count {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   background: var(--surface-glass);
   border-radius: var(--r-full);
@@ -344,7 +346,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
   transition: background var(--m-fast) var(--ease-out);
@@ -398,7 +400,7 @@
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-align: left;
   cursor: pointer;
   transition:
@@ -421,6 +423,7 @@
   flex: 1 1 auto;
   min-width: 0;
   line-height: 1.35;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -446,7 +449,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .ovw-grid {
     grid-template-columns: 1fr;
   }
@@ -464,7 +467,7 @@
   max-width: 100%;
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .viewing-past svg {
@@ -479,7 +482,7 @@
   background: transparent;
   color: var(--presence);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   padding: 0;

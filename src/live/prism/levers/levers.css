@@ -33,7 +33,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -53,7 +53,7 @@
   appearance: none;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: var(--surface-glass);
   border: 1px solid var(--line-strong);
@@ -69,7 +69,7 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 4px 6px;
   border-radius: 6px;
   cursor: pointer;
@@ -82,7 +82,7 @@
 .prism-lv-intro {
   margin: 0;
   padding: 9px 12px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--line);
@@ -91,7 +91,7 @@
 .prism-lv-empty {
   margin: 0;
   padding: 16px 14px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
   display: flex;
@@ -123,7 +123,7 @@
 }
 .prism-lv-group {
   margin: 6px 0 0;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -152,7 +152,7 @@
   background: transparent;
   border: none;
   padding: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   border-bottom: 1px dashed transparent;
 }
@@ -162,7 +162,7 @@
 }
 .prism-lv-val {
   font-family: var(--font-data);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .prism-lv-val.is-changed {
@@ -230,12 +230,12 @@
   background: color-mix(in oklab, var(--danger) 12%, var(--surface-elevated));
 }
 .prism-lv-out-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .prism-lv-out-val {
   font-family: var(--font-data);
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -243,7 +243,7 @@
   color: color-mix(in oklab, var(--danger) 80%, #fff);
 }
 .prism-lv-bound {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: color-mix(in oklab, var(--insight) 60%, var(--text-secondary));
 }
 .prism-lv-bound.is-violated {
@@ -254,7 +254,7 @@
 /* Below tablet width, `44vw` shrinks the whole model — sliders, readouts, bounds — into a sliver too
    narrow to actually use. The dock restructures to a near-full-width sheet anchored to both edges
    instead of scaling the same cramped column down further. */
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .prism-lv {
     left: 12px;
     right: 12px;

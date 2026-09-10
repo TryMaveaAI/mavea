@@ -76,12 +76,13 @@
   border-radius: var(--r-full);
   color: var(--text-secondary);
   cursor: pointer;
-  font: 13px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   padding: 7px var(--s-md);
   transition:
     border-color var(--m-fast),
     color var(--m-fast),
     background var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .setup-back:hover {
@@ -162,7 +163,7 @@
   color: var(--text-muted);
   cursor: pointer;
   display: grid;
-  font: 600 11px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
   height: 44px;
   letter-spacing: 0.02em;
   place-items: center;
@@ -229,7 +230,7 @@
 }
 .const-label {
   color: var(--text-faint);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -273,7 +274,7 @@
 
 .setup-q {
   color: var(--text-primary);
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -282,7 +283,7 @@
 
 .setup-sub {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   margin: 0;
 }
@@ -319,7 +320,7 @@
 }
 .setup-foot-note {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .setup-done {
   align-items: center;
@@ -330,7 +331,7 @@
   color: #fff;
   cursor: pointer;
   display: flex;
-  font: 600 14px/1 var(--font);
+  font: 600 var(--fs-md)/1 var(--font);
   gap: var(--s-xs);
   padding: 9px var(--s-lg);
   transition:
@@ -361,7 +362,7 @@
 }
 .field-helper {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   margin: 0;
 }
@@ -401,9 +402,18 @@
   color: var(--text-primary);
   text-decoration: underline;
 }
+/* On a touch screen the key link is the one thing a keyless reader has to hit, and a 14px line of
+   text is a coin toss under a thumb: give it the full tap floor without changing how it reads. */
+@media (pointer: coarse) {
+  .field-helper-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+}
 .field-label {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -446,7 +456,7 @@
   background: var(--surface-glass-strong);
   border-radius: var(--r-sm);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   height: 26px;
   line-height: 26px;
@@ -459,14 +469,14 @@
 }
 .tile-name {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 .tile-sub {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.2;
 }
 
@@ -476,7 +486,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
   color: var(--text-primary);
-  font: 14px/1 var(--font);
+  font: var(--fs-md)/1 var(--font);
   outline: none;
   padding: 9px 12px;
   transition: border-color var(--m-fast);
@@ -530,7 +540,7 @@
   border-radius: var(--r-md);
   color: var(--text-primary);
   cursor: pointer;
-  font: 14px/1 var(--font);
+  font: var(--fs-md)/1 var(--font);
   outline: none;
   padding: 9px 32px 9px 12px;
   transition: border-color var(--m-fast);
@@ -562,8 +572,9 @@
   cursor: pointer;
   flex-shrink: 0;
   margin-left: auto;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
-  font: 600 11px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
   padding: 5px 12px;
   transition:
     background var(--m-fast),
@@ -613,7 +624,7 @@
 .status-strip-text {
   color: var(--text-secondary);
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -655,13 +666,13 @@
 }
 .seg-title {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.2;
 }
 .seg-sub {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   margin-top: 1px;
   opacity: 0.72;
 }
@@ -680,13 +691,13 @@
 .toggle-label {
   color: var(--text-primary);
   display: block;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   line-height: 1.3;
 }
 .toggle-note {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   margin-top: 3px;
   overflow-wrap: anywhere;
@@ -747,7 +758,7 @@
 }
 .memory-empty {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-style: italic;
   line-height: 1.4;
   margin: 0;
@@ -770,7 +781,7 @@
 .memory-fact-text {
   color: var(--text-secondary);
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -802,12 +813,13 @@
   border-radius: var(--r-full);
   color: var(--text-muted);
   cursor: pointer;
-  font: 12px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   padding: 6px 12px;
   transition:
     background var(--m-fast),
     border-color var(--m-fast),
     color var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ghost-btn:hover {
@@ -950,13 +962,14 @@
 .check-label {
   color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .check-value {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -971,7 +984,7 @@
   color: #fff;
   cursor: pointer;
   display: flex;
-  font: 700 15px/1 var(--font);
+  font: 700 var(--fs-md)/1 var(--font);
   gap: var(--s-sm);
   justify-content: center;
   padding: 13px var(--s-xl);
@@ -1026,7 +1039,7 @@
   border: none;
   color: var(--text-primary);
   flex: 1;
-  font: 14px/1.4 var(--font);
+  font: var(--fs-md)/1.4 var(--font);
   min-width: 0;
   outline: none;
 }
@@ -1087,10 +1100,11 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font: 12px/1 var(--font);
+  font: var(--fs-sm)/1 var(--font);
   padding: 0 4px;
   text-decoration: none;
   transition: color var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .link-btn:hover {
@@ -1123,17 +1137,17 @@
   --face-size: 118px;
 }
 :root[data-wizard-step='go'] .presence-layer.idlehome .presence-positioner {
-  transform: translateY(calc(150px - 50vh));
+  transform: translateY(calc(150px - 50dvh));
   animation: wake-rise 900ms var(--ease-out, ease-out) both;
 }
 @keyframes wake-rise {
   from {
     opacity: 0;
-    transform: translateY(calc(174px - 50vh));
+    transform: translateY(calc(174px - 50dvh));
   }
   to {
     opacity: 1;
-    transform: translateY(calc(150px - 50vh));
+    transform: translateY(calc(150px - 50dvh));
   }
 }
 /* Room above the heading for the woken face to breathe. */
@@ -1147,7 +1161,7 @@
 }
 
 /* responsive */
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .setup-nav {
     padding: var(--s-md);
   }
@@ -1187,7 +1201,7 @@
 /* On a phone, three honest controls must share one row: Back, the four 44px step targets, and
    Appearance. Keep every target full-size, but collapse Back to its already-visible arrow and trim
    only the decorative connector rhythm so the constellation remains centered without overflow. */
-@media (max-width: 430px) {
+@media (width <= 430px) {
   .setup-nav {
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
@@ -1202,7 +1216,7 @@
     font-size: 0;
   }
   .setup-back > span {
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
   .const-track {
     gap: 0;
@@ -1242,7 +1256,7 @@
   cursor: pointer;
   display: inline-flex;
   gap: 6px;
-  font: 500 11.5px/1 var(--font);
+  font: 500 var(--fs-xs)/1 var(--font);
   padding: 0 9px;
   height: 30px;
 }
@@ -1251,9 +1265,10 @@
   color: var(--text-primary);
 }
 
-/* On a phone the label and the shortcut both go — the icon alone is the affordance, and the row
-   already has to hold Back, four 44px step targets and Appearance. */
-@media (max-width: 430px) {
+/* Wherever the step labels go (the 768 rule above), the palette handle's label and shortcut go
+   too — the icon alone is the affordance, and the row already has to hold Back, four 44px step
+   targets and Appearance. Measured at 768: a labelled handle sat 21px into the last step's disc. */
+@media (width <= 768px) {
   /* A square icon, not a padded pill. Measured: back (44) + the constellation (266) + this flank
      has to clear 420px, and a labelled button overran it by ~10px — which showed up as the
      constellation and the flank overlapping rather than as a scrollbar. */
@@ -1269,5 +1284,23 @@
   }
   .setup-nav-end {
     gap: 6px;
+  }
+}
+
+/* The narrowest phones cannot hold Back, four 44px step targets and the flank on one row —
+   measured: 434px of controls in a 288px row at 320, which put the constellation over Back and
+   the palette handle. The constellation takes the second row; Back and the flank keep the first. */
+@media (width <= 360px) {
+  .setup-nav {
+    grid-template-columns: 1fr auto;
+    row-gap: var(--s-sm);
+  }
+  .setup-nav .constellation {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  .setup-nav .setup-nav-end {
+    grid-row: 1;
+    grid-column: 2;
   }
 }

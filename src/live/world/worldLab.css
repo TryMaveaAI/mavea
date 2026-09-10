@@ -19,7 +19,7 @@
   padding: var(--s-sm) var(--s-2);
   border-bottom: 1px solid var(--line);
   background: var(--surface-elevated);
-  font: 500 12px/1.3 var(--font);
+  font: 500 var(--fs-sm)/1.3 var(--font);
   color: var(--text-secondary);
 }
 
@@ -39,7 +39,7 @@
 .wl-filter,
 .wl-pick,
 .wl-step {
-  font: 500 12px/1.3 var(--font);
+  font: 500 var(--fs-sm)/1.3 var(--font);
   color: var(--text-primary);
   background: var(--surface-default);
   border: 1px solid var(--line);
@@ -71,7 +71,7 @@
   color: var(--text-muted);
 }
 .wl-id {
-  font: 600 11.5px/1.3 var(--font-data, var(--font));
+  font: 600 var(--fs-xs)/1.3 var(--font-data, var(--font));
   color: var(--insight);
   padding: 3px 7px;
   border: 1px solid var(--line-soft);
@@ -86,6 +86,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   color: var(--text-muted);
 }

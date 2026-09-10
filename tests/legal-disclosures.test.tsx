@@ -1,3 +1,4 @@
+import { PUBLIC_ROUTES } from '../src/routeTable';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, screen } from '@testing-library/react';
@@ -52,10 +53,10 @@ describe('app-wide important information', () => {
   });
 
   it('is a lazy public route linked from the landing without entering its normal bundle', () => {
-    const routes = readFileSync(join(__dirname, '../src/routes.ts'), 'utf8');
+    const routes = readFileSync(join(__dirname, '../src/routeTable.ts'), 'utf8');
     const landing = readFileSync(join(__dirname, '../src/flagship/FlagshipLanding.tsx'), 'utf8');
 
-    expect(routes).toMatch(/defineRoute\('#\/legal',[\s\S]*?import\('\.\/legal\/LegalApp'\)/);
+    expect(routes).toMatch(/prefix: '#\/legal',[\s\S]*?import\('\.\/legal\/LegalApp'\)/);
     expect(landing).toContain('AI can make mistakes. Verify important information.');
     expect(landing).toContain('href="#/legal?from=home"');
     expect(landing).not.toContain("from '../legal/LegalApp'");
@@ -74,12 +75,7 @@ describe('app-wide important information', () => {
   });
 
   it('has an explicit review for the landing and every public route', () => {
-    const routes = readFileSync(join(__dirname, '../src/routes.ts'), 'utf8');
-    const publicTable = routes.slice(
-      routes.indexOf('const PUBLIC_ROUTES'),
-      routes.indexOf('// QA/fidelity harnesses'),
-    );
-    const prefixes = [...publicTable.matchAll(/defineRoute\('([^']+)'/g)].map((match) => match[1]);
+    const prefixes = PUBLIC_ROUTES.map((route) => route.prefix);
     expect(Object.keys(PUBLIC_ROUTE_RISK_AUDIT).sort()).toEqual(['landing', ...prefixes].sort());
   });
 

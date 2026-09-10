@@ -1,7 +1,7 @@
 /* On a phone, readable labels win over desktop-density ellipses. These are the shared label
    primitives reported by the real-browser truncation gate. Their containing card/row is allowed to
    grow; genuinely wide data structures keep their accessible horizontal region instead. */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   :where(
     .c1-corr-colhdr span,
     .c1-corr-rowhdr span,

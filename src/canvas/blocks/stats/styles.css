@@ -280,12 +280,12 @@
 }
 .sb-ring {
   position: relative;
-  width: 116px;
+  width: min(116px, 100%);
   height: 116px;
   flex-shrink: 0;
 }
 .sb-svg {
-  width: 116px;
+  width: min(116px, 100%);
   height: 116px;
   display: block;
 }
@@ -345,6 +345,7 @@
 .sb-comp-label {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -370,6 +371,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
@@ -447,6 +449,7 @@
      near an end so it never spills past the edge; 0 at the midpoint, ±50% at the ends. */
   --pb-tip-bias: 0%;
   transform: translateX(calc(-50% + var(--pb-tip-bias))) translateY(4px);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -608,6 +611,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -846,6 +850,7 @@
 }
 .cfm-count {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -861,22 +866,26 @@
    .cfm-class is mirrored by CLASS_FONT_SIZE in ConfusionMatrix.tsx — change both together. */
 .cfm-class {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11.5px;
   font-weight: 600;
 }
 .cfm-axis-title {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11.5px;
   font-style: italic;
   font-weight: 600;
 }
 .cfm-total {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 .cfm-total-hd {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 700;
 }
@@ -1284,6 +1293,7 @@
 }
 .ps-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -1331,7 +1341,7 @@
 .ir-sku {
   flex-shrink: 0;
   font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.01em;
@@ -1345,7 +1355,7 @@
 }
 .ir-status {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1439,7 +1449,7 @@
 .bgs-head {
   background: var(--surface-glass-strong);
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .bgs-player {
   gap: 5px;
@@ -1454,7 +1464,7 @@
 .bgs-crown {
   flex-shrink: 0;
   color: var(--warning);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 .bgs-rowlabel {
   color: var(--text-muted);
@@ -1486,7 +1496,7 @@
 .cvss-cve {
   margin-left: auto;
   font-family: var(--font-mono, ui-monospace, 'Cascadia Code', 'Fira Code', monospace);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: none;
@@ -1515,7 +1525,7 @@
   border-radius: var(--r-full);
   border: 1px solid var(--line);
   background: var(--surface-glass);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   min-width: 0;
 }
 .cvss-chip-k {
@@ -1554,6 +1564,7 @@
 }
 .rp-label {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10.5px;
   font-weight: 600;
 }
@@ -1577,6 +1588,7 @@
 }
 .ecdf-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -1608,6 +1620,7 @@
 }
 .fpl-colhead {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1628,6 +1641,7 @@
 }
 .fpl-tick {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -1660,6 +1674,7 @@
 }
 .fpl-wt {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }

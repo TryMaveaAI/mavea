@@ -45,20 +45,21 @@
   gap: var(--s-md);
 }
 .ripple-verdict-badge {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--tone);
 }
 .ripple-verdict-scale {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ripple-verdict-what {
   margin: 8px 0 0;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -74,7 +75,7 @@
 .ripple-verdict-one-tag {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -82,7 +83,7 @@
   padding-top: 2px;
 }
 .ripple-verdict-one-text {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -119,7 +120,7 @@
 }
 .ripple-verdict-chips-tag {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -127,7 +128,7 @@
   margin-right: 2px;
 }
 .ripple-verdict-chip {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--surface-elevated);

@@ -10,7 +10,7 @@
    whole point of the model field. */
 .drop-select .drop-select-input {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding-right: 40px;
 }
 .drop-select-trigger {
@@ -37,7 +37,7 @@
 }
 .drop-select-option-label {
   color: var(--text-primary);
-  font: 500 13.5px/1.2 var(--font);
+  font: 500 var(--fs-md)/1.2 var(--font);
 }
 .drop-select-option.is-current .drop-select-option-label {
   color: var(--presence);
@@ -105,7 +105,7 @@
 }
 .drop-select-id {
   color: var(--text-primary);
-  font: 500 13px/1.2 var(--mono);
+  font: 500 var(--fs-sm)/1.2 var(--mono);
   overflow-wrap: anywhere;
 }
 .drop-select-option.is-current .drop-select-id {
@@ -117,14 +117,14 @@
   border-radius: var(--r-full);
   color: var(--presence);
   flex-shrink: 0;
-  font: 600 10px/1 var(--font);
+  font: 600 var(--fs-2xs)/1 var(--font);
   letter-spacing: 0.04em;
   padding: 3px 8px;
   text-transform: uppercase;
 }
 .drop-select-note {
   color: var(--text-muted);
-  font: 11.5px/1.35 var(--font);
+  font: var(--fs-xs)/1.35 var(--font);
 }
 .drop-select-foot {
   align-items: baseline;
@@ -132,7 +132,7 @@
   color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
-  font: 11.5px/1.4 var(--font);
+  font: var(--fs-xs)/1.4 var(--font);
   gap: 4px 10px;
   justify-content: space-between;
   margin-top: 2px;
@@ -142,6 +142,7 @@
   color: var(--presence);
   flex-shrink: 0;
   text-decoration: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .drop-select-foot a:hover {
@@ -155,5 +156,5 @@
 .drop-select-hint {
   color: var(--text-muted);
   display: block;
-  font: 11.5px/1.4 var(--font);
+  font: var(--fs-xs)/1.4 var(--font);
 }

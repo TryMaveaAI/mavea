@@ -20,23 +20,24 @@
 }
 .bend-kicker {
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   color: var(--presence);
 }
 .bend-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .bend-value {
   margin-left: auto;
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--presence);
@@ -70,14 +71,14 @@
 }
 .bend-out-label {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 .bend-out-value {
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);

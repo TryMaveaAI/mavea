@@ -29,7 +29,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -39,7 +39,7 @@
   color: var(--presence-soft);
 }
 .rail-sub {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .rail-head-actions {
@@ -52,7 +52,7 @@
   align-items: center;
   gap: 6px;
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-muted);
   background: color-mix(in oklab, var(--presence) 8%, transparent);
@@ -125,12 +125,12 @@
 .with-rail .presence-layer.corner .presence-positioner {
   transform: translate(
       var(--home-x, calc(-50vw + 33px + var(--rail-w) / 2)),
-      var(--home-y, calc(-50vh + 30px))
+      var(--home-y, calc(-50dvh + 30px))
     )
     scale(calc(var(--home-scale, 0.14) * var(--dock-zoom, 1)));
 }
 
-@media (max-width: 920px) {
+@media (width <= 1024px) {
   .mavea-app.with-rail {
     --rail-w: 312px;
   }
@@ -165,8 +165,17 @@
   height: 16px;
 }
 .rail-dock .composer-input {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .rail-dock .suggest {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .rail-icon {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }

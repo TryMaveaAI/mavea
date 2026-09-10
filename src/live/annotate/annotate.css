@@ -139,6 +139,7 @@
      comfortably inside the box that was cleared. Move one of these two and you must move both.
      No synthetic italic — Caveat is already a slanted hand, and obliquing a script face smears it. */
   font-family: 'Caveat', 'Bradley Hand', 'Segoe Print', 'Marker Felt', cursive;
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -154,6 +155,7 @@
 /* The question gesture's "?" — a glyph, not a caption, so it draws bigger and upright;
    it reads as a scrawled doubt beside the figure, never a sentence. */
 .ink-note.ink-glyph {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 26px;
   font-style: normal;
   font-weight: 700;
@@ -185,6 +187,7 @@
 }
 .ink-step-num {
   fill: #fff;
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 700;
   font-family: inherit;
@@ -222,13 +225,14 @@
   position: absolute;
   top: 10px;
   right: 12px;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-gesture);
   pointer-events: none;
   z-index: 6;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   animation: ink-badge var(--ink-badge-dur, 2.4s) ease forwards;
 }
@@ -356,7 +360,7 @@
   background: var(--surface-elevated);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -391,7 +395,7 @@
 /* Transient nudge when a mark landed on open space / wasn't recognized — so the gesture never
    just vanishes with no feedback (what made "Mark" feel broken). Fades in, auto-clears. */
 .ink-miss {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
   color: var(--text-secondary);
   padding: 3px 10px;
@@ -411,7 +415,7 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--ink-cool) 11%, var(--surface-elevated));
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
   animation: ink-coach-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -436,16 +440,16 @@
   border-radius: var(--r-md);
   background: color-mix(in oklab, var(--ink-cool) 9%, var(--surface-elevated));
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.35;
   animation: ink-coach-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 /* A short window cannot spend two lines on a one-time tip. The coach still appears and still says
    what the tool does — it says it on one line, and the reader gets the space back for the answer. */
-@media (max-height: 820px) {
+@media (height <= 820px) {
   .ink-coach {
     padding: 4px 8px 4px 10px;
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
   }
   .ink-coach span,
   .ink-coach p {
@@ -461,7 +465,7 @@
   font-weight: 650;
 }
 .ink-coach-spark {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .ink-coach-text {
   flex: 1;
@@ -525,12 +529,13 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--ink-cool) 9%, var(--surface-elevated));
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
 }
 .ink-chip-text {
   min-width: 0;
   overflow: hidden;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -559,7 +564,7 @@
   background: var(--surface-elevated);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -580,11 +585,12 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   border: 0;
 }
 
-@media (max-width: 600px) {
+@media (width <= 640px) {
   .ink-coach-text {
     display: -webkit-box;
     -webkit-line-clamp: 1;
@@ -639,7 +645,7 @@
   background: color-mix(in oklab, var(--ink-gesture, var(--warning)) 6%, var(--surface-elevated));
   box-shadow: var(--shadow-raised);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   font-style: italic;
   opacity: 0;
@@ -690,7 +696,7 @@
 }
 /* Belt to the JS width gate: below the fit threshold the gutter never reserves and the rail
    never shows, even if a stale class survives a resize race. */
-@media (max-width: 1279px) {
+@media (width <= 1280px) {
   .live-voice .card-grid.note-gutter {
     padding-left: 0;
     padding-right: 0;

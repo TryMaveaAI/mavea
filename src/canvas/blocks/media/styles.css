@@ -32,7 +32,7 @@
   top: 12px;
   padding: 4px 10px;
   border-radius: var(--r-full);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -87,12 +87,13 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .me-ba-caps > .faint {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .me-ba-pct {
@@ -126,7 +127,7 @@
   padding: 14px;
 }
 .me-car-label {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
@@ -146,7 +147,7 @@
   left: 12px;
   padding: 3px 9px;
   border-radius: var(--r-full);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -155,7 +156,7 @@
   backdrop-filter: var(--glass-blur, blur(6px));
 }
 .me-car-cap {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-top: 8px;
   overflow-wrap: anywhere;
@@ -216,7 +217,7 @@
 }
 .me-car-count {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -226,7 +227,7 @@
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 14px;
 }
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .me-ico-wrap {
     grid-template-columns: 1fr;
   }
@@ -242,7 +243,7 @@
   position: absolute;
   left: 12px;
   bottom: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
@@ -303,7 +304,7 @@
   border-radius: var(--r-full);
   background: var(--cc);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -418,8 +419,9 @@
 }
 .me-wave-time {
   flex-shrink: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* The bars shrink to nothing but the gaps between them do not, so on a folded-phone card those ~60
@@ -444,7 +446,7 @@
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 14px;
 }
-@media (max-width: 580px) {
+@media (width <= 640px) {
   .me-vid {
     grid-template-columns: 1fr;
   }
@@ -463,7 +465,7 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
@@ -474,7 +476,7 @@
   right: 12px;
   padding: 2px 7px;
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   background: rgba(var(--scrim-rgb), 0.55);
   color: #fff;
 }
@@ -570,7 +572,7 @@
   border-color: color-mix(in oklab, var(--presence) 40%, transparent);
 }
 .me-vid-chaptime {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   min-width: 38px;
   flex-shrink: 0;
@@ -579,7 +581,7 @@
   color: var(--presence-soft);
 }
 .me-vid-chaptitle {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   min-width: 0;
   overflow-wrap: anywhere;
@@ -602,7 +604,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .me-lb-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -628,7 +630,7 @@
   left: 8px;
   bottom: 7px;
   max-width: calc(100% - 16px);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
@@ -707,7 +709,7 @@
 }
 .me-lb-herolabel {
   max-width: calc(100% - 32px);
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 14px rgba(0, 0, 0, 0.4);
@@ -727,13 +729,13 @@
   min-width: 0;
 }
 .me-lb-metatitle {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 .me-lb-metacap {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
 .me-lb-bar > .tab-num {
@@ -801,7 +803,7 @@
   gap: 8px;
   grid-auto-flow: dense;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .me-mood {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -837,7 +839,7 @@
   align-items: flex-end;
 }
 .me-mood-text {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -846,7 +848,7 @@
   min-width: 0;
 }
 .me-mood-hex {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: #fff;
   padding: 2px 6px;
   border-radius: var(--r-sm);
@@ -854,7 +856,7 @@
   backdrop-filter: var(--glass-blur, blur(4px));
 }
 .me-mood-imglabel {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
@@ -866,7 +868,7 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .me-pal {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -908,7 +910,7 @@
   padding: 8px 9px 0;
 }
 .me-pal-contrast {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   padding: 1px 5px;
@@ -937,21 +939,23 @@
 }
 .me-pal-name {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .me-pal-hex {
   display: block;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: rgba(255, 255, 255, 0.85);
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .me-pal-swatch.light .me-pal-contrast {
@@ -978,7 +982,7 @@
   margin-top: 10px;
   padding: 6px 12px;
   border-radius: var(--r-full);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   background: color-mix(in oklab, var(--insight) 16%, transparent);
   color: var(--insight);
@@ -1092,6 +1096,7 @@
   stroke-width: 0.4;
 }
 .med-diag-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.4px;
   font-weight: 600;
 }
@@ -1162,7 +1167,7 @@
   border-radius: var(--r-full);
   background: var(--geo-c, var(--presence));
   color: #fff;
-  font: 700 13px/1 var(--font);
+  font: 700 var(--fs-sm)/1 var(--font);
   border: 2px solid #fff;
   box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
 }
@@ -1174,7 +1179,7 @@
   border-radius: var(--r-md);
   box-shadow: var(--shadow-floating);
   padding: 10px 12px;
-  font: 400 13px/1.4 var(--font);
+  font: 400 var(--fs-sm)/1.4 var(--font);
 }
 /* The tip is a 0×0 border triangle, so only the border-color facing the popup paints — one
    override per anchor, since MapLibre picks the side from the anchor class it lands on. */
@@ -1282,12 +1287,12 @@
 }
 .svgb-err {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   text-align: center;
   padding: 24px 0;
 }
 .svgb-caption {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 6px 0 0;
   line-height: 1.4;
@@ -1298,7 +1303,7 @@
   gap: 6px;
   margin: 8px 0 0;
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 .svgb-disclaimer svg {
@@ -1332,7 +1337,7 @@
   margin-inline: auto;
 }
 .fp-scale {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   text-align: center;
   margin-top: 8px;
@@ -1351,7 +1356,7 @@
 .mc-cover {
   position: relative;
   flex: 0 0 116px;
-  width: 116px;
+  width: min(116px, 100%);
   max-width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: var(--r-md);
@@ -1402,6 +1407,7 @@
   color: var(--text-secondary);
   background: var(--surface-glass);
   border: 1px solid var(--line);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .mc-logline {
@@ -1498,6 +1504,7 @@
 }
 .dim-text {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -1522,7 +1529,7 @@
   background: var(--surface-elevated);
 }
 .dim-block-tol {
-  flex-basis: 140px;
+  flex-basis: min(140px, 100%);
 }
 .dim-block-k {
   font-size: var(--fs-2xs, 10px);
@@ -1554,7 +1561,7 @@
   margin-top: 10px;
   align-items: center;
 }
-@media (max-width: 520px) {
+@media (width <= 560px) {
   .exp-wrap {
     grid-template-columns: 1fr;
   }
@@ -1601,6 +1608,7 @@
 }
 .exp-balloon-num {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 6px;
   font-weight: 700;
   text-anchor: middle;
@@ -1730,6 +1738,7 @@
 }
 .wld-dim {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -1786,7 +1795,7 @@
   margin-top: 10px;
   align-items: start;
 }
-@media (max-width: 560px) {
+@media (width <= 560px) {
   .cut-grid {
     grid-template-columns: 1fr;
   }
@@ -1816,6 +1825,7 @@
 }
 .cut-num {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cut-mono {
@@ -2021,7 +2031,7 @@
   margin-top: 12px;
   align-items: start;
 }
-@media (max-width: 540px) {
+@media (width <= 560px) {
   .an-wrap {
     grid-template-columns: 1fr;
   }
@@ -2115,6 +2125,7 @@
 }
 .an-pin-num {
   fill: #fff;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.6px;
   font-weight: 700;
   text-anchor: middle;
@@ -2224,6 +2235,7 @@
   fill: var(--text-faint);
   /* A 100-unit viewBox scaled up ~3x, so this is the rare case where a tiny authored number is
      correct — but 3 landed a hair under the 9px floor. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.2px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -2231,6 +2243,7 @@
 }
 .ex-ev-v {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.4px;
   font-weight: 700;
   text-anchor: middle;
@@ -2243,6 +2256,7 @@
 }
 .ex-node-k {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.2px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -2250,6 +2264,7 @@
 }
 .ex-node-v {
   fill: var(--cc);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 700;
   text-anchor: middle;
@@ -2316,7 +2331,7 @@
   margin-top: 12px;
   align-items: center;
 }
-@media (max-width: 520px) {
+@media (width <= 560px) {
   .cw-wrap {
     grid-template-columns: 1fr;
   }
@@ -2453,6 +2468,7 @@
 }
 .art-region-lbl {
   fill: #fff;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.4px;
   font-weight: 700;
   paint-order: stroke;
@@ -2515,7 +2531,7 @@
 }
 .art-note-k {
   flex-shrink: 0;
-  width: 84px;
+  width: min(84px, 100%);
   font-size: var(--fs-2xs, 11px);
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -2576,7 +2592,7 @@
 .mx-lane.muted {
   opacity: 0.5;
 }
-@media (max-width: 520px) {
+@media (width <= 560px) {
   .mx-ruler,
   .mx-lane {
     grid-template-columns: 116px minmax(0, 1fr);
@@ -2621,6 +2637,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .mx-flags {
@@ -2632,7 +2649,7 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -2740,6 +2757,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .mx-caption {
@@ -2806,6 +2824,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2889,7 +2908,7 @@
 
 /* a button pill */
 .wf-pill {
-  width: 96px;
+  width: min(96px, 100%);
   max-width: 60%;
   height: 18px;
   border-radius: 999px;
@@ -3127,7 +3146,7 @@
 }
 .mp-diskwrap {
   flex: 0 0 132px;
-  width: 132px;
+  width: min(132px, 100%);
   max-width: 100%;
 }
 .mp-svg {
@@ -3162,7 +3181,7 @@
   gap: 6px;
 }
 .mp-illum-v {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--presence);
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -3269,6 +3288,7 @@
 }
 .sky-star-lbl {
   fill: var(--sky-star);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 600;
 }
@@ -3279,11 +3299,13 @@
 }
 .sky-planet-lbl {
   fill: var(--warning);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.4px;
   font-weight: 700;
 }
 .sky-card {
   fill: color-mix(in oklab, var(--text-muted) 80%, transparent);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 6px;
   font-weight: 700;
   text-anchor: middle;
@@ -3329,6 +3351,7 @@
 }
 .orb-center-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 700;
   text-anchor: middle;
@@ -3340,11 +3363,13 @@
 }
 .orb-body-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.2px;
   font-weight: 600;
 }
 .orb-body-annot {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.4px;
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -3468,6 +3493,7 @@
 }
 .pat-foldlabel {
   fill: var(--presence);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 2.6px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -3476,6 +3502,7 @@
 }
 .pat-fabriclabel {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 2.8px;
   font-weight: 600;
 }
@@ -3551,7 +3578,7 @@
   margin-top: 12px;
   align-items: center;
 }
-@media (max-width: 520px) {
+@media (width <= 560px) {
   .ew-wrap {
     grid-template-columns: 1fr;
   }
@@ -3676,7 +3703,7 @@
   gap: 4px;
   padding: 3px 10px;
   border-radius: var(--r-full);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -3699,7 +3726,7 @@
   padding: 10px;
 }
 .crt-headline {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
@@ -3711,7 +3738,7 @@
   overflow: hidden;
 }
 .crt-cardlabel {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow-wrap: anywhere;
@@ -3729,14 +3756,14 @@
   border-radius: var(--r-sm);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   min-width: 0;
 }
 .crt-metric-label {
   color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.02em;
 }
 .crt-metric-value {
@@ -3778,17 +3805,17 @@
   margin-bottom: 6px;
 }
 .brg-type-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .brg-type-family {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   overflow-wrap: anywhere;
   min-width: 0;
 }
 .brg-type-weight {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   padding: 1px 7px;
   border-radius: var(--r-full);
@@ -3796,7 +3823,7 @@
   color: var(--text-secondary);
 }
 .brg-type-preview {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   line-height: 1.2;
   color: var(--text-primary);
   overflow-wrap: anywhere;
@@ -3812,7 +3839,7 @@
 .brg-voice-item {
   position: relative;
   padding-left: 16px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
@@ -3863,6 +3890,7 @@
   stroke-width: 0.6;
 }
 .splan-badge-text {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.4px;
   font-weight: 700;
   fill: #fff;
@@ -3878,7 +3906,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   min-width: 0;
 }
 .splan-legend-dot {
@@ -3926,7 +3954,7 @@
   border-radius: var(--r-full);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .geo-zone-swatch {
@@ -4032,6 +4060,7 @@
 }
 .wsr-letter {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.2px;
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -4290,6 +4319,7 @@
 }
 .stc-rownum {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.4px;
   font-weight: 600;
   dominant-baseline: central;
@@ -4424,6 +4454,7 @@
 }
 .pnr-octave {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 7.5px;
   font-weight: 600;
   text-anchor: end;
@@ -4443,6 +4474,7 @@
 }
 .pnr-barnum {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-weight: 600;
 }

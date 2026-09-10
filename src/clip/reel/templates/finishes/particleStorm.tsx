@@ -30,6 +30,8 @@ export function ParticleStormSlide({ slots }: SlideProps<'stat'>) {
   return (
     <div
       className="reel-fade"
+      // A stat splash is a display lockup: the figure's line box meets its caption by design.
+      data-tight-lockup=""
       style={{
         display: 'flex',
         flexDirection: 'column',

@@ -18,19 +18,19 @@
   position: absolute;
   right: -80px;
   top: -80px;
-  width: 260px;
+  width: min(260px, 100%);
   height: 260px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(110, 140, 255, 0.16), transparent 70%);
 }
 .slide-kicker {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--presence-soft);
 }
 .slide-head {
-  font-size: 30px;
+  font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.12;
@@ -46,7 +46,7 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  font-size: 15.5px;
+  font-size: var(--fs-lg);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   padding-top: 16px;
 }

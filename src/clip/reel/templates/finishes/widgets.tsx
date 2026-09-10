@@ -45,7 +45,7 @@ export function WidgetsSlide({ slots }: SlideProps<'recap'>) {
           to { opacity: 1; transform: translateY(0) scale(1); } }
       `}</style>
 
-      <div className="reel-widget-tile" style={{ animationDelay: '0.04s' }}>
+      <div className="reel-widget-tile" data-tight-lockup="" style={{ animationDelay: '0.04s' }}>
         <div
           style={{
             font: '600 calc(var(--ru) * 2)/1 var(--reel-mono)',
@@ -78,6 +78,8 @@ export function WidgetsSlide({ slots }: SlideProps<'recap'>) {
             <div
               key={i}
               className="reel-widget-tile"
+              // A stat tile is a display lockup: the figure's line box meets its caption by design.
+              data-tight-lockup=""
               style={{ animationDelay: `${0.16 + i * 0.1}s` }}
             >
               <div

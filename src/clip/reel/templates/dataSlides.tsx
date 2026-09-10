@@ -28,7 +28,7 @@ export function BigStatSlide({ slots }: SlideProps<'stat'>) {
   const value = fitLine(slots.value + (slots.unit ?? ''), VALUE_TIERS);
   const unit = slots.unit ? fitLine(slots.unit, UNIT_TIERS) : undefined;
   return (
-    <Card kicker={slots.label}>
+    <Card kicker={slots.label} lockup>
       <div
         style={{
           display: 'flex',

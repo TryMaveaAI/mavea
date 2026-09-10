@@ -29,12 +29,14 @@
 
 .dg-node-label {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .dg-node-sub {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15px;
   font-weight: 500;
 }
@@ -42,6 +44,7 @@
 /* edge labels get a soft backplate so a connection line never reads through the text */
 .dg-edge-label {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15px;
   font-weight: 600;
   paint-order: stroke;
@@ -52,7 +55,7 @@
 
 .dg-foot {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.45;
 }
@@ -91,6 +94,7 @@
 }
 .dg-seq-actor {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 13px;
   font-weight: 600;
 }
@@ -107,6 +111,7 @@
 }
 .dg-seq-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 12px;
 }
 
@@ -138,6 +143,7 @@
 }
 .dg-sm-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 600;
 }
@@ -151,6 +157,7 @@
 }
 .dg-sm-elbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.6px;
   /* Soft backplate (matching .dg-edge-label) so a transition line never reads through a
      label — the diagonal "Loop"/"Capture" edges otherwise cut straight across the text. */
@@ -212,7 +219,7 @@
 }
 .dg-er-key {
   /* PK / FK is the whole reason the field is marked at all — at 8px it was a smudge on the chip. */
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   padding: 0 4px;
   border-radius: 3px;
@@ -260,7 +267,7 @@
   background: var(--line-strong);
 }
 .dg-er-rlbl {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   font-style: italic;
 }
@@ -292,6 +299,7 @@
 }
 .dg-cir-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 600;
 }
@@ -327,6 +335,7 @@
 }
 .dg-cbd-label {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -342,11 +351,13 @@
 }
 .dg-cbd-sum-label {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 16px;
   font-weight: 600;
 }
 .dg-cbd-sign {
   fill: var(--presence);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 22px;
   font-weight: 700;
 }
@@ -366,6 +377,7 @@
 }
 .sa-label {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -374,6 +386,7 @@
   fill: var(--text-muted);
   /* 14 user units rendered at 8.5px in a laptop-width card — under the 9px floor. 15 clears
      it without crowding the box, which is the tightest constraint in these two diagrams. */
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 15px;
   font-weight: 500;
 }
@@ -404,6 +417,7 @@
 }
 .dp-label {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -412,6 +426,7 @@
   fill: var(--text-muted);
   /* 14 user units rendered at 8.5px in a laptop-width card — under the 9px floor. 15 clears
      it without crowding the box, which is the tightest constraint in these two diagrams. */
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 15px;
   font-weight: 500;
 }
@@ -442,12 +457,14 @@
    keep them in step with the wrap budgets and line heights in FiveForces.tsx. */
 .ff-hub-title {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .ff-hub-sub {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15.5px;
   font-weight: 500;
 }
@@ -457,6 +474,7 @@
 }
 .ff-slot-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -464,16 +482,19 @@
 }
 .ff-box-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 16.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .ff-box-note {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15.5px;
   font-weight: 500;
 }
 .ff-strength {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -513,6 +534,7 @@
    keep them in step with the geometry constants in FiveWhyChain.tsx. */
 .fwy-badge {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -526,12 +548,14 @@
 }
 .fwy-question {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 16px;
   font-weight: 500;
   font-style: italic;
 }
 .fwy-answer {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -547,7 +571,7 @@
 /* ───────────────────────── threatmodel ───────────────────────── */
 .tm-empty {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .tm-stage {
@@ -604,6 +628,7 @@
 }
 .tm-mark-more {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-weight: 700;
 }
@@ -644,12 +669,12 @@
   flex: none;
 }
 .tm-row-asset {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .tm-row-cat {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .tm-row-status {
@@ -671,7 +696,7 @@
   background: color-mix(in oklab, var(--insight) 14%, transparent);
 }
 .tm-row-mitigation {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -679,7 +704,7 @@
 /* ───────────────────────── foodweb ───────────────────────── */
 .fwb-empty {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .fwb-stage {
@@ -726,7 +751,7 @@
 /* ───────────────────────── primefactortree ───────────────────────── */
 .pft-empty {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .pft-stage {
@@ -759,7 +784,7 @@
 .pft-cap {
   margin-top: 10px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   font-family: ui-monospace, 'Fira Code', monospace;
   color: var(--text-primary);
@@ -782,6 +807,7 @@
 }
 .rt-call {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 14px;
   font-weight: 600;
   font-family: ui-monospace, 'Fira Code', monospace;
@@ -793,6 +819,7 @@
 }
 .rt-badge-text {
   fill: var(--insight);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
@@ -832,17 +859,20 @@
   fill: var(--text-muted);
   /* Must track MORE_F in NnArchitecture.tsx — the stage caps the 1000-unit viewBox at 700px, so
      10 user units landed at 7 rendered pixels. */
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 14px;
   font-weight: 700;
 }
 .nn-name {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .nn-meta {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 13px;
   font-weight: 500;
 }
@@ -860,12 +890,14 @@
 }
 .sr-label {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .sr-smiles {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 12px;
   font-family: ui-monospace, 'Fira Code', monospace;
 }
@@ -888,6 +920,7 @@
 }
 .sr-yield {
   fill: var(--insight);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 14px;
   font-weight: 700;
   paint-order: stroke;
@@ -938,6 +971,7 @@
   stroke-width: 0.8;
 }
 .pm-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 500;
 }
@@ -946,12 +980,14 @@
 }
 .pm-center-size {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .pm-center-unit {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5.5px;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -976,13 +1012,13 @@
   gap: 12px;
   margin-bottom: 10px;
 }
-@media (max-width: 440px) {
+@media (width <= 480px) {
   .am-columns {
     grid-template-columns: 1fr;
   }
 }
 .am-col-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1012,7 +1048,7 @@
   line-height: 1.45;
 }
 .am-premise-sub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -1057,6 +1093,7 @@
      Scaling UP balloons the proportional height (the full-bleed-SVG trap); scaling DOWN — what
      width:100% did between 380 and 560 — shrank the node and column-header type below the
      legibility floor. A card narrower than this pans instead, via .dg-pt-scroll. */
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   width: 560px;
   margin-inline: auto;
   overflow: visible;
@@ -1082,6 +1119,7 @@
    in ProbabilityTree.tsx mirror two of them; the character budgets are derived from both. */
 .dg-pt-node-lbl {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 700;
   pointer-events: none;
@@ -1099,6 +1137,7 @@
    the line never bleeds through the text. */
 .dg-pt-edge-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 700;
   paint-order: stroke;
@@ -1110,6 +1149,7 @@
 
 /* Outcome labels at the right edge */
 .dg-pt-outcome-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 700;
   /* fill is set per-element to match the branch accent color */
@@ -1123,6 +1163,7 @@
 /* Column header micro-labels */
 .dg-pt-col-hdr {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1204,15 +1245,18 @@
 /* text */
 .dst-val {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 14px;
   font-weight: 600;
 }
 .dst-idx {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
 }
 .dst-ptr {
   fill: var(--presence);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 12px;
   font-weight: 600;
 }
@@ -1221,11 +1265,13 @@
 }
 .dst-tag {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 600;
 }
 .dst-null-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
 }
 
@@ -1347,7 +1393,7 @@
 .pst-grid--solo {
   grid-template-columns: minmax(0, 1fr);
 }
-@media (max-width: 460px) {
+@media (width <= 480px) {
   .pst-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1437,6 +1483,7 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
@@ -1484,11 +1531,13 @@
 }
 .pst-box-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.2px;
   font-weight: 700;
 }
 .pst-box-lbl--inner {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
 }
 .pst-flow-note {
@@ -1550,16 +1599,19 @@
 .dg-wir-mark {
   fill: var(--text-secondary);
   stroke: none;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 700;
 }
 .dg-wir-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 600;
 }
 .dg-wir-gauge {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.4px;
   font-weight: 600;
   paint-order: stroke;
@@ -1670,11 +1722,13 @@
 }
 .dg-pip-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 600;
 }
 .dg-pip-size {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 3.4px;
   font-weight: 600;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -1703,7 +1757,7 @@
 .dg-lg.has-truth {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, auto);
 }
-@media (max-width: 460px) {
+@media (width <= 480px) {
   .dg-lg.has-truth {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1730,6 +1784,7 @@
 }
 .dg-lg-glbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1757,11 +1812,13 @@
 }
 .dg-lg-in-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 700;
 }
 .dg-lg-bit {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.2px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1771,6 +1828,7 @@
 }
 .dg-lg-pin {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4.6px;
   font-weight: 700;
 }
@@ -1864,6 +1922,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   transition:
     background 0.2s ease,
@@ -1911,6 +1970,7 @@
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 100%;
 }
@@ -1975,6 +2035,7 @@
   font-size: var(--fs-xs, 12px);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dg-at-cap {
@@ -1996,13 +2057,13 @@
 .dg-at-speed {
   padding: 5px 8px;
   font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   min-width: 34px;
 }
 /* Complexity badge in eyebrow */
 .dg-at-complexity {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   padding: 1px 6px;
@@ -2018,7 +2079,7 @@
   align-items: center;
   gap: 5px;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-family: ui-monospace, 'Fira Code', monospace;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -2093,6 +2154,7 @@
 }
 .dg-cw-num {
   fill: var(--presence);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2101,6 +2163,7 @@
 /* labels + captions radiating outward from each node */
 .dg-cw-label {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -2112,6 +2175,7 @@
 }
 .dg-cw-cap-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11.5px;
   font-weight: 500;
   paint-order: stroke;
@@ -2143,7 +2207,7 @@
 }
 .dp-recurrence code {
   font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .dp-wrap {
@@ -2167,6 +2231,7 @@
 }
 .dp-hdr-val {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 13px;
   font-weight: 700;
 }
@@ -2194,6 +2259,7 @@
 }
 .dp-val {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 15px;
   font-weight: 600;
 }
@@ -2214,7 +2280,7 @@
 .ht-hashfn {
   margin: 8px 0 4px;
   font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .ht-wrap {
@@ -2236,6 +2302,7 @@
 }
 .ht-bucket-idx {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 700;
 }
@@ -2251,6 +2318,7 @@
 }
 .ht-node-text {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 600;
 }
@@ -2262,6 +2330,7 @@
 }
 .ht-null-text {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
 }
 .ht-chain {
@@ -2294,6 +2363,7 @@
 }
 .tri-edge-label {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 12px;
   font-weight: 600;
   paint-order: stroke;
@@ -2328,6 +2398,7 @@
 }
 .tri-label {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 700;
 }
@@ -2357,6 +2428,7 @@
 }
 .gt-weight {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 600;
   paint-order: stroke;
@@ -2388,6 +2460,7 @@
 }
 .gt-label {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 12px;
   font-weight: 700;
   pointer-events: none;
@@ -2415,7 +2488,7 @@
   min-height: 24px;
 }
 .gt-state-key {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -2433,7 +2506,7 @@
   align-items: center;
   padding: 2px 7px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 .gt-chip-frontier {
@@ -2447,7 +2520,7 @@
   border: 1px solid var(--line);
 }
 .gt-chip-empty {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -2457,7 +2530,7 @@
    coloured by algorithm state (compared/swapped/sorted/pivot). */
 .sv-complexity-badge {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   padding: 1px 6px;
@@ -2486,10 +2559,11 @@
   height: 100%;
 }
 .sv-val-label {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2537,10 +2611,11 @@
   }
 }
 .sv-idx-label {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .sv-ops {
@@ -2548,7 +2623,7 @@
   align-items: center;
   gap: 6px;
   margin: 2px 0 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -2562,7 +2637,7 @@
   border: 1.5px solid var(--line-strong);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -2587,7 +2662,7 @@
   border: none;
   background: var(--surface-elevated);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
   line-height: 1;
@@ -2633,6 +2708,7 @@
 }
 .dg-bt-label {
   /* fill comes from inline style per state */
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 600;
   font-family: ui-monospace, 'Fira Code', monospace;
@@ -2655,7 +2731,7 @@
 }
 .dg-bt-panel-label {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -2673,7 +2749,7 @@
   align-items: center;
   padding: 2px 7px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   background: var(--surface-elevated);
@@ -2716,7 +2792,7 @@
   flex-shrink: 0;
 }
 .dg-sv-badge {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   padding: 2px 7px;
@@ -2724,6 +2800,7 @@
   background: color-mix(in oklab, var(--presence) 10%, var(--surface-elevated));
   border: 1px solid color-mix(in oklab, var(--presence) 30%, transparent);
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dg-sv-badge.dg-sv-ops {
@@ -2785,25 +2862,27 @@
   }
 }
 .dg-sv-val {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   line-height: 1;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .dg-sv-play {
   min-width: 36px;
-  font-size: 15px;
+  font-size: var(--fs-md);
 }
 .dg-sv-speed {
   min-width: 36px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-family: ui-monospace, 'Fira Code', monospace;
 }
 .dg-sv-step-count {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 0 4px;
 }
@@ -2823,7 +2902,7 @@
    auto-scales to fill the card width regardless of dimensions. */
 .gt2-algo-badge {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   padding: 1px 6px;
@@ -2847,7 +2926,7 @@
   border-radius: 4px;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: ui-monospace, 'Fira Code', monospace;
   transition:
@@ -2913,6 +2992,7 @@
 }
 .gt2-cell-val {
   line-height: 1;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2926,7 +3006,7 @@
   align-items: center;
   gap: 14px;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .gt2-stat {
@@ -2963,7 +3043,7 @@
    tinting is per-text-element so a decided match reads at a glance. */
 .dg-tb-note {
   margin-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   font-style: italic;
   color: var(--text-muted);
@@ -2972,7 +3052,7 @@
 }
 .dg-tb-empty {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .dg-tb-wrap {
@@ -2987,6 +3067,7 @@
 }
 .dg-tb-round-label {
   fill: var(--text-secondary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -3010,7 +3091,7 @@
   stroke-width: 1;
 }
 .dg-tb-name {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   fill: var(--text-primary);
 }
@@ -3029,7 +3110,7 @@
 }
 .dg-tb-score {
   font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   fill: var(--text-secondary);
 }
@@ -3166,6 +3247,7 @@
   border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
   border-radius: var(--r-full, 999px);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .toul-qual {
@@ -3203,15 +3285,19 @@
   width: 100%;
   max-width: 600px;
   margin-inline: auto;
+  /* A square figure, capped by the card's inline size on the short axis. The svg fills THIS box
+     (height: 100%) rather than carrying its own cap: two `max-height: 74cqi` on parent and child
+     resolved to different pixels on a mid-width card (measured: 555 against 569 at 1366) and the
+     child scrolled 14px past its frame. One box decides, the figure letterboxes inside it. */
+  aspect-ratio: 1;
   max-height: 74cqi;
   overflow: hidden;
 }
 .cast-svg {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
   overflow: hidden;
-  max-height: 74cqi;
 }
 .cast-chip {
   fill: var(--surface-elevated);
@@ -3220,12 +3306,14 @@
 }
 .cast-name {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 23px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 .cast-role {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 16px;
   font-weight: 500;
 }
@@ -3240,6 +3328,7 @@
   fill: var(--text-secondary);
   /* The cast map draws in a large square user-space box scaled well down (~0.57 in a narrow
      card), so this must be authored far above the floor to clear it — 15 painted at 8.5px. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 17px;
   font-weight: 600;
 }
@@ -3691,6 +3780,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--warning);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 

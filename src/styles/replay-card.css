@@ -34,7 +34,7 @@
   padding: 7px 12px;
   border-radius: var(--r-sm);
   border: 1px solid var(--line);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .fmt.on {

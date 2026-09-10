@@ -76,7 +76,7 @@ describe('canonical legal documents', () => {
   });
 
   it('keeps the full documents lazy and links them from the landing and provider setup', () => {
-    const routes = readFileSync(join(__dirname, '../src/routes.ts'), 'utf8');
+    const routes = readFileSync(join(__dirname, '../src/routeTable.ts'), 'utf8');
     const landing = readFileSync(join(__dirname, '../src/flagship/FlagshipLanding.tsx'), 'utf8');
     const providerNotice = readFileSync(
       join(__dirname, '../src/live/setup/ProviderResponsibilityNotice.tsx'),
@@ -84,8 +84,8 @@ describe('canonical legal documents', () => {
     );
     const main = readFileSync(join(__dirname, '../src/main.tsx'), 'utf8');
 
-    expect(routes).toMatch(/defineRoute\('#\/terms',[\s\S]*?import\('\.\/legal\/TermsApp'\)/);
-    expect(routes).toMatch(/defineRoute\('#\/privacy',[\s\S]*?import\('\.\/legal\/PrivacyApp'\)/);
+    expect(routes).toMatch(/prefix: '#\/terms',[\s\S]*?import\('\.\/legal\/TermsApp'\)/);
+    expect(routes).toMatch(/prefix: '#\/privacy',[\s\S]*?import\('\.\/legal\/PrivacyApp'\)/);
     expect(landing).toContain('href="#/terms?from=home"');
     expect(landing).toContain('href="#/privacy?from=home"');
     expect(landing).toContain("legalDocumentHref('LICENSE.txt')");

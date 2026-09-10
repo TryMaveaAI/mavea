@@ -37,7 +37,7 @@
   align-items: baseline;
   padding: 3px 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .crp-step.is-bad {
   color: var(--text-primary);
@@ -71,7 +71,7 @@
   padding-top: 8px;
   border-top: 1px solid var(--line-soft);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .crp-foot-time {
   color: var(--text-muted);
@@ -81,5 +81,5 @@
 .crp-fix {
   margin-top: 6px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }

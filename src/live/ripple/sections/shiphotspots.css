@@ -9,7 +9,7 @@
   gap: var(--s-lg);
   align-items: start;
 }
-@media (max-width: 860px) {
+@media (width <= 900px) {
   .ripple-hot {
     grid-template-columns: 1fr;
   }
@@ -56,22 +56,24 @@
   grid-area: cls;
   align-self: center;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   border: 1px solid transparent;
   border-radius: var(--r-full);
   padding: 3px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ripple-hot-symbol {
   grid-area: symbol;
   min-width: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -80,8 +82,9 @@
   grid-area: file;
   min-width: 0;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -104,7 +107,7 @@
 .ripple-hot-chip {
   max-width: 100%;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
@@ -113,7 +116,7 @@
 }
 .ripple-hot-detail-file {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
@@ -125,7 +128,7 @@
 }
 .ripple-hot-why p {
   margin: 0;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -147,7 +150,7 @@
 }
 .ripple-hot-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--surface-deep);
@@ -156,13 +159,13 @@
 }
 .ripple-hot-incident-id {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .ripple-hot-incident p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -227,12 +230,12 @@
 }
 .ripple-hot-event-date {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .ripple-hot-event-kind {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -242,7 +245,7 @@
   padding: 2px 7px;
 }
 .ripple-hot-event-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -255,7 +258,7 @@
   gap: var(--s-md);
   align-items: start;
 }
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .ripple-hot-cols {
     grid-template-columns: 1fr;
   }
@@ -284,7 +287,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--surface-deep);
   background: linear-gradient(
@@ -300,26 +303,26 @@
   min-width: 0;
 }
 .ripple-hot-ask-name {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 .ripple-hot-ask-team {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 .ripple-hot-ask-why {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;
 }
 .ripple-hot-ask-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-primary);
   background: color-mix(in oklab, var(--warning) 11%, transparent);
@@ -350,7 +353,7 @@
 .ripple-hot-signal dt {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -359,7 +362,7 @@
 .ripple-hot-signal dd {
   margin: 0;
   text-align: right;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -374,6 +377,6 @@
 }
 .ripple-hot-empty p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }

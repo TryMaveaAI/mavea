@@ -60,7 +60,7 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--presence) 9%, var(--surface-elevated));
   color: color-mix(in oklab, var(--presence) 78%, var(--text-primary));
-  font: 700 11px/1 var(--font-data, var(--font));
+  font: 700 var(--fs-xs)/1 var(--font-data, var(--font));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -102,14 +102,14 @@
 }
 
 .voice-scrub-empty-title {
-  font: 700 10px/1 var(--font-data, var(--font));
+  font: 700 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--presence) 74%, var(--text-primary));
 }
 
 .voice-scrub-empty-hint {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.25;
   color: var(--text-muted);
 }
@@ -140,7 +140,7 @@
 .voice-scrub-hint {
   /* 9.5px, not 8.5: the rendered-text legibility floor is 9px. The tighter tracking claws back
      part of the width the extra pixel costs, so the hint keeps its place under the waveform. */
-  font: 600 9.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--presence) 58%, var(--text-muted));

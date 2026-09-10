@@ -67,3 +67,6 @@ security_best_practices_report.md
 
 # Local pnpm content-addressable store when store-dir points into the workspace
 .pnpm-store/
+
+# Geometry-suite screenshots (pnpm audit:responsive) — reviewed as a CI artifact, never committed
+.audit-out/

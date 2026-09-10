@@ -50,6 +50,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .pk-field-val.ph {
@@ -196,7 +197,7 @@
   z-index: 50;
   top: calc(100% + 8px);
   left: 0;
-  width: 280px;
+  width: min(280px, 100%);
   max-width: 100%;
   padding: 14px;
   border-radius: var(--r-lg);
@@ -300,6 +301,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .dr-clear {
@@ -386,7 +388,7 @@
   position: relative;
   z-index: 1;
 }
-@media (max-width: 460px) {
+@media (width <= 480px) {
   .dr-months {
     grid-template-columns: 1fr;
   }
@@ -417,7 +419,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 7px 4px;
-  min-width: 64px;
+  min-width: min(64px, 100%);
 }
 .tp-cell {
   font-size: var(--fs-2xl);
@@ -752,6 +754,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fu-file-size {
@@ -898,7 +901,7 @@
 }
 .tg-input {
   flex: 1;
-  min-width: 80px;
+  min-width: min(80px, 100%);
   font: inherit;
   font-size: var(--fs-md);
   border: none;
@@ -1106,6 +1109,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .ns-caption {
@@ -1243,12 +1247,14 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .ss-opt-meta {
   font-size: var(--fs-xs);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .ss-opt-check {

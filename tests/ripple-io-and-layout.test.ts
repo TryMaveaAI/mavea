@@ -379,7 +379,7 @@ describe('Ripple overlay — the top bar reflows instead of clipping', () => {
   });
 
   it('below tablet width the rail stacks above the main pane instead of squeezing it', () => {
-    const mobile = /@media \(max-width: 720px\) \{([\s\S]*?)\n\}\n\n/.exec(css)?.[1];
+    const mobile = /@media \(width <= 720px\) \{([\s\S]*?)\n\}\n\n/.exec(css)?.[1];
     expect(mobile, 'expected a max-width: 720px block after the rail/main rules').toBeTruthy();
     expect(mobile).toMatch(/\.ripple-body\s*\{[^}]*flex-direction:\s*column/);
     expect(mobile).toMatch(/\.ripple-rail\s*\{[^}]*overflow-x:\s*auto/);

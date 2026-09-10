@@ -431,13 +431,15 @@ function WorldSurface({
   // What this world is MADE OF, as light in the room — its two commonest spheres.
   const air = useMemo(() => atmosphereOf(morphWorld), [morphWorld]);
   const opening = view && offered(view) ? view : undefined;
+  // The transport's band is REAL space at the foot of the stage, not an overlay: the viewport ends
+  // where the band begins (world.css reads --wo-transport-h), so no card can sit under the play
+  // pill however far the camera pans. Reserving it as a camera inset instead only held at fit —
+  // past the fit floor the world pans, and every world large enough to pan put a cause under the
+  // bar. Only the caption's height is conditional: at rest the bar is its own controls and
+  // reserving the full band cost every view a third of the stage.
+  const transportH = walkOpen ? TRANSPORT_BAND : TRANSPORT_IDLE;
   const stage = useMorphStage({
     world: morphWorld,
-    // The transport floats over the foot of the stage, INSIDE the camera's own viewport, so the
-    // camera has to be told to stay out of it or it fits the world's bottom row underneath the bar.
-    // Only the caption's height is conditional: at rest the bar is its own controls and reserving
-    // the full band cost every view a third of the stage.
-    insetBottom: walkOpen ? TRANSPORT_BAND : TRANSPORT_IDLE,
     // A named follow-up wins; otherwise the world says how it is best met. `firstRead` reaches the
     // stage ONLY here, as the initial rep — never through the effect below. It is derived from the
     // world, so it changes when the reader buys a breakdown, and assigning it after mount would
@@ -1058,9 +1060,10 @@ function WorldSurface({
               onWheelCapture={dismissCard}
               onPointerDownCapture={dismissCard}
               style={
-                air === null
-                  ? undefined
-                  : ({ '--wo-air-1': air.air1, '--wo-air-2': air.air2 } as CSSProperties)
+                {
+                  '--wo-transport-h': `${transportH}px`,
+                  ...(air === null ? {} : { '--wo-air-1': air.air1, '--wo-air-2': air.air2 }),
+                } as CSSProperties
               }
             >
               <MorphStage

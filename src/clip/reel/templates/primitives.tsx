@@ -4,9 +4,20 @@
 import type { ReactNode } from 'react';
 
 /** The glass card a content finish lives in: a mono eyebrow row above the finish's content. */
-export function Card({ kicker, children }: { kicker: string; children: ReactNode }) {
+/** `lockup` declares the card a display lockup — a hero figure whose line box meets the eyebrow
+ *  above it by design while the ink stays clear — so the geometry sweeps judge the ink, not the
+ *  boxes (the same `data-tight-lockup` the canvas's stat cards carry). */
+export function Card({
+  kicker,
+  children,
+  lockup = false,
+}: {
+  kicker: string;
+  children: ReactNode;
+  lockup?: boolean;
+}) {
   return (
-    <div className="reel-card reel-fade">
+    <div className="reel-card reel-fade" data-tight-lockup={lockup ? '' : undefined}>
       <div className="reel-eyebrow">
         <span>{kicker}</span>
       </div>

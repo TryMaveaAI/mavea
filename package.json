@@ -88,8 +88,9 @@
     "eval:compare": "node --import tsx scripts/eval-compare.mts",
     "semantic:build": "node --import tsx scripts/semantic-catalog-dump.mts > /tmp/mavea-semantic-catalog.json && python3 scripts/build-semantic-index.py --catalog /tmp/mavea-semantic-catalog.json --exemplars src/live/semantic/exemplars.json --out public/semantic",
     "actions": "node --env-file-if-exists=.env gateway/actions-gateway.mjs",
-    "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/ && pnpm lint:css",
+    "lint:css": "stylelint \"src/**/*.css\" --cache --cache-location node_modules/.cache/stylelint/",
+    "lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
@@ -118,16 +119,22 @@
     "world:smoke": "node --import tsx scripts/world-perf.mts --viewport=1280x720 --throttle=4",
     "perf": "node --import tsx scripts/perf-probe.mts",
     "perf:memory": "node --import tsx scripts/memory-probe.mts",
-    "audit:tap": "node --import tsx scripts/tap-audit.mts",
+    "audit:tap": "node --import tsx scripts/surface-audit.mts --sizes 390x844,414x896 --themes dark --checks tap",
     "gen:media": "node --import tsx scripts/capture-media.mts",
-    "audit:surfaces": "node --import tsx scripts/surface-audit.mts"
+    "audit:surfaces": "node --import tsx scripts/surface-audit.mts",
+    "audit:responsive": "node --import tsx scripts/responsive-audit.mts",
+    "audit:responsive:fast": "node --import tsx scripts/responsive-audit.mts --fast"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{js,cjs,mjs,mts,cts,json,css,md,yml,yaml}": [
+    "*.css": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.{js,cjs,mjs,mts,cts,json,md,yml,yaml}": [
       "prettier --write"
     ]
   },
@@ -169,6 +176,8 @@
     "react-dom": "19.2.8",
     "rollup-plugin-visualizer": "7.0.1",
     "shiki": "4.4.3",
+    "stylelint": "17.15.0",
+    "stylelint-declaration-strict-value": "1.12.1",
     "tsx": "4.23.12",
     "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",

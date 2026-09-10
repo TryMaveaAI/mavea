@@ -9,7 +9,7 @@
   gap: var(--s-xl);
   align-items: start;
 }
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .ripple-mig {
     grid-template-columns: 1fr;
   }
@@ -17,7 +17,7 @@
 
 .ripple-mig-none {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -47,16 +47,17 @@
 }
 .ripple-mig-code-file {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
 .ripple-mig-code-tag {
   flex: none;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-style: italic;
   color: var(--text-muted);
 }
@@ -75,14 +76,14 @@
 .ripple-mig-code-gutter {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.7;
   color: var(--insight);
   user-select: none;
 }
 .ripple-mig-code-line {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.7;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -107,7 +108,7 @@
   min-width: 0;
 }
 .ripple-mig-stat-num {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.01em;
@@ -116,7 +117,7 @@
 }
 .ripple-mig-stat-label {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -135,18 +136,19 @@
 }
 .ripple-mig-explain-body {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
 }
 .ripple-mig-inline {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--danger);
   background: color-mix(in oklab, var(--danger) 12%, transparent);
   border-radius: var(--r-sm);
   padding: 1px 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -203,14 +205,14 @@
   padding-bottom: 0;
 }
 .ripple-mig-step-title {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
   text-wrap: pretty;
 }
 .ripple-mig-step-detail {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -244,14 +246,14 @@
 }
 .ripple-mig-tell-label {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--warning);
 }
 .ripple-mig-tell-text {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;

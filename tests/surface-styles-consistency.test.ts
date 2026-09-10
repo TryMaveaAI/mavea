@@ -102,7 +102,7 @@ describe('surface stylesheets — narrow-viewport overflow guards', () => {
 
   it('welcome starter grid collapses to one column on the narrowest phones', () => {
     const css = read('live/welcome/welcome.css');
-    const block = css.match(/@media \(max-width: 430px\) \{[\s\S]*?\}\s*\}/)?.[0] ?? '';
+    const block = css.match(/@media \(width <= 430px\) \{[\s\S]*?\}\s*\}/)?.[0] ?? '';
     expect(block).toMatch(/\.starter-grid/);
     expect(block).toMatch(/grid-template-columns:\s*1fr/);
   });

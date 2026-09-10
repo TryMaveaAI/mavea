@@ -617,7 +617,7 @@ describe('LifeWheel', () => {
     const overrides = Array.from(css.matchAll(/\.c1-radar\.c1-lw\s*\{([^}]*)\}/g));
     expect(overrides).toHaveLength(2);
     expect(overrides.every(([, body]) => /max-width:/.test(body))).toBe(true);
-    expect(/@media[^{]*max-width:\s*560px[^{]*\{[^@]*\.c1-radar\.c1-lw/.test(css)).toBe(true);
+    expect(/@media[^{]*width <= 560px[^{]*\{[^@]*\.c1-radar\.c1-lw/.test(css)).toBe(true);
   });
 });
 

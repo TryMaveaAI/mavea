@@ -411,6 +411,7 @@
 .presence .mascot .zzz text {
   fill: #ffffff;
   font-weight: 700;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 15px;
   /* the drifting z leaves the bell — a neutral dark shadow keeps it readable on any page */
   filter: drop-shadow(0 1px 2px rgba(24, 18, 30, 0.6));
@@ -419,6 +420,7 @@
   transform-origin: center;
 }
 .presence .mascot .zzz text + text {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
 }
 
@@ -1208,7 +1210,7 @@
 /* docked state: the resting face flies to the brand anchor (measured into --home-x/--home-y on
    .mavea-app) and becomes the brand-dot. The fallback docks it top-left before the first measure. */
 .presence-layer.corner .presence-positioner {
-  transform: translate(var(--home-x, calc(-50vw + 33px)), var(--home-y, calc(-50vh + 30px)))
+  transform: translate(var(--home-x, calc(-50vw + 33px)), var(--home-y, calc(-50dvh + 30px)))
     scale(calc(var(--home-scale, 0.14) * var(--dock-zoom, 1)));
 }
 /* While the window is actively resizing, the viewport-relative corner transform would animate to
@@ -1266,7 +1268,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 150px;
+  width: min(150px, 100%);
   height: 150px;
   border-radius: 50%;
   pointer-events: none;

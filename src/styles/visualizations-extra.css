@@ -13,10 +13,10 @@
   align-items: center;
   gap: 2px;
   flex: 1;
-  min-width: 92px;
+  min-width: min(92px, 100%);
 }
 .ring-svg {
-  width: 116px;
+  width: min(116px, 100%);
   height: 116px;
 }
 .ring-arc {
@@ -24,6 +24,7 @@
 }
 .ring-val {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 25px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -31,18 +32,20 @@
 }
 .ring-unit {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
 }
 .ring-label {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-primary);
   margin-top: 2px;
   text-align: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ring-hint {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
 }
@@ -52,7 +55,7 @@
    repeated over every bar, where its width overran the bar and collided with neighbours. */
 .bars-unit {
   margin-top: 2px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .bars-chart {
@@ -109,7 +112,7 @@
   max-width: 12ch;
   text-align: center;
   line-height: 1.2;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-wrap: break-word;
 }
@@ -123,7 +126,7 @@
 .bar-label {
   flex: 1;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .bars-goal {
@@ -137,13 +140,13 @@
   position: absolute;
   right: 0;
   top: -16px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
 /* StackedBar */
 .stack-total {
-  font-size: 30px;
+  font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 2px 0 12px;
@@ -175,7 +178,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 .stack-leg .sw {
   width: 10px;
@@ -209,7 +212,7 @@
 .heat-rowhead {
   width: 52px;
   flex-shrink: 0;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: right;
   padding-right: 6px;
@@ -217,7 +220,7 @@
 .heat-col-label {
   flex: 1;
   min-width: 22px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
 }
@@ -236,7 +239,7 @@
   aspect-ratio: 1;
 }
 .heat-mark {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: #fff;
   font-weight: 700;
 }
@@ -248,7 +251,7 @@
   justify-content: flex-end;
 }
 .heat-legend .faint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 /* FlowSteps */
@@ -261,7 +264,7 @@
 }
 .flow-step {
   flex: 1;
-  min-width: 120px;
+  min-width: min(120px, 100%);
   background: var(--surface-deep);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -286,19 +289,19 @@
   place-items: center;
   background: color-mix(in oklab, var(--sc) 18%, transparent);
   color: var(--sc);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   margin-bottom: 8px;
 }
 .flow-title {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
   margin-bottom: 3px;
 }
 .flow-sub {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -313,7 +316,7 @@
   width: 18px;
   height: 18px;
 }
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .flow-arrow {
     transform: rotate(90deg);
   }
@@ -335,7 +338,7 @@
   align-items: center;
   gap: 5px;
   margin-left: 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.02em;
   color: var(--insight);
   text-transform: none;
@@ -384,7 +387,7 @@
   place-items: center;
   color: #fff;
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .web-body {
   display: flex;
@@ -393,17 +396,17 @@
   min-width: 0;
 }
 .web-title {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--presence-soft);
   line-height: 1.3;
 }
 .web-url {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .web-excerpt {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.45;
   margin-top: 3px;
@@ -479,7 +482,7 @@
   top: 8px;
   left: 8px;
   z-index: 1;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: #fff;
   background: rgba(0, 0, 0, 0.34);
@@ -492,12 +495,13 @@
   bottom: 7px;
   left: 9px;
   z-index: 1;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: rgba(255, 255, 255, 0.82);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .img-cap {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.3;
 }
@@ -642,11 +646,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .diff-stat {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .diff-stat .add {
   color: var(--insight);
@@ -655,7 +659,7 @@
   color: var(--danger);
 }
 .diff-body {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.7;
   padding: 8px 0;
   background: var(--surface-deep);
@@ -705,7 +709,7 @@
 
 /* Checks (tests) */
 .checks-summary {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin: 2px 0 12px;
 }
@@ -721,7 +725,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .check2-ic {
   width: 20px;
@@ -754,7 +758,7 @@
   overflow-wrap: anywhere;
 }
 .check2-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin-left: auto;
   text-align: right;
@@ -791,13 +795,13 @@
   background: rgba(110, 140, 255, 0.1) !important;
 }
 .cmp-opt-name {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
 }
 .cmp-opt-sub {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .cmp-pick {
@@ -806,7 +810,7 @@
   gap: 4px;
   align-self: flex-start;
   max-width: 100%;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -816,12 +820,12 @@
   border-radius: var(--r-full);
 }
 .cmp-crit {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   justify-content: center;
 }
 .cmp-val {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   flex-direction: row !important;
   align-items: center;
@@ -850,7 +854,7 @@
   gap: 10px;
   align-items: flex-start;
   margin-top: 14px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -883,7 +887,7 @@
 /* heard transcript in composer */
 .live-listen.heard {
   font-style: italic;
-  font-size: 15px;
+  font-size: var(--fs-md);
 }
 
 /* grid of cards */
@@ -1120,7 +1124,7 @@
    only adjusts spacing and padding to match the tighter density at small sizes.
    A no-JS/SSR fallback is provided for very narrow screens where even col-6
    would be cramped: collapse to single column at/below 640px. */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .card {
     padding: 14px;
     border-radius: var(--r-md, 10px);
@@ -1132,7 +1136,7 @@
     padding: 22px 24px;
   }
   .slide-head {
-    font-size: 22px;
+    font-size: var(--fs-xl);
   }
 
   /* Narrow-viewport safety net: if JS hasn't computed responsive cols yet (or
@@ -1245,7 +1249,7 @@
   flex-wrap: wrap;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: calc(12px * var(--fs-scale, 1));
+  font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1299,11 +1303,11 @@
 }
 .cmp-foot {
   margin-top: 14px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.45;
 }
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .cmp-cell {
     grid-column: 1 / -1;
   }
@@ -1311,11 +1315,11 @@
 
 /* insight card */
 .insight-num {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .insight-title {
-  font-size: 19px;
+  font-size: var(--fs-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -1323,7 +1327,7 @@
   text-wrap: pretty;
 }
 .insight-summary {
-  font-size: calc(14.5px * var(--fs-scale, 1));
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -1335,7 +1339,7 @@
   flex-wrap: wrap;
 }
 .insight-stat .big {
-  font-size: 34px;
+  font-size: var(--fs-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
   /* A short stat ("$5,000", "+18%") stays on one line; a long value the model put
@@ -1344,7 +1348,7 @@
   overflow-wrap: anywhere;
 }
 .insight-stat .delta {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -1387,13 +1391,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   height: 26px;
   padding: 0 9px;
   border-radius: var(--r-sm);
   background: rgba(110, 140, 255, 0.1);
   border: 1px solid rgba(110, 140, 255, 0.22);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--presence-soft);
   font-weight: 500;
   transition: background var(--m-fast);
@@ -1402,7 +1407,7 @@
   background: rgba(110, 140, 255, 0.2);
 }
 .source-chip .mono {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
 }
 .source-chip svg {
@@ -1416,8 +1421,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
   padding: 3px 9px;
@@ -1463,11 +1469,12 @@
   height: 30px;
   padding: 0 12px;
   border-radius: var(--r-sm);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -1506,7 +1513,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .legend-item .sw {
@@ -1522,7 +1529,8 @@
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   box-shadow: var(--shadow-floating);
   opacity: 0;

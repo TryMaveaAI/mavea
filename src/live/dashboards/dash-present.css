@@ -41,17 +41,19 @@
 }
 .dash-present-date {
   font-family: var(--font-data, var(--font));
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dash-present-budget {
   flex: none;
   font-family: var(--font-data, var(--font));
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dash-present-budget--amber {
@@ -68,8 +70,8 @@
   overflow-x: hidden;
 }
 .dash-present-empty {
-  margin: 15vh auto 0;
-  font-size: 15px;
+  margin: 15dvh auto 0;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   text-align: center;
 }
@@ -92,20 +94,20 @@
   border-radius: var(--r-lg);
 }
 .dash-present-grid .tile-name {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .dash-present-grid .tile-cadence {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 4px 10px;
 }
 .dash-present-grid .tile-value {
-  font-size: 44px;
+  font-size: var(--fs-stat);
 }
 .dash-present-grid .tile-delta {
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 .dash-present-grid .tile-context {
-  font-size: 15px;
+  font-size: var(--fs-md);
 }
 .dash-present-grid .tile-viz {
   min-height: 76px;
@@ -114,27 +116,27 @@
   height: 56px;
 }
 .dash-present-grid .tile-prob-pct {
-  font-size: 18px;
+  font-size: var(--fs-lg);
 }
 .dash-present-grid .tile-countdown-value {
-  font-size: 36px;
+  font-size: var(--fs-2xl);
 }
 .dash-present-grid .tile-countdown-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .dash-present-grid .tile-forecast-glyph {
   width: 22px;
   height: 22px;
 }
 .dash-present-grid .tile-forecast-temp {
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .dash-present-grid .tile-chip {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 4px 10px;
 }
 .dash-present-grid .tile-asof {
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .dash-present-tile-wrap {
@@ -153,7 +155,7 @@
   flex: none;
   margin: 0;
   padding: 0 0 18px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.03em;
   text-align: center;
   color: var(--text-faint, var(--text-muted));

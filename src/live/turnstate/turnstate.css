@@ -92,7 +92,7 @@
   }
 }
 .live-voice .listen-line {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
 }
@@ -118,7 +118,7 @@
 }
 .live-voice .listen-note {
   padding-top: 5px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 /* the big card carries the moment — quiet the composer's inline duplicate */
@@ -160,7 +160,7 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-raised);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -232,7 +232,7 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   border: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   box-shadow: var(--shadow-raised);
@@ -244,7 +244,7 @@
 }
 .live-voice .turn-chip.src {
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .live-voice .turn-chip-dot {
   width: 5px;
@@ -302,7 +302,7 @@
   max-width: 70ch;
   margin: 0;
   padding-top: 2px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-muted);
   text-align: left;
@@ -335,7 +335,7 @@
   border-radius: 18px;
   border: none;
   background: color-mix(in oklab, var(--presence) 14%, transparent);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--presence);
   cursor: pointer;
@@ -375,7 +375,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (width <= 768px) {
   .live-voice .speak-strip .speak-ribbon {
     display: none;
   }

@@ -54,6 +54,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lay-co-band .lay-chev {
@@ -141,6 +142,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lay-pc-count {
@@ -418,6 +420,7 @@
   border-radius: var(--r-full);
   padding: 2px 8px;
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-faq-a {
@@ -501,12 +504,14 @@
   border-radius: var(--r-full);
   padding: 2px 8px;
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-acc-meta {
   font-size: var(--fs-sm);
   color: var(--text-muted);
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -576,6 +581,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lay-tab:hover {
@@ -675,6 +681,7 @@
   border: 1px solid color-mix(in oklab, var(--bc) 30%, transparent);
   border-radius: var(--r-full);
   padding: 4px 11px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-div-rule {
@@ -1046,6 +1053,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lay-cs-metric {
@@ -1057,6 +1065,7 @@
   border-radius: var(--r-full);
   padding: 2px 9px;
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-cs-body {
@@ -1136,6 +1145,7 @@
 .lay-dl-count {
   font-size: var(--fs-sm);
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-dl-list {
@@ -1184,6 +1194,7 @@
   padding: 1px 7px;
   margin-left: auto;
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-dl-def {
@@ -1442,6 +1453,7 @@
   border-radius: var(--r-full);
   color: var(--wi);
   background: color-mix(in oklab, var(--wi) 14%, transparent);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .wi-badge-ic {
@@ -1913,7 +1925,7 @@
 }
 .bp-ring {
   position: relative;
-  width: 132px;
+  width: min(132px, 100%);
   height: 132px;
   display: grid;
   place-items: center;
@@ -2207,6 +2219,7 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--r-full);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cpm-tag--time {
@@ -2564,6 +2577,7 @@
   padding: 3px 9px;
   border-radius: var(--r-full, 999px);
   background: color-mix(in oklab, var(--presence) 12%, transparent);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .mss-chan-ic {
@@ -2984,6 +2998,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-full, 999px);
   padding: 1px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* the specimen line — set at its authored (clamped) size; never overflows the card */
@@ -3065,7 +3080,7 @@
      art then scaled to cover a portrait box and blew far past its own edges. Pin it to the top so
      the frame keeps the 100:64 box the art is drawn for. */
   align-self: flex-start;
-  width: 100px;
+  width: min(100px, 100%);
   max-width: 38%;
   aspect-ratio: 100 / 64;
   border-radius: var(--r-sm);
@@ -3150,6 +3165,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-full, 999px);
   padding: 1px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-shot-action {
@@ -3420,6 +3436,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-full, 999px);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-zl-ladder {
@@ -3479,6 +3496,7 @@
   font-weight: 700;
   color: var(--zc);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-zl-here {
@@ -3495,6 +3513,7 @@
   background: color-mix(in oklab, var(--zc) 16%, transparent);
   border-radius: var(--r-full, 999px);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lay-zl-here-dot {
@@ -3541,7 +3560,7 @@
 .lay-pseq-panel {
   --mc: var(--presence);
   flex: 1 0 116px;
-  min-width: 116px;
+  min-width: min(116px, 100%);
   max-width: 180px;
   display: flex;
   flex-direction: column;
@@ -3591,6 +3610,7 @@
 }
 .lay-pseq-art-num {
   fill: var(--mc);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;
@@ -3656,6 +3676,7 @@
   stroke-width: 1;
 }
 .sa-stage-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   fill: var(--text-muted);
 }
@@ -3667,6 +3688,7 @@
   fill: var(--warning);
 }
 .sa-beat-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   fill: var(--text-primary);
   font-weight: 600;
@@ -3680,6 +3702,7 @@
   stroke-dasharray: 3 2;
 }
 .sa-transition-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   fill: var(--text-muted);
 }
@@ -3687,10 +3710,12 @@
   fill: var(--presence);
 }
 .sa-hj-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   fill: var(--text-secondary);
 }
 .sa-arc-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-weight: 700;
   fill: var(--text-muted);
@@ -3722,10 +3747,12 @@
   stroke-width: 1;
 }
 .sa-stc-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 7px;
   fill: var(--text-muted);
 }
 .sa-pct-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   fill: var(--text-muted);
 }
@@ -3852,6 +3879,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .tr-ev-count {
@@ -4031,6 +4059,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lay-dd-count {

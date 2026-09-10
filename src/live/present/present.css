@@ -135,7 +135,7 @@
 
 /* Elevate the card-eyebrow to a proper slide-label — more room, more presence. */
 .mavea-app.presenting .focus-hero-card .card-eyebrow {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.14em;
   padding-bottom: 12px;
   margin-bottom: 4px;
@@ -184,7 +184,7 @@
   background: var(--surface-elevated);
   box-shadow: var(--shadow-floating);
   color: var(--text-secondary);
-  font: 600 11px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.04em;
 }
 .preso-preparing .async-pending-spinner {
@@ -200,7 +200,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 600 10.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -230,7 +230,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 600 10.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -264,6 +264,7 @@
   top: calc(100% + 8px);
   left: 0;
   z-index: 162;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   min-width: 300px;
   padding: 6px;
   border-radius: var(--r-md);
@@ -309,16 +310,17 @@
 }
 
 .preso-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1;
 }
 
 .preso-desc {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   grid-column: 2;
 }
@@ -396,15 +398,17 @@
 }
 
 .present-nav-count {
-  font: 600 12.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-sm)/1 var(--font-data, var(--font));
   color: var(--text-muted);
   letter-spacing: 0.04em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
 /* ── Room-question tag on the session rail ───────────────────────────────────────────────── */
 .sess-room {
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font: 600 8.5px/1 var(--font-data, var(--font));
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -434,7 +438,7 @@
   min-height: 0;
   display: grid;
   place-items: center;
-  padding: 5vh 6vw 9vh;
+  padding: 5dvh 6vw 9dvh;
   overflow: hidden;
   /* Let the browser handle vertical scroll/refresh gestures natively; only the horizontal
      component of a touch drag here is ours (the swipe-to-navigate handler on this element). */
@@ -444,7 +448,7 @@
 .preso-zone {
   position: fixed;
   top: 0;
-  bottom: 9vh; /* clear the progress rail */
+  bottom: 9dvh; /* clear the progress rail */
   width: 12vw;
   border: 0;
   background: transparent;
@@ -467,7 +471,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 9vh;
+  height: 9dvh;
   min-height: 54px;
   display: flex;
   align-items: center;
@@ -479,7 +483,7 @@
 .preso-count {
   position: absolute;
   left: 24px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -493,7 +497,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  font: 600 12px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-sm)/1 var(--font-data, var(--font));
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
   background: var(--surface-elevated);
@@ -531,7 +535,7 @@
 .preso-notes-btn {
   position: absolute;
   right: 24px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -550,9 +554,9 @@
 .preso-presenter {
   position: fixed;
   right: 24px;
-  bottom: calc(9vh + 14px);
+  bottom: calc(9dvh + 14px);
   width: min(420px, 80vw);
-  max-height: 42vh;
+  max-height: 42dvh;
   overflow: auto;
   z-index: 156;
   background: var(--surface-elevated);
@@ -569,7 +573,7 @@
 }
 .preso-timer {
   font-variant-numeric: tabular-nums;
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--presence);
   /* A <button> now (clicking it resets, mirroring the R key) — undo the UA chrome. */
@@ -583,18 +587,18 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 22px;
+  font-size: var(--fs-xl);
   line-height: 1;
   cursor: pointer;
 }
 .preso-presenter-notes {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1.5;
   color: var(--text-primary);
   margin: 0 0 12px;
 }
 .preso-presenter-next {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin: 0;
   border-top: 1px solid var(--line-soft);
@@ -653,6 +657,7 @@
   margin: -1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   border: 0;
 }
@@ -665,7 +670,7 @@
   border-radius: var(--r-full);
   width: 30px;
   height: 30px;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -686,7 +691,7 @@
   margin-left: auto;
   margin-right: 12px;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .preso-presenter-progress {
@@ -704,7 +709,7 @@
   transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .preso-presenter-slide {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   color: var(--text-secondary);
   margin: 0 0 8px;
@@ -715,7 +720,7 @@
   grid-template-areas: 'label label' 'thumb text';
   align-items: center;
   gap: 4px 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin: 0;
   border-top: 1px solid var(--line-soft);
@@ -729,7 +734,7 @@
 }
 .preso-presenter-thumb {
   grid-area: thumb;
-  width: 132px;
+  width: min(132px, 100%);
   aspect-ratio: 16 / 9;
   border-radius: var(--r-sm);
   overflow: hidden;
@@ -792,7 +797,7 @@
   border-radius: var(--r-full);
   width: 34px;
   height: 34px;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   line-height: 1;
   cursor: pointer;
 }
@@ -815,7 +820,7 @@
   border: 2px solid transparent;
   border-radius: var(--r-md);
   color: var(--text-muted);
-  font: 600 12px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-sm)/1 var(--font-data, var(--font));
   font-variant-numeric: tabular-nums;
 }
 /* the cell's whole face is the jump/restore button; the corner × rides above it */
@@ -858,7 +863,7 @@
   border: 1px solid var(--line);
   background: color-mix(in oklab, var(--surface-elevated) 88%, transparent);
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -878,7 +883,7 @@
 .preso-overview-skipnote {
   max-width: 1400px;
   margin: 0 auto 14px;
-  font: 500 12px/1 var(--font-data, var(--font));
+  font: 500 var(--fs-sm)/1 var(--font-data, var(--font));
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
@@ -901,7 +906,7 @@
   translate: -50% -50%;
   z-index: 220;
   width: min(420px, 86vw);
-  max-height: 76vh;
+  max-height: 76dvh;
   overflow: auto;
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
@@ -923,13 +928,13 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 22px;
+  font-size: var(--fs-xl);
   line-height: 1;
   cursor: pointer;
 }
 .preso-help-title {
   margin: 0 0 14px;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -944,12 +949,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .preso-help-row dt {
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .preso-help-row dd {

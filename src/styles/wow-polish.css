@@ -20,7 +20,7 @@
 /* ── Live: follow-up chips ───────────────────────────────────────────────── */
 .live-chip {
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   background: var(--surface-glass);
   border: 1px solid var(--line);
@@ -51,7 +51,7 @@
   border-radius: var(--r-full);
   background: var(--surface-glass-strong);
   border: 1px solid var(--line-strong);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   color: var(--warning);
   letter-spacing: 0.03em;
@@ -71,7 +71,7 @@
 /* Ghost buttons — low visual weight so they don't compete with real actions. */
 .settings-transfer-btn {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--line);
@@ -89,7 +89,7 @@
 
 /* Inline error message shown when an import file fails to parse. */
 .settings-import-error {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--warning);
   flex: 1 1 100%;
 }
@@ -111,7 +111,7 @@
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -133,7 +133,7 @@
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
-  max-height: min(480px, calc(100vh - 220px));
+  max-height: min(480px, calc(100dvh - 220px));
   padding-right: 2px;
 }
 
@@ -157,14 +157,14 @@
   border-radius: var(--r-md);
   background: color-mix(in oklab, var(--surface-elevated) 88%, var(--warning) 12%);
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 .provider-responsibility strong {
   display: block;
   margin-bottom: 4px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .provider-responsibility p {
   margin: 0;
@@ -177,7 +177,7 @@
 .provider-responsibility-link {
   display: inline-block;
   color: var(--presence);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 650;
   text-decoration: none;
 }
@@ -195,106 +195,14 @@
   text-underline-offset: 3px;
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   Canvas fluid-type scale  (Wave 0 quality-floor — added by features session)
-
-   The block library hardcoded hundreds of px font-sizes, so content didn't scale
-   when a card got narrower (a 6-col card reflowed to 4-col but its text stayed
-   13px) or when the user changed their font size. These tokens give every block a
-   *fluid* type ramp: a min, a card-relative preferred term (`cqi` = 1% of the
-   card's inline size), and a max. Because `.card` is a container, the preferred
-   term tracks the card's own width, not the viewport — so the same component is
-   compact in a narrow slot and generous in a wide one, with no JS.
-
-   Adoption is opt-in and additive: a block swaps `font-size: 13px` for
-   `font-size: var(--fs-sm)`. Nothing here changes a component that hasn't opted
-   in.
-   ════════════════════════════════════════════════════════════════════════════ */
-
-:root {
-  /* Reading text size (Settings/Appearance → Text size): a Kindle-style multiplier over the whole
-     ramp below, stamped onto <html data-font-scale> by LiveApp from the user's fontScale choice.
-     'normal' never sets the attribute, so this stays at its unscaled default. */
-  --fs-reader: 1;
-  /* What every size below actually multiplies by: the reader's choice times the viewport's own
-     upward scale (tokens-base.css), so type grows with a big display without ever overriding a
-     text size the reader set for themselves. Composed once here — nothing reads --fs-reader
-     directly, so no call site can forget one half of it. */
-  --fs-scale: calc(var(--fs-reader) * var(--vp-type-scale, 1));
-
-  /* Fluid type ramp. clamp(min, card-relative, max). Tuned so a token reads at
-     its max in a full-width (col-12 ≈ 1100px) card and floors gracefully in a
-     col-3 (~250px) card. 1cqi ≈ 2.5px at col-12, ≈ 1.3px at col-4. Every bound is
-     scaled by --fs-scale, so the ramp shrinks/grows as one piece — a narrow card
-     stays proportionally smaller than a wide one at every text size. */
-  --fs-2xs: clamp(
-    calc(9px * var(--fs-scale)),
-    calc(2.6cqi * var(--fs-scale)),
-    calc(10.5px * var(--fs-scale))
-  );
-  --fs-xs: clamp(
-    calc(10px * var(--fs-scale)),
-    calc(3cqi * var(--fs-scale)),
-    calc(11.5px * var(--fs-scale))
-  );
-  --fs-sm: clamp(
-    calc(11px * var(--fs-scale)),
-    calc(3.4cqi * var(--fs-scale)),
-    calc(13px * var(--fs-scale))
-  );
-  --fs-md: clamp(
-    calc(12.5px * var(--fs-scale)),
-    calc(3.9cqi * var(--fs-scale)),
-    calc(14.5px * var(--fs-scale))
-  );
-  --fs-lg: clamp(
-    calc(14px * var(--fs-scale)),
-    calc(4.6cqi * var(--fs-scale)),
-    calc(17px * var(--fs-scale))
-  );
-  --fs-xl: clamp(
-    calc(17px * var(--fs-scale)),
-    calc(6cqi * var(--fs-scale)),
-    calc(22px * var(--fs-scale))
-  );
-  --fs-2xl: clamp(
-    calc(22px * var(--fs-scale)),
-    calc(9cqi * var(--fs-scale)),
-    calc(34px * var(--fs-scale))
-  );
-  /* Display sizes for hero numbers — scale hard with the card so a big stat fills
-     it at any width yet never overflows a narrow one. */
-  --fs-stat: clamp(
-    calc(28px * var(--fs-scale)),
-    calc(13cqi * var(--fs-scale)),
-    calc(56px * var(--fs-scale))
-  );
-  --fs-hero: clamp(
-    calc(34px * var(--fs-scale)),
-    calc(17cqi * var(--fs-scale)),
-    calc(72px * var(--fs-scale))
-  );
-
-  /* Fluid spacing, same idea — padding/gaps that tighten as the card narrows. Left off --fs-scale
-     on purpose: layout rhythm shouldn't balloon just because the reading text got bigger. */
-  --sp-fluid-xs: clamp(4px, 1.4cqi, 7px);
-  --sp-fluid-sm: clamp(7px, 2.4cqi, 11px);
-  --sp-fluid-md: clamp(11px, 3.4cqi, 16px);
-}
-
-/* Settings/Appearance → Text size. Smaller/Larger nudge the whole ramp above at once. */
+/* Settings/Appearance → Text size: a Kindle-style multiplier over the whole fluid type ramp
+   (tokens-base.css), stamped onto <html data-font-scale> by LiveApp from the user's fontScale
+   choice. 'normal' never sets the attribute, so --fs-reader stays at its unscaled default of 1. */
 :root[data-font-scale='smaller'] {
   --fs-reader: 0.9;
 }
 :root[data-font-scale='larger'] {
   --fs-reader: 1.2;
-}
-
-/* Make every card a containment context so the cqi units above resolve against
-   the card's own inline size. `inline-size` (not `size`) so block height stays
-   content-driven — only width drives the type scale. */
-.card {
-  container-type: inline-size;
 }
 
 /* ── Per-block action row — Ask / Fuse / Watch ───────────────────────────────────────────
@@ -385,7 +293,7 @@
   background: var(--surface-glass-strong);
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -407,6 +315,7 @@
   display: none;
   font-weight: 600;
   letter-spacing: 0.01em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* Brighten the WHOLE cluster on a card hover/focus, and keep each button keyboard-usable — the
@@ -475,7 +384,7 @@
   padding: 2px 8px 2px 14px;
   border-radius: 0 var(--r-full) var(--r-full) 0;
   font-family: var(--font-data);
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--warning);
@@ -498,7 +407,7 @@
   gap: 8px;
   margin: 8px 0 0;
   font-family: var(--font-data);
-  font-size: calc(12px * var(--fs-scale, 1));
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .rev-corrects-what {
@@ -529,9 +438,10 @@
   background: var(--surface-glass);
   color: var(--text-secondary);
   font-family: var(--font-data);
-  font-size: calc(11.5px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -551,7 +461,13 @@
    flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding
    with and nothing to reserve space against. */
 .lens-notes {
-  flex: none;
+  /* The notes yield before the card does: on a short phone the sheet's ceiling is reached by the
+     toolbar and four notes alone, and a block that cannot shrink was trapping its last lines
+     under the sheet's clip. Shrinkable and scrollable, the notes stay reachable at any height. */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 28%;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -573,7 +489,7 @@
    a coin flip against the audit's 9px legibility floor. */
 .lens-notes-eyebrow {
   font-family: var(--font-data);
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -585,7 +501,7 @@
   margin: 0;
   font-family: var(--font-voice);
   font-style: italic;
-  font-size: calc(15px * var(--fs-scale, 1));
+  font-size: var(--fs-md);
   line-height: 1.45;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -595,7 +511,7 @@
 .lens-note.is-evidence {
   font-family: var(--font-data);
   font-style: normal;
-  font-size: calc(11.5px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -715,17 +631,17 @@
 /* Rescale with the room. The sheet above already tracks the viewport (min(1120px, 92vw)), so the
    strip's WIDTH followed it while its tiles did not — on a phone that left two fixed tiles in a
    359px strip, and on a large monitor a row of small ones with space going spare. */
-@media (min-width: 1600px) {
+@media (width > 1600px) {
   .lens-strip {
     --lens-tile: 178;
   }
 }
-@media (max-width: 1099px) {
+@media (width <= 1200px) {
   .lens-strip {
     --lens-tile: 128;
   }
 }
-@media (max-width: 767px) {
+@media (width <= 768px) {
   .lens-strip {
     --lens-tile: 108;
   }
@@ -733,6 +649,7 @@
 /* One line each, so the row of tiles has a straight bottom edge instead of a ragged one. */
 .lens-strip .filmstrip-title {
   display: block;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -793,7 +710,7 @@
      clipped, never scrolled, so the toolbar and the notes are fixed whatever the card does. */
   display: flex;
   flex-direction: column;
-  max-height: 72vh;
+  max-height: 72dvh;
   overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--surface-elevated);
@@ -805,7 +722,11 @@
    past its ceiling. */
 .zoom-sheet-scroll {
   flex: 1 1 auto;
-  min-height: 0;
+  /* The card is what the sheet exists to show, so it is the LAST thing to give up height: on a
+     short window (a laptop at 150% zoom is 413px tall) the scrim's dock reserve and the notes
+     had squeezed this box to 0px — a Lens with no card in it. Floored at a readable band; the
+     notes shrink and scroll first, and past that the sheet may run under the dock. */
+  min-height: 96px;
   overflow: auto;
   padding: 0 32px;
 }
@@ -837,10 +758,11 @@
    9px legibility floor exactly. */
 .zoom-sheet-title {
   font-family: var(--font-data);
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: var(--fs-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -973,7 +895,7 @@
   border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line));
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .pin-chip svg {
   width: 14px;
@@ -984,6 +906,7 @@
 .pin-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 220px;
 }
@@ -1025,7 +948,7 @@
   border: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .ask-hint > svg {
   width: 15px;
@@ -1067,4 +990,36 @@
     0 0 0 1px color-mix(in oklab, var(--topic-tint) 45%, transparent),
     var(--shadow-floating),
     0 22px 48px -30px color-mix(in oklab, var(--topic-tint) 55%, transparent);
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .block-actions {
+    gap: 8px;
+  }
+  .block-action-pill,
+  .zoom-sheet-zoom-btn {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+}
+
+/* On the stage, the sheet outranks the filmstrip beneath it. Both share the scrim's column, and on
+   a short window (a laptop at 150% zoom is 413px tall) the strip was keeping its full height while
+   the sheet — the card the reader asked to look closer at — was squeezed to 148px with its scroll
+   box at zero. The sheet takes what it needs up to its ceiling and the strip yields; below the
+   short-window step there is no room for a strip at all, so it goes rather than shrinks to a sliver. */
+.zoom-sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.lens-strip {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+@media (height <= 650px) {
+  .lens-strip {
+    display: none;
+  }
 }

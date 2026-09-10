@@ -1,3 +1,4 @@
+import { declaredFontSizeFloors } from './helpers/fluidType';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -136,9 +137,7 @@ describe('VoiceScrubber waveform', () => {
 describe('VoiceScrubber legibility', () => {
   it('declares no rendered text below the 9px floor', () => {
     const css = readFileSync(join(__dirname, '../src/live/scrubvoice/scrubvoice.css'), 'utf8');
-    const sizes = Array.from(css.matchAll(/font(?:-size)?:[^;{}]*?(\d+(?:\.\d+)?)px/g)).map((m) =>
-      Number(m[1]),
-    );
+    const sizes = declaredFontSizeFloors(css);
     expect(sizes.length).toBeGreaterThan(0);
     expect(sizes.filter((px) => px < 9)).toEqual([]);
   });

@@ -34,20 +34,20 @@
 }
 
 .starter-kicker {
-  font: 600 9.5px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--starter-accent);
 }
 
 .starter-copy {
-  font: 500 12.5px/1.45 var(--font);
+  font: 500 var(--fs-sm)/1.45 var(--font);
   color: var(--text-primary);
 }
 
 /* On the narrowest phones two starter columns leave each card too cramped to read —
    stack to a single column so the ask stays legible. */
-@media (max-width: 430px) {
+@media (width <= 430px) {
   .starter-grid {
     grid-template-columns: 1fr;
   }

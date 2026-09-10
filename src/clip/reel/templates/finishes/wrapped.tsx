@@ -36,6 +36,8 @@ export function WrappedSlide({ slots }: SlideProps<'stat'>) {
   return (
     <div
       className="reel-fade"
+      // A stat splash is a display lockup: the figure's line box meets its caption by design.
+      data-tight-lockup=""
       style={{
         position: 'relative',
         display: 'flex',

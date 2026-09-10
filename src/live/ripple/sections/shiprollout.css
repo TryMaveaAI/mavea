@@ -16,7 +16,7 @@
 .ripple-roll-lead {
   margin: 0;
   max-width: 64ch;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -62,7 +62,7 @@
   height: 26px;
   border-radius: 50%;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   background: color-mix(in oklab, var(--insight) 20%, transparent);
@@ -76,11 +76,12 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 
 .ripple-roll-deploy {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
@@ -88,7 +89,7 @@
 }
 .ripple-roll-note {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -119,7 +120,7 @@
 .ripple-roll-trap-body {
   margin: 0;
   max-width: 72ch;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;

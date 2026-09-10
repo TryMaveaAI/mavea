@@ -13,7 +13,7 @@
   align-items: flex-start;
   gap: var(--s-sm);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 /* the curriculum is a model call — show an honest, VISIBLE "building…" state (headline +
@@ -31,12 +31,12 @@
   gap: 8px;
 }
 .ripple-course-skeleton-title {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-course-skeleton-sub {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -123,7 +123,7 @@
 }
 .ripple-course-regen {
   flex: none;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--surface-elevated);
@@ -148,12 +148,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
 }
 .ripple-course-focus-select {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--surface-elevated);
@@ -174,7 +174,7 @@
 .ripple-course-pill {
   display: inline-block;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -225,7 +225,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: var(--text-secondary);
   background: var(--surface-elevated);
@@ -237,33 +237,33 @@
   border-color: transparent;
 }
 .ripple-course-track-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.25;
 }
 .ripple-course-track-meta {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
 .ripple-course-title {
   margin: 12px 0 0;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 .ripple-course-sub {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .ripple-course-meta {
   margin-top: 8px;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .ripple-course-bar {
@@ -296,20 +296,20 @@
 }
 .ripple-course-stale-text {
   margin: 6px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-primary);
 }
 .ripple-course-stale-text code {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   background: var(--surface-elevated);
   border-radius: var(--r-sm);
   padding: 1px 6px;
 }
 .ripple-course-stale-err {
   margin: 6px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--danger);
 }
 .ripple-course-stale-actions {
@@ -319,7 +319,7 @@
   margin-top: 10px;
 }
 .ripple-course-stale-btn {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--warning);
   background: none;
@@ -351,13 +351,13 @@
 }
 .ripple-course-changed-panel li {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   word-break: break-all;
 }
 .ripple-course-changed-more {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .ripple-course-changed-panel .ripple-course-stale-btn {
@@ -367,7 +367,7 @@
 /* a lesson row whose real files changed since the course was built */
 .ripple-course-item-stale {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -424,7 +424,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
   background: var(--surface-elevated);
@@ -442,13 +442,13 @@
   min-width: 0;
 }
 .ripple-course-item-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .ripple-course-item-min {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
@@ -463,14 +463,14 @@
 }
 .ripple-course-lesson-title {
   margin: 6px 0 0;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-course-goal,
 .ripple-course-explain {
   margin: 8px 0 0;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -498,7 +498,7 @@
 }
 .ripple-course-file {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--presence);
   background: color-mix(in oklab, var(--presence) 9%, transparent);
   border: 1px solid color-mix(in oklab, var(--presence) 22%, transparent);
@@ -514,7 +514,7 @@
   gap: 5px;
 }
 .ripple-course-concepts li {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -527,14 +527,14 @@
 }
 .ripple-course-q {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-primary);
   font-weight: 600;
 }
 .ripple-course-a {
   margin: 8px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -543,7 +543,7 @@
 }
 .ripple-course-reveal {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--warning);
   background: none;
@@ -562,7 +562,7 @@
   margin-top: var(--s-lg);
 }
 .ripple-course-done {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: #fff;
   background: var(--presence);
@@ -576,7 +576,7 @@
   filter: brightness(1.08);
 }
 .ripple-course-skip {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   background: none;
   border: none;
@@ -586,7 +586,7 @@
   color: var(--text-secondary);
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .ripple-course-body {
     grid-template-columns: 1fr;
   }
@@ -595,7 +595,7 @@
 /* the beginner → intermediate → expert rung, on a course track */
 .ripple-course-level {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -635,7 +635,7 @@
 }
 .ripple-course-caution-text {
   margin: 6px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -654,7 +654,7 @@
 }
 .ripple-quiz-progress {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -674,7 +674,7 @@
 .ripple-quiz-choice {
   width: 100%;
   text-align: left;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   background: var(--surface-default);
   border: 1px solid var(--line);
@@ -711,11 +711,11 @@
   margin-top: 10px;
 }
 .ripple-quiz-selfgrade-prompt {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .ripple-quiz-selfgrade-btn {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   background: none;
   border: 1px solid var(--line);
@@ -743,7 +743,7 @@
 }
 .ripple-quiz-feedback-label {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--danger);
 }
@@ -752,7 +752,7 @@
 }
 .ripple-quiz-explain {
   margin: 6px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -782,13 +782,13 @@
 }
 .ripple-quiz-score-num {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 24px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-quiz-score-text {
   margin: 4px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 
@@ -799,7 +799,7 @@
 }
 .ripple-quiz-flash-saved {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--insight);
 }
@@ -811,7 +811,7 @@
 .ripple-course-track-lock {
   display: block;
   margin-top: 5px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -832,19 +832,19 @@
 }
 .ripple-course-capstone-title {
   margin: 6px 0 0;
-  font-size: 15.5px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-course-capstone-brief {
   margin: 6px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   text-wrap: pretty;
 }
 .ripple-course-capstone-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--text-muted);
@@ -860,7 +860,7 @@
 }
 .ripple-course-capstone-steps li,
 .ripple-course-capstone-accept li {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-primary);
 }
@@ -870,7 +870,7 @@
 
 /* ── the deep, in-depth lesson body (loaded on demand from the real code) ── */
 .ripple-course-lede {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   margin: 0 0 var(--s-md);
@@ -883,7 +883,7 @@
 }
 .ripple-lesson-overview p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.7;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -925,7 +925,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--presence);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
@@ -940,7 +940,7 @@
   overflow-x: auto;
   max-width: 100%;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-primary);
   white-space: pre;
@@ -948,7 +948,7 @@
 }
 .ripple-walk-explain {
   margin: 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -962,13 +962,13 @@
   gap: 10px;
 }
 .ripple-lesson-concepts dt {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-lesson-concepts dd {
   margin: 2px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -979,31 +979,31 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 .ripple-lesson-exercise .ripple-lesson-task {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-primary);
 }
 .ripple-lesson-hint {
   margin: 6px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .ripple-lesson-check {
   margin: 6px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--insight);
 }
 .ripple-lesson-regen {
   align-self: flex-start;
   margin-top: var(--s-md);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: transparent;
   border: 1px solid var(--line);
@@ -1016,7 +1016,7 @@
 .ripple-lesson-ask {
   align-self: flex-start;
   margin-bottom: 4px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: color-mix(in oklab, var(--presence) 75%, var(--text-secondary));
   background: color-mix(in oklab, var(--presence) 9%, transparent);
@@ -1052,7 +1052,7 @@
 }
 .ripple-spotlight-count {
   flex: none;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--presence);
 }
@@ -1062,12 +1062,12 @@
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 .ripple-spotlight-explain {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.7;
   color: var(--text-primary);
   text-wrap: pretty;

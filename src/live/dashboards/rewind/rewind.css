@@ -30,7 +30,7 @@
 .rw-counter {
   margin-right: auto;
   font-family: var(--font-data, var(--font));
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -43,7 +43,7 @@
   border-radius: var(--r-full);
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font-size: 19px;
+  font-size: var(--fs-xl);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -131,7 +131,7 @@
 .rw-eyebrow {
   margin: 0;
   font-family: var(--font-data, var(--font));
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -149,7 +149,7 @@
 }
 .rw-figure-label {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-md);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -157,7 +157,7 @@
 .rw-caption {
   margin: 8px 0 0;
   max-width: 46ch;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   overflow-wrap: break-word;
@@ -190,7 +190,7 @@
 }
 .rw-bar-day {
   font-family: var(--font-data, var(--font));
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -233,7 +233,7 @@
 }
 .rw-moment-chip {
   font-family: var(--font-data, var(--font));
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 3px 9px;
@@ -244,7 +244,7 @@
 }
 .rw-moment-time {
   font-family: var(--font-data, var(--font));
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -262,7 +262,7 @@
   width: 26px;
   height: 26px;
   border-radius: var(--r-full);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   cursor: default;
 }
@@ -286,7 +286,7 @@
   max-width: 52ch;
   margin: 6px 0 0;
   font-family: var(--font-voice, var(--font));
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-style: italic;
   line-height: 1.6;
   color: var(--text-secondary);
@@ -297,7 +297,7 @@
   margin-top: 8px;
   font-family: var(--font-data, var(--font));
   font-style: normal;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -305,7 +305,7 @@
 
 .rw-fallback-text {
   max-width: 44ch;
-  font-size: 19px;
+  font-size: var(--fs-xl);
   line-height: 1.6;
   color: var(--text-secondary);
   overflow-wrap: break-word;

@@ -11,21 +11,23 @@
 /* Compact laptops still keep the session rail, leaving less horizontal room than their viewport
    number implies. The current answer title is already the first thing in the canvas; repeating it
    in the bar can push Search and Appearance beyond the clipped right edge at 1024px. */
-@media (min-width: 769px) and (max-width: 1120px) {
+@media (width > 768px) and (width <= 1200px) {
   .with-rail .topbar .workspace-name,
   .with-rail .topbar .brand-sep {
     display: none;
   }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   /* every `left: var(--rail-w)` offset (topbar, stages, presence, scrubber,
      center caption) collapses to full width in one move */
   .mavea-app.with-rail {
     --rail-w: 0px;
     /* The collapsed session sheet owns one row above the composer. Publish that band once so the
-       canvas can reserve it alongside the dock instead of letting answer/coach copy sit beneath it. */
-    --mobile-rail-h: 44px;
+       canvas can reserve it alongside the dock instead of letting answer/coach copy sit beneath it.
+       Derived, not chosen: the band is its toggle (the tap floor) plus the sheet's 1px top border —
+       measured at 44 the toggle overhung the band by that pixel, into the replay's transport. */
+    --mobile-rail-h: calc(var(--tap-min) + 1px);
     --canvas-dock-gap: 4px;
   }
 
@@ -73,14 +75,19 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    /* Centred in the band the sheet publishes (--mobile-rail-h), never taller than it: the one
+       control that opens the session on a phone is the full tap floor, and the band is exactly
+       that floor, so a margin here would push the button into whatever sits below the sheet
+       (in a replay, the transport). */
     align-self: center;
-    margin: 8px auto 0;
+    margin: 0 auto;
     padding: 6px 14px;
+    min-height: var(--tap-min);
     border-radius: var(--r-full);
     border: 1px solid var(--line);
     background: var(--surface-elevated);
     color: var(--text-secondary);
-    font: 500 12.5px/1 var(--font);
+    font: 500 var(--fs-sm)/1 var(--font);
     cursor: pointer;
   }
   .rail-mobile-toggle svg {
@@ -125,7 +132,7 @@
 
 /* Smallest phones (≤430px): the topbar must never force the page to scroll sideways. Tighten its
    padding/gap so a long model name can't push the row past the viewport. */
-@media (max-width: 430px) {
+@media (width <= 430px) {
   .topbar {
     gap: 8px;
     padding: 0 12px;

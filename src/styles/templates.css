@@ -662,7 +662,7 @@
    label around it goes small and tight to widen the contrast; motion snaps
    (set in both color blocks above) ===== */
 :root[data-template='marquee'] .card-eyebrow {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
 }
 :root[data-template='marquee'] .card-grid {
@@ -679,7 +679,7 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -716,7 +716,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-family: var(--font-data);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -757,7 +757,7 @@
 .grounded-in .grounded-in-label {
   display: block;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -773,7 +773,7 @@
 }
 .grounded-in a {
   color: var(--presence);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-decoration: none;
   border-bottom: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
@@ -782,12 +782,12 @@
   border-bottom-color: var(--presence);
 }
 .grounded-in-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .grounded-in-host {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -918,7 +918,7 @@
   top: calc(100% + 8px);
   right: 0;
   z-index: 60;
-  min-width: 280px;
+  min-width: min(280px, 100%);
   padding: 6px;
   border-radius: var(--r-md);
   background: var(--surface-elevated);
@@ -1733,7 +1733,7 @@
   letter-spacing: -0.03em;
 }
 :root[data-template='marquee'] .card-eyebrow {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.16em;
 }
@@ -1953,14 +1953,14 @@
   margin: 0;
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   letter-spacing: -0.015em;
 }
 .appearance-head p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 .appearance-close {
@@ -1974,7 +1974,7 @@
   border-radius: 50%;
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font: 400 22px/1 var(--font-ui);
+  font: 400 var(--fs-xl)/1 var(--font-ui);
   cursor: pointer;
 }
 .appearance-mode {
@@ -1990,7 +1990,7 @@
 }
 .appearance-mode > span {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 650;
 }
 .appearance-segmented {
@@ -2011,14 +2011,14 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 84px;
+  min-width: min(84px, 100%);
   min-height: 34px;
   padding: 0 12px;
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: var(--text-muted);
-  font: 600 12px/1 var(--font-ui);
+  font: 600 var(--fs-sm)/1 var(--font-ui);
   cursor: pointer;
 }
 .appearance-segmented button.is-active {
@@ -2110,7 +2110,7 @@
   z-index: 1;
   top: 14px;
   left: 13px;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   line-height: 1;
   letter-spacing: -0.04em;
 }
@@ -2139,7 +2139,7 @@
   right: 12px;
   color: var(--preview-accent);
   font:
-    700 9px/1 'IBM Plex Mono',
+    700 var(--fs-2xs)/1 'IBM Plex Mono',
     monospace;
 }
 .appearance-preview--soft::before {
@@ -2212,7 +2212,7 @@
 }
 .appearance-preview--poster .appearance-preview-aa {
   font-family: 'Instrument Serif', serif;
-  font-size: 24px;
+  font-size: var(--fs-xl);
 }
 .appearance-option-copy {
   display: flex;
@@ -2228,12 +2228,12 @@
 }
 .appearance-option-title strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 .appearance-option-title em {
   color: var(--presence);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -2242,21 +2242,21 @@
 .appearance-option-tagline {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 550;
   line-height: 1.32;
 }
 .appearance-option-best {
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   line-height: 1.3;
 }
 .appearance-option-font {
   margin-top: 6px;
   color: var(--text-muted);
   font-family: var(--font-data);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.02em;
 }
 .appearance-check {
@@ -2268,7 +2268,7 @@
   border-radius: 50%;
   background: var(--presence);
   color: var(--surface-deep);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 900;
   opacity: 0;
   transform: scale(0.7);
@@ -2279,7 +2279,7 @@
   transform: scale(1);
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   /* The Live composer and demo controls intentionally sit above the canvas. While Appearance is
      open, lift its topbar stacking context as a whole so the modal sheet and scrim truly own the
      interaction layer instead of letting those controls peek through. */
@@ -2344,7 +2344,7 @@
   }
 }
 
-@media (max-width: 430px) {
+@media (width <= 430px) {
   .appearance-panel.is-embedded {
     padding: 14px 10px;
   }

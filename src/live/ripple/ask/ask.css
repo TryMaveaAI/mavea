@@ -39,7 +39,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -55,7 +55,7 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   padding: 4px 6px;
   border-radius: 6px;
@@ -68,7 +68,7 @@
 
 .ripple-ask-empty-state {
   padding: 16px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -88,7 +88,7 @@
   appearance: none;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
   padding: 5px 10px;
@@ -124,7 +124,7 @@
 
 .ripple-ask-empty {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -139,7 +139,7 @@
   align-self: flex-end;
   max-width: 92%;
   padding: 7px 11px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   background: color-mix(in oklab, var(--presence) 16%, var(--surface-elevated));
@@ -152,7 +152,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .ripple-ask-dot {
@@ -181,7 +181,7 @@
 
 .ripple-ask-err {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: color-mix(in oklab, var(--danger) 80%, var(--text-primary));
 }
 
@@ -196,7 +196,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 9px;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -216,7 +216,7 @@
 }
 .ripple-ask-text {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -228,7 +228,7 @@
 }
 .ripple-ask-cite {
   display: inline-block;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
   padding: 3px 9px;
@@ -265,7 +265,7 @@ a.ripple-ask-cite:hover {
   resize: none;
   max-height: 96px;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   background: var(--surface-elevated);
@@ -291,7 +291,7 @@ a.ripple-ask-cite:hover {
   border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
   background: color-mix(in oklab, var(--presence) 22%, var(--surface-elevated));
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1;
 }
 .ripple-ask-send:hover:not(:disabled) {
@@ -305,7 +305,7 @@ a.ripple-ask-cite:hover {
 /* Below the width the rail itself restructures at, a fixed-width side column has no room left for
    the impact map or a diff to stay usable — the rail becomes a bottom sheet instead, docked to the
    viewport rather than squeezed into the row. */
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .ripple-ask-rail {
     position: fixed;
     left: 0;
@@ -313,7 +313,7 @@ a.ripple-ask-cite:hover {
     bottom: 0;
     top: auto;
     width: auto;
-    max-height: min(72vh, 560px);
+    max-height: min(72dvh, 560px);
     border-left: none;
     border-top: 1px solid var(--line-strong);
     border-radius: var(--r-lg) var(--r-lg) 0 0;

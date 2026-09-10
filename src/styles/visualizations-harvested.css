@@ -12,7 +12,7 @@
   margin-bottom: 10px;
 }
 .big-stat {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -22,7 +22,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   padding: 3px 9px;
   border-radius: var(--r-full);
@@ -65,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 .donut-legend .sw {
@@ -126,13 +126,13 @@
   justify-content: center;
 }
 .gauge-num {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1;
 }
 .gauge-band {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -141,7 +141,7 @@
 }
 .risk-driver {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   font-weight: 500;
@@ -188,23 +188,24 @@
   gap: 12px;
 }
 .g-name {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 .g-score {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 750;
   color: var(--text-primary);
 }
 .g-status {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 5px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
 }
@@ -234,7 +235,7 @@
   gap: 10px;
   align-items: center;
   padding: 9px 6px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   border-radius: var(--r-sm);
   transition: background var(--m-fast) var(--ease-out);
 }
@@ -244,7 +245,7 @@
 .stand-rank {
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .stand-team {
   font-weight: 600;
@@ -278,7 +279,7 @@
   gap: 10px;
 }
 .funnel-label {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -297,7 +298,7 @@
   animation-delay: calc(var(--ti) * 80ms);
 }
 .funnel-val {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   text-align: right;
@@ -328,19 +329,19 @@
 /* A long WORD value ("Pocket Wi-Fi") drops a size rather than wrapping mid-word under the
    grid's column width — numbers keep the full size, names stay whole. */
 .kpi-val--long {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   line-height: 1.15;
 }
 
 .kpi-val {
-  font-size: 25px;
+  font-size: var(--fs-xl);
   font-weight: 750;
   letter-spacing: -0.03em;
   color: var(--presence);
   line-height: 1;
 }
 .kpi-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -350,7 +351,7 @@
 /* The tile's qualifier. Sentence case at a normal weight so it reads as a caption beneath the
    uppercase label rather than competing with it — 11px, on the legibility floor's right side. */
 .kpi-sub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 1.35;
   color: color-mix(in oklab, var(--text-muted) 78%, transparent);
@@ -388,14 +389,14 @@
 }
 .quote-text {
   margin: 0 0 7px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.45;
   font-weight: 550;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 .quote-who {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -421,7 +422,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 550;
   letter-spacing: -0.01em;
 }
@@ -472,7 +473,7 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (width <= 720px) {
   .score-list,
   .quote-list {
     grid-template-columns: 1fr;

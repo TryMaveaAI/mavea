@@ -30,7 +30,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   color: var(--text-muted);
-  min-width: 90px;
+  min-width: min(90px, 100%);
   flex-shrink: 0;
 }
 .fs-value {
@@ -558,6 +558,7 @@
   margin-inline: auto;
 }
 .ipa-axis {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 4px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -565,6 +566,7 @@
   text-transform: uppercase;
 }
 .ipa-vowel {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 6px;
   font-weight: 600;
   fill: var(--text-secondary);
@@ -651,6 +653,7 @@
   color: var(--text-muted);
   text-align: left;
   padding-left: 4px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ipa-cgrid-cell {
@@ -700,15 +703,17 @@
 }
 .ss-square {
   flex: 0 0 auto;
-  width: 144px;
+  width: min(144px, 100%);
   max-width: 100%;
 }
 .ss-ghost {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 60px;
   fill: color-mix(in oklab, var(--text-primary) 12%, transparent);
   font-weight: 500;
 }
 .ss-glyph {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 64px;
   fill: var(--text-primary);
   font-weight: 500;
@@ -737,6 +742,7 @@
   fill: var(--presence);
 }
 .ss-badge-num {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 5px;
   font-weight: 800;
   fill: var(--surface-elevated);
@@ -1050,6 +1056,7 @@
   backdrop-filter: var(--glass-blur, blur(6px));
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sp-common {
@@ -1161,19 +1168,23 @@
   stroke-width: 2;
 }
 .et-word {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 13px;
   font-weight: 700;
   fill: var(--text-primary);
 }
 .et-form {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-primary);
 }
 .et-lang {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
 }
 .et-col-hdr {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   fill: var(--text-muted);
@@ -1236,7 +1247,7 @@
   gap: 4px;
   /* wide enough that the longest single-word label ("Environment", "Compressed") never
      has to break mid-word — a narrower column pushed "Environment" to wrap as "Environmen/t" */
-  width: 72px;
+  width: min(72px, 100%);
   flex-shrink: 0;
 }
 .hc-pic-glyph {
@@ -1324,6 +1335,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
   padding-top: 0;
 }
@@ -1331,12 +1343,13 @@
   font-size: var(--fs-sm, 13px);
   font-weight: 700;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .tb-cell {
   font-size: var(--fs-sm, 13px);
   color: var(--text-primary);
-  min-width: 110px;
+  min-width: min(110px, 100%);
 }
 .tb-cell-text {
   display: inline-flex;
@@ -1423,7 +1436,7 @@
   flex-direction: column;
   align-items: center;
   flex: 0 0 auto;
-  min-width: 64px;
+  min-width: min(64px, 100%);
 }
 .szc-shape-box {
   height: var(--szc-track-h, 160px);
@@ -1607,7 +1620,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 84px;
+  min-width: min(84px, 100%);
   max-width: 140px;
   padding: 8px 10px;
   border-radius: var(--r-sm, 6px);
@@ -1646,7 +1659,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   color: var(--text-muted);
-  min-width: 84px;
+  min-width: min(84px, 100%);
   flex-shrink: 0;
 }
 .hp-fact-value {
@@ -1740,7 +1753,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 120px;
+  min-width: min(120px, 100%);
 }
 .otd-people-k {
   font-size: var(--fs-2xs, 10px);
@@ -1861,7 +1874,7 @@
   font-size: var(--fs-xs, 12px);
   font-weight: 600;
   color: var(--text-muted);
-  min-width: 84px;
+  min-width: min(84px, 100%);
   flex-shrink: 0;
 }
 .cc-fact-value {
@@ -1894,7 +1907,7 @@
   background: var(--surface-elevated);
 }
 .wg-flag {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   line-height: 1;
   margin-bottom: 4px;
 }

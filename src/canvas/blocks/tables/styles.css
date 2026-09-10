@@ -71,8 +71,8 @@
   background: transparent;
   outline: none;
   color: var(--text-primary);
-  font-size: 12.5px;
-  width: 120px;
+  font-size: var(--fs-sm);
+  width: min(120px, 100%);
   font-family: inherit;
 }
 .tbl-search input::placeholder {
@@ -114,13 +114,14 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   padding: 4px 11px;
   border-radius: 7px;
   transition:
     color var(--m-fast),
     background var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-family: inherit;
 }
@@ -134,7 +135,7 @@
 }
 
 .tbl-foot-meta {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   margin-top: 10px;
 }
 
@@ -142,7 +143,7 @@
 table.dt {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   table-layout: fixed;
 }
 /* Fixed layout splits the table into equal columns, which on a phone-width card leaves each one too
@@ -159,13 +160,14 @@ table.dt {
 .dt-th {
   text-align: left;
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
   cursor: pointer;
   user-select: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -215,6 +217,7 @@ table.dt {
   padding: 9px 12px;
   border-bottom: 1px solid var(--line-soft);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -284,7 +287,7 @@ table.dt {
   padding: 22px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 
 /* ===== 2. pivot ===== */
@@ -292,11 +295,11 @@ table.pv {
   width: 100%;
   border-collapse: separate;
   border-spacing: 3px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .pv-corner {
   text-align: left;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
@@ -304,12 +307,13 @@ table.pv {
   padding: 6px 8px;
 }
 .pv-colh {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-weight: 600;
   padding: 6px 8px;
   text-align: right;
   transition: color var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -325,6 +329,7 @@ table.pv {
   padding: 8px 10px;
   color: var(--text-secondary);
   font-weight: 500;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -369,11 +374,12 @@ table.pv {
   bottom: calc(100% + 6px);
   right: 0;
   z-index: 12;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 4px 8px;
   border-radius: var(--r-sm);
   box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
@@ -412,13 +418,13 @@ table.pv {
   align-items: center;
   gap: 3px;
   justify-content: flex-end;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 .lb-medal {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
 }
 .lb-body {
   flex: 1;
@@ -431,19 +437,21 @@ table.pv {
   margin-bottom: 5px;
 }
 .lb-name {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .lb-sub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   flex-shrink: 1;
 }
@@ -452,10 +460,11 @@ table.pv {
   min-width: 6px;
 }
 .lb-val {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .lb-track {
@@ -476,7 +485,7 @@ table.pv {
   align-items: center;
   gap: 2px;
   justify-content: flex-end;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -503,7 +512,7 @@ table.pv {
   align-items: center;
   padding: 0 10px 8px;
   border-bottom: 1px solid var(--line-strong);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
@@ -530,7 +539,7 @@ table.pv {
   border-radius: var(--r-sm);
   border-bottom: 1px solid var(--line-soft);
   transition: background var(--m-fast);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .tt-row.parent {
   cursor: pointer;
@@ -569,10 +578,11 @@ table.pv {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .tt-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   padding: 1px 7px;
   border-radius: var(--r-full);
@@ -580,6 +590,7 @@ table.pv {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .tt-spacer {
@@ -587,7 +598,7 @@ table.pv {
   min-width: 8px;
 }
 .tt-bar {
-  width: 80px;
+  width: min(80px, 100%);
   height: 5px;
   border-radius: var(--r-full);
   background: var(--track);
@@ -601,12 +612,13 @@ table.pv {
   transition: width var(--m-normal) var(--ease-out);
 }
 .tt-val {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 56px;
   text-align: right;
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -625,7 +637,7 @@ table.pv {
   min-height: 46px;
 }
 .sw-actor {
-  width: 96px;
+  width: min(96px, 100%);
   flex: none;
   min-width: 0;
   display: flex;
@@ -634,17 +646,19 @@ table.pv {
   gap: 1px;
 }
 .sw-actor-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sw-actor-sub {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sw-track {
@@ -671,8 +685,9 @@ table.pv {
   z-index: 2;
 }
 .sw-evt .sw-evt-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -712,8 +727,9 @@ table.pv {
   z-index: 5;
 }
 .sw-bar-label {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -726,7 +742,7 @@ table.pv {
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 5px 9px;
   border-radius: var(--r-sm);
   box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.6);
@@ -746,7 +762,7 @@ table.pv {
   justify-content: space-between;
 }
 .sw-tick {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
 }
 
 /* ===== 6. footnotetable ===== */
@@ -760,7 +776,7 @@ table.pv {
   padding: 0 3px;
   border-radius: 5px;
   vertical-align: super;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   border: 1px solid color-mix(in oklab, var(--presence) 35%, transparent);
   background: color-mix(in oklab, var(--presence) 12%, transparent);
@@ -791,7 +807,7 @@ table.pv {
 .ft-note {
   display: flex;
   gap: 9px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.45;
   padding: 5px 8px;
@@ -816,7 +832,7 @@ table.pv {
   border-radius: 5px;
   display: grid;
   place-items: center;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   background: var(--surface-glass-strong);
   color: var(--text-muted);
@@ -840,18 +856,18 @@ table.pv {
 }
 .sk-h-trend,
 .sk-trend {
-  width: 150px;
+  width: min(150px, 100%);
   flex: none;
 }
 .sk-h-val,
 .sk-val {
-  width: 110px;
+  width: min(110px, 100%);
   flex: none;
 }
 .sk-header {
   padding: 0 6px 8px;
   border-bottom: 1px solid var(--line-strong);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
@@ -875,12 +891,13 @@ table.pv {
   background: var(--surface-glass);
 }
 .sk-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-primary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .sk-trend {
@@ -898,13 +915,13 @@ table.pv {
   min-width: 0;
 }
 .sk-svg {
-  width: 116px;
+  width: min(116px, 100%);
   height: 34px;
   flex: none;
   cursor: crosshair;
 }
 .sk-point {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 34px;
@@ -914,7 +931,7 @@ table.pv {
   align-items: baseline;
   gap: 7px;
   justify-content: flex-end;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -922,7 +939,7 @@ table.pv {
   display: inline-flex;
   align-items: center;
   gap: 1px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .sk-delta svg {
@@ -965,10 +982,11 @@ table.pv {
   opacity: 0.4;
 }
 .sm-label {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -986,7 +1004,7 @@ table.pv {
   margin-top: 6px;
 }
 .sm-stat {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -994,7 +1012,7 @@ table.pv {
   display: inline-flex;
   align-items: center;
   gap: 1px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .sm-delta svg {
@@ -1028,7 +1046,7 @@ table.pv {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   transition: all var(--m-fast);
   font-family: inherit;
@@ -1065,7 +1083,7 @@ table.pv {
   flex-shrink: 0;
 }
 .cb-row-label {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 7px;
@@ -1111,34 +1129,36 @@ table.pv {
   filter: brightness(1.14);
 }
 .cb-num {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
-  min-width: 64px;
+  min-width: min(64px, 100%);
   text-align: right;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   justify-content: flex-end;
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cb-bar-wrap.hot .cb-num {
   color: var(--text-primary);
 }
 .cb-best {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 .cb-tip {
   position: absolute;
   bottom: calc(100% + 5px);
   left: 0;
   z-index: 12;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 4px 9px;
   border-radius: var(--r-sm);
   box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.6);
@@ -1167,10 +1187,11 @@ table.pv {
 }
 .mg-colh,
 .mg-rowh {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   font-weight: 600;
   transition: color var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1218,7 +1239,7 @@ table.pv {
   box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
 .mg-v {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .mg-tip {
@@ -1227,11 +1248,12 @@ table.pv {
   left: 50%;
   transform: translateX(-50%);
   z-index: 14;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--r-sm);
@@ -1242,7 +1264,7 @@ table.pv {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
 }
 .mg-ramp {
   flex: 1;
@@ -1253,7 +1275,7 @@ table.pv {
 
 /* ── matrix: general labeled grid (linear algebra / truth / Punnett / payoff) ── */
 .tbl-mtx-cap {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   margin: 2px 0 8px;
@@ -1292,20 +1314,20 @@ table.pv {
   padding: 2px 8px;
   border-radius: var(--r-sm);
   font-family: var(--mono);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
 .tbl-mtx-colh,
 .tbl-mtx-rowh {
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .tbl-mtx-corner {
   color: var(--text-faint);
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .tbl-mtx-cell {
   background: var(--surface-elevated);
@@ -1330,6 +1352,7 @@ table.pv {
   padding: 6px 9px;
   text-align: center;
   border: 1px solid var(--line);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1342,7 +1365,7 @@ table.pv {
 .tb-sens-rowvar,
 .tb-sens-colvar {
   display: block;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -1408,6 +1431,7 @@ table.pv {
   font-size: var(--fs-sm, 13px);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
@@ -1457,6 +1481,7 @@ table.pv {
 .tb-lab-ref {
   font-size: var(--fs-2xs, 11px);
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1466,6 +1491,7 @@ table.pv {
   font-weight: 700;
   text-transform: uppercase;
   color: var(--warning);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   min-width: 26px;
 }
@@ -1486,6 +1512,7 @@ table.pv {
   font-weight: 700;
   color: var(--text-muted);
   border-bottom: 1.5px solid var(--line);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 100px;
   overflow: hidden;
@@ -1511,6 +1538,7 @@ table.pv {
 .im-td-label {
   padding: 7px 10px 7px 0;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   max-width: 140px;
   overflow: hidden;
@@ -1525,7 +1553,7 @@ table.pv {
   background: color-mix(in oklab, var(--insight) 6%, transparent);
 }
 .im-qty {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--insight);
 }
@@ -1550,7 +1578,7 @@ table.pv {
 /* language badge that sits before the title text */
 .tbl-cj-lang {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1564,7 +1592,7 @@ table.pv {
 
 /* the infinitive — the star of the show */
 .tbl-cj-verb {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -1594,7 +1622,7 @@ table.tbl-cj-table {
   min-width: max-content;
   border-collapse: collapse;
   table-layout: auto;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 
 /* sticky pronoun column so it stays visible while scrolling right */
@@ -1605,9 +1633,10 @@ table.tbl-cj-table {
   background: var(--surface-card);
   text-align: left;
   padding: 9px 14px 9px 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   min-width: 52px;
 }
@@ -1616,11 +1645,12 @@ table.tbl-cj-table {
 .tbl-cj-tense-head {
   text-align: center;
   padding: 8px 16px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -1653,9 +1683,10 @@ table.tbl-cj-table {
 .tbl-cj-form {
   text-align: center;
   padding: 9px 16px;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -1671,7 +1702,7 @@ table.tbl-cj-table {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   margin-top: 10px;
 }
 .tbl-cj-legend-swatch {
@@ -1791,6 +1822,7 @@ table.tbl-cj-table {
 .clm-tag-lbl {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .clm-reason {
@@ -1866,6 +1898,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -1879,6 +1912,7 @@ table.tbl-cj-table {
   padding: 7px 12px;
   text-align: right;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -1930,6 +1964,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cg-h-period {
@@ -1947,6 +1982,7 @@ table.tbl-cj-table {
 .cg-cohort {
   text-align: left;
   padding: 4px 10px 4px 2px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   display: flex;
   align-items: baseline;
@@ -1973,6 +2009,7 @@ table.tbl-cj-table {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition: outline var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .cg-cell.cg-empty {
@@ -2007,6 +2044,7 @@ table.tbl-cj-table {
   gap: 8px;
 }
 .rm-ylabel {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- y-axis title: a rotated axis label reads up the plot's edge, the one vertical-text case the geometry suite exempts too */
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   text-align: center;
@@ -2046,6 +2084,7 @@ table.tbl-cj-table {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   cursor: default;
   transition:
@@ -2119,6 +2158,7 @@ table.tbl-cj-table {
   background: var(--surface-glass);
   padding: 1px 7px;
   border-radius: var(--r-full, 999px);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
 }
@@ -2151,6 +2191,7 @@ table.tbl-cj-table {
     minmax(150px, 1.1fr) minmax(150px, 1.1fr)
     minmax(180px, 1.4fr) minmax(150px, 1.1fr);
   gap: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- scroll floor: below this the visual is unreadable, so its wrapper scrolls instead (audit:ui judges the wrapper) */
   min-width: 560px;
 }
 .cp-head {
@@ -2263,7 +2304,7 @@ table.tbl-cj-table {
   margin-bottom: 14px;
 }
 .dl-drug {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -2341,6 +2382,7 @@ table.tbl-cj-table {
   background: var(--surface-elevated);
   padding: 3px 8px;
   border-radius: var(--r-sm);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2397,7 +2439,7 @@ table.tbl-cj-table {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-muted);
-  min-width: 72px;
+  min-width: min(72px, 100%);
 }
 .dl-dose {
   font-size: var(--fs-sm, 14px);
@@ -2514,6 +2556,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -2539,6 +2582,7 @@ table.tbl-cj-table {
   text-align: left;
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-soft);
   box-shadow: inset 3px 0 0 transparent;
@@ -2560,6 +2604,7 @@ table.tbl-cj-table {
   background: color-mix(in oklab, var(--presence) 12%, transparent);
   padding: 1px 7px;
   border-radius: var(--r-full, 999px);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
 }
@@ -2568,6 +2613,7 @@ table.tbl-cj-table {
   text-align: center;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--line-soft);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .sz-row.on .sz-td {
@@ -2604,7 +2650,7 @@ table.tbl-cj-table {
 
 /* ── comparematrix: feature-comparison grid (rows = attributes, cols = options) ── */
 .tbl-cmx-cap {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   margin: 2px 0 10px;
@@ -2683,7 +2729,7 @@ table.tbl-cj-table {
 }
 /* small qualifier note below a cell value */
 .tbl-cmx-note {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   margin-top: 2px;
   line-height: 1.3;
@@ -2737,13 +2783,13 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 /* ── pricingtable: a rich plan-card header row over a feature grid, columns aligned. ── */
 .pt-cap {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   margin: 2px 0 10px;
@@ -2786,7 +2832,7 @@ table.tbl-cj-table {
   margin-bottom: 4px;
   padding: 3px 10px;
   border-radius: var(--r-full);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2795,6 +2841,7 @@ table.tbl-cj-table {
   box-shadow: 0 0 14px var(--glow-presence);
 }
 .pt-name {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
@@ -2815,12 +2862,13 @@ table.tbl-cj-table {
   overflow-wrap: anywhere;
 }
 .pt-period {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .pt-tagline {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -2830,7 +2878,7 @@ table.tbl-cj-table {
   align-self: center;
   padding: 6px 14px;
   border-radius: var(--r-sm);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--presence);
   border: 1px solid color-mix(in oklab, var(--presence) 40%, transparent);
@@ -2845,7 +2893,7 @@ table.tbl-cj-table {
   display: flex;
   align-items: center;
   padding: 9px 10px 9px 2px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow-wrap: anywhere;
@@ -2891,7 +2939,7 @@ table.tbl-cj-table {
   font-weight: 700;
 }
 .pt-text {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-align: center;
   overflow-wrap: anywhere;
@@ -2909,7 +2957,7 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .pt-leg-ic {
@@ -2989,7 +3037,7 @@ table.tbl-cj-table {
   background: transparent;
 }
 .raci-badge {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   color: var(--raci-c);
 }
@@ -3008,7 +3056,7 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .raci-leg-badge {
@@ -3018,7 +3066,7 @@ table.tbl-cj-table {
   width: 16px;
   height: 16px;
   border-radius: var(--r-full);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   color: var(--raci-c);
   background: color-mix(in oklab, var(--raci-c) 18%, transparent);
@@ -3027,7 +3075,7 @@ table.tbl-cj-table {
 /* ── rubric: criteria × level grid, wrapping prose cells; the earned level is tinted. ── */
 .rub-total {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   padding: 2px 9px;
@@ -3195,7 +3243,7 @@ table.tbl-cj-table {
   margin-left: auto;
   padding: 2px 7px;
   border-radius: var(--r-full);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   color: var(--isc-c);
   background: color-mix(in oklab, var(--isc-c) 16%, transparent);
@@ -3219,17 +3267,17 @@ table.tbl-cj-table {
   background: transparent;
 }
 .isc-badge {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 800;
   color: var(--isc-c);
 }
 .isc-scale {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-faint);
 }
 .isc-note {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
   text-align: center;
   overflow-wrap: anywhere;
@@ -3242,7 +3290,7 @@ table.tbl-cj-table {
 /* ── gradebook: student × assignment grid, score + derived letter grade per cell. ── */
 .gb-total {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--gb-c, var(--text-secondary));
   padding: 2px 9px;
@@ -3331,12 +3379,12 @@ table.tbl-cj-table {
   background: color-mix(in oklab, var(--presence) 6%, var(--surface-glass));
 }
 .gb-score {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .gb-letter {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   color: var(--gb-c);
 }
@@ -3398,17 +3446,18 @@ table.tbl-cj-table {
 }
 .dd-name {
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
 .dd-pill {
   display: inline-block;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--dd-c);
@@ -3416,18 +3465,20 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--dd-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dd-unit {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
 .dd-desc {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -3453,12 +3504,12 @@ table.tbl-cj-table {
   transition: width var(--m-expressive) var(--ease-out);
 }
 .dd-miss-pct {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   flex: none;
 }
 .dd-miss-dash {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
 }
 
@@ -3493,25 +3544,28 @@ table.tbl-cj-table {
   color: var(--text-primary);
 }
 .abl-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .abl-val {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .abl-delta {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   padding: 3px 9px;
   border-radius: var(--r-full);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   text-align: center;
 }
@@ -3563,7 +3617,7 @@ table.tbl-cj-table {
 .spt-axis-end {
   position: absolute;
   top: 13px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-faint);
 }
@@ -3614,17 +3668,17 @@ table.tbl-cj-table {
   border-bottom: none;
 }
 .spt-x {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .spt-mult {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-style: italic;
 }
 .spt-integ {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .spt-intensity {
@@ -3647,19 +3701,19 @@ table.tbl-cj-table {
   background: var(--presence);
 }
 .spt-int-pct {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   flex: none;
 }
 .spt-assign {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
   overflow-wrap: anywhere;
   min-width: 0;
 }
 .spt-dash {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
 }
 
@@ -3691,16 +3745,17 @@ table.tbl-cj-table {
   min-width: 0;
 }
 .fma-mode {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .fma-owner {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex: none;
 }
@@ -3710,7 +3765,7 @@ table.tbl-cj-table {
   flex: none;
 }
 .fma-badge {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--fma-c);
@@ -3718,6 +3773,7 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--fma-c) 32%, transparent);
   border-radius: var(--r-sm);
   padding: 2px 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fma-rpn-wrap {
@@ -3728,13 +3784,13 @@ table.tbl-cj-table {
   min-width: 40px;
 }
 .fma-rpn {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 800;
   color: var(--fma-rc, var(--text-primary));
   line-height: 1.1;
 }
 .fma-rpn-label {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -3769,7 +3825,7 @@ table.tbl-cj-table {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -3809,7 +3865,7 @@ table.tbl-cj-table {
   right: 0;
   background: var(--surface-card);
   padding: 0 6px;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3847,6 +3903,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -3865,13 +3922,14 @@ table.tbl-cj-table {
   padding: 7px 10px;
   text-align: right;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .bom-part {
   color: var(--text-muted);
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
 }
 /* subassembly / total rows: a top rule across the whole row + bold, mirroring
    financialstatement's subtotal rows */
@@ -3913,7 +3971,7 @@ table.tbl-cj-table {
 }
 .cxs-colh {
   padding: 4px 0 8px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -3937,7 +3995,7 @@ table.tbl-cj-table {
   border-bottom: none;
 }
 .cxs-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   align-self: center;
@@ -3946,14 +4004,15 @@ table.tbl-cj-table {
 }
 .cxs-complexity {
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   align-self: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cxs-notes {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
   align-self: center;
@@ -3984,10 +4043,11 @@ table.tbl-cj-table {
 }
 .eh-colh,
 .eh-rowh {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   font-weight: 600;
   transition: color var(--m-fast);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4033,7 +4093,7 @@ table.tbl-cj-table {
   box-shadow: 0 8px 20px -8px var(--glow-presence);
 }
 .eh-v {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 .eh-tip {
@@ -4042,11 +4102,12 @@ table.tbl-cj-table {
   left: 50%;
   transform: translateX(-50%);
   z-index: 14;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--r-sm);
@@ -4057,7 +4118,7 @@ table.tbl-cj-table {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   flex-wrap: wrap;
 }
 .eh-swatch {
@@ -4084,7 +4145,7 @@ table.tbl-cj-table {
   align-items: center;
   gap: 6px;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--surface-elevated);
@@ -4105,7 +4166,7 @@ table.tbl-cj-table {
   border-color: color-mix(in oklab, var(--dtr-c, var(--presence)) 40%, transparent);
 }
 .dtr-count {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .dtr-chip.on .dtr-count {
@@ -4126,7 +4187,7 @@ table.tbl-cj-table {
 .dtr-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .dtr-th {
   text-align: left;
@@ -4137,10 +4198,11 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .dtr-th-desc {
-  min-width: 200px;
+  min-width: min(200px, 100%);
 }
 .dtr-th-btn {
   display: inline-flex;
@@ -4157,7 +4219,7 @@ table.tbl-cj-table {
   color: var(--text-secondary);
 }
 .dtr-th-arrow {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--presence);
 }
 .dtr-row td {
@@ -4170,20 +4232,22 @@ table.tbl-cj-table {
 }
 .dtr-num {
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtr-desc {
   color: var(--text-primary);
-  min-width: 200px;
+  min-width: min(200px, 100%);
   overflow-wrap: anywhere;
 }
 .dtr-party {
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtr-status {
   display: inline-block;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--dtr-c);
@@ -4191,23 +4255,26 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--dtr-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtr-priv-note {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   max-width: 22ch;
   overflow-wrap: anywhere;
 }
 .dtr-bates {
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtr-due {
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -4228,7 +4295,7 @@ table.tbl-cj-table {
 .dtp-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .dtp-th {
   text-align: left;
@@ -4239,10 +4306,11 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .dtp-th-proc {
-  min-width: 160px;
+  min-width: min(160px, 100%);
 }
 .dtp-th-num {
   text-align: right;
@@ -4252,7 +4320,7 @@ table.tbl-cj-table {
 }
 .dtp-visit-head {
   padding: 7px 10px 7px 2px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
@@ -4260,8 +4328,9 @@ table.tbl-cj-table {
 .dtp-visit-subtotal {
   padding: 7px 10px 7px 0;
   text-align: right;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtp-row td {
@@ -4271,23 +4340,24 @@ table.tbl-cj-table {
 }
 .dtp-tooth {
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dtp-proc {
   color: var(--text-primary);
-  min-width: 160px;
+  min-width: min(160px, 100%);
   overflow-wrap: anywhere;
 }
 .dtp-surface {
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
 }
 .dtp-priority,
 .dtp-status {
   display: inline-block;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--dtp-c);
@@ -4295,11 +4365,13 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--dtp-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   text-transform: capitalize;
 }
 .dtp-num {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-primary);
 }
@@ -4314,8 +4386,9 @@ table.tbl-cj-table {
 .dtp-total-val {
   text-align: right;
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--presence);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -4351,7 +4424,7 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -4376,7 +4449,7 @@ table.tbl-cj-table {
 .rc-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .rc-th {
   text-align: left;
@@ -4387,6 +4460,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .rc-th-vote {
@@ -4405,10 +4479,11 @@ table.tbl-cj-table {
 .rc-name {
   color: var(--text-primary);
   font-weight: 500;
-  min-width: 120px;
+  min-width: min(120px, 100%);
 }
 .rc-party {
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .rc-vote-cell {
@@ -4418,7 +4493,7 @@ table.tbl-cj-table {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--rc-c);
@@ -4426,10 +4501,11 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--rc-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px 2px 7px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .rc-vote-glyph {
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 /* ── collectiontracker: a summary strip (count + running value), then a responsive card grid
@@ -4447,7 +4523,7 @@ table.tbl-cj-table {
   gap: 2px;
 }
 .ctk-summary-val {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -4456,7 +4532,7 @@ table.tbl-cj-table {
   color: var(--presence);
 }
 .ctk-summary-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .ctk-grid {
@@ -4481,7 +4557,7 @@ table.tbl-cj-table {
   gap: 8px;
 }
 .ctk-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -4493,7 +4569,7 @@ table.tbl-cj-table {
 }
 .ctk-condition {
   flex: none;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -4502,19 +4578,20 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--ctk-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 7px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ctk-date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .ctk-value {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .ctk-notes {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -4524,7 +4601,7 @@ table.tbl-cj-table {
 /* ── cma: subject KPI strip (the Amortization technique), a ruled comp table with signed
    accountant's-parentheses adjustments, and a highlighted suggested-list-price banner. ── */
 .cma-subject-addr {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   margin: -6px 0 12px;
@@ -4544,16 +4621,16 @@ table.tbl-cj-table {
   border-radius: var(--r-md);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  min-width: 74px;
+  min-width: min(74px, 100%);
 }
 .cma-field-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 .cma-field-value {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -4572,7 +4649,7 @@ table.tbl-cj-table {
 .cma-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .cma-th {
   text-align: left;
@@ -4583,10 +4660,11 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .cma-th-addr {
-  min-width: 160px;
+  min-width: min(160px, 100%);
 }
 .cma-th-num {
   text-align: right;
@@ -4601,20 +4679,22 @@ table.tbl-cj-table {
 }
 .cma-addr {
   color: var(--text-primary);
-  min-width: 160px;
+  min-width: min(160px, 100%);
   overflow-wrap: anywhere;
 }
 .cma-num {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-secondary);
 }
 .cma-date {
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cma-adj {
-  min-width: 150px;
+  min-width: min(150px, 100%);
 }
 .cma-adj-list {
   list-style: none;
@@ -4628,7 +4708,8 @@ table.tbl-cj-table {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cma-adj-label {
@@ -4665,23 +4746,23 @@ table.tbl-cj-table {
   gap: 6px 12px;
 }
 .cma-banner-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .cma-banner-value {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--presence);
   letter-spacing: -0.01em;
 }
 .cma-banner-point {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
 }
 .cma-banner-empty {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -4701,7 +4782,7 @@ table.tbl-cj-table {
 .trs-tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 .trs-row td {
   padding: 6px 0;
@@ -4716,9 +4797,10 @@ table.tbl-cj-table {
 }
 .trs-val {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-primary);
-  min-width: 90px;
+  min-width: min(90px, 100%);
 }
 .trs-val.neg {
   color: var(--danger);
@@ -4750,12 +4832,12 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--warning) 32%, transparent);
 }
 .trs-banner-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .trs-banner-val {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   letter-spacing: -0.01em;
 }
@@ -4811,7 +4893,7 @@ table.tbl-cj-table {
 .dep-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .dep-th {
   text-align: left;
@@ -4822,6 +4904,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .dep-th-num {
@@ -4840,10 +4923,12 @@ table.tbl-cj-table {
   color: var(--text-primary);
 }
 .dep-period {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dep-num {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dep-ending {
@@ -4898,19 +4983,19 @@ table.tbl-cj-table {
   flex-wrap: wrap;
 }
 .vnd-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .vnd-catlabel {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .vnd-spacer {
   flex: 1;
 }
 .vnd-status {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: capitalize;
@@ -4919,6 +5004,7 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--vnd-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .vnd-track {
@@ -4942,12 +5028,13 @@ table.tbl-cj-table {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .vnd-deposit,
 .vnd-balance,
 .vnd-contract {
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 @container (max-width: 260px) {
@@ -4978,7 +5065,7 @@ table.tbl-cj-table {
 .spn-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .spn-th {
   text-align: left;
@@ -4989,6 +5076,7 @@ table.tbl-cj-table {
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--line-strong);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .spn-th-num {
@@ -5014,22 +5102,23 @@ table.tbl-cj-table {
 .spn-brand {
   color: var(--text-primary);
   font-weight: 500;
-  min-width: 110px;
+  min-width: min(110px, 100%);
 }
 .spn-deliverable {
   color: var(--text-secondary);
-  min-width: 140px;
+  min-width: min(140px, 100%);
   overflow-wrap: anywhere;
 }
 .spn-rate {
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-primary);
   font-weight: 600;
 }
 .spn-status {
   display: inline-block;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: capitalize;
@@ -5038,10 +5127,12 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--spn-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .spn-date {
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 
@@ -5082,12 +5173,12 @@ table.tbl-cj-table {
 }
 .csl-ref {
   font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .csl-status {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .csl-spacer {
@@ -5095,7 +5186,7 @@ table.tbl-cj-table {
 }
 .csl-riskbadge {
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -5104,6 +5195,7 @@ table.tbl-cj-table {
   border: 1px solid color-mix(in oklab, var(--csl-c) 34%, transparent);
   border-radius: var(--r-full);
   padding: 2px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .csl-unscored {
@@ -5115,7 +5207,7 @@ table.tbl-cj-table {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .csl-contact {

@@ -31,7 +31,7 @@
 .live-voice .hero-ask {
   margin: 0;
   font-family: var(--font-data);
-  font-size: calc(10.5px * var(--fs-scale, 1));
+  font-size: var(--fs-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -66,7 +66,7 @@
   flex-wrap: wrap;
   gap: 14px;
   font-family: var(--font-data);
-  font-size: calc(10px * var(--fs-scale, 1));
+  font-size: var(--fs-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -122,7 +122,7 @@
 .live-voice .topic-sweep-label {
   margin-block-start: 9px;
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--topic-sweep-ink, var(--presence)) 78%, var(--text-muted));
@@ -188,7 +188,7 @@
 .live-voice .footer-label {
   display: block;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -206,7 +206,7 @@
   gap: 10px;
 }
 .live-voice .footer-grounded a {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
 }
 .live-voice .footer-grounded .grounded-in-host {
   margin-left: 10px;
@@ -222,7 +222,7 @@
   text-align: left;
   font-family: var(--font-voice);
   font-style: italic;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   color: var(--text-primary);
 }
 .live-voice .kg-row:hover .kg-q {
@@ -259,7 +259,7 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--insight) 7%, transparent);
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--insight) 78%, var(--text-primary));
   cursor: pointer;
@@ -289,7 +289,7 @@
   color: inherit;
 }
 .live-voice .footer-chip-arrow {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 /* "Track this live" — the rare, quiet offer to stand the answer up as a living dashboard. */
@@ -302,7 +302,7 @@
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--presence) 7%, transparent);
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: color-mix(in oklab, var(--presence) 78%, var(--text-primary));
   cursor: pointer;
@@ -321,19 +321,19 @@
   cursor: default;
 }
 .live-voice .footer-track-arrow {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .live-voice .footer-disclaimer {
   grid-column: 1 / -1;
   margin: 2px 0 0;
-  font: 500 11px/1.55 var(--font-data);
+  font: 500 var(--fs-xs)/1.55 var(--font-data);
   color: var(--text-faint);
 }
 .live-voice .footer-disclaimer.only {
   margin-top: 0;
 }
 
-@media (max-width: 760px) {
+@media (width <= 768px) {
   .live-voice .answer-footer {
     grid-template-columns: 1fr;
   }
@@ -342,7 +342,7 @@
 /* ===== topbar — instrument readouts, text actions ===== */
 /* board-exact brand row: 17px/700 wordmark, 14px divider */
 .live-voice .brand-name {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 .live-voice .brand-sep {
@@ -354,12 +354,12 @@
   padding: 0;
   background: none;
   border: none;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.12em;
   color: var(--presence);
 }
 .live-voice .composer-input {
-  font-size: 14.5px;
+  font-size: var(--fs-md);
 }
 .live-voice .topbar-text-btn {
   border: none;
@@ -367,7 +367,7 @@
   cursor: pointer;
   padding: 4px 6px;
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -408,7 +408,7 @@
   border-radius: var(--r-full);
   background: var(--presence);
   color: #fff;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
@@ -469,12 +469,12 @@
   outline: none;
 }
 .more-menu-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 .more-menu-blurb {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -485,7 +485,7 @@
 .more-menu-heading {
   padding: 8px 12px 4px;
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -512,9 +512,10 @@
   background: var(--surface-elevated);
   cursor: pointer;
   font-family: var(--font-data);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 /* the boards' model pill is plain mono text — no icon */
@@ -554,11 +555,12 @@
   background: var(--surface-elevated);
   cursor: pointer;
   font-family: var(--font-data);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
   text-align: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition:
     color var(--m-fast) var(--ease-out),
@@ -581,9 +583,10 @@
   background: var(--surface-elevated);
   cursor: pointer;
   font-family: var(--font-data);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition:
     color var(--m-fast) var(--ease-out),
@@ -658,7 +661,7 @@
   display: none;
 }
 
-@media (max-height: 700px) {
+@media (height <= 700px) {
   .mavea-app.live-voice {
     --canvas-dock-gap: 8px;
   }
@@ -684,7 +687,7 @@
 }
 .live-voice .dock-hint {
   font-family: var(--font-data);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -722,6 +725,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   z-index: 60;
 }
@@ -746,7 +750,7 @@
   border-radius: var(--r-sm);
   padding: 4px 10px;
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -785,7 +789,7 @@
 }
 .live-voice .sess-title {
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -799,7 +803,7 @@
   padding: 10px 12px;
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -817,12 +821,13 @@
   flex: 1;
   min-width: 0;
   font-family: var(--font-data);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--ch-c, var(--presence)) 65%, var(--text-muted));
   padding: 14px 10px 5px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -902,7 +907,7 @@
 }
 .live-voice .sess-time {
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   flex: none;
   min-width: 34px;
@@ -910,7 +915,7 @@
 /* The ask wraps to two lines so far more of it reads at a glance; the full text lives in the row's
    title tooltip for the rare question that still overruns. (Single-line ellipsis hid most asks.) */
 .live-voice .sess-q {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   min-width: 0;
   line-height: 1.35;
@@ -935,7 +940,7 @@
   border-radius: 7px;
   background: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   opacity: 0;
   transition:
@@ -1022,7 +1027,7 @@
   background: none;
   cursor: pointer;
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   text-align: left;
@@ -1079,7 +1084,7 @@
   display: none;
 }
 
-@media (min-width: 769px) {
+@media (width > 768px) {
   /* 4 classes — outranks the 236px `.mavea-app.live-voice.with-rail` width. */
   .mavea-app.live-voice.with-rail.rail-collapsed {
     --rail-w: 48px;
@@ -1110,10 +1115,11 @@
   }
   .side-rail.is-collapsed .rail-collapsed-label {
     display: block;
+    /* stylelint-disable-next-line declaration-property-value-disallowed-list -- collapsed rail: the label runs down a 56px strip the reader widens by clicking, so it never carries prose */
     writing-mode: vertical-rl;
     margin: 12px auto 0;
     font-family: var(--font-data);
-    font-size: 9.5px;
+    font-size: var(--fs-2xs);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--text-faint);
@@ -1122,7 +1128,7 @@
 }
 
 /* The desktop collapse toggle never shows in the mobile bottom-sheet. */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .rail-collapse {
     display: none;
   }
@@ -1242,7 +1248,7 @@
   color: var(--text-faint);
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   /* the base sheet rules collapse --rail-w to 0; restate at this specificity so the
      244px desktop width above doesn't outrank them */
   .mavea-app.live-voice.with-rail {
@@ -1271,6 +1277,7 @@
 }
 .live-voice .sess-corrected {
   flex: none;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font: 600 8.5px/1 var(--font-data, var(--font));
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1346,7 +1353,8 @@
    both sides. Hold the same axis by narrowing it to what the stage actually leaves for reading.
    Below 920px the rail stacks under the hero (focus.css) and the stage is one column again, so
    the correction has to stop exactly where that begins. */
-@media (min-width: 921px) {
+/* stylelint-disable-next-line media-feature-name-value-allowed-list -- measured Live threshold, paired with focus.css and pinned by tests */
+@media (width >= 921px) {
   .mavea-app.live-voice
     .topic-wrap[data-view='focus']
     :is(
@@ -1391,7 +1399,8 @@
    is gone — measured at 1100px, correcting for a column that is not there put every sibling 244px
    right of the hero. The presence of the aside is the render condition; the width is the LAYOUT
    condition, and both have to hold. */
-@media (min-width: 1260px) {
+/* stylelint-disable-next-line media-feature-name-value-allowed-list -- measured Live threshold, paired with focus.css and pinned by tests */
+@media (width >= 1260px) {
   .mavea-app.live-voice
     .topic-wrap[data-view='focus']:has(.focus-notes)
     :is(
@@ -1428,4 +1437,11 @@
 }
 .mavea-app.live-voice .voice-scrub-hint {
   text-align: left;
+}
+
+/* The keep-going rows are the answer's own follow-up questions; under a thumb each is a target. */
+@media (pointer: coarse) {
+  .live-voice .kg-row {
+    min-height: var(--tap-min);
+  }
 }

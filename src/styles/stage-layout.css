@@ -40,7 +40,7 @@
      viewport. Component-wise lerp by --scroll-dock; a short transition smooths scroll jitter. */
   --dock: var(--scroll-dock, 0);
   transform: translateX(calc(var(--home-x, 0px) * var(--dock)))
-    translateY(calc((130px - 50vh) * (1 - var(--dock)) + var(--home-y, 0px) * var(--dock)))
+    translateY(calc((130px - 50dvh) * (1 - var(--dock)) + var(--home-y, 0px) * var(--dock)))
     scale(calc(1 - 0.77 * var(--dock)));
   transition: transform 90ms ease-out;
 }
@@ -69,7 +69,7 @@
   stroke-width: calc(3.6 + 2.4 * var(--scroll-dock, 0));
 }
 .presence-layer.idlehome.corner .presence-positioner {
-  transform: translate(calc(50vw - 56px), calc(50vh - 48px)) scale(0.36);
+  transform: translate(calc(50vw - 56px), calc(50dvh - 48px)) scale(0.36);
 }
 
 /* now-playing banner */
@@ -83,7 +83,7 @@
   background: rgba(110, 140, 255, 0.12);
   border: 1px solid rgba(110, 140, 255, 0.3);
   color: var(--presence-soft);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   margin-right: 10px;
 }
 .play-banner svg {
@@ -96,6 +96,7 @@
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .play-prog {
@@ -137,7 +138,7 @@
 }
 .subgreeting {
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: var(--fs-lg);
   max-width: 46ch;
   line-height: 1.5;
 }
@@ -167,7 +168,7 @@
   border-radius: var(--r-full);
   background: var(--surface-glass);
   border: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   letter-spacing: 0.01em;
   -webkit-backdrop-filter: var(--glass-blur-soft);
@@ -214,11 +215,12 @@
 .try-chip {
   padding: 10px 16px;
   border-radius: var(--r-full);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   background: var(--surface-glass);
   border: 1px solid var(--line);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 450;
   transition: all var(--m-fast) var(--ease-out);
 }
@@ -248,7 +250,7 @@
   background: var(--surface-glass);
   border: 1px solid var(--line);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 450;
   line-height: 1.35;
   cursor: pointer;
@@ -264,7 +266,7 @@
   opacity: 0.5;
   cursor: default;
 }
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .live-examples {
     grid-template-columns: 1fr;
   }
@@ -281,6 +283,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   height: 46px;
   padding: 0 20px;
@@ -288,7 +291,7 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   color: var(--text-primary);
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   box-shadow: var(--shadow-raised);
   transition: all var(--m-fast) var(--ease-out);
@@ -322,7 +325,7 @@
   padding: 0 10px;
   margin-left: 4px;
   border-radius: var(--r-full);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--presence-deep);
@@ -365,7 +368,7 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-raised);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 .live-notice.warn {
@@ -399,7 +402,7 @@
 .live-notice-text.dim {
   flex-basis: 100%;
   color: var(--text-tertiary, #999);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .live-notice-retry {
   height: 30px;
@@ -409,7 +412,7 @@
   color: #fff;
   border: none;
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 .live-notice-retry:disabled {

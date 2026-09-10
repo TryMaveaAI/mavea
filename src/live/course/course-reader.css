@@ -52,16 +52,16 @@
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: clamp(40px, 9vh, 96px) 24px;
+  padding: clamp(40px, 9dvh, 96px) 24px;
 }
 .clr-state-head {
-  font: 700 17px/1.3 var(--font);
+  font: 700 var(--fs-lg)/1.3 var(--font);
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 .clr-state-sub {
   max-width: 460px;
-  font: 500 13.5px/1.55 var(--font);
+  font: 500 var(--fs-md)/1.55 var(--font);
   color: var(--text-muted);
 }
 .clr-state-error {
@@ -92,10 +92,10 @@
   border-radius: 50%;
   background: color-mix(in oklab, var(--presence) 13%, transparent);
   color: var(--presence);
-  font: 700 11px/1 var(--font);
+  font: 700 var(--fs-xs)/1 var(--font);
 }
 .clr-lesson-outline-row > strong {
-  font: 600 13px/1.35 var(--font);
+  font: 600 var(--fs-sm)/1.35 var(--font);
   color: var(--text-secondary);
 }
 .clr-state-icon {
@@ -175,7 +175,7 @@
 }
 .clr-stream-label {
   color: var(--presence);
-  font: 700 11px/1.2 var(--font);
+  font: 700 var(--fs-xs)/1.2 var(--font);
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
@@ -183,7 +183,7 @@
   margin: 5px 0 0;
   max-width: 760px;
   color: var(--text-secondary);
-  font: 500 14px/1.5 var(--font);
+  font: 500 var(--fs-md)/1.5 var(--font);
 }
 @keyframes clr-stream-pulse {
   70%,
@@ -218,11 +218,11 @@
   height: 20px;
 }
 .clr-empty-head {
-  font: 700 17px/1.2 var(--font);
+  font: 700 var(--fs-lg)/1.2 var(--font);
   color: var(--text-primary);
 }
 .clr-empty-sub {
-  font: 500 13.5px/1.55 var(--font);
+  font: 500 var(--fs-md)/1.55 var(--font);
   color: var(--text-muted);
 }
 
@@ -237,7 +237,7 @@
   border-radius: var(--r-full);
   background: var(--surface-elevated);
   color: var(--text-primary);
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 9px 16px;
   cursor: pointer;
   transition:

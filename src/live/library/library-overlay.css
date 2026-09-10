@@ -6,7 +6,7 @@
   z-index: 90;
   display: grid;
   place-items: start center;
-  padding: clamp(24px, 6vh, 72px) 24px;
+  padding: clamp(24px, 6dvh, 72px) 24px;
   overflow-y: auto;
   background: color-mix(in oklab, var(--surface-default) 68%, transparent);
   -webkit-backdrop-filter: var(--glass-blur, blur(18px)) saturate(1.05);

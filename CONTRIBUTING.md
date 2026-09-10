@@ -47,7 +47,8 @@ podman compose down    # stop them (they otherwise stay up between dev sessions)
 
 ## Before a maintainer opens a PR
 
-Run the full gate before opening a PR (the pre-push hook only runs typecheck + lint):
+Run the full gate before opening a PR (the pre-push hook runs typecheck, lint and the fast
+responsive sweep):
 
 ```sh
 pnpm verify   # reference/gallery fixture freshness → typecheck → lint → format:check → test → build → bundle-size budget → artifact + package boundary
@@ -68,8 +69,8 @@ pnpm size
 focused—one change per PR is much easier to review than a grab-bag.
 
 A **pre-commit hook** (Husky + lint-staged) auto-formats and lints your staged files, and a
-**pre-push hook** runs `pnpm typecheck` and `pnpm lint` as a fast local sanity check; the full gate
-runs in CI. CI re-runs the
+**pre-push hook** runs `pnpm typecheck`, `pnpm lint` and `pnpm audit:responsive:fast` as a fast local
+sanity check; the full gate runs in CI. CI re-runs the
 same checks on each push and pull request, plus a few gates that only run there: dead-code/dependency
 checks (`pnpm knip` + `pnpm check:vulnerabilities`, bundled in `pnpm verify:full`), a secret scan and
 Semgrep SAST pass, and — on pull requests — a Conventional Commits lint over the PR's commits.
@@ -93,13 +94,13 @@ the complete list).
 | `preview` | Serves the `dist/` build on `:4173` — the same bundle `npx @mavea/mavea` runs.                                                                   |
 | `analyze` | Production build with the bundle visualizer turned on (`ANALYZE=1`), for inspecting what's inside a chunk.                                       |
 
-**Quality gates** (what CI runs; the pre-push hook runs only `typecheck` and `lint`)
+**Quality gates** (what CI runs; the pre-push hook runs `typecheck`, `lint` and `audit:responsive:fast`)
 
 | Script           | Does                                                                                                                                     |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `typecheck`      | `tsc --noEmit` — type errors only, no build output.                                                                                      |
-| `lint`           | ESLint over the repo.                                                                                                                    |
-| `lint:fix`       | ESLint with auto-fix.                                                                                                                    |
+| `lint`           | ESLint over the repo, then stylelint over every stylesheet (`lint:css`) — the responsive layout contract in `stylelint.config.js`.       |
+| `lint:fix`       | ESLint and stylelint with auto-fix.                                                                                                      |
 | `format`         | Prettier, writes changes in place.                                                                                                       |
 | `format:check`   | Prettier, fails if anything is unformatted (no writes) — what CI runs.                                                                   |
 | `test`           | Vitest suite, once.                                                                                                                      |
@@ -127,16 +128,20 @@ the complete list).
 | `gen:catalog`       | Regenerates the compact block-catalog index the selector reads at runtime from the per-family source files. A staleness test fails if this drifts, so re-run it after editing a family's catalog entries. |
 | `semantic:build`    | Rebuilds the semantic embedding index (`public/semantic`) used for meaning-based block selection.                                                                                                         |
 
-**Headless browser audits** (require a dev server already running — start `pnpm dev` first)
+**Headless browser audits** (`audit:responsive` and `audit:surfaces` start a dev server themselves;
+the rest need one already running — start `pnpm dev` first)
 
-| Script        | Does                                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `audit:ui`    | Sweeps the whole block library across screen sizes and both themes for overflow, overlapping text, and type below legibility.            |
-| `audit:tap`   | Walks every surface at a phone width and hit-tests each control against the 44px thumb bar.                                              |
-| `perf`        | Drives every surface under CPU throttling and reports load time, main-thread blocking, and any heavy asset pulled before the user asked. |
-| `audit:reel`  | Sweeps the `#/reel` gallery across aspect ratio × palette × longest-text combinations.                                                   |
-| `slides:gate` | Sweeps every skin and both decks in `#/slidelab` for overflow.                                                                           |
-| `export:gate` | Sweeps every skin and both page formats in `#/exportlab` (the PDF export system) for overflow.                                           |
+| Script                  | Does                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `audit:responsive`      | The geometry suite: the block library and every surface across the width ladder (320–3440), at 1× and zoomed (125%, 150%), in both themes — horizontal scroll, clipping, off-window boxes, vertical text, overlapping text, the 44px hit floor on phones and tablets, and type consistency. `-- --ci` is the per-push subset CI runs. Screenshots land in `.audit-out/`. |
+| `audit:responsive:fast` | Surfaces only, three sizes, dark, and only the surfaces whose own CSS/TSX changed against `origin/main` — the pre-push hook's cut, about a minute.                                                                                                                                                                                                                       |
+| `audit:ui`              | Sweeps the whole block library across screen sizes and both themes for overflow, overlapping text, and type below legibility.                                                                                                                                                                                                                                            |
+| `audit:surfaces`        | The surface half of the suite on its own: every route and takeover state, with `--sizes`, `--dpr`, `--themes`, `--only` and `--checks` flags.                                                                                                                                                                                                                            |
+| `audit:tap`             | The 44px thumb hit-test alone, at two phone sizes (an alias of `audit:surfaces -- --checks tap`).                                                                                                                                                                                                                                                                        |
+| `perf`                  | Drives every surface under CPU throttling and reports load time, main-thread blocking, and any heavy asset pulled before the user asked.                                                                                                                                                                                                                                 |
+| `audit:reel`            | Sweeps the `#/reel` gallery across aspect ratio × palette × longest-text combinations.                                                                                                                                                                                                                                                                                   |
+| `slides:gate`           | Sweeps every skin and both decks in `#/slidelab` for overflow.                                                                                                                                                                                                                                                                                                           |
+| `export:gate`           | Sweeps every skin and both page formats in `#/exportlab` (the PDF export system) for overflow.                                                                                                                                                                                                                                                                           |
 
 Each of these prints a report and exits non-zero if it flags anything; pass `-- --url <url>` to
 point at `pnpm preview` instead of the dev server, and `-- --help`-style flags are documented in

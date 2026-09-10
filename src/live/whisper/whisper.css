@@ -16,7 +16,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font: 600 9px/1 var(--font-data, var(--font));
+  font: 600 var(--fs-2xs)/1 var(--font-data, var(--font));
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -24,6 +24,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-full);
   padding: 4px 9px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .whisper-badge::before {
@@ -43,7 +44,7 @@
   margin-bottom: 6px;
 }
 .listen-mode-chip {
-  font: 600 10.5px/1 var(--font);
+  font: 600 var(--fs-2xs)/1 var(--font);
   color: var(--text-secondary);
   background: var(--surface-glass-strong);
   border: 1px solid var(--line);

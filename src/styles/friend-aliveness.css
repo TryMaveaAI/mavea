@@ -51,13 +51,13 @@
   gap: 4px;
 }
 .action-edit-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
 }
 .action-edit-input {
   padding: 8px 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   border: 1px solid var(--grid-line);
   border-radius: var(--r-sm);
   background: var(--surface-2);
@@ -80,7 +80,7 @@
   margin-top: 8px;
 }
 .action-error-msg {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--danger);
 }
 
@@ -95,13 +95,13 @@
   gap: 4px;
 }
 .action-edit-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
 }
 .action-edit-input {
   padding: 8px 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   border: 1px solid var(--grid-line);
   border-radius: var(--r-sm);
   background: var(--surface-2);
@@ -124,6 +124,6 @@
   margin-top: 8px;
 }
 .action-error-msg {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--danger);
 }

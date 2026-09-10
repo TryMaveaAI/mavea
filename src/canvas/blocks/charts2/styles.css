@@ -22,7 +22,7 @@
 .c2-slope-head {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -40,7 +40,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   transform: translateY(-50%);
   transition: opacity var(--m-fast);
   cursor: default;
@@ -57,11 +57,12 @@
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
 .c2-slope-lbl .mono {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-primary);
 }
 
@@ -75,7 +76,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .c2-db-leg i {
@@ -101,7 +102,7 @@
   background: var(--surface-glass);
 }
 .c2-db-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   min-width: 0;
   display: flex;
@@ -112,10 +113,11 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .c2-db-tag {
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   padding: 1px 5px;
   border-radius: var(--r-full);
   background: var(--surface-glass-strong);
@@ -158,7 +160,7 @@
   transform: translate(-50%, -50%) scale(1.15);
 }
 .c2-db-delta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-align: right;
 }
 .c2-db-tip {
@@ -168,13 +170,14 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 9px;
   border-radius: var(--r-sm);
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-raised);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   z-index: 4;
 }
 .c2-db-arr {
@@ -188,7 +191,7 @@
     minmax(30px, 48px) minmax(0, 1fr) minmax(48px, 68px) minmax(0, 1fr)
     minmax(30px, 48px);
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -226,8 +229,9 @@
   background: var(--surface-glass);
 }
 .c2-pp-val {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2-pp-val.left {
@@ -262,9 +266,10 @@
   transform-origin: left center;
 }
 .c2-pp-band-lbl {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   text-align: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -292,8 +297,9 @@
   background: var(--surface-glass);
 }
 .c2-lp-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -335,7 +341,7 @@
     background var(--m-fast);
 }
 .c2-lp-val {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   text-align: right;
   color: var(--text-primary);
 }
@@ -346,13 +352,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 9px;
   border-radius: var(--r-sm);
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-raised);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   z-index: 4;
 }
 
@@ -377,14 +384,15 @@
   margin-bottom: 5px;
 }
 .c2-bul-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .c2-bul-num {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   flex-shrink: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2-bul-track {
@@ -423,13 +431,14 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 5px 9px;
   border-radius: var(--r-sm);
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-raised);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   z-index: 4;
 }
 
@@ -442,7 +451,7 @@
   margin-bottom: 14px;
 }
 .c2-pb-role {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
@@ -450,7 +459,7 @@
 }
 .c2-pb-range {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .c2-pb-track {
   position: relative;
@@ -522,18 +531,19 @@
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 5px 9px;
   border-radius: var(--r-sm);
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-raised);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   z-index: 5;
 }
 .c2-pb-tip-flag {
   color: var(--warning);
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -545,8 +555,9 @@
 .c2-pb-tick {
   position: absolute;
   top: 0;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2-pb-tick-mid {
@@ -571,7 +582,7 @@
   background: none;
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   transition: color var(--m-fast);
 }
 .c2-pb-leg i {
@@ -661,7 +672,7 @@
   margin-bottom: 6px;
 }
 .c2-gantt-col {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   text-align: left;
   padding-left: 2px;
 }
@@ -677,8 +688,9 @@
   gap: 8px;
 }
 .c2-gantt-name {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -730,7 +742,7 @@
 }
 .c2-gantt-pct {
   position: relative;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-primary);
   padding-left: 6px;
   line-height: 18px;
@@ -748,13 +760,14 @@
   position: absolute;
   bottom: 120%;
   transform: translateX(-50%);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 3px 8px;
   border-radius: var(--r-sm);
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-raised);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
   z-index: 5;
 }
@@ -769,7 +782,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .c2-gantt-detail-h .ic {
   width: 16px;
@@ -803,7 +816,7 @@
   display: flex;
   gap: 14px;
   margin-top: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   flex-wrap: wrap;
 }
 
@@ -820,8 +833,9 @@
   gap: 8px;
 }
 .c2-fc-name {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -869,10 +883,11 @@
 .c2-fc-amt {
   position: relative;
   display: block;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-primary);
   padding: 0 6px;
   line-height: 22px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -886,12 +901,12 @@
   border-top: 1px solid var(--line);
 }
 .c2-fc-total-lbl {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 .c2-fc-total-val {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -912,6 +927,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 5px 9px;
   border-radius: var(--r-sm);
@@ -976,6 +992,7 @@
 .c2-ar-tip b {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .c2-ar-tip .faint {
@@ -1000,7 +1017,7 @@
   display: grid;
   grid-template-columns: repeat(10, 1fr);
   gap: 3px;
-  width: 188px;
+  width: min(188px, 100%);
   max-width: 100%;
   flex-shrink: 0;
 }
@@ -1016,7 +1033,7 @@
   flex-direction: column;
   gap: 7px;
   flex: 1;
-  min-width: 130px;
+  min-width: min(130px, 100%);
 }
 .c2-waf-leg {
   display: flex;
@@ -1038,16 +1055,17 @@
   flex-shrink: 0;
 }
 .c2-waf-leg-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   flex: 1;
   min-width: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .c2-waf-leg-pct {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   flex-shrink: 0;
 }
@@ -1063,7 +1081,7 @@
   display: grid;
   grid-template-columns: repeat(10, 1fr);
   gap: 2px;
-  width: 188px;
+  width: min(188px, 100%);
   max-width: 100%;
   flex-shrink: 0;
 }
@@ -1089,7 +1107,7 @@
   flex-direction: column;
   gap: 6px;
   flex: 1;
-  min-width: 130px;
+  min-width: min(130px, 100%);
 }
 .c2-pic-leg {
   display: flex;
@@ -1110,22 +1128,23 @@
   flex-shrink: 0;
 }
 .c2-pic-leg-name {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   flex: 1;
   min-width: 0;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .c2-pic-leg-val {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-primary);
   flex-shrink: 0;
 }
 .c2-pic-key {
   margin-top: 10px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 /* ───────────────────────── Grouped bars ───────────────────────── */
@@ -1212,6 +1231,7 @@
   flex-direction: column;
   gap: 1px;
   align-items: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: var(--r-sm);
@@ -1228,6 +1248,7 @@
   right: 0;
   text-align: center;
   font-size: var(--fs-xs, 11px);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1269,9 +1290,10 @@
   flex-shrink: 0;
 }
 .c2-cal-day {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   line-height: 13px;
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2-cal-grid {
@@ -1301,7 +1323,7 @@
   display: inline-block;
 }
 .c2-cal-leg-lbl {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
 }
 
@@ -1320,9 +1342,11 @@
 }
 .c2-bump-period {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
 }
 .c2-bump-name {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
 }
 
@@ -1353,7 +1377,7 @@
   min-height: 0;
 }
 .c2-mek-seg-v {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 650;
   color: var(--surface-deep);
   mix-blend-mode: luminosity;
@@ -1368,15 +1392,16 @@
   min-width: 0;
 }
 .c2-mek-col-name {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 .c2-mek-col-tot {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
 }
 .c2-mek-legend {
@@ -1389,7 +1414,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -1427,15 +1452,18 @@
 }
 .c2-plot-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
 }
 .c2-plot-axlbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
 .c2-plot-mk {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
 }
@@ -1449,7 +1477,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -1476,6 +1504,7 @@
 }
 .c2-da-tip {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1522,6 +1551,7 @@
 }
 .c2-pt-tip {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1548,6 +1578,7 @@
 }
 .c2-pc-atick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-variant-numeric: tabular-nums;
 }
@@ -1622,6 +1653,7 @@
 }
 .c2-sr-r2 {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1632,6 +1664,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: var(--r-sm);
@@ -1666,11 +1699,13 @@
 }
 .ch2-dp-tick-lbl {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
 .ch2-dp-axis-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -1691,24 +1726,26 @@
 }
 .ch2-dp-badge-txt {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .ch2-dp-val-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .ch2-dp-sub {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 8px;
   overflow-wrap: anywhere;
   min-width: 0;
 }
 .ch2-dp-note {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   margin: 10px 0 0;
   overflow-wrap: anywhere;
@@ -1793,6 +1830,7 @@
 /* Y-axis tick labels */
 .c2-cc-ytick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   text-anchor: end;
   font-variant-numeric: tabular-nums;
@@ -1801,17 +1839,20 @@
 /* Y-axis label (rotated) */
 .c2-cc-ylabel {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
 
 /* X-axis tick labels */
 .c2-cc-xtick {
   fill: var(--text-faint);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
 
 /* Right-side legend labels */
 .c2-cc-legend-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -1832,11 +1873,13 @@
 }
 .c2-cc-tip-label {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   text-anchor: middle;
 }
 .c2-cc-tip-val {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1848,14 +1891,14 @@
 
 /* Sub-title and note */
 .c2-cc-sub {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 8px;
   overflow-wrap: anywhere;
   min-width: 0;
 }
 .c2-cc-note {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   margin: 8px 0 0;
   overflow-wrap: anywhere;
@@ -1888,6 +1931,7 @@
 }
 .c2-lb-flag {
   fill: var(--warning);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1900,6 +1944,7 @@
 }
 .c2-lb-takt-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
 }
@@ -1911,6 +1956,7 @@
 }
 .c2-lb-tip-val {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1939,6 +1985,7 @@
 }
 .c2-ec-phase-lbl {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
 }
 .c2-ec-threshold {
@@ -1948,6 +1995,7 @@
 }
 .c2-ec-threshold-lbl {
   fill: var(--danger);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
 }
@@ -1959,6 +2007,7 @@
 }
 .c2-ec-tip-val {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2029,6 +2078,7 @@
 .br-val {
   font-size: var(--fs-xs, 11.5px);
   text-align: right;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   color: var(--text-secondary);
 }
@@ -2044,6 +2094,7 @@
   flex-direction: column;
   gap: 1px;
   align-items: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 9px;
   border-radius: var(--r-sm);
@@ -2107,10 +2158,12 @@
 }
 .apl-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
 }
 .apl-axlbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2129,6 +2182,7 @@
 /* the area read-out badge centred in the shaded region */
 .apl-area {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11px;
   font-weight: 600;
   paint-order: stroke;
@@ -2146,7 +2200,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   min-width: 0;
 }
@@ -2189,11 +2243,13 @@
 }
 .c2 .sud-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .sud-axis-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2208,6 +2264,7 @@
   opacity: 0.4;
 }
 .c2 .sud-curve-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
 }
@@ -2228,6 +2285,7 @@
 }
 .c2 .sud-eq-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2260,10 +2318,12 @@
 }
 .bgo-axlbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
 .bgo-curve-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 600;
 }
@@ -2272,6 +2332,7 @@
 }
 .bgo-algo-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 700;
 }
@@ -2340,6 +2401,7 @@
 /* Y-axis tick labels */
 .erb-ytick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -2347,6 +2409,7 @@
 /* Y-axis label (rotated upright via translate + rotate) */
 .erb-ylabel {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -2355,6 +2418,7 @@
 /* X-axis category labels */
 .erb-xtick {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 600;
 }
@@ -2379,13 +2443,14 @@
 
 /* Hover readout */
 .erb-tip-mean {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .erb-tip-ci {
   fill: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2397,6 +2462,7 @@
 }
 .erb-ref-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
 }
@@ -2409,6 +2475,7 @@
 }
 .erb-brk text {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 600;
 }
@@ -2503,11 +2570,13 @@
 }
 .c2 .idf-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .idf-axis-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2524,6 +2593,7 @@
   stroke-width: 2.5;
 }
 .c2 .idf-curve-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2533,6 +2603,7 @@
   stroke-linecap: round;
 }
 .c2 .idf-budget-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 600;
 }
@@ -2548,6 +2619,7 @@
 }
 .c2 .idf-optimal-lbl {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2589,11 +2661,13 @@
 }
 .c2 .pay-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .pay-axis-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2622,6 +2696,7 @@
 }
 .c2 .pay-be-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2639,6 +2714,7 @@
 }
 .c2 .pay-spot-lbl {
   fill: var(--insight);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2705,11 +2781,13 @@
 }
 .c2 .phd-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .phd-axis-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2721,6 +2799,7 @@
   stroke-width: 2.25;
 }
 .c2 .phd-region-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -2732,11 +2811,13 @@
 }
 .c2 .phd-pt-lbl {
   fill: var(--text-primary);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 700;
 }
 .c2 .phd-pt-sub {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -2788,11 +2869,13 @@
 }
 .c2 .bev-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .bev-axis-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -2818,6 +2901,7 @@
   stroke-linecap: round;
 }
 .c2 .bev-line-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 700;
 }
@@ -2833,6 +2917,7 @@
 }
 .c2 .bev-eq-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2938,6 +3023,7 @@
 }
 .c2 .c2-ld-load-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2959,6 +3045,7 @@
 }
 .c2 .c2-ld-panel-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -3003,6 +3090,7 @@
 }
 .c2 .c2-ld-peak-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -3018,11 +3106,13 @@
 }
 .c2 .c2-ld-xtick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .c2-ld-axlbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -3100,6 +3190,7 @@
 }
 .c2 .c2-ecg-iv-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
   paint-order: stroke;
@@ -3118,6 +3209,7 @@
 }
 .c2 .c2-ecg-pin-lbl {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 700;
   paint-order: stroke;
@@ -3141,6 +3233,7 @@
   font-size: var(--fs-xs, 11px);
   font-weight: 500;
   color: var(--text-muted);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2 .c2-vs {
@@ -3179,12 +3272,14 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .c2 .c2-vs-norm {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .c2 .c2-vs-plot {
@@ -3232,7 +3327,7 @@
   border-radius: var(--r-full, 999px);
   background: var(--danger);
   color: var(--surface-elevated);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   line-height: 1;
 }
@@ -3268,11 +3363,13 @@
 }
 .c2 .c2-gc-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .c2-gc-axlbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -3294,6 +3391,7 @@
 }
 .c2 .c2-gc-plabel {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-variant-numeric: tabular-nums;
 }
@@ -3400,6 +3498,7 @@
 }
 .c2 .c2-sc-lane-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
 }
@@ -3432,6 +3531,7 @@
 }
 .c2 .c2-sc-clock {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -3600,10 +3700,12 @@
   stroke-width: 1;
 }
 .roc-tick-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }
 .roc-axis-label {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   fill: var(--text-secondary);
 }
@@ -3628,13 +3730,13 @@
   align-items: baseline;
 }
 .roc-readout-key {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .roc-readout-val {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -3649,7 +3751,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .roc-legend-dot {
   width: 10px;
@@ -3669,7 +3771,7 @@
 }
 .roc-legend-auc {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
 }
 .roc-caption {
   margin: 6px 0 0;
@@ -3692,10 +3794,12 @@
 }
 .gd-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
 }
 .gd-legend-lbl {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
 }
 .gd-path {
@@ -3749,6 +3853,7 @@
 .bv-tick {
   fill: var(--text-faint);
   /* The 320-unit viewBox renders near 1:1 in a narrow card, so these numbers are screen px. */
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
 .bv-curve {
@@ -3770,16 +3875,19 @@
 }
 .bv-sweet-lbl {
   fill: var(--presence);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-weight: 600;
 }
 .bv-zone-lbl {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-style: italic;
 }
 .bv-axlbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
 }
 .bv-legend {
@@ -3792,7 +3900,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -3810,7 +3918,7 @@
   font-weight: 600;
 }
 .bv-empty {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
@@ -3843,11 +3951,13 @@
 }
 .tsd-panel-lbl {
   fill: var(--text-secondary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-weight: 600;
 }
 .tsd-panel-val {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -3857,23 +3967,25 @@
 }
 .tsd-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
 }
 .tsd-empty {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
 /* ── PrecisionRecallCurve ──────────────────────────────────────────────────── */
 .prc-ap-badge {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--presence);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
   border-radius: 999px;
   padding: 2px 9px;
   font-variant-numeric: tabular-nums;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .prc-wrap {
@@ -3897,10 +4009,12 @@
   stroke-width: 1;
 }
 .prc-tick-label {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }
 .prc-axis-label {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   fill: var(--text-secondary);
 }
@@ -3914,7 +4028,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -3933,14 +4047,14 @@
   font-weight: 600;
 }
 .prc-empty {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   padding: 12px 0;
 }
 
 /* ───────────────────────── Chromatogram ───────────────────────── */
 .c2-chrom-method {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   margin: -6px 0 10px;
   overflow-wrap: anywhere;
@@ -3965,11 +4079,13 @@
 }
 .c2-chrom-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2-chrom-axlbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -3990,13 +4106,14 @@
   transition: opacity var(--m-fast);
 }
 .c2-chrom-mk {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
   fill: var(--text-secondary);
   transition: fill var(--m-fast);
 }
 .c2-chrom-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 10px 0;
 }
 .c2-chrom-table-wrap {
@@ -4005,16 +4122,17 @@
 table.c2-chrom-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .c2-chrom-table th {
   text-align: left;
   padding: 6px 10px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -4029,6 +4147,7 @@ table.c2-chrom-table {
   padding: 7px 10px;
   border-bottom: 1px solid var(--line-soft);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- table cell: the table scrolls inside its wrapper, audit:ui judges the wrapper */
   white-space: nowrap;
 }
 .c2-chrom-table td.r {
@@ -4060,11 +4179,13 @@ table.c2-chrom-table {
 }
 .c2-ssc-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2-ssc-axlbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -4090,11 +4211,12 @@ table.c2-chrom-table {
   stroke-linejoin: round;
 }
 .c2-ssc-mk {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9px;
   font-weight: 600;
 }
 .c2-ssc-modulus {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 8px 0 0;
   text-align: center;
@@ -4104,7 +4226,7 @@ table.c2-chrom-table {
   color: var(--text-primary);
 }
 .c2-ssc-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 10px 0;
 }
 
@@ -4122,7 +4244,7 @@ table.c2-chrom-table {
   padding: 4px 10px;
   border-radius: var(--r-full);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--surface-glass);
@@ -4169,11 +4291,13 @@ table.c2-chrom-table {
 }
 .c2-gate-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8px;
   font-variant-numeric: tabular-nums;
 }
 .c2-gate-axlbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
@@ -4188,11 +4312,11 @@ table.c2-chrom-table {
   transition: opacity var(--m-fast);
 }
 .c2-gate-label {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 .c2-gate-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 10px 0;
 }
 
@@ -4245,7 +4369,7 @@ table.c2-chrom-table {
   filter: blur(0.7px);
 }
 .c2-gel-lane-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
   text-align: center;
   max-width: 64px;
@@ -4253,7 +4377,7 @@ table.c2-chrom-table {
   line-height: 1.2;
 }
 .c2-gel-lane-sizes {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   text-align: center;
   max-width: 64px;
   overflow-wrap: anywhere;
@@ -4270,11 +4394,12 @@ table.c2-chrom-table {
   fill: var(--gel-tick-lbl);
   /* The ladder SVG is sized in real pixels (width/height attributes, no scaling), so this number
      is exactly what renders — 7.5px put every size marker under the legibility floor. */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2-gel-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   padding: 10px 0;
 }
 
@@ -4300,19 +4425,23 @@ table.c2-chrom-table {
 }
 .c2 .hrd-tick {
   fill: var(--text-faint);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-variant-numeric: tabular-nums;
 }
 .c2 .hrd-exp {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 6.5px;
 }
 .c2 .hrd-axis-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   font-style: italic;
 }
 .c2 .hrd-cls {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -4327,6 +4456,7 @@ table.c2-chrom-table {
   pointer-events: none;
 }
 .c2 .hrd-region-lbl {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -4350,6 +4480,7 @@ table.c2-chrom-table {
 }
 .c2 .hrd-sun-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 8.5px;
   font-style: italic;
 }
@@ -4400,6 +4531,7 @@ table.c2-chrom-table {
   fill: var(--text-faint);
   /* MIN_FS from TernaryPlot.tsx: user units in a 380-wide viewBox that renders near 320px, so
      anything under ~10.6 lands below the 9px floor. This had drifted to 8.5 (7.2px on screen). */
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -4466,11 +4598,13 @@ table.c2-chrom-table {
 }
 .c2 .prl-maj-lbl {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-style: italic;
 }
 .c2 .prl-total {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -4478,13 +4612,14 @@ table.c2-chrom-table {
 }
 .c2 .prl-total-lbl {
   fill: var(--text-muted);
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   letter-spacing: 0.04em;
 }
 .c2 .prl-note {
   margin-top: 4px;
   text-align: right;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -4554,6 +4689,7 @@ table.c2-chrom-table {
 }
 .c2-stk-val {
   fill: var(--text-primary);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9.5px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -4567,6 +4703,7 @@ table.c2-chrom-table {
 }
 .c2-stk-total {
   fill: var(--text-muted);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -4580,6 +4717,6 @@ table.c2-chrom-table {
 }
 .c2-stk-note {
   margin-top: 6px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
 }

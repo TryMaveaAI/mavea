@@ -42,7 +42,7 @@ html:has(.legal-app) body {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -57,7 +57,7 @@ html:has(.legal-app) body {
 
 .legal-back {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   transition: color 140ms ease;
 }
 
@@ -84,7 +84,7 @@ html:has(.legal-app) body {
   border: 1px solid transparent;
   border-radius: 999px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-decoration: none;
 }
 
@@ -102,7 +102,7 @@ html:has(.legal-app) body {
 .legal-kicker {
   margin: 0 0 14px;
   color: var(--presence);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -121,7 +121,7 @@ html:has(.legal-app) body {
   max-width: 720px;
   margin: 26px 0 54px;
   color: var(--text-secondary);
-  font-size: 17px;
+  font-size: var(--fs-lg);
   line-height: 1.65;
 }
 
@@ -136,7 +136,7 @@ html:has(.legal-app) body {
 .legal-effective {
   margin: 14px 0 -12px;
   color: var(--text-muted);
-  font: 600 10px/1.4 var(--mono);
+  font: 600 var(--fs-2xs)/1.4 var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -156,13 +156,13 @@ html:has(.legal-app) body {
 .legal-number {
   padding-top: 3px;
   color: var(--text-muted);
-  font: 600 10px/1 var(--mono);
+  font: 600 var(--fs-2xs)/1 var(--mono);
   letter-spacing: 0.1em;
 }
 
 .legal-item h2 {
   margin: 0 0 8px;
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 650;
   letter-spacing: -0.015em;
 }
@@ -178,7 +178,7 @@ html:has(.legal-app) body {
      twice as wide as its least. */
   max-width: 62ch;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.72;
 }
 
@@ -196,7 +196,7 @@ html:has(.legal-app) body {
 
 .legal-prose-section h2 {
   margin: 0 0 10px;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 650;
   letter-spacing: -0.015em;
 }
@@ -250,7 +250,7 @@ html:has(.legal-app) body {
 }
 
 .legal-caps {
-  font-size: 11.5px !important;
+  font-size: var(--fs-xs) !important;
   letter-spacing: 0.015em;
 }
 
@@ -265,16 +265,16 @@ html:has(.legal-app) body {
 .legal-warranty strong {
   display: block;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .legal-fineprint {
   margin-top: 24px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .legal-topbar,
   .legal-sheet {
     width: min(100% - 28px, 920px);
@@ -286,7 +286,7 @@ html:has(.legal-app) body {
 
   .legal-intro {
     margin-bottom: 38px;
-    font-size: 15px;
+    font-size: var(--fs-md);
   }
 
   .legal-document-nav {

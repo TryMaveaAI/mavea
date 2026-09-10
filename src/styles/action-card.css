@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--warning);
   background: rgba(245, 185, 92, 0.08);
   border: 1px solid rgba(245, 185, 92, 0.2);
@@ -23,7 +23,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 14px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -44,7 +44,7 @@
   background: linear-gradient(180deg, var(--presence), var(--presence-deep));
   color: #fff;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -68,7 +68,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .btn-ghost:hover {
   color: var(--text-primary);

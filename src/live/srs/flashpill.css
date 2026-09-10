@@ -36,8 +36,9 @@
   flex: none;
 }
 .cards-pill-text {
-  font: 600 13px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .cards-pill-btn {
@@ -45,7 +46,7 @@
   border-radius: var(--r-full);
   background: none;
   color: var(--text-secondary);
-  font: 600 12.5px/1 var(--font);
+  font: 600 var(--fs-sm)/1 var(--font);
   padding: 7px 13px;
   cursor: pointer;
   transition:
@@ -89,12 +90,12 @@
   gap: 9px;
 }
 .cards-pill-q {
-  font: 600 13px/1.4 var(--font);
+  font: 600 var(--fs-sm)/1.4 var(--font);
   color: var(--text-primary);
 }
 /* The mechanism, one step quieter than the question it answers. */
 .cards-pill-sub {
-  font: 450 12px/1.4 var(--font);
+  font: 450 var(--fs-sm)/1.4 var(--font);
   color: var(--text-muted);
   margin-top: -4px;
 }

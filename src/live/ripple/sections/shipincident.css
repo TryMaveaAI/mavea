@@ -8,7 +8,7 @@
 }
 .ripple-inc-empty {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .ripple-inc-symptom {
   display: flex;
@@ -21,7 +21,7 @@
 }
 .ripple-inc-sev {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: #fff;
   background: var(--danger);
@@ -30,7 +30,7 @@
   flex: none;
 }
 .ripple-inc-symptom-line {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
@@ -38,7 +38,7 @@
 }
 .ripple-inc-service {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -78,20 +78,20 @@
 }
 .ripple-inc-hop-ctx {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 .ripple-inc-hop-label {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   margin-top: 2px;
 }
 .ripple-inc-cause p {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -120,12 +120,12 @@
 }
 .ripple-inc-steps li {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-primary);
 }
 .ripple-inc-note {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .ripple-inc-people {
@@ -149,23 +149,23 @@
   background: linear-gradient(135deg, var(--presence), var(--presence-deep));
   color: #fff;
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
 }
 .ripple-inc-person-name {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
 }
 .ripple-inc-person-team {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .ripple-inc-person-why {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -177,21 +177,21 @@
 .ripple-inc-tl-row {
   display: flex;
   gap: 12px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .ripple-inc-tl-time {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   flex: none;
-  width: 64px;
+  width: min(64px, 100%);
   text-align: right;
 }
 .ripple-inc-tl-label {
   color: var(--text-primary);
 }
 .ripple-inc-evidence {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-muted);
   border-top: 1px solid var(--line);

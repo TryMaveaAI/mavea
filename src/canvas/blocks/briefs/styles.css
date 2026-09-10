@@ -255,7 +255,7 @@
   padding-bottom: 3px;
 }
 .brf-variable {
-  min-width: 110px;
+  min-width: min(110px, 100%);
   padding: 8px 9px;
   border-radius: var(--r-sm);
   background: var(--track);

@@ -233,18 +233,20 @@ jobs:
 
   # The rooms the cards sit in, not the cards: the block sweep cannot see a reading column
   # squeezed to a porthole, a panel with no way to scroll it, or a control stranded off the edge.
-  # Its own job because it is its own axis — 16 surfaces x 8 sizes x both themes — and because
-  # sharing browser-quality's runner made that job overrun a 35-minute budget and get killed
-  # mid-sweep, which reports as "cancelled" and tells nobody anything.
+  # Its own job because it is its own axis — every surface and lab × 13 widths × 1× and two zooms ×
+  # both themes — and because sharing browser-quality's runner made that job overrun a 35-minute
+  # budget and get killed mid-sweep, which reports as "cancelled" and tells nobody anything.
   #
-  # responsive.yml already runs a 2-size, 1-theme cut of this on every push. This is the full
-  # matrix: the phone and ultrawide tails, and the light theme.
+  # responsive.yml already runs the per-push subset (`--ci`: five block widths, four surface sizes,
+  # one zoom, dark). This is the full matrix: every width on the ladder, both zooms, the light
+  # theme and the dev-only labs — with the block library left to browser-quality above, which
+  # already sweeps it in all three data variants.
   surface-sweep:
-    name: Surfaces · every size, both themes
+    name: Surfaces · every size, every zoom, both themes
     runs-on: ubuntu-latest
-    # Measured: 272 combinations at roughly 5s each plus per-surface settle time, on a runner
-    # several times slower than the laptop the ~25-minute local figure came from.
-    timeout-minutes: 50
+    # Measured: ~900 combinations at roughly 5s each plus per-surface settle time, on a runner
+    # several times slower than the laptop the local figure came from.
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -267,23 +269,10 @@ jobs:
         with:
           path: node_modules/.vite
           key: vite-devdeps-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'vite.config.ts') }}
-      - name: Sweep every surface
-        shell: bash
-        run: |
-          set +e
-          set -uo pipefail
-          pnpm exec vite --host 127.0.0.1 --strictPort > /tmp/mavea-vite.log 2>&1 &
-          vite_pid=$!
-          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
-          for _ in {1..60}; do
-            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
-            if ! kill -0 "$vite_pid" 2>/dev/null; then cat /tmp/mavea-vite.log; exit 1; fi
-            sleep 1
-          done
-          # index.html is static; a module request is what blocks until optimizeDeps is ready.
-          curl --fail --silent http://127.0.0.1:5173/src/main.tsx >/dev/null || {
-            cat /tmp/mavea-vite.log; exit 1; }
-          pnpm audit:surfaces -- --url http://127.0.0.1:5173
+      # The suite starts vite itself and waits for a module to be served (index.html is static and
+      # answers before optimizeDeps is ready) — one command, never a split stack.
+      - name: Sweep every surface, every size, every zoom, both themes
+        run: pnpm audit:responsive -- --no-ui
 
   # Forward-compat only. Per-push CI runs every gate once, on the Node the project targets;
   # running the identical gates a second time on Node 26 answered one question — "does the

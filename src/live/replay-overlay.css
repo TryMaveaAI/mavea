@@ -36,7 +36,7 @@
   justify-content: space-between;
 }
 .replay-timeline-head > span {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 .replay-turn {
@@ -66,15 +66,16 @@
 }
 .replay-turn-title {
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .replay-turn.is-active .replay-turn-title {
   font-weight: 600;
 }
 .replay-turn-meta {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -94,10 +95,10 @@
 }
 .replay-bar .replay-bar-title {
   margin-right: auto;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .replay-bar .entry-action {
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 /* Two classes deep on purpose: the pane is also a .canvas-scroll (for the hidden scrollbar and
    the rail-aware centering), whose own padding would otherwise tie with this one. */
@@ -112,7 +113,7 @@
 
 /* Phone: stack the two panes — a 240px rail beside the canvas leaves neither one usable. The
    timeline keeps its rows but caps its height so the canvas still owns most of the screen. */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .replay-scrim {
     padding: 12px;
   }
@@ -122,7 +123,7 @@
   }
   .replay-timeline {
     flex: 0 1 auto;
-    max-height: 30vh;
+    max-height: 30dvh;
   }
   .replay-main .replay-canvas {
     padding: 12px;

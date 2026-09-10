@@ -40,6 +40,7 @@
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   font-weight: 600;
   font-size: var(--fs-sm, 13px);
@@ -49,6 +50,7 @@
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   font-size: var(--fs-2xs, 11px);
 }
@@ -151,11 +153,13 @@
   border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line-strong));
   border-radius: var(--r-full, 999px);
   padding: 1px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-ts-date {
   font-size: var(--fs-xs, 12px);
   margin-left: auto;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-ts-list {
@@ -258,6 +262,7 @@
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-fr-seg-raised,
@@ -288,6 +293,7 @@
   font-size: var(--fs-2xs, 10px);
   font-weight: 650;
   color: var(--surface-default);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-fr-seg-pre .fin-fr-seg-lbl {
@@ -307,12 +313,14 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fin-fr-cap {
   font-size: var(--fs-2xs, 10px);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fin-fr-legend {
@@ -362,6 +370,7 @@
   border: 1px solid color-mix(in oklab, var(--presence) 45%, var(--line-strong));
   border-radius: var(--r-full, 999px);
   padding: 1px 8px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-sf-investor {
@@ -369,6 +378,7 @@
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   min-width: 0;
 }
@@ -377,6 +387,7 @@
   font-size: var(--fs-md, 15px);
   font-weight: 700;
   color: var(--text-primary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-sf-tiles {
@@ -398,6 +409,7 @@
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fin-sf-val.on {
@@ -458,6 +470,7 @@
    same problem) derives the rendered luminance from the label color while taking hue/saturation
    from whatever's underneath, so it stays legible against any accent in either theme. */
 .fin-dw-seg-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 10px;
   font-weight: 650;
   fill: var(--surface-deep);
@@ -465,6 +478,7 @@
   pointer-events: none;
 }
 .fin-dw-col-lbl {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 11px;
   font-weight: 650;
   fill: var(--text-secondary);
@@ -548,6 +562,7 @@
   border-bottom: 1px solid var(--line-strong);
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .fin-tl-rows {
@@ -571,6 +586,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   font-size: var(--fs-xs, 12px);
   color: var(--text-secondary);
@@ -602,6 +618,7 @@
 .fin-tl-link-lbl {
   position: absolute;
   transform: translate(-50%, -100%) translateY(-3px);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   font-size: var(--fs-2xs, 10px);
   font-weight: 650;
@@ -630,6 +647,7 @@
   stroke-width: 1;
 }
 .fin-yc-tick {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }
@@ -640,6 +658,7 @@
   flex-direction: column;
   gap: 1px;
   align-items: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: var(--r-sm);
@@ -706,6 +725,7 @@
   stroke-width: 1;
 }
 .fin-ef-tick {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
   font-size: 9px;
   fill: var(--text-muted);
 }
@@ -719,6 +739,7 @@
   flex-direction: column;
   gap: 1px;
   align-items: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: var(--r-sm);
@@ -785,6 +806,7 @@
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   flex-shrink: 1;
 }
@@ -863,6 +885,7 @@
   stroke-linejoin: round;
 }
 .fin-cf-tick {
+  /*  stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size  */
   font-size: 9.5px;
   fill: var(--text-muted);
 }
@@ -907,6 +930,7 @@
   flex-direction: column;
   gap: 1px;
   align-items: center;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   padding: 4px 8px;
   border-radius: var(--r-sm);
@@ -975,6 +999,7 @@
   font-size: var(--fs-md, 15px);
   font-weight: 700;
   color: var(--insight);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .fin-cf-npv-val.neg {

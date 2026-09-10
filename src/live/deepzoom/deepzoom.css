@@ -105,14 +105,14 @@
   gap: 2px;
   flex-shrink: 0;
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-md);
   letter-spacing: -0.02em;
   line-height: 1;
   color: var(--text-primary);
 }
 .dz-wordmark-sub {
   font-weight: 600;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -122,8 +122,9 @@
   min-width: 0;
   padding-left: 14px;
   border-left: 1px solid var(--line);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -154,8 +155,9 @@
   border: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -186,8 +188,9 @@
   border: 1px solid color-mix(in oklab, var(--presence) 40%, var(--line));
   background: color-mix(in oklab, var(--presence) 10%, transparent);
   color: var(--presence);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -259,14 +262,14 @@
   padding-right: 6px;
   flex-shrink: 0;
   font-weight: 600;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 .dz-ladder-count {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -376,7 +379,7 @@
   grid-row: 1;
   align-self: end;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   color: var(--text-muted);
@@ -388,10 +391,11 @@
   align-self: start;
   margin-top: 2px;
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--text-faint);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -566,7 +570,7 @@
 }
 .dz-scale-mult {
   font-family: var(--mono);
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -579,7 +583,7 @@
 }
 .dz-scale-label {
   font-weight: 700;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--dz-current) 78%, var(--text-primary));
@@ -616,7 +620,7 @@
   gap: 8px;
   padding: 8px 14px;
   border-radius: var(--r-full);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   border: 1px solid var(--line);
   background: var(--surface-glass);
@@ -666,7 +670,7 @@
   border: 1px solid color-mix(in oklab, var(--dz-current) 40%, var(--line));
   background: color-mix(in oklab, var(--dz-current) 12%, var(--surface-glass));
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -710,7 +714,7 @@
 .dz-zoom-note {
   margin: 10px 0 0;
   max-width: 44ch;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -759,6 +763,7 @@
 }
 .dz-loading-lens {
   position: relative;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- pannable stage: deliberately larger than its frame, the reader drags it */
   width: 64px;
   height: 64px;
 }
@@ -783,7 +788,7 @@
   animation-duration: 1.4s;
 }
 .dz-loading-text {
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 @keyframes dz-spin {
@@ -803,13 +808,13 @@
   text-align: center;
 }
 .dz-error-title {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
 .dz-error-body {
   max-width: 46ch;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -829,7 +834,7 @@
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 .dz-error-alt:hover {
@@ -877,7 +882,7 @@
   gap: 10px;
   margin: 0 0 20px;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -907,7 +912,7 @@
 }
 .dz-start-carry {
   margin: 0 0 14px;
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   color: var(--presence);
 }
 .dz-start-form {
@@ -943,7 +948,7 @@
   background: transparent;
   border: none;
   outline: none;
-  font: 16px var(--font);
+  font: var(--fs-lg) var(--font);
   color: var(--text-primary);
 }
 .dz-start-input::placeholder {
@@ -954,10 +959,11 @@
   border-radius: var(--r-md);
   background: linear-gradient(120deg, var(--presence-deep), var(--presence));
   color: var(--text-on-accent, #fff);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   border: none;
   cursor: pointer;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   flex-shrink: 0;
   transition:
@@ -989,7 +995,7 @@
   border: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font: 13px var(--font);
+  font: var(--fs-sm) var(--font);
   cursor: pointer;
   transition:
     background var(--m-fast),
@@ -1003,7 +1009,7 @@
 }
 
 /* ── tablet: narrow the ladder ────────────────────────────────────────── */
-@media (max-width: 1040px) {
+@media (width <= 1200px) {
   .dz-ladder {
     width: clamp(196px, 26vw, 248px);
     padding: 20px 10px 20px 18px;
@@ -1014,7 +1020,7 @@
 }
 
 /* ── mobile: ladder becomes a horizontal scale strip on top ───────────── */
-@media (max-width: 760px) {
+@media (width <= 768px) {
   .dz-stage {
     flex-direction: column;
   }
@@ -1065,7 +1071,7 @@
     grid-column: 1;
     grid-row: 2;
     align-self: center;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .dz-stop-label {
     display: none;
@@ -1105,7 +1111,7 @@
   }
 }
 
-@media (max-width: 380px) {
+@media (width <= 430px) {
   .dz-topbar {
     height: 52px;
   }
@@ -1135,5 +1141,13 @@
   .dz-loading-lens span,
   .dz-zoom-spinner {
     animation: none;
+  }
+}
+
+/* Under a thumb every control meets the tap floor (--tap-min); on a mouse the compact sizes stay.
+   The floor and the gap are what audit:surfaces enforces at phone and tablet widths. */
+@media (pointer: coarse) {
+  .dz-chip {
+    min-height: var(--tap-min);
   }
 }

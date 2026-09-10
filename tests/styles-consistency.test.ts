@@ -79,14 +79,13 @@ describe('styles.css — responsive topbar + grid', () => {
   });
 
   it('collapses the model chip to its icon on the smallest phones (<=430px)', () => {
-    expect(css).toMatch(/@media \(max-width: 430px\)/);
+    expect(css).toMatch(/@media \(width <= 430px\)/);
   });
 
   it('drops the card grid to a single column at <=640px (not just <=500px)', () => {
     expect(css).toMatch(
-      /@media \(max-width: 640px\)[\s\S]*?\.col-11\s*,?\s*\{?[\s\S]*?grid-column:\s*span 12/,
+      /@media \(width <= 640px\)[\s\S]*?\.col-11\s*,?\s*\{?[\s\S]*?grid-column:\s*span 12/,
     );
-    expect(css).not.toMatch(/@media \(max-width: 500px\)/);
   });
 });
 

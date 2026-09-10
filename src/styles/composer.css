@@ -7,6 +7,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   height: 34px;
   padding: 0 13px;
@@ -14,7 +15,7 @@
   background: var(--surface-glass);
   border: 1px solid var(--line);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   -webkit-backdrop-filter: var(--glass-blur-soft);
   backdrop-filter: var(--glass-blur-soft);
@@ -67,7 +68,7 @@
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-family: inherit;
 }
 .composer-input::placeholder {
@@ -116,7 +117,7 @@
   /* The label swaps with the phase — "Watch me think" → "Done thinking" → "Add thought" — and each
      is a different width, so the button resized under the cursor and shoved Highlight, the
      paperclip and send along with it. Hold the widest of the three. */
-  min-width: 132px;
+  min-width: min(132px, 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +127,8 @@
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text-secondary);
-  font: 600 11px/1 var(--font);
+  font: 600 var(--fs-xs)/1 var(--font);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
   transition:
     color var(--m-fast),
@@ -151,7 +153,7 @@
   outline: 2px solid var(--presence);
   outline-offset: 2px;
 }
-@media (max-width: 620px) {
+@media (width <= 640px) {
   .composer-watch {
     width: 38px;
     padding: 0;
@@ -201,7 +203,7 @@
   border: 1px solid var(--line);
   background: var(--surface-glass);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .attach-chip svg {
   width: 14px;
@@ -218,6 +220,7 @@
 .attach-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 /* The flagship action on a PDF chip: one tap explodes the document into its claim map. Accented so
@@ -232,7 +235,7 @@
   border: 1px solid color-mix(in oklab, var(--presence) 45%, transparent);
   background: color-mix(in oklab, var(--presence) 14%, transparent);
   color: var(--presence);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -265,7 +268,7 @@
 }
 .attach-error {
   align-self: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--warning);
 }
 
@@ -361,7 +364,7 @@
   gap: 10px;
   flex: 1;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .wave {
   display: inline-flex;

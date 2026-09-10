@@ -82,7 +82,7 @@
   background: var(--surface-elevated-2);
   border: 1px solid var(--line-strong);
   color: var(--text-primary);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   box-shadow: var(--shadow-floating);
   opacity: 0;

@@ -172,6 +172,8 @@ export function useAccessibleScrollRegions(
           if (!scrollerState) {
             const overflowX = scroller.style.getPropertyValue('overflow-x');
             const overflowPriority = scroller.style.getPropertyPriority('overflow-x');
+            const overflowY = scroller.style.getPropertyValue('overflow-y');
+            const overflowYPriority = scroller.style.getPropertyPriority('overflow-y');
             const maxWidth = scroller.style.getPropertyValue('max-width');
             const maxPriority = scroller.style.getPropertyPriority('max-width');
             const authoredClass = scroller.classList.contains('canvas-svg-scroll');
@@ -181,6 +183,9 @@ export function useAccessibleScrollRegions(
                 if (overflowX)
                   scroller.style.setProperty('overflow-x', overflowX, overflowPriority);
                 else scroller.style.removeProperty('overflow-x');
+                if (overflowY)
+                  scroller.style.setProperty('overflow-y', overflowY, overflowYPriority);
+                else scroller.style.removeProperty('overflow-y');
                 if (maxWidth) scroller.style.setProperty('max-width', maxWidth, maxPriority);
                 else scroller.style.removeProperty('max-width');
                 if (!authoredClass) scroller.classList.remove('canvas-svg-scroll');
@@ -188,6 +193,12 @@ export function useAccessibleScrollRegions(
             };
             svgScrollerStates.set(scroller, scrollerState);
             scroller.style.overflowX = 'auto';
+            // The guard grows BOTH axes by the same factor (see minHeight above), so a wrapper that
+            // caps its height — a square figure held to 74cqi of the card — has to be able to
+            // scroll vertically too, or the grown figure is clipped at the bottom: measured on
+            // castmap at 1366px, 569px of figure in a 555px stage, 14px lost. An explicit
+            // overflow-y: hidden does not become auto just because overflow-x did.
+            scroller.style.overflowY = 'auto';
             scroller.style.maxWidth = '100%';
             scroller.classList.add('canvas-svg-scroll');
           }

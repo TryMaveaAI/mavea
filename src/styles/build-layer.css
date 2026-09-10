@@ -29,7 +29,7 @@
 .understand-text {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   line-height: 1.45;
 }
@@ -81,7 +81,7 @@
   align-items: center;
   gap: 7px;
   padding: 9px 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   background: color-mix(in oklab, var(--ec) 14%, transparent);
@@ -90,7 +90,7 @@
 }
 .entity-badge {
   margin-left: auto;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ec);
@@ -103,7 +103,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-family: var(--mono);
 }
 .ef-key {
@@ -115,7 +115,7 @@
 }
 .ef-type {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .relations {
   display: flex;
@@ -124,7 +124,7 @@
   margin-top: 14px;
 }
 .relation {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   background: var(--surface-glass);
   border: 1px solid var(--line);
@@ -217,7 +217,7 @@
   border: 1px solid var(--line-soft);
 }
 .screen-thumb figcaption {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-top: 7px;
   text-align: center;
@@ -280,7 +280,7 @@
   min-width: 0;
 }
 .buildstep-label {
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   line-height: 1.4;
   color: var(--text-primary);
@@ -289,7 +289,7 @@
   color: var(--text-muted);
 }
 .buildstep-sub {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -318,7 +318,7 @@
 }
 .afurl {
   margin-left: 10px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .appframe-body {
@@ -327,7 +327,7 @@
   background: var(--surface-default);
 }
 .appnav {
-  width: 130px;
+  width: min(130px, 100%);
   flex-shrink: 0;
   border-right: 1px solid var(--line);
   padding: 12px 10px;
@@ -336,7 +336,7 @@
   gap: 4px;
 }
 .appnav-brand {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -346,7 +346,7 @@
   width: 100%;
   text-align: left;
   border: none;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   padding: 7px 9px;
   border-radius: var(--r-sm);
@@ -377,12 +377,12 @@
   margin-bottom: 12px;
 }
 .appmain-title {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 .appmain-sub {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .appkpis {
@@ -399,12 +399,12 @@
 }
 .appkpi-v {
   display: block;
-  font-size: 19px;
+  font-size: var(--fs-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .appkpi-k {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .appdash {
@@ -412,7 +412,7 @@
   grid-template-columns: 1.1fr 1fr;
   gap: 12px;
 }
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .appdash {
     grid-template-columns: 1fr;
   }
@@ -424,7 +424,7 @@
   padding: 12px 14px;
 }
 .apppanel-h {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
@@ -435,10 +435,10 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .apppipe-l {
-  width: 74px;
+  width: min(74px, 100%);
   flex-shrink: 0;
   color: var(--text-secondary);
 }
@@ -465,7 +465,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   margin-bottom: 9px;
 }
 .appact-t {
@@ -478,12 +478,12 @@
   font-weight: 600;
 }
 .appact-when {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .understand-row {
     display: grid;
     grid-template-columns: 20px minmax(0, 1fr);
@@ -511,7 +511,7 @@
   gap: 8px;
   padding: 9px 12px;
   align-items: center;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .apptable {
   border: 1px solid var(--line);
@@ -521,7 +521,7 @@
 .apptable-head {
   background: var(--surface-glass);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-bottom: 1px solid var(--line);
@@ -547,15 +547,16 @@
   border-radius: var(--r-full);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
 }
 .at-stage {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 2px 8px;
   border-radius: var(--r-full);
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .at-stage.lead {
@@ -578,7 +579,7 @@
   align-items: center;
   gap: 5px;
   margin-left: 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   text-transform: none;
   color: var(--insight);
 }
@@ -591,7 +592,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -612,12 +613,12 @@
   margin-bottom: 8px;
 }
 .appdeal-n {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
 .appdeal-m {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -649,7 +650,7 @@
 }
 .app-launch {
   width: min(1140px, 95vw);
-  max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -671,7 +672,7 @@
   display: inline-flex;
   align-items: center;
   gap: 11px;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -679,7 +680,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--insight);
   background: color-mix(in oklab, var(--insight) 13%, transparent);
@@ -704,7 +705,7 @@
   margin-top: 0;
 }
 .app-launch-body .appframe-body {
-  min-height: 60vh;
+  min-height: 60dvh;
 }
 @keyframes appFade {
   from {

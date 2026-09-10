@@ -28,9 +28,10 @@
   border-radius: var(--r-sm);
   background: var(--gate-accent);
   color: var(--surface-default);
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: -0.01em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .ripple-gate-verdict-text {
@@ -41,18 +42,18 @@
 }
 .ripple-gate-summary {
   margin: 0;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--text-secondary);
 }
 .ripple-gate-summary strong {
-  font-size: 17px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--gate-accent);
 }
 .ripple-gate-rationale {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -87,12 +88,12 @@
 }
 .ripple-gate-cond-pill {
   flex: none;
-  width: 64px;
+  width: min(64px, 100%);
   text-align: center;
   padding: 3px 0;
   border-radius: var(--r-full);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--cond-accent);
@@ -102,7 +103,7 @@
 .ripple-gate-cond-label {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-primary);
   text-wrap: pretty;
@@ -110,7 +111,7 @@
 .ripple-gate-cond-actor {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   padding: 2px 9px;
   border-radius: var(--r-full);
@@ -138,7 +139,7 @@
 }
 .ripple-gate-chip {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   padding: 4px 10px;
@@ -148,17 +149,17 @@
   word-break: break-word;
 }
 .ripple-gate-req-empty {
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .ripple-gate-deploy {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .ripple-gate-deploy strong {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -189,12 +190,13 @@
 }
 .ripple-gate-term-prompt {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- bounded: the same rule clips or ellipsises, so the line cannot widen its row */
   white-space: nowrap;
 }
 .ripple-gate-term-arg {
@@ -203,7 +205,7 @@
 .ripple-gate-term-status {
   flex: none;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -219,7 +221,7 @@
   margin: 0;
   padding: var(--s-md);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.7;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -262,7 +264,7 @@
   gap: 7px;
 }
 .ripple-gate-rev-btn {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   padding: 6px 13px;
   border-radius: var(--r-full);
@@ -297,7 +299,7 @@
 }
 .ripple-gate-review-note {
   margin: 0;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-muted);
   text-wrap: pretty;

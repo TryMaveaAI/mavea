@@ -56,7 +56,7 @@
    At 8.5px, widely tracked and uppercased, they were texture rather than text. */
 .dash-chip-state {
   font-family: var(--font-data, var(--font));
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--chip, var(--text-muted));
@@ -70,7 +70,7 @@
 }
 .dash-gauge-ring {
   position: relative;
-  width: 84px;
+  width: min(84px, 100%);
   height: 84px;
   flex: none;
 }
@@ -141,6 +141,7 @@
   font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
+  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- a single term (label, figure, control caption), never prose */
   white-space: nowrap;
 }
 .dash-alerts-empty,
@@ -185,7 +186,7 @@
 .dash-source-kind {
   flex: none;
   font-family: var(--font-data, var(--font));
-  font-size: 9.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
 }
