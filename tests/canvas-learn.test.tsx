@@ -33,7 +33,7 @@ import { ToolScale } from '../src/canvas/blocks/learn/ToolScale';
 import { UnitCircle } from '../src/canvas/blocks/learn/UnitCircle';
 import { WaveDiagram } from '../src/canvas/blocks/learn/WaveDiagram';
 import { WorkedExample } from '../src/canvas/blocks/learn/WorkedExample';
-import { layoutLabels } from '../src/canvas/blocks/learn/teachDiagramLayout';
+import { layoutLabels, pathBounds } from '../src/canvas/blocks/learn/teachDiagramLayout';
 import type {
   CrossLayer,
   DevelopmentMilestoneProps,
@@ -2074,10 +2074,13 @@ describe('TeachDiagram', () => {
         steps={[{ caption: 'x', add: [] }]}
       />,
     );
-    const g = container.querySelector('svg.lr-td-svg > g[transform]');
-    expect(g).not.toBeNull();
-    // A right-heavy figure gets a negative x translation (shifted left toward centre).
-    expect(g!.getAttribute('transform')).toMatch(/translate\(-\d/);
+    // The fit is applied to the numbers, so the right-heavy figure's circles land centred on the
+    // frame's midline rather than carrying a group transform the labels would scale with.
+    expect(container.querySelector('svg.lr-td-svg > g[transform]')).toBeNull();
+    const cxs = Array.from(container.querySelectorAll('circle.lr-td-shape')).map((c) =>
+      Number(c.getAttribute('cx')),
+    );
+    expect((Math.min(...cxs) + Math.max(...cxs)) / 2).toBeCloseTo(50, 0);
   });
 
   it('shrinks a figure the model drew larger than the frame so it does not bleed off the card', () => {
@@ -2094,10 +2097,92 @@ describe('TeachDiagram', () => {
         steps={[{ caption: 'x', add: [] }]}
       />,
     );
-    const g = container.querySelector('svg.lr-td-svg > g[transform]');
-    expect(g).not.toBeNull();
-    const scale = Number(g!.getAttribute('transform')?.match(/scale\(([\d.]+)\)/)?.[1]);
-    expect(scale).toBeLessThan(1);
+    const widths = Array.from(container.querySelectorAll('rect.lr-td-shape')).map((r) =>
+      Number(r.getAttribute('width')),
+    );
+    // The 90-wide box is pulled in under the frame's 76-unit content width.
+    expect(Math.max(...widths)).toBeLessThan(90);
+    // …and limited by the frame's height here (the boxes span 5→98 on a 62.5-tall frame), so the
+    // lowest box bottoms out inside the viewBox instead of past it.
+    const [, , , vbH] = (container.querySelector('svg.lr-td-svg')!.getAttribute('viewBox') ?? '')
+      .split(' ')
+      .map(Number);
+    const bottoms = Array.from(container.querySelectorAll('rect.lr-td-shape')).map(
+      (r) => Number(r.getAttribute('y')) + Number(r.getAttribute('height')),
+    );
+    expect(Math.max(...bottoms)).toBeLessThanOrEqual(vbH);
+  });
+
+  // A real answer ("visual snapshot mechanism") arrived drawn in a coordinate space several
+  // hundred units wide with one path among its shapes. The fit refused to measure a path, so the
+  // figure stayed where the model put it — mostly outside the frame, with the few callouts still in
+  // view piled on one another in a corner over an otherwise empty card.
+  it('normalises a figure drawn in a 0–1000 space with a path in it, keeping the glyphs unscaled', () => {
+    const { container } = render(
+      <TeachDiagram
+        title="Snapshot"
+        baseShapes={[
+          { kind: 'path', d: 'M 100 100 L 900 100 L 900 500 Z' },
+          { kind: 'circle', cx: 200, cy: 400, r: 40 },
+        ]}
+        baseLabels={[
+          { x: 200, y: 400, text: 'Landmark', side: 'right' },
+          { x: 900, y: 500, text: 'Hive', side: 'left' },
+        ]}
+        steps={[{ caption: 'x', add: [] }]}
+      />,
+    );
+    const svg = container.querySelector('svg.lr-td-svg')!;
+    const [, , vbW, vbH] = (svg.getAttribute('viewBox') ?? '').split(' ').map(Number);
+    const circle = svg.querySelector('circle.lr-td-shape')!;
+    const cx = Number(circle.getAttribute('cx'));
+    const cy = Number(circle.getAttribute('cy'));
+    expect(cx).toBeGreaterThan(0);
+    expect(cx).toBeLessThan(vbW);
+    expect(cy).toBeGreaterThan(0);
+    expect(cy).toBeLessThan(vbH);
+    // The path is the one shape that carries the fit as a transform — and it shrinks, hard.
+    const scale = Number(
+      svg
+        .querySelector('path.lr-td-shape')
+        ?.getAttribute('transform')
+        ?.match(/scale\(([\d.]+)\)/)?.[1],
+    );
+    expect(scale).toBeLessThan(0.2);
+    // Glyphs never ride a transform: every label sits in an untransformed group.
+    for (const text of Array.from(svg.querySelectorAll('text.lr-td-lbl'))) {
+      expect(text.closest('[transform]')).toBeNull();
+    }
+    // …and every callout's text lands inside the frame.
+    for (const t of Array.from(svg.querySelectorAll('tspan'))) {
+      const x = Number(t.getAttribute('x'));
+      const y = Number(t.getAttribute('y'));
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(vbW);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(vbH);
+    }
+  });
+
+  it('measures a path for the fit, relative commands and arcs included', () => {
+    expect(pathBounds('M 10 10 l 20 0 l 0 20 z')).toEqual([10, 10, 30, 30]);
+    expect(pathBounds('M50,50 A10,10 0 0 1 70,50')).toEqual([50, 50, 70, 50]);
+    expect(pathBounds('garbage')).toBeNull();
+  });
+
+  it('caps the stage ratio so a figure cannot open a wall of empty stage on a wide card', () => {
+    const { container } = render(
+      <TeachDiagram
+        title="Tall"
+        ratio={0.2}
+        baseShapes={[{ kind: 'circle', cx: 50, cy: 50, r: 5 }]}
+        steps={[{ caption: 'x', add: [] }]}
+      />,
+    );
+    const [, , , vbH] = (container.querySelector('svg.lr-td-svg')!.getAttribute('viewBox') ?? '')
+      .split(' ')
+      .map(Number);
+    expect(vbH).toBeLessThanOrEqual(134);
   });
 });
 
@@ -2356,5 +2441,35 @@ describe('learn diagrams — SVG label type stays on the 9px rendered floor', ()
         FLOOR_PX,
       );
     }
+  });
+});
+
+describe('CrossSection — layers with nothing to size them', () => {
+  it('says the stage is empty instead of painting a title over nothing', () => {
+    const { container } = render(
+      <CrossSection
+        title="Lens layer stack"
+        layers={[
+          { name: 'Coating', thickness: Number.NaN },
+          { name: 'Substrate', thickness: 0 },
+        ]}
+      />,
+    );
+    // The eyebrow's icon is an svg too; the figure is the one that draws bands.
+    expect(container.querySelector('svg.lr-xs-svg')).toBeNull();
+    expect(container.textContent).toMatch(/no layer has a thickness/i);
+  });
+
+  it('draws one band per layer that carries a thickness', () => {
+    const { container } = render(
+      <CrossSection
+        title="Strata"
+        layers={[
+          { name: 'Topsoil', thickness: 1 },
+          { name: 'Bedrock', thickness: 5 },
+        ]}
+      />,
+    );
+    expect(container.querySelector('svg.lr-xs-svg')).not.toBeNull();
   });
 });

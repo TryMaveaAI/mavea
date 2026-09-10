@@ -22,7 +22,7 @@ import {
   type Rect,
 } from './gesture';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
-import { measuredLabel } from './measure';
+import { measuredLabel, liesFlat } from './measure';
 import {
   saidTokens,
   findSaidMatch,
@@ -717,6 +717,10 @@ function measureConnect(
   const toHosts = root.querySelectorAll<HTMLElement>(`[data-spot-id="${CSS.escape(toSpot)}"]`);
   const toHost = lastVisible(toHosts);
   if (!fromHost || !toHost || fromHost === toHost) return null;
+  // Both ends have to lie in the same flat plane as the grid. On the Study's desk the other
+  // cards are scenery, receded in 3-D, and a stroke to one of them left the front card as a
+  // straight line to nowhere the reader could follow — no plane, no ink.
+  if (!liesFlat(fromHost, grid) || !liesFlat(toHost, grid)) return null;
   const atMatch = findSaidMatch(fromHost, [mark.at]);
   const atRect = atMatch && saidRect(atMatch);
   const toMatch = mark.to ? findSaidMatch(toHost, [mark.to]) : null;

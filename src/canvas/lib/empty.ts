@@ -150,6 +150,21 @@ export interface ItemTextShape {
   prop: string;
   text?: string;
   textAliases?: readonly string[];
+  magnitude?: string;
+}
+
+/**
+ * The finite, positive number a magnitude field carries, or null. A model writes "12 km" or
+ * "0.5mm" as often as 12 — the leading number is the figure, the rest is the unit the block
+ * already knows. Zero and negatives are null: a band of no thickness draws nothing.
+ */
+export function magnitudeOf(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) && v > 0 ? v : null;
+  if (typeof v !== 'string') return null;
+  const m = /^\s*[-+]?(\d+(?:[.,]\d+)?|\.\d+)(?:e[-+]?\d+)?/i.exec(v);
+  if (!m) return null;
+  const n = Number(m[0].replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /**
@@ -178,6 +193,15 @@ export function resolvesDeclaredItems(props: unknown, shapes: readonly ItemTextS
     const shows = (v: unknown): boolean =>
       typeof v === 'number' ? Number.isFinite(v) : readableText(v);
     if (!items.some((item) => fields.some((f) => shows(item[f])))) return false;
+  }
+  // Items that are DRAWN from a number: a cross-section's bands are sized by thickness, so five
+  // named layers with no usable thickness is a title over an empty stage — counted, captioned,
+  // and blank. One item with a real magnitude is enough; the renderer skips the rest.
+  for (const shape of shapes) {
+    if (!shape.magnitude) continue;
+    const items = asArray(p[shape.prop]).map(asRecord);
+    if (items.length === 0) continue;
+    if (!items.some((item) => magnitudeOf(item[shape.magnitude!]) !== null)) return false;
   }
   return true;
 }

@@ -365,6 +365,12 @@ export interface ItemSpec {
   /** Field names the model commonly uses for `text`, renamed onto it when present
    *  (e.g. ['label','name','title'] → 'text'). The canonical `text` always wins. */
   textAliases?: string[];
+  /** The field an item must carry as a finite POSITIVE number for anything to draw at all — a
+   *  band's thickness, a star's temperature on a log axis, a wave's wavelength. The validator
+   *  coerces a numeric string ("12 km") onto it, and an array where no item has one is refused
+   *  the same way an array of blank rows is (`resolvesDeclaredItems`): a figure sized from
+   *  nothing is an empty stage under a real title. */
+  magnitude?: string;
   /** Additional sibling fields the renderer requires for safe semantics or computation. Unlike
    *  optional enrichment keys in the reference fixture, an item missing one of these is rejected
    *  before React (e.g. `quadrant`, `role`, `time`, or a status `level`). */

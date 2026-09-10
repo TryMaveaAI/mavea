@@ -14,7 +14,16 @@ import { register, subscribeClaim, isClaimed } from '../../focus/stepDriver';
 import type { DiagShape, DiagLabel } from '../media/types';
 import type { TeachDiagramProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
-import { layoutLabels, teachLabelPoint, TD_LINE_H, type PlacedLabel } from './teachDiagramLayout';
+import {
+  calloutOffset,
+  computeFit,
+  fitLabel,
+  fitShape,
+  layoutLabels,
+  TD_LINE_H,
+  type Fit,
+  type PlacedLabel,
+} from './teachDiagramLayout';
 
 type Props = TeachDiagramProps & { delay?: number; spotlight?: boolean; blockId?: string };
 
@@ -24,96 +33,6 @@ type Props = TeachDiagramProps & { delay?: number; spotlight?: boolean; blockId?
 function stepDwellMs(caption: string): number {
   const words = caption.trim() ? caption.trim().split(/\s+/).length : 1;
   return Math.min(7000, Math.max(1500, words * 385 + 500));
-}
-
-/** Rough bounds of one shape in the 0–100 figure space. Returns null for a `path` (whose `d` we
- *  don't parse) so the fit below bails rather than guessing a wrong box. */
-function shapeBounds(s: DiagShape): [number, number, number, number] | null {
-  const ok = (v: number | undefined): v is number => Number.isFinite(v);
-  switch (s.kind) {
-    case 'circle':
-      return ok(s.cx) && ok(s.cy) && ok(s.r)
-        ? [s.cx - s.r, s.cy - s.r, s.cx + s.r, s.cy + s.r]
-        : null;
-    case 'rect':
-      return ok(s.x) && ok(s.y) && ok(s.w) && ok(s.h) ? [s.x, s.y, s.x + s.w, s.y + s.h] : null;
-    case 'line':
-      return ok(s.x1) && ok(s.y1) && ok(s.x2) && ok(s.y2)
-        ? [Math.min(s.x1, s.x2), Math.min(s.y1, s.y2), Math.max(s.x1, s.x2), Math.max(s.y1, s.y2)]
-        : null;
-    case 'polygon': {
-      const nums = (s.points ?? '')
-        .trim()
-        .split(/[\s,]+/)
-        .map(Number)
-        .filter(Number.isFinite);
-      if (nums.length < 4) return null;
-      let x0 = Infinity,
-        y0 = Infinity,
-        x1 = -Infinity,
-        y1 = -Infinity;
-      for (let i = 0; i + 1 < nums.length; i += 2) {
-        x0 = Math.min(x0, nums[i]);
-        x1 = Math.max(x1, nums[i]);
-        y0 = Math.min(y0, nums[i + 1]);
-        y1 = Math.max(y1, nums[i + 1]);
-      }
-      return [x0, y0, x1, y1];
-    }
-    default:
-      return null; // path — unbounded here
-  }
-}
-
-/** Centre and fill the whole figure inside the viewBox. Models routinely draw the figure off in one
- *  region (the built-in Pythagorean sample sits in the right third), which — once the svg is
- *  letterboxed on a wide card — reads as a scrunched cluster with a dead band beside it. This maps
- *  the figure's bounding box (every shape + label point) to the centre of the frame and scales it up
- *  when it's small, so it reads as a deliberate, full-size drawing. Returns null (identity) when a
- *  path blocks measurement or the figure already sits centred and full — a good layout is untouched. */
-function computeFit(
-  shapes: DiagShape[],
-  labels: DiagLabel[],
-  H: number,
-): { scale: number; tx: number; ty: number } | null {
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  for (const s of shapes) {
-    if (s.kind === 'path') return null;
-    const b = shapeBounds(s);
-    if (!b) continue;
-    minX = Math.min(minX, b[0]);
-    minY = Math.min(minY, b[1]);
-    maxX = Math.max(maxX, b[2]);
-    maxY = Math.max(maxY, b[3]);
-  }
-  for (const l of labels) {
-    if (!Number.isFinite(l.x) || !Number.isFinite(l.y)) continue;
-    // Fold in the OFFSET callout point, not just the datum, so the fit reserves the band the lead
-    // line + text actually occupy rather than letting them spill past the frame after scaling.
-    const { tx, ty } = teachLabelPoint(l, H);
-    minX = Math.min(minX, l.x, tx);
-    minY = Math.min(minY, l.y, ty);
-    maxX = Math.max(maxX, l.x, tx);
-    maxY = Math.max(maxY, l.y, ty);
-  }
-  const bw = maxX - minX,
-    bh = maxY - minY;
-  if (!(bw > 0 && bh > 0)) return null;
-  const PAD = 12; // leaves room for label lead-lines/text (offset 7) to stay in frame after fitting
-  // Scale to fit BOTH ways: shrink a figure the model drew larger than the frame (the old Math.max(1,…)
-  // floor only ever enlarged, so an oversized drawing bled off the card) and enlarge a small one, within
-  // sane bounds so a stray outlier can't collapse the figure to nothing.
-  const scale = Math.max(0.35, Math.min(Math.min((100 - 2 * PAD) / bw, (H - 2 * PAD) / bh), 2.4));
-  const cx = (minX + maxX) / 2,
-    cy = (minY + maxY) / 2;
-  const tx = 50 - scale * cx,
-    ty = H / 2 - scale * cy;
-  // Already centred and full-frame with nothing to gain → leave the figure exactly as authored.
-  if (Math.abs(scale - 1) < 0.02 && Math.abs(tx) < 0.5 && Math.abs(ty) < 0.5) return null;
-  return { scale, tx, ty };
 }
 
 export function TeachDiagram({
@@ -132,14 +51,20 @@ export function TeachDiagram({
   const Ic = Icon[icon] || Icon.sparkle;
   // Per-instance marker id so two teach diagrams in one answer don't share `lr-td-arrow`.
   const arrowId = `lr-td-arrow-${useId().replace(/:/g, '')}`;
-  const H = Math.round((100 / Math.max(0.4, ratio)) * 10) / 10;
+  // A figure taller than 4:3 on a full-width card is a wall of empty stage — the model's ratio is
+  // a hint about the drawing, not a licence to take the whole screen.
+  const H = Math.round((100 / Math.min(4, Math.max(0.75, ratio))) * 10) / 10;
   const reduce = useMemo(() => prefersReducedMotion(), []);
   const lastStep = Math.max(0, steps.length - 1);
   const canStep = steps.length > 1;
 
-  // Centre + fill transform for the WHOLE figure (all steps, so it's stable as the build advances —
-  // never re-framing between steps). See computeFit: a no-op for a diagram already drawn full-frame.
-  const fit = useMemo(
+  // Centre + fill the WHOLE figure (all steps, so it's stable as the build advances — never
+  // re-framing between steps). The fit is applied to the NUMBERS, never as a group transform: a
+  // transform scales the glyphs with the geometry, so a figure drawn in a 0–1000 space came out as
+  // unreadable specks in one corner, and every callout was laid out in a space the reader never
+  // saw. Shapes and label data are mapped into frame units first; text keeps its authored size and
+  // the callouts are placed in the frame they are drawn in.
+  const fit = useMemo<Fit | null>(
     () =>
       computeFit(
         [...baseShapes, ...steps.flatMap((s) => s.add)],
@@ -148,13 +73,21 @@ export function TeachDiagram({
       ),
     [baseShapes, baseLabels, steps, H],
   );
-  const fitTransform = fit ? `translate(${fit.tx} ${fit.ty}) scale(${fit.scale})` : undefined;
+  const fittedBase = useMemo(() => baseShapes.map((s) => fitShape(s, fit)), [baseShapes, fit]);
+  const fittedSteps = useMemo(
+    () => steps.map((step) => step.add.map((s) => fitShape(s, fit))),
+    [steps, fit],
+  );
+  const fittedLabels = useMemo(
+    () => [...baseLabels, ...steps.flatMap((s) => s.labels ?? [])].map((l) => fitLabel(l, fit)),
+    [baseLabels, steps, fit],
+  );
 
   // Place every callout across the WHOLE figure (base + every step) at once, so a label's position is
   // stable as the build advances, no two overlap, and none bleed off the card. See layoutLabels.
   const placed = useMemo(
-    () => layoutLabels([...baseLabels, ...steps.flatMap((s) => s.labels ?? [])], H),
-    [baseLabels, steps, H],
+    () => layoutLabels(fittedLabels, H, calloutOffset(fit?.scale ?? 1)),
+    [fittedLabels, H, fit],
   );
   // Where each step's labels begin in that flat, de-collided list (base labels come first).
   const stepLabelStart = useMemo(() => {
@@ -262,36 +195,37 @@ export function TeachDiagram({
             </marker>
           </defs>
 
-          {/* Everything is wrapped in the fit transform so the drawn figure is centred and filled
-              in the frame regardless of where the model placed it (strokes stay crisp via the
-              non-scaling-stroke on .lr-td-shape). */}
-          <g transform={fitTransform}>
+          {/* Already in frame units (see the fit above): centred and filled regardless of where or
+              at what scale the model drew it, with strokes kept crisp by the non-scaling-stroke on
+              .lr-td-shape. */}
+          <g>
             {/* The figure at rest — always present, never animated. */}
-            {baseShapes.map((s, i) => (
-              <TdShape key={`b${i}`} s={s} drawing={false} idx={i} arrowId={arrowId} />
+            {fittedBase.map((s, i) => (
+              <TdShape key={`b${i}`} s={s} fit={fit} drawing={false} idx={i} arrowId={arrowId} />
             ))}
-            {baseLabels.map((l, i) => (
-              <TdLabel key={`bl${i}`} l={l} drawing={false} p={placed[i]} />
+            {baseLabels.map((_, i) => (
+              <TdLabel key={`bl${i}`} l={fittedLabels[i]} drawing={false} p={placed[i]} />
             ))}
 
             {/* Each revealed step's shapes, added on top of the prior ones. The newest step draws in;
                 settled steps render statically. Keying on `current` re-runs the draw on replay. */}
             {steps.slice(0, current + 1).map((step, si) => (
               <g key={`s${si}-${si === current ? current : 'set'}`}>
-                {step.add.map((s, i) => (
+                {fittedSteps[si].map((s, i) => (
                   <TdShape
                     key={`s${si}sh${i}`}
                     s={s}
+                    fit={fit}
                     drawing={!reduce && si === current}
                     idx={i}
                     emphasize={step.emphasize?.includes(i)}
                     arrowId={arrowId}
                   />
                 ))}
-                {(step.labels ?? []).map((l, i) => (
+                {(step.labels ?? []).map((_, i) => (
                   <TdLabel
                     key={`s${si}l${i}`}
-                    l={l}
+                    l={fittedLabels[stepLabelStart[si] + i]}
                     drawing={!reduce && si === current}
                     p={placed[stepLabelStart[si] + i]}
                   />
@@ -357,15 +291,19 @@ export function TeachDiagram({
   );
 }
 
-/** One figure shape. `drawing` adds the stroke-draw class; `emphasize` pulses it once it lands. */
+/** One figure shape, already in frame units. `drawing` adds the stroke-draw class; `emphasize`
+ *  pulses it once it lands. A path is the one kind whose numbers cannot be rewritten, so it alone
+ *  carries the fit as a transform — pure geometry, no glyphs to scale with it. */
 function TdShape({
   s,
+  fit,
   drawing,
   idx,
   emphasize,
   arrowId,
 }: {
   s: DiagShape;
+  fit: Fit | null;
   drawing: boolean;
   idx: number;
   emphasize?: boolean;
@@ -404,7 +342,13 @@ function TdShape({
     case 'polygon':
       return <polygon points={s.points} {...common} />;
     case 'path':
-      return <path d={s.d} {...common} />;
+      return (
+        <path
+          d={s.d}
+          transform={fit ? `translate(${fit.tx} ${fit.ty}) scale(${fit.scale})` : undefined}
+          {...common}
+        />
+      );
     default:
       return null;
   }

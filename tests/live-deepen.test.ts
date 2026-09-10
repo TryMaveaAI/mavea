@@ -134,27 +134,28 @@ describe('deepenSection — the on-open drawer call', () => {
     rememberDeepenTurn({ ask, cfg, tier: 'mid', blocks: standard });
   }
 
-  it('resolves null with ZERO calls when no live turn parked a context (demo/tour/restored)', async () => {
-    const blocks = await deepenSection('Flow control', standard);
-    expect(blocks).toBeNull();
+  it('names the failure with ZERO calls when no live turn parked a context (demo/tour/restored)', async () => {
+    const outcome = await deepenSection('Flow control', standard);
+    expect(outcome).toEqual({ failed: 'unavailable' });
     expect(fake.calls).toBe(0);
   });
 
-  it('resolves null with ZERO calls when the section does not match the parked turn', async () => {
+  it('names the failure with ZERO calls when the section does not match the parked turn', async () => {
     park();
-    const blocks = await deepenSection('Flow control', [card('insight', 'From a baked demo')]);
-    expect(blocks).toBeNull();
+    const outcome = await deepenSection('Flow control', [card('insight', 'From a baked demo')]);
+    expect(outcome).toEqual({ failed: 'unavailable' });
     expect(fake.calls).toBe(0);
   });
 
   it('requests once, slim: minimal thinking, tier-standard enum, no menu, bounded budget', async () => {
     park('deepen-slim');
     fake.raw = DRAWER_RAW;
-    const blocks = await deepenSection('Flow control', standard);
+    const outcome = await deepenSection('Flow control', standard);
     expect(fake.calls).toBe(1);
-    expect(blocks?.length).toBe(2);
+    const blocks = 'blocks' in outcome ? outcome.blocks : [];
+    expect(blocks.length).toBe(2);
     // Drawer blocks live in their own id namespace so card chrome never aliases the canvas.
-    expect(blocks![0].id).toMatch(/^deep-/);
+    expect(blocks[0].id).toMatch(/^deep-/);
     const req = fake.lastReq!;
     expect(req.thinkingLevel).toBe('minimal');
     expect(req.maxTokens).toBeLessThanOrEqual(1300);
@@ -183,15 +184,20 @@ describe('deepenSection — the on-open drawer call', () => {
     expect(again).toEqual(a);
   });
 
-  it('never memoises a failure — the next press gets a real attempt', async () => {
+  it('never memoises a failure — the next press gets a real attempt, and each failure says which', async () => {
     park('deepen-retry');
     fake.shouldThrow = true;
-    expect(await deepenSection('Flow control', standard)).toBeNull();
+    // The request failed: the reader is told the model could not be reached, not shown a closed drawer.
+    expect(await deepenSection('Flow control', standard)).toEqual({ failed: 'request' });
     expect(fake.calls).toBe(1);
     fake.shouldThrow = false;
-    fake.raw = DRAWER_RAW;
-    const blocks = await deepenSection('Flow control', standard);
+    fake.raw = '{"blocks": []}';
+    // The model answered and nothing survived: a different failure, told apart on screen.
+    expect(await deepenSection('Flow control', standard)).toEqual({ failed: 'empty' });
     expect(fake.calls).toBe(2);
-    expect(blocks?.length).toBe(2);
+    fake.raw = DRAWER_RAW;
+    const outcome = await deepenSection('Flow control', standard);
+    expect(fake.calls).toBe(3);
+    expect('blocks' in outcome ? outcome.blocks.length : 0).toBe(2);
   });
 });

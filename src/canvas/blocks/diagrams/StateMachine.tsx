@@ -2,11 +2,18 @@ import { useId, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import { computeEdgeLayout, ringPositions, adaptiveRadius } from '../../lib';
+import { estimateTextWidth, fitText } from '../../lib/fitText';
 import type { StateMachineProps, StateNode, StateTransition } from './types';
 
 type Props = StateMachineProps & { delay?: number };
 
 const VB = 100; // viewBox dimension
+// .dg-sm-lbl in the family sheet — user units, mirrored here so the node can be sized for the
+// words inside it. Two lines is the most a circle holds without reading as a paragraph.
+const LABEL_FS = 4;
+const LABEL_LINE_H = LABEL_FS * 1.15;
+const LABEL_MAX_LINES = 2;
+const LABEL_PAD = 2.2; // between the text and the circle's edge
 
 interface RenderState extends StateNode {
   renderId: string;
@@ -85,7 +92,37 @@ export function StateMachine({
     return m;
   }, [graph.states]);
 
-  const R = adaptiveRadius(graph.states.length);
+  // The label decides the node, not the other way round: a state is named by the model, and
+  // "Orientation Flight" does not fit an 11-unit circle drawn for "Idle". Wrap each label to two
+  // lines against the ring's own spacing, then grow the shared radius to hold the widest line —
+  // capped so neighbours on the ring never touch, at which point the label breaks into more lines
+  // rather than the circle swallowing its neighbour.
+  const layout = useMemo(() => {
+    const n = graph.states.length;
+    const base = adaptiveRadius(n);
+    // Half the chord between ring neighbours, less air: the most a circle may grow to.
+    const ringR = n <= 4 ? 32 : 32 + (n - 4) * 3;
+    const chord = n > 1 ? 2 * ringR * Math.sin(Math.PI / n) : 2 * ringR;
+    const cap = Math.max(base, chord / 2 - 2.5);
+    const maxLineW = 2 * (cap - LABEL_PAD) * 0.92;
+    const lines: Record<string, string[]> = {};
+    let widest = 0;
+    for (const st of graph.states) {
+      const fit = fitText(st.label, {
+        maxWidth: maxLineW,
+        fontSize: LABEL_FS,
+        minFontSize: LABEL_FS,
+        maxLines: LABEL_MAX_LINES,
+        bold: true,
+      });
+      lines[st.renderId] = fit.lines;
+      for (const line of fit.lines)
+        widest = Math.max(widest, estimateTextWidth(line, LABEL_FS, true));
+    }
+    const R = Math.min(cap, Math.max(base, widest / 2 + LABEL_PAD));
+    return { R, lines };
+  }, [graph.states]);
+  const R = layout.R;
 
   // Compute curved/straight edge geometry, correctly separating bidirectional pairs.
   const edges = useMemo(
@@ -161,8 +198,18 @@ export function StateMachine({
                 )}
                 <circle cx={p.x} cy={p.y} r={R} className="dg-sm-circ" />
                 {s.final && <circle cx={p.x} cy={p.y} r={R - 2.4} className="dg-sm-circ-inner" />}
-                <text x={p.x} y={p.y + 2.4} className="dg-sm-lbl" textAnchor="middle">
-                  {s.label}
+                <text
+                  x={p.x}
+                  y={p.y - ((layout.lines[s.renderId].length - 1) * LABEL_LINE_H) / 2 + 1.4}
+                  className="dg-sm-lbl"
+                  textAnchor="middle"
+                >
+                  {layout.lines[s.renderId].map((line, k) => (
+                    <tspan key={k} x={p.x} dy={k === 0 ? 0 : LABEL_LINE_H}>
+                      {line}
+                    </tspan>
+                  ))}
+                  {layout.lines[s.renderId].length > 1 && <title>{s.label}</title>}
                 </text>
               </g>
             );

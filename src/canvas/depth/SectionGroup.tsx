@@ -34,6 +34,13 @@ interface Props {
  *  vocabulary the canvas uses while a family chunk loads (shape over spinner). */
 const DRAWER_SKELETON = [{ col: 6 }, { col: 6 }];
 
+/** What the reader is told when a drawer cannot be written, by cause. */
+const FAILURE_COPY: Record<'unavailable' | 'request' | 'empty', string> = {
+  unavailable: 'This drawer can only be written for a live answer.',
+  request: 'Mavéa couldn’t reach the model to write this drawer.',
+  empty: 'The model had nothing more to add here.',
+};
+
 export function SectionGroup({ section, renderCard, readingMode }: Props): ReactNode {
   const [localOpen, setLocalOpen] = useState(false);
   // Drawer blocks authored on demand for THIS section. Component-local on purpose: the spec is
@@ -41,6 +48,11 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
   // re-requests and lands on ./deepen's in-flight/persistent cache instead of a second call.
   const [fetched, setFetched] = useState<Block[] | null>(null);
   const [pending, setPending] = useState(false);
+  // Why the last attempt to write this drawer produced nothing. Shown IN the open drawer with
+  // the button left armed: the affordance promised depth, so a press that produced silence and a
+  // closed drawer read as the app ignoring it — and the reader could not tell a throttled key
+  // from an empty answer. Cleared by the next press.
+  const [failure, setFailure] = useState<string | null>(null);
   // Guards setState after unmount. The request itself is deliberately NOT aborted: the tokens
   // are already being spent, and letting it finish banks the result in the persistent cache.
   const alive = useRef(true);
@@ -76,23 +88,22 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
     setLocalOpen(opening);
     if (!opening || !fetchable || pending) return;
     setPending(true);
+    setFailure(null);
     // Dynamic import: ./deepen reaches the engine + providers, which must stay out of the
     // canvas chunk (tests/eager-bundle.test.ts). A drawer can only open after a live turn
     // already loaded them, so this resolves from the module cache.
     void import('../../live/depth/deepen')
       .then(({ deepenSection }) => deepenSection(section.label, section.standard))
-      .then((blocks) => {
+      .then((outcome) => {
         if (!alive.current) return;
         setPending(false);
-        // Nothing usable — put the affordance back and say nothing (a press later retries;
-        // failures are never memoised). Mirrors the world's expand-chip behavior.
-        if (blocks && blocks.length > 0) setFetched(blocks);
-        else setLocalOpen(false);
+        if ('blocks' in outcome && outcome.blocks.length > 0) setFetched(outcome.blocks);
+        else setFailure(FAILURE_COPY['failed' in outcome ? outcome.failed : 'empty']);
       })
       .catch(() => {
         if (!alive.current) return;
         setPending(false);
-        setLocalOpen(false);
+        setFailure(FAILURE_COPY.request);
       });
   };
 
@@ -137,6 +148,14 @@ export function SectionGroup({ section, renderCard, readingMode }: Props): React
                 reading.map((b, i) => renderCard(b, section.standard.length + i))
               )}
             </div>
+            {failure && deeper.length === 0 && !pending && (
+              <p className="depth-drawer-note" role="status">
+                {failure}{' '}
+                <button type="button" className="depth-drawer-retry" onClick={toggle}>
+                  Try again
+                </button>
+              </p>
+            )}
             {recall.length > 0 && (
               <>
                 <h4 className="depth-recall-label">Check yourself</h4>

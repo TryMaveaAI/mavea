@@ -77,3 +77,23 @@ export function measuredLabel(at: string, to: string, modelLabel?: string): stri
   const pct = ((b.value - a.value) / Math.abs(a.value)) * 100;
   return Math.abs(pct) < NOISE ? modelLabel : cap(signed(pct, '%'));
 }
+
+/** True when nothing between `el` and `root` turns or tilts it out of the reading plane. A
+ *  transform that only translates or scales keeps a box flat, and `getBoundingClientRect` reports
+ *  it faithfully; a 3-D one (the Study's desk recedes its scenery with translateZ + rotateY) leaves
+ *  the box's screen rect a projection the pen's flat stroke has no way to reach — a connect drawn to
+ *  it shoots off the front card to wherever the scenery happens to land. The transform is read as
+ *  the engine states it: a resolved matrix in a browser, the authored function list in jsdom. */
+export function liesFlat(el: Element, root: Element): boolean {
+  for (let a: Element | null = el; a && a !== root; a = a.parentElement) {
+    const t = getComputedStyle(a).transform;
+    if (!t || t === 'none') continue;
+    if (/matrix3d|3d\(|translateZ|rotate|skew|perspective/i.test(t)) return false;
+    const m = /^matrix\(([^)]+)\)/.exec(t);
+    if (m) {
+      const [, b, c] = m[1].split(',').map(Number);
+      if (Math.abs(b) > 0.01 || Math.abs(c) > 0.01) return false;
+    }
+  }
+  return true;
+}

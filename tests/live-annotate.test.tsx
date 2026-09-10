@@ -1,3 +1,4 @@
+import { liesFlat } from '../src/live/annotate/measure';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { gestureOf, relativeRect, strokeFor } from '../src/live/annotate/gesture';
@@ -750,5 +751,45 @@ describe('AnnotationLayer — reporting what actually landed', () => {
     act(() => vi.advanceTimersByTime(2000));
 
     expect(placed).toEqual(['drew']);
+  });
+});
+
+// A connect stroke joins two cards on the SAME flat plane. The Study recedes its scenery cards in
+// 3-D, and a stroke to one of those left the front card as a straight line to nowhere the reader
+// could follow. The plane test is what the resolver asks first.
+describe('connect — both ends lie in the reading plane', () => {
+  const build = (transform: string) => {
+    const grid = document.createElement('div');
+    const card = document.createElement('div');
+    const host = document.createElement('div');
+    card.style.transform = transform;
+    grid.appendChild(card);
+    card.appendChild(host);
+    document.body.appendChild(grid);
+    return { grid, host };
+  };
+  it('accepts a card that is only scaled or shifted (the spotlight and dimmed states)', () => {
+    for (const t of [
+      'none',
+      'scale(1.03)',
+      'translate(4px, 0) scale(0.984)',
+      'matrix(1.03, 0, 0, 1.03, 0, 0)',
+    ]) {
+      const { grid, host } = build(t);
+      expect(liesFlat(host, grid), t).toBe(true);
+      grid.remove();
+    }
+  });
+  it('refuses a card that has been turned or receded out of the plane', () => {
+    for (const t of [
+      'translateZ(75px)',
+      'rotateY(12deg)',
+      'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)',
+      'matrix(0.9, 0.2, -0.2, 0.9, 0, 0)',
+    ]) {
+      const { grid, host } = build(t);
+      expect(liesFlat(host, grid), t).toBe(false);
+      grid.remove();
+    }
   });
 });

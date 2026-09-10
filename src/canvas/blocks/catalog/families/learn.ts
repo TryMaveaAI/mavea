@@ -477,7 +477,9 @@ export const CATALOG_LEARN: ComponentCatalog = [
       'equilibrium axis with measurement annotations — wavelength (λ, crest-to-crest), amplitude ' +
       '(A, centre-to-crest), and an optional period (T) marker. Computes the curve from amplitude, ' +
       'wavelength, and phase. Use for waves/oscillations, NOT an audio player.',
-    itemShapes: [{ prop: 'waves', text: 'label', textAliases: ['name', 'wave'] }],
+    itemShapes: [
+      { prop: 'waves', text: 'label', textAliases: ['name', 'wave'], magnitude: 'wavelength' },
+    ],
     propHints: {
       'waves[].amplitude': 'peak displacement from the centre line (y-axis units)',
       'waves[].wavelength': 'distance over which the wave repeats, crest to crest (must be > 0)',
@@ -947,7 +949,14 @@ export const CATALOG_LEARN: ComponentCatalog = [
       'A labelled stratified cross-section: stacked bands sized by thickness (Earth strata, tissue ' +
       'layers, ocean zones) with leader labels and an optional depth axis — or concentric rings ' +
       '(a planet interior) when orientation is "concentric". For geology, anatomy, oceanography.',
-    itemShapes: [{ prop: 'layers', text: 'name', textAliases: ['label', 'layer', 'zone'] }],
+    itemShapes: [
+      {
+        prop: 'layers',
+        text: 'name',
+        textAliases: ['label', 'layer', 'zone'],
+        magnitude: 'thickness',
+      },
+    ],
     propHints: {
       'layers[].thickness': 'layer thickness in depthUnit-s (> 0); drives the band’s relative size',
       'layers[].color':

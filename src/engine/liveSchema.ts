@@ -94,6 +94,7 @@ import { STRUCTURAL_REFERENCES } from '../canvas/blocks/catalog/structures.gener
 import { enumValuesFromHint } from '../canvas/blocks/catalog/propHints';
 import {
   resolvesCellMatrix,
+  magnitudeOf,
   resolvesDeclaredItems,
   resolvesKeyedRows,
   resolvesTextItems,
@@ -1522,6 +1523,12 @@ function normalizeItems(value: Json, spec: ItemSpec): Json[] {
           if (v) item[spec.text] = v;
         }
         if (!asStr(item[spec.text], '').trim()) return null; // still blank → drop
+      }
+      // A magnitude written as "12 km" is 12 to the renderer that sizes a band by it; leave a
+      // value with no number in it alone, so the usability judgement can refuse the array.
+      if (spec.magnitude && typeof item[spec.magnitude] === 'string') {
+        const n = magnitudeOf(item[spec.magnitude]);
+        if (n !== null) item[spec.magnitude] = n;
       }
       if (spec.children)
         item[spec.children.prop] = normalizeItems(item[spec.children.prop], spec.children);

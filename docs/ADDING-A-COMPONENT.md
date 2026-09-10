@@ -128,7 +128,7 @@ covers it.
 - `colDefault` / `colMin` — 12-col grid span.
 - `wowWeight` — 0–1, how impressive a well-filled instance is (biases selection).
 - `blurb` — one line: what it shows and when to use it (shown to the model).
-- `itemShapes` — for object-array props, names the text field + synonyms so loose model JSON coerces.
+- `itemShapes` — for object-array props, names the text field + synonyms so loose model JSON coerces. Add `magnitude: '<field>'` when an item is DRAWN from a number (a band's thickness, a star's temperature): the validator coerces `"12 km"` to 12 there and refuses an array where no item carries one, so a figure sized from nothing never reaches the screen as a title over an empty stage.
 
 ## Custom coercion & nesting (rare)
 

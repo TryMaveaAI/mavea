@@ -78,16 +78,23 @@ function tagDrawerBlock(b: Block, label: string, i: number): Block {
   return tagged;
 }
 
-const inFlight = new Map<string, Promise<Block[] | null>>();
+/** Why a drawer could not be written: no live turn stands behind this section (a baked demo, the
+ *  tour, a restored spec — zero calls, by construction), the request itself failed, or the model
+ *  answered and nothing in it survived validation. The reader is told which; a failure is never
+ *  memoised, so the next press is a real attempt. */
+export type DeepenFailure = 'unavailable' | 'request' | 'empty';
+export type DeepenOutcome = { blocks: Block[] } | { failed: DeepenFailure };
+
+const inFlight = new Map<string, Promise<DeepenOutcome>>();
 
 async function fetchDrawer(
   key: string,
   turn: DeepenTurn,
   label: string,
   standard: readonly Block[],
-): Promise<Block[] | null> {
+): Promise<DeepenOutcome> {
   const cached = await cacheGet<Block[]>(key);
-  if (cached) return cached;
+  if (cached) return { blocks: cached };
   const allowed = blockTypesForTier(turn.tier);
   let raw: string | object;
   try {
@@ -115,7 +122,7 @@ async function fetchDrawer(
     raw = res.raw;
   } catch (err) {
     if (import.meta.env?.DEV) console.warn('[live] go-deeper drawer failed', err);
-    return null;
+    return { failed: 'request' };
   }
   const validated = validateLiveResponse(raw, allowed, DRAWER_BLOCKS, false);
   if (!validated || validated.blocks.length === 0) {
@@ -127,24 +134,25 @@ async function fetchDrawer(
         raw: typeof raw === 'string' ? raw.slice(0, 400) : raw,
       });
     }
-    return null;
+    return { failed: 'empty' };
   }
   // Tile to full drawer rows the way the canvas tiles inline drawer content, then re-key.
   const tiled = adaptiveCols(validated.blocks, (b) => catalogSpan((b as { type: string }).type));
   const blocks = tiled.map((b, i) => tagDrawerBlock(b, label, i));
   void cachePut(key, blocks);
-  return blocks;
+  return { blocks };
 }
 
 /**
- * Author the "Go deeper" drawer for one section, or null when nothing can be shown — no parked
- * live turn behind this section (a baked demo, the tour, a restored spec: zero calls, by
- * construction), a failed call, or a payload where no block survived validation. The caller's
- * job in all of them is the same: put the affordance back and say nothing.
+ * Author the "Go deeper" drawer for one section. The outcome names its failure — no parked live
+ * turn behind this section (a baked demo, the tour, a restored spec: zero calls, by
+ * construction), a failed call, or a payload where no block survived validation — because a
+ * button that promises depth and then quietly closes reads as the app ignoring the press. The
+ * drawer shows the reason and keeps the affordance; a failure is never memoised.
  */
-export function deepenSection(label: string, standard: readonly Block[]): Promise<Block[] | null> {
+export function deepenSection(label: string, standard: readonly Block[]): Promise<DeepenOutcome> {
   const turn = getDeepenTurn();
-  if (!turn || !deepenOffered(label, standard)) return Promise.resolve(null);
+  if (!turn || !deepenOffered(label, standard)) return Promise.resolve({ failed: 'unavailable' });
 
   const key = rippleCacheKey(
     `live-deepen:${turn.ask}\0${deepenKeySeed(label, standard)}`,
@@ -163,8 +171,8 @@ export function deepenSection(label: string, standard: readonly Block[]): Promis
       }
       // A failure is never memoised: the next press has to get a real attempt.
       void started.then(
-        (blocks) => {
-          if (!blocks) inFlight.delete(key);
+        (outcome) => {
+          if ('failed' in outcome) inFlight.delete(key);
         },
         () => inFlight.delete(key),
       );

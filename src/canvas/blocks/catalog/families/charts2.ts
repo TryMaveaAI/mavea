@@ -1385,7 +1385,9 @@ export const CATALOG_CHARTS2: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A Hertzsprung–Russell diagram: stars on an inverted log temperature axis (hot O/B stars left, cool K/M right) against log luminosity in solar units, with spectral-class letters, soft bands for the main sequence / giants / supergiants / white dwarfs, and the Sun as a fixed reference at 5772 K, 1 L☉. Use for stellar classification and stellar evolution. Never for a generic two-variable scatter — use scatterregression.',
-    itemShapes: [{ prop: 'stars', text: 'name', textAliases: ['label', 'star'] }],
+    itemShapes: [
+      { prop: 'stars', text: 'name', textAliases: ['label', 'star'], magnitude: 'tempK' },
+    ],
     propHints: {
       'stars[].tempK': 'surface temperature in Kelvin — must be > 0 (the axis is logarithmic)',
       'stars[].luminosity':

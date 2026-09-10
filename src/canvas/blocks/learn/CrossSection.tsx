@@ -1,3 +1,4 @@
+import { BlockEmpty } from '../../lib/BlockEmpty';
 import { useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
@@ -75,10 +76,27 @@ export function CrossSection({
   const Ic = Icon[icon] || Icon.layers;
 
   const model = useMemo(() => {
-    const clean = layers.filter((l) => l.thickness > 0);
+    const clean = layers.filter((l) => Number.isFinite(l.thickness) && l.thickness > 0);
     const total = clean.reduce((s, l) => s + l.thickness, 0) || 1;
     return { clean, total };
   }, [layers]);
+
+  // Every band is sized by its thickness, so layers without one draw nothing at all — say so,
+  // rather than paint a title over an empty stage. Live answers never reach this (the validator
+  // refuses the block); baked and restored specs can.
+  if (model.clean.length === 0) {
+    return (
+      <div
+        className="card reveal lr-xs"
+        style={{ ['--delay' as string]: (delay || 0) + 'ms' } as CSSProperties}
+      >
+        <div className="card-eyebrow">
+          <Ic className="ic" style={{ color: iconColor }} /> {title}
+        </div>
+        <BlockEmpty message="No layer has a thickness to draw" />
+      </div>
+    );
+  }
 
   // ── concentric (planet interior): outer→inner nested rings sized by thickness share ──
   if (orientation === 'concentric') {
