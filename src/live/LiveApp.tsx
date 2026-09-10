@@ -6934,6 +6934,7 @@ export function LiveApp(): ReactElement {
               onClose={() => setShowSettings(false)}
               initialTab={settingsTab}
               revealYouSetting={revealYouSetting}
+              sampleKey={tourMode.current}
             />
           </LazyOverlay>
         </div>

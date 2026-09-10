@@ -466,10 +466,15 @@ function SegRow({
   );
 }
 
+/** What the walkthrough's connect step shows in the key field. Not a key: it is the field's own
+ *  placeholder shape, long enough to read as one under the mask. */
+const WALKTHROUGH_KEY = 'walkthrough-sample-key-not-a-real-credential-0000';
+
 export function LiveSettings({
   onClose,
   initialTab,
   revealYouSetting,
+  sampleKey = false,
 }: {
   onClose?: () => void;
   /** Open on a specific tab. */
@@ -478,6 +483,10 @@ export function LiveSettings({
    *  that promise one ("Whisper mode" → Quiet hours) otherwise landed the reader at the top of a
    *  480px scroller with the promised switch a couple of hundred pixels below the fold. */
   revealYouSetting?: 'quiet-hours' | 'morning-brief' | null;
+  /** The walkthrough opens this panel to show the connect step. It shows a stand-in key there —
+   *  the field is otherwise bound to the reader's own vault, and a tour that is recorded, screen-
+   *  shared or watched over a shoulder must never put the real key on screen, masked or not. */
+  sampleKey?: boolean;
 }): ReactElement {
   const [cfg] = useLiveConfig();
   // Three surfaces can change the study style (here, the flashcards page, the first-save question),
@@ -916,7 +925,8 @@ export function LiveSettings({
                   aria-describedby={apiKeyNoteId}
                   style={inputStyle}
                   type="password"
-                  value={key}
+                  value={sampleKey ? WALKTHROUGH_KEY : key}
+                  readOnly={sampleKey}
                   onChange={(e) => setProviderField(cfg.provider, 'key', e.target.value)}
                   placeholder={cfg.provider === 'anthropic' ? 'sk-ant-…' : 'paste your key'}
                   spellCheck={false}
