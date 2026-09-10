@@ -499,6 +499,14 @@
   padding: clamp(28px, 5vw, 72px);
   transform-origin: 32% 50%;
 }
+
+/* The pane is focused by script after each move so a screen reader announces where it landed
+   (DeepZoomApp). It is not operable — Tab moves on to the chips — so the browser's default ring,
+   drawn around the whole padded column, only reads as a stray box; the chips and the zoom button
+   keep their own visible focus. */
+.dz-level:focus {
+  outline: none;
+}
 .dz-level.is-current[data-dir='in'] {
   animation: dz-enter-in var(--dz-move) var(--dz-ease) both;
 }
