@@ -6,8 +6,45 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-09-10
+
+### Added
+
+- **The Lens.** Click any card and it comes forward, centred over a blurred board, with Mavéa's
+  four notes beside it — what it assumes, the pattern she sees, what the turn's sources back, and
+  the question that would break it — and the rest of the answer a step away as a filmstrip. Zoom
+  folded into it as a control on the stage; there are no longer two pills opening the same sheet.
+- **Your own words edit the board.** A correction ("no, it's 12") rewrites the card you were
+  reading instead of adding another, and the merge says what it changed: edited cards are marked,
+  appended ones counted, and a correction is said out loud rather than hidden in a tooltip.
+- **A slow turn says what it is made of.** The usage ledger records thinking and wall time per
+  call; a throttled provider is reported as such under the composing line instead of reading as
+  a hang, and a refused thinking level is remembered per model rather than retried on every load.
+- **One responsive layout contract**, enforced. A breakpoint ladder, a fluid type ramp with a 10px
+  floor (so the reader's smaller text size lands exactly on the 9px legibility line), fluid
+  spacing, and container queries on every card, rail, bar and dock — every stylesheet is on it,
+  stylelint refuses what leaves it, and a geometry suite drives every route across thirteen
+  widths at 1× and two zoom levels, in both themes, on every push.
+- **A card fits its box before it scrolls.** On the desk and under the Lens a block taller than
+  its frame is scaled down, type and chrome together, to the legibility floor; only what cannot
+  be shown legibly is left to scroll.
+
 ### Fixed
 
+- **The voice waits for the canvas**, however long the first card takes, instead of narrating a
+  whole answer over empty skeletons; later sentences are gathered into breath-sized utterances.
+- **A block that cannot draw its data never reaches the screen.** A figure sized from a number
+  (a cross-section's thickness, a star's temperature) is refused when no item carries one, a
+  teaching diagram drawn off-grid or in a 0–1000 space is fitted numerically with its labels
+  unscaled, a state machine's nodes are sized for their names, a comparison has to compare
+  (filled cells in at least two columns), and a pen stroke never runs to a card the desk has
+  turned away.
+- **Go deeper says why** when a drawer cannot be written — an unreachable model, or an answer
+  with nothing usable in it — and offers the press again, instead of closing silently.
+- **Every control meets the thumb floor under a coarse pointer**, the replay's chrome never sits
+  on the session sheet or the first card, the wizard's step row wraps on the narrowest phone,
+  the world's play pill can no longer cover a cause, and the Lens sheet outranks its filmstrip on
+  a short window.
 - **A chart no longer hides its line when the bloom never played.** The draw-in holds its hidden
   first frame until its animation starts, and the bloom preference never leaves the grid, so a
   backgrounded or paused tab could keep a trend line retracted for good while its axes and legend

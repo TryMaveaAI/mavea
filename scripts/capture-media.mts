@@ -68,7 +68,9 @@ const SHOTS: Shot[] = [
     // Hold the replay before switching: its own choreography moves the view mode, so a click that
     // is not the last thing to happen lands on whatever beat runs next.
     view: 'study',
-    then: ['Pause autoplay'],
+    // The pen is the point of this tile: the authorization-flow card carries the replay's richest
+    // ink (three frames, the notes beside it), so the desk is paged to that beat before the shot.
+    then: ['Pause autoplay', 'Beat 2 of'],
     // Frame the desk itself, whole: a fixed offset cut its top edge off at one window size and
     // left the paragraph above it in at another. The stage is scrolled to sit just under the bar.
     scrollTo: '.study-stage',
