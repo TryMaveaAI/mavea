@@ -6,11 +6,31 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-09-11
+
+### Changed
+
+- **One model per provider, the fastest.** Each picker suggests only its fast default; the field
+  still takes any model id for a reader who knows what they are trading.
+
 ### Fixed
 
+- **The voice no longer pauses between lines.** Consecutive clauses play back to back on one audio
+  clock: the queue takes the next line up the moment the previous has scheduled its last buffer,
+  and the next clip starts exactly where that tail ends.
+- **The Study reads its front card at body size.** On a laptop the desk sits at its floor scale,
+  which painted the object's words at scenery size; the card now grows back toward the ramp's body
+  size as far as its cap allows, and scrolls as before when it cannot.
+- Pronunciation spans written with bracketed IPA (`[[CUDA|[ˈkuːdə]]]`) or single brackets resolve
+  instead of reaching the card as literal brackets, and phonetic notation is spoken as the shown word.
+- The walkthrough's connect step shows a stand-in key instead of the reader's own.
+- Deep Zoom no longer draws a stray focus box around the level after each move.
 - The setup wizard's step labels no longer slide under the palette handle on a tablet: they hide
-  below 900px, and every menu button, the demo transport and the wizard's flank meet the tap floor
-  under a thumb.
+  below 900px, the search word hides there too so it never spills over Explore, and every menu
+  button, the demo transport and the wizard's flank meet the tap floor under a thumb. Decoration
+  such as a terminal's title bar is never given a text disclosure.
+- Ripple's map camera stops at the legibility floor and pans instead of shrinking its labels
+  under 9px, and the geometry sweep judges rendered type through its transforms, rotation included.
 
 ## [2.5.0] - 2026-09-10
 
