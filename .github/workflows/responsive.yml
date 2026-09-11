@@ -126,4 +126,4 @@ jobs:
       # the block sweep and the surface sweep, and fails once with the full list rather than at the
       # first finding — so one run reveals every problem, not just the first.
       - name: Run the geometry suite (per-push subset)
-        run: pnpm audit:responsive -- --ci
+        run: pnpm audit:responsive -- --ci --verbose

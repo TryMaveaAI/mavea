@@ -529,12 +529,17 @@ const MEASURE_SCRIPT = (
       const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       const probes = [[cx - R + 1, cy], [cx + R - 1, cy], [cx, cy - R + 1], [cx, cy + R - 1]];
       let reachable = 0;
+      const blockers = [];
       for (const p of probes) {
         if (p[0] < 0 || p[1] < 0 || p[0] > vw || p[1] > vh) { reachable++; continue; }
         const hit = document.elementsFromPoint(p[0], p[1]).find((c) => getComputedStyle(c).pointerEvents !== 'none');
         if (hit && (hit === el || el.contains(hit) || hit.contains(el))) reachable++;
+        else blockers.push(hit ? name(hit) : 'nothing');
       }
-      if (reachable < 4) small.push(Math.round(r.width) + '×' + Math.round(r.height) + ' ' + label);
+      // Verbose says WHY: which neighbour took the press, and what made this element a target at
+      // all — a box that is 44px tall and still fails is covered, not small.
+      if (reachable < 4) small.push(Math.round(r.width) + '×' + Math.round(r.height) + ' ' + label +
+        (VERBOSE ? ' [' + lineage(el) + '; role=' + (el.getAttribute('role') || '-') + ' tabindex=' + (el.getAttribute('tabindex') || '-') + '; pressed: ' + blockers.join(', ') + ']' : ''));
     }
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i].r, b = boxes[j].r;

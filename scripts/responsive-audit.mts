@@ -156,6 +156,9 @@ async function main(): Promise<void> {
         only,
         checks,
         labs: !fast && !ci,
+        // Lineage on every finding. CI runs with it: the log is the only report there, and a
+        // verdict that names its own ancestors is one a person can act on without re-running.
+        verbose: hasFlag('verbose'),
         shots: hasFlag('no-shots') ? null : readFlag('shots', '.audit-out/surfaces'),
       });
       printMatrix(findings);
