@@ -56,23 +56,24 @@ export interface ProviderInfo {
 }
 
 export const PROVIDERS: ProviderInfo[] = [
-  // The curated menus below are deliberately the ECONOMICAL tier: each provider defaults to its
-  // fast, low-cost model (the gemini-3.1-flash-lite class) with one modest step-up beside it.
-  // Flagship-priced models are intentionally NOT suggested — the model field takes any id, and
-  // the picker's footer says so and links each provider's full catalog.
+  // Each provider suggests ONE model: its fastest. A turn's latency is provider-side prefill of
+  // ~15k tokens, and a "step up in quality" that costs 3–5× the wait was the model readers
+  // picked and then blamed the app for (gemini-3.8-flash measured wayyy slower, and it returned
+  // one block per answer with pronunciation marks in its prose, 2026-09-11). The model field
+  // takes any id — a reader who types another knows what they are trading — and the picker's
+  // footer links each provider's full catalog. When a faster model ships, this row moves.
   {
     id: 'gemini',
     label: 'Gemini · Google',
     defaultModel: 'gemini-3.1-flash-lite',
-    suggestedModels: ['gemini-3.1-flash-lite', 'gemini-3.8-flash'],
+    suggestedModels: ['gemini-3.1-flash-lite'],
     needsKey: true,
     keyUrl: 'https://aistudio.google.com/apikey',
     keyFree: true,
     hint: 'Fast and efficient — recommended.',
     search: 'native', // google_search grounding, server-side
     modelNotes: {
-      'gemini-3.1-flash-lite': 'fast · light',
-      'gemini-3.8-flash': 'a step up in quality · still quick',
+      'gemini-3.1-flash-lite': 'fastest · light',
     },
   },
   {
@@ -84,16 +85,13 @@ export const PROVIDERS: ProviderInfo[] = [
     // ships, move both this and the note below, or the prefilled model starts erroring on every
     // new key.
     defaultModel: 'claude-haiku-4-5',
-    // Sonnet 5's $2/$10 was introductory through 2026-08-31; Anthropic has since cancelled the
-    // rise to $3/$15, so the step-up costs 2× the default rather than the 3× it was headed for.
-    suggestedModels: ['claude-haiku-4-5', 'claude-sonnet-5'],
+    suggestedModels: ['claude-haiku-4-5'],
     needsKey: true,
     keyUrl: 'https://console.anthropic.com/settings/keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool, via Structured Outputs (see anthropic.ts)
     modelNotes: {
-      'claude-haiku-4-5': 'fast · light',
-      'claude-sonnet-5': 'a step up in quality · 1M ctx',
+      'claude-haiku-4-5': 'fastest · light',
     },
   },
   {
@@ -104,30 +102,28 @@ export const PROVIDERS: ProviderInfo[] = [
     // tier; gpt-5.4-nano used to sit beside it and no longer earns a row — same $0.20 input,
     // dearer output ($1.25 vs $1.20), a 400k window against luna's 1.05M, and a generation older.
     defaultModel: 'gpt-5.6-luna',
-    suggestedModels: ['gpt-5.6-luna', 'gpt-5.4-mini'],
+    suggestedModels: ['gpt-5.6-luna'],
     needsKey: true,
     keyUrl: 'https://platform.openai.com/api-keys',
     hint: 'Fast, efficient default.',
     search: 'native', // web_search server tool on the Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
       'gpt-5.6-luna': 'fastest · light · 1M ctx',
-      'gpt-5.4-mini': 'a step up in quality',
     },
   },
   {
     id: 'grok',
     label: 'Grok · xAI',
-    // xAI's OpenAI-compatible API. 4.3 is the current fast, low-cost general model; 4.6 is the
-    // flagship step-up. The model field remains free text for users who need another option.
+    // xAI's OpenAI-compatible API. 4.3 is the current fast, low-cost general model. The model
+    // field remains free text for users who need another option.
     defaultModel: 'grok-4.3',
-    suggestedModels: ['grok-4.3', 'grok-4.6'],
+    suggestedModels: ['grok-4.3'],
     needsKey: true,
     keyUrl: 'https://console.x.ai',
     hint: 'Fast, efficient default.',
     search: 'native', // xAI's web_search tool on its Responses API (see openaiResponsesCompatible.ts)
     modelNotes: {
-      'grok-4.3': 'fast · light · 1M ctx',
-      'grok-4.6': 'a step up in quality · current flagship',
+      'grok-4.3': 'fastest · light · 1M ctx',
     },
   },
   {

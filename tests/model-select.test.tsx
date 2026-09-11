@@ -84,13 +84,16 @@ describe('ModelSelect', () => {
   });
 
   it('supports the full keyboard path: arrows to move, Enter to pick, Escape to close', () => {
+    // One suggestion per provider — the fastest — so the arrow has nowhere to move; Enter still
+    // picks and closes, and a typed id is the way to any other model.
     const models = providerInfo('anthropic').suggestedModels;
-    render(<Harness provider="anthropic" initial={models[0]} />);
-    fireEvent.keyDown(input(), { key: 'ArrowDown' }); // opens on the current model
+    expect(models).toHaveLength(1);
+    render(<Harness provider="anthropic" initial="" />);
+    fireEvent.keyDown(input(), { key: 'ArrowDown' }); // opens on the suggestion
     expect(screen.getByRole('listbox')).toBeInTheDocument();
-    fireEvent.keyDown(input(), { key: 'ArrowDown' }); // current → the next suggestion
+    fireEvent.keyDown(input(), { key: 'ArrowDown' });
     fireEvent.keyDown(input(), { key: 'Enter' });
-    expect(input().value).toBe(models[1]);
+    expect(input().value).toBe(models[0]);
     expect(screen.queryByRole('listbox')).toBeNull();
 
     fireEvent.keyDown(input(), { key: 'ArrowDown' });
