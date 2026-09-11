@@ -68,6 +68,13 @@
   justify-self: end;
   min-width: 0;
 }
+/* Under a thumb the constellation's last step and the palette handle sit a column gap apart, and
+   the fluid gap scales under the 6px a thumb needs on a tablet (measured 5.6px at 819px). */
+@media (pointer: coarse) {
+  .setup-nav {
+    column-gap: max(var(--s-sm), 8px);
+  }
+}
 
 .setup-back {
   appearance: none;
@@ -1161,15 +1168,20 @@
 }
 
 /* responsive */
-@media (width <= 720px) {
-  .setup-nav {
-    padding: var(--s-md);
-  }
+/* Four labelled steps do not fit the centre column under ~900px: the row's flanks have already
+   given up their slack, so the last label slid under the palette handle (measured at 819px, an
+   834px tablet window less its scrollbar). The labels go before the row breaks, not after. */
+@media (width <= 900px) {
   .const-label {
     display: none;
   }
   .const-step + .const-step::before {
     width: 16px;
+  }
+}
+@media (width <= 720px) {
+  .setup-nav {
+    padding: var(--s-md);
   }
   .setup-stage {
     padding: var(--s-md) var(--s-md) var(--s-xl);
@@ -1283,7 +1295,9 @@
     display: none;
   }
   .setup-nav-end {
-    gap: 6px;
+    /* 8, not the 6px a thumb needs: a flex gap lands a fraction under its value once the row is
+       laid out at a subpixel offset, and the gate measures what is painted. */
+    gap: 8px;
   }
 }
 

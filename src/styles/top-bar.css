@@ -460,4 +460,8 @@
   .topbar {
     gap: max(var(--s-sm), 10px);
   }
+  /* Every menu button, not only the palette handle: Explore measured 76×36 under a thumb. */
+  .topbar-text-btn {
+    min-height: var(--tap-min);
+  }
 }

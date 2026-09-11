@@ -6,6 +6,12 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- The setup wizard's step labels no longer slide under the palette handle on a tablet: they hide
+  below 900px, and every menu button, the demo transport and the wizard's flank meet the tap floor
+  under a thumb.
+
 ## [2.5.0] - 2026-09-10
 
 ### Added

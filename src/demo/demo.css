@@ -161,6 +161,9 @@
 .demox-btn {
   display: grid;
   place-items: center;
+  /* A flex child: without this the transport squeezes the round buttons under the tap floor on a
+     tablet whose scrollbar takes 15px of an 834px window (Linux, Windows). */
+  flex: none;
   width: 34px;
   height: 34px;
   border-radius: 50%;
