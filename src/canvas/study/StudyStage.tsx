@@ -26,6 +26,7 @@ import {
   CONNECT_SLOT,
   FRONT_SLOT,
   SLOT_ORDER,
+  STUDY_READING_PX,
   WIDE_CARD_W,
   WIDE_CONNECT_SLOT,
   WIDE_FRONT_SLOT,
@@ -971,7 +972,13 @@ export function StudyStage({
                       {/* The front card is a bounded box (useStudyScale caps its height): a
                           block taller than it is fitted — type and chrome together, down to
                           the legibility floor — before the face is ever asked to scroll. */}
-                      {front ? <FitBox fitHeight>{renderBlock(block)}</FitBox> : renderBlock(block)}
+                      {front ? (
+                        <FitBox fitHeight readingPx={STUDY_READING_PX}>
+                          {renderBlock(block)}
+                        </FitBox>
+                      ) : (
+                        renderBlock(block)
+                      )}
                     </BlockBoundary>
                   </div>
                   <div className="study-card-mute" aria-hidden="true" />

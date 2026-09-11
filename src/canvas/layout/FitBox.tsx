@@ -49,15 +49,32 @@ export interface FitBoxProps {
    *  that fits at a glance beats one the reader has to scroll inside a frame, and the floor
    *  is measured in rendered pixels, so a big display allows more of a shrink than a phone. */
   fitHeight?: boolean;
+  /** With `fitHeight`: the rendered px the block's BODY type — the size carrying most of its
+   *  words — should reach. A block whose body paints under it is GROWN — type and chrome
+   *  together, reflowed to the same width — as far as the box allows, so an object on a desk
+   *  drawn at its floor scale is still read at a reading size rather than the desk's scenery
+   *  size. The box wins: a block that cannot grow and still fit is left as it is. Omit to only
+   *  ever shrink. */
+  readingPx?: number;
   className?: string;
 }
+
+/** The most a reading target may grow a block. Past this the ask is not "read this at size"
+ *  but "make a small thing enormous", and a block with one 8px caption would fill the box. */
+const GROW_MAX = 1.5;
 
 /**
  * Wrap a block whose intrinsic size can exceed a narrow card. FitBox keeps it at scale 1
  * whenever it fits, and downscales it to the card width when it doesn't — measured before
  * paint, re-measured on resize via the shared observer.
  */
-export function FitBox({ children, maxAspect, fitHeight = false, className }: FitBoxProps) {
+export function FitBox({
+  children,
+  maxAspect,
+  fitHeight = false,
+  readingPx,
+  className,
+}: FitBoxProps) {
   const host = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   // scale only — height collapses to the scaled content height so the card never reserves
@@ -112,11 +129,18 @@ export function FitBox({ children, maxAspect, fitHeight = false, className }: Fi
       let needW = i.scrollWidth;
       const needH = i.scrollHeight;
       let minFont = Infinity;
+      // The body size is the one most of the words are set in — a weighted mode, so a heading
+      // and a badge cannot pull it either way.
+      const words = new Map<number, number>();
       for (const el of all) {
         if (el.scrollWidth > needW) needW = el.scrollWidth;
-        if (fitHeight && el.childElementCount === 0 && (el.textContent ?? '').trim().length > 1) {
-          const fs = parseFloat(getComputedStyle(el).fontSize);
-          if (fs > 0 && fs < minFont) minFont = fs;
+        if (fitHeight && el.childElementCount === 0) {
+          const chars = (el.textContent ?? '').trim().length;
+          if (chars > 1) {
+            const fs = parseFloat(getComputedStyle(el).fontSize);
+            if (fs > 0 && fs < minFont) minFont = fs;
+            if (fs > 0) words.set(fs, (words.get(fs) ?? 0) + chars);
+          }
         }
       }
       // What one CSS px of this box paints at, after every ancestor's own scale (the Study's
@@ -130,6 +154,51 @@ export function FitBox({ children, maxAspect, fitHeight = false, className }: Fi
           const above =
             h.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
           availH = box.clientHeight - above / (rendered || 1) - parseFloat(bs.paddingBottom || '0');
+          // A scroller that is a flex child of a capped card stands only as tall as what it
+          // holds, so its client height says how tall the block IS, not how tall it MAY be.
+          // The cap is on the ancestor that states one; the room is that cap less the chrome
+          // between the two boxes. Without it a block that fits could never grow into the room.
+          for (let a: HTMLElement | null = box; a && a !== document.body; a = a.parentElement) {
+            const cap = parseFloat(getComputedStyle(a).maxHeight);
+            if (!Number.isFinite(cap)) continue;
+            const chrome =
+              (a.getBoundingClientRect().height - box.getBoundingClientRect().height) /
+              (rendered || 1);
+            availH = Math.max(
+              availH,
+              cap - chrome - above / (rendered || 1) - parseFloat(bs.paddingBottom || '0'),
+            );
+            break;
+          }
+        }
+      }
+
+      // A reading target: try the size the type asks for, then three steps back toward 1, at the width each would
+      // reflow to — text wraps to more lines as the block narrows, so its height at the candidate
+      // width is what the box has to hold, not its height at full width times the scale. Read
+      // while the clips are still neutralized and the transform is still off.
+      let grown: { k: number; needH: number } | null = null;
+      let bodyFont = 0;
+      let bodyChars = 0;
+      for (const [fs, chars] of words) if (chars > bodyChars) [bodyFont, bodyChars] = [fs, chars];
+      if (fitHeight && readingPx && bodyFont > 0 && Number.isFinite(availH)) {
+        const want = Math.min(GROW_MAX, readingPx / (bodyFont * (rendered || 1)));
+        if (want > 1.01) {
+          const prevW = i.style.width;
+          for (const kc of [
+            want,
+            1 + (want - 1) * 0.75,
+            1 + (want - 1) * 0.5,
+            1 + (want - 1) * 0.25,
+          ]) {
+            i.style.width = `${(100 / kc).toFixed(3)}%`;
+            const hc = i.scrollHeight;
+            if (hc * kc <= availH + 1) {
+              grown = { k: Math.floor(kc * 1000) / 1000, needH: hc };
+              break;
+            }
+          }
+          i.style.width = prevW;
         }
       }
 
@@ -144,6 +213,11 @@ export function FitBox({ children, maxAspect, fitHeight = false, className }: Fi
       // absorbs sub-pixel rounding so a block that exactly fits doesn't flutter.)
       const fitsW = !needW || needW <= availW + 1;
       const fitsH = !fitHeight || !needH || !Number.isFinite(availH) || needH <= availH + 1;
+      if (grown && fitsW) {
+        const next = grown;
+        setFit((p) => (Math.abs(p.k - next.k) > 0.002 ? next : p));
+        return;
+      }
       if (fitsW && fitsH) {
         setFit((p) => (p.k === 1 ? p : { k: 1, needH: 0 }));
         return;
@@ -173,9 +247,9 @@ export function FitBox({ children, maxAspect, fitHeight = false, className }: Fi
       stopHost();
       stopBox?.();
     };
-  }, [children, fitHeight]);
+  }, [children, fitHeight, readingPx]);
 
-  const scaled = k < 1;
+  const scaled = k !== 1;
   return (
     <div
       ref={host}
@@ -191,9 +265,10 @@ export function FitBox({ children, maxAspect, fitHeight = false, className }: Fi
             ? {
                 transformOrigin: 'top left',
                 transform: `scale(${k})`,
-                // Reclaim the empty space the scale leaves: the visual box is k× tall/wide,
-                // so pull the following layout up by the freed amount — in px off the measured
-                // height when it is known, else as the share of the width the old fit used.
+                // Reclaim the empty space the scale leaves (or claim what a grown block now
+                // paints): the visual box is k× tall/wide, so move the following layout by the
+                // difference — in px off the measured height when it is known, else as the
+                // share of the width the old fit used.
                 width: `${100 / k}%`,
                 marginBottom: fit.needH
                   ? `${-(fit.needH * (1 - k)).toFixed(1)}px`

@@ -35,6 +35,12 @@ export const RAMP_FLOOR_PX = 10;
  *  this moves — recompute it, never tune it. It was 9/11 when the desk's smallest label was an
  *  authored 11px; on the ramp that label is 10px at a phone width, so the desk stops sooner. */
 export const STUDY_FIT_FLOOR = 9 / RAMP_FLOOR_PX;
+/** The size the front card's BODY type is read at, in rendered px: the ramp's own body step
+ *  (`--fs-sm` at a desk width). The desk on a laptop sits at its floor scale, which paints the
+ *  object's words at scenery size (a 14px body at 12.4px); the front card is the one thing on
+ *  the desk with room to spare, so FitBox grows it back to this size as far as its cap allows,
+ *  and no further — a card that cannot grow and still fit scrolls, as before. */
+export const STUDY_READING_PX = 14;
 
 /** The width at which the 3-D desk stands down for the flat reading column: below it the floored
  *  desk crops Mavéa's note card — real reading content — off the right edge. Held clear of the

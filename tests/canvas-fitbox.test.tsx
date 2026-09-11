@@ -122,3 +122,57 @@ describe('FitBox — fitting a bounded box’s height', () => {
     expect(inner.style.transform).toBe('');
   });
 });
+
+// The reading target: a block on a desk drawn at its floor scale is GROWN back toward its
+// reading size when the capped box has room, and left alone when it has not. The body size is
+// the one most of the words are set in, so a heading cannot pull it.
+describe('FitBox — growing toward a reading size', () => {
+  const geometry = (el: Element, values: Record<string, number>) => {
+    for (const [key, value] of Object.entries(values)) {
+      Object.defineProperty(el, key, { configurable: true, get: () => value });
+    }
+  };
+  function mount(contentH: number, boxH: number, rendered: number) {
+    const tree = () => (
+      <div className="box" style={{ overflowY: 'auto', maxHeight: `${boxH}px` }}>
+        <FitBox fitHeight readingPx={14}>
+          <h2 style={{ fontSize: '24px' }}>a heading in larger type</h2>
+          <p style={{ fontSize: '14px' }}>
+            the body of the block, set in the size most of its words are read at
+          </p>
+        </FitBox>
+      </div>
+    );
+    const { container, rerender } = render(tree());
+    const box = container.querySelector('.box') as HTMLElement;
+    const host = container.querySelector('.fit-box') as HTMLElement;
+    const inner = host.firstElementChild as HTMLElement;
+    geometry(box, { clientHeight: Math.min(boxH, contentH), scrollHeight: contentH, scrollTop: 0 });
+    geometry(host, { clientWidth: 400, offsetWidth: 400 });
+    geometry(inner, { scrollWidth: 400, scrollHeight: contentH });
+    host.getBoundingClientRect = () =>
+      ({ top: 0, left: 0, width: 400 * rendered, height: contentH }) as DOMRect;
+    box.getBoundingClientRect = () =>
+      ({ top: 0, left: 0, width: 400 * rendered, height: Math.min(boxH, contentH) }) as DOMRect;
+    rerender(tree());
+    return { inner };
+  }
+  it('grows a block drawn at 0.9 back to a 14px body when the box has room', async () => {
+    // 14px body at 0.9 paints at 12.6; the target asks for 14/12.6 = 1.111, and 300 × 1.111
+    // is well inside a 400px cap.
+    const { inner } = mount(300, 400, 0.9);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toMatch(/scale\(1\.11\d?\)/);
+    expect(parseFloat(inner.style.marginBottom)).toBeGreaterThan(0);
+  });
+  it('leaves a block alone when no step of the growth fits its cap', async () => {
+    const { inner } = mount(395, 400, 0.9);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toBe('');
+  });
+  it('does not grow a block whose body already reads at size', async () => {
+    const { inner } = mount(300, 400, 1);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(inner.style.transform).toBe('');
+  });
+});
