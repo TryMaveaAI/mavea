@@ -280,7 +280,7 @@ export function primeKokoroLine(text: string, who: Speaker): void {
  * false only when it could not start and nothing was heard; we then fall back to the whole-clip
  * blob path below. Never throws.
  */
-async function playJob(job: Job): Promise<boolean> {
+async function playJob(job: Job, onScheduled?: () => void): Promise<boolean> {
   const speed = getVoiceSpeed();
   const key = pcmCacheKey(job.voice, speed, job.text);
   if (primed && primed.text === job.text) primed = null; // it's a real job now
@@ -293,7 +293,7 @@ async function playJob(job: Job): Promise<boolean> {
     if (cached) {
       // No synthesis is running during cached playback — prefetch the next line immediately.
       prefetchNext();
-      if (await playPcmBytes(cached, job.text, () => job.start(true))) return true;
+      if (await playPcmBytes(cached, job.text, () => job.start(true), onScheduled)) return true;
     }
     // A prefetch for a DIFFERENT line must never run underneath this line's own synthesis.
     if (prefetchCtl && prefetchKey !== key) {
@@ -319,6 +319,7 @@ async function playJob(job: Job): Promise<boolean> {
           streamAccepted = true;
           noteKokoroAccepted();
         },
+        onScheduled,
       );
       if (streamed) return true;
       // The server already spent (or is still spending) the synthesis work. A second WAV request
@@ -410,47 +411,67 @@ async function playJobBlob(job: Job): Promise<boolean> {
   return played;
 }
 
-/** Drain the queue one clip at a time until empty. */
+/** Drain the queue in order. A line is taken up as soon as the previous one has SCHEDULED its
+ *  last buffer — not once it has finished playing — so a cached or quickly rendered next line
+ *  lands sample-exact on the previous tail (streamTts anchors it there) and a breath of three
+ *  clauses plays as one. Synthesis still never overlaps: a line schedules its last buffer only
+ *  once Kokoro has rendered it. Every line's own promise still settles at its real end. */
 async function pump(): Promise<void> {
   if (pumping) return;
   pumping = true;
+  const playing = new Set<Promise<void>>();
   try {
-    while (queue.length) {
-      const raw = queue.shift() as Job;
-      // Track the synthesis window per line: pending from the moment work starts until the
-      // line first becomes audible (or definitively never will). This is what lets the UI say
-      // an honest "Preparing voice…" instead of a silent "Speaking" while Kokoro renders.
-      synthPending = true;
-      emitSpeakingChange();
-      const job: Job = {
-        ...raw,
-        start: (heard) => {
-          synthPending = false;
-          emitSpeakingChange();
-          raw.start(heard);
-        },
-      };
-      // Gate every line on the cached health probe: when Kokoro is down, each spoken line
-      // would otherwise fire two doomed requests (stream, then blob) — a long demo session
-      // 502-spams the console dozens of times. Captions still show; lines just stay silent.
-      // The epoch checks close a cancel race: a hard-stop that lands while this job is between
-      // awaits (probe resolved, fetch not yet in flight) has nothing to abort — the job must
-      // notice it was cancelled and settle false rather than playing after the interrupt.
-      const epoch = cancelEpoch;
-      let ok = false;
-      if ((await kokoroAvailable()) && epoch === cancelEpoch) {
-        const played = await playJob(job);
-        ok = played && epoch === cancelEpoch;
-        // Silent for a reason other than an interrupt: Kokoro was up at the gate and still
-        // produced nothing. Re-check before the next line so a mid-session loss isn't invisible.
-        if (!played && epoch === cancelEpoch) markProbeStale();
+    // A line queued while only tails are draining must still be taken up by THIS pump — it is
+    // the one that is running, so a fresh pump() call returns at once.
+    do {
+      while (queue.length) {
+        const raw = queue.shift() as Job;
+        // Track the synthesis window per line: pending from the moment work starts until the
+        // line first becomes audible (or definitively never will). This is what lets the UI say
+        // an honest "Preparing voice…" instead of a silent "Speaking" while Kokoro renders.
+        synthPending = true;
+        emitSpeakingChange();
+        const job: Job = {
+          ...raw,
+          start: (heard) => {
+            synthPending = false;
+            emitSpeakingChange();
+            raw.start(heard);
+          },
+        };
+        // Gate every line on the cached health probe: when Kokoro is down, each spoken line
+        // would otherwise fire two doomed requests (stream, then blob) — a long demo session
+        // 502-spams the console dozens of times. Captions still show; lines just stay silent.
+        // The epoch checks close a cancel race: a hard-stop that lands while this job is between
+        // awaits (probe resolved, fetch not yet in flight) has nothing to abort — the job must
+        // notice it was cancelled and settle false rather than playing after the interrupt.
+        const epoch = cancelEpoch;
+        if (!(await kokoroAvailable()) || epoch !== cancelEpoch) {
+          // Settle guarantee: `started` resolves (latched no-op when playback already fired it)
+          // strictly before `finished` — a caller awaiting started can never outlive the line.
+          job.start(false);
+          job.done(false);
+          continue;
+        }
+        let scheduled!: () => void;
+        const tailScheduled = new Promise<void>((resolve) => {
+          scheduled = resolve;
+        });
+        const line = playJob(job, scheduled).then((played) => {
+          const ok = played && epoch === cancelEpoch;
+          // Silent for a reason other than an interrupt: Kokoro was up at the gate and still
+          // produced nothing. Re-check before the next line so a mid-session loss isn't invisible.
+          if (!played && epoch === cancelEpoch) markProbeStale();
+          job.start(ok);
+          job.done(ok);
+        });
+        playing.add(line);
+        void line.finally(() => playing.delete(line));
+        // Take up the next line the moment this one's tail is scheduled (or it ended without one).
+        await Promise.race([tailScheduled, line]);
       }
-      // Settle guarantee: whatever path the job took, `started` resolves (latched no-op when
-      // playback already fired it) strictly before `finished` — a caller awaiting started can
-      // never outlive the line.
-      job.start(ok);
-      job.done(ok);
-    }
+      await Promise.all([...playing]);
+    } while (queue.length);
   } finally {
     pumping = false;
     emitSpeakingChange();

@@ -214,6 +214,8 @@ interface ActiveStream {
   gain: GainNode;
   abort: AbortController;
   cancelled: boolean;
+  /** Every buffer is scheduled; only the tail is still playing. See `settled` above. */
+  settled?: boolean;
   /** Resolve the end-of-playback wait early (on cancel), so the queue doesn't idle. */
   finishEarly?: () => void;
   /** Wake the back-pressure sleep early (fired by teardown), so a cancel lands instantly
@@ -222,6 +224,38 @@ interface ActiveStream {
 }
 
 let active: ActiveStream | null = null;
+
+// Where the voice's last scheduled sample ends on the shared clock, and the clips whose every
+// buffer is scheduled but still playing out. A line used to be anchored at "now + lead" only
+// after the previous one had ENDED — the queue awaited the end, then the next clip re-anchored
+// — so every clause boundary carried the 40ms end-wait, the 80ms lead and a main-thread hop as
+// dead air on top of the clip's own edge silence, and a breath split into three clauses played
+// as three little speeches. A clip that has scheduled its last buffer is SETTLED: the next line
+// may anchor on its tail and the two play back to back, sample-exact, on one clock.
+const playhead = { ctx: null as BaseAudioContext | null, endsAt: 0 };
+const settled = new Set<ActiveStream>();
+
+/** The clock time the next clip should start: on the previous clip's tail when one is still
+ *  playing on this context, else a lead ahead of now. A tail far in the future (a stale value
+ *  from a context that was parked and resumed) is not trusted. */
+function anchorStart(ctx: BaseAudioContext): number {
+  const lead = ctx.currentTime + LEAD_SECONDS;
+  if (playhead.ctx !== ctx) return lead;
+  const tail = playhead.endsAt;
+  return tail > lead && tail - ctx.currentTime <= MAX_AHEAD_SECONDS + 1 ? tail : lead;
+}
+
+/** A clip has scheduled its last buffer: the next line may start on its tail. */
+function settle(state: ActiveStream, onScheduled?: () => void): void {
+  state.settled = true;
+  settled.add(state);
+  if (active === state) active = null;
+  try {
+    onScheduled?.();
+  } catch {
+    /* a listener must never break playback */
+  }
+}
 
 // A cancel that lands while a NEW line is still fetching its first PCM byte can't reach that line
 // through `active` (it isn't published until the fetch resolves). These two make the fetch window
@@ -298,14 +332,22 @@ function teardown(state: ActiveStream, preserveAcceptedTransport = false): void 
     }
   }
   if (active === state) active = null;
+  settled.delete(state);
 }
 
-/** Stop the in-flight streaming clip (if any) and rest its graph. Idempotent. Also supersedes any
- *  line still mid-fetch (before it publishes to `active`) so it can't start playing after a cancel. */
+/** Stop the in-flight streaming clip (if any) and every settled tail still playing, and rest
+ *  their graphs. Idempotent. Also supersedes any line still mid-fetch (before it publishes to
+ *  `active`) so it can't start playing after a cancel. */
 export function cancelActiveStream(): void {
   streamEpoch++;
   pendingAbort?.abort();
   pendingAbort = null;
+  for (const tail of [...settled]) {
+    tail.cancelled = true;
+    tail.finishEarly?.();
+    teardown(tail, true);
+  }
+  playhead.endsAt = 0;
   const state = active;
   if (!state) return;
   state.cancelled = true;
@@ -339,6 +381,7 @@ export async function streamSpeak(
   onSynthDone?: (pcm: Uint8Array | null) => void,
   speed?: number,
   onAccepted?: () => void,
+  onScheduled?: () => void,
 ): Promise<boolean> {
   const lease = leaseAudioContext();
   if (!lease) return false; // no WebAudio → caller uses the blob path
@@ -432,7 +475,7 @@ export async function streamSpeak(
   }
   active = state;
 
-  let nextTime = ctx.currentTime + LEAD_SECONDS;
+  let nextTime = anchorStart(ctx);
   let started = false;
   const tap = streamTap; // snapshot, so begin/push/end always hit the same listener
   try {
@@ -454,6 +497,8 @@ export async function streamSpeak(
     if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.02;
     src.start(nextTime);
     nextTime += buffer.duration;
+    playhead.ctx = ctx;
+    playhead.endsAt = nextTime;
     if (!started) {
       try {
         onStart?.();
@@ -550,6 +595,7 @@ export async function streamSpeak(
       if (!started ? pendingLen > 0 : pendingLen >= flushTarget) flush();
     }
     if (!state.cancelled) flush(); // tail samples
+    if (!state.cancelled && started) settle(state, onScheduled);
   } catch (err) {
     // A genuine transport failure (proxy reset, container restart, Kokoro crash mid-line).
     // If `started` is already true the caller won't fall back (that would double-speak), so
@@ -617,6 +663,7 @@ export async function playPcmBytes(
   bytes: Uint8Array,
   text: string,
   onStart?: () => void,
+  onScheduled?: () => void,
 ): Promise<boolean> {
   const lease = leaseAudioContext();
   if (!lease || bytes.length < 2) {
@@ -673,7 +720,7 @@ export async function playPcmBytes(
     /* a tap must never break playback */
   }
 
-  let nextTime = ctx.currentTime + LEAD_SECONDS;
+  let nextTime = anchorStart(ctx);
   let started = false;
   const chunk = Math.round(CACHED_BUFFER_SECONDS * SAMPLE_RATE);
   for (let off = 0; off < samples.length && !state.cancelled; off += chunk) {
@@ -685,6 +732,8 @@ export async function playPcmBytes(
     src.connect(gain);
     src.start(nextTime);
     nextTime += buffer.duration;
+    playhead.ctx = ctx;
+    playhead.endsAt = nextTime;
     if (!started) {
       try {
         onStart?.();
@@ -705,6 +754,7 @@ export async function playPcmBytes(
   }
 
   if (!state.cancelled && started) {
+    settle(state, onScheduled);
     await new Promise<void>((resolve) => {
       const ms = Math.max(0, (nextTime - ctx.currentTime) * 1000) + 40;
       const timer = setTimeout(resolve, ms);
