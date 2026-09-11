@@ -35,6 +35,21 @@ describe('spokenText — [[shown|said]] parsing', () => {
     expect(forSpeech(partial)).toBe('It uses');
   });
 
+  it('reads a said side written as bracketed IPA, and speaks the shown side instead', () => {
+    // Gemini 3.8 Flash writes the reading as IPA in its own brackets; the strict form left the
+    // whole span on the card as literal brackets, and no synthesizer reads IPA anyway.
+    const s = 'It runs on [[CUDA|[ˈkuːdə]]] cores.';
+    expect(forDisplay(s)).toBe('It runs on CUDA cores.');
+    expect(forSpeech(s)).toBe('It runs on CUDA cores.');
+    expect(forSpeech('say [[CUDA|/ˈkuːdə/]]')).toBe('say CUDA');
+  });
+
+  it('resolves a half-typed single-bracket [shown|said] pair, and leaves plain brackets alone', () => {
+    expect(forDisplay('a [CUDA|kooda] core')).toBe('a CUDA core');
+    expect(forSpeech('a [CUDA|kooda] core')).toBe('a kooda core');
+    expect(forDisplay('see [note] here')).toBe('see [note] here');
+  });
+
   it('leaves un-annotated text untouched', () => {
     const plain = 'A calm sentence with nothing tricky.';
     expect(forDisplay(plain)).toBe(plain);

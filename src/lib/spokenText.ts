@@ -18,8 +18,17 @@
 
 import { guardAnnotations } from './annotationGuard';
 
-/** [[shown|said]] — the said side wins for speech, the shown side for display. */
-const ANNOTATED = /\[\[([^[\]|]*)\|([^[\]]*)\]\]/g;
+/** [[shown|said]] — the said side wins for speech, the shown side for display. The said side may
+ *  itself carry ONE level of single brackets: some models write the reading as IPA in its own
+ *  brackets ("[[CUDA|[ˈkuːdə]]]"), and the strict form left the whole span on screen as
+ *  literal brackets. */
+const ANNOTATED = /\[\[([^[\]|]*)\|((?:[^[\]]|\[[^[\]]*\])*)\]\]/g;
+/** [shown|said] with SINGLE brackets — the same idea, half-typed. Only a pair with a pipe and no
+ *  nested bracket qualifies, so an ordinary "[note]" or a markdown link is never touched. */
+const ANNOTATED_SINGLE = /(?<!\[)\[([^[\]|]+)\|([^[\]|]+)\](?!\])/g;
+/** A said side written as phonetic notation — IPA marks, or a reading wrapped in its own
+ *  brackets or slashes. A synthesizer reads none of it; the shown side is the better reading. */
+const PHONETIC = /[ˈˌːˑəɪʊɔæɛŋθðʃʒɑɒʌɜɐɾʔ]|^\s*[[/].*[\]/]\s*$/u;
 /** [[x]] — a bare span with no alternate reading; both sides are just x. */
 const PLAIN = /\[\[([^[\]|]*)\]\]/g;
 /** An unclosed "[[…" with no closing "]]" — happens while a reply is still streaming; drop it so
@@ -66,12 +75,16 @@ export function stripLinks(text: string): string {
  *  from a single pass — `[` is excluded from ANNOTATED's own captures, so only the inner span
  *  matches at first. Looping lets the now-unwrapped outer pair resolve on the next pass instead
  *  of falling through to PLAIN, which would otherwise emit its literal, un-split "text|text". */
-function resolveToFixedPoint(text: string, re: RegExp, group: string): string {
+function resolveToFixedPoint(
+  text: string,
+  re: RegExp,
+  group: string | ((m: string, shown: string, said: string) => string),
+): string {
   let out = text;
   let prev: string;
   do {
     prev = out;
-    out = out.replace(re, group);
+    out = typeof group === 'string' ? out.replace(re, group) : out.replace(re, group);
   } while (out !== prev);
   return out;
 }
@@ -81,8 +94,14 @@ function resolveToFixedPoint(text: string, re: RegExp, group: string): string {
  *  their HTML has to survive the schema to reach the render-time sanitizer (see liveSchema) while
  *  the reader must still never see a literal `[[CPU|C-P-U]]`. */
 export function resolveAnnotations(text: string): string {
-  const out = resolveToFixedPoint(text, ANNOTATED, '$1');
+  let out = resolveToFixedPoint(text, ANNOTATED, '$1');
+  out = resolveToFixedPoint(out, ANNOTATED_SINGLE, '$1');
   return resolveToFixedPoint(out, PLAIN, '$1').replace(DANGLING, '').trimEnd();
+}
+
+/** The side the voice says: the said side, unless it is phonetic notation nothing can read. */
+function saidSide(_m: string, shown: string, said: string): string {
+  return PHONETIC.test(said) ? shown : said;
 }
 
 /** What the screen shows: keep the shown (left) side of every annotation, drop the markers.
@@ -101,7 +120,8 @@ export function forDisplay(text: string): string {
  *  before it can be spoken; the shown side survives untouched, so display is unaffected either way
  *  (forDisplay keeps the same text with or without the guard). See lib/annotationGuard. */
 export function forSpeech(text: string): string {
-  let out = resolveToFixedPoint(guardAnnotations(text), ANNOTATED, '$2');
+  let out = resolveToFixedPoint(guardAnnotations(text), ANNOTATED, saidSide);
+  out = resolveToFixedPoint(out, ANNOTATED_SINGLE, saidSide);
   out = resolveToFixedPoint(out, PLAIN, '$1');
   return out.replace(DANGLING, '').trimEnd();
 }
