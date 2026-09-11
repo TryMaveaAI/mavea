@@ -255,6 +255,26 @@ describe('useTruncatedTextDisclosures', () => {
     expect(document.querySelector('.canvas-text-popover')).toBeNull();
   });
 
+  it('never discloses decoration the page hides from assistive tech', async () => {
+    // A terminal's title bar is aria-hidden ornament; a disclosure there is a focusable button
+    // inside a subtree told not to exist, and an 11px tap target on a phone.
+    const ornament = document.createElement('div');
+    ornament.setAttribute('aria-hidden', 'true');
+    const { card, label } = labelCard(
+      'backend-server $ ~/proj…',
+      'backend-server $ ~/projects/mavea',
+    );
+    ornament.appendChild(card);
+    host.appendChild(ornament);
+    const ref = { current: host };
+    const hook = renderHook(() => useTruncatedTextDisclosures(ref, 'r1'));
+    await flushScan();
+    expect(label.hasAttribute('data-text-disclosure')).toBe(false);
+    expect(label.hasAttribute('role')).toBe(false);
+    expect(label.hasAttribute('tabindex')).toBe(false);
+    hook.unmount();
+  });
+
   it('releases a removed card mid-answer instead of holding six listeners until unmount', async () => {
     const first = labelCard('Quarterly revenue by seg…', 'Quarterly revenue by segment and region');
     host.appendChild(first.card);

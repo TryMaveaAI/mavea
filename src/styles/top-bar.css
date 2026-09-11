@@ -345,7 +345,10 @@
     display: none;
   }
 }
-@media (width <= 430px) {
+/* Under 900px the bar cannot hold five menus, the search word and its cap: the flex row shrinks
+   the search button below its content, and the centred label spills over Explore (measured at
+   819px — an 834px tablet window less its scrollbar). The magnifier alone is the handle there. */
+@media (width <= 900px) {
   .topbar-search-label {
     display: none;
   }

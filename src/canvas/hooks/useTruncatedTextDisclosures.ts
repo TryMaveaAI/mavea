@@ -106,6 +106,10 @@ interface Disclosure {
  * nothing, so a whole scan's reads can run before its first write. */
 function inspect(source: Element, painted: Map<Element, string>): Disclosure | null {
   if (source.hasAttribute('data-semantic-ellipsis')) return null;
+  // Decoration is never disclosed: a terminal's title bar, a chart's ornament. A disclosure
+  // there puts a focusable button inside a subtree assistive tech is told does not exist, and
+  // on a phone it hands the tap gate an 11px target with nothing behind it.
+  if (source.closest('[aria-hidden="true"]')) return null;
   const raw = painted.get(source) ?? '';
   // An element that paints no text cannot be truncated, and across an SVG chart's paths, rects and
   // groups that is most of them — reject before paying for style.
