@@ -26,6 +26,17 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(/height:\s*100dvh/);
   });
 
+  it('lets the beat bar take the width its beats need before the strip scrolls', () => {
+    // A chip is an object's whole name, and the strip fades a chip it cannot show whole. With a
+    // fixed cap the third of three chips sat cut mid-word under the fade on a 1680px window that
+    // had room for a dozen — the bar may grow to the stage, and only the stage bounds it. The
+    // HUD scale is a transform, so the layout width divides it out or full screen spills.
+    const bar = /\.study-beats\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(bar).toBeTruthy();
+    expect(bar).toMatch(/max-width:\s*calc\(\d+% \/ var\(--study-hud, 1\)\)/);
+    expect(bar).not.toMatch(/max-width:[^;]*\d+px/);
+  });
+
   it('collapses the floor band on a shallow stage instead of cropping into the cards', () => {
     // useStudyScale flags data-shallow when the clamped scale would crop deeper than the desk's
     // decorative band; the floor grid is the sacrifice, the arc is not.
@@ -451,8 +462,12 @@ describe('walkthrough panel never blocks scrolling the answer behind it', () => 
   });
 
   it('normalises line and page wheel modes so a mouse wheel is not a one-pixel nudge', () => {
-    expect(src).toMatch(/deltaMode === 1/);
-    expect(src).toMatch(/deltaMode === 2/);
+    // The normalisation lives in useScriptedLock's `wheelPixels` — a locked run has to forward the
+    // wheel for the whole inert surface, not just the panel, and one scroller wants one rule.
+    expect(src).toMatch(/wheelPixels\(e, sc\)/);
+    const lock = read('src/tour/useScriptedLock.ts');
+    expect(lock).toMatch(/deltaMode === 1/);
+    expect(lock).toMatch(/deltaMode === 2/);
   });
 
   it('does NOT fix it by making the panel pointer-transparent', () => {

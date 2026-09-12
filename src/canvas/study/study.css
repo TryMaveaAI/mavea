@@ -775,7 +775,12 @@
      second line — a wrapped transport strands its own primary action under the bar it belongs to. */
   flex-wrap: nowrap;
   gap: 8px;
-  max-width: min(92%, 1080px);
+  /* The bar is as wide as its beats need, up to the stage — a beat chip is the object's whole
+     name, and a chip cut mid-word under the fade reads as broken when the desk beside it has
+     room to spare. A fixed cap did exactly that at three beats on a wide window. The strip
+     scrolls only once the stage itself cannot hold every name. The scale is a transform, so
+     the layout width divides it out or the full-screen bar would spill past both edges. */
+  max-width: calc(92% / var(--study-hud, 1));
   padding: 7px 10px;
   border: 1px solid var(--study-glass-line);
   border-radius: var(--r-full);
