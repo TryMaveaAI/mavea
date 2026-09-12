@@ -250,6 +250,12 @@ export const PROXIES = [
     maxConcurrent: 2,
     timeoutMs: 120_000,
   },
+  // The concurrency caps are sized from what the app itself fans out, not from a guess at abuse:
+  // a turn at the Thorough dial runs the answer, two chip prefetches and the desk's notes at once,
+  // and the forecast autopsy searches up to ten claims in parallel. A cap below that answers 503
+  // to the page's own work, and the adapters wait a second per retry — measured as the whole
+  // reason a local install felt slower than the dev server. Two tabs' worth is the ceiling; the
+  // browser's own per-host connection limit holds one page near six regardless.
   {
     prefix: '/llm/anthropic',
     target: 'https://api.anthropic.com',
@@ -260,7 +266,7 @@ export const PROXIES = [
     bodyLimit: 96 * MiB,
     responseLimit: 32 * MiB,
     requestsPerMinute: 60,
-    maxConcurrent: 2,
+    maxConcurrent: 8,
     timeoutMs: 120_000,
   },
   {
@@ -270,7 +276,7 @@ export const PROXIES = [
     bodyLimit: 96 * MiB,
     responseLimit: 32 * MiB,
     requestsPerMinute: 60,
-    maxConcurrent: 2,
+    maxConcurrent: 8,
     timeoutMs: 120_000,
   },
   {
@@ -280,7 +286,7 @@ export const PROXIES = [
     bodyLimit: 96 * MiB,
     responseLimit: 32 * MiB,
     requestsPerMinute: 60,
-    maxConcurrent: 2,
+    maxConcurrent: 8,
     timeoutMs: 120_000,
     injectGeminiKey: true,
   },
@@ -291,7 +297,7 @@ export const PROXIES = [
     bodyLimit: 96 * MiB,
     responseLimit: 32 * MiB,
     requestsPerMinute: 60,
-    maxConcurrent: 2,
+    maxConcurrent: 8,
     timeoutMs: 120_000,
   },
   {
@@ -301,7 +307,7 @@ export const PROXIES = [
     bodyLimit: 96 * MiB,
     responseLimit: 32 * MiB,
     requestsPerMinute: 60,
-    maxConcurrent: 2,
+    maxConcurrent: 8,
     timeoutMs: 120_000,
   },
   {
@@ -311,7 +317,7 @@ export const PROXIES = [
     bodyLimit: 0,
     responseLimit: 4 * MiB,
     requestsPerMinute: 120,
-    maxConcurrent: 6,
+    maxConcurrent: 12,
     timeoutMs: 30_000,
   },
   {
@@ -321,7 +327,7 @@ export const PROXIES = [
     bodyLimit: 2 * MiB,
     responseLimit: 4 * MiB,
     requestsPerMinute: 120,
-    maxConcurrent: 6,
+    maxConcurrent: 12,
     timeoutMs: 30_000,
   },
   {
