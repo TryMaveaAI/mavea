@@ -6,10 +6,16 @@ function setup() {
   const onPlay = vi.fn();
   const onPlayStudyDemo = vi.fn();
   const onEnterLive = vi.fn();
+  const onPlayTour = vi.fn();
   const utils = render(
-    <FlagshipLanding onPlay={onPlay} onPlayStudyDemo={onPlayStudyDemo} onEnterLive={onEnterLive} />,
+    <FlagshipLanding
+      onPlay={onPlay}
+      onPlayStudyDemo={onPlayStudyDemo}
+      onEnterLive={onEnterLive}
+      onPlayTour={onPlayTour}
+    />,
   );
-  return { onPlay, onPlayStudyDemo, onEnterLive, ...utils };
+  return { onPlay, onPlayStudyDemo, onEnterLive, onPlayTour, ...utils };
 }
 
 describe('FlagshipLanding', () => {

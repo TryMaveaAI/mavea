@@ -3,7 +3,9 @@
 // closes its pitch with a real, factual chip row before the CTA — the right shows the actual
 // provider registry, the left states the shipped key/session policy in the same words
 // HonestByDesign uses — so the two cards read as one balanced pair rather than the live card
-// being the only one with something to point at.
+// being the only one with something to point at. Each card's button opens the thing its card
+// promises: the key-free walkthrough on the left, Live on the right. Both once opened Live, and
+// two doors side by side into one room read as a difference the visitor could not find.
 // The live tag's accent modifier is named "live", NOT "presence": the latter is the bare class
 // name the talking face/orb owns (presence-canvas.css sizes it to --face-size), so reusing it
 // here forced this tag into a 180px square and blew a huge gap into the card above the title.
@@ -14,7 +16,13 @@ import { SectionHead } from '../parts';
 
 const INSTANT_CHIPS = ['No sign-up', 'No install', 'Key-free tour', 'Keys session-only'];
 
-export function TwoSurfaces({ onEnterLive }: { onEnterLive: (seed?: string) => void }) {
+export function TwoSurfaces({
+  onEnterLive,
+  onPlayTour,
+}: {
+  onEnterLive: (seed?: string) => void;
+  onPlayTour: () => void;
+}) {
   return (
     <>
       <SectionHead eyebrow="Yours in seconds">
@@ -36,8 +44,8 @@ export function TwoSurfaces({ onEnterLive }: { onEnterLive: (seed?: string) => v
               </span>
             ))}
           </div>
-          <button type="button" className="fl-ghost-btn" onClick={() => onEnterLive()}>
-            Open Mavéa →
+          <button type="button" className="fl-ghost-btn" onClick={onPlayTour}>
+            Take the tour →
           </button>
         </div>
 

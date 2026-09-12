@@ -701,3 +701,37 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(css).toMatch(/container-name:\s*study/);
   });
 });
+
+describe('demo gallery — a card’s parts line up with the cards beside it', () => {
+  const css = read('src/flagship/flagship.css');
+
+  it('lays each card out on the gallery’s own rows, pinned to the top of the shared header row', () => {
+    // A header that wraps is a line or two taller than its neighbours, and with the card
+    // stacking its own parts the blurb started lower on that one card. Subgrid rows make the
+    // header row the tallest header across the row, and the top of the row is where every
+    // header sits.
+    const card = /\.fl-demo-card\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(card).toMatch(/grid-template-rows:\s*subgrid/);
+    expect(card).toMatch(/grid-row:\s*span 3/);
+    const top = /\.fl-demo-top\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(top).toMatch(/align-self:\s*start/);
+    expect(css).toMatch(/@supports not \(grid-template-rows: subgrid\)/);
+  });
+
+  it('gives the persona line the whole card, not the title’s column beside the avatar', () => {
+    // At four-across the title's column is narrower than the longest persona line, so one card
+    // wrapped it to two lines while the three beside it kept one.
+    const role = /\.fl-demo-role\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(role).toMatch(/grid-column:\s*1 \/ -1/);
+    expect(css).not.toMatch(/\.fl-demo-who\b/);
+  });
+});
+
+describe('two surfaces — the pair of buttons share one box', () => {
+  it('keeps the Live button’s border, transparent, so it is not shorter than the ghost beside it', () => {
+    const css = read('src/flagship/flagship.css');
+    const live = /\.fl-ghost-btn\.live\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(live).toMatch(/border:\s*1px solid transparent/);
+    expect(live).not.toMatch(/border:\s*none/);
+  });
+});

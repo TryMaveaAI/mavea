@@ -2268,13 +2268,27 @@
     ),
     var(--surface-elevated);
   padding: 18px;
-  display: flex;
-  flex-direction: column;
+  /* A card's three parts — who, what the session shows, the replay link — are rows of the
+     GALLERY's grid, not the card's own: a header that wraps grows that row for every card beside
+     it, so the blurbs start on one line across the row and the links end on one, whatever each
+     card's copy takes at a given width. The row gap is the card's own; its parts carry their
+     spacing as margins. */
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  row-gap: 0;
   box-shadow: var(--shadow-raised);
   transition:
     transform var(--m-fast),
     box-shadow var(--m-fast),
     border-color var(--m-fast);
+}
+/* Old Chrome/Safari without subgrid: the card lays its parts out on tracks of its own, so the
+   links still meet at the foot of the row while the blurbs start where each header ends. */
+@supports not (grid-template-rows: subgrid) {
+  .fl-demo-card {
+    grid-template-rows: auto auto 1fr;
+  }
 }
 .fl-demo-card:hover {
   transform: translateY(-3px);
@@ -2282,9 +2296,17 @@
   border-color: color-mix(in oklab, var(--presence) 40%, transparent);
 }
 .fl-demo-top {
-  display: flex;
+  /* Avatar and title on one row, the persona line under both. Beside the avatar the line had
+     the title's column, which at four-across is narrower than the longest persona, so one card
+     wrapped it and its neighbours did not; spanning the card it fits at every column count. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 11px;
+  row-gap: 6px;
   align-items: center;
-  gap: 11px;
+  /* The top of the shared header row: centring would float a shorter header halfway down the
+     room a taller neighbour made. */
+  align-self: start;
   margin-bottom: 14px;
 }
 .fl-demo-avatar {
@@ -2308,32 +2330,25 @@
   color: var(--text-primary);
   background: color-mix(in oklab, var(--accent, var(--presence)) 18%, transparent);
 }
-.fl-demo-who {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
 .fl-demo-name {
   font-weight: 700;
   font-size: var(--fs-md);
   line-height: 1.25;
   color: var(--text-primary);
   /* The title is the session's USE CASE ("Reason about architecture") — it wraps rather than
-   * truncates; a cut-off promise reads as a bug. The persona line below stays one-line. */
+   * truncates; a cut-off promise reads as a bug. */
   text-wrap: balance;
 }
 /* Wraps rather than truncating: at 1366 and 1440 every one of these overflowed, and the word it
    cut was "Fictional" — the disclosure the card exists to carry. */
 .fl-demo-role {
+  grid-column: 1 / -1;
   font-size: var(--fs-sm);
   line-height: 1.3;
   color: var(--text-muted);
 }
 .fl-demo-badge {
   flex: none;
-  align-self: flex-start;
   font-family: var(--font-data);
   /* the 9px legibility floor */
   font-size: var(--fs-2xs);
@@ -2351,7 +2366,13 @@
   line-height: 1.5;
   color: var(--text-secondary);
   margin-bottom: 18px;
-  min-height: 42px;
+}
+.fl-demo-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 11px;
+  margin-top: auto;
 }
 .fl-demo-play {
   display: flex;
@@ -2360,7 +2381,6 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--accent-ink, var(--accent, var(--presence)));
-  margin-top: auto;
 }
 /* The per-card --accent arrives inline from DemoGallery, tuned for dark; as TEXT on the light
    theme those same values fall under AA, so light writes with a text-primary-darkened ink. */
@@ -2473,7 +2493,9 @@
   background: color-mix(in oklab, var(--presence) 14%, transparent);
 }
 .fl-ghost-btn.live {
-  border: none;
+  /* The same box as the ghost button beside it: dropping the border made this pill shorter and
+     narrower by the border's width, so the pair sat at two heights. */
+  border: 1px solid transparent;
   color: #fff;
   background: linear-gradient(120deg, var(--presence), var(--fl-blue));
   box-shadow: 0 8px 22px -8px var(--glow-presence);

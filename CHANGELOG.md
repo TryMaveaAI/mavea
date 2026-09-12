@@ -44,6 +44,15 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ### Fixed
 
+- **The four demo cards read as one row.** The category tag sat in the title row and took a
+  third of it, so one card's title and persona wrapped where its neighbours' did not; and each
+  card stacked its own parts, so its blurb and replay link started lower than the others'. The
+  tag now sits at the foot beside the replay link, the persona line has the whole card, and a
+  card's parts are rows of the gallery's own grid, so titles, blurbs and links line up across
+  the row.
+- **The no-sign-up card opens the tour.** Its button and the bring-your-keys card's both opened
+  Live — two doors into one room. It now starts the key-free walkthrough, and the Live button
+  keeps its neighbour's border, transparent, so the pair sits at one height.
 - **A diagram never collapses on the model's ids.** A pipeline whose stages arrived without ids
   (or with one id repeated) placed every stage on one slot, piled the labels at the corner and
   grew the card a row per stage. Identity is now part of the catalog contract — where an item's

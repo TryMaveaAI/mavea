@@ -76,7 +76,7 @@ interface Props {
   /** Show the first-run "play the tour, or explore on your own" invite in the hero, in place of
    *  the plain "Watch it work" link. One-shot — App.tsx retires it the moment either choice fires. */
   showTourInvite?: boolean;
-  onPlayTour?: () => void;
+  onPlayTour: () => void;
   onDismissTourInvite?: () => void;
   onViewWorld?: () => void;
 }
@@ -131,7 +131,7 @@ export function FlagshipLanding({
       </DeferredSection>
 
       <DeferredSection reserve={620}>
-        <TwoSurfaces onEnterLive={onEnterLive} />
+        <TwoSurfaces onEnterLive={onEnterLive} onPlayTour={onPlayTour} />
       </DeferredSection>
 
       <DeferredSection className="fl-cta-section" reserve={600}>

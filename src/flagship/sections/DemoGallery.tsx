@@ -41,17 +41,20 @@ export function DemoGallery({ onPlay }: { onPlay: (p: DemoCastMember) => void })
               <span className={'fl-demo-avatar' + (isEmojiAvatar(p.avatar) ? ' emoji' : '')}>
                 {p.avatar}
               </span>
-              <span className="fl-demo-who">
-                <span className="fl-demo-name">{p.useCase}</span>
-                <span className="fl-demo-role">
-                  {p.name} · {p.role}
-                </span>
+              <span className="fl-demo-name">{p.useCase}</span>
+              <span className="fl-demo-role">
+                {p.name} · {p.role}
               </span>
-              <span className="fl-demo-badge">{cat.label}</span>
             </div>
             <span className="fl-demo-blurb">{p.blurb}</span>
-            <span className="fl-demo-play">
-              <Icon.play /> Play curated replay
+            {/* The category sits at the foot, not beside the title: in the header it took a third
+                of the line, and one card's title and persona wrapped where its neighbours' did
+                not — four lines of header against two. */}
+            <span className="fl-demo-foot">
+              <span className="fl-demo-play">
+                <Icon.play /> Play curated replay
+              </span>
+              <span className="fl-demo-badge">{cat.label}</span>
             </span>
           </button>
         ))}
