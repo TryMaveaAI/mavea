@@ -156,5 +156,8 @@
 .drop-select-hint {
   color: var(--text-muted);
   display: block;
-  font: var(--fs-xs)/1.4 var(--font);
+  /* The same size and leading as the wizard's other helper lines (.field-helper): this hint sits
+     directly above the model note and the search note, and a smaller face there read as a third
+     type size on one short column. */
+  font: var(--fs-sm)/1.5 var(--font);
 }
