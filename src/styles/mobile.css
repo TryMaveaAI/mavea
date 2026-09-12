@@ -159,15 +159,52 @@
    44px bar, so the finger lands but nothing reflows and nothing looks any different — the alternative
    (a min-height on everything) would grow tight toolbars and change a design that is otherwise right.
 
-   Scoped to `pointer: coarse`, so a mouse is untouched, and kept out of `.card`: a control inside a
-   canvas block is content — a periodic-table cell, a swatch in a palette — with its own density, and
-   inflating those would have neighbouring hit areas swallowing each other.
+   Scoped to `pointer: coarse`, so a mouse is untouched, and kept out of canvas CONTENT: a control
+   inside a rendered block is content — a periodic-table cell, a swatch in a palette — with its own
+   density, and inflating those would have neighbouring hit areas swallowing each other.
+
+   What is excluded is a block's own card INSIDE one of the block hosts — not `.card` alone, and
+   not a host alone. The class is the block sheet, but the setup wizard and the dashboards borrow
+   it for their panels, so excluding it wholesale stripped the rescue from exactly the chrome this
+   is here for: the wizard's buttons are the whole route through a first conversation, and it
+   hides the dock. A host alone reaches too far the other way — the card's action cluster and a
+   section's controls sit in the cell BESIDE the card, shown at rest on touch, and those are
+   chrome. The hosts are every place a `Block` is drawn: the board grid (depth drawers included),
+   the Focus hero, a canvas-board node, the Study desk's card face, the Lens stage, the gallery
+   preview, the world's parts rail, and an exported figure's frame. Add the host here when you add
+   a surface that renders blocks.
    ============================================================ */
 @media (pointer: coarse) {
-  :where(button, [role='button'], summary, select, label[for]):not(.card *) {
+  :where(button, [role='button'], summary, select, label[for]):not(
+    :where(
+        .card-grid,
+        .focus-hero-card,
+        .cv-node-inner,
+        .study-card-face,
+        .zoom-sheet-body,
+        .vlib-render,
+        .wo-parts,
+        .figure-embed__content
+      )
+      .card
+      *
+  ) {
     position: relative;
   }
-  :where(button, [role='button'], summary, select, label[for]):not(.card *)::before {
+  :where(button, [role='button'], summary, select, label[for]):not(
+      :where(
+          .card-grid,
+          .focus-hero-card,
+          .cv-node-inner,
+          .study-card-face,
+          .zoom-sheet-body,
+          .vlib-render,
+          .wo-parts,
+          .figure-embed__content
+        )
+        .card
+        *
+    )::before {
     content: '';
     position: absolute;
     top: 50%;

@@ -769,3 +769,84 @@ describe('two surfaces — the pair of buttons share one box', () => {
     expect(live).not.toMatch(/border:\s*none/);
   });
 });
+
+describe('coarse-pointer hit rescue — chrome is rescued, canvas content is left alone', () => {
+  const css = read('src/styles/mobile.css');
+  const coarse = css.slice(css.indexOf('@media (pointer: coarse)'));
+  // The selector is pinned by running it, not by matching its text: jsdom has no layout engine but
+  // it does match Selectors 4, so a scoping mistake shows up as the wrong element being hit.
+  const rescue = (
+    /(:where\(button[\s\S]*?\))\s*\{\s*position:\s*relative;/.exec(coarse)?.[1] ?? ''
+  ).replace(/\s+/g, ' ');
+
+  /** Every host a `Block` is drawn into, and the module that puts it in the DOM. */
+  const HOSTS: Record<string, string> = {
+    'card-grid': 'src/canvas/TopicCanvas.tsx',
+    'focus-hero-card': 'src/canvas/focus/FocusStage.tsx',
+    'cv-node-inner': 'src/canvas/focus/CanvasView.tsx',
+    'study-card-face': 'src/canvas/study/StudyStage.tsx',
+    'zoom-sheet-body': 'src/canvas/TopicCanvas.tsx',
+    'vlib-render': 'src/gallery/GalleryApp.tsx',
+    'wo-parts': 'src/live/world/WorldOverlay.tsx',
+    'figure-embed__content': 'src/canvas/embed/FigureEmbed.tsx',
+  };
+
+  const rescued = (html: string): boolean => {
+    document.body.innerHTML = html;
+    return document.querySelectorAll(rescue).length === 1;
+  };
+
+  it('rescues the setup wizard’s buttons, which borrow the block sheet for their panel', () => {
+    // A wizard turn hides the topbar and the dock, so these buttons are the only way through a
+    // first conversation — excluding `.card` wholesale took the finger floor off every one.
+    expect(rescue).toBeTruthy();
+    expect(rescued('<div class="card reveal setup-card"><button>Continue</button></div>')).toBe(
+      true,
+    );
+  });
+
+  it('rescues the dashboards’ panel controls, which borrow it too', () => {
+    expect(
+      rescued('<section class="card dash-cadence-card"><button>Daily</button></section>'),
+    ).toBe(true);
+  });
+
+  it('leaves a control inside a rendered block alone, in every host a block is drawn into', () => {
+    for (const host of Object.keys(HOSTS)) {
+      expect(
+        rescued(`<div class="${host}"><div class="card reveal"><button>Ar</button></div></div>`),
+        host,
+      ).toBe(false);
+    }
+  });
+
+  it('keeps the chrome beside a card rescued — its action cluster, a section’s controls', () => {
+    // These sit in the grid cell or the Focus hero next to the card, not inside it, and on touch
+    // they are shown at rest; excluding the whole host would take the finger floor off every one.
+    expect(
+      rescued(
+        '<div class="card-grid"><div class="col-6"><div class="card reveal"></div><div class="block-actions"><button>Ask</button></div></div></div>',
+      ),
+    ).toBe(true);
+    expect(
+      rescued(
+        '<div class="card-grid"><section class="depth-section"><button>Go deeper</button></section></div>',
+      ),
+    ).toBe(true);
+    expect(
+      rescued(
+        '<div class="focus-hero-card"><div class="card reveal"></div><div class="block-actions"><button>Ask</button></div></div>',
+      ),
+    ).toBe(true);
+  });
+
+  it('names exactly those hosts, and each one is a class the code still renders', () => {
+    // The shape is `:not(:where(<hosts>) .card *)`: a control is content only inside a block's
+    // own card, and only where a block is drawn.
+    const shape = /:not\(\s*:where\(\s*([^)]*?)\s*\)\s*\.card\s*\*\s*\)$/.exec(rescue);
+    expect(shape, rescue).toBeTruthy();
+    const listed = (shape?.[1] ?? '').split(',').map((s) => s.trim().replace(/^\./, ''));
+    expect(listed.sort()).toEqual(Object.keys(HOSTS).sort());
+    for (const [host, file] of Object.entries(HOSTS)) expect(read(file)).toContain(host);
+  });
+});

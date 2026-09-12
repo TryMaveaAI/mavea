@@ -24,6 +24,7 @@ All notable changes to Mavéa are documented here. The format is based on
 ### Fixed
 
 - **The appearance picker keeps Tab inside its sheet.** The workspace gallery parks every chip but the chosen one at tabindex −1, so the picker's own Tab cycle closed on a chip the keyboard could never reach and the next press walked out into the page behind it. It uses the shared overlay trap now, which cycles over what Tab can actually land on.
+- **On a phone, the setup wizard's and the dashboards' buttons get the finger-sized hit area again.** The touch rescue skipped everything inside a `.card`, and both surfaces borrow that class for their panels — so the buttons that are the whole route through a first conversation had no floor. It now skips only a block's own card where a block is drawn, and the controls beside a card keep theirs.
 
 ## [2.7.0] - 2026-09-11
 
