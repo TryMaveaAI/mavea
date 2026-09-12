@@ -118,6 +118,13 @@ describe('drop-select styling travels with the components', () => {
     expect(wizard).toContain('.voice-row .drop-select {');
   });
 
+  it('sets the hint in the same face as the wizard’s other helper lines', () => {
+    // `--font` is resolved once at :root, so a template that rebinds `--font-body` (the Scholar
+    // desk sets Lora) never reaches a `var(--font)` consumer: the hint alone kept the UI face
+    // between two helper lines set in the body face.
+    expect(menuCss).toMatch(/\.drop-select-hint \{[^}]*var\(--font-body\)/);
+  });
+
   it('is imported by both pickers', () => {
     expect(src('live/setup/DropSelect.tsx')).toContain("import './drop-select.css'");
     expect(src('live/setup/ModelSelect.tsx')).toContain("import './drop-select.css'");
