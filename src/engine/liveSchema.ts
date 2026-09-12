@@ -1840,6 +1840,26 @@ const OPEN_RECORD_PATHS: Record<string, ReadonlySet<string>> = {
 };
 const NO_OPEN_RECORDS: ReadonlySet<string> = new Set();
 
+/** The props a generic block may carry: what the catalog declares, PLUS every key its structural
+ *  reference holds. Those two lists are maintained independently — `requires`/`optional` by hand in
+ *  the family file, the reference by `pnpm gen:catalog` from a real shipping fixture — and it is the
+ *  FIXTURE's key set that the prompt prints as the component's `example:` line. Both loops below
+ *  used to walk the hand-kept list alone, so a key the model was shown and dutifully copied
+ *  (polarplot's `fn`, a trainingcurve's `bestEpoch`, a navbar's `brandIcon`, the `icon`/`iconColor`
+ *  of ten more) was never looked at and never reached the output — polarplot's own example shape
+ *  arrived at the renderer as `{title, domain}`, an empty dial. A reference key is the fixture's own
+ *  prop and goes through exactly the same projection as a declared one, so admitting it widens
+ *  nothing. The reverse gap — a declared prop no fixture carries — is NOT closed here: there is no
+ *  contract to check such a value against, and letting an unchecked shape through is how a `curves`
+ *  list with no `fn` in it reaches a renderer that reads `curve.fn`. Those are still dropped, and
+ *  the fix belongs at the source — either a reference example that carries the prop, or a family
+ *  entry that stops teaching it. `tests/live-declared-props` holds both halves that CAN be checked:
+ *  no component may lose a key of its own shipping example, and no `requires` key may go
+ *  unreferenced (which would drop the whole block). */
+function declaredProps(meta: ComponentMeta, reference: Record<string, unknown>): string[] {
+  return [...new Set([...meta.requires, ...meta.optional, ...Object.keys(reference)])];
+}
+
 /** Coerce props for a catalog component with no hand-written builder. Normalizes any
  *  text-bearing item arrays against the component's `itemShapes` (so a model's synonym
  *  field name still renders, and a blank item is dropped rather than shown), flattens
@@ -1906,7 +1926,8 @@ function coerceGeneric(
     const values = enumValuesFromHint(hint);
     if (values) nestedEnums.set(hintPath, { values, strict: strictVocabPaths.has(hintPath) });
   }
-  for (const key of [...meta.requires, ...meta.optional]) {
+  const declared = declaredProps(meta, reference as Record<string, unknown>);
+  for (const key of declared) {
     if (repaired[key] === undefined) continue;
     if (!(key in reference)) {
       if (meta.requires.includes(key)) return null;
@@ -1961,7 +1982,7 @@ function coerceGeneric(
   if (!resolvesDeclaredItems(repaired, meta.itemShapes ?? [])) return null;
   const raw = RAW_TEXT_PROPS[meta.type];
   const out: Record<string, Json> = {};
-  for (const key of [...meta.requires, ...meta.optional]) {
+  for (const key of declared) {
     if (repaired[key] === undefined) continue;
     // RAW-TEXT props (e.g. a codeblock's `code`) must survive verbatim: angle brackets are real
     // source — `List<T>`, `#include <vector>`, `a < b` — and tag-neutralization would corrupt them.

@@ -1368,12 +1368,17 @@ export const CATALOG_LEARN: ComponentCatalog = [
     colMin: 4,
     coercer: 'generic',
     blurb:
-      'Polar coordinate plot: renders parametric or r=f(θ) curves on a polar grid with concentric rings and radial spokes. Supports rose curves, spirals, limaçons, cardioids, and arbitrary parametric paths. Use for polar coordinate systems, complex number arguments, antenna radiation patterns, and physics (orbit shapes). The model supplies the curve definition (function name or a list of (theta, r) points); the component draws the grid and curves.',
+      'Polar coordinate plot: renders parametric or r=f(θ) curves on a polar grid with concentric rings and radial spokes. Supports rose curves, spirals, limaçons, cardioids, and arbitrary parametric paths. Use for polar coordinate systems, complex number arguments, antenna radiation patterns, and physics (orbit shapes). The model supplies the curve as an expression in the parameter t; the component draws the grid and curves.',
     requires: ['title'],
-    optional: ['type', 'curves', 'domain', 'caption'],
+    // `curves` — the multi-curve form the component also accepts — is deliberately NOT taught here.
+    // The structural reference the coercer validates against is derived from this component's
+    // shipping fixture, which uses the `fn` shorthand, so a `curves` array has no contract to be
+    // checked and is dropped; advertising it buys an empty dial. Teaching it again means first
+    // giving polarplot a reference example that carries `curves`.
+    optional: ['fn', 'type', 'domain', 'footer'],
     propHints: {
+      fn: "the curve as an expression in `t`, e.g. 'cos(2*t)'; for 'parametric', 'x(t), y(t)'",
       type: "'polar' (r=f(θ) curves) | 'parametric' (x and y each as f(t)) — default 'polar'",
-      curves: 'array of polar curves — each has a name and either a formula string or points[]',
       domain: '[tMin, tMax] parameter range; defaults to [0, 2π]',
     },
     intents: ['explain', 'visualize', 'teach'],
