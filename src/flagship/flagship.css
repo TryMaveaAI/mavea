@@ -434,16 +434,6 @@
 .fl-composer-btn.primary:hover {
   transform: scale(1.06);
 }
-.fl-privacy-line {
-  max-width: 62ch;
-  margin: 10px 0 0;
-  font: 500 var(--fs-xs)/1.45 var(--font);
-  /* Not --text-faint: this line, .fl-cta-note, .fl-seen-note and .fl-fig-note carry the page's
-     permission, cost and this-is-invented claims, and faint ink measured 1.9-2.3:1 against the
-     surfaces behind them. --text-muted is the token that was tuned to clear AA on both. */
-  color: var(--text-muted);
-  text-wrap: balance;
-}
 .fl-hero-hint {
   font-family: var(--font-data);
   margin-top: 14px;
@@ -2492,7 +2482,9 @@
 /* ===================== CTA ===================== */
 .fl-cta {
   text-align: center;
-  padding: 110px 24px;
+  /* Shorter at the foot: the note below the button closes the section, so the space that used to
+     sit under it goes ABOVE it instead and the line reads with the footer rather than the button. */
+  padding: 110px 24px 40px;
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -2602,10 +2594,13 @@
     0 26px 58px -10px var(--glow-presence);
 }
 .fl-cta-note {
-  font-family: var(--font-data);
-  margin-top: 18px;
-  font-size: var(--fs-sm);
+  margin-top: 88px;
+  font: var(--fs-xs)/1.5 var(--font);
+  /* Not --text-faint: this line, .fl-seen-note and .fl-fig-note carry the page's cost and
+     this-is-invented claims, and faint ink measured 1.9-2.3:1 against the surfaces behind them.
+     --text-muted is the token that was tuned to clear AA on both. */
   color: var(--text-muted);
+  text-wrap: balance;
 }
 /* ===================== topbar nav (home only) ===================== */
 .fl-nav {
