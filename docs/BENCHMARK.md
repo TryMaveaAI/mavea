@@ -55,7 +55,7 @@ EVAL_JUDGE=1              # also run the LLM judge
 EVAL_JUDGE_PROVIDER=gemini
 EVAL_JUDGE_KEY=
 EVAL_JUDGE_ONLY=          # optional: comma-separated case ids (a representative subset)
-EVAL_JUDGE_DELAY=         # optional: ms to wait between cases — a free-tier key trips
+EVAL_JUDGE_DELAY=         # optional: ms to wait between cases — a rate-limited key trips
                          #   RESOURCE_EXHAUSTED around ~15 req/min, so set e.g. 7000
 
 pnpm eval

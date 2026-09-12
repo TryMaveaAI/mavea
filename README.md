@@ -65,7 +65,7 @@ Prefer a pinned local copy? `npm install -g @mavea/mavea`, then run `mavea`.
 **To talk to a real model (Live):** click **"Open Mavéa"** and paste an Anthropic / OpenAI /
 Gemini / Grok / OpenRouter key. Model usage is billed by that provider under your key, at its
 rates — the model call is the part of a turn that costs money; the app and the speech services
-run on your machine for free. The key stays in memory unless you opt into encrypted local
+run on your machine. The key stays in memory unless you opt into encrypted local
 remembering, and each provider request carries it through your same-origin proxy to that
 provider — your key and prompts never pass through Mavéa's own servers, because there aren't
 any. Full options — models, hosting, and the trust boundary — are in
@@ -77,7 +77,7 @@ any. Full options — models, hosting, and the trust boundary — are in
 produce is yours: publishing a transcript, or a video spoken in Mavéa's voices, owes no fee and no
 credit line — those licenses cover the software, not its output. The defaults run on your machine through
 loopback-only proxies; a deployment that overrides `WHISPER_URL` sends microphone audio to that
-configured endpoint. [Podman](https://podman.io/) is the recommended free/open-source
+configured endpoint. [Podman](https://podman.io/) is the recommended open-source
 container runtime. Docker also works, but Docker Desktop has separate commercial subscription
 terms. Without the configured services, captions and typing still work; audio is never handed to a
 browser-vendor speech service as a fallback.
@@ -137,7 +137,7 @@ Twelve moments from the walkthrough and the recorded sessions. Every one replays
 <table>
   <tr>
     <td width="25%" valign="top"><img width="168" src="docs/media/answer-ink.jpg" alt="A token-exchange request on the canvas, underlined and highlighted by Mavéa's pen as it narrates" /><br /><sub><b>It marks what it's saying.</b> The pen lands on the exact line as the sentence is spoken.</sub></td>
-    <td width="25%" valign="top"><img width="168" src="docs/media/study-desk.jpg" alt="One card of an answer lit on a desk, with Mavéa’s handwritten notes and pen marks in the margin around it" /><br /><sub><b>One object on a desk.</b> The answer comes forward a card at a time, with Mavéa’s notes pencilled in the margin.</sub></td>
+    <td width="25%" valign="top"><img width="168" src="docs/media/study-desk.jpg" alt="Guide me: one card of an answer lit on a desk, with Mavéa’s handwritten notes and pen marks beside it" /><br /><sub><b>Guide me.</b> The answer comes forward a card at a time on a lamplit desk, Mavéa’s notes pencilled in the margin.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/think-map.jpg" alt="Thoughts spoken out loud, sorted into themes and threads with the tension between two of them named" /><br /><sub><b>Think out loud first.</b> A ramble sorts itself into themes — and it names the tension you missed.</sub></td>
     <td width="25%" valign="top"><img width="168" src="docs/media/voice-scrub.jpg" alt="A settled answer with its spoken track drawn as a waveform, above the card being narrated" /><br /><sub><b>Scrub the voice.</b> Drag the spoken track and the canvas un-builds to what had been said.</sub></td>
   </tr>

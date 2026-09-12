@@ -604,7 +604,7 @@ proposes a write.
 A "why" answer can carry a `world` block — an ordinary canvas block, so it travels into the library,
 a replay, a share, an export and the demo baker for free. Opening it hands the screen to
 `live/world/WorldOverlay`, and the build is one model call, made on open and cached hard: offering
-the world costs nothing, and a second visit is free.
+the world makes no call, and neither does a second visit.
 
 **One name for readers, another in the code.** Everything a reader sees calls this the **living
 answer**. In the code it is the `world` — `WorldSpec`, `live/world/`, the `world` block type, the
@@ -645,7 +645,7 @@ on the links, and the move stated in prose that cannot contain a digit, because 
 from structure with nothing measuring it. No layout reads it, so the map holds still and the camera
 never moves; only the weights do.
 
-**The world narrates itself for free.** "Walk me through it" flies the camera cause to cause,
+**The world narrates itself without a model call.** "Walk me through it" flies the camera cause to cause,
 lighting each node and the link that brought it in while Mavéa speaks a line — beats composed from
 fields the spec already carries, so the walk costs no tokens however often it is replayed. A beat
 lights only once its line is audible; muted and voiceless both caption and pace by reading length.

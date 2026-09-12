@@ -151,7 +151,7 @@ index, or open the **Explore** menu in the top bar.
 - 🎓 **Courses** — name something you want to learn, pick a starting level or let Mavéa pick, and
   you get a real syllabus — typically five to seven lessons, each with a one-line goal and two to four
   concrete objectives. Lessons are written one at a time, when you open one — a course you abandon
-  after two lessons only ever cost two — and one you come back to replays from your device for free.
+  after two lessons only ever cost two — and one you come back to replays from your device without another call.
   Each lesson knows where it sits, recaps the one before it, and ends with a two-question checkpoint
   written only when you ask for it and graded on your machine, no model call. Your progress and what
   you've shown you know stay on this device.

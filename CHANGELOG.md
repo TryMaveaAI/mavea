@@ -6,6 +6,76 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **The tour walks Guide me.** A core scene, right after the Pen, presses _Guide me_ and pulls the
+  answer onto the desk — one card at a time, Mavéa's notes in the margin — so a first run sees both
+  ways Mavéa answers instead of finding the desk only on the end card.
+
+### Changed
+
+- **A running tour or replay holds the surface.** While a walkthrough or a recorded session is
+  playing — paused included — everything outside its own transport is inert: no stray press opens
+  a feature the script did not, and ⌘K waits until the run hands the surface back. The one scene
+  that invites a first question is the one scene that unlocks it, and it says so in its own plan
+  data. The _See the answer_ scene now describes the voice toggle instead of inviting a press the
+  locked run could not take.
+
+- **Two recorded sessions replay on the desk, two on the board.** Renata's product review and
+  Maya's exam cram open in _Guide me_, where the desk's connect and pen gestures live; Devon's
+  architecture session and Lena's Lisbon weekend stay on the board — so the four together show
+  both ways Mavéa answers rather than one surface four times.
+- **Renata is a product manager.** Her session is a quarterly product review — weekly actives,
+  activation, retention and feature adoption, then the funnel and a forecast — and every figure in
+  it is hers, stated in the ask. The bake is steered to work only from those figures, and a test
+  pins the replay against the causes an earlier bake invented.
+- **OpenRouter suggests no model.** The gateway's empty field teaches only the id's shape
+  (`vendor/model`); no example id is named anywhere, in the app or the setup guide.
+- **The key link names the console.** Every provider's link on the Connect step reads _Get a key_
+  and opens that provider's own key page; what a key costs is the provider's to state.
+- **The home page keeps to what Mavéa shows.** The hero's device-permission line is gone — the
+  gate before Live states it, where it applies — and the closing note about accounts, keys and
+  provider terms sits at the foot of its section, beside the footer, in the page's own face.
+- **A locked run scrolls whatever is under the pointer.** While a walkthrough or replay plays, a
+  wheel or a finger over the desk's front card, the transcript or the chat moves that scroller,
+  not the board behind it; over the gutter it still moves the board.
+
+### Fixed
+
+- **A diagram never collapses on the model's ids.** A pipeline whose stages arrived without ids
+  (or with one id repeated) placed every stage on one slot, piled the labels at the corner and
+  grew the card a row per stage. Identity is now part of the catalog contract — where an item's
+  id lives and which fields name another item's — and one generic pass derives a missing id from
+  the item's own text, keeps the first writer's id, makes a repeat unique and resolves every
+  reference before the shape check can drop a thing. The shared layered engine works in array
+  indices, so no node can be left at the origin whatever the model wrote, and stages with no
+  resolvable edge read left to right, wrapping inside the card's own frame, instead of stacking
+  into one column.
+- **One voice at a time.** A second clause could start a second or two into the first and stop
+  while the first carried on — in Live, the walkthrough and the recorded sessions alike. The next
+  line now trusts the previous clip's tail for exactly as long as a live clip owns it (a cached
+  clip schedules its whole clause at once, and a distance check refused precisely those tails), the
+  whole-clip fallback waits that tail out before it plays, and a clip reports itself audible when
+  the clock reaches it rather than when it was scheduled, so the spotlight moves with the voice.
+  A line interrupted while its own prefetch was in flight no longer plays after the interrupt.
+- **The Study's walk bar shows every beat name it has room for.** The strip took a fixed cap
+  while the desk beside it had room to spare, so the third beat was cut mid-word under the fade.
+  The bar is now as wide as its beats need, up to the stage, and scrolls only once the stage itself
+  cannot hold every name.
+- **A local install answers its own page's fan-out.** The `npx mavea` server capped its model and
+  search proxies below what one turn sends at once — a request past the cap was told to wait and
+  retried a second later, which read as the model taking longer than under `pnpm dev`. The caps
+  are sized from what the app actually fans out.
+- **The Connect step's helper lines share one size.** The model hint under the picker was set a
+  step smaller than the notes beside it, a third type size on one short column.
+- **A synthesis route no longer stretches its nodes.** A long route grows its drawing width with
+  the chain, and the stage grows with it, so the figure scales instead of filling the card's
+  height with two ellipses.
+- **A commit graph keeps the hashes it was given.** A commit's id is painted as content, so one
+  without an id is dropped rather than given an invented hash; a decision tree with two _Yes_
+  leaves leaves an edge naming "Yes" unresolved instead of picking the first; and a classifier's
+  split nodes count as readable, so a tree of learned splits is no longer refused as blank.
+
 ## [2.6.0] - 2026-09-11
 
 ### Changed
