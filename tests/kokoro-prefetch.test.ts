@@ -19,11 +19,16 @@ const fakeCtx = {
     buffer: null,
     onended: null,
     connect(): void {},
-    start(): void {},
+    start(): void {
+      starts += 1;
+    },
     stop(): void {},
     disconnect(): void {},
   }),
 };
+
+/** Buffers handed to the speakers this test — the only sign a line was actually played. */
+let starts = 0;
 
 vi.mock('../src/voice/voiceEnergy', () => ({
   sharedAudioContext: () => fakeCtx,
@@ -57,16 +62,22 @@ function streamBody(bytes: Uint8Array): ReadableStream<Uint8Array> {
 
 /** Per-test log of synthesis request texts, in arrival order. */
 let synthesized: string[] = [];
+/** A line whose synthesis the server is holding open until the test releases it. */
+let held: { text: string; until: Promise<void> } | null = null;
 
 beforeEach(() => {
   resetKokoroProbe();
   pcmCacheClear();
   synthesized = [];
+  starts = 0;
+  held = null;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       if (String(url).includes('/tts/health')) return { ok: true } as Response;
-      synthesized.push((JSON.parse(String(init?.body)) as { input: string }).input);
+      const text = (JSON.parse(String(init?.body)) as { input: string }).input;
+      synthesized.push(text);
+      if (held?.text === text) await held.until;
       return {
         ok: true,
         body: streamBody(PCM),
@@ -105,6 +116,29 @@ describe('kokoro cache + one-ahead prefetch', () => {
     const line = speakKokoroLine('Stop two.', 'mavea');
     await expect(line.finished).resolves.toBe(true);
     // Exactly one synthesis of stop two — the prefetch — ever hit the server.
+    expect(synthesized.filter((t) => t === 'Stop two.')).toHaveLength(1);
+  });
+
+  it('a line cancelled while joining its own prefetch never reaches the speakers', async () => {
+    await speakKokoroLine('Stop one.', 'mavea').finished;
+
+    let release!: () => void;
+    held = { text: 'Stop two.', until: new Promise<void>((r) => (release = r)) };
+    primeKokoroLine('Stop two.', 'mavea');
+    await vi.waitFor(() => expect(synthesized).toContain('Stop two.'));
+
+    // The line joins the prefetch still in flight, then the reader interrupts. The bytes land
+    // AFTER the interrupt — the shape of every "it kept talking over the next answer" report.
+    const line = speakKokoroLine('Stop two.', 'mavea');
+    await new Promise((r) => setTimeout(r, 0));
+    const startsBefore = starts;
+    cancelKokoro();
+    release();
+
+    await expect(line.finished).resolves.toBe(false);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(starts).toBe(startsBefore);
+    // And the interrupted line is not synthesized a second time either.
     expect(synthesized.filter((t) => t === 'Stop two.')).toHaveLength(1);
   });
 });

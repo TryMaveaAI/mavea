@@ -10,9 +10,12 @@
 //   • Decode is a tight integer loop with no per-sample allocation/closure.
 //   • Network chunks are COALESCED into ~200ms buffers, so a clip is a few dozen audio nodes,
 //     not hundreds of tiny ones (cheap on a weak CPU + the GC).
-//   • Reading BACK-PRESSURES once ~2s is buffered ahead, so playback buffers stay small no
-//     matter how fast the response arrives. (The replay cache does keep one raw copy of the
-//     clip as it streams — dropped past PCM_CACHE_MAX_CLIP_BYTES; see `raw` in streamSpeak.)
+//   • Reading BACK-PRESSURES once ~2s is buffered ahead, and a CACHED clip — every buffer of
+//     which is scheduled in one pass — waits for the voice already on the clock to drain to that
+//     same horizon before it anchors, so playback buffers stay small however fast the response
+//     arrives and however many cached clips the queue chains back to back. (The replay cache does
+//     keep one raw copy of the clip as it streams — dropped past PCM_CACHE_MAX_CLIP_BYTES; see
+//     `raw` in streamSpeak.)
 //   • Uses getChannelData().set() (supported wherever WebAudio is) rather than the newer
 //     copyToChannel, and falls back to the blob path → HTMLAudio (the most compatible sink)
 //     whenever streaming can't run. Nothing here throws.
@@ -221,6 +224,8 @@ interface ActiveStream {
   /** Wake the back-pressure sleep early (fired by teardown), so a cancel lands instantly
    *  instead of waiting out the window. */
   wakeBackPressure?: () => void;
+  /** Drop the pending "audible now" announcement (see announceAudible). Cleared once it fires. */
+  cancelAudible?: () => void;
 }
 
 let active: ActiveStream | null = null;
@@ -232,17 +237,151 @@ let active: ActiveStream | null = null;
 // dead air on top of the clip's own edge silence, and a breath split into three clauses played
 // as three little speeches. A clip that has scheduled its last buffer is SETTLED: the next line
 // may anchor on its tail and the two play back to back, sample-exact, on one clock.
-const playhead = { ctx: null as BaseAudioContext | null, endsAt: 0 };
+const playhead = {
+  ctx: null as BaseAudioContext | null,
+  endsAt: 0,
+  /** The clip whose buffers run to `endsAt`, released when that clip is torn down. This is what
+   *  makes the tail trustworthy however far ahead it sits: a CACHED clip schedules its whole
+   *  duration at once, so its tail is routinely a clause-length out, and a "too far ahead to be
+   *  real" distance test refuses exactly the tails that are most real — the next clause then
+   *  started at now + lead, on top of the one still playing. */
+  owner: null as ActiveStream | null,
+};
 const settled = new Set<ActiveStream>();
 
-/** The clock time the next clip should start: on the previous clip's tail when one is still
- *  playing on this context, else a lead ahead of now. A tail far in the future (a stale value
- *  from a context that was parked and resumed) is not trusted. */
+/** Extra on each computed sleep, so the clock has surely passed the horizon on the first wake. */
+const PLAYHEAD_WAKE_MARGIN_MS = 20;
+/** Sleeps waiting on the playhead, woken when a cancel retires the tail they were waiting out. */
+const playheadWaiters = new Set<() => void>();
+
+/** The clock time the next clip should start: on the previous clip's tail while that clip still
+ *  owns it, else a lead ahead of now. A clip that ended or was cancelled has released the tail; a
+ *  replaced context fails the identity check; and a context that was PARKED froze its clock along
+ *  with the buffers waiting on it, so its tail stays exactly as true as they are. */
 function anchorStart(ctx: BaseAudioContext): number {
   const lead = ctx.currentTime + LEAD_SECONDS;
-  if (playhead.ctx !== ctx) return lead;
-  const tail = playhead.endsAt;
-  return tail > lead && tail - ctx.currentTime <= MAX_AHEAD_SECONDS + 1 ? tail : lead;
+  if (playhead.ctx !== ctx || !playhead.owner) return lead;
+  return playhead.endsAt > lead ? playhead.endsAt : lead;
+}
+
+/** This clip now owns the end of the scheduled voice. */
+function claimTail(state: ActiveStream, endsAt: number): void {
+  playhead.ctx = state.ctx;
+  playhead.endsAt = endsAt;
+  playhead.owner = state;
+}
+
+/** Nothing scheduled is going to play any more: drop the tail and wake whatever was waiting it
+ *  out, so a cancel is not sat through by a sleep sized for audio that has been stopped. */
+function releasePlayhead(): void {
+  playhead.owner = null;
+  playhead.endsAt = 0;
+  for (const wake of [...playheadWaiters]) wake();
+}
+
+/** How long the scheduled voice still has to play on the shared clock, in ms; 0 when nothing is
+ *  scheduled. */
+function playheadRemainingMs(): number {
+  const ctx = playhead.ctx;
+  if (!ctx || !playhead.owner) return 0;
+  return Math.max(0, (playhead.endsAt - ctx.currentTime) * 1000);
+}
+
+/**
+ * Hold until the voice already scheduled on the shared clock has drained to within `withinMs` of
+ * its end. A clip that schedules its whole length in one pass waits for the read-ahead horizon
+ * here, exactly as the streamed path reads only that far ahead — otherwise a run of cache hits
+ * (the steady state mid-turn, since each line prefetches the next) puts a whole line's buffers,
+ * gain nodes, energy taps and timers on the clock at once. The whole-clip fallback in kokoro.ts
+ * waits for zero, since that sink plays through an element that cannot read this clock at all.
+ *
+ * The remaining time is re-measured on every wake rather than slept once: the interval is on the
+ * AUDIO clock, and a context that suspends (an iOS interruption, a frozen tab, the idle lease)
+ * stops that clock while setTimeout keeps counting.
+ */
+export async function awaitPlayheadWithin(withinMs: number, signal?: AbortSignal): Promise<void> {
+  for (;;) {
+    const over = playheadRemainingMs() - withinMs;
+    if (over <= 0 || signal?.aborted) return;
+    await new Promise<void>((resolve) => {
+      const wake = (): void => {
+        clearTimeout(timer);
+        playheadWaiters.delete(wake);
+        signal?.removeEventListener('abort', wake);
+        resolve();
+      };
+      const timer = setTimeout(wake, over + PLAYHEAD_WAKE_MARGIN_MS);
+      playheadWaiters.add(wake);
+      signal?.addEventListener('abort', wake);
+    });
+  }
+}
+
+/** Grace past the last buffer before the clip is taken down, for clock granularity and the
+ *  scheduler's own slack. */
+const CLIP_END_MARGIN_MS = 40;
+
+/** Hold until the shared clock reaches `until`, the moment this clip's last scheduled buffer has
+ *  played out. Re-measured on every wake rather than slept once, because it is the AUDIO clock: a
+ *  suspended context (a call on iOS, a backgrounded tab) stops it while setTimeout keeps counting,
+ *  and finishing early takes the clip down — releasing the tail the next clause anchors on and the
+ *  whole-clip fallback waits out — with a suspension's worth of it still to sound. A clock that
+ *  did not move across a whole window is not playing this clip at all, and waiting on one that
+ *  never comes back would hold the queue for the session, so that ends the wait: teardown then
+ *  STOPS the scheduled sources, and an abandoned tail can never surface over the line that
+ *  follows. `state.finishEarly` cuts the wait short when the clip is stopped. */
+function awaitClipEnd(state: ActiveStream, until: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const ctx = state.ctx;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastSeen = Number.NEGATIVE_INFINITY; // nothing read yet, so the first pass always arms
+    const finish = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const check = (): void => {
+      const now = ctx.currentTime;
+      if (until - now <= 0 || now <= lastSeen) return finish();
+      lastSeen = now;
+      timer = setTimeout(check, (until - now) * 1000 + CLIP_END_MARGIN_MS);
+    };
+    state.finishEarly = finish;
+    check();
+  });
+}
+
+/**
+ * Announce a clip as audible when the clock actually reaches its first buffer. A clip anchored on
+ * the previous tail is SCHEDULED seconds before a sample of it sounds, and the reveal walk moves
+ * the spotlight on this signal — reported at scheduling time it puts the canvas that far ahead of
+ * the voice, which is the desync walkSync exists to prevent. Cancelled by teardown, so a clip
+ * stopped before it ever sounded never claims it was heard.
+ */
+function announceAudible(state: ActiveStream, at: number, onStart?: () => void): void {
+  if (!onStart) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // `at` is on the AUDIO clock, and a context that suspends (a backgrounded tab, a device switch)
+  // stops that clock while setTimeout keeps counting — so the wait is re-measured on every wake,
+  // the way awaitClipEnd re-measures, and the signal fires when the clock has actually reached
+  // the clip rather than when the wall clock guessed it would.
+  const arm = (): void => {
+    const wait = (at - state.ctx.currentTime) * 1000;
+    if (wait > 0) {
+      timer = setTimeout(arm, wait);
+      return;
+    }
+    state.cancelAudible = undefined;
+    try {
+      onStart();
+    } catch {
+      /* a listener must never break playback */
+    }
+  };
+  state.cancelAudible = () => {
+    clearTimeout(timer);
+    state.cancelAudible = undefined;
+  };
+  arm();
 }
 
 /** A clip has scheduled its last buffer: the next line may start on its tail. */
@@ -266,6 +405,10 @@ let pendingAbort: AbortController | null = null;
 
 function teardown(state: ActiveStream, preserveAcceptedTransport = false): void {
   state.wakeBackPressure?.();
+  state.cancelAudible?.();
+  // Whatever this clip had scheduled is over: release the tail so the next line anchors at
+  // now + lead instead of behind audio that will never play.
+  if (playhead.owner === state) releasePlayhead();
   // Only a clip still MID-WAVEFORM can click; one that simply ended has nothing left running, so
   // the fade below costs nothing on the normal path.
   const live = state.sources.size > 0;
@@ -347,7 +490,7 @@ export function cancelActiveStream(): void {
     tail.finishEarly?.();
     teardown(tail, true);
   }
-  playhead.endsAt = 0;
+  releasePlayhead();
   const state = active;
   if (!state) return;
   state.cancelled = true;
@@ -361,12 +504,12 @@ export function cancelActiveStream(): void {
  * false ONLY when streaming could not start and nothing was heard, so the caller falls back to
  * the whole-clip blob path. Never throws.
  *
- * `onStart` fires exactly once, when the first buffer is scheduled — the moment this line
- * becomes audible (within LEAD_SECONDS). It's the honest "audio actually started" signal the
- * reveal walk syncs the spotlight to; synthesis latency before that first chunk is exactly the
- * window where the visuals used to run ahead of the voice. It can fire and then be cancelled a
- * beat later (buffer scheduled, then torn down by an interrupt) — callers that care about
- * interrupts watch their own cancel flags, not this.
+ * `onStart` fires exactly once, when the clip becomes AUDIBLE — the clock reaching its first
+ * scheduled buffer, which on a line anchored behind a still-playing tail is seconds after that
+ * buffer was scheduled. It's the honest "audio actually started" signal the reveal walk syncs the
+ * spotlight to; synthesis latency before the first chunk, and the tail ahead of it, are exactly
+ * the windows where the visuals used to run ahead of the voice. A clip torn down before it sounds
+ * never fires it — callers that care about interrupts watch their own cancel flags, not this.
  *
  * `onSynthDone` fires once when Kokoro has finished RENDERING the line (the response body is
  * fully read) while its tail may still be playing — the moment the synthesizer goes idle, which
@@ -476,6 +619,8 @@ export async function streamSpeak(
   active = state;
 
   let nextTime = anchorStart(ctx);
+  // Where this clip begins sounding — back-pressure is measured from here, not from the clock.
+  const clipStart = nextTime;
   let started = false;
   const tap = streamTap; // snapshot, so begin/push/end always hit the same listener
   try {
@@ -495,17 +640,11 @@ export async function streamSpeak(
     // stutters for a beat but recovers, and it stays the NATURAL voice: slowness never demotes
     // to the robotic one (the preparing indicator and the one-ahead cache absorb the waits).
     if (nextTime < ctx.currentTime) nextTime = ctx.currentTime + 0.02;
-    src.start(nextTime);
+    const at = nextTime;
+    src.start(at);
     nextTime += buffer.duration;
-    playhead.ctx = ctx;
-    playhead.endsAt = nextTime;
-    if (!started) {
-      try {
-        onStart?.();
-      } catch {
-        /* a listener must never break playback */
-      }
-    }
+    claimTail(state, nextTime);
+    if (!started) announceAudible(state, at, onStart);
     started = true;
     state.sources.add(src);
     src.onended = () => {
@@ -556,7 +695,16 @@ export async function streamSpeak(
       // wakeups over a 30s line): sleep until the schedule should have drained to the cap and
       // let the while re-check for clock drift. teardown() wakes the sleep, so a cancel still
       // lands instantly.
-      while (!state.cancelled && nextTime - ctx.currentTime > MAX_AHEAD_SECONDS) {
+      // The cap is on THIS clip's scheduled-but-unplayed audio. A clip anchored on the previous
+      // tail has not begun sounding yet, so measuring from the clock would count the clause ahead
+      // of it and park the reader before its very first read — a body left unread is a body the
+      // proxy may time out, and onSynthDone (the next line's prefetch) waits on its last byte.
+      // What bounds the park is the anchor itself: nothing schedules past the horizon above, so
+      // clipStart is at most one clause plus MAX_AHEAD_SECONDS out.
+      while (
+        !state.cancelled &&
+        nextTime - Math.max(ctx.currentTime, clipStart) > MAX_AHEAD_SECONDS
+      ) {
         const wait =
           (nextTime - ctx.currentTime - MAX_AHEAD_SECONDS) * 1000 + BACK_PRESSURE_MARGIN_MS;
         await new Promise<void>((resolve) => {
@@ -626,14 +774,7 @@ export async function streamSpeak(
       }
     }
     // Pace the queue on real playback: resolve only once the last scheduled buffer ends.
-    await new Promise<void>((resolve) => {
-      const ms = Math.max(0, (nextTime - ctx.currentTime) * 1000) + 40;
-      const timer = setTimeout(resolve, ms);
-      state.finishEarly = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-    });
+    await awaitClipEnd(state, nextTime);
   }
 
   const cancelled = state.cancelled;
@@ -664,6 +805,7 @@ export async function playPcmBytes(
   text: string,
   onStart?: () => void,
   onScheduled?: () => void,
+  onAudioInHand?: () => void,
 ): Promise<boolean> {
   const lease = leaseAudioContext();
   if (!lease || bytes.length < 2) {
@@ -688,6 +830,23 @@ export async function playPcmBytes(
   }
   if (ctx.state !== 'running') return bail(false);
   if (myEpoch !== streamEpoch) return bail(true); // superseded by a cancel — never re-speak it
+
+  // The whole clip goes onto the clock below in one pass, and the queue takes up the next clause
+  // the moment it has: unheld, a run of cache hits schedules a whole line at once — every buffer,
+  // gain node and energy tap of it alive from the first clause. Hold for the same horizon the
+  // streamed path reads to. Nothing is lost by waiting: the tail is still owned, so this clip
+  // still anchors on it sample-exact, and its bytes are already in memory.
+  //
+  // Those bytes are in hand and this clip WILL play, so say so BEFORE the wait: a cached clause
+  // can hold here for seconds behind the previous tail, and a "preparing" state shown over a
+  // voice that is already speaking is the desync the callback exists to end.
+  try {
+    onAudioInHand?.();
+  } catch {
+    /* a listener must never break playback */
+  }
+  await awaitPlayheadWithin(MAX_AHEAD_SECONDS * 1000);
+  if (myEpoch !== streamEpoch) return bail(true);
 
   const gain = ctx.createGain();
   gain.gain.value = effectiveGain();
@@ -730,17 +889,11 @@ export async function playPcmBytes(
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(gain);
-    src.start(nextTime);
+    const at = nextTime;
+    src.start(at);
     nextTime += buffer.duration;
-    playhead.ctx = ctx;
-    playhead.endsAt = nextTime;
-    if (!started) {
-      try {
-        onStart?.();
-      } catch {
-        /* a listener must never break playback */
-      }
-    }
+    claimTail(state, nextTime);
+    if (!started) announceAudible(state, at, onStart);
     started = true;
     state.sources.add(src);
     src.onended = () => {
@@ -755,14 +908,7 @@ export async function playPcmBytes(
 
   if (!state.cancelled && started) {
     settle(state, onScheduled);
-    await new Promise<void>((resolve) => {
-      const ms = Math.max(0, (nextTime - ctx.currentTime) * 1000) + 40;
-      const timer = setTimeout(resolve, ms);
-      state.finishEarly = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-    });
+    await awaitClipEnd(state, nextTime);
   }
 
   const cancelled = state.cancelled;

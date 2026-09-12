@@ -25,6 +25,7 @@ import {
   cancelActiveStream,
   getVoiceSpeed,
   bindOutputGain,
+  awaitPlayheadWithin,
 } from './streamTts';
 import { pcmCacheKey, pcmCacheGet, pcmCacheHas, pcmCachePut } from './pcmCache';
 import { findPreset, DEFAULT_MAVEA_VOICE_ID, DEFAULT_USER_VOICE_ID } from './presets';
@@ -172,6 +173,16 @@ function emitSpeakingChange(): void {
   for (const listener of speakingListeners) listener();
 }
 
+/** The head line is no longer being PREPARED: it has audio in hand. Both moments that can prove
+ *  that call this — the line becoming audible, and its tail being scheduled — because a line
+ *  anchored behind a still-playing clause is rendered and scheduled seconds before it sounds, and
+ *  "Preparing voice…" over a voice that is speaking is the dishonest half of the pair. */
+function endSynthPending(): void {
+  if (!synthPending) return;
+  synthPending = false;
+  emitSpeakingChange();
+}
+
 function revokeCurrentUrl(): void {
   if (currentUrl) {
     try {
@@ -184,8 +195,9 @@ function revokeCurrentUrl(): void {
 }
 
 /** Unregister the blob clip from the output policy. Idempotent; safe when nothing is bound.
- *  Only ever one clip is bound at a time — pump awaits a line's playback before the next
- *  starts — so this always releases the clip it was called for. */
+ *  Only ever one clip is bound at a time — the queue takes up the next line off a STREAMED
+ *  line's scheduled tail, but a fallback line leaves no tail and so holds the queue until it has
+ *  actually ended — so this always releases the clip it was called for. */
 function releaseCurrentGain(): void {
   if (!currentGainRelease) return;
   currentGainRelease();
@@ -280,20 +292,31 @@ export function primeKokoroLine(text: string, who: Speaker): void {
  * false only when it could not start and nothing was heard; we then fall back to the whole-clip
  * blob path below. Never throws.
  */
-async function playJob(job: Job, onScheduled?: () => void): Promise<boolean> {
+async function playJob(
+  job: Job,
+  onScheduled?: () => void,
+  onAudioInHand?: () => void,
+): Promise<boolean> {
   const speed = getVoiceSpeed();
   const key = pcmCacheKey(job.voice, speed, job.text);
   if (primed && primed.text === job.text) primed = null; // it's a real job now
+  // A cancel that lands while this line is waiting on its own prefetch has nothing to abort on
+  // the playback side yet: the clip is still bytes in flight. Re-check the epoch after every
+  // wait that precedes audio, or the interrupted line plays on top of whatever came next.
+  const epoch = cancelEpoch;
   try {
     let cached = pcmCacheGet(key);
     if (!cached && prefetchKey === key && prefetchPromise) {
       await prefetchPromise;
+      if (epoch !== cancelEpoch) return false;
       cached = pcmCacheGet(key);
     }
     if (cached) {
-      // No synthesis is running during cached playback — prefetch the next line immediately.
+      // No synthesis is running during cached playback — prefetch the next line immediately. The
+      // line itself is in hand, and the sink says so before it waits its turn on the playhead.
       prefetchNext();
-      if (await playPcmBytes(cached, job.text, () => job.start(true), onScheduled)) return true;
+      if (await playPcmBytes(cached, job.text, () => job.start(true), onScheduled, onAudioInHand))
+        return true;
     }
     // A prefetch for a DIFFERENT line must never run underneath this line's own synthesis.
     if (prefetchCtl && prefetchKey !== key) {
@@ -331,9 +354,19 @@ async function playJob(job: Job, onScheduled?: () => void): Promise<boolean> {
   } catch {
     /* fall through to the blob path */
   }
+  // The stream was refused or died before it was accepted; a cancel in that window already
+  // drained the queue, and a fresh WAV fetch for the interrupted line would play late.
+  if (epoch !== cancelEpoch) return false;
   synthActive = true;
   try {
-    return await playJobBlob(job);
+    return await playJobBlob(job, () => {
+      // The clip is downloaded; what the blob path waits on from here is the clause still
+      // playing, not Kokoro. Reported as synthesis, that wait would hold the next line's
+      // prefetch behind an idle synthesizer and paint "Preparing voice…" over a speaking voice.
+      synthActive = false;
+      prefetchNext();
+      onAudioInHand?.();
+    });
   } finally {
     synthActive = false;
   }
@@ -342,8 +375,10 @@ async function playJob(job: Job, onScheduled?: () => void): Promise<boolean> {
 /**
  * Fetch one uncompressed WAV line and play it to completion. Resolves to true when a clip
  * actually played, false on any failure/skip. The streaming fallback. Never throws.
+ * `onAudioInHand` fires once the clip is downloaded — the moment the synthesizer goes idle,
+ * which here is well before the clip is allowed to sound.
  */
-async function playJobBlob(job: Job): Promise<boolean> {
+async function playJobBlob(job: Job, onAudioInHand?: () => void): Promise<boolean> {
   let played = false;
   const ac = new AbortController();
   currentFetch = ac;
@@ -363,6 +398,18 @@ async function playJobBlob(job: Job): Promise<boolean> {
     if (!res.ok) return false; // server error → caller falls back to browser voice
     const blob = await res.blob();
     if (!blob.size) return false;
+    try {
+      onAudioInHand?.();
+    } catch {
+      /* an observer must never break playback */
+    }
+
+    // The queue takes up a line while the previous one's tail is still scheduled on the shared
+    // audio clock. This sink plays the moment it is told to and can read no clock at all, so it
+    // waits that tail out itself — otherwise a clause that falls back is a second voice over the
+    // clause before it, whatever the anchor does for the lines that stay on WebAudio.
+    await awaitPlayheadWithin(0, ac.signal);
+    if (ac.signal.aborted) return false;
 
     const url = URL.createObjectURL(blob);
     currentUrl = url;
@@ -434,8 +481,7 @@ async function pump(): Promise<void> {
         const job: Job = {
           ...raw,
           start: (heard) => {
-            synthPending = false;
-            emitSpeakingChange();
+            endSynthPending();
             raw.start(heard);
           },
         };
@@ -455,9 +501,12 @@ async function pump(): Promise<void> {
         }
         let scheduled!: () => void;
         const tailScheduled = new Promise<void>((resolve) => {
-          scheduled = resolve;
+          scheduled = () => {
+            endSynthPending(); // rendered and scheduled — the synthesizer is done with this line
+            resolve();
+          };
         });
-        const line = playJob(job, scheduled).then((played) => {
+        const line = playJob(job, scheduled, endSynthPending).then((played) => {
           const ok = played && epoch === cancelEpoch;
           // Silent for a reason other than an interrupt: Kokoro was up at the gate and still
           // produced nothing. Re-check before the next line so a mid-session loss isn't invisible.
