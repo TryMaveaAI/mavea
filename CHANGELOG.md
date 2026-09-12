@@ -6,6 +6,8 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-09-11
+
 ### Added
 
 - **The tour walks Guide me.** A core scene, right after the Pen, presses _Guide me_ and pulls the
@@ -66,8 +68,9 @@ All notable changes to Mavéa are documented here. The format is based on
   search proxies below what one turn sends at once — a request past the cap was told to wait and
   retried a second later, which read as the model taking longer than under `pnpm dev`. The caps
   are sized from what the app actually fans out.
-- **The Connect step's helper lines share one size.** The model hint under the picker was set a
-  step smaller than the notes beside it, a third type size on one short column.
+- **The Connect step's helper lines share one size and one face.** The model hint under the
+  picker was set a step smaller than the notes beside it, a third type size on one short column,
+  and it kept the interface face while the notes followed the desk's own body face.
 - **A synthesis route no longer stretches its nodes.** A long route grows its drawing width with
   the chain, and the stage grows with it, so the figure scales instead of filling the card's
   height with two ellipses.
