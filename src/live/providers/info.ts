@@ -36,9 +36,6 @@ export interface ProviderInfo {
   /** Where to get a key for this provider (the console/signup page) — shown as a "Get a key" link
    *  on the Connect step so a keyless first-time visitor isn't stuck once they see the field. */
   keyUrl?: string;
-  /** True when that page issues a genuinely free tier (not just trial credit), so the link can
-   *  honestly say "Get a free key" instead of overstating a paid provider's offer. */
-  keyFree?: boolean;
   /** Hidden from the picker UI but kept in the registry so its adapter and any saved config
    *  keep working. Use VISIBLE_PROVIDERS for anything user-facing. */
   hidden?: boolean;
@@ -69,7 +66,6 @@ export const PROVIDERS: ProviderInfo[] = [
     suggestedModels: ['gemini-3.1-flash-lite'],
     needsKey: true,
     keyUrl: 'https://aistudio.google.com/apikey',
-    keyFree: true,
     hint: 'Fast and efficient — recommended.',
     search: 'native', // google_search grounding, server-side
     modelNotes: {
@@ -129,15 +125,15 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'openrouter',
     label: 'OpenRouter',
-    // One key, hundreds of models — so there's no default and no curated list: the user pastes
-    // exactly the model they want (the gateway IS the escape hatch for anything the first-party
-    // menus don't suggest). The picker's footer links the full openrouter.ai catalog.
+    // One key, hundreds of models — so there's no default, no curated list and no named
+    // example: the user pastes exactly the model they want (the gateway IS the escape hatch for
+    // anything the first-party menus don't suggest), and the placeholder teaches only the id's
+    // shape. The picker's footer links the full openrouter.ai catalog.
     defaultModel: '',
-    modelPlaceholder: 'e.g. google/gemini-3.1-flash-lite',
+    modelPlaceholder: 'vendor/model',
     suggestedModels: [],
     needsKey: true,
     keyUrl: 'https://openrouter.ai/keys',
-    keyFree: true,
     hint: 'One key, 100s of models — paste any model id.',
     search: 'native', // openrouter:web_search server tool (model-driven)
   },

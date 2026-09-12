@@ -1485,8 +1485,12 @@ describe('provider registry — every provider is wired + carries picker metadat
   it('OpenRouter leaves the default and menu empty so the user brings their own', () => {
     const or = PROVIDERS.find((p) => p.id === 'openrouter')!;
     expect(or.defaultModel).toBe('');
-    expect(or.modelPlaceholder).toBeTruthy();
     expect(or.suggestedModels).toEqual([]);
+    // The placeholder is a format hint, never a pick — no vendor name, no version digits.
+    expect(or.modelPlaceholder).toBeTruthy();
+    expect(or.modelPlaceholder).toContain('/');
+    expect(or.modelPlaceholder).not.toMatch(/\d/);
+    expect(or.modelPlaceholder).not.toMatch(/gemini|gpt|claude|grok|llama|mistral/i);
   });
 
   it('every provider now has server-side search wired', () => {

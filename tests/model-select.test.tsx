@@ -110,6 +110,16 @@ describe('ModelSelect', () => {
     expect(screen.getByText(/Any OpenRouter model ID works/)).toBeInTheDocument();
   });
 
+  // A gateway carries no recommendation, so the empty field must not name one either: the
+  // placeholder teaches the id's SHAPE, and a versioned id in it reads as a suggestion.
+  it('suggests no gateway model in the empty field — only the id format', () => {
+    render(<Harness provider="openrouter" />);
+    const placeholder = input().placeholder;
+    expect(placeholder).toContain('/');
+    expect(placeholder).not.toMatch(/\d/);
+    expect(placeholder).not.toMatch(/gemini|gpt|claude|grok|llama|mistral/i);
+  });
+
   it('links each provider’s full model catalog so the wider menu is discoverable', () => {
     render(<Harness provider="openai" />);
     fireEvent.click(input());
@@ -178,18 +188,19 @@ describe('ModelSelect', () => {
     });
   });
 
-  // A `:free` route is a different service from the paid model of the same name — queued and rate
-  // limited — and Mavéa answers it with a smaller canvas and a longer patience. Saying so is what
-  // keeps a slower, shorter answer legible as a deliberate trade instead of a malfunction.
-  describe('free-route note', () => {
+  // A `:free`-suffixed route is a different service from the model of the same name without the
+  // suffix — queued and rate limited — and Mavéa answers it with a smaller canvas and a longer
+  // patience. Saying so is what keeps a slower, shorter answer legible as a deliberate trade
+  // instead of a malfunction. The note names the suffix and the limit, never a price.
+  describe(':free route note', () => {
     const hint = () => screen.queryByText(/rate-limited/i);
 
-    it('appears once the typed id is a free route', () => {
+    it('appears once the typed id carries the :free suffix', () => {
       render(<Harness provider="openrouter" initial="nvidia/nemotron-3.5-lightning:free" />);
       expect(hint()).toBeInTheDocument();
     });
 
-    it('stays away for the paid variant of the same model', () => {
+    it('stays away for the same model without the suffix', () => {
       render(<Harness provider="openrouter" initial="nvidia/nemotron-3.5-lightning" />);
       expect(hint()).toBeNull();
     });

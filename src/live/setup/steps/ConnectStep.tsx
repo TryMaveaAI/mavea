@@ -191,10 +191,9 @@ export function ConnectStep(): ReactElement {
                 target="_blank"
                 rel="noreferrer noopener"
               >
-                {/* `keyFree` marks a provider whose console issues a genuinely free tier — the
-                    fastest answer to a keyless visitor's first question ("does this cost me
-                    money before I can see anything?"). */}
-                {info.keyFree ? 'Get a free key' : 'Get a key'}&#x2197;
+                {/* The link names the console, never a price: what a key costs is the provider's
+                    to state, and it changes without notice. */}
+                Get a key&#x2197;
               </a>
             )}
             {/* Least-privilege nudge: the key never leaves this device unencrypted, but the surest

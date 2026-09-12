@@ -22,7 +22,7 @@ and its local development proxies; Live requests still go onward to the provider
 whisper.cpp STT (mic transcription) are the two containerized services, both running on your
 machine at no per-use cost. Without them Mavéa's visual and text flows still work — spoken lines
 appear as captions, and mic transcription stays off rather than falling back to a cloud service.
-[Podman](https://podman.io/) is the recommended free/open-source runtime; Docker also works under
+[Podman](https://podman.io/) is the recommended open-source runtime; Docker also works under
 its separate terms.
 
 ---
@@ -48,13 +48,13 @@ quotas, and charges apply.
 Live is bring-your-own-key across five hosted providers. Defaults are deliberately the fast,
 low-cost tier — the model field accepts any id, so stronger models are always one paste away:
 
-| Provider   | Default model             | Notes                                                                                  |
-| ---------- | ------------------------- | -------------------------------------------------------------------------------------- |
-| Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; the only suggestion — type any other id                        |
-| Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; the only suggestion — type any other id                        |
-| OpenAI     | `gpt-5.6-luna`            | Cheapest tier OpenAI sells, with a 1M window; the only suggestion                      |
-| Grok       | `grok-4.3`                | Fast, low-cost default; the only suggestion — type any other id                        |
-| OpenRouter | _(none — paste your own)_ | One key, hundreds of models; `google/gemini-3.1-flash-lite` is a current starting pick |
+| Provider   | Default model             | Notes                                                                                         |
+| ---------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| Anthropic  | `claude-haiku-4-5`        | Fast, low-cost default; the only suggestion — type any other id                               |
+| Gemini     | `gemini-3.1-flash-lite`   | Fast, low-cost default; the only suggestion — type any other id                               |
+| OpenAI     | `gpt-5.6-luna`            | Cheapest tier OpenAI sells, with a 1M window; the only suggestion                             |
+| Grok       | `grok-4.3`                | Fast, low-cost default; the only suggestion — type any other id                               |
+| OpenRouter | _(none — paste your own)_ | One key, hundreds of models; Mavéa suggests none — paste a `vendor/model` id from the catalog |
 
 Each provider tile in the Connect step links to where you get a key, and the readiness strip
 verifies the key + model before you commit.
@@ -66,13 +66,13 @@ plain prose, or spend their whole completion budget thinking and emit nothing at
 happens Mavéa says so on the card rather than blaming the moment, because retrying the same model
 gets the same result. Pick one that supports JSON mode.
 
-**A note on OpenRouter's `:free` routes.** A `:free` variant is a separate, heavily rate-limited
-pool that queues behind every other free user — it is not the paid model of the same name at a
-lower price. Mavéa recognises the suffix and adapts rather than pretending otherwise: it asks for a
-smaller canvas and a shorter menu so the answer fits in the time the route actually has, waits
-longer before giving up, and if the stream is still cut off it keeps the blocks that arrived and
-labels the answer as cut short instead of discarding it. Expect a slower turn and fewer blocks than
-the same question on a paid route; the model picker says so when you type one.
+**A note on OpenRouter's `:free`-suffixed routes.** A route carrying that suffix is a separate,
+heavily rate-limited pool that queues behind everyone else on it — it is not the model of the same
+name without the suffix. Mavéa recognises the suffix and adapts rather than pretending otherwise:
+it asks for a smaller canvas and a shorter menu so the answer fits in the time the route actually
+has, waits longer before giving up, and if the stream is still cut off it keeps the blocks that
+arrived and labels the answer as cut short instead of discarding it. Expect a slower turn and fewer
+blocks than the same question on the unsuffixed route; the model picker says so when you type one.
 
 ---
 

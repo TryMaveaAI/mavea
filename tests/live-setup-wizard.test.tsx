@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SetupWizard } from '../src/live/setup/SetupWizard';
 import { resetSetup } from '../src/live/setup/setup';
 import { resetLiveConfig, setLiveConfigV2 } from '../src/live/useLiveConfig';
+import { VISIBLE_PROVIDERS } from '../src/live/providers/info';
 
 // Integration tests for the SetupWizard orchestrator:
 // (a) first-run starts on the Connect step
@@ -209,20 +210,29 @@ describe('SetupWizard — Connect step model input', () => {
     expect(await screen.findByText('Invalid API key.', undefined, { timeout: 3000 })).toBeVisible();
   });
 
-  it('offers a "Get a key" link for a keyless first-time visitor, honest about which providers are free', () => {
+  it('offers a "Get a key" link that names the console and never a price', () => {
     const speak = mkSpeak();
     render(<SetupWizard {...defaultProps} speak={speak} />);
 
-    // Default provider (Gemini) has a genuinely free tier, and the link says so — the fastest
-    // answer to a keyless visitor's first question.
-    const geminiLink = screen.getByRole('link', { name: /Get a free key/i });
+    // The default provider (Gemini) links straight to its console.
+    const geminiLink = screen.getByRole('link', { name: /^Get a key/i });
     expect(geminiLink).toHaveAttribute('href', 'https://aistudio.google.com/apikey');
 
-    // Switching to a paid-only provider swaps the link's wording — never overstates a free offer.
+    // Every provider gets the same wording. What a key costs is the provider's to state, and it
+    // changes without notice — so no provider's link, and nothing else on the step, says "free".
+    for (const provider of VISIBLE_PROVIDERS) {
+      // A tile is named by its product alone; the label adds the vendor after a middle dot.
+      const [product] = provider.label.split(' · ');
+      fireEvent.click(screen.getByRole('radio', { name: new RegExp(product, 'i') }));
+      const link = screen.getByRole('link', { name: /^Get a key/i });
+      expect(link).toHaveAttribute('href', provider.keyUrl);
+      expect(screen.getByRole('radiogroup').parentElement).not.toHaveTextContent(/\bfree\b/i);
+    }
     fireEvent.click(screen.getByRole('radio', { name: /Claude/i }));
-    const claudeLink = screen.getByRole('link', { name: /Get a key/i });
-    expect(claudeLink).not.toHaveTextContent(/free/i);
-    expect(claudeLink).toHaveAttribute('href', 'https://console.anthropic.com/settings/keys');
+    expect(screen.getByRole('link', { name: /^Get a key/i })).toHaveAttribute(
+      'href',
+      'https://console.anthropic.com/settings/keys',
+    );
   });
 });
 

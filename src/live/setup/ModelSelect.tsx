@@ -68,15 +68,18 @@ function pickerHint(model: string, recommended: boolean): string {
   // rather than dropped — `how long a turn takes` is the phrase that note is asserted against.
   const base =
     'Type any model id. Which one you pick changes how long a turn takes: seconds to two minutes or more.';
-  // A free variant is a different service from the paid model of the same name, on the provider’s
-  // own rate limits. Mavéa answers it with a smaller canvas — say so, so a shorter answer reads as
-  // the deliberate trade it is rather than as Mavéa misbehaving.
+  // A `:free`-suffixed route is a different service from the model of the same name without the
+  // suffix, on the gateway’s own rate limits. Mavéa answers it with a smaller canvas — say so, so
+  // a shorter answer reads as the deliberate trade it is rather than as Mavéa misbehaving. The note
+  // names the suffix and the limit, never a price: what a route costs is the gateway’s to state.
   //
-  // Only the canvas claim is made, deliberately. Mavéa ALSO waits longer on a free route, but that
+  // Only the canvas claim is made, deliberately. Mavéa ALSO waits longer on such a route, but that
   // lives in providers/openaiCompatible.ts (FREE_ROUTE_STREAM_TOTAL_MS) and so is true only for the
   // adapters built on it — Gemini and Anthropic keep their own fixed ceilings. The smaller canvas
   // is provider-agnostic (`speedTierFor` in generateLive.ts), so it is the one that is always true.
-  const tail = isFreeRoute(model) ? base + ' Free ones are rate-limited — smaller canvas.' : base;
+  const tail = isFreeRoute(model)
+    ? base + ' Routes ending in :free are rate-limited — smaller canvas.'
+    : base;
   return lead + tail;
 }
 
