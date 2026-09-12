@@ -137,6 +137,12 @@
   pointer-events: auto;
   animation: demox-panel-in 300ms ease both;
 }
+/* The panel takes focus itself the moment the scripted lock engages (useScriptedLock): it is a
+   landing spot, never somewhere the visitor tabbed to, so the global ring drew a box around the
+   whole pill on every replay start, mouse users included. The buttons inside keep their own. */
+.demox-panel:focus-visible {
+  outline: none;
+}
 @keyframes demox-panel-in {
   from {
     opacity: 0;
@@ -537,8 +543,11 @@
 }
 
 /* An overlay that owns the screen sits below this chrome's z-index (the export studio's scrim is
-   90; Present's deck is 150), so the banner covered their titles and the transport still took the
-   clicks. Hide the frame while one is up — the replay underneath keeps performing. */
-.demox[data-covered] > * {
+   90; Present's deck is 150), so the banner covered their titles. Hide the frame while one is up —
+   the replay underneath keeps performing. The TRANSPORT stays: a scripted run holds the surface
+   inert (useScriptedLock), so the overlay can no longer take a press of its own and this pill is
+   the visitor's only door out. Hiding it too left a covered beat with nothing hit-testable on
+   screen at all, which on a phone is a dead end — there is no Escape key to fall back to. */
+.demox[data-covered] > *:not(.demox-panel) {
   display: none;
 }

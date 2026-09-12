@@ -67,7 +67,7 @@ import {
 } from '../tour/tourEntry';
 import { useTourDriver, type TourOps } from '../tour/useTourDriver';
 import { TourOverlay } from '../tour/TourOverlay';
-import { transportKeyBelongsToControl } from '../tour/driverKit';
+import { useScriptedLock } from '../tour/useScriptedLock';
 import { TourEndCard } from '../tour/TourEndCard';
 import { tourConversation } from '../tour/corpus';
 import { peekDemoPersona, clearDemoPersonaFlag, peekDemoStep } from '../demo/demoEntry';
@@ -2497,8 +2497,6 @@ export function LiveApp(): ReactElement {
     muted,
     ops: liveOps,
   });
-  const tourDriveRef = useRef(tourDrive);
-  tourDriveRef.current = tourDrive;
   // Whether an overlay is holding attention above the canvas (assigned further below, where the
   // overlay state exists). The transport keys belong to the TOP layer: an overlay's own key
   // handler also listens on `window`, and a sibling window listener still fires however hard that
@@ -2506,56 +2504,26 @@ export function LiveApp(): ReactElement {
   // away the walkthrough the palette was opened from, and one ← stepped the replay under an open
   // export studio, swapping out the very answer being exported.
   const overlayLayeredRef = useRef(false);
-  // Keyboard controls for the walkthrough: ←/→ step chapters, Space plays/pauses, Esc skips.
-  useEffect(() => {
-    if (!tourMode.current) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (overlayLayeredRef.current) return;
-      const t = tourDriveRef.current;
-      if (e.key === 'Escape') {
-        t.skip();
-      } else if (transportKeyBelongsToControl(e)) {
-        return;
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        t.next();
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        t.prev();
-      } else if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        t.toggle();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-  const demoDriveRef = useRef(demoDrive);
-  demoDriveRef.current = demoDrive;
-  // Keyboard controls for a demo replay — same transport keys as the walkthrough.
-  useEffect(() => {
-    if (!demoPersona.current) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (overlayLayeredRef.current) return;
-      const d = demoDriveRef.current;
-      if (e.key === 'Escape') {
-        d.skip();
-      } else if (transportKeyBelongsToControl(e)) {
-        return;
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        d.next();
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        d.prev();
-      } else if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        d.toggle();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // A scripted run is PERFORMING on this surface — from Start until it is done, a paused run
+  // included. That is the window in which the visitor is the audience: the run's transport is the
+  // only control, and useScriptedLock puts everything else out of reach (the intro and end cards
+  // sit outside it, because the choices there are genuinely theirs). One expression, so the
+  // walkthrough and the replay can never drift into two different answers.
+  const scriptDrive = tourMode.current ? tourDrive : demoPersona.current ? demoDrive : null;
+  const scriptRunning = !!scriptDrive?.started && !scriptDrive.done;
+  // One chapter of the walkthrough stops performing and asks the visitor to press something. It
+  // says so in its own plan data (`handsBack`), so inviting an interaction is a property of the
+  // chapter — never a name this file has to know.
+  const scriptHandsBack = !!(tourMode.current && tourDrive.chapter?.handsBack);
+  useScriptedLock({
+    root: appRef,
+    running: scriptRunning,
+    handsBack: scriptHandsBack,
+    transport: scriptDrive,
+    layered: overlayLayeredRef,
+  });
+  const tourDriveRef = useRef(tourDrive);
+  tourDriveRef.current = tourDrive;
 
   // A pen chapter borrowed the user's annotation settings (see penConfigRestoreRef) — hand them
   // back the moment the run finishes, and again on unmount so leaving Live mid-run also restores.
@@ -5669,6 +5637,9 @@ export function LiveApp(): ReactElement {
       // answer's title, so a printed canvas isn't headed by a bare "Mavéa —".
       data-title={turn.spec?.title ?? ''}
       {...(presenting ? { 'data-preso': persona } : {})}
+      // A script is performing on this surface, and whether it is holding it: `locked` means the
+      // transport is the only control, `open` that this chapter handed the surface back.
+      {...(scriptRunning ? { 'data-scripted-run': scriptHandsBack ? 'open' : 'locked' } : {})}
       ref={appRef}
     >
       {tourMode.current && <TourOverlay driver={tourDrive} />}

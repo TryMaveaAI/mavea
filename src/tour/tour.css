@@ -164,6 +164,12 @@
   top: max(72px, calc(env(safe-area-inset-top) + 58px));
   bottom: auto;
 }
+/* The panel takes focus itself the moment the scripted lock engages (useScriptedLock): it is a
+   landing spot, never somewhere the visitor tabbed to, so the global ring drew a box around the
+   whole pill on every run start, mouse users included. The buttons inside keep their own. */
+.tourx-panel:focus-visible {
+  outline: none;
+}
 @keyframes tourx-panel-in {
   from {
     opacity: 0;

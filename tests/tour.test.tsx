@@ -235,9 +235,11 @@ describe('core walkthrough feature scenes', () => {
     expect(guard, 'the transport-key guard is gone').not.toBeNull();
     expect(guard![0]).toMatch(/inTextField\(e\.target\)/);
     expect(guard![0]).toMatch(/closest\('button'\)/);
-    // Both the tour handler and the demo-replay handler consult it.
+    // One handler now serves both runs (useScriptedLock), so there is exactly one place to drift.
+    const lock = readFileSync(join(__dirname, '../src/tour/useScriptedLock.ts'), 'utf8');
+    expect(lock.match(/transportKeyBelongsToControl\(e\)/g)).toHaveLength(1);
     const live = readFileSync(join(__dirname, '../src/live/LiveApp.tsx'), 'utf8');
-    expect(live.match(/transportKeyBelongsToControl\(e\)/g)).toHaveLength(2);
+    expect(live).not.toMatch(/transportKeyBelongsToControl/);
   });
 
   it('uses the presentation and document studio instead of the share reel', () => {

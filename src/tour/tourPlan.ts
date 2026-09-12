@@ -58,13 +58,17 @@ export interface TourChapter {
   durationMs: number;
   /** True if the chapter operates on an answer canvas — the driver guarantees one is up first. */
   needsCanvas?: boolean;
+  /** The chapter hands the surface back: the scripted lock lifts so the visitor can actually press
+   *  what the coach line just invited them to try. Every other chapter is a performance — the run
+   *  holds the surface and its transport is the only control. */
+  handsBack?: true;
   /** Extras only: the one-line hook shown under the title on the end-card "More to explore" grid. */
   hook?: string;
   /** Extras only: a single emoji glyph for that grid chip. */
   glyph?: string;
 }
 
-// The FAST core — the ten chapters a first-time visitor sees, in order. It's built to be amazing
+// The FAST core — the eleven chapters a first-time visitor sees, in order. It's built to be amazing
 // but quick: about two minutes end to end. It tells four stories — the answer experience
 // (draw it → mark it → ask across it → spread it), then Walk the why, Prism, and Share.
 // Everything else the product does lives in TOUR_EXTRAS below, one tap away from the end card, so
@@ -74,7 +78,8 @@ export interface TourChapter {
 // covers the same "keep it current" ground as its own full chapter, so the core no longer needed
 // a second, shorter pass at it.
 //
-// Arc: talk → connect → draw → mark → ask → spread → walk the why → prove it → share it → your turn.
+// Arc: talk → connect → draw → mark → guide → ask → spread → walk the why → prove it → share it →
+// your turn.
 export const TOUR: readonly TourChapter[] = [
   {
     id: 'talk',
@@ -100,7 +105,7 @@ export const TOUR: readonly TourChapter[] = [
     title: 'See the answer',
     mode: 'explain',
     coach:
-      "Ask anything. I build a visual answer while I explain the important parts. Use the voice toggle labeled Mavéa's voice to turn speech off and reveal everything immediately. Your microphone stays unchanged.",
+      "Ask anything. I build a visual answer while I explain the important parts. The voice toggle labeled Mavéa's voice turns speech off to reveal everything immediately. Your microphone stays unchanged.",
     spotlight: '.voice-switch',
     action: { kind: 'answer', convoId: 'money', ask: 'How does $10,000 grow at 7% over 30 years?' },
     durationMs: 9000,
@@ -117,11 +122,24 @@ export const TOUR: readonly TourChapter[] = [
     needsCanvas: true,
   },
   {
+    id: 'study',
+    title: 'Guide me',
+    mode: 'explain',
+    coach:
+      'Guide me pulls this answer onto a desk and walks you through it, one card at a time, with my notes in the margin.',
+    spotlight: '.guide-me',
+    action: { kind: 'showcase', featureId: 'study' },
+    // The desk's own entrance — a 3.4s intro gate and a 0.9s fan-out — then long enough to read
+    // one card and the note beside it. It follows the Pen on purpose: the marks stay with the
+    // answer, so the desk opens on a card the visitor has just watched being marked.
+    durationMs: 12000,
+    needsCanvas: true,
+  },
+  {
     id: 'ask',
     title: 'Ask across the answer',
     mode: 'explain',
-    coach:
-      'Choose Ask on two cards, then type a question. I will use both pieces of context together.',
+    coach: 'A question can span two cards at once, and I will use both pieces of context together.',
     spotlight: '.topic-wrap .block-ask, .ask-hint',
     action: { kind: 'askMulti' },
     durationMs: 12000,
@@ -131,7 +149,7 @@ export const TOUR: readonly TourChapter[] = [
     id: 'canvas',
     title: 'Explore the canvas',
     mode: 'explain',
-    coach: 'Switch to Canvas when you want to explore the whole answer spatially.',
+    coach: 'Canvas lays the whole answer out in space, for exploring it as one picture.',
     action: { kind: 'canvas', convoId: 'travel' },
     durationMs: 15000,
   },
@@ -165,7 +183,7 @@ export const TOUR: readonly TourChapter[] = [
     id: 'share',
     title: 'Present or publish',
     mode: 'explain',
-    coach: 'Turn a useful answer into a polished presentation or document.',
+    coach: 'A useful answer becomes a polished presentation or document.',
     action: { kind: 'export' },
     durationMs: 16000,
     needsCanvas: true,
@@ -178,6 +196,7 @@ export const TOUR: readonly TourChapter[] = [
     spotlight: '.mic-btn',
     action: { kind: 'mic' },
     durationMs: 6000,
+    handsBack: true,
   },
 ];
 
@@ -193,7 +212,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     mode: 'explain',
     // A rent dial, not an initial-investment one — everybody has a rent number and feels a
     // change to it; dragging $10,000 of savings up and down doesn't land the same way.
-    coach: 'These are starting assumptions. Drag the rent and watch the comparison update.',
+    coach: 'These are starting assumptions. Watch the rent move and the comparison update with it.',
     spotlight: '.bend-strip',
     action: { kind: 'bend', convoId: 'mortgage' },
     durationMs: 8000,
@@ -205,7 +224,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     id: 'chips',
     title: 'Go deeper',
     mode: 'explain',
-    coach: "When an answer offers ways to go deeper, tap one and I'll take it further.",
+    coach: "When an answer offers ways to go deeper, one tap and I'll take it further.",
     spotlight: '.footer-keepgoing',
     // Then it HAPPENS: the "$500 monthly" chip presses itself and its real baked answer plays.
     action: { kind: 'chip', convoId: 'monthly', label: 'What if I added $500 monthly?' },
@@ -231,7 +250,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'Highlight to ask',
     mode: 'explain',
     coach:
-      'Choose Highlight, draw around any part of an answer, then ask about exactly what you marked.',
+      'Highlight circles any part of an answer, and the next question is about exactly what was marked.',
     spotlight: '.mark-toggle',
     action: { kind: 'mark' },
     durationMs: 8000,
@@ -251,19 +270,6 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     durationMs: 9000,
     glyph: '🎨',
     hook: 'See the visual range',
-  },
-  {
-    id: 'study',
-    title: 'The Study',
-    mode: 'explain',
-    coach: 'The Study puts one object on a desk, with my notes in the margin beside it.',
-    spotlight: '.guide-me',
-    action: { kind: 'showcase', featureId: 'study' },
-    // The seeded answer (0.9s), the desk's own entrance — a 3.4s intro gate and a 0.9s fan-out
-    // — then long enough to read one object and the note beside it.
-    durationMs: 12000,
-    glyph: '✦',
-    hook: 'One object on a desk, notes in the margin',
   },
   {
     id: 'focus',
@@ -353,7 +359,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     id: 'palette',
     title: 'Feature index, one key away',
     mode: 'explain',
-    coach: 'Browse the feature index with one keystroke. Just press Command K.',
+    coach: 'Browse the feature index with one keystroke: Command K opens every feature.',
     spotlight: '.cmdk-panel',
     action: { kind: 'palette' },
     durationMs: 9000,
@@ -422,7 +428,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'Review your cards',
     mode: 'explain',
     coach:
-      'Open Review to go through your flashcards. Keep it a plain pile, or let Mavéa space them out so the ones you find hard come back sooner.',
+      'Review goes through your flashcards. Keep it a plain pile, or let Mavéa space them out so the ones you find hard come back sooner.',
     action: { kind: 'showcase', featureId: 'review' },
     durationMs: 9000,
     glyph: '🧠',
@@ -432,7 +438,8 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     id: 'manage-flashcards',
     title: 'Manage your deck',
     mode: 'explain',
-    coach: 'Open your flashcard library to organize decks, edit cards, and choose what to study.',
+    coach:
+      'The flashcard library holds your decks: organize them, edit cards, and choose what to study.',
     action: { kind: 'showcase', featureId: 'flashcards' },
     durationMs: 9000,
     glyph: '🗂️',
@@ -443,7 +450,7 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     title: 'Build a living dashboard',
     mode: 'explain',
     coach:
-      'Choose the parts you want to keep live, set a refresh schedule, and create a dashboard from this answer.',
+      'Track keeps the parts you pick live on a refresh schedule, as a dashboard built from this answer.',
     action: { kind: 'showcase', featureId: 'track' },
     durationMs: 12000,
     needsCanvas: true,
@@ -527,7 +534,8 @@ export const TOUR_EXTRAS: readonly TourChapter[] = [
     id: 'zoom-deck',
     title: 'Chapter view',
     mode: 'explain',
-    coach: 'Pull back from the cards to the whole session, with every topic shown as a chapter.',
+    coach:
+      'Zoom deck pulls back from the cards to the whole session, with every topic shown as a chapter.',
     action: { kind: 'showcase', featureId: 'zoom-deck' },
     durationMs: 10000,
     glyph: '📖',

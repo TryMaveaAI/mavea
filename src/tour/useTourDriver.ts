@@ -504,10 +504,10 @@ export function useTourDriver(opts: {
       // Session-context features (recap, chapter view) summarize a conversation, so seed a few turns
       // silently first — otherwise they'd open on an empty session. Everything else just opens.
       if (a.featureId === 'study') {
-        // The desk is a view OF an answer: opening it on an empty session shows an empty desk.
-        // One seeded turn, then the view — and the seed lands before the Study's own entrance.
-        const frame = tourFrame('money');
-        if (frame) after(0, () => showSilent(frame));
+        // The desk is a view OF an answer, so the chapter is `needsCanvas` (an empty session
+        // seeds one turn above); the view waits for that seed to land before the Study's own
+        // entrance. In the core run the canvas is already up, marked by the Pen chapter, and
+        // re-seeding it here would flash the cards the desk is about to pick up.
         after(900, () => o.showcaseFeature(a.featureId));
       } else if (a.featureId === 'recap' || a.featureId === 'zoom-deck') {
         ['money', 'space', 'travel'].forEach((id, i) => {
@@ -608,12 +608,13 @@ export function useTourDriver(opts: {
     goto(0);
     setPlaying(true);
   }, [goto, resetTriggers]);
-  // Play one extra chapter on its own, in-session, from the end card's "More to explore" grid. No
-  // reload (the tour session is disposable): flip to its solo playlist, rewind to its single entry,
-  // and let it run — when its quiet gate fires, `advance` sees index+1 ≥ 1 and returns to the end
-  // card rather than moving on.
+  // Play one chapter on its own, in-session, from the end card's "More to explore" grid or a
+  // feature's own Show me. No reload (the tour session is disposable): flip to its solo playlist,
+  // rewind to its single entry, and let it run — when its quiet gate fires, `advance` sees
+  // index+1 ≥ 1 and returns to the end card rather than moving on. A CORE chapter plays solo the
+  // same way: Guide me moved into the tour proper, and the registry still replays it by id.
   const playExtra = useCallback((id: string) => {
-    if (!isExtra(id)) return;
+    if (!isExtra(id) && !isCore(id)) return;
     unlockAudio();
     setSoloId(id);
     setStarted(true);

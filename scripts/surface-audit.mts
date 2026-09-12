@@ -650,8 +650,16 @@ export async function sweepSurfaces(opts: SweepOptions): Promise<Finding[]> {
             readyMs = await awaitMark(page, 'readyAt', 45_000);
             if (readyMs === null) throw new Error(`${surface.ready} never had a box`);
             for (const label of surface.click ?? []) {
-              const button = page.getByRole('button', { name: new RegExp(`^${label}`, 'i') });
-              await button.first().click({ timeout: 25_000 });
+              const button = page
+                .getByRole('button', { name: new RegExp(`^${label}`, 'i') })
+                .first();
+              // A row that starts a curated replay and then reaches for a control ON the answer is
+              // pressing as the choreography does, not as a visitor: a running script holds the
+              // surface `inert` (useScriptedLock), so hit-testing falls through and Playwright's
+              // actionability check can never pass. Wait for the control to actually be on screen,
+              // then dispatch — `inert` stops the visitor's input, not the script's.
+              await button.waitFor({ state: 'visible', timeout: 25_000 });
+              await button.dispatchEvent('click');
               await page.evaluate(RESETTLE_SCRIPT(surface.settleMs ?? 1200));
             }
             settledMs = await awaitMark(page, 'settledAt', 60_000);

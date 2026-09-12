@@ -7,6 +7,7 @@ import { Icon } from '../icons/icons';
 import { useFocusTrap } from '../live/useFocusTrap';
 import { useElementRect } from './useElementRect';
 import type { TourDriver } from './useTourDriver';
+import { wheelPixels } from './useScriptedLock';
 import './tour.css';
 
 export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | null {
@@ -26,10 +27,7 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
         ? cached
         : (scrollerRef.current = document.querySelector<HTMLElement>('.canvas-scroll'));
     if (!sc) return;
-    // deltaMode 1 = lines, 2 = pages — normalise so a mouse wheel travels like a trackpad.
-    const px =
-      e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * sc.clientHeight : e.deltaY;
-    sc.scrollTop += px;
+    sc.scrollTop += wheelPixels(e, sc);
   };
 
   const rect = useElementRect(driver.spotlight, driver.active && driver.started && !driver.done);
@@ -141,6 +139,9 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
         role="group"
         aria-label={driver.solo ? 'Mini-demo controls' : 'Walkthrough controls'}
         onWheel={forwardWheel}
+        // Takes focus itself when the scripted lock engages, so the visitor lands on the transport
+        // as a whole rather than on whichever button happens to be first.
+        tabIndex={-1}
       >
         <div className="tourx-head" key={'head-' + driver.index}>
           <span className="tourx-count">

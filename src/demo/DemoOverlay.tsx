@@ -252,6 +252,9 @@ export function DemoOverlay({
         style={accentStyle}
         role="group"
         aria-label="Demo controls"
+        // Takes focus itself when the scripted lock engages, so the visitor lands on the transport
+        // as a whole rather than on whichever button happens to be first.
+        tabIndex={-1}
       >
         <button
           type="button"

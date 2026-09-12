@@ -104,6 +104,17 @@ describe('the geometry sweep', () => {
     ]);
   });
 
+  it('presses a row’s controls the way a script does, since a row can start one', () => {
+    // Rows like `lens` click Start demo and then a control ON the answer. A running replay holds
+    // the surface inert (useScriptedLock), so hit-testing falls through it and an actionability
+    // check can never pass: the sweep would hang out its timeout and go red on every push. The
+    // press is a script's, not a visitor's, so it dispatches.
+    const audit = read('scripts/surface-audit.mts');
+    expect(audit).toMatch(/dispatchEvent\('click'\)/);
+    expect(audit).not.toMatch(/\.click\(\{ timeout/);
+    expect(SURFACES.some((s) => s.click?.some((label) => /^start/i.test(label)))).toBe(true);
+  });
+
   it('routes a changed file to the surfaces that own it, and a shared file to all of them', () => {
     expect(surfacesTouchedBy(['src/live/prism/PrismOverlay.tsx'])).toEqual(
       new Set(['prism', 'synthesis', 'synthesis-map', 'synlab', 'pageviewlab']),

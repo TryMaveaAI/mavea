@@ -12,7 +12,7 @@
 //
 // Run the dev server first (`pnpm dev`), then `pnpm gen:media`.
 import { mkdirSync } from 'node:fs';
-import { chromium, type Page } from 'playwright';
+import { chromium, type Locator, type Page } from 'playwright';
 import { LEGAL_ACCEPTANCE_STORAGE_KEY, LEGAL_ACCEPTANCE_VERSION } from '../src/legal/acceptance';
 
 /** Laptop-shaped: what the product is art-directed for, and short enough that a three-up row of
@@ -203,9 +203,19 @@ async function clickThrough(page: Page, labels: readonly string[]): Promise<void
     const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const byRole = page.getByRole('button', { name: new RegExp(`^${escaped}`, 'i') });
     const target = (await byRole.count()) ? byRole : page.getByText(label, { exact: false });
-    await target.first().click({ timeout: 20_000 });
+    await press(target);
     await page.waitForTimeout(2500);
   }
+}
+
+/** Press the first match the way the choreography's own beats do. Mid-replay the run holds the
+ *  surface `inert` (useScriptedLock) and hit-testing falls through everything outside its
+ *  transport. That is the visitor's lock, not the script's: wait for the control to be on screen,
+ *  then dispatch the click, rather than waiting out an actionability check that cannot pass. */
+async function press(target: Locator): Promise<void> {
+  const one = target.first();
+  await one.waitFor({ state: 'visible', timeout: 20_000 });
+  await one.dispatchEvent('click');
 }
 
 /** A lazily-imported surface can lose its first fetch on a cold headless run; the overlay offers
@@ -213,7 +223,7 @@ async function clickThrough(page: Page, labels: readonly string[]): Promise<void
 async function retryOnce(page: Page, waitMs: number): Promise<void> {
   const retry = page.getByRole('button', { name: /^retry$/i });
   if (await retry.isVisible().catch(() => false)) {
-    await retry.click();
+    await press(retry);
     await page.waitForTimeout(waitMs);
   }
 }
@@ -291,7 +301,7 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
   if (shot.from === 'ripple') {
     await page.goto(`${baseUrl}/#/live?ripple=1`, { waitUntil: 'load' });
     await page.waitForSelector('.ripple-panel', { timeout: 60_000 });
-    await page.getByRole('button', { name: shot.section }).first().click({ timeout: 20_000 });
+    await press(page.getByRole('button', { name: shot.section }));
     await page.waitForTimeout(2500);
     // A section can open on its thinnest state — the first course is a two-lesson orientation.
     // Follow-up clicks land the shot on the part worth showing.
@@ -303,7 +313,7 @@ async function openSurface(page: Page, baseUrl: string, shot: Shot): Promise<voi
   await page.waitForSelector(shot.ready, { timeout: 60_000 });
   await page.waitForTimeout(2500);
   for (const label of shot.click ?? []) {
-    await page.getByRole('button', { name: label }).first().click({ timeout: 20_000 });
+    await press(page.getByRole('button', { name: label }));
     await page.waitForTimeout(1500);
   }
   await page.waitForTimeout(shot.settleMs);
