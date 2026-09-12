@@ -87,12 +87,14 @@ describe('demo corpus — every cast member has a complete baked session', () =>
     });
   }
 
-  it("does not invent a churn cause from the CFO scenario's aggregate figures", async () => {
-    const convo = await loadDemoConversation('cfo');
+  it("does not invent an activation cause from the product review's stated figures", async () => {
+    // Renata states every figure herself. A bake once answered with a five-whys chain blaming a
+    // setup wizard and a mandatory integrations step — none of it measured, all of it plausible.
+    const convo = await loadDemoConversation('pm');
     expect(convo).not.toBeNull();
     const replay = JSON.stringify(convo?.frames ?? []);
     expect(replay).not.toMatch(
-      /CRM integration|onboarding completion|real root cause|churn lever/i,
+      /setup wizard|integrations step|made mandatory|real root cause|CRM integration/i,
     );
   });
 });

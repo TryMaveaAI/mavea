@@ -27,10 +27,10 @@ describe('demoEntry — stash / peek / clear', () => {
 
   it('stash → peek → clear is a one-shot handoff', () => {
     expect(peekDemoPersona()).toBeNull();
-    stashDemoPersona('cfo');
-    expect(peekDemoPersona()).toBe('cfo');
+    stashDemoPersona('pm');
+    expect(peekDemoPersona()).toBe('pm');
     // Peek is non-destructive: repeated render attempts before the commit all see it.
-    expect(peekDemoPersona()).toBe('cfo');
+    expect(peekDemoPersona()).toBe('pm');
     clearDemoPersonaFlag();
     expect(peekDemoPersona()).toBeNull();
   });
@@ -50,7 +50,7 @@ describe('demoEntry — stash / peek / clear', () => {
 
   it('reads a resume step from the hash, defaulting to null', () => {
     expect(peekDemoStep()).toBeNull();
-    window.location.hash = '#/live?demo=cfo&step=3';
+    window.location.hash = '#/live?demo=pm&step=3';
     expect(peekDemoStep()).toBe(3);
   });
 });
@@ -82,8 +82,8 @@ describe('syncDemoUrl — a reload mid-demo must resume, not drop out', () => {
 
   it('preserves the surface path it was called on', () => {
     window.location.hash = '#/live';
-    syncDemoUrl('cfo', 1);
-    expect(window.location.hash).toBe('#/live?demo=cfo&step=1');
+    syncDemoUrl('pm', 1);
+    expect(window.location.hash).toBe('#/live?demo=pm&step=1');
   });
 
   // The rewrite rebuilds the query from scratch, so anything it does not own is dropped. A

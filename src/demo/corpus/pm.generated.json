@@ -1,0 +1,1021 @@
+{
+  "v": 1,
+  "persona": "pm",
+  "generatedAt": 1789157927105,
+  "model": "gemini-3.5-flash",
+  "frames": [
+    {
+      "id": "mtxef049-1",
+      "question": "Run my quarterly product review: weekly active users grew from 84k to 112k, activation slipped from 41% to 36%, and 30-day retention held at 58%. Feature adoption came in at search 71%, sharing 44%, and the new dashboard 18%.",
+      "narration": "Your quarterly review shows strong user growth up to 112,000 weekly active users, but a five percent drop in activation and low adoption of the new dashboard highlight clear bottlenecks in the onboarding funnel.",
+      "spoken": "Your quarterly review shows strong user growth up to one hundred twelve thousand weekly active users, but a five percent drop in activation and low adoption of the new dashboard highlight clear bottlenecks in the…",
+      "mode": "replace",
+      "topicShift": true,
+      "tour": [
+        {
+          "index": 0,
+          "say": "Weekly active users climbed to 112,000, showing strong top-line growth.",
+          "saySpoken": "Weekly active users climbed to one hundred twelve thousand, showing strong top-line growth.",
+          "mark": {
+            "kind": "underline",
+            "at": "112k WAU",
+            "color": "key"
+          }
+        },
+        {
+          "index": 1,
+          "say": "However, activation slipped to 36%, while thirty-day retention held steady at 58%.",
+          "saySpoken": "However, activation slipped to thirty-six percent, while thirty-day retention held steady at fifty-eight percent.",
+          "mark": {
+            "kind": "circle",
+            "at": "36%"
+          },
+          "marks": [
+            {
+              "kind": "circle",
+              "at": "36%"
+            },
+            {
+              "kind": "circle",
+              "at": "58%"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "say": "For features, search is highly dominant at 71%, but the new dashboard is lagging behind at just 18%.",
+          "saySpoken": "For features, search is highly dominant at seventy-one percent, but the new dashboard is lagging behind at just eighteen percent.",
+          "mark": {
+            "kind": "highlight",
+            "at": "Search"
+          },
+          "marks": [
+            {
+              "kind": "highlight",
+              "at": "Search"
+            },
+            {
+              "kind": "circle",
+              "at": "New Dashboard"
+            }
+          ]
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Quarterly Product Review",
+        "sub": "Q3 2026 Performance & Feature Adoption",
+        "opener": "Your quarterly review shows strong user growth up to 112,000 weekly active users, but a five percent drop in activation and low adoption of the new dashboard highlight clear bottlenecks in the onboarding funnel.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "Growth vs. Activation Trade-off",
+              "summary": "While top-of-funnel acquisition successfully drove weekly active users up by 33%, the onboarding experience struggled to keep pace, resulting in a 5% slip in user activation.",
+              "stat": "112k WAU",
+              "delta": "+28k",
+              "deltaDir": "good"
+            },
+            "note": "Weekly active users grew significantly, but onboarding efficiency dropped during the surge.",
+            "section": "Executive Summary",
+            "order": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Quarterly Vital Signs",
+              "kpis": [
+                {
+                  "val": "112,000",
+                  "label": "Weekly Active Users",
+                  "sub": "Up from 84,000"
+                },
+                {
+                  "val": "36%",
+                  "label": "Activation Rate",
+                  "sub": "Down from 41%"
+                },
+                {
+                  "val": "58%",
+                  "label": "30-Day Retention",
+                  "sub": "Flat quarter-over-quarter"
+                }
+              ]
+            },
+            "id": "live-2",
+            "note": "Retention remains highly stable at 58%, indicating that users who do activate find long-term value.",
+            "noteSpoken": "Retention remains highly stable at fifty-eight percent, indicating that users who do activate find long-term value.",
+            "section": "Core Metrics",
+            "order": 2
+          },
+          {
+            "type": "bars",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Feature Adoption Rates",
+              "bars": [
+                {
+                  "value": 71,
+                  "label": "Search",
+                  "hot": true
+                },
+                {
+                  "value": 44,
+                  "label": "Sharing"
+                },
+                {
+                  "value": 18,
+                  "label": "New Dashboard"
+                }
+              ],
+              "unit": "%",
+              "footer": "Core utility features lead, while the new dashboard remains in early single-digit adoption."
+            },
+            "id": "live-3",
+            "note": "Search is your most utilized feature at 71%, while the new dashboard sits at a low 18% adoption.",
+            "noteSpoken": "Search is your most utilized feature at seventy-one percent, while the new dashboard sits at a low eighteen percent adoption.",
+            "section": "Feature Adoption",
+            "order": 3
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "options": [
+                {
+                  "name": "Acquisition (WAU)",
+                  "sub": "Top of Funnel",
+                  "pick": true
+                },
+                {
+                  "name": "Activation",
+                  "sub": "Middle of Funnel"
+                },
+                {
+                  "name": "Retention",
+                  "sub": "Bottom of Funnel",
+                  "pick": true
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Quarterly Trend",
+                  "cells": [
+                    {
+                      "v": "Strong Growth (+33%)",
+                      "win": true
+                    },
+                    {
+                      "v": "Slipping (-5%)"
+                    },
+                    {
+                      "v": "Stable (Flat)"
+                    }
+                  ]
+                },
+                {
+                  "label": "Current Status",
+                  "cells": [
+                    {
+                      "v": "Excellent"
+                    },
+                    {
+                      "v": "Needs Attention"
+                    },
+                    {
+                      "v": "Healthy"
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Funnel Stage Health",
+              "recommendation": "Prioritize activation flow optimization to prevent the growing top-of-funnel traffic from leaking out early."
+            },
+            "id": "live-4",
+            "note": "The middle of your funnel is the primary leak point, as acquisition and retention are both performing well.",
+            "section": "Funnel Analysis",
+            "order": 4
+          }
+        ],
+        "proof": null,
+        "topic": "Business",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "Analyze the activation drop",
+            "icon": "chat",
+            "route": "Analyze the activation drop"
+          },
+          {
+            "label": "How to boost dashboard adoption",
+            "icon": "chat",
+            "route": "How to boost dashboard adoption"
+          },
+          {
+            "label": "Compare retention by feature used",
+            "icon": "chat",
+            "route": "Compare retention by feature used"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1789157896281
+    },
+    {
+      "id": "mtxefct3-2",
+      "question": "Walk me through the funnel: 60k signups, 21.6k activated, 12.5k still active after 30 days, and 3.1k on a paid plan.",
+      "narration": "The biggest drop in your funnel occurs at the very first step, where 64% of signups fail to activate, resulting in 21,600 activated users from your 60,000 total signups.",
+      "spoken": "The biggest drop in your funnel occurs at the very first step, where sixty-four percent of signups fail to activate, resulting in twenty-one thousand six hundred activated users from your sixty thousand total signups.",
+      "mode": "replace",
+      "topicShift": false,
+      "tour": [
+        {
+          "index": 0,
+          "say": "Our primary concern this quarter is the activation rate, which slipped five percent down to thirty-six percent.",
+          "mark": {
+            "kind": "underline",
+            "at": "36% Activation",
+            "color": "cool"
+          }
+        },
+        {
+          "index": 2,
+          "say": "When we look at the math, the step from signup to activation is where we lose sixty-four percent of our users.",
+          "mark": {
+            "kind": "circle",
+            "at": "Signup to Activation",
+            "color": "key"
+          },
+          "marks": [
+            {
+              "kind": "circle",
+              "at": "Signup to Activation",
+              "color": "key"
+            },
+            {
+              "kind": "underline",
+              "at": "36.0% Conversion"
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "say": "This bottleneck is likely related to feature adoption, where the new dashboard is only reaching eighteen percent of users.",
+          "mark": {
+            "kind": "circle",
+            "at": "New Dashboard",
+            "color": "cool"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Quarterly Product Review & Funnel Analysis",
+        "sub": "Performance metrics, feature adoption, and conversion bottlenecks",
+        "opener": "The biggest drop in your funnel occurs at the very first step, where 64% of signups fail to activate, resulting in 21,600 activated users from your 60,000 total signups.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "The Onboarding Bottleneck",
+              "summary": "While overall Weekly Active Users grew by 33%, a 5% slip in activation and a massive 64% drop from signup to activation represent the primary growth constraints.",
+              "stat": "36% Activation",
+              "delta": "-5%",
+              "deltaDir": "down"
+            },
+            "note": "The drop in activation is your main bottleneck, even though overall weekly active users are growing steadily.",
+            "section": "Executive Summary",
+            "order": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Core Quarterly Metrics",
+              "kpis": [
+                {
+                  "val": "112,000",
+                  "label": "Weekly Active Users",
+                  "sub": "Up from 84,000"
+                },
+                {
+                  "val": "36%",
+                  "label": "Activation Rate",
+                  "sub": "Down from 41%"
+                },
+                {
+                  "val": "58%",
+                  "label": "30-Day Retention",
+                  "sub": "Held flat quarter-over-quarter"
+                }
+              ]
+            },
+            "id": "live-2",
+            "note": "Weekly active users and retention remain strong, but the activation rate has slipped to thirty-six percent.",
+            "section": "Executive Summary",
+            "order": 1
+          },
+          {
+            "type": "workedexample",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Step-by-Step Funnel Conversion",
+              "steps": [
+                {
+                  "label": "Signup to Activation"
+                },
+                {
+                  "label": "Activation to 30-Day Retention"
+                },
+                {
+                  "label": "30-Day Retention to Paid Plan"
+                }
+              ],
+              "problem": "Analyze conversion rates and drop-offs across 60,000 signups."
+            },
+            "id": "live-3",
+            "note": "Only about five percent of signups make it all the way to a paid plan, with the biggest drop happening right at the start.",
+            "section": "Funnel Breakdown",
+            "order": 2
+          },
+          {
+            "type": "datatable",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "Funnel Stage Performance",
+              "columns": [
+                {
+                  "key": "stage",
+                  "label": "Funnel Stage"
+                },
+                {
+                  "key": "users",
+                  "label": "Users"
+                },
+                {
+                  "key": "stage_conv",
+                  "label": "Stage Conversion"
+                },
+                {
+                  "key": "cumulative",
+                  "label": "Cumulative Conversion"
+                }
+              ],
+              "rows": [
+                {
+                  "stage": "1. Signups",
+                  "users": "60,000",
+                  "stage_conv": "100%",
+                  "cumulative": "100%"
+                },
+                {
+                  "stage": "2. Activated",
+                  "users": "21,600",
+                  "stage_conv": "36.0%",
+                  "cumulative": "36.0%"
+                },
+                {
+                  "stage": "3. Retained (30-Day)",
+                  "users": "12,528",
+                  "stage_conv": "58.0%",
+                  "cumulative": "20.9%"
+                },
+                {
+                  "stage": "4. Paid Plan",
+                  "users": "3,100",
+                  "stage_conv": "24.7%",
+                  "cumulative": "5.17%"
+                }
+              ]
+            },
+            "id": "live-4",
+            "note": "This table shows the exact volume and conversion rates at each step of the user journey.",
+            "section": "Funnel Breakdown",
+            "order": 2
+          },
+          {
+            "type": "bars",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "title": "Feature Adoption Rates",
+              "bars": [
+                {
+                  "value": 71,
+                  "label": "Search",
+                  "hot": true
+                },
+                {
+                  "value": 44,
+                  "label": "Sharing"
+                },
+                {
+                  "value": 18,
+                  "label": "New Dashboard"
+                }
+              ],
+              "unit": "%",
+              "footer": "Search remains the primary feature, while the new dashboard has low adoption."
+            },
+            "id": "live-5",
+            "note": "Search is highly adopted at seventy-one percent, but the new dashboard lags far behind at eighteen percent.",
+            "section": "Feature Adoption",
+            "order": 3
+          },
+          {
+            "type": "causationchain",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "title": "Funnel Mechanics and Outcomes",
+              "event": {
+                "label": "36% Activation Rate"
+              },
+              "causes": [
+                {
+                  "label": "64% Signup Drop-off",
+                  "weight": 0.9,
+                  "term": "short"
+                },
+                {
+                  "label": "18% Dashboard Adoption",
+                  "weight": 0.6,
+                  "term": "short"
+                }
+              ],
+              "consequences": [
+                {
+                  "label": "12.5k Retained Users",
+                  "weight": 0.8,
+                  "term": "short"
+                },
+                {
+                  "label": "3.1k Paid Conversions",
+                  "weight": 0.7,
+                  "term": "long"
+                }
+              ],
+              "footer": "Low activation directly limits the downstream volume of retained and paying users."
+            },
+            "id": "live-6",
+            "note": "The low activation rate acts as a bottleneck, directly restricting the number of users who reach retention and paid status.",
+            "section": "Funnel Mechanics",
+            "order": 4
+          },
+          {
+            "type": "quiz",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "title": "Identify the Leverage Point",
+              "question": "Based strictly on the conversion rates, which stage represents the largest loss of potential users?",
+              "options": [
+                {
+                  "text": "Signup to Activation (64% drop-off)"
+                },
+                {
+                  "text": "Activation to 30-Day Retention (42% drop-off)"
+                },
+                {
+                  "text": "30-Day Retention to Paid (75.3% drop-off)"
+                }
+              ],
+              "explanation": "The Signup to Activation stage loses 38,400 users out of 60,000. While the percentage drop-off from retention to paid is higher, the sheer volume lost at the top of the funnel makes activation the highest-leverage area to fix."
+            },
+            "id": "live-7",
+            "note": "Testing your understanding of where the most significant user drop-off occurs in the current funnel.",
+            "section": "Next Steps",
+            "order": 5
+          }
+        ],
+        "proof": null,
+        "topic": "Business",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "How can we improve dashboard adoption?",
+            "icon": "chat",
+            "route": "How can we improve dashboard adoption?"
+          },
+          {
+            "label": "What is the industry benchmark for activation?",
+            "icon": "chat",
+            "route": "What is the industry benchmark for activation?"
+          },
+          {
+            "label": "Analyze the retention cohort in more detail",
+            "icon": "chat",
+            "route": "Analyze the retention cohort in more detail"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1789157912727
+    },
+    {
+      "id": "mtxefnwh-3",
+      "question": "Forecast for next quarter",
+      "narration": "If your activation rate drops another five percent to thirty-one percent next quarter, weekly active users will fall to approximately ninety-six thousand four hundred, and new paid accounts will drop to about two…",
+      "mode": "augment",
+      "topicShift": false,
+      "tour": [
+        {
+          "index": 7,
+          "say": "If activation slips to thirty-one percent, weekly active users will drop to ninety-six thousand four hundred.",
+          "mark": {
+            "kind": "underline",
+            "at": "96.4k WAU",
+            "color": "key"
+          }
+        },
+        {
+          "index": 8,
+          "say": "This drop cascades down, reducing your new paid accounts from thirty-one hundred to twenty-six hundred and seventy-five.",
+          "mark": {
+            "kind": "circle",
+            "at": "2,675",
+            "color": "cool"
+          }
+        },
+        {
+          "index": 9,
+          "say": "Comparing the funnels side-by-side highlights how the initial loss of three thousand activated users shrinks every subsequent stage.",
+          "mark": {
+            "kind": "bracket",
+            "at": "21,600",
+            "to": "18,600",
+            "label": "3,000 user gap"
+          }
+        }
+      ],
+      "spec": {
+        "id": "live",
+        "workspace": "Live",
+        "title": "Funnel Forecast: Activation Slip Impact",
+        "sub": "Modeling a further 5% drop in product activation",
+        "opener": "If your activation rate drops another five percent to thirty-one percent next quarter, weekly active users will fall to approximately ninety-six thousand four hundred, and new paid accounts will drop to about two thousand seven hundred.",
+        "context": [],
+        "blocks": [
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-1",
+            "num": "1",
+            "props": {
+              "title": "The Onboarding Bottleneck",
+              "summary": "While overall Weekly Active Users grew by 33%, a 5% slip in activation and a massive 64% drop from signup to activation represent the primary growth constraints.",
+              "stat": "36% Activation",
+              "delta": "-5%",
+              "deltaDir": "down"
+            },
+            "note": "The drop in activation is your main bottleneck, even though overall weekly active users are growing steadily.",
+            "section": "Executive Summary",
+            "order": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Core Quarterly Metrics",
+              "kpis": [
+                {
+                  "val": "112,000",
+                  "label": "Weekly Active Users",
+                  "sub": "Up from 84,000"
+                },
+                {
+                  "val": "36%",
+                  "label": "Activation Rate",
+                  "sub": "Down from 41%"
+                },
+                {
+                  "val": "58%",
+                  "label": "30-Day Retention",
+                  "sub": "Held flat quarter-over-quarter"
+                }
+              ]
+            },
+            "id": "live-2",
+            "note": "Weekly active users and retention remain strong, but the activation rate has slipped to thirty-six percent.",
+            "section": "Executive Summary",
+            "order": 1
+          },
+          {
+            "type": "workedexample",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "title": "Step-by-Step Funnel Conversion",
+              "steps": [
+                {
+                  "label": "Signup to Activation"
+                },
+                {
+                  "label": "Activation to 30-Day Retention"
+                },
+                {
+                  "label": "30-Day Retention to Paid Plan"
+                }
+              ],
+              "problem": "Analyze conversion rates and drop-offs across 60,000 signups."
+            },
+            "id": "live-3",
+            "note": "Only about five percent of signups make it all the way to a paid plan, with the biggest drop happening right at the start.",
+            "section": "Funnel Breakdown",
+            "order": 2
+          },
+          {
+            "type": "datatable",
+            "col": 12,
+            "delay": 210,
+            "props": {
+              "title": "Funnel Stage Performance",
+              "columns": [
+                {
+                  "key": "stage",
+                  "label": "Funnel Stage"
+                },
+                {
+                  "key": "users",
+                  "label": "Users"
+                },
+                {
+                  "key": "stage_conv",
+                  "label": "Stage Conversion"
+                },
+                {
+                  "key": "cumulative",
+                  "label": "Cumulative Conversion"
+                }
+              ],
+              "rows": [
+                {
+                  "stage": "1. Signups",
+                  "users": "60,000",
+                  "stage_conv": "100%",
+                  "cumulative": "100%"
+                },
+                {
+                  "stage": "2. Activated",
+                  "users": "21,600",
+                  "stage_conv": "36.0%",
+                  "cumulative": "36.0%"
+                },
+                {
+                  "stage": "3. Retained (30-Day)",
+                  "users": "12,528",
+                  "stage_conv": "58.0%",
+                  "cumulative": "20.9%"
+                },
+                {
+                  "stage": "4. Paid Plan",
+                  "users": "3,100",
+                  "stage_conv": "24.7%",
+                  "cumulative": "5.17%"
+                }
+              ]
+            },
+            "id": "live-4",
+            "note": "This table shows the exact volume and conversion rates at each step of the user journey.",
+            "section": "Funnel Breakdown",
+            "order": 2
+          },
+          {
+            "type": "bars",
+            "col": 12,
+            "delay": 280,
+            "props": {
+              "title": "Feature Adoption Rates",
+              "bars": [
+                {
+                  "value": 71,
+                  "label": "Search",
+                  "hot": true
+                },
+                {
+                  "value": 44,
+                  "label": "Sharing"
+                },
+                {
+                  "value": 18,
+                  "label": "New Dashboard"
+                }
+              ],
+              "unit": "%",
+              "footer": "Search remains the primary feature, while the new dashboard has low adoption."
+            },
+            "id": "live-5",
+            "note": "Search is highly adopted at seventy-one percent, but the new dashboard lags far behind at eighteen percent.",
+            "section": "Feature Adoption",
+            "order": 3
+          },
+          {
+            "type": "causationchain",
+            "col": 12,
+            "delay": 350,
+            "props": {
+              "title": "Funnel Mechanics and Outcomes",
+              "event": {
+                "label": "36% Activation Rate"
+              },
+              "causes": [
+                {
+                  "label": "64% Signup Drop-off",
+                  "weight": 0.9,
+                  "term": "short"
+                },
+                {
+                  "label": "18% Dashboard Adoption",
+                  "weight": 0.6,
+                  "term": "short"
+                }
+              ],
+              "consequences": [
+                {
+                  "label": "12.5k Retained Users",
+                  "weight": 0.8,
+                  "term": "short"
+                },
+                {
+                  "label": "3.1k Paid Conversions",
+                  "weight": 0.7,
+                  "term": "long"
+                }
+              ],
+              "footer": "Low activation directly limits the downstream volume of retained and paying users."
+            },
+            "id": "live-6",
+            "note": "The low activation rate acts as a bottleneck, directly restricting the number of users who reach retention and paid status.",
+            "section": "Funnel Mechanics",
+            "order": 4
+          },
+          {
+            "type": "quiz",
+            "col": 12,
+            "delay": 420,
+            "props": {
+              "title": "Identify the Leverage Point",
+              "question": "Based strictly on the conversion rates, which stage represents the largest loss of potential users?",
+              "options": [
+                {
+                  "text": "Signup to Activation (64% drop-off)"
+                },
+                {
+                  "text": "Activation to 30-Day Retention (42% drop-off)"
+                },
+                {
+                  "text": "30-Day Retention to Paid (75.3% drop-off)"
+                }
+              ],
+              "explanation": "The Signup to Activation stage loses 38,400 users out of 60,000. While the percentage drop-off from retention to paid is higher, the sheer volume lost at the top of the funnel makes activation the highest-leverage area to fix."
+            },
+            "id": "live-7",
+            "note": "Testing your understanding of where the most significant user drop-off occurs in the current funnel.",
+            "section": "Next Steps",
+            "order": 5
+          },
+          {
+            "type": "insight",
+            "col": 4,
+            "delay": 0,
+            "id": "live-8",
+            "num": "1",
+            "props": {
+              "title": "Activation Slip Impact",
+              "summary": "A further 5% slip in activation cascades heavily down the funnel, reducing weekly active users and cutting new paid accounts down to 2.7k.",
+              "stat": "96.4k WAU",
+              "delta": "-13.9%",
+              "deltaDir": "down",
+              "conf": "inferred"
+            },
+            "note": "If activation drops to 31%, your weekly active user base shrinks by nearly fourteen percent.",
+            "section": "The Core Forecast",
+            "order": 1
+          },
+          {
+            "type": "kpi",
+            "col": 8,
+            "delay": 70,
+            "props": {
+              "title": "Quarterly Funnel Projections",
+              "kpis": [
+                {
+                  "val": "60,000",
+                  "label": "Signups",
+                  "sub": "Baseline held constant"
+                },
+                {
+                  "val": "18,600",
+                  "label": "Activated (31%)",
+                  "sub": "Down from [[21.6k|twenty-one point six thousand]"
+                },
+                {
+                  "val": "10,788",
+                  "label": "Retained (58%)",
+                  "sub": "Down from 12.5k"
+                },
+                {
+                  "val": "2,675",
+                  "label": "Paid (24.8%)",
+                  "sub": "Down from 3.1k"
+                }
+              ]
+            },
+            "id": "live-9",
+            "note": "Every step of the funnel experiences a volume drop because fewer users make it past the initial activation gate.",
+            "section": "The Core Forecast",
+            "order": 1
+          },
+          {
+            "type": "compare",
+            "col": 12,
+            "delay": 140,
+            "props": {
+              "options": [
+                {
+                  "name": "Current Funnel (36% Act.)",
+                  "sub": "Current baseline performance"
+                },
+                {
+                  "name": "Slipped Funnel (31% Act.)",
+                  "sub": "Projected performance",
+                  "pick": true
+                }
+              ],
+              "criteria": [
+                {
+                  "label": "Signups to Activated",
+                  "cells": [
+                    {
+                      "v": "21,600"
+                    },
+                    {
+                      "v": "18,600"
+                    }
+                  ]
+                },
+                {
+                  "label": "Activated to Retained",
+                  "cells": [
+                    {
+                      "v": "12,500"
+                    },
+                    {
+                      "v": "10,788"
+                    }
+                  ]
+                },
+                {
+                  "label": "Retained to Paid",
+                  "cells": [
+                    {
+                      "v": "3,100"
+                    },
+                    {
+                      "v": "2,675"
+                    }
+                  ]
+                }
+              ],
+              "eyebrow": "Scenario Analysis",
+              "recommendation": "Prioritize onboarding fixes immediately to prevent this compounding volume loss."
+            },
+            "id": "live-10",
+            "note": "Comparing the two scenarios shows how a five percent drop at the top of the funnel translates to a loss of over four hundred paid accounts.",
+            "section": "Funnel Comparison",
+            "order": 2
+          },
+          {
+            "type": "bars",
+            "col": 6,
+            "delay": 210,
+            "props": {
+              "title": "Volume Loss by Funnel Stage",
+              "bars": [
+                {
+                  "value": 3000,
+                  "label": "Lost Activated Users",
+                  "hot": true
+                },
+                {
+                  "value": 1712,
+                  "label": "Lost Retained Users"
+                },
+                {
+                  "value": 425,
+                  "label": "Lost Paid Users"
+                }
+              ],
+              "unit": "Users"
+            },
+            "id": "live-11",
+            "note": "The absolute volume loss is largest at the activation stage, where three thousand potential users are lost.",
+            "section": "Funnel Comparison",
+            "order": 2
+          },
+          {
+            "type": "list",
+            "col": 6,
+            "delay": 280,
+            "props": {
+              "title": "Onboarding & Funnel Recovery Plan",
+              "items": [
+                "Audit the first-mile user experience to identify where the 5% slip is occurring.",
+                "Run targeted in-app guides for the search and sharing features to boost early activation.",
+                "A/B test the dashboard layout to improve its low 18% adoption rate.",
+                "Establish weekly cohort tracking to catch further activation slips before they compound."
+              ]
+            },
+            "id": "live-12",
+            "note": "Focusing on early feature adoption is your best lever to reverse the activation decline.",
+            "section": "Strategic Next Steps",
+            "order": 3
+          }
+        ],
+        "proof": null,
+        "topic": "Economics",
+        "extras": {},
+        "group": "home",
+        "suggests": [
+          {
+            "label": "What if we increase activation to 45%?",
+            "icon": "chat",
+            "route": "What if we increase activation to 45%?"
+          },
+          {
+            "label": "Model the revenue impact of the paid user loss",
+            "icon": "chat",
+            "route": "Model the revenue impact of the paid user loss"
+          },
+          {
+            "label": "How does feature adoption correlate with activation?",
+            "icon": "chat",
+            "route": "How does feature adoption correlate with activation?"
+          }
+        ],
+        "keywords": []
+      },
+      "at": 1789157927105,
+      "revision": {
+        "changedIds": [],
+        "addedIds": [
+          "live-8",
+          "live-9",
+          "live-10",
+          "live-11",
+          "live-12"
+        ],
+        "unchangedCount": 7
+      }
+    }
+  ],
+  "history": [
+    {
+      "role": "user",
+      "content": "Run my quarterly product review: weekly active users grew from 84k to 112k, activation slipped from 41% to 36%, and 30-day retention held at 58%. Feature adoption came in at search 71%, sharing 44%, and the new dashboard 18%. Build the full picture, including growth, the activation slip, retention, and how the features stack up on adoption. Work only from these figures: do not guess at causes we have not measured."
+    },
+    {
+      "role": "assistant",
+      "content": "Your quarterly review shows strong user growth up to 112,000 weekly active users, but a five percent drop in activation and low adoption of the new dashboard highlight clear bottlenecks in the onboarding funnel."
+    },
+    {
+      "role": "user",
+      "content": "Walk me through the funnel: 60k signups, 21.6k activated, 12.5k still active after 30 days, and 3.1k on a paid plan. Show the conversion at each stage and where the biggest drop is, from these numbers only, without speculating about causes we have not measured."
+    },
+    {
+      "role": "assistant",
+      "content": "The biggest drop in your funnel occurs at the very first step, where 64% of signups fail to activate, resulting in 21,600 activated users from your 60,000 total signups."
+    },
+    {
+      "role": "user",
+      "content": "Forecast for next quarter: if activation keeps slipping at this pace, where do weekly actives and paid accounts land? Model it from the numbers we established."
+    },
+    {
+      "role": "assistant",
+      "content": "If your activation rate drops another five percent to thirty-one percent next quarter, weekly active users will fall to approximately ninety-six thousand four hundred, and new paid accounts will drop to about two…"
+    }
+  ]
+}

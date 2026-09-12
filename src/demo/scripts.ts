@@ -4,7 +4,7 @@
 //
 // The honesty rule, applied to every ask: it must be (a) publicly answerable, (b) pure math on
 // numbers the persona STATES in the ask, or (c) planning/advice. The model is never asked to
-// conjure someone's private data — a CFO demo works because Renata gives her figures in the
+// conjure someone's private data — Renata's review works because she gives her figures in the
 // ask, not because the model invents a company. The UI still labels each replay as a curated,
 // fictional example because feature choreography and baked model output are not a live result.
 import type { DemoBeat } from './beats';
@@ -34,47 +34,54 @@ export interface DemoStep {
 
 export interface DemoScript {
   persona: string;
+  /** The view every step re-asserts. Two sessions are written for the desk (the "Guide me"
+   *  walk, where the Study's connect and pen gestures live) and two for the board, so the four
+   *  together show both ways Mavéa answers rather than one surface four times. */
+  view: 'board' | 'study';
   steps: DemoStep[];
 }
 
 export const DEMO_SCRIPTS: readonly DemoScript[] = [
   {
     // Renata's quarter: she states every figure herself; the model builds and projects.
-    persona: 'cfo',
+    persona: 'pm',
+    view: 'study',
     steps: [
       {
-        ask: 'Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M.',
+        ask: 'Run my quarterly product review: weekly active users grew from 84k to 112k, activation slipped from 41% to 36%, and 30-day retention held at 58%. Feature adoption came in at search 71%, sharing 44%, and the new dashboard 18%.',
         bakeAsk:
-          'Run my quarterly review: ARR grew from $12.4M to $15.1M, churn ticked up from 2.1% to 2.8%, and regions came in at NA $8.2M, EMEA $4.6M, APAC $2.3M. Build the full picture, including growth, the churn drift, and how the regions stack up.',
+          'Run my quarterly product review: weekly active users grew from 84k to 112k, activation slipped from 41% to 36%, and 30-day retention held at 58%. Feature adoption came in at search 71%, sharing 44%, and the new dashboard 18%. Build the full picture, including growth, the activation slip, retention, and how the features stack up on adoption. Work only from these figures: do not guess at causes we have not measured.',
         beats: [{ kind: 'study', atMs: 650, connect: 2 }],
         note: 'One question becomes a study. Renata holds two objects together. Now “these” has meaning.',
         expect: { minBlocks: 4, suggests: true },
       },
       {
-        ask: 'Walk me through the bridge: new business added $1.9M, expansion $1.3M, and churn gave back $0.5M.',
+        ask: 'Walk me through the funnel: 60k signups, 21.6k activated, 12.5k still active after 30 days, and 3.1k on a paid plan.',
+        bakeAsk:
+          'Walk me through the funnel: 60k signups, 21.6k activated, 12.5k still active after 30 days, and 3.1k on a paid plan. Show the conversion at each stage and where the biggest drop is, from these numbers only, without speculating about causes we have not measured.',
         beats: [{ kind: 'pin', atMs: 900 }],
-        note: 'Renata pins the bridge. The next question uses that context.',
+        note: 'Renata pins the funnel. The next question uses that context.',
         expect: { minBlocks: 2, suggests: true },
       },
       {
-        // Arrives as a chip press when the previous turn really offers this chip (it reliably
-        // does for this content); otherwise it types — never a mislabeled press. A follow-up
+        // Arrives as a chip press when the previous turn really offers this chip; otherwise it
+        // types — never a mislabeled press. A follow-up
         // merges into the same canvas (augment), and merged turns can't carry a bend dial —
         // the dial showcase lives in Maya's savings turn, which opens a fresh canvas.
         ask: 'Forecast for next quarter',
         bakeAsk:
-          'Forecast for next quarter: if churn keeps drifting at this pace, where does ARR land? Model it from the numbers we established.',
+          'Forecast for next quarter: if activation keeps slipping at this pace, where do weekly actives and paid accounts land? Model it from the numbers we established.',
         viaChip: true,
         expect: { minBlocks: 2 },
       },
       {
         beats: [{ kind: 'export', atMs: 500, format: 'presentation' }],
-        note: 'One tap: the whole review becomes a board deck.',
+        note: 'One tap: the whole review becomes a leadership deck.',
         holdMs: 6500,
       },
       {
         beats: [{ kind: 'dashboard', atMs: 500, settings: true }],
-        note: 'A living dashboard keeps a board like this up to date.',
+        note: 'A living dashboard keeps a review like this up to date.',
         holdMs: 6500,
       },
       {
@@ -85,17 +92,19 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
     ],
   },
   {
-    // Maya's exam cram: a worked example she can bend, the concept behind it, a kept card.
-    // The dial leads because a bend only survives a REPLACE turn (merges renumber block ids,
-    // so settleTurn drops it) — and a session's turn 1 is the one guaranteed replace.
+    // Maya's exam cram: a worked example, the concept behind it, a kept card — on the desk, where
+    // the pen and the connect gesture live. The worked example still bakes with its dial (a bend
+    // only survives a REPLACE turn, and a session's turn 1 is the one guaranteed replace), so the
+    // answer is bendable the moment she leaves the desk; the replay itself does not drag it, since
+    // the desk shows one card at a time and carries no dial.
     persona: 'student',
+    view: 'study',
     steps: [
       {
         ask: 'What does saving $200 a month at 5% become after 10 years?',
         bakeAsk:
           'What does saving $200 a month at 5% interest become after 10 years? Chart it year by year, split what I put in from what the interest earned, and make the monthly amount adjustable.',
-        beats: [{ kind: 'bend', atMs: 1100 }],
-        note: 'Grab the dial. The whole answer updates live.',
+        note: 'The worked example comes forward first, year by year.',
         expect: { minBlocks: 3, bend: true, suggests: true },
       },
       {
@@ -114,6 +123,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
   {
     // Devon's architecture session: mechanisms drawn out, then the surface's power tools.
     persona: 'dev',
+    view: 'board',
     steps: [
       {
         ask: "Explain how OAuth login works, step by step. I'm adding it to our app.",
@@ -130,7 +140,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       },
       {
         beats: [{ kind: 'palette', atMs: 600 }],
-        note: 'Press Command K. Every feature is a keystroke away.',
+        note: 'Command K opens the feature index. Every feature is a keystroke away.',
         holdMs: 5000,
       },
       {
@@ -143,6 +153,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
   {
     // Lena's Lisbon weekend: the trip, the day trip, the printout for the plane.
     persona: 'traveler',
+    view: 'board',
     steps: [
       {
         ask: 'Plan a long weekend in Lisbon. Three days, first visit, and we love food and views.',

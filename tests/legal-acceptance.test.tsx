@@ -212,7 +212,7 @@ describe('legal-gate route policy', () => {
 
     window.location.hash = '#/live?tour=1';
     expect(isLegalGateBypassed(window.location.hash)).toBe(true);
-    window.location.hash = '#/live?demo=cfo';
+    window.location.hash = '#/live?demo=pm';
     expect(isLegalGateBypassed(window.location.hash)).toBe(true);
     window.location.hash = '#/live?demo=not-a-real-persona';
     expect(isLegalGateBypassed(window.location.hash)).toBe(false);

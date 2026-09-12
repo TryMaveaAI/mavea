@@ -162,9 +162,9 @@ export function useDemoDriver(opts: {
     stepReadyAtRef.current = null;
 
     resetTriggers();
-    // Curated replays lead with the product's defining surface even when this browser previously
-    // chose a grid. The visitor's standing preference is restored when the replay unmounts.
-    o.setViewMode('study');
+    // Each replay re-asserts the view its script was written for, whatever this browser last
+    // chose. The visitor's standing preference is restored when the replay unmounts.
+    o.setViewMode(script.view);
 
     const rawFrame = frameFor(script.steps, index, convo);
     const rawBeatFrame = rawFrame ?? currentFrame(script.steps, index, convo);

@@ -88,7 +88,7 @@ export function FlagshipHost(): ReactElement {
   );
 
   const playStudyDemo = useCallback(() => {
-    const studyDemo = castMember('cfo');
+    const studyDemo = castMember('pm');
     if (!studyDemo) return;
     playDemo(studyDemo);
   }, [playDemo]);

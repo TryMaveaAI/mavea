@@ -207,7 +207,7 @@ describe('guided dialogs — aria-modal has to be backed by a real focus trap', 
       <DemoOverlay driver={demoDriver({ started: true })} member={DEMO_CAST[0]} onExit={vi.fn()} />,
     );
     expect(screen.getByText('Curated replay')).toBeVisible();
-    expect(screen.getByText('Renata · Fictional CFO')).toBeVisible();
+    expect(screen.getByText('Renata · Fictional product manager')).toBeVisible();
   });
 
   it('the demo start card takes focus and cycles Tab within itself', () => {

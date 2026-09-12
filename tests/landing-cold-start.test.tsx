@@ -29,7 +29,7 @@ describe('landing cold start', () => {
       timeout: 8000,
     });
     fireEvent.click(container.querySelector('.fl-demo-card')!);
-    expect(sessionStorage.getItem('mavea-demo-persona')).toBe('cfo');
+    expect(sessionStorage.getItem('mavea-demo-persona')).toBe('pm');
     expect(window.location.hash).toBe('#/live');
   });
 });

@@ -68,3 +68,14 @@ describe('script structure — what the player relies on', () => {
     });
   }
 });
+
+describe('what the four replays show', () => {
+  // Four replays on one view read as one demo watched four times. Two open on the desk (the
+  // "Guide me" walk) and two on the board, so a visitor who tries more than one sees both ways
+  // Mavéa answers.
+  it('split evenly between the board and the desk', () => {
+    const views = DEMO_SCRIPTS.map((s) => s.view);
+    expect(views.filter((v) => v === 'study')).toHaveLength(2);
+    expect(views.filter((v) => v === 'board')).toHaveLength(2);
+  });
+});

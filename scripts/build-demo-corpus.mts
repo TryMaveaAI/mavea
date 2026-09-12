@@ -7,7 +7,7 @@
 // replays fully offline (no key) on the real Live surface.
 //
 //   GEMINI_API_KEY=… npx vite-node scripts/build-demo-corpus.mts            # bake everyone
-//   ONLY=cfo,student … build-demo-corpus.mts                                # whole personas only
+//   ONLY=pm,student … build-demo-corpus.mts                                # whole personas only
 //   DEMO_MODEL=gemini-3.1-flash-lite DELAY=6500 RETRIES=1 …                 # model / RPM / retry
 //   DEMO_PROVIDER=openai …                                                  # bake on another real
 //                             provider (its default model + <PROVIDER>_API_KEY); each shard

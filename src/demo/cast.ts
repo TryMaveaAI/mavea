@@ -6,11 +6,11 @@
 
 export interface DemoCastMember {
   id: string;
-  /** The session's job — what a visitor would come here to do ("Run a quarterly review").
+  /** The session's job — what a visitor would come here to do ("Run a product review").
    *  This LEADS everywhere a demo is offered; the persona is the supporting detail. */
   useCase: string;
   name: string;
-  /** Short fictional context shown under the name ("Fictional CFO"). */
+  /** Short fictional context shown under the name ("Fictional product manager"). */
   role: string;
   /** A single letter (initials disc) or a single emoji (tinted disc). */
   avatar: string;
@@ -31,7 +31,7 @@ export interface DemoCategory {
 }
 
 export const DEMO_CATEGORIES: DemoCategory[] = [
-  { id: 'business', label: 'Business', persona: 'cfo' },
+  { id: 'business', label: 'Business', persona: 'pm' },
   { id: 'learn', label: 'Learn', persona: 'student' },
   { id: 'build', label: 'Build', persona: 'dev' },
   { id: 'travel', label: 'Travel', persona: 'traveler' },
@@ -44,14 +44,14 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
  *  (corpus/<id>.generated.json); a test keeps the three in lockstep. */
 export const DEMO_CAST: DemoCastMember[] = [
   {
-    id: 'cfo',
-    useCase: 'Run a quarterly review',
+    id: 'pm',
+    useCase: 'Run a product review',
     name: 'Renata',
-    role: 'Fictional CFO',
+    role: 'Fictional product manager',
     avatar: 'R',
     accent: '#3ed8a6',
-    blurb: 'The whole quarter in one canvas, then board-ready in a tap.',
-    kind: 'Finance',
+    blurb: 'The whole quarter in one canvas, then deck-ready in a tap.',
+    kind: 'Product',
   },
   {
     id: 'student',

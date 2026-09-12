@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe('LiveApp — demo replay boot', () => {
   it('a stashed demo persona boots the demo chrome, not the setup wizard', () => {
-    sessionStorage.setItem('mavea-demo-persona', 'cfo');
+    sessionStorage.setItem('mavea-demo-persona', 'pm');
     const { container } = render(<LiveApp />);
     expect(container.querySelector('.demox')).not.toBeNull();
     expect(container.querySelector('.setup')).toBeNull();
@@ -47,7 +47,7 @@ describe('LiveApp — demo replay boot', () => {
   });
 
   it('consumes the one-shot flag on mount (a later plain boot is clean)', () => {
-    sessionStorage.setItem('mavea-demo-persona', 'cfo');
+    sessionStorage.setItem('mavea-demo-persona', 'pm');
     render(<LiveApp />);
     expect(sessionStorage.getItem('mavea-demo-persona')).toBeNull();
   });
@@ -74,7 +74,7 @@ describe('LiveApp — demo replay boot', () => {
   });
 
   it('does not mount provider, voice, or settings controls before legal acceptance', () => {
-    sessionStorage.setItem('mavea-demo-persona', 'cfo');
+    sessionStorage.setItem('mavea-demo-persona', 'pm');
     const { container } = render(
       <LegalGate>
         <LiveApp />
