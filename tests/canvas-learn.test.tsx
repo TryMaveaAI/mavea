@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AreaModel } from '../src/canvas/blocks/learn/AreaModel';
@@ -413,6 +413,53 @@ describe('ChordDiagram', () => {
     );
     const labels = Array.from(container.querySelectorAll<HTMLElement>('.cd-note-label'));
     expect(labels.map((l) => l.textContent)).toEqual(['G', 'B', 'G', 'D', 'G', 'B']);
+  });
+});
+
+// The 9px legibility floor is enforced app-wide by `tests/type-legibility-floor.test.ts`, but that
+// scan skips `canvas/blocks/` wholesale: inside a viewBox a `font-size` is in user units, so an
+// authored 4 can paint at 12 and judging it on the authored number is meaningless. That exemption
+// is only true of SVG text, and the family's sheet styles HTML elements too — ChordDiagram's finger
+// number is a `<span>` inside the fret dot, and it was authored at 8px behind a comment claiming
+// viewBox scaling it never had, so the numeral painted at 8px on every card.
+describe('learn family type floor', () => {
+  const LEARN = join(__dirname, '..', 'src/canvas/blocks/learn');
+
+  /** Class names the family actually hands to an SVG `<text>`/`<tspan>`; those alone are in user
+   *  units. Splitting on `<` keeps each element's whole (often multi-line) attribute list. */
+  function svgTextClasses(): Set<string> {
+    const names = new Set<string>();
+    for (const file of readdirSync(LEARN)) {
+      if (!file.endsWith('.tsx')) continue;
+      const src = readFileSync(join(LEARN, file), 'utf8');
+      for (const chunk of src.split('<')) {
+        if (!/^(text|tspan)[\s>]/.test(chunk)) continue;
+        for (const m of chunk.matchAll(/className=[{\s]*[`'"]([^`'"]+)/g)) {
+          for (const cls of m[1].split(/\s+/)) if (cls) names.add(cls);
+        }
+      }
+    }
+    return names;
+  }
+
+  it('authors no sub-9px font-size on type the viewBox does not scale', () => {
+    const css = readFileSync(join(LEARN, 'styles.css'), 'utf8');
+    const svgClasses = svgTextClasses();
+    const offenders: string[] = [];
+
+    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const size = /font-size:\s*([0-9]+(?:\.[0-9]+)?)px/.exec(rule[2]);
+      if (!size || parseFloat(size[1]) >= 9) continue;
+      const selector = rule[1].trim().split('\n').pop()!.trim();
+      const classes = Array.from(selector.matchAll(/\.([\w-]+)/g), (m) => m[1]);
+      // `fill` is SVG paint: a rule that sets it is styling SVG text even if no component
+      // currently mounts it. Anything else in this sheet lands on an HTML element.
+      const isSvgText =
+        /\bfill:/.test(rule[2]) || (classes.length > 0 && classes.every((c) => svgClasses.has(c)));
+      if (!isSvgText) offenders.push(`${selector} — ${size[1]}px`);
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
 

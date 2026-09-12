@@ -1135,9 +1135,10 @@
   align-items: center;
   justify-content: center;
 }
+/* The finger number is an HTML span inside the dot, not SVG text — there is no viewBox to scale
+   it up, so it paints at whatever it is authored at and belongs on the ramp like any other label. */
 .cd-finger {
-  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- SVG user units: the viewBox scales this, audit:ui judges the rendered size */
-  font-size: 8px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: #fff;
   line-height: 1;
