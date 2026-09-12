@@ -21,6 +21,10 @@ All notable changes to Mavéa are documented here. The format is based on
   line each at any width down to a phone — where the resting face also painted straight over
   the open menu; the bar now lifts above the face for as long as the menu is open.
 
+### Fixed
+
+- **The appearance picker keeps Tab inside its sheet.** The workspace gallery parks every chip but the chosen one at tabindex −1, so the picker's own Tab cycle closed on a chip the keyboard could never reach and the next press walked out into the page behind it. It uses the shared overlay trap now, which cycles over what Tab can actually land on.
+
 ## [2.7.0] - 2026-09-11
 
 ### Added

@@ -74,6 +74,27 @@ describe('premium Appearance selector', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('keeps Tab inside the sheet even though the gallery parks five chips at tabindex -1', async () => {
+    render(<TemplatePicker />);
+    const trigger = screen.getByRole('button', { name: /choose appearance/i });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog');
+    const options = within(dialog).getAllByRole('radio');
+    const checked = options.find((o) => o.getAttribute('aria-checked') === 'true')!;
+    const closeBtn = within(dialog).getByRole('button', { name: 'Close appearance' });
+
+    // The roving radiogroup leaves exactly one chip tabbable, and it is the LAST tab stop in the
+    // sheet — the chips after it can never take a Tab. A cycle counting every button ended on one
+    // of those, so Tab from here used to leave the sheet for the page behind it.
+    await waitFor(() => expect(checked).toHaveFocus());
+    expect(options.filter((o) => o.tabIndex >= 0)).toEqual([checked]);
+    fireEvent.keyDown(checked, { key: 'Tab' });
+    expect(closeBtn).toHaveFocus();
+
+    fireEvent.keyDown(closeBtn, { key: 'Tab', shiftKey: true });
+    expect(checked).toHaveFocus();
+  });
+
   it('opens the mobile sheet at its visible close control without scrolling to a lower selection', async () => {
     localStorage.setItem('mavea-template', 'marquee');
     const previousMatchMedia = window.matchMedia;

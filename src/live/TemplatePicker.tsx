@@ -10,6 +10,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactElement,
+  type RefObject,
 } from 'react';
 import { applyTheme, readTheme, writeTheme, type Theme } from '../lib/theme';
 import {
@@ -23,6 +24,7 @@ import {
 } from './templates';
 import { useLiveConfig, type LiveConfigV2 } from './useLiveConfig';
 import { useFontScaleStamp } from './fontScale';
+import { useFocusTrap } from './useFocusTrap';
 
 const FONT_SCALES: LiveConfigV2['fontScale'][] = ['smaller', 'normal', 'larger'];
 const FONT_SCALE_LABEL: Record<LiveConfigV2['fontScale'], string> = {
@@ -129,6 +131,7 @@ function AppearancePanel({
   onPickFontScale,
   onClose,
   optionRefs,
+  panelRef,
 }: {
   active: TemplateId;
   theme: Theme;
@@ -139,6 +142,7 @@ function AppearancePanel({
   onPickFontScale: (scale: LiveConfigV2['fontScale']) => void;
   onClose?: () => void;
   optionRefs?: React.MutableRefObject<Array<HTMLButtonElement | null>>;
+  panelRef?: RefObject<HTMLDivElement | null>;
 }): ReactElement {
   const headingId = useId();
 
@@ -157,6 +161,7 @@ function AppearancePanel({
 
   return (
     <div
+      ref={panelRef}
       className={`appearance-panel${embedded ? ' is-embedded' : ''}`}
       role={embedded ? undefined : 'dialog'}
       aria-modal={embedded ? undefined : true}
@@ -264,6 +269,8 @@ export function TemplatePicker({
   const { active, theme, fontScale, pickTemplate, pickTheme, pickFontScale } = useAppearanceState();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const initialFocusRef = useRef<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -276,41 +283,21 @@ export function TemplatePicker({
 
   useEffect(() => {
     if (!open) return;
+    // Open on the workspace already in use — except on the phone sheet, where the gallery scrolls
+    // and landing on a lower chip would push the sheet's own close control out of view.
+    const mobile = window.matchMedia?.('(max-width: 720px)').matches ?? false;
     const selected = TEMPLATES.findIndex((template) => template.id === active);
-    requestAnimationFrame(() => {
-      const mobile = window.matchMedia?.('(max-width: 720px)').matches ?? false;
-      if (mobile) {
-        rootRef.current
-          ?.querySelector<HTMLButtonElement>('.appearance-close')
-          ?.focus({ preventScroll: true });
-        return;
-      }
-      optionRefs.current[Math.max(0, selected)]?.focus({ preventScroll: true });
-    });
+    initialFocusRef.current = mobile
+      ? (panelRef.current?.querySelector<HTMLButtonElement>('.appearance-close') ?? null)
+      : (optionRefs.current[Math.max(0, selected)] ?? null);
 
     const onDown = (event: PointerEvent): void => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) close();
     };
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        close();
-        return;
-      }
-      if (event.key !== 'Tab' || !rootRef.current) return;
-      const focusable = Array.from(
-        rootRef.current.querySelectorAll<HTMLButtonElement>('button:not([disabled])'),
-      );
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      close();
     };
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('keydown', onKey);
@@ -319,6 +306,12 @@ export function TemplatePicker({
       window.removeEventListener('keydown', onKey);
     };
   }, [active, close, open]);
+
+  // Containment is the shared overlay trap rather than a local Tab handler: the gallery is a roving
+  // radiogroup, so a cycle built from every button ended on a chip the keyboard can never land on
+  // — Tab then walked out of the sheet into the page behind it — and a hand-rolled button-only
+  // selector would leak again the first time a link or field joins the panel.
+  useFocusTrap(panelRef, { active: open, initialFocus: initialFocusRef });
 
   const current = TEMPLATES.find((template) => template.id === active) ?? TEMPLATES[0];
 
@@ -356,6 +349,7 @@ export function TemplatePicker({
             onPickFontScale={pickFontScale}
             onClose={close}
             optionRefs={optionRefs}
+            panelRef={panelRef}
           />
         </>
       )}

@@ -54,9 +54,14 @@ export function useFocusTrap<T extends HTMLElement>(
 
     const focusable = (): HTMLElement[] =>
       Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        // Skip elements explicitly hidden from layout/AT (the selector already drops disabled
-        // and tabindex=-1). `hidden`/aria-hidden cover the common cases without needing layout.
-        (el) => !el.hidden && el.getAttribute('aria-hidden') !== 'true',
+        // Skip elements explicitly hidden from layout/AT. `hidden`/aria-hidden cover the common
+        // cases without needing layout. The tabIndex check is what makes this list TABBABLE rather
+        // than merely focusable: the selector's tabindex clause can't see a negative tabindex on a
+        // button or link, so a group using roving tabindex (one tab stop, the rest parked at -1 —
+        // radiogroups, toolbars) put elements in here that Tab can never land on. The cycle then
+        // closed on an element the keyboard never reaches, and focus walked straight out of the
+        // overlay into the page behind it.
+        (el) => !el.hidden && el.getAttribute('aria-hidden') !== 'true' && el.tabIndex >= 0,
       );
 
     // Move focus into the overlay so the first Tab stays inside it. A caller can name the element
