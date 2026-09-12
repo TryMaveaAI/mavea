@@ -6,6 +6,16 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **The library's toolbar sits on one row, and its family rail says where it continues.** At a
+  laptop width the search, the density switch and the theme toggle wrapped onto a second line, the
+  dev audit buttons wedged between them, and the family chips ran off the right edge under a grey
+  scrollbar. Every control is 44px tall on one line now; the audit buttons have a row of their own
+  in development builds; and the chip row fades at the edge that has more and carries an arrow
+  there, so a mouse can reach the families past the fold without guessing at shift+wheel. The
+  family picked from the address bar scrolls into view on arrival.
+
 ## [2.7.0] - 2026-09-11
 
 ### Added

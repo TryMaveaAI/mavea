@@ -27,6 +27,7 @@ import type { Block, ConversationSpec } from '../data/conversation';
 import { CATALOG_FACTS, catalogFacts, familyOf as catalogFamilyOf } from '../canvas/blocks/catalog';
 import { useInView } from '../hooks/useInView';
 import { Icon } from '../icons/icons';
+import { FamilyRail } from './FamilyRail';
 import { readTheme, writeTheme, applyTheme, type Theme } from '../lib/theme';
 import type { OverflowHit } from './overflowAudit';
 import {
@@ -488,10 +489,8 @@ export function GalleryApp() {
           <div className="vlib-headline">
             <h1>Visual library</h1>
             <p className="vlib-subtitle">
-              Production-rendered library. {shown} of {TOTAL} browsable types shown. Every card is
-              {variant === 'base'
-                ? ' fixed demonstration data, not advice.'
-                : ` ${variant} stress data, not advice.`}
+              {shown} of {TOTAL} types shown ·{' '}
+              {variant === 'base' ? 'demonstration data' : `${variant} stress data`}, not advice.
             </p>
           </div>
           <div className="vlib-controls">
@@ -499,7 +498,7 @@ export function GalleryApp() {
               ref={searchRef}
               className="vlib-search"
               type="search"
-              placeholder="Search visuals…  (e.g. funnel, modal, kanban)"
+              placeholder="Search visuals… e.g. funnel, kanban"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search visuals"
@@ -520,43 +519,6 @@ export function GalleryApp() {
                 </button>
               ))}
             </div>
-            {import.meta.env.DEV && (
-              <>
-                <button
-                  className={`vlib-audit ${flags ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => {
-                    if (flags) setFlags(null);
-                    else void runAudit();
-                  }}
-                  title="Measure every rendered tile for clipped / scrolled content"
-                >
-                  {flags ? `Audit: ${flags.size} flagged` : 'Run overflow audit'}
-                </button>
-                <button
-                  className={`vlib-audit ${overlapN != null ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => {
-                    if (overlapN != null) setOverlapN(null);
-                    else void runOverlapAudit();
-                  }}
-                  title="Measure every rendered tile for overlapping text labels"
-                >
-                  {overlapN != null ? `Overlap: ${overlapN}` : 'Run overlap audit'}
-                </button>
-                <button
-                  className={`vlib-audit ${truncN != null ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => {
-                    if (truncN != null) setTruncN(null);
-                    else void runTruncationAudit();
-                  }}
-                  title="Measure every rendered tile for truncated (…) labels"
-                >
-                  {truncN != null ? `Truncated: ${truncN}` : 'Run truncation audit'}
-                </button>
-              </>
-            )}
             <button
               className="vlib-theme"
               type="button"
@@ -568,7 +530,44 @@ export function GalleryApp() {
             </button>
           </div>
         </div>
-        <div className="vlib-chips" role="radiogroup" aria-label="Filter by family">
+        {import.meta.env.DEV && (
+          <div className="vlib-audits">
+            <button
+              className={`vlib-audit ${flags ? 'active' : ''}`}
+              type="button"
+              onClick={() => {
+                if (flags) setFlags(null);
+                else void runAudit();
+              }}
+              title="Measure every rendered tile for clipped / scrolled content"
+            >
+              {flags ? `Audit: ${flags.size} flagged` : 'Run overflow audit'}
+            </button>
+            <button
+              className={`vlib-audit ${overlapN != null ? 'active' : ''}`}
+              type="button"
+              onClick={() => {
+                if (overlapN != null) setOverlapN(null);
+                else void runOverlapAudit();
+              }}
+              title="Measure every rendered tile for overlapping text labels"
+            >
+              {overlapN != null ? `Overlap: ${overlapN}` : 'Run overlap audit'}
+            </button>
+            <button
+              className={`vlib-audit ${truncN != null ? 'active' : ''}`}
+              type="button"
+              onClick={() => {
+                if (truncN != null) setTruncN(null);
+                else void runTruncationAudit();
+              }}
+              title="Measure every rendered tile for truncated (…) labels"
+            >
+              {truncN != null ? `Truncated: ${truncN}` : 'Run truncation audit'}
+            </button>
+          </div>
+        )}
+        <FamilyRail label="Filter by family">
           <button
             type="button"
             role="radio"
@@ -596,7 +595,7 @@ export function GalleryApp() {
               {s.label} <span className="vlib-chip-n">{s.types.length}</span>
             </button>
           ))}
-        </div>
+        </FamilyRail>
       </div>
 
       <div className="vlib-body">

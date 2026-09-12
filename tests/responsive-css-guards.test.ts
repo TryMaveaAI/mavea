@@ -228,16 +228,47 @@ describe('gallery family chips — a sticky filter bar must never out-grow the v
     expect(chipRule).toMatch(/flex-shrink:\s*0/);
   });
 
-  it('leaves the scrollbar visible, so the overflow is reachable with a mouse', () => {
-    // `overflow-x: auto` is a capability, not an affordance. The row used to hide its scrollbar on
-    // both engines, so on a desktop with a mouse nothing showed that families continued past the
-    // right edge and nothing but a guessed shift+wheel could reach them — the row read as simply
-    // truncated. Asserting the overflow property alone passed the whole time this was true.
+  it('shows where the row continues, so the overflow is reachable with a mouse', () => {
+    // `overflow-x: auto` is a capability, not an affordance. The row once hid its scrollbar with
+    // nothing in its place, so on a desktop with a mouse nothing showed that families continued
+    // past the right edge and nothing but a guessed shift+wheel could reach them — the row read as
+    // simply truncated. The native bar is hidden again now, and the rail around the row is what
+    // stands in for it: the edge with more fades out and carries an arrow button. Hiding the bar is
+    // only allowed while both of those exist.
     const chipsRule = /\.vlib-chips\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(chipsRule).not.toMatch(/scrollbar-width:\s*none/);
-    const webkit = /\.vlib-chips::-webkit-scrollbar\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(webkit).not.toMatch(/display:\s*none/);
-    expect(webkit).toMatch(/height:\s*\d/);
+    expect(chipsRule).toMatch(/scrollbar-width:\s*none/);
+    expect(css).toMatch(/\.vlib-rail\[data-edge='end'\] \.vlib-chips\s*\{[^}]*mask-image/s);
+    expect(css).toMatch(/\.vlib-rail\[data-edge='start'\] \.vlib-chips\s*\{[^}]*mask-image/s);
+    expect(css).toMatch(/\.vlib-rail-nudge\s*\{[^}]*position:\s*absolute/s);
+    const rail = read('src/gallery/FamilyRail.tsx');
+    expect(rail).toMatch(/className="vlib-rail-nudge is-start"/);
+    expect(rail).toMatch(/className="vlib-rail-nudge is-end"/);
+    expect(rail).toMatch(/aria-label="Show earlier families"/);
+    expect(rail).toMatch(/aria-label="Show more families"/);
+  });
+});
+
+describe('gallery toolbar — the controls stay on one row above a phone', () => {
+  const css = read('src/gallery/gallery.css');
+  const phone = css.slice(css.indexOf('@media (width <= 640px)'));
+
+  it('never lets the desktop controls wrap onto a second line', () => {
+    // At ~1400px the search, the density switch and the theme toggle used to wrap because three
+    // dev-only audit buttons shared their row; the audits have a row of their own now, and the
+    // controls row must not opt back into wrapping outside the phone rule.
+    const controls = /\.vlib-controls\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(controls).not.toMatch(/flex-wrap:\s*wrap/);
+    expect(phone).toMatch(/\.vlib-controls\s*\{[^}]*flex-wrap:\s*wrap/s);
+  });
+
+  it('keeps the dev audit buttons out of the controls row', () => {
+    const app = read('src/gallery/GalleryApp.tsx');
+    const controls = app.slice(
+      app.indexOf('className="vlib-controls"'),
+      app.indexOf('vlib-audits'),
+    );
+    expect(controls).not.toContain('vlib-audit ');
+    expect(css).toMatch(/\.vlib-audits\s*\{[^}]*display:\s*flex/s);
   });
 });
 
@@ -250,11 +281,14 @@ describe('gallery controls — phone layouts keep the density switch and theme c
     expect(phone).not.toMatch(/\.vlib-variants\s*\{[^}]*width:\s*100%/s);
   });
 
-  it('keeps every toolbar action at the 44px touch-target floor', () => {
+  it('keeps every toolbar control at the 44px touch-target floor, and at ONE height', () => {
+    // One row of chrome must read as one line: the density switch used to stand 54px beside a
+    // 44px search and a 38px theme toggle. The switch's segments are shorter than the floor on
+    // purpose and get their finger floor from the coarse-pointer hit rescue in mobile.css.
     expect(css).toMatch(/\.vlib-back\s*\{[^}]*min-height:\s*44px/s);
     expect(css).toMatch(/\.vlib-search\s*\{[^}]*min-height:\s*44px/s);
-    expect(css).toMatch(/\.vlib-variant\s*\{[^}]*min-height:\s*44px/s);
-    expect(phone).toMatch(/\.vlib-theme\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s);
+    expect(css).toMatch(/\.vlib-variants\s*\{[^}]*min-height:\s*44px/s);
+    expect(css).toMatch(/\.vlib-theme\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s);
   });
 });
 
