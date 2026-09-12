@@ -49,7 +49,7 @@ export function ExpectsCard({
           </span>
         )}
         <span className="dash-expects-label">
-          Predictions are free — written from checks you already paid for
+          Predictions make no new call — written from checks that already ran
         </span>
       </div>
     </div>

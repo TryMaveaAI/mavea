@@ -44,16 +44,16 @@ const ALERTS = [
 
 const LAYERS = [
   {
-    tag: 'FREE',
+    tag: 'LOCAL',
     accent: 'var(--insight)',
     name: 'What you and your conversations give it',
-    body: 'The context from your conversations, the values you supply, and any later chat on the topic — all free.',
+    body: 'The context from your conversations, the values you supply, and any later chat on the topic — none of it makes a model call.',
   },
   {
-    tag: 'FREE',
+    tag: 'LOCAL',
     accent: 'var(--insight)',
     name: 'The threshold checks',
-    body: 'Checking whether a number crossed a line you set is a plain comparison — it runs constantly at no cost.',
+    body: 'Checking whether a number crossed a line you set is a plain comparison — it runs constantly, without a model call.',
   },
   {
     tag: 'YOUR KEY',
