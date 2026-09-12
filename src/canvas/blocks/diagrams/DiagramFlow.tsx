@@ -1,7 +1,8 @@
 import { useId, useMemo } from 'react';
 import { richInnerHtml } from '../../../lib/richText';
 import { estimateTextWidth, fitText } from '../../lib/fitText';
-import { honouredPlacements } from './placement';
+import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
+import { honouredPlacements, honouredSpread } from './placement';
 import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type {
@@ -23,6 +24,7 @@ const PAD = 108; // NODE_RX(92) + 16 — ellipses never clip against the viewBox
 const NODE_RX = 92;
 const NODE_RY = 46;
 const MIN_VBH = 300; // floor so a single-row diagram isn't paper-thin
+const ROW_GAP = 60;
 // Minimum centre-to-centre room one column needs: a full node diameter plus a small gap, so
 // same-row ellipses never touch (below this they paint over each other's labels).
 const MIN_COL_SPACING = NODE_RX * 2 + 28;
@@ -76,57 +78,6 @@ interface Placed extends DiagramNode {
   cy: number;
 }
 
-/** Edge depth via Kahn-style longest-path ranking, so `layered` reads left→right in
- *  dependency order. Cycles are tolerated: a node already ranked is never pushed deeper,
- *  which bounds the walk and keeps a feedback loop from ranking infinitely. */
-function rankNodes(nodes: DiagramNode[], edges: DiagramEdge[]): Map<string, number> {
-  const rank = new Map<string, number>();
-  for (const n of nodes) rank.set(n.id, 0);
-  const adj = new Map<string, string[]>();
-  for (const e of edges) {
-    if (!adj.has(e.from)) adj.set(e.from, []);
-    adj.get(e.from)!.push(e.to);
-  }
-  // Relax at most |nodes| times; further passes can only be a cycle re-tightening.
-  for (let pass = 0; pass < nodes.length; pass++) {
-    let moved = false;
-    for (const e of edges) {
-      const next = (rank.get(e.from) ?? 0) + 1;
-      if (next > (rank.get(e.to) ?? 0) && next < nodes.length) {
-        rank.set(e.to, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  return rank;
-}
-
-/** Compute the ideal viewBox height from the content so a horizontal chain of N nodes
- *  gets a compact card rather than a letterboxed 16:10 stage full of whitespace. */
-function computeVbH(nodes: DiagramNode[], edges: DiagramEdge[], layout: DiagramLayout): number {
-  const n = nodes.length;
-  if (n === 0) return MIN_VBH;
-  if (layout === 'cycle') return VIEW_W; // circle → roughly square
-
-  let maxRows: number;
-  if (layout === 'layered') {
-    const rank = rankNodes(nodes, edges);
-    const colDepths = new Map<number, number>();
-    for (const node of nodes) {
-      const r = rank.get(node.id) ?? 0;
-      colDepths.set(r, (colDepths.get(r) ?? 0) + 1);
-    }
-    maxRows = colDepths.size > 0 ? Math.max(...colDepths.values()) : 1;
-  } else {
-    const cols = Math.ceil(Math.sqrt(n));
-    maxRows = Math.ceil(n / cols);
-  }
-  // Each row: 2*NODE_RY + inter-row gap; PAD*2 for top+bottom breathing room.
-  const contentH = maxRows * (NODE_RY * 2) + Math.max(0, maxRows - 1) * 60;
-  return Math.max(MIN_VBH, contentH + PAD * 2);
-}
-
 /** The clear width one edge label needs between two rims, measured at the size it wants to render
  *  at. A label may use EDGE_LABEL_LINES lines, so the requirement is whichever is wider: its
  *  longest unbreakable word, or an even split of the whole string across those lines — the standard
@@ -139,104 +90,107 @@ function edgeLabelGap(label: string): number {
   return Math.min(EDGE_LABEL_MAX_W, needed) + EDGE_LABEL_MARGIN * 2;
 }
 
-/** The horizontal twin of computeVbH: the viewBox WIDTH has to grow with the column count, or
- *  fixed-radius nodes packed into a fixed width collide and paint over each other's labels (the
- *  seven-era "history of X" chain that surfaced this). Each column is guaranteed at least
- *  MIN_COL_SPACING of room; the figure then scales down as one, so nothing ever overlaps. */
-function computeVbW(nodes: DiagramNode[], edges: DiagramEdge[], layout: DiagramLayout): number {
-  const n = nodes.length;
-  if (n === 0) return VIEW_W;
-  if (layout === 'cycle') return VIEW_W; // ringed → square; its height already equals this
+interface Figure {
+  vbW: number;
+  vbH: number;
+  placed: Placed[];
+  /** The index of the node an authored edge endpoint names, or null. */
+  at: (endpoint?: string) => number | null;
+}
 
-  let cols: number;
-  if (layout === 'layered') {
-    const rank = rankNodes(nodes, edges);
-    cols = new Set(nodes.map((nd) => rank.get(nd.id) ?? 0)).size;
-  } else {
-    cols = Math.ceil(Math.sqrt(n));
-  }
-  // layered spreads columns edge-to-edge at ci/(cols-1) → needs `cols-1` spacings; free centres
-  // them at (c+0.5)/cols → needs `cols`. Size the inner width for whichever is denser.
-  const spacings = layout === 'layered' ? Math.max(1, cols - 1) : cols;
+/**
+ * The whole figure in one pass — where every node sits and the viewBox that holds it.
+ *
+ * Placement is keyed by ARRAY INDEX, never by id (see ./layered): keying by id meant a repeated
+ * or missing id collapsed every node sharing it onto one slot, leaving the rest piled at the SVG
+ * origin while the card grew a row taller per node. `layered` columns come from the shared
+ * ranker; `cycle` rings and `free` grids place by position, which never depended on an id at all.
+ *
+ * The viewBox WIDTH grows with the column count, or fixed-radius nodes packed into a fixed width
+ * collide and paint over each other's labels (the seven-era "history of X" chain that surfaced
+ * this). Each column is guaranteed at least MIN_COL_SPACING of room; the figure then scales down
+ * as one, so nothing ever overlaps.
+ */
+function layOut(nodes: DiagramNode[], edges: DiagramEdge[], layout: DiagramLayout): Figure {
+  const at = endpointIndex(nodes);
+  if (nodes.length === 0) return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at };
+
+  // A READABLE explicit placement wins for any node that provides one; everything else is laid
+  // out. See ./placement.
+  const honoured = honouredPlacements(nodes);
+  const auto = nodes.map((_, i) => i).filter((i) => !honoured.has(i));
   // A column is a node diameter plus room for the widest label that has to sit beside it, so the
   // chain widens for long verbs instead of hiding them under its own nodes.
   const labelGap = edges.reduce((w, e) => (e.label ? Math.max(w, edgeLabelGap(e.label)) : w), 0);
   const colSpacing = Math.max(MIN_COL_SPACING, NODE_RX * 2 + labelGap);
-  return Math.max(VIEW_W, spacings * colSpacing + PAD * 2);
-}
+  const plan =
+    layout === 'layered'
+      ? planLayered(
+          nodes.length,
+          resolveLinks(edges, at, (e) => [e.from, e.to]),
+          { placeable: auto, maxColumns: columnsAcross(VIEW_W, PAD, colSpacing) },
+        )
+      : null;
+  const gridCols = Math.max(1, Math.ceil(Math.sqrt(auto.length)));
+  const gridRows = Math.max(1, Math.ceil(auto.length / gridCols));
 
-/** Place nodes that lack explicit coordinates. Honors any node's own x/y (unit 0..1)
- *  and only auto-places the rest, so a hand-tuned figure and an auto one can mix.
- *  `vbH` is the computed viewBox height so node positions scale to the actual canvas. */
-function layoutNodes(
-  nodes: DiagramNode[],
-  edges: DiagramEdge[],
-  layout: DiagramLayout,
-  vbW: number,
-  vbH: number,
-): Placed[] {
+  // The frame has to hold the placements it honoured as well as the layout it planned — those
+  // nodes sit where they asked to, not where the plan's rows are.
+  const spread = honouredSpread(nodes, honoured);
+  const rows = Math.max(plan ? plan.rows : gridRows, spread.rows);
+  const cols = Math.max(plan ? plan.columns.length : gridCols, spread.columns);
+  // layered spreads columns edge-to-edge at ci/(cols-1) → needs `cols-1` spacings; free centres
+  // them at (c+0.5)/cols → needs `cols`. Size the inner width for whichever is denser.
+  const spacings = plan ? Math.max(1, cols - 1) : cols;
+
+  // cycle → a ring, so the stage is roughly square.
+  const vbW = layout === 'cycle' ? VIEW_W : Math.max(VIEW_W, spacings * colSpacing + PAD * 2);
+  const vbH =
+    layout === 'cycle'
+      ? VIEW_W
+      : Math.max(MIN_VBH, rows * (NODE_RY * 2) + Math.max(0, rows - 1) * ROW_GAP + PAD * 2);
+
   const innerW = vbW - PAD * 2;
   const innerH = vbH - PAD * 2;
   const toX = (u: number) => PAD + u * innerW;
   const toY = (u: number) => PAD + u * innerH;
 
-  // A READABLE explicit placement wins for any node that provides one; everything else is laid out.
-  const honoured = honouredPlacements(nodes);
-  const auto = nodes.filter((n) => !honoured.has(n.id));
-  const placed: Placed[] = nodes.map((n) =>
-    honoured.has(n.id)
+  // The seed is the middle of the stage, not (0,0): every auto node is written below, so this is
+  // only what an explicitly-placed node falls back to — and a node nobody can see is worse than
+  // one in the wrong place.
+  const placed: Placed[] = nodes.map((n, i) =>
+    honoured.has(i)
       ? { ...n, cx: toX(clamp01(n.x as number)), cy: toY(clamp01(n.y as number)) }
-      : { ...n, cx: 0, cy: 0 },
+      : { ...n, cx: vbW / 2, cy: vbH / 2 },
   );
-  const byId = new Map(placed.map((p) => [p.id, p]));
 
   if (layout === 'cycle') {
     const r = Math.min(innerW, innerH) / 2;
-    const cx0 = vbW / 2;
-    const cy0 = vbH / 2;
-    auto.forEach((n, i) => {
+    auto.forEach((index, i) => {
       // start at the top and go clockwise so a process reads naturally
       const a = -Math.PI / 2 + (i / Math.max(1, auto.length)) * Math.PI * 2;
-      const p = byId.get(n.id)!;
-      p.cx = cx0 + Math.cos(a) * r;
-      p.cy = cy0 + Math.sin(a) * r;
+      placed[index].cx = vbW / 2 + Math.cos(a) * r;
+      placed[index].cy = vbH / 2 + Math.sin(a) * r;
     });
-    return placed;
-  }
-
-  if (layout === 'layered') {
-    const rank = rankNodes(auto, edges);
-    const cols = new Map<number, DiagramNode[]>();
-    for (const n of auto) {
-      const r = rank.get(n.id) ?? 0;
-      if (!cols.has(r)) cols.set(r, []);
-      cols.get(r)!.push(n);
-    }
-    const colKeys = [...cols.keys()].sort((a, b) => a - b);
-    const span = Math.max(1, colKeys.length - 1);
-    colKeys.forEach((key, ci) => {
-      const col = cols.get(key)!;
-      const x = colKeys.length === 1 ? vbW / 2 : toX(ci / span);
-      col.forEach((n, ri) => {
-        const p = byId.get(n.id)!;
-        p.cx = x;
-        p.cy = col.length === 1 ? vbH / 2 : toY((ri + 0.5) / col.length);
+  } else if (plan) {
+    const span = Math.max(1, plan.columns.length - 1);
+    plan.columns.forEach((column, ci) => {
+      const x = plan.columns.length === 1 ? vbW / 2 : toX(ci / span);
+      column.forEach((index, ri) => {
+        placed[index].cx = x;
+        placed[index].cy = toY(rowFraction(plan, column, ri));
       });
     });
-    return placed;
+  } else {
+    // free: a balanced grid, widest-first, centered
+    auto.forEach((index, i) => {
+      const c = i % gridCols;
+      const r = Math.floor(i / gridCols);
+      placed[index].cx = gridCols === 1 ? vbW / 2 : toX((c + 0.5) / gridCols);
+      placed[index].cy = gridRows === 1 ? vbH / 2 : toY((r + 0.5) / gridRows);
+    });
   }
-
-  // free: a balanced grid, widest-first, centered
-  const cols = Math.ceil(Math.sqrt(auto.length));
-  const rows = Math.max(1, Math.ceil(auto.length / cols));
-  auto.forEach((n, i) => {
-    const c = i % cols;
-    const r = Math.floor(i / cols);
-    const p = byId.get(n.id)!;
-    p.cx = cols === 1 ? vbW / 2 : toX((c + 0.5) / cols);
-    p.cy = rows === 1 ? vbH / 2 : toY((r + 0.5) / rows);
-  });
-  return placed;
+  return { vbW, vbH, placed, at };
 }
 
 function clamp01(n: number): number {
@@ -295,13 +249,10 @@ export function DiagramFlow({
   // don't share (and recolor) each other's markers
   const uid = useId().replace(/:/g, '');
 
-  const vbW = useMemo(() => computeVbW(nodes, edges, layout), [nodes, edges, layout]);
-  const vbH = useMemo(() => computeVbH(nodes, edges, layout), [nodes, edges, layout]);
-  const placed = useMemo(
-    () => layoutNodes(nodes, edges, layout, vbW, vbH),
-    [nodes, edges, layout, vbW, vbH],
+  const { vbW, vbH, placed, at } = useMemo(
+    () => layOut(nodes, edges, layout),
+    [nodes, edges, layout],
   );
-  const byId = useMemo(() => new Map(placed.map((p) => [p.id, p])), [placed]);
   // A wide figure is let out past the stage's default max-width so its nodes don't scale down to
   // an unreadable size — it grows in step with the viewBox, still capped by the card's own width.
   const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
@@ -309,9 +260,9 @@ export function DiagramFlow({
   // arrow tints actually used, so we emit only the markers we need
   const usedTints = useMemo(() => {
     const s = new Set<DiagramEdgeKind>();
-    for (const e of edges) if (byId.has(e.from) && byId.has(e.to)) s.add(e.kind ?? 'default');
+    for (const e of edges) if (at(e.from) !== null && at(e.to) !== null) s.add(e.kind ?? 'default');
     return [...s];
-  }, [edges, byId]);
+  }, [edges, at]);
 
   return (
     <div
@@ -349,14 +300,14 @@ export function DiagramFlow({
 
           {/* edges first so nodes sit on top of the connections */}
           {edges.map((e, i) => {
-            const a = byId.get(e.from);
-            const b = byId.get(e.to);
-            if (!a || !b) return null;
-            return <Edge key={i} a={a} b={b} edge={e} uid={uid} />;
+            const from = at(e.from);
+            const to = at(e.to);
+            if (from === null || to === null) return null;
+            return <Edge key={i} a={placed[from]} b={placed[to]} edge={e} uid={uid} />;
           })}
 
-          {placed.map((n) => (
-            <Node key={n.id} node={n} />
+          {placed.map((n, i) => (
+            <Node key={i} node={n} />
           ))}
 
           {/* …and the labels last of all. A label is the one part of a connection that must never
@@ -364,10 +315,10 @@ export function DiagramFlow({
               between two rims, and on a dense figure an arc's midpoint can land on a node outright.
               Its halo (styles.css `paint-order: stroke`) is what keeps it readable over either. */}
           {edges.map((e, i) => {
-            const a = byId.get(e.from);
-            const b = byId.get(e.to);
-            if (!a || !b || !e.label) return null;
-            return <EdgeLabel key={i} label={e.label} a={a} b={b} />;
+            const from = at(e.from);
+            const to = at(e.to);
+            if (from === null || to === null || !e.label) return null;
+            return <EdgeLabel key={i} label={e.label} a={placed[from]} b={placed[to]} />;
           })}
         </svg>
       </div>

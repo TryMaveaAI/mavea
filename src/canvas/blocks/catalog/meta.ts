@@ -344,6 +344,14 @@ export type ReliabilityTier = 'base' | 'frontier' | 'cutting';
  *                shapes the generic coercer can't safely reconstruct). */
 export type CoercerKind = 'generic' | 'custom';
 
+/** Which array an item's reference fields point into, and which fields those are. */
+export interface ItemRefSpec {
+  /** The item array being referenced — commonly the spec's own `prop` (a tree's children). */
+  to: string;
+  /** The referencing fields. A field holding an array of ids is resolved element by element. */
+  fields: string[];
+}
+
 /**
  * The shape of ONE object inside an item array (e.g. each `{text}` in takeaways'
  * `items`). Generic-coerced components advertise only their top-level prop names to
@@ -365,6 +373,13 @@ export interface ItemSpec {
   /** Field names the model commonly uses for `text`, renamed onto it when present
    *  (e.g. ['label','name','title'] → 'text'). The canonical `text` always wins. */
   textAliases?: string[];
+  /** Set when the renderer can NAME an item that has no `text` — a decision node drawn from its
+   *  learned split, a leaf drawn from its majority class. The field is still the item's text for
+   *  aliasing, for deriving its id and for resolving the references that name it; it is simply no
+   *  longer what makes the item worth drawing, so one without it is kept rather than dropped.
+   *  The ARRAY still has to carry one item with words in it (`resolvesDeclaredItems`): a tree of
+   *  nodes with no question, no outcome and no split is a title over nothing. */
+  textOptional?: boolean;
   /** The field an item must carry as a finite POSITIVE number for anything to draw at all — a
    *  band's thickness, a star's temperature on a log axis, a wave's wavelength. The validator
    *  coerces a numeric string ("12 km") onto it, and an array where no item has one is refused
@@ -385,6 +400,29 @@ export interface ItemSpec {
   /** Additional required fields whose pipe-enum hints are renderer contracts. Use when a renderer
    *  buckets, indexes, or styles by a required sibling field rather than by `text`. */
   closedVocabFields?: string[];
+  /** The field this item's OWN identity lives in, for a renderer that keys layout or links by it.
+   *  Two items keyed to one id draw at one point — one missing id piled a whole pipeline's labels
+   *  at the SVG origin — so the validator DERIVES a missing id from the item's text and makes a
+   *  repeated one unique, rather than rejecting the item and losing the card. An array whose
+   *  reference fixture keys its items by `id` gets this by default (`engine/itemIdentity`'s
+   *  `identitySpecs`); declare it to name a different field or to carry `refs`. `requiredFields`
+   *  stays for fields nothing can invent. */
+  idField?: string;
+  /** Set when the id is painted as CONTENT — a commit's hash, which the reader sees and would
+   *  recognise as wrong if it were invented. Such an array is left exactly as authored: no id is
+   *  derived from the item's text, and `requiredFields` decides what an item without one costs. */
+  idIsContent?: boolean;
+  /** Fields on this item that NAME another item's `idField` — an edge's endpoints, a child list, a
+   *  parent reference. Resolved leniently against that array (exact id, then case/whitespace
+   *  drift, then an unambiguous `text`), since a model routinely writes the label it can see where
+   *  an id belongs. A value that resolves to nothing is left exactly as authored: an arrow the
+   *  renderer skips is a smaller loss than a block dropped for having no edges left. */
+  refs?: ItemRefSpec;
+  /** TOP-LEVEL props that name one of THIS array's ids — a tree's `rootId`, a proof's
+   *  `conclusionId`. Resolved the same lenient way, because a root the renderer cannot find is a
+   *  titled card with nothing under it: `byId[rootId]` is undefined and the recursion never
+   *  starts. */
+  refProps?: string[];
   /** A nested item array carried on each item (e.g. commandk's groups carry
    *  `commands`). Coerced and taught recursively. */
   children?: ItemSpec;

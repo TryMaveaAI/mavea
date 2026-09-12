@@ -1003,8 +1003,18 @@ export const CATALOG_EVERYDAY: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A genealogy chart — name/date cards laid out by generation with mating lines and sibship bars. No photos. Use for "draw my family tree", "who are my grandparents", "family tree for X".',
-    itemShapes: [{ prop: 'people', text: 'name' }],
+    itemShapes: [
+      {
+        prop: 'people',
+        text: 'name',
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'people', fields: ['parents', 'partner'] },
+        refProps: ['rootId'],
+      },
+    ],
     propHints: {
+      'people[].id': 'unique nonblank id within this block',
       'people[].parents': 'one or two parent ids, e.g. ["mom-id","dad-id"] or ["mom-id"]',
       'people[].partner': 'a spouse/partner id, only needed if they share no child of record',
       'people[].death': 'a year or date; its presence alone marks the person deceased',

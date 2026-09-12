@@ -627,7 +627,7 @@ describe('diagramflow coercion', () => {
     expect(r!.blocks.every((b) => b.type !== 'diagramflow')).toBe(true);
     expect(r!.blocks.some((b) => b.type === 'insight')).toBe(true);
   });
-  it('accepts source/target aliases and de-dupes repeated node ids', () => {
+  it('accepts source/target aliases and makes a repeated node id unique', () => {
     const payload = {
       title: 'T',
       blocks: [
@@ -638,7 +638,7 @@ describe('diagramflow coercion', () => {
             nodes: [
               { id: 'a', name: 'A' }, // 'name' alias for label
               { id: 'b', label: 'B' },
-              { id: 'a', label: 'A dup' }, // duplicate id — first wins
+              { id: 'a', label: 'A dup' }, // duplicate id — the first writer keeps it
             ],
             edges: [{ source: 'a', target: 'b' }], // source/target aliases
           },
@@ -648,9 +648,12 @@ describe('diagramflow coercion', () => {
     const r = validateLiveResponse(payload, allowed);
     const b = r!.blocks[0];
     if (b.type !== 'diagramflow') throw new Error('expected diagramflow');
-    expect(b.props.nodes).toHaveLength(2);
+    // Every authored node survives: a repeat costs the later node its key, not its place.
+    expect(b.props.nodes).toHaveLength(3);
     expect(b.props.nodes[0].label).toBe('A');
-    expect(b.props.edges).toHaveLength(1);
+    expect(b.props.nodes[0].id).toBe('a');
+    expect(new Set(b.props.nodes.map((n) => n.id)).size).toBe(3);
+    expect(b.props.edges).toEqual([{ from: 'a', to: 'b' }]);
   });
   it('snaps an invalid node kind / edge kind to the default by dropping it', () => {
     const payload = {

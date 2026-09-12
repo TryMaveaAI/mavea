@@ -10,7 +10,8 @@ import { useId, useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SysArchDiagramProps, SysArchNode, SysArchEdge, SysArchNodeKind } from './types';
-import { honouredPlacements } from './placement';
+import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
+import { honouredPlacements, honouredSpread } from './placement';
 import { richInnerHtml } from '../../../lib/richText';
 
 type Props = SysArchDiagramProps & { delay?: number };
@@ -66,91 +67,60 @@ interface Placed extends SysArchNode {
   cy: number;
 }
 
-/** Rank every node by longest path over the edge graph (Kahn-style relax, bounded by node
- *  count) — identical technique to DiagramFlow's `layered` column assignment, so a client → LB
- *  → service → database chain reads left-to-right regardless of authored order. */
-function rankNodes(nodes: SysArchNode[], edges: SysArchEdge[]): Map<string, number> {
-  const rank = new Map<string, number>();
-  for (const n of nodes) rank.set(n.id, 0);
-  for (let pass = 0; pass < nodes.length; pass++) {
-    let moved = false;
-    for (const e of edges) {
-      if (!rank.has(e.from) || !rank.has(e.to)) continue;
-      const next = (rank.get(e.from) ?? 0) + 1;
-      if (next > (rank.get(e.to) ?? 0) && next < nodes.length) {
-        rank.set(e.to, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  return rank;
+interface Figure {
+  vbW: number;
+  vbH: number;
+  placed: Placed[];
+  /** The index of the node an authored edge endpoint names, or null. */
+  at: (endpoint?: string) => number | null;
 }
 
-function computeVbH(nodes: SysArchNode[], edges: SysArchEdge[]): number {
-  if (nodes.length === 0) return MIN_VBH;
-  const rank = rankNodes(nodes, edges);
-  const colDepths = new Map<number, number>();
-  for (const n of nodes) {
-    const r = rank.get(n.id) ?? 0;
-    colDepths.set(r, (colDepths.get(r) ?? 0) + 1);
-  }
-  const maxRows = colDepths.size > 0 ? Math.max(...colDepths.values()) : 1;
-  const contentH = maxRows * NODE_H + Math.max(0, maxRows - 1) * ROW_GAP;
-  return Math.max(MIN_VBH, contentH + PAD * 2);
-}
-
-/** Horizontal twin of computeVbH: the viewBox width grows with the column count so fixed-width
- *  nodes packed into it never collide. */
-function computeVbW(nodes: SysArchNode[], edges: SysArchEdge[]): number {
-  if (nodes.length === 0) return VIEW_W;
-  const rank = rankNodes(nodes, edges);
-  const cols = new Set(nodes.map((n) => rank.get(n.id) ?? 0)).size;
-  return Math.max(VIEW_W, Math.max(1, cols - 1) * MIN_COL_SPACING + PAD * 2);
-}
-
-function layoutNodes(
-  nodes: SysArchNode[],
-  edges: SysArchEdge[],
-  vbW: number,
-  vbH: number,
-): Placed[] {
-  const innerW = vbW - PAD * 2;
-  const innerH = vbH - PAD * 2;
-  const toX = (u: number) => PAD + u * innerW;
-  const toY = (u: number) => PAD + u * innerH;
+/** The whole figure in one pass — which node sits in which column, and the viewBox that holds
+ *  them. Columns come from ./layered, which ranks by ARRAY INDEX rather than by id: a repeated
+ *  id used to collapse every node sharing it onto one slot, leaving the rest piled at the SVG
+ *  origin under a card grown a row taller per node. */
+function layOut(nodes: SysArchNode[], edges: SysArchEdge[]): Figure {
+  const at = endpointIndex(nodes);
+  if (nodes.length === 0) return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at };
 
   // Only a placement this figure can actually read wins; the rest are laid out by rank. See
   // ./placement — an out-of-scale coordinate used to clamp to 1 and pile the whole diagram into
   // the bottom-right corner.
   const honoured = honouredPlacements(nodes);
-  const placed: Placed[] = nodes.map((n) =>
-    honoured.has(n.id)
-      ? { ...n, cx: toX(clamp01(n.x as number)), cy: toY(clamp01(n.y as number)) }
-      : { ...n, cx: 0, cy: 0 },
-  );
-  const byId = new Map(placed.map((p) => [p.id, p]));
+  const auto = nodes.map((_, i) => i).filter((i) => !honoured.has(i));
+  const links = resolveLinks(edges, at, (e) => [e?.from, e?.to]);
+  const plan = planLayered(nodes.length, links, {
+    placeable: auto,
+    maxColumns: columnsAcross(VIEW_W, PAD, MIN_COL_SPACING),
+  });
 
-  const auto = nodes.filter((n) => !honoured.has(n.id));
-  const rank = rankNodes(auto, edges);
-  const cols = new Map<number, SysArchNode[]>();
-  for (const n of auto) {
-    const r = rank.get(n.id) ?? 0;
-    if (!cols.has(r)) cols.set(r, []);
-    cols.get(r)!.push(n);
-  }
-  const colKeys = [...cols.keys()].sort((a, b) => a - b);
-  const span = Math.max(1, colKeys.length - 1);
-  colKeys.forEach((key, ci) => {
-    const col = cols.get(key)!;
-    const x = colKeys.length === 1 ? vbW / 2 : toX(ci / span);
-    col.forEach((n, ri) => {
-      const p = byId.get(n.id)!;
-      p.cx = x;
-      p.cy = col.length === 1 ? vbH / 2 : toY((ri + 0.5) / col.length);
+  // The frame has to hold the placements it honoured as well as the layout it planned —
+  // those nodes sit where they asked to, not where the plan's rows are.
+  const spread = honouredSpread(nodes, honoured);
+  const rows = Math.max(plan.rows, spread.rows);
+  const columns = Math.max(plan.columns.length, spread.columns);
+  const contentH = rows * NODE_H + Math.max(0, rows - 1) * ROW_GAP;
+  const vbH = Math.max(MIN_VBH, contentH + PAD * 2);
+  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * MIN_COL_SPACING + PAD * 2);
+  const innerW = vbW - PAD * 2;
+  const innerH = vbH - PAD * 2;
+  const toX = (u: number) => PAD + u * innerW;
+  const toY = (u: number) => PAD + u * innerH;
+
+  const placed: Placed[] = nodes.map((n, i) =>
+    honoured.has(i)
+      ? { ...n, cx: toX(clamp01(n.x as number)), cy: toY(clamp01(n.y as number)) }
+      : { ...n, cx: vbW / 2, cy: vbH / 2 },
+  );
+  const span = Math.max(1, plan.columns.length - 1);
+  plan.columns.forEach((column, ci) => {
+    const x = plan.columns.length === 1 ? vbW / 2 : toX(ci / span);
+    column.forEach((index, ri) => {
+      placed[index].cx = x;
+      placed[index].cy = toY(rowFraction(plan, column, ri));
     });
   });
-  return placed;
+  return { vbW, vbH, placed, at };
 }
 
 function clamp01(n: number): number {
@@ -378,13 +348,10 @@ export function SysArchDiagram({
   const safeNodes = graph.nodes;
   const safeEdges = graph.edges;
 
-  const vbW = useMemo(() => computeVbW(safeNodes, safeEdges), [safeNodes, safeEdges]);
-  const vbH = useMemo(() => computeVbH(safeNodes, safeEdges), [safeNodes, safeEdges]);
-  const placed = useMemo(
-    () => layoutNodes(safeNodes, safeEdges, vbW, vbH),
-    [safeNodes, safeEdges, vbW, vbH],
+  const { vbW, vbH, placed, at } = useMemo(
+    () => layOut(safeNodes, safeEdges),
+    [safeNodes, safeEdges],
   );
-  const byId = useMemo(() => new Map(placed.map((p) => [p.id, p])), [placed]);
   const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
 
   return (
@@ -419,11 +386,11 @@ export function SysArchDiagram({
           </defs>
 
           {safeEdges.map((e, i) => {
-            const a = byId.get(e.from);
-            const b = byId.get(e.to);
-            if (!a || !b) return null;
-            const s = rimStart(a, b);
-            const t = rim(a, b);
+            const from = at(e.from);
+            const to = at(e.to);
+            if (from === null || to === null) return null;
+            const s = rimStart(placed[from], placed[to]);
+            const t = rim(placed[from], placed[to]);
             return (
               <line
                 key={i}
@@ -475,11 +442,11 @@ export function SysArchDiagram({
           {/* Edge captions render in their own pass AFTER every node so a dense layout's
               opaque node fills can never paint over a caption sitting between two nodes. */}
           {safeEdges.map((e, i) => {
-            const a = byId.get(e.from);
-            const b = byId.get(e.to);
-            if (!a || !b) return null;
-            const s = rimStart(a, b);
-            const t = rim(a, b);
+            const from = at(e.from);
+            const to = at(e.to);
+            if (from === null || to === null) return null;
+            const s = rimStart(placed[from], placed[to]);
+            const t = rim(placed[from], placed[to]);
             const mx = (s.x + t.x) / 2;
             const my = (s.y + t.y) / 2;
             const caption = [e.label, e.protocol]

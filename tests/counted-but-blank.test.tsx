@@ -14,6 +14,7 @@ import { DataTable } from '../src/canvas/blocks/tables/DataTable';
 import { ComparisonMatrix } from '../src/canvas/ComparisonMatrix';
 import { hydrateFromSession } from '../src/live/useLiveTurn';
 import type { ConversationSpec } from '../src/data/conversation';
+import type { DecisionNode } from '../src/canvas/blocks/flows/types';
 import { hasKeyedRows, resolvesKeyedRows, usableBlock } from '../src/canvas/lib/empty';
 
 const COLUMNS = [
@@ -123,9 +124,9 @@ describe('the renderer refuses it too, for frames the validator never sees', () 
 describe('a baked demo frame cannot paint one either', () => {
   // Shards are frozen artifacts whose trust came from the validator that baked them, and replay
   // never revisits that judgement — so the loader re-asks the one question that matters.
-  it('drops the block the CFO shard froze, and leaves the rest of the frame alone', async () => {
+  it('drops the block the quarterly-review shard froze, and leaves the rest of the frame alone', async () => {
     const { loadDemoConversation } = await import('../src/demo/corpus');
-    const convo = await loadDemoConversation('cfo');
+    const convo = await loadDemoConversation('pm');
     expect(convo).not.toBeNull();
     const blanks = (convo?.frames ?? []).flatMap((f) =>
       f.spec.blocks.filter((b) => !resolvesKeyedRows(b.type, b.props)),
@@ -137,7 +138,7 @@ describe('a baked demo frame cannot paint one either', () => {
 
   it('keeps every tour stop pointing at the block it was written about', async () => {
     const { loadDemoConversation } = await import('../src/demo/corpus');
-    const convo = await loadDemoConversation('cfo');
+    const convo = await loadDemoConversation('pm');
     for (const frame of convo?.frames ?? []) {
       for (const stop of frame.tour ?? []) {
         expect(stop.index).toBeGreaterThanOrEqual(0);
@@ -498,5 +499,79 @@ describe('a restored session cannot cast a dead block', () => {
         ],
       }),
     ).toBe(true);
+  });
+});
+
+// A decision tree is a tree of QUESTIONS, and its nodes are allowed to be nameless one at a time:
+// a classifier's splits are named by `splitFeature`, its leaves by their class counts, so requiring
+// a question on every node would drop the very tree the component offers. The array-level guard
+// read that permission as "this shape has no text worth checking" and skipped it wholesale — so a
+// tree of bare ids passed as usable and drew empty boxes joined by yes/no branches. Optional per
+// NODE, still required of the ARRAY: at least one node has to say something.
+describe('decisiontree — a tree of nameless nodes is not a tree', () => {
+  // itemShapes ride the catalog's detail shards, and the alias repair that reads them is exactly
+  // what decides these cases — without the fetch this would pin the fails-closed path instead.
+  beforeAll(async () => {
+    await ensureDetails(['decisiontree']);
+  });
+
+  function tree(nodes: unknown) {
+    return validateLiveResponse(
+      {
+        title: 'Irises',
+        narration: 'Here is how the tree splits.',
+        blocks: [
+          { type: 'decisiontree', props: { title: 'Which iris is it?', rootId: 'root', nodes } },
+        ],
+      },
+      new Set(['decisiontree']),
+      1,
+    )?.blocks.find((b) => b.type === 'decisiontree');
+  }
+
+  const nodesOf = (block: ReturnType<typeof tree>): DecisionNode[] => block?.props.nodes ?? [];
+
+  // Whichever field a node's words land in. The alias repair copies the first synonym it finds
+  // onto `question`, and the fixed-key filter then keeps only the fields the structural reference
+  // shows — so a leaf authored with `outcome` reaches the canvas with its text under `question`.
+  // What matters to a reader is that the words arrive, not which key carried them.
+  const nameOf = (n: DecisionNode) => n.question || n.outcome || n.splitFeature;
+
+  it('drops a tree whose nodes carry nothing but ids', () => {
+    expect(tree([{ id: 'root', yes: 'a', no: 'b' }, { id: 'a' }, { id: 'b' }])).toBeUndefined();
+  });
+
+  it('keeps a classifier named by its split rather than a question', () => {
+    // The case `textOptional` was written for: not one node here has a question, and the tree is
+    // still readable — the root is named by the feature it splits on, the leaves by their classes.
+    const block = tree([
+      { id: 'root', splitFeature: 'petal length', threshold: 2.45, yes: 'a', no: 'b' },
+      { id: 'a', classDistribution: [{ className: 'setosa', count: 50 }] },
+      {
+        id: 'b',
+        classDistribution: [
+          { className: 'versicolor', count: 54 },
+          { className: 'virginica', count: 46 },
+        ],
+      },
+    ]);
+    expect(block, 'a split is a name the renderer paints').toBeDefined();
+    // The leaves are nameless on their own and must not be thinned out from under the root.
+    expect(nodesOf(block)).toHaveLength(3);
+    expect(nameOf(nodesOf(block)[0])).toBe('petal length');
+  });
+
+  it('keeps a plain tree, and the leaves keep their verdicts', () => {
+    const block = tree([
+      { id: 'root', question: 'Is it raining?', yes: 'a', no: 'b' },
+      { id: 'a', outcome: 'Take an umbrella' },
+      { id: 'b', outcome: 'Leave it at home' },
+    ]);
+    expect(block).toBeDefined();
+    expect(nodesOf(block).map(nameOf)).toEqual([
+      'Is it raining?',
+      'Take an umbrella',
+      'Leave it at home',
+    ]);
   });
 });

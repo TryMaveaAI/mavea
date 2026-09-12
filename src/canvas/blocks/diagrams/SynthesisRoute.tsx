@@ -12,6 +12,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SynthesisRouteProps, SynthesisNode, SynthesisEdge, SynthesisRole } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
 
 type Props = SynthesisRouteProps & { delay?: number };
 
@@ -20,6 +21,14 @@ const NODE_RX = 96;
 const NODE_RY = 44;
 const PAD = NODE_RX + 16;
 const MIN_VBH = 300;
+const ROW_GAP = 80;
+// A column needs a compound's full width plus a gap of room, or same-row compounds overlap —
+// the viewBox width grows to guarantee it, the same way its height already grows with rows.
+const MIN_COL_SPACING = NODE_RX * 2 + 40;
+// The stage renders at ≤ STAGE_BASE_W px (`.sr-stage`'s CSS max-width); a wider viewBox scales
+// down inside it, so the stage's own ceiling grows with the box or a long route paints its
+// compounds at a fraction of the size a short one gets.
+const STAGE_BASE_W = 820;
 
 const ROLE_FILL: Record<SynthesisRole, string> = {
   start: 'color-mix(in oklab, var(--presence) 16%, var(--surface-elevated-2))',
@@ -41,72 +50,54 @@ function safeRole(role: unknown): SynthesisRole {
   return role === 'start' || role === 'target' ? role : 'intermediate';
 }
 
-/** Rank every node by longest path over the edge graph — the same Kahn-style relax DiagramFlow's
- *  `layered` column assignment uses, bounded by node count. A retrosynthetic disconnection is
+interface Figure {
+  vbW: number;
+  vbH: number;
+  placed: Placed[];
+  /** The index of the compound an authored edge endpoint names, or null. */
+  at: (endpoint?: string) => number | null;
+  /** How wide the stage may grow, so a long route scales rather than stretching its nodes. */
+  stageMaxW: number;
+}
+
+/** The whole route in one pass — which compound sits in which column, and the viewBox that holds
+ *  them. Columns come from ./layered, which ranks by ARRAY INDEX rather than by id so a repeated
+ *  id can never collapse two compounds onto one slot. A retrosynthetic disconnection is
  *  conventionally drawn FROM the target back TO its precursor (the reasoning direction), the
- *  reverse of a forward step's precursor→product `from`/`to` — so a retro edge relaxes the
- *  constraint in the opposite direction (its `from` ranks after its `to`) to keep every route
- *  reading chronologically left-to-right no matter which arrows the model drew forward vs. retro. */
-function rankNodes(nodes: SynthesisNode[], edges: SynthesisEdge[]): Map<string, number> {
-  const rank = new Map<string, number>();
-  for (const n of nodes) rank.set(n.id, 0);
-  for (let pass = 0; pass < nodes.length; pass++) {
-    let moved = false;
-    for (const e of edges) {
-      if (!rank.has(e.from) || !rank.has(e.to)) continue;
-      const [earlier, later] = e.direction === 'retro' ? [e.to, e.from] : [e.from, e.to];
-      const next = (rank.get(earlier) ?? 0) + 1;
-      if (next > (rank.get(later) ?? 0) && next < nodes.length) {
-        rank.set(later, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  return rank;
-}
+ *  reverse of a forward step's precursor→product `from`/`to` — so a retro edge ranks in the
+ *  opposite direction, keeping every route chronological left-to-right no matter which arrows the
+ *  model drew forward vs. retro. */
+function layOut(nodes: SynthesisNode[], edges: SynthesisEdge[]): Figure {
+  const at = endpointIndex(nodes);
+  if (nodes.length === 0)
+    return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at, stageMaxW: STAGE_BASE_W };
 
-function computeVbH(nodes: SynthesisNode[], edges: SynthesisEdge[]): number {
-  if (nodes.length === 0) return MIN_VBH;
-  const rank = rankNodes(nodes, edges);
-  const colDepths = new Map<number, number>();
-  for (const n of nodes) {
-    const r = rank.get(n.id) ?? 0;
-    colDepths.set(r, (colDepths.get(r) ?? 0) + 1);
-  }
-  const maxRows = colDepths.size > 0 ? Math.max(...colDepths.values()) : 1;
-  const contentH = maxRows * (NODE_RY * 2) + Math.max(0, maxRows - 1) * 80;
-  return Math.max(MIN_VBH, contentH + PAD * 2);
-}
+  const links = resolveLinks(edges, at, (e) =>
+    e?.direction === 'retro' ? [e.to, e.from] : [e?.from, e?.to],
+  );
+  const plan = planLayered(nodes.length, links, {
+    maxColumns: columnsAcross(VIEW_W, PAD, MIN_COL_SPACING),
+  });
 
-function layoutNodes(nodes: SynthesisNode[], edges: SynthesisEdge[], vbH: number): Placed[] {
-  const innerW = VIEW_W - PAD * 2;
+  const contentH = plan.rows * (NODE_RY * 2) + Math.max(0, plan.rows - 1) * ROW_GAP;
+  const vbH = Math.max(MIN_VBH, contentH + PAD * 2);
+  const vbW = Math.max(VIEW_W, Math.max(1, plan.columns.length - 1) * MIN_COL_SPACING + PAD * 2);
+  const innerW = vbW - PAD * 2;
   const innerH = vbH - PAD * 2;
   const toX = (u: number) => PAD + u * innerW;
   const toY = (u: number) => PAD + u * innerH;
+  const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
 
-  const placed: Placed[] = nodes.map((n) => ({ ...n, cx: 0, cy: 0 }));
-  const byId = new Map(placed.map((p) => [p.id, p]));
-
-  const rank = rankNodes(nodes, edges);
-  const cols = new Map<number, SynthesisNode[]>();
-  for (const n of nodes) {
-    const r = rank.get(n.id) ?? 0;
-    if (!cols.has(r)) cols.set(r, []);
-    cols.get(r)!.push(n);
-  }
-  const colKeys = [...cols.keys()].sort((a, b) => a - b);
-  const span = Math.max(1, colKeys.length - 1);
-  colKeys.forEach((key, ci) => {
-    const col = cols.get(key)!;
-    const x = colKeys.length === 1 ? VIEW_W / 2 : toX(ci / span);
-    col.forEach((n, ri) => {
-      const p = byId.get(n.id)!;
-      p.cx = x;
-      p.cy = col.length === 1 ? vbH / 2 : toY((ri + 0.5) / col.length);
+  const placed: Placed[] = nodes.map((n) => ({ ...n, cx: vbW / 2, cy: vbH / 2 }));
+  const span = Math.max(1, plan.columns.length - 1);
+  plan.columns.forEach((column, ci) => {
+    const x = plan.columns.length === 1 ? vbW / 2 : toX(ci / span);
+    column.forEach((index, ri) => {
+      placed[index].cx = x;
+      placed[index].cy = toY(rowFraction(plan, column, ri));
     });
   });
-  return placed;
+  return { vbW, vbH, placed, at, stageMaxW };
 }
 
 function rim(from: Placed, to: Placed): { x: number; y: number } {
@@ -311,9 +302,10 @@ export function SynthesisRoute({
   const safeNodes = graph.nodes;
   const safeEdges = graph.edges;
 
-  const vbH = useMemo(() => computeVbH(safeNodes, safeEdges), [safeNodes, safeEdges]);
-  const placed = useMemo(() => layoutNodes(safeNodes, safeEdges, vbH), [safeNodes, safeEdges, vbH]);
-  const byId = useMemo(() => new Map(placed.map((p) => [p.id, p])), [placed]);
+  const { vbW, vbH, placed, at, stageMaxW } = useMemo(
+    () => layOut(safeNodes, safeEdges),
+    [safeNodes, safeEdges],
+  );
 
   return (
     <div
@@ -324,10 +316,10 @@ export function SynthesisRoute({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
 
-      <div className="dg-stage sr-stage">
+      <div className="dg-stage sr-stage" style={{ maxWidth: stageMaxW }}>
         <svg
           className="dg-svg"
-          viewBox={`0 0 ${VIEW_W} ${vbH}`}
+          viewBox={`0 0 ${vbW} ${vbH}`}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label={title}
@@ -358,14 +350,14 @@ export function SynthesisRoute({
           </defs>
 
           {safeEdges.map((e, i) => {
-            const a = byId.get(e.from);
-            const b = byId.get(e.to);
-            if (!a || !b) return null;
+            const from = at(e.from);
+            const to = at(e.to);
+            if (from === null || to === null) return null;
             return (
               <Edge
                 key={i}
-                a={a}
-                b={b}
+                a={placed[from]}
+                b={placed[to]}
                 edge={e}
                 forwardArrow={forwardArrow}
                 retroArrow={retroArrow}

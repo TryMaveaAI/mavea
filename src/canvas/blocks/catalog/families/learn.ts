@@ -731,9 +731,19 @@ export const CATALOG_LEARN: ComponentCatalog = [
       'bar. Generation rows (I, II, III…) and child centring are computed from the parent graph. ' +
       'Pick it for autosomal / X-linked inheritance, genetic counseling, "trace the trait through ' +
       'the family".',
-    itemShapes: [{ prop: 'people', text: 'label', textAliases: ['name', 'id'] }],
+    itemShapes: [
+      {
+        prop: 'people',
+        text: 'label',
+        textAliases: ['name', 'id'],
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'people', fields: ['parents', 'partner'] },
+      },
+    ],
     propHints: {
-      'people[].id': "a stable unique id, referenced by other people's parents/partner",
+      'people[].id':
+        "a unique nonblank id within this block, referenced by other people's parents/partner",
       'people[].sex': "'male' (square) | 'female' (circle) | 'unknown' (diamond)",
       'people[].affected': 'true to fill the symbol (the person expresses the trait)',
       'people[].carrier': 'true to draw a centre dot (unaffected carrier); ignored when affected',

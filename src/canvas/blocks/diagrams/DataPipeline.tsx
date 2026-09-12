@@ -11,6 +11,8 @@ import { useId, useMemo } from 'react';
 import { richInnerHtml } from '../../../lib/richText';
 import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../../../icons/icons';
+import { columnsAcross, endpointIndex, planLayered, resolveLinks, rowFraction } from './layered';
+import { honouredPlacements, honouredSpread } from './placement';
 import type {
   DataPipelineProps,
   DataPipelineStage,
@@ -64,88 +66,60 @@ interface Placed extends DataPipelineStage {
   cy: number;
 }
 
-/** Rank every stage by longest path over the edge graph (Kahn-style relax, bounded by stage
- *  count) — the same technique DiagramFlow's `layered` mode and SysArchDiagram both use, so a
- *  source → transform → transform → sink chain reads left-to-right regardless of authored
- *  order, and a fan-out (one transform feeding two sinks) still ranks correctly. */
-function rankStages(stages: DataPipelineStage[], edges: DataPipelineEdge[]): Map<string, number> {
-  const rank = new Map<string, number>();
-  for (const s of stages) rank.set(s.id, 0);
-  for (let pass = 0; pass < stages.length; pass++) {
-    let moved = false;
-    for (const e of edges) {
-      if (!rank.has(e.from) || !rank.has(e.to)) continue;
-      const next = (rank.get(e.from) ?? 0) + 1;
-      if (next > (rank.get(e.to) ?? 0) && next < stages.length) {
-        rank.set(e.to, next);
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  return rank;
+interface Figure {
+  vbW: number;
+  vbH: number;
+  placed: Placed[];
+  /** The index of the stage an authored edge endpoint names, or null. */
+  at: (endpoint?: string) => number | null;
 }
 
-function computeVbH(stages: DataPipelineStage[], edges: DataPipelineEdge[]): number {
-  if (stages.length === 0) return MIN_VBH;
-  const rank = rankStages(stages, edges);
-  const colDepths = new Map<number, number>();
-  for (const s of stages) {
-    const r = rank.get(s.id) ?? 0;
-    colDepths.set(r, (colDepths.get(r) ?? 0) + 1);
-  }
-  const maxRows = colDepths.size > 0 ? Math.max(...colDepths.values()) : 1;
-  const contentH = maxRows * NODE_H + Math.max(0, maxRows - 1) * ROW_GAP;
-  return Math.max(MIN_VBH, contentH + PAD * 2);
-}
+/** The whole figure in one pass — which stage sits in which column, and the viewBox that holds
+ *  them. Columns come from ./layered, which ranks by ARRAY INDEX: a model that omits `id` (or
+ *  repeats one) used to collapse every colliding stage onto a single slot, piling their labels
+ *  at the SVG origin while the card grew a row taller per stage. */
+function layOut(stages: DataPipelineStage[], edges: DataPipelineEdge[]): Figure {
+  const at = endpointIndex(stages);
+  if (stages.length === 0) return { vbW: VIEW_W, vbH: MIN_VBH, placed: [], at };
 
-/** Horizontal twin of computeVbH: the viewBox width grows with the column count so fixed-width
- *  stages packed into it never collide. */
-function computeVbW(stages: DataPipelineStage[], edges: DataPipelineEdge[]): number {
-  if (stages.length === 0) return VIEW_W;
-  const rank = rankStages(stages, edges);
-  const cols = new Set(stages.map((s) => rank.get(s.id) ?? 0)).size;
-  return Math.max(VIEW_W, Math.max(1, cols - 1) * MIN_COL_SPACING + PAD * 2);
-}
+  const honoured = honouredPlacements(stages);
+  const auto = stages.map((_, i) => i).filter((i) => !honoured.has(i));
+  const links = resolveLinks(edges, at, (e) => [e?.from, e?.to]);
+  const plan = planLayered(stages.length, links, {
+    placeable: auto,
+    maxColumns: columnsAcross(VIEW_W, PAD, MIN_COL_SPACING),
+  });
 
-function layoutStages(
-  stages: DataPipelineStage[],
-  edges: DataPipelineEdge[],
-  vbW: number,
-  vbH: number,
-): Placed[] {
+  // The frame has to hold the placements it honoured as well as the layout it planned —
+  // those nodes sit where they asked to, not where the plan's rows are.
+  const spread = honouredSpread(stages, honoured);
+  const rows = Math.max(plan.rows, spread.rows);
+  const columns = Math.max(plan.columns.length, spread.columns);
+  const contentH = rows * NODE_H + Math.max(0, rows - 1) * ROW_GAP;
+  const vbH = Math.max(MIN_VBH, contentH + PAD * 2);
+  const vbW = Math.max(VIEW_W, Math.max(1, columns - 1) * MIN_COL_SPACING + PAD * 2);
   const innerW = vbW - PAD * 2;
   const innerH = vbH - PAD * 2;
   const toX = (u: number) => PAD + u * innerW;
   const toY = (u: number) => PAD + u * innerH;
 
-  const placed: Placed[] = stages.map((s) =>
-    Number.isFinite(s.x) && Number.isFinite(s.y)
+  // The seed is the middle of the card, not (0,0): every auto stage is written below, so this is
+  // only ever what an explicitly-placed stage falls back to — and a stage nobody can see is
+  // worse than one in the wrong place.
+  const placed: Placed[] = stages.map((s, i) =>
+    honoured.has(i)
       ? { ...s, cx: toX(clamp01(s.x as number)), cy: toY(clamp01(s.y as number)) }
-      : { ...s, cx: 0, cy: 0 },
+      : { ...s, cx: vbW / 2, cy: vbH / 2 },
   );
-  const byId = new Map(placed.map((p) => [p.id, p]));
-
-  const auto = stages.filter((s) => !(Number.isFinite(s.x) && Number.isFinite(s.y)));
-  const rank = rankStages(auto, edges);
-  const cols = new Map<number, DataPipelineStage[]>();
-  for (const s of auto) {
-    const r = rank.get(s.id) ?? 0;
-    if (!cols.has(r)) cols.set(r, []);
-    cols.get(r)!.push(s);
-  }
-  const colKeys = [...cols.keys()].sort((a, b) => a - b);
-  const span = Math.max(1, colKeys.length - 1);
-  colKeys.forEach((key, ci) => {
-    const col = cols.get(key)!;
-    const x = colKeys.length === 1 ? vbW / 2 : toX(ci / span);
-    col.forEach((s, ri) => {
-      const p = byId.get(s.id)!;
-      p.cx = x;
-      p.cy = col.length === 1 ? vbH / 2 : toY((ri + 0.5) / col.length);
+  const span = Math.max(1, plan.columns.length - 1);
+  plan.columns.forEach((column, ci) => {
+    const x = plan.columns.length === 1 ? vbW / 2 : toX(ci / span);
+    column.forEach((index, ri) => {
+      placed[index].cx = x;
+      placed[index].cy = toY(rowFraction(plan, column, ri));
     });
   });
-  return placed;
+  return { vbW, vbH, placed, at };
 }
 
 function clamp01(n: number): number {
@@ -287,13 +261,10 @@ export function DataPipeline({
   const safeStages = useMemo(() => (Array.isArray(stages) ? stages : []), [stages]);
   const safeEdges = useMemo(() => (Array.isArray(edges) ? edges : []), [edges]);
 
-  const vbW = useMemo(() => computeVbW(safeStages, safeEdges), [safeStages, safeEdges]);
-  const vbH = useMemo(() => computeVbH(safeStages, safeEdges), [safeStages, safeEdges]);
-  const placed = useMemo(
-    () => layoutStages(safeStages, safeEdges, vbW, vbH),
-    [safeStages, safeEdges, vbW, vbH],
+  const { vbW, vbH, placed, at } = useMemo(
+    () => layOut(safeStages, safeEdges),
+    [safeStages, safeEdges],
   );
-  const byId = useMemo(() => new Map(placed.map((p) => [p.id, p])), [placed]);
   const stageMaxW = Math.round((STAGE_BASE_W * vbW) / VIEW_W);
 
   // A dense linear lineage (5+ sequential stages, an ordinary shape for an ETL chain) packs
@@ -306,9 +277,11 @@ export function DataPipeline({
     () =>
       safeEdges
         .map((e, i) => {
-          const a = byId.get(e?.from);
-          const b = byId.get(e?.to);
-          if (!a || !b) return null;
+          const from = at(e?.from);
+          const to = at(e?.to);
+          if (from === null || to === null) return null;
+          const a = placed[from];
+          const b = placed[to];
           const s = rimStart(a, b);
           const t = rim(a, b);
           const label = typeof e.label === 'string' ? e.label : '';
@@ -324,7 +297,7 @@ export function DataPipeline({
             label: string;
           } => r !== null,
         ),
-    [safeEdges, byId],
+    [safeEdges, placed, at],
   );
 
   return (
@@ -369,7 +342,7 @@ export function DataPipeline({
             const label = typeof p.label === 'string' && p.label ? p.label : p.id || 'Stage';
             const kind = p.kind ?? 'transform';
             return (
-              <g key={p.id ?? i}>
+              <g key={i}>
                 <g transform={`translate(${p.cx} ${shapeCy})`}>
                   {stageShape(
                     kind,

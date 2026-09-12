@@ -49,6 +49,27 @@ export const CATALOG_CHARTS1: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Flow diagram showing how quantities move between layered stages; reveals bottlenecks and splits.',
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'title', 'id'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'links',
+        requiredFields: ['source', 'target'],
+        refs: { to: 'nodes', fields: ['source', 'target'] },
+      },
+    ],
+    propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
+      'nodes[].layer': 'integer column, 0-based left to right',
+      'links[].source': 'exactly one existing nodes[].id',
+      'links[].target': 'exactly one existing nodes[].id',
+      'links[].value': 'numeric flow size; ribbon width scales with it',
+    },
   }),
   createMeta('network', {
     family: 'charts1',
@@ -63,6 +84,26 @@ export const CATALOG_CHARTS1: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Graph of interconnected entities with circle or grid layout; shows topology and clusters.',
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'title', 'id'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'edges',
+        requiredFields: ['source', 'target'],
+        refs: { to: 'nodes', fields: ['source', 'target'] },
+      },
+    ],
+    propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
+      'nodes[].group': 'integer cluster index — same group shares a tint',
+      'edges[].source': 'exactly one existing nodes[].id',
+      'edges[].target': 'exactly one existing nodes[].id',
+    },
   }),
   createMeta('radar', {
     family: 'charts1',
@@ -205,9 +246,22 @@ export const CATALOG_CHARTS1: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Circular relationship/flow diagram: named entities ring the perimeter, and flows between them draw as arced ribbons sized by value — like a Sankey bent into a circle. Reads two-way movement between the SAME nodes (a gain and a loss) cleanly, which a layered Sankey cannot. Use for trade/migration between regions, budget movement between departments, account movement between tiers, traffic between services.',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['name', 'title', 'id'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'title', 'id'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'flows',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
-      'nodes[].id': 'a short stable key, referenced by flows[].from/to',
+      'nodes[].id': 'unique nonblank id within this block, referenced by flows[].from/to',
       'nodes[].label': 'the display name shown on the ring',
       'flows[].from': "a nodes[].id — the flow's source",
       'flows[].to': "a nodes[].id — the flow's destination",

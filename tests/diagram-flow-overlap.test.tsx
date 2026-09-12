@@ -4,6 +4,7 @@ import { DiagramFlow } from '../src/canvas/blocks/diagrams/DiagramFlow';
 import { DataPipeline } from '../src/canvas/blocks/diagrams/DataPipeline';
 import { SysArchDiagram } from '../src/canvas/blocks/diagrams/SysArchDiagram';
 import { estimateTextWidth } from '../src/canvas/lib/fitText';
+import { honouredPlacements, honouredSpread } from '../src/canvas/blocks/diagrams/placement';
 
 // The real-world case that surfaced the bug: a seven-era history of gaming as a left-to-right
 // chain. With a fixed viewBox width, the fixed-size nodes were packed closer than their own
@@ -234,5 +235,114 @@ describe('SysArchDiagram reads placement by the same rule', () => {
     const xs = centres(container, 'sa-label');
     expect(xs).toHaveLength(3);
     expect(new Set(xs).size).toBe(3);
+  });
+});
+
+describe('honouredSpread', () => {
+  // A figure sizes its frame from the layout it planned, and an honoured node is by definition
+  // not in that layout — it lands on the unit point it authored, inside a frame some other
+  // node's row count chose. This is the frame those placements need for themselves.
+  const spreadOf = (points: { x?: number; y?: number }[]) =>
+    honouredSpread(points, honouredPlacements(points));
+
+  it('asks for nothing when no placement was honoured', () => {
+    // Coordinates on a 0..100 scale are unreadable, so nothing is honoured and the planned
+    // frame stands exactly as it was.
+    expect(
+      spreadOf([
+        { x: 10, y: 50 },
+        { x: 90, y: 50 },
+      ]),
+    ).toEqual({ rows: 0, columns: 0 });
+  });
+
+  it('asks for one band when a single node is placed', () => {
+    expect(spreadOf([{ x: 0.25, y: 0.75 }])).toEqual({ rows: 1, columns: 1 });
+  });
+
+  it('counts a row of three as three columns, because columns sit edge to edge', () => {
+    // x 0 / 0.5 / 1 are half the canvas apart, so two spacings separate them — and a layered
+    // figure draws columns at c/(columns - 1), which takes one column more than it has
+    // spacings. Every node shares a y, so one row holds them all.
+    expect(
+      spreadOf([
+        { x: 0, y: 0.5 },
+        { x: 0.5, y: 0.5 },
+        { x: 1, y: 0.5 },
+      ]),
+    ).toEqual({ rows: 1, columns: 3 });
+  });
+
+  it('counts three stacked bands as three rows', () => {
+    // Nine nodes on three y bands 0.4 of the canvas apart. Rows sit at (r + 0.5)/rows, so each
+    // one clears a node on its own and no extra row is bought. They share one x.
+    const stacked = [0.1, 0.5, 0.9].flatMap((y) => [0, 1, 2].map(() => ({ x: 0.5, y })));
+    expect(spreadOf(stacked)).toEqual({ rows: 3, columns: 1 });
+  });
+
+  it('never grows the frame for two bands that already touch', () => {
+    // 0.5 and 0.55 sit a twentieth of the canvas apart, so separating them by a whole band
+    // would take twenty rows: a card of empty space around two nodes that still touch. The
+    // answer is capped at the number of nodes there are to stack — two.
+    expect(
+      spreadOf([
+        { x: 0.5, y: 0.5 },
+        { x: 0.5, y: 0.55 },
+      ]),
+    ).toEqual({ rows: 2, columns: 1 });
+  });
+});
+
+describe('a frame grows to hold the placements it honoured', () => {
+  // Nine nodes hand-placed on a 3x3 unit grid. Every one of them is honoured, so the plan they
+  // displaced is empty and nothing in the layout asks for height — the figure used to draw all
+  // three bands inside its 300-unit floor, which puts 92-unit-tall nodes 46 apart and overlaps
+  // every band with the next by half a node. The frame is sized from the placements instead.
+  const GRID = [0.1, 0.5, 0.9];
+  const nodes = GRID.flatMap((y, r) =>
+    GRID.map((x, c) => ({ id: `n${r}${c}`, label: `Step ${r}${c}`, x, y })),
+  );
+  const NODE_H = 92; // NODE_RY is 46 — a node is its own diameter tall
+  const NODE_W = 184; // …and NODE_RX 92 wide
+  const MIN_VBH = 300; // the single-row floor the figure keeps when nothing asks for more
+
+  const render9 = () =>
+    render(<DiagramFlow title="Stacked" layout="free" nodes={nodes} edges={[]} />);
+
+  /** The distinct label positions down (or across) the figure. Every label here is one line at
+   *  one size, so a label rides a fixed offset from its node's centre and the gaps between
+   *  bands are the gaps between the nodes themselves. */
+  function bands(container: HTMLElement, axis: 'x' | 'y'): number[] {
+    const at = [...container.querySelectorAll('text.dg-node-label tspan')].map(
+      (t) => Math.round(parseFloat(t.getAttribute(axis) || '0') * 100) / 100,
+    );
+    return [...new Set(at)].sort((a, b) => a - b);
+  }
+
+  function assertBandsClear(list: number[], minGap: number, axis: string): void {
+    expect(list, `expected three ${axis} bands`).toHaveLength(3);
+    for (let i = 1; i < list.length; i++) {
+      const gap = list[i] - list[i - 1];
+      expect(
+        gap,
+        `${axis} bands ${i - 1}→${i} overlap (gap ${gap.toFixed(1)} < ${minGap})`,
+      ).toBeGreaterThanOrEqual(minGap);
+    }
+  }
+
+  it('keeps three placed rows a full node apart', () => {
+    const { container } = render9();
+    assertBandsClear(bands(container, 'y'), NODE_H, 'y');
+
+    const vbH = parseFloat(
+      (container.querySelector('svg.dg-svg')?.getAttribute('viewBox') ?? '0 0 0 0').split(' ')[3],
+    );
+    expect(vbH, 'the frame kept its single-row floor for a three-row figure').toBeGreaterThan(
+      MIN_VBH,
+    );
+  });
+
+  it('keeps three placed columns a full node apart', () => {
+    assertBandsClear(bands(render9().container, 'x'), NODE_W, 'x');
   });
 });

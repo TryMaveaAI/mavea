@@ -150,6 +150,7 @@ export interface ItemTextShape {
   prop: string;
   text?: string;
   textAliases?: readonly string[];
+  textOptional?: boolean;
   magnitude?: string;
 }
 
@@ -184,6 +185,9 @@ export function magnitudeOf(v: unknown): number | null {
 export function resolvesDeclaredItems(props: unknown, shapes: readonly ItemTextShape[]): boolean {
   const p = asRecord(props);
   for (const shape of shapes) {
+    // An array whose renderer names its items from other fields has no text to require. One whose
+    // text is merely OPTIONAL per item (a classifier's split nodes) still has to show words on at
+    // least one of them — the aliases carry every field the renderer can name a node from.
     if (!shape.text) continue;
     const items = asArray(p[shape.prop]).map(asRecord);
     if (items.length === 0) continue;

@@ -75,8 +75,29 @@ export const CATALOG_FLOWS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       "Branching yes/no decision logic tree leading to outcomes. Optionally an ML classifier tree: a node's splitFeature+threshold renders as a learned split ('feature ≤ threshold') instead of a plain question, and classDistribution (className+count per class) renders as a class-count bar + legend at that node, the way a trained decision-tree classifier is diagrammed.",
+    itemShapes: [
+      {
+        prop: 'nodes',
+        // `outcome` last: a leaf carries no question, and its own outcome text is the only name
+        // it has — better a leaf labelled by its verdict than a leaf dropped for being a leaf.
+        text: 'question',
+        textAliases: ['label', 'text', 'splitFeature', 'outcome'],
+        // A classifier's nodes are drawn from their split (`splitFeature ≤ threshold`) and their
+        // class distribution, so requiring a question would drop the very tree the blurb offers —
+        // and take the root the rest of the tree hangs off with it.
+        textOptional: true,
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'nodes', fields: ['yes', 'no'] },
+        refProps: ['rootId'],
+      },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
+      'nodes[].yes': 'exactly one existing nodes[].id — the branch taken when the answer is yes',
+      'nodes[].no': 'exactly one existing nodes[].id — the branch taken when the answer is no',
       'nodes[].impurityMetric': "'gini'|'entropy'",
+      rootId: 'the id of the first question asked',
     },
   }),
   createMeta('goaltree', {
@@ -104,8 +125,25 @@ export const CATALOG_FLOWS: ComponentCatalog = [
     colMin: 8,
     coercer: 'generic',
     blurb: 'Directed acyclic graph: dependencies, tasks, and x/y layout.',
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'title', 'task'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'edges',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[].status': "'done'|'active'|'todo'|'blocked'|'risk'",
+      'edges[].from': 'exactly one existing nodes[].id',
+      'edges[].to': 'exactly one existing nodes[].id',
     },
   }),
   createMeta('milestones', {
@@ -187,6 +225,22 @@ export const CATALOG_FLOWS: ComponentCatalog = [
     colMin: 8,
     coercer: 'generic',
     blurb: 'Recursive org structure with parent-child relationships.',
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'name',
+        textAliases: ['label', 'title', 'person'],
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'nodes', fields: ['children'] },
+        refProps: ['rootId'],
+      },
+    ],
+    propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
+      'nodes[].children': "ids of this person's direct reports",
+      rootId: 'the id of the person at the top of the chart',
+    },
   }),
   createMeta('issuetree', {
     family: 'flows',
@@ -199,7 +253,20 @@ export const CATALOG_FLOWS: ComponentCatalog = [
     colDefault: 10,
     colMin: 8,
     coercer: 'generic',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['name', 'question', 'title'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'question', 'title'],
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'nodes', fields: ['children'] },
+      },
+    ],
+    propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
+      'nodes[].children': "ids of this branch's sub-issues",
+    },
     blurb:
       "McKinsey-style MECE issue tree: rootQuestion broken left-to-right into mutually exclusive branches down to leaf boxes carrying a finding. nodes:[{id,label,children?(ids),isLeaf?,finding?}] — a node's top-level branches are inferred as whichever ids no other node claims as a child.",
   }),
@@ -288,7 +355,18 @@ export const CATALOG_FLOWS: ComponentCatalog = [
       'Tiered progression / tech tree: skills in tier bands with prerequisite edges, point costs, and locked/unlocked states.',
     intents: ['plan', 'explain', 'reference'],
     domains: ['sports', 'education', 'productivity'],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['name', 'title', 'skill'],
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'nodes', fields: ['requires'] },
+      },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[].state': "'locked'|'available'|'unlocked'|'maxed'",
       'nodes[].tier': 'integer band, 0-based (0 = foundation row at top)',
       'nodes[].requires': 'array of node ids that must be unlocked first',

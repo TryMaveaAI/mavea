@@ -50,6 +50,7 @@ import type {
   BlankKind,
 } from '../data/conversation';
 import { usableBlock } from '../canvas/lib/empty';
+import { deriveItemIds, identitySpecs, resolveItemIdentity } from './itemIdentity';
 import type { BlanksProps } from '../canvas/blocks/forms/types';
 import type {
   PhotoProps,
@@ -1505,6 +1506,17 @@ function sanitizeItemsExcept(value: Json, rawField: string, verbatim: boolean): 
   });
 }
 
+/** The other spelling of an endpoint field. `{from, to}` and `{source, target}` are one pair
+ *  under two names, and a model writes whichever the example it is imitating used — so a sankey
+ *  whose links read `{from, to}` lost every link to the required-field check below, and with it
+ *  the whole diagram. */
+const ENDPOINT_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  from: ['source'],
+  to: ['target'],
+  source: ['from'],
+  target: ['to'],
+};
+
 /** Normalize the objects inside ONE item array against its ItemSpec: rename a synonym
  *  onto the field the renderer reads (`label`→`text`), recurse into a nested child
  *  array, then DROP any item still missing its text — so a list-style card can never
@@ -1520,13 +1532,21 @@ function normalizeItems(value: Json, spec: ItemSpec): Json[] {
         return null;
       }
       const item = { ...(raw as Record<string, Json>) };
+      // An endpoint under its other name, adopted before the required-field check that would
+      // otherwise drop the item — and with it an array the component `requires`.
+      for (const field of spec.refs?.fields ?? []) {
+        if (asStr(item[field], '').trim()) continue;
+        const endpoint = alias(item, ...(ENDPOINT_ALIASES[field] ?? []));
+        if (endpoint) item[field] = endpoint;
+      }
       if (spec.text) {
         // Canonical field wins; else adopt the first non-empty synonym, then require it.
         if (!asStr(item[spec.text], '').trim()) {
           const v = alias(item, ...(spec.textAliases ?? []));
           if (v) item[spec.text] = v;
         }
-        if (!asStr(item[spec.text], '').trim()) return null; // still blank → drop
+        // Blank text drops the item, unless the renderer names it from other fields.
+        if (!spec.textOptional && !asStr(item[spec.text], '').trim()) return null;
       }
       // A magnitude written as "12 km" is 12 to the renderer that sizes a band by it; leave a
       // value with no number in it alone, so the usability judgement can refuse the array.
@@ -1845,9 +1865,17 @@ function coerceGeneric(
   // before the shallow required check so malformed nested arrays never reach React.
   const reference = STRUCTURAL_REFERENCES[meta.type];
   if (!reference || typeof reference !== 'object' || Array.isArray(reference)) return null;
+  // Settle ids and the references that name them BEFORE the reference projection, which requires
+  // an item's declared fields: the id an edge points at is derivable from the item's own text, so
+  // an item is repaired rather than dropped for lacking one. The reference says which arrays are
+  // keyed; the catalog entry adds what it knows on top.
+  resolveItemIdentity(repaired, identitySpecs(meta, reference));
   const canonicalItemFields = new Map<string, Set<string>>();
   const registerItemShape = (spec: ItemSpec, path: string): void => {
-    const required = new Set([...(spec.text ? [spec.text] : []), ...(spec.requiredFields ?? [])]);
+    const required = new Set([
+      ...(spec.text && !spec.textOptional ? [spec.text] : []),
+      ...(spec.requiredFields ?? []),
+    ]);
     if (required.size) canonicalItemFields.set(`${path}[]`, required);
     if (spec.children) registerItemShape(spec.children, `${path}[].${spec.children.prop}`);
   };
@@ -2039,18 +2067,24 @@ const DIAGRAM_EDGE_KINDS = new Set<DiagramEdgeKind>(['default', 'accent', 'good'
 const DIAGRAM_LAYOUTS = new Set<DiagramLayout>(['cycle', 'layered', 'free']);
 
 /** Coerce a loose node/edge graph into DiagramFlowProps. Nested + id-referential, so it's
- *  a custom builder: nodes need a usable id+label, and an edge is kept only if BOTH its
- *  endpoints survived (a dangling edge would just be dropped by the renderer, but pruning
- *  here keeps the validated block honest). Returns null with fewer than two nodes — a
- *  diagram of one box is not a diagram, and the caller falls back to a simpler shape. */
+ *  a custom builder: a node needs a label (its id is derived from that label when the model
+ *  omitted one), and an edge is kept only if BOTH its endpoints survived (a dangling edge would
+ *  just be dropped by the renderer, but pruning here keeps the validated block honest). Returns
+ *  null with fewer than two nodes — a diagram of one box is not a diagram, and the caller falls
+ *  back to a simpler shape. */
 function buildDiagramFlow(p: Record<string, Json>): DiagramFlowProps | null {
   const title = asStr(p.title).trim();
   if (!title) return null;
 
-  const nodes: DiagramNode[] = asArr(p.nodes)
-    .map((n): DiagramNode | null => {
+  // Ids are derived from each node's own label where the model omitted or repeated one: an
+  // unnamed node still has to be placeable and still has to be reachable by an edge, and dropping
+  // it here took an otherwise complete flow under the two-node floor.
+  const rawNodes = asArr(p.nodes);
+  const nodeIds = deriveItemIds(rawNodes, 'id', (n) => alias(asObj(n), 'label', 'name', 'text'));
+  const nodes: DiagramNode[] = rawNodes
+    .map((n, index): DiagramNode | null => {
       const no = asObj(n);
-      const id = asStr(no.id).trim();
+      const id = nodeIds[index];
       const label = (alias(no, 'label', 'name', 'text') || '').trim();
       if (!id || !label) return null;
       const node: DiagramNode = { id, label };
@@ -2066,23 +2100,20 @@ function buildDiagramFlow(p: Record<string, Json>): DiagramFlowProps | null {
     })
     .filter((n): n is DiagramNode => n !== null);
 
-  // de-dupe ids (a model can repeat one) — first wins, so edges resolve deterministically
-  const seen = new Set<string>();
-  const uniqueNodes = nodes.filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)));
-  if (uniqueNodes.length < 2) return null;
+  if (nodes.length < 2) return null;
 
-  const ids = new Set(uniqueNodes.map((n) => n.id));
+  const ids = new Set(nodes.map((n) => n.id));
   // Edge endpoints resolve leniently: exact id first, then case/whitespace drift, then a node's
   // LABEL when it is unambiguous — models routinely write {from:'Extract', to:'Transform'}
   // against ids e1/e2. Exact-id-only silently dropped every such edge, and a flow diagram whose
   // flow is gone still LOOKED intact: title, nodes, no arrows.
   const byLoose = new Map<string, string>();
-  for (const n of uniqueNodes) {
+  for (const n of nodes) {
     const loose = n.id.trim().toLowerCase();
     if (!byLoose.has(loose)) byLoose.set(loose, n.id);
   }
   const byLabel = new Map<string, string | null>();
-  for (const n of uniqueNodes) {
+  for (const n of nodes) {
     const key = n.label.trim().toLowerCase();
     // Ambiguous labels (a decision diagram's repeated "Yes"/"No") resolve to nothing.
     byLabel.set(key, byLabel.has(key) ? null : n.id);
@@ -2114,7 +2145,7 @@ function buildDiagramFlow(p: Record<string, Json>): DiagramFlowProps | null {
   // grid of unconnected ellipses under a flow title is a broken card, not a sparse one.
   if (rawEdges.length > 0 && edges.length === 0) return null;
 
-  const result: DiagramFlowProps = { title, nodes: uniqueNodes, edges };
+  const result: DiagramFlowProps = { title, nodes, edges };
   const icon = coerceIcon(p.icon);
   if (icon) result.icon = icon;
   if (optStr(p.iconColor)) result.iconColor = coerceColor(p.iconColor);

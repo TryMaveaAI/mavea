@@ -42,6 +42,7 @@ import type {
   ProtocolPacketField,
   SortStep,
   TournamentMatchup,
+  SynthesisRole,
 } from '../src/canvas/blocks/diagrams/types';
 
 // A <title> tooltip nested inside a <text> node is part of its DOM textContent too, so reading
@@ -886,6 +887,31 @@ describe('SynthesisRoute', () => {
     const text = container.querySelector('text.sr-smiles')!.textContent!;
     expect(text.endsWith('…')).toBe(true);
     expect(text.length).toBeLessThan(aspirin.length + 10);
+  });
+
+  it('lets the stage grow with a long route instead of shrinking the compounds into it', () => {
+    // The stage's ceiling was a fixed 820px, and a linked chain widens its viewBox one column per
+    // step — so a seven-step route scaled every compound down to about half the size a one-step
+    // route paints them at. The ceiling follows the box now, in the same proportion.
+    const stageOf = (c: HTMLElement) =>
+      (c.querySelector('.sr-stage') as HTMLElement).style.maxWidth;
+    const widthOf = (c: HTMLElement) =>
+      Number(c.querySelector('svg.dg-svg')!.getAttribute('viewBox')!.split(' ')[2]);
+    const one = render(route(aspirin));
+    expect(widthOf(one.container)).toBe(1000);
+    expect(stageOf(one.container)).toBe('820px');
+
+    const chain = Array.from({ length: 7 }, (_, i) => ({
+      id: `c${i}`,
+      label: `Compound ${i}`,
+      smiles: aspirin,
+      role: (i === 0 ? 'start' : i === 6 ? 'target' : 'intermediate') as SynthesisRole,
+    }));
+    const steps = chain.slice(1).map((node, i) => ({ from: `c${i}`, to: node.id }));
+    const seven = render(<SynthesisRoute title="Route" nodes={chain} edges={steps} />);
+    const vbW = widthOf(seven.container);
+    expect(vbW).toBeGreaterThan(1000);
+    expect(stageOf(seven.container)).toBe(`${Math.round((820 * vbW) / 1000)}px`);
   });
 });
 

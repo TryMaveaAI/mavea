@@ -122,8 +122,24 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Entity-relationship diagram; tables as boxes with typed fields, lines show cardinality.',
-    itemShapes: [{ prop: 'entities', text: 'label', textAliases: ['name', 'table', 'entity'] }],
+    itemShapes: [
+      {
+        prop: 'entities',
+        text: 'label',
+        textAliases: ['name', 'table', 'entity'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'relationships',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'entities', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
+      'entities[].id': 'unique nonblank id within this block',
+      'relationships[].from': 'exactly one existing entities[].id',
+      'relationships[].to': 'exactly one existing entities[].id',
       'entities[].fields[].key': "'pk'|'fk'",
       'relationships[].fromCard': "'1'|'many'",
       'relationships[].toCard': "'1'|'many'",
@@ -147,10 +163,15 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         prop: 'components',
         text: 'label',
         textAliases: ['name', 'id', 'value'],
+        idField: 'id',
         requiredFields: ['id', 'kind', 'x', 'y'],
         closedVocabFields: ['kind'],
       },
-      { prop: 'wires', requiredFields: ['from', 'to'] },
+      {
+        prop: 'wires',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'components', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'components[].id': 'unique nonblank id within this block',
@@ -179,10 +200,15 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         prop: 'blocks',
         text: 'label',
         textAliases: ['name', 'id'],
+        idField: 'id',
         requiredFields: ['id', 'kind'],
         closedVocabFields: ['kind'],
       },
-      { prop: 'wires', requiredFields: ['from', 'to'] },
+      {
+        prop: 'wires',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'blocks', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'blocks[].id': 'unique nonblank id within this block',
@@ -263,10 +289,15 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         prop: 'nodes',
         text: 'label',
         textAliases: ['name', 'id'],
+        idField: 'id',
         requiredFields: ['id', 'kind'],
         closedVocabFields: ['kind'],
       },
-      { prop: 'edges', requiredFields: ['from', 'to'] },
+      {
+        prop: 'edges',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'nodes[].id': 'unique nonblank id within this block',
@@ -294,11 +325,27 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'An ETL/data-pipeline lineage diagram: offline batch data flow from a source through transform steps to a sink or intermediate store, each drawn as a distinct shape — source is a rounded rectangle with an inbound-arrow glyph, transform is a hexagon, sink/store share a database-cylinder silhouette told apart by a small icon. Auto-laid-out left-to-right by the edge graph. Distinct from sysarchdiagram (a live request/response service architecture) — this is where data comes from and what happens to it on the way to rest. Use for "draw the ETL pipeline", "how does data flow from raw logs to the feature store", a training-data pipeline, an ELT/batch-ingestion diagram.',
-    itemShapes: [{ prop: 'stages', text: 'label', textAliases: ['name', 'id'] }],
+    itemShapes: [
+      {
+        prop: 'stages',
+        text: 'label',
+        textAliases: ['name', 'id'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'edges',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'stages', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
+      'stages[].id': 'unique nonblank id within this block',
       'stages[].kind': "'source'|'transform'|'sink'|'store'",
       'stages[].sub': 'optional second line — a tech name, a cadence, a row count',
       'edges[].label': 'what happens on this hop, e.g. "dedup", "join labels", "batch insert"',
+      'edges[].from': 'exactly one existing stages[].id',
+      'edges[].to': 'exactly one existing stages[].id',
     },
     intents: ['explain', 'teach', 'reference'],
     domains: ['code', 'tech', 'science'],
@@ -317,10 +364,23 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     blurb:
       'A STRIDE cybersecurity threat model: dashed trust-boundary rects host labeled asset chips (process/datastore/external-entity), a small marker on each threatened asset is red for an open threat and muted for a mitigated one, and a full threat register lists every entry below. Use for a system security review, "what could go wrong with this design", an architecture threat-model writeup.',
     itemShapes: [
-      { prop: 'assets', text: 'name', textAliases: ['label', 'title'] },
-      { prop: 'boundaries', text: 'label', textAliases: ['name', 'title'] },
+      {
+        prop: 'assets',
+        text: 'name',
+        textAliases: ['label', 'title'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'boundaries',
+        text: 'label',
+        textAliases: ['name', 'title'],
+        refs: { to: 'assets', fields: ['contains'] },
+      },
+      { prop: 'threats', refs: { to: 'assets', fields: ['assetId'] } },
     ],
     propHints: {
+      'assets[].id': 'unique nonblank id within this block',
       'assets[].kind': "'process'|'datastore'|'external-entity'",
       'boundaries[].contains': 'asset ids hosted inside this trust boundary',
       'threats[].assetId': 'the id of the asset this threat targets',
@@ -344,8 +404,22 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'An ecological food web: organisms sit in horizontal tier bands (lowest trophic level at the bottom), joined by curved arrows from prey to predator. Distinct from pyramidtiers (an abstract biomass/energy pyramid with no individual organisms) — this is the actual who-eats-whom graph. Use for a food chain / food web diagram, an ecosystem teardown, "what eats what here".',
-    itemShapes: [{ prop: 'organisms', text: 'label', textAliases: ['name', 'species'] }],
+    itemShapes: [
+      {
+        prop: 'organisms',
+        text: 'label',
+        textAliases: ['name', 'species'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'links',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'organisms', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
+      'organisms[].id': 'unique nonblank id within this block',
       tiers:
         'tier names, lowest trophic level first, e.g. ["Producers", "Primary consumers", "Apex predators"]',
       'organisms[].tier': 'index into tiers, 0 = lowest',
@@ -448,9 +522,14 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         prop: 'nodes',
         text: 'label',
         textAliases: ['name', 'compound', 'formula'],
+        idField: 'id',
         requiredFields: ['id'],
       },
-      { prop: 'edges', requiredFields: ['from', 'to'] },
+      {
+        prop: 'edges',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'nodes[].id': 'unique nonblank id within this block',
@@ -561,9 +640,22 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A character / relationship map — people (or entities) as nodes on a ring, joined by typed, labeled edges (ally, rival, family, love, mentor, betrays). Use for a novel or show cast, factions and alliances, an org or stakeholder web. Unlike a plain network, the edge KIND drives the color and factions tint and cluster the nodes.',
-    itemShapes: [{ prop: 'nodes', text: 'name', textAliases: ['label', 'character', 'person'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'name',
+        textAliases: ['label', 'character', 'person'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'links',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
-      'nodes[].id': 'stable id the links reference',
+      'nodes[].id': 'unique nonblank id within this block, referenced by the links',
       'nodes[].role': 'optional one-line role/title under the name, e.g. "protagonist"',
       'nodes[].faction':
         'optional group/side name; same-faction nodes share a tint and cluster on the ring',
@@ -608,7 +700,16 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'CS data-structure diagram: arrays/linked lists/stacks/queues as cells, or a binary tree/BST/heap laid out from the data. Pick for "show me a BST", "how a queue works", algorithm walkthroughs.',
-    itemShapes: [{ prop: 'nodes', text: 'value', textAliases: ['val', 'key', 'label'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'value',
+        textAliases: ['val', 'key', 'label'],
+        idField: 'id',
+        refs: { to: 'nodes', fields: ['left', 'right'] },
+        refProps: ['highlight'],
+      },
+    ],
     propHints: {
       kind: "'array'|'linkedlist'|'stack'|'queue'|'tree'|'bst'|'heap'",
       cells: 'ordered values for linear kinds; stack index 0 = bottom, queue index 0 = front',
@@ -766,7 +867,9 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Digital-logic circuit of standard gate symbols (AND/OR/NOT/NAND/NOR/XOR/XNOR) wired input to output; signal values are shown on wires (green=1, muted=0) and an optional adjacent truth table highlights the live input row. Gate outputs are evaluated from the inputs. Use for a half-adder, a multiplexer from gates, explaining XOR/NAND.',
-    itemShapes: [{ prop: 'inputs', text: 'label', textAliases: ['name', 'id', 'signal'] }],
+    itemShapes: [
+      { prop: 'inputs', text: 'label', textAliases: ['name', 'id', 'signal'], idField: 'id' },
+    ],
     propHints: {
       'inputs[].value': '0|1 — current logic level on this input (default 0)',
       'gates[].kind': "'AND'|'OR'|'NOT'|'NAND'|'NOR'|'XOR'|'XNOR'",
@@ -917,8 +1020,25 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'Interactive BFS/DFS step-through on a graph: nodes colour-coded by traversal state — current (presence), frontier/queue (warning), visited (muted), unvisited (default) — with Prev/Next controls and a live queue/stack panel. Use for "walk me through BFS", "show DFS step by step". Never for a static graph — use network; for array-algorithm step-throughs use algorithmtrace.',
-    itemShapes: [{ prop: 'nodes', text: 'label', textAliases: ['id', 'name'] }],
+    itemShapes: [
+      {
+        prop: 'nodes',
+        text: 'label',
+        textAliases: ['id', 'name'],
+        idField: 'id',
+        requiredFields: ['id'],
+      },
+      {
+        prop: 'edges',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
+      // A step's three fields name nodes, so they resolve alongside the edges. No `text`: a
+      // caption-less step is still a state of the walk.
+      { prop: 'steps', refs: { to: 'nodes', fields: ['current', 'visited', 'frontier'] } },
+    ],
     propHints: {
+      'nodes[].id': 'unique nonblank id within this block',
       'nodes[]': '{ id, label?, x?, y? } — x/y in 0..100 units; omit to auto-ring',
       'edges[]': '{ from, to, weight?, directed? }',
       'steps[]': '{ caption, current?, visited?, frontier? } — ids of nodes in each state',
@@ -1049,9 +1169,19 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A Gentzen-style natural-deduction proof tree: premises stack above an inference bar with the rule name at its right, the conclusion sits below, and a bracketed leaf like "[P]" renders as a discharged assumption. Built from a FLAT steps list — each step cites the ids it is inferred from — and the tree assembles and centres itself. Use for propositional/predicate-logic derivations, "prove Q ∧ R from these premises", natural-deduction or sequent-calculus homework. Never for geometry statements/reasons proofs — use twocolumnproof.',
-    itemShapes: [{ prop: 'steps', text: 'statement', textAliases: ['text', 'formula', 'sequent'] }],
+    itemShapes: [
+      {
+        prop: 'steps',
+        text: 'statement',
+        textAliases: ['text', 'formula', 'sequent'],
+        idField: 'id',
+        requiredFields: ['id'],
+        refs: { to: 'steps', fields: ['from'] },
+      },
+    ],
     propHints: {
-      'steps[].id': 'stable id other steps cite in their from lists',
+      'steps[].id':
+        'unique nonblank id within this block, cited by other steps in their from lists',
       'steps[].statement':
         'the formula this line asserts, e.g. "P → Q"; wrap a discharged assumption in square brackets, e.g. "[P]"',
       'steps[].rule': "the inference rule shown at the bar, e.g. '∧I', '→E', 'MP', 'RAA'",

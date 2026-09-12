@@ -140,7 +140,17 @@ export const CATALOG_CODE: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'A git commit graph — branch lanes, merges, tags, and HEAD drawn like `git log --graph`. Use for explaining history, branching strategy, and merges.',
-    itemShapes: [{ prop: 'commits', text: 'message', textAliases: ['subject', 'msg', 'title'] }],
+    itemShapes: [
+      {
+        prop: 'commits',
+        text: 'message',
+        textAliases: ['subject', 'msg', 'title'],
+        // A commit's id is its hash, painted beside the message: a reader who knows git would
+        // read an invented one as wrong, so a commit without one is dropped, never named.
+        idIsContent: true,
+        requiredFields: ['id'],
+      },
+    ],
     propHints: {
       commits: 'newest first (top); each needs id, message, branch',
       'commits[].parents': 'parent commit id(s) — two parents render as a merge',
