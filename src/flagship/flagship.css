@@ -505,7 +505,9 @@
   left: auto;
   top: calc(100% + 10px);
   z-index: 60;
-  min-width: min(240px, 100%);
+  /* The root is the trigger's own inline box, so a percentage here resolves to ~80px and the
+     popover comes out no wider than the word that opened it. Bound both edges by the window. */
+  min-width: min(240px, calc(100vw - 24px));
   max-width: min(300px, calc(100vw - 24px));
   display: flex;
   flex-direction: column;
@@ -515,6 +517,14 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-modal);
+}
+/* The bar's backdrop blur makes it one stacking context, so the menu's own z-index cannot climb
+   past the bar's 40 — and the face's layer sits at 46, painting the idle jelly straight over the
+   entries on a phone, where the hero face rests just under the bar. Lift the whole bar while the
+   menu is open; :has() keeps its resting order untouched (the same step the Live dock takes for
+   its listening-mode menu). */
+.topbar:has(.fl-explore-menu) {
+  z-index: 48;
 }
 .fl-explore-item {
   display: flex;

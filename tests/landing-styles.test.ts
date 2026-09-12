@@ -119,6 +119,32 @@ describe('the landing paints from the eager stylesheets alone', () => {
     expect(declarations).toMatch(/z-index\s*:/);
   });
 
+  it('sizes the Explore popover by the window, not by the word that opens it', () => {
+    // The popover's containing block is the trigger's own inline box, so a percentage floor
+    // resolved to ~80px and every entry wrapped onto three lines beside its icon.
+    const menu = rulesFor(LANDING_RULES, '.fl-explore-menu');
+    const declarations = menu.map((r) => r.body).join('\n');
+    const minWidth = declarations.match(/min-width\s*:\s*([^;]+);/)?.[1] ?? '';
+    expect(minWidth).toContain('100vw');
+    expect(minWidth).not.toMatch(/\d%/);
+  });
+
+  it('lifts the bar above the face while the Explore popover is open', () => {
+    // The bar is one stacking context (backdrop blur), so the popover inherits its rank; the
+    // face's fixed layer outranks that on every surface and painted the jelly over the entries.
+    const face = readFileSync(join(SRC, 'styles/presence-canvas.css'), 'utf8');
+    const faceRank = Number(face.match(/\.presence-layer\s*\{[^}]*?z-index:\s*(\d+)/)?.[1]);
+    expect(faceRank).toBeGreaterThan(0);
+    const lifted = rulesFor(LANDING_RULES, '.topbar:has(.fl-explore-menu)');
+    const rank = Number(
+      lifted
+        .map((r) => r.body)
+        .join('\n')
+        .match(/z-index:\s*(\d+)/)?.[1],
+    );
+    expect(rank).toBeGreaterThan(faceRank);
+  });
+
   it('never reaches for a class the landing has no stylesheet for', () => {
     // .tpl-menu is defined only in templates.css, which only Live and its sibling surfaces import.
     const nav = readFileSync(join(SRC, 'flagship/ExploreNav.tsx'), 'utf8');

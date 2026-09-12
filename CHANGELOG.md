@@ -15,6 +15,11 @@ All notable changes to Mavéa are documented here. The format is based on
   in development builds; and the chip row fades at the edge that has more and carries an arrow
   there, so a mouse can reach the families past the fold without guessing at shift+wheel. The
   family picked from the address bar scrolls into view on arrival.
+- **The landing's Explore menu opens at its own width.** Its floor was a percentage of a box no
+  wider than the word _Explore_, so the popover came out 106px wide and every feature wrapped
+  onto three lines beside its icon. It is sized against the window now, so the entries sit on one
+  line each at any width down to a phone — where the resting face also painted straight over
+  the open menu; the bar now lifts above the face for as long as the menu is open.
 
 ## [2.7.0] - 2026-09-11
 
