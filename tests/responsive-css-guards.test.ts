@@ -3,6 +3,14 @@
 // scanning the source text, the same idiom canvas-svg-label-patterns.test.ts uses for a layout bug
 // that's likewise invisible to a jsdom render.
 import { fontSizeFloorPx } from './helpers/fluidType';
+import {
+  CARD_W,
+  COMPACT_W,
+  FRONT_SLOT,
+  STUDY_FIT_FLOOR,
+  WIDE_CARD_W,
+  WIDE_FRONT_SLOT,
+} from '../src/canvas/study/slots';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -733,6 +741,115 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     ).toBe(true);
     // The stage is the named container the cqw resolves against.
     expect(css).toMatch(/container-name:\s*study/);
+  });
+
+  it('the Study’s scrawls give up width before they give up the frame', () => {
+    // A left-margin scrawl is authored 168 design px left of the front card, which a 1280x720
+    // window (a 986px stage) cuts clean off the frame's left edge — the pen was writing off the
+    // paper. The rule is the note's derivation at the front slot's depth, and every number below
+    // comes from the desk's own composition (slots.ts), so re-authoring a slot or a card width
+    // moves the CSS or fails here — never neither.
+    const css = read('src/canvas/study/study.css');
+    const perspective = Number(/\.study-canvas\s*\{[^}]*perspective:\s*(\d+)px/.exec(css)?.[1]);
+    expect(perspective).toBeGreaterThan(0);
+    // The front slot stands nearer the eye than the desk's origin, so a design px paints larger.
+    const projection = perspective / (perspective - FRONT_SLOT.z);
+    // Half the stage in design px per unit of scale: the frame's left edge is 720 − reach·cqw/s.
+    // The rule divides by the desk's scale rather than assuming the floor — above 1323px the
+    // scale rises, a design px paints larger, and a floor-pinned reach claims room that is not
+    // there.
+    const reach = 50 / projection;
+    const cqw = Number(
+      /--study-frame-left:\s*calc\(720px - ([\d.]+)cqw \/ var\(--study-scale, 1\) - var\(--sx\) \+ 50%\)/.exec(
+        css,
+      )?.[1],
+    );
+    // Truncated rather than rounded: the rule may only ever place a mark INSIDE the true edge.
+    expect(cqw).toBeLessThanOrEqual(reach);
+    expect(reach - cqw).toBeLessThan(0.01);
+    // Below 1323px the scale is the floor, which is where the relocation thresholds below live.
+    const floorCqw = cqw / STUDY_FIT_FLOOR;
+
+    // Both left-hand scrawls stop a gutter inside that edge, and the left one gives up width from
+    // its outer side (its arrow anchors on the inner one) rather than crossing the frame.
+    const GUTTER = 8;
+    const ARROW_INSET = 18;
+    const left = /\.study-mark\.slot-left\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(left).toContain(`left: max(-168px, calc(var(--study-frame-left) + ${GUTTER}px));`);
+    expect(left).toContain(
+      `width: min(150px, calc(-${GUTTER + ARROW_INSET}px - var(--study-frame-left)));`,
+    );
+    const bottom = /\.study-mark\.slot-bottom\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(bottom).toContain(`left: max(-150px, calc(var(--study-frame-left) + ${GUTTER}px));`);
+    // …and its right edge holds where it was authored (-150 + 176 = 26px into the card, inside
+    // the face's 28px padding): slid whole, the box lay across the block's last rows.
+    const BOTTOM_REACH = 26;
+    expect(bottom).toContain(
+      `width: min(176px, calc(${BOTTOM_REACH - GUTTER}px - var(--study-frame-left)));`,
+    );
+
+    // Under 96px of box a 46-character remark is a five-line stack, so the scrawl moves over the
+    // card's shoulder instead — per desk, because the wide card starts further left and its
+    // column runs out sooner. The threshold is the stage width where the column left of the card
+    // is exactly the gutter, the arrow's inset and that floor.
+    const BOX_FLOOR = 96;
+    const shoulderAt = (slot: { x: number }, cardW: number): number =>
+      Math.ceil((720 - (slot.x - cardW / 2) + GUTTER + ARROW_INSET + BOX_FLOOR) / (floorCqw / 100));
+    // The relocated scrawl keeps the frame clamp (the wide card's column runs out first, and a
+    // bare -12px there writes past the frame's left edge) and takes the card's whole width — the
+    // base rule's give-up width is the 64-96px box the move exists to escape.
+    const shoulderBlock = (desk: string, at: number): string =>
+      `@container study (width < ${at}px) {\n  ${desk} .study-mark.slot-left {\n` +
+      `    left: max(-12px, calc(var(--study-frame-left) + ${GUTTER}px));\n` +
+      '    top: auto;\n    bottom: calc(100% + 2px);\n    width: 100%;';
+    expect(css).toContain(
+      shoulderBlock('.study-card:not([data-wide])', shoulderAt(FRONT_SLOT, CARD_W)),
+    );
+    expect(css).toContain(
+      shoulderBlock('.study-card[data-wide]', shoulderAt(WIDE_FRONT_SLOT, WIDE_CARD_W)),
+    );
+    // The bottom remark has no shoulder to move to, so under the same 96px it stands down — which
+    // only the wide desk reaches above the compact cut.
+    const bottomOutAt = (slot: { x: number }, cardW: number): number =>
+      Math.ceil(
+        (720 - (slot.x - cardW / 2) + BOX_FLOOR - (BOTTOM_REACH - GUTTER)) / (floorCqw / 100),
+      );
+    expect(bottomOutAt(FRONT_SLOT, CARD_W)).toBeLessThanOrEqual(COMPACT_W);
+    expect(css).toContain(
+      `@container study (width < ${bottomOutAt(WIDE_FRONT_SLOT, WIDE_CARD_W)}px) {\n` +
+        '  .study-card[data-wide] .study-mark.slot-bottom {\n    display: none;',
+    );
+    // …which the stylesheet can only tell apart if the front card says which desk it is on.
+    expect(read('src/canvas/study/StudyStage.tsx')).toMatch(
+      /data-wide=\{front && wide \? '' : undefined\}/,
+    );
+
+    // The right-gutter scrawls sit between the card and Mavéa's note, and the note slides left
+    // with the frame (the guard above): they stand down from the stage width where its left edge
+    // comes within the gutter of the slot-right box.
+    const note = /\.study-note-wrap\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    const noteRule = /left:\s*min\(1165px, calc\((\d+)px \+ (\d+)cqw\)\)/.exec(note);
+    const noteW = Number(/width:\s*(\d+)px/.exec(note)?.[1]);
+    expect(noteRule && noteW).toBeTruthy();
+    // The note is centred on its coordinate, so its left edge is half a width back.
+    expect(note).toMatch(/transform:\s*translate\(-50%, -50%\)/);
+    const noteLeftAtZero = Number(noteRule?.[1]) - noteW / 2;
+    const noteSlope = Number(noteRule?.[2]) / 100;
+    const rightReach = Number(/\.study-mark\.slot-right\s*\{[^}]*right:\s*-(\d+)px/.exec(css)?.[1]);
+    expect(rightReach).toBeGreaterThan(0);
+    const slotRightEnd = FRONT_SLOT.x + CARD_W / 2 + rightReach;
+    const standDownAt = Math.ceil((slotRightEnd + GUTTER - noteLeftAtZero) / noteSlope);
+    expect(css).toContain(
+      `@container study (width < ${standDownAt}px) {\n  .study-mark.slot-right,\n  .study-mark.slot-rightlow {\n    display: none;`,
+    );
+    // The connector shares that strip, so it is the one that stands down while a scrawl is drawn
+    // there — and the stylesheet has to make that call, since only it can see the width.
+    expect(css).toContain(
+      `@container study (width >= ${standDownAt}px) {\n` +
+        '  .study-card.is-front:has(.study-mark.slot-right, .study-mark.slot-rightlow) ~ .study-connect {\n' +
+        '    display: none;',
+    );
+    expect(read('src/canvas/study/StudyStage.tsx')).not.toMatch(/usesRightGutter/);
   });
 });
 

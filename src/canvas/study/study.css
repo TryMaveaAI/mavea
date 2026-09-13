@@ -953,6 +953,18 @@
   z-index: 6;
   pointer-events: none;
   transition: opacity var(--m-normal, 240ms) var(--ease-out, ease);
+  /* Where the frame's left edge falls, in this card's own coordinates. The desk is authored at
+     1440 and the stage clips it, so the edge is a function of the stage's width AND the desk's
+     scale: a design pixel paints at scale x 1600 / (1600 - 70) (the front slot's translateZ(70px)
+     projection), so the frame's half-width of 50cqw reaches 50cqw / (1.0458 x scale) =
+     47.81cqw / scale design px from the desk's centre at 720 — the same derivation as the note's
+     `53cqw` above, which is this at the floor scale and the note's translateZ(75px). Dividing by
+     the scale is what keeps it exact above the floor: a bigger scale paints FEWER design px into
+     the same frame, so the edge moves toward the centre, and a rule pinned to the floor claims
+     room on the left that is not there. Card coordinates: the card's centre is --sx and half its
+     width is 50%. Every offset that reaches left of the card is clamped to it: a scrawl is the
+     pen's, and the pen never writes off the paper. */
+  --study-frame-left: calc(720px - 47.81cqw / var(--study-scale, 1) - var(--sx) + 50%);
 }
 
 /* The scrawls stand down while the card's face is scrolled. They are marginalia about the CARD —
@@ -996,9 +1008,14 @@
    right shoulder. Each carries its own hand-tilt and its own type size — a scrawl written at
    arm's length is bigger than one squeezed above the card. */
 .study-mark.slot-left {
-  left: -168px;
+  /* The right edge holds at -18px, where the arrow anchors; the left edge stops 8px inside the
+     frame, and the box gives up width from the left when the authored 150px would cross it —
+     from a 1103px stage on the standard desk, 1272px on the wide one. Under 96px of box the
+     scrawl moves over the card's shoulder instead (the container rules at the end of this
+     section). */
+  left: max(-168px, calc(var(--study-frame-left) + 8px));
   top: 24px;
-  width: min(150px, 100%);
+  width: min(150px, calc(-26px - var(--study-frame-left)));
   /* Hug the side the ARROW is on. The box is a fixed width so long remarks wrap in place, which
      means a short one has to be pushed to the arrow's end or it floats out in the parchment with
      a gap the arrow never crosses — the "predictable" defect, which was this rule inverted on
@@ -1018,10 +1035,15 @@
 
 .study-mark.slot-bottom {
   /* Hangs off the card's lower-left, not under its middle: the takeaway is centred beneath the
-     desk, and two hands writing on the same line is a collision by construction. */
-  left: -150px;
+     desk, and two hands writing on the same line is a collision by construction. Clamped to the
+     frame like the left mark, and like it the box gives up width from its outer side so its
+     right edge holds 26px in from the card's edge, inside the face's 28px padding — slid whole,
+     it lay across the block's last rows at a 1280 window. Under 96px of box it stands down (the
+     rule at the end of this section): only the wide desk gets there, from a 1089px stage; the
+     standard one's box holds to 919, under the compact cut. */
+  left: max(-150px, calc(var(--study-frame-left) + 8px));
   bottom: -34px;
-  width: min(176px, 100%);
+  width: min(176px, calc(18px - var(--study-frame-left)));
   text-align: right;
   transform: rotate(-1.5deg);
 }
@@ -1091,6 +1113,91 @@
 .study-mark.slot-rightlow .study-mark-arrow {
   left: -74px;
   top: 26px;
+}
+
+/* Over the shoulder: when the column left of the card is under 122 design px (8 of gutter, an
+   18px arrow inset and a 96px box — a 46-character remark wraps to five lines below that), the
+   left remark moves to the strip just above the card's top-left corner, one line across the
+   card's own width. Just above, because that strip is all that is reliably on screen: the desk
+   is taller than a short window's scroller (587px against 509 at 1280x720) and the arrival
+   scroll keeps the card and the takeaway in view, leaving about 40 design px over the card —
+   the top of the stage, where slot-top writes, is scrolled away there. Written once per desk
+   because the wide desk's card starts 90 design px further left, so its column runs out 169
+   stage px earlier: the standard card's left edge is 410 from centre, the wide one's 500, and
+   (410 + 122) / 0.5312 = 1001.4, (500 + 122) / 0.5312 = 1170.8. The arrow is the left slot's
+   own curve, now starting under the remark's first word and reaching into the card's top
+   margin. */
+@container study (width < 1002px) {
+  .study-card:not([data-wide]) .study-mark.slot-left {
+    left: max(-12px, calc(var(--study-frame-left) + 8px));
+    top: auto;
+    bottom: calc(100% + 2px);
+    width: 100%;
+    text-align: left;
+    transform: rotate(-1.5deg);
+  }
+
+  .study-card:not([data-wide]) .study-mark.slot-left .study-mark-text {
+    font-size: var(--fs-lg);
+  }
+
+  .study-card:not([data-wide]) .study-mark.slot-left .study-mark-arrow {
+    right: auto;
+    left: 2px;
+    top: calc(100% - 10px);
+  }
+}
+
+@container study (width < 1171px) {
+  .study-card[data-wide] .study-mark.slot-left {
+    left: max(-12px, calc(var(--study-frame-left) + 8px));
+    top: auto;
+    bottom: calc(100% + 2px);
+    width: 100%;
+    text-align: left;
+    transform: rotate(-1.5deg);
+  }
+
+  .study-card[data-wide] .study-mark.slot-left .study-mark-text {
+    font-size: var(--fs-lg);
+  }
+
+  .study-card[data-wide] .study-mark.slot-left .study-mark-arrow {
+    right: auto;
+    left: 2px;
+    top: calc(100% - 10px);
+  }
+}
+
+/* The bottom remark has no shoulder to move to — the left one is there — so where the wide
+   card's column leaves it under 96px of box it stands down: the box is 18 design px less the
+   frame edge, under 96 once the edge passes -78, and (500 + 78) / 0.5312 = 1088.1. */
+@container study (width < 1089px) {
+  .study-card[data-wide] .study-mark.slot-bottom {
+    display: none;
+  }
+}
+
+/* The right-gutter slots sit between the card and Mavéa's note — the strip the connector spans
+   too, and with both drawn the reader gets two arrows crossing each other and the words. The
+   gutter holds one or the other, and a scrawl carrying a real remark beats an arrow restating an
+   adjacency the eye already made. The note slides left with the frame (its rule above): from a
+   1125px stage down its left edge, 418 + 53cqw, comes within the 8px gutter of the slot-right
+   box, which ends 136 design px past the card's right edge (1006 on the standard desk, so
+   ceil((1006 + 8 - 418) / 0.53)), and there the scrawls stand down and the arrow, whose head
+   sits clear of the note, comes back. The wide desk never draws these slots. Decided here
+   rather than beside the marks because only the stylesheet can see the stage's width. */
+@container study (width >= 1125px) {
+  .study-card.is-front:has(.study-mark.slot-right, .study-mark.slot-rightlow) ~ .study-connect {
+    display: none;
+  }
+}
+
+@container study (width < 1125px) {
+  .study-mark.slot-right,
+  .study-mark.slot-rightlow {
+    display: none;
+  }
 }
 
 /* ── Session notes: the legal pad that remembers the walk ────────────────────────────────── */

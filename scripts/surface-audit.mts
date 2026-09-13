@@ -253,11 +253,16 @@ const MEASURE_SCRIPT = (
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
-    if (el.closest('[aria-hidden="true"]')) continue;
     const box = el.getBoundingClientRect();
     if (box.width < 1 || box.height < 1) continue;
     const leaf = el.children.length === 0;
     const text = leaf ? (el.textContent || '').trim() : '';
+    // Decoration answers to the eye, not to the reader, so it is exempt from every judgement of
+    // reach and legibility — except one. Words a frame has cut in half are a defect whatever
+    // their aria role: the Study's scrawls are aria-hidden handwriting, and every gate stayed
+    // green while a 1280x720 window took the first line off the frame's left edge.
+    const decorative = !!el.closest('[aria-hidden="true"]');
+    if (decorative && !(CHECK.has('clip') && leaf && text.length > 1)) continue;
 
     // Outside the window with nothing able to bring it back. A box inside a scroller is reachable
     // by definition, so only the scrollers that actually exist count as a way back — and a drag
@@ -267,24 +272,44 @@ const MEASURE_SCRIPT = (
     // never on what it is called, and only for a pannable ancestor — an ordinary clip still fails.
     let scrollable = docScrolls;
     let clipper = null;
+    // What brings a box back from a CLIP is narrower: only a scroller between the element and its
+    // clipper, and only on the axis it scrolls. The Study's desk sits inside a page scroller that
+    // always overflows by the stage's own height, and a scroller anywhere above the element used
+    // to switch the clip judgement off for the whole desk — the frame took a scrawl's first line
+    // off its left edge and this gate stayed green. A vertical page scroll recovers no horizontal
+    // cut.
+    let rescueX = false;
+    let rescueY = false;
     for (let p = el.parentElement; p; p = p.parentElement) {
       const ps = getComputedStyle(p);
-      if (/(auto|scroll)/.test(ps.overflowY + ps.overflowX) &&
-          (p.scrollHeight > p.clientHeight + 2 || p.scrollWidth > p.clientWidth + 2)) scrollable = true;
-      if (ps.cursor === 'grab' || ps.cursor === 'grabbing') scrollable = true;
-      if (!clipper && clipsAt(p) && !/(auto|scroll)/.test(ps.overflowY + ps.overflowX)) clipper = p;
+      // Judged per axis: an overflow-y: auto, overflow-x: hidden pane is a scroll container on
+      // both, so a right-overflowing leaf raises its scrollWidth while nothing can scroll it into
+      // view — read as a horizontal scroller it would forgive the very cut it is evidence of.
+      const scrollsX = /(auto|scroll)/.test(ps.overflowX) && p.scrollWidth > p.clientWidth + 2;
+      const scrollsY = /(auto|scroll)/.test(ps.overflowY) && p.scrollHeight > p.clientHeight + 2;
+      const scrolls = /(auto|scroll)/.test(ps.overflowY + ps.overflowX);
+      const pans = ps.cursor === 'grab' || ps.cursor === 'grabbing';
+      if (scrollsX || scrollsY || pans) scrollable = true;
+      if (!clipper) {
+        if (scrollsX || pans) rescueX = true;
+        if (scrollsY || pans) rescueY = true;
+        if (clipsAt(p) && !scrolls) clipper = p;
+      }
     }
     const overRight = box.right - vw, overBottom = box.bottom - vh, overLeft = -box.left, overTop = -box.top;
-    if (CHECK.has('outside') && (overRight > 2 || overBottom > 2 || overLeft > 2 || overTop > 2) && leaf && !scrollable) {
+    if (CHECK.has('outside') && !decorative && (overRight > 2 || overBottom > 2 || overLeft > 2 || overTop > 2) && leaf && !scrollable) {
       outside.push(name(el) + ' outside by ' + Math.round(Math.max(overRight, overBottom, overLeft, overTop)) + 'px');
     }
 
-    // A text leaf that its nearest overflow:hidden ancestor cuts into, with no scroller between.
-    // Reuses the block sweep's rule: clamp the box to the clipper, and what is lost is lost. A line
-    // clamp and an ellipsis are truncation by design (they state their own limit) and are excused.
-    if (CHECK.has('clip') && leaf && text.length > 1 && clipper && !scrollable) {
+    // A text leaf that its nearest overflow:hidden ancestor cuts into, with no scroller between on
+    // the cut axis. Reuses the block sweep's rule: clamp the box to the clipper, and what is lost
+    // is lost. A line clamp and an ellipsis are truncation by design (they state their own limit)
+    // and are excused.
+    if (CHECK.has('clip') && leaf && text.length > 1 && clipper) {
       const cr = clipper.getBoundingClientRect();
-      const lost = Math.max(0, cr.left - box.left, box.right - cr.right, cr.top - box.top, box.bottom - cr.bottom);
+      const lostX = rescueX ? 0 : Math.max(0, cr.left - box.left, box.right - cr.right);
+      const lostY = rescueY ? 0 : Math.max(0, cr.top - box.top, box.bottom - cr.bottom);
+      const lost = Math.max(lostX, lostY);
       const truncates = (style.textOverflow === 'ellipsis' && style.overflow !== 'visible') ||
         (style.webkitLineClamp !== 'none' && style.webkitLineClamp !== '');
       const parentTruncates = el.parentElement && ((getComputedStyle(el.parentElement).textOverflow === 'ellipsis') ||
@@ -293,6 +318,7 @@ const MEASURE_SCRIPT = (
         clipped.push(name(el) + ' loses ' + Math.round(lost) + 'px to ' + name(clipper));
       }
     }
+    if (decorative) continue;
 
     // Type below the floor, judged on what is rendered rather than what was authored. SVG text
     // is in user units: convert through the screen matrix, exactly as audit:ui does.
