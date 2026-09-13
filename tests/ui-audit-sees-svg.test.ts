@@ -75,4 +75,15 @@ describe('the surface sweep keeps its unreachable check honest', () => {
     // And the finding must still exist to be reported.
     expect(SURFACE).toMatch(/outside\.push\(/);
   });
+
+  it('excuses a trapped box only while content-visibility is skipping its contents', () => {
+    // A gallery tile the browser has skipped keeps a stale, unpainted layout inside a remembered
+    // box, and the sweep once read that as hidden content. The excuse is the skipped STATE of the
+    // contents, asked of the browser — a rendered auto box is still measured, and no tile is
+    // named.
+    expect(SURFACE).toMatch(/style\.contentVisibility === 'auto'/);
+    expect(SURFACE).toMatch(/checkVisibility\(\{ contentVisibilityAuto: true \}\)/);
+    expect(SURFACE).not.toMatch(/vlib-tile/);
+    expect(SURFACE).toMatch(/trapped\.push\(/);
+  });
 });

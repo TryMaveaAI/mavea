@@ -412,7 +412,17 @@ const MEASURE_SCRIPT = (
           const cr = child.getBoundingClientRect();
           return cr.top >= box.top - 2 && cr.bottom <= box.bottom + 2 && cr.left >= box.left - 2 && cr.right <= box.right + 2;
         });
-      if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40 && !dragCamera && !scaledSnapshot && !lineClamped && !fades(style) && !thumbnail(el) && !studyEssentialsInFrame) {
+      // A box whose contents content-visibility: auto is currently SKIPPING is a placeholder, not
+      // a fit. Its height is the intrinsic or remembered size and its scrollHeight is whatever
+      // layout the contents last had — on a gallery tile whose block arrived after the tiles above
+      // it grew and pushed it below the fold, that is a skeleton taller than the box it was
+      // measured for. Nothing is kept from the reader: the contents are not painted, and once they
+      // come near the viewport the box lays out at their height and is judged like any other.
+      // Judged on the skipped STATE — a rendered auto box is still measured — never on the
+      // property alone and never on a class name.
+      const skippedContents = style.contentVisibility === 'auto' && !!el.firstElementChild &&
+        el.firstElementChild.checkVisibility() && !el.firstElementChild.checkVisibility({ contentVisibilityAuto: true });
+      if (hidden > 4 && /hidden|clip/.test(style.overflowY) && el.clientHeight > 40 && !dragCamera && !scaledSnapshot && !lineClamped && !fades(style) && !thumbnail(el) && !studyEssentialsInFrame && !skippedContents) {
         trapped.push(name(el) + ' hides ' + Math.round(hidden) + 'px with overflow-y:' + style.overflowY);
       }
     }
