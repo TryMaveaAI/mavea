@@ -87,14 +87,17 @@ const LEGIBLE_FLOOR_PX = 9;
 const SMALLEST_PERSISTENT_PX = 11;
 
 /**
- * The scale the camera stops shrinking at.
+ * The scale a FIT stops shrinking at.
  *
  * Not a taste call — it is the point where the counter-scale runs out of room. Above 1/COUNTER_MAX
  * a face renders at its authored size however far the camera has pulled back; below it, type
  * shrinks linearly, and this is the scale at which the smallest type the reader still needs reaches
  * the legibility floor. Fitting past it does not show more of the world, it shows an unreadable
- * picture of it — so the camera stops here and the world becomes pannable instead, which is what
- * `isAtFitFloor` and the audit's "offstage is reported, not failed" rule already assume.
+ * picture of it — so a fit stops here and the world becomes pannable instead, which is what the
+ * audit's "offstage is reported, not failed" rule assumes. The reader's own wheel and pinch may
+ * run under it to the whole-world fit (`useMorphStage`'s gesture room), and `isAtFitFloor` is
+ * judged against that widened range, so the ladder's next rung begins only with everything in
+ * view.
  *
  * It used to be 0.25, which let a sixteen-cause world fit a short laptop window at 0.26× and paint
  * its labels at 4.1px. Every size below a 1440×900 laptop was doing some version of that.

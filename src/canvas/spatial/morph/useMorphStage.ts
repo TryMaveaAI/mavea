@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { canvasPinch } from '../../../live/altitude';
 import { register } from '../../focus/stepDriver';
-import { isAtFitFloor, type Bbox } from '../camera';
+import { fitScale, isAtFitFloor, type Bbox } from '../camera';
 import { useSpatialCanvas, type SpatialCanvas } from '../useSpatialCanvas';
 import { FIT_FLOOR } from './layouts/lanes';
 import { MAX_DRAWN_DEPTH } from './adapters';
@@ -26,7 +26,8 @@ import type { LayoutFn, MorphLayout, Representation, WorldData } from './types';
 /** The camera's range. The floor is DERIVED (lanes.FIT_FLOOR): it is the scale below which the
  *  counter-scale can no longer hold the surface's smallest persistent type above the legibility
  *  floor, so shrinking further would only produce an unreadable picture of a larger world. Past it
- *  the world stops fitting and starts panning. */
+ *  the world stops fitting and starts panning — for a FIT; the reader's own wheel and pinch get
+ *  `gestureRoom` below, which runs under the floor to the whole-world fit. */
 const CLAMP = { min: FIT_FLOOR, max: 2.2 };
 /** Breathing room kept between the world and the viewport edge on every fit. */
 const MARGIN = 56;
@@ -138,6 +139,10 @@ export interface MorphStageApi {
   /** The world has arrived (or the reader has grabbed it). Ends the flight in both halves. */
   settle: () => void;
   lod: 'near' | 'far';
+  /** The reader's own zoom, by `factor` about a screen point. Always THIS, never the canvas's
+   *  `zoomAtClient`: a fit stops at the legibility floor, but the reader may pull back under it
+   *  as far as the whole world in view — see `pinch`. */
+  zoom: (factor: number, clientX: number, clientY: number) => void;
   /** A pinch step: `factor` > 1 dives in, < 1 pulls out. `nodeId` is whatever sits under the
    *  gesture — a pinch INTO an unexpanded node unfolds it instead of zooming. */
   pinch: (factor: number, clientX: number, clientY: number, nodeId?: string) => PinchOutcome;
@@ -363,8 +368,34 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
   unfoldsRef.current = unfoldsOnStage;
 
   const { zoomAtClient } = cam;
+  /** The stage as the reader's gesture sees it: the viewport's box (null while unmeasured), the
+   *  world's frame, and the scale range THEIR zoom may move through. A FIT stops at the
+   *  legibility floor — under it the counter-scale cannot keep type readable, so the camera pans
+   *  instead — but a reader pulling back is asking to see the whole, and a floor that leaves a
+   *  third of a large world off-stage with nowhere further to go reads as a stuck control
+   *  (measured: a 61-cause world at 1280x720 paints 1410px into a 940px stage, and the wheel did
+   *  nothing). So their own zoom-out runs down to where everything is in view, and only THERE
+   *  does the ladder's next rung begin; zooming back in climbs the same range, so nothing snaps.
+   *  A small world is unchanged — its whole-world fit already sits above the floor. */
+  const gestureRoom = useCallback(() => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const viewport =
+      rect && (rect.width > 0 || rect.height > 0) ? { w: rect.width, h: rect.height } : null;
+    const frame = frameOf(layoutRef.current.bbox);
+    const range = viewport
+      ? { min: Math.min(CLAMP.min, fitScale(frame, viewport, MARGIN)), max: CLAMP.max }
+      : CLAMP;
+    return { viewport, frame, range };
+  }, [viewportRef]);
+  const zoom = useCallback(
+    (factor: number, clientX: number, clientY: number) => {
+      zoomAtClient(factor, clientX, clientY, gestureRoom().range);
+    },
+    [zoomAtClient, gestureRoom],
+  );
   const pinch = useCallback(
     (factor: number, clientX: number, clientY: number, nodeId?: string): PinchOutcome => {
+      const { viewport, frame, range } = gestureRoom();
       if (factor >= 1) {
         if (
           nodeId !== undefined &&
@@ -375,22 +406,13 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
           toggleExpand(nodeId);
           return 'expand';
         }
-        zoomAtClient(factor, clientX, clientY);
+        zoom(factor, clientX, clientY);
         return 'zoom';
       }
-      const rect = viewportRef.current?.getBoundingClientRect();
       const atFloor =
-        !!rect &&
-        (rect.width > 0 || rect.height > 0) &&
-        isAtFitFloor(
-          cameraRef.current,
-          frameOf(layoutRef.current.bbox),
-          { w: rect.width, h: rect.height },
-          MARGIN,
-          CLAMP,
-        );
+        viewport !== null && isAtFitFloor(cameraRef.current, frame, viewport, MARGIN, range);
       if (canvasPinch('out', atFloor) === 'zoom-camera') {
-        zoomAtClient(factor, clientX, clientY);
+        zoom(factor, clientX, clientY);
         return 'zoom';
       }
       // Nothing left for the camera: unwind semantic zoom before leaving the surface entirely.
@@ -411,7 +433,7 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
       ascendRef.current?.();
       return 'ascend';
     },
-    [expandable, toggleExpand, zoomAtClient, viewportRef, chainLength],
+    [expandable, toggleExpand, zoom, gestureRoom, chainLength],
   );
 
   const focusNode = useCallback(
@@ -470,6 +492,7 @@ export function useMorphStage(opts: MorphStageOptions): MorphStageApi {
     morphing,
     settle,
     lod: cam.camera.scale >= LOD_NEAR ? 'near' : 'far',
+    zoom,
     pinch,
     focusNode,
   };

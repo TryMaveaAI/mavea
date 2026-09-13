@@ -21,6 +21,7 @@ import {
   zoomAt,
   type Bbox,
   type Camera,
+  type ScaleClamp,
   DEFAULT_CLAMP,
 } from './camera';
 
@@ -48,8 +49,10 @@ export interface SpatialCanvas {
    *  reader is DRIVING — one frame of a drag, where a 1100ms eased flight would restart on every
    *  frame and never finish. */
   fitTo: (content: Bbox | null, opts?: { fly?: boolean }) => void;
-  /** Zoom by `factor` keeping the screen point (clientX, clientY) fixed (cursor/pinch anchor). */
-  zoomAtClient: (factor: number, clientX: number, clientY: number) => void;
+  /** Zoom by `factor` keeping the screen point (clientX, clientY) fixed (cursor/pinch anchor).
+   *  `range` is the scale range for THIS gesture when it is not the canvas's own: a fit's floor
+   *  is a legibility bargain, and a surface may let the reader's pull-back go under it. */
+  zoomAtClient: (factor: number, clientX: number, clientY: number, range?: ScaleClamp) => void;
   /** Pan by a screen-space delta. */
   pan: (dx: number, dy: number) => void;
   /** Set the camera directly (for an imperative fly-to). */
@@ -139,15 +142,18 @@ export function useSpatialCanvas(opts: SpatialCanvasOptions = {}): SpatialCanvas
   // on every node in the world — the counter-scale rides the camera scale, so an eased zoom is an
   // eased re-scale of all N of them, sixty times a second.
   const zoomAtClient = useCallback(
-    (factor: number, clientX: number, clientY: number) => {
+    (factor: number, clientX: number, clientY: number, range?: ScaleClamp) => {
       const el = viewportRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
       setView((prev) => {
-        const cam = zoomAt(prev.cam, factor, clientX - r.left, clientY - r.top, {
-          min: clampMin,
-          max: clampMax,
-        });
+        const cam = zoomAt(
+          prev.cam,
+          factor,
+          clientX - r.left,
+          clientY - r.top,
+          range ?? { min: clampMin, max: clampMax },
+        );
         return cam === prev.cam && !prev.flying ? prev : { cam, flying: false };
       });
     },

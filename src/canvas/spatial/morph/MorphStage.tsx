@@ -589,7 +589,8 @@ export function MorphStage({
   litEdgeId,
 }: MorphStageProps): ReactNode {
   const { cam, layout, exiting, lod, settleExit, morphing, settle } = stage;
-  const { viewportRef, zoomAtClient, pan } = cam;
+  const { viewportRef, pan } = cam;
+  const { zoom } = stage;
 
   const [panning, setPanning] = useState(false);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -603,12 +604,12 @@ export function MorphStage({
   const applyPinch = useCallback(
     (factor: number, clientX: number, clientY: number, nodeId?: string) => {
       if (fired.current) {
-        zoomAtClient(factor, clientX, clientY);
+        zoom(factor, clientX, clientY);
         return;
       }
       if (stage.pinch(factor, clientX, clientY, nodeId) !== 'zoom') fired.current = true;
     },
-    [stage, zoomAtClient],
+    [stage, zoom],
   );
   const pinchRef = useRef(applyPinch);
   pinchRef.current = applyPinch;
@@ -633,14 +634,14 @@ export function MorphStage({
         }, WHEEL_IDLE_MS);
         return;
       }
-      zoomAtClient(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
+      zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       clearTimeout(idle);
       el.removeEventListener('wheel', onWheel);
     };
-  }, [viewportRef, zoomAtClient, settle]);
+  }, [viewportRef, zoom, settle]);
 
   const midpoint = (): { x: number; y: number; d: number } => {
     const [a, b] = [...pointers.current.values()];
