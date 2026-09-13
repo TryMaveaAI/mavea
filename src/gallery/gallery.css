@@ -112,11 +112,14 @@
 
 /* Every control on the row is 44px tall — the back button, the search, this switch and the theme
    toggle — so the row reads as one line of chrome rather than four heights. The segment buttons
-   inside are 36px and get their finger floor from the coarse-pointer hit rescue (mobile.css). */
+   inside are 36px and get their finger floor from the coarse-pointer hit rescue (mobile.css).
+   The 6px between segments is the tap gate's floor: a gap under it is a dead zone too small to
+   be a gap and too wide to be a shared edge. The row cannot wrap above a phone, so the width is
+   the search box's to give up, not the row's. */
 .vlib-variants {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 3px;
   min-height: 44px;
   border: 1px solid var(--line);

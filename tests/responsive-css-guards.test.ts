@@ -298,6 +298,16 @@ describe('gallery controls — phone layouts keep the density switch and theme c
     expect(css).toMatch(/\.vlib-variants\s*\{[^}]*min-height:\s*44px/s);
     expect(css).toMatch(/\.vlib-theme\s*\{[^}]*width:\s*44px[^}]*height:\s*44px/s);
   });
+
+  it('keeps the segments either touching or the tap gate\u2019s 6px apart, never a sliver between', () => {
+    // The redesign tightened the gap to 4px and the tap gate flagged the switch at 834px: a gap
+    // under 6px is a dead zone too small to be a gap and too wide to be a shared edge. The row
+    // cannot wrap above a phone, so the width is the search box's to give up, not the row's.
+    const gap = css.match(/\.vlib-variants\s*\{[^}]*?gap:\s*(\d+)px/s);
+    expect(gap).not.toBeNull();
+    const px = Number(gap?.[1]);
+    expect(px === 0 || px >= 6).toBe(true);
+  });
 });
 
 describe('phone utility controls — every icon-only action remains thumb-sized', () => {
