@@ -6,6 +6,8 @@ All notable changes to Mavéa are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-09-13
+
 ### Changed
 
 - **The library's toolbar sits on one row, and its family rail says where it continues.** At a
