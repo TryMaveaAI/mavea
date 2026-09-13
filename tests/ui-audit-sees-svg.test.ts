@@ -68,10 +68,10 @@ describe('the surface sweep keeps its unreachable check honest', () => {
   });
 
   it('still fails an ordinary clip, so the exception cannot swallow the check', () => {
-    // The scroller test must remain a real geometry test rather than "declares overflow".
-    expect(SURFACE).toMatch(
-      /scrollHeight > p\.clientHeight \+ 2 \|\| p\.scrollWidth > p\.clientWidth \+ 2/,
-    );
+    // The scroller test must remain a real geometry test rather than "declares overflow", and
+    // judged per axis: a pane that scrolls one way must not forgive a cut along the other.
+    expect(SURFACE).toMatch(/overflowX\) && p\.scrollWidth > p\.clientWidth \+ 2/);
+    expect(SURFACE).toMatch(/overflowY\) && p\.scrollHeight > p\.clientHeight \+ 2/);
     // And the finding must still exist to be reported.
     expect(SURFACE).toMatch(/outside\.push\(/);
   });
