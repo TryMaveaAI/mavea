@@ -263,7 +263,12 @@ const ROUTE_BUDGETS = [
     // 159 (was 157): the measured parent closure already rounds to 157.5 kB, beyond the integer
     // ceiling. The live latency work adds another ~0.5 kB through TopicCanvas's shared closure while
     // keeping the first-turn engine nearly flat; 159 restores a narrow, measured margin.
-    gzip: 159,
+    //
+    // 160 (was 159): measured at 159.1. The desk's handwritten remarks now derive their placement
+    // from the stage's own geometry (study.css) and the appearance picker keeps Tab inside its
+    // sheet — both ride TopicCanvas's static closure, so a lesson pays for them whether or not the
+    // reader ever opens the desk. Real fixes, ~200 bytes; the old line had 0.1 kB of room.
+    gzip: 160,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },
