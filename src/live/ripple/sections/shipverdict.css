@@ -64,10 +64,14 @@
   color: var(--text-primary);
   text-wrap: pretty;
 }
+/* The tag beside the sentence while the sentence has room to read as one; under it when the
+   band is a phone's. A path token cannot shrink the sentence below its own width, so a nowrap
+   row ran the text past the band at 320px and the band's overflow cut it off. */
 .ripple-verdict-one {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 6px 10px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
@@ -83,6 +87,12 @@
   padding-top: 2px;
 }
 .ripple-verdict-one-text {
+  /* 24ch is the narrowest column a sentence still reads as one beside a label; with less beside
+     the tag it takes the next line whole. min-width: 0 lets it shrink under a long token on a
+     band narrower than that, where the token breaks rather than runs out. */
+  flex: 1 1 24ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);

@@ -658,6 +658,20 @@ describe('feature overlays scroll their own content instead of cropping it', () 
     expect(/\.ripple-main\s*\{[^}]*overflow:\s*auto/.test(ripple)).toBe(true);
   });
 
+  it('Ripple puts the verdict\u2019s one-thing sentence under its tag when the band is a phone\u2019s', () => {
+    // Measured at 320\u00d7568: the tag took 150px of a 212px row and the sentence beside it could
+    // not shrink below its path token, so it ran 39px past the band and the band's own overflow
+    // cut it. The row wraps now and the sentence asks for a column a sentence can be read in;
+    // with less than that beside the tag it takes the next line whole.
+    const verdict = read('src/live/ripple/sections/shipverdict.css');
+    expect(/\.ripple-verdict-one\s*\{[^}]*flex-wrap:\s*wrap/.test(verdict)).toBe(true);
+    expect(
+      /\.ripple-verdict-one-text\s*\{[^}]*flex:\s*1 1 \d+ch[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/s.test(
+        verdict,
+      ),
+    ).toBe(true);
+  });
+
   it('Focus caps its rails against the canvas column, not the window', () => {
     // `100vh - 140px` measured a box roughly three times the one the sticky rail actually has
     // (the real container was 253px tall), so neither list ever scrolled.
