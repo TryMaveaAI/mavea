@@ -101,6 +101,12 @@ import type { CourseLesson, ShipCourse, ShipModel } from '../src/live/ripple/mod
 // into the overlay so the narration toggle (rendered only when a `speak` prop exists) actually
 // appears and, once opted in, actually talks — Ripple stays silent-by-default (narration starts
 // off), but the affordance must not be a dead end once someone turns it on.
+
+// The PR-link field, found by its whole placeholder. A substring regex over a URL-shaped string
+// reads to a scanner as a host check that forgot its anchors; pinning the entire hint is exact,
+// and it fails loudly if the copy is ever reworded.
+const PR_FIELD = 'github.com/owner/repo/pull/482 · owner/repo · a compare URL';
+
 describe('RippleApp', () => {
   // Each test renders a fresh RippleApp; clear the "seen the worked example" flag so every test
   // sees the same plain worked-example landing rather than the GitHub intake re-opening on top.
@@ -153,18 +159,18 @@ describe('GitHub-first intake', () => {
     // Open the intake from the worked-example CTA.
     fireEvent.click(getByText(/Run on your own code/i));
     // The GitHub smart input is the default surface.
-    expect(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeTruthy();
+    expect(getByPlaceholderText(PR_FIELD)).toBeTruthy();
   });
 
   it('first launch shows the worked example plainly; the next launch opens GitHub on top', () => {
     // First time: no auto intake — the rich example is the front page.
     const first = render(<RippleOverlay model={SEED_SHIP} onClose={() => undefined} />);
-    expect(first.queryByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeNull();
+    expect(first.queryByPlaceholderText(PR_FIELD)).toBeNull();
     cleanup();
 
     // Returning: GitHub is the front door, opened over the (still reachable) worked example.
     const second = render(<RippleOverlay model={SEED_SHIP} onClose={() => undefined} />);
-    expect(second.getByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeTruthy();
+    expect(second.getByPlaceholderText(PR_FIELD)).toBeTruthy();
   });
 
   it('an invalid smart input shows an honest reason, never crashes', () => {
@@ -172,7 +178,7 @@ describe('GitHub-first intake', () => {
       <RippleOverlay model={SEED_SHIP} onClose={() => undefined} />,
     );
     fireEvent.click(getByText(/Run on your own code/i));
-    fireEvent.change(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), {
+    fireEvent.change(getByPlaceholderText(PR_FIELD), {
       target: { value: 'not a github link' },
     });
     fireEvent.click(getByRole('button', { name: /^Analyze$/i }));
@@ -697,7 +703,7 @@ describe('Ripple floor-first + the honest failure path', () => {
 
       // Open the intake (GitHub-first), point it at a real PR, and analyze.
       fireEvent.click(getByText(/Run on your own code/i));
-      fireEvent.change(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), {
+      fireEvent.change(getByPlaceholderText(PR_FIELD), {
         target: { value: PR_URL },
       });
       fireEvent.click(getByRole('button', { name: /^Analyze$/i }));
@@ -720,7 +726,7 @@ describe('Ripple floor-first + the honest failure path', () => {
       );
 
       fireEvent.click(getByText(/Run on your own code/i));
-      fireEvent.change(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), {
+      fireEvent.change(getByPlaceholderText(PR_FIELD), {
         target: { value: PR_URL },
       });
       fireEvent.click(getByRole('button', { name: /^Analyze$/i }));

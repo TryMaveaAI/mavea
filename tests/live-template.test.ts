@@ -250,10 +250,13 @@ describe('template persona and local-font manifest', () => {
       expect(provenance, file).toContain(`\`${digest}\``);
     }
 
-    expect(fontsCss).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
-    expect(readFileSync(join(__dirname, '../src/live/templates.ts'), 'utf8')).not.toMatch(
-      /fonts\.(googleapis|gstatic)\.com/,
-    );
+    // Substring assertions, not patterns: "this host appears nowhere" is what is meant, and a
+    // bare regex over a hostname reads to a scanner as an unanchored host check.
+    const templatesTs = readFileSync(join(__dirname, '../src/live/templates.ts'), 'utf8');
+    for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com']) {
+      expect(fontsCss).not.toContain(host);
+      expect(templatesTs).not.toContain(host);
+    }
   });
 
   it('keeps the Appearance identity control available during first-use setup', () => {

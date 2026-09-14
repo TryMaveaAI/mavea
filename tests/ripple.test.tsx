@@ -17,6 +17,11 @@ import type { NodeStatus, RiskLevel, ShipNode } from '../src/live/ripple/model';
 
 afterEach(() => cleanup());
 
+// The PR-link field, found by its whole placeholder. A substring regex over a URL-shaped string
+// reads to a scanner as a host check that forgot its anchors; pinning the entire hint is exact,
+// and it fails loudly if the copy is ever reworded.
+const PR_FIELD = 'github.com/owner/repo/pull/482 · owner/repo · a compare URL';
+
 describe('Ripple seed model integrity', () => {
   const ids = new Set(SEED_SHIP.nodes.map((n) => n.id));
 
@@ -170,10 +175,10 @@ describe('RippleOverlay', () => {
       <RippleOverlay model={SEED_SHIP} onClose={() => (closed = true)} />,
     );
     fireEvent.click(getByText(/Run on your own code/i));
-    expect(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeTruthy();
+    expect(getByPlaceholderText(PR_FIELD)).toBeTruthy();
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(queryByPlaceholderText(/github\.com\/owner\/repo\/pull/i)).toBeNull();
+    expect(queryByPlaceholderText(PR_FIELD)).toBeNull();
     expect(closed).toBe(false);
 
     // The overlay is topmost again, so a second Escape does close it.
@@ -212,7 +217,7 @@ describe('RippleOverlay', () => {
     );
     fireEvent.click(getByText(/Run on your own code/i));
 
-    const input = getByPlaceholderText(/github\.com\/owner\/repo\/pull/i);
+    const input = getByPlaceholderText(PR_FIELD);
     expect(document.activeElement).toBe(input);
     expect(container.querySelector('.ripple-paste')?.getAttribute('aria-modal')).toBe('true');
   });
@@ -226,7 +231,7 @@ describe('RippleOverlay', () => {
       <RippleOverlay model={SEED_SHIP} onClose={() => (closed = true)} />,
     );
     fireEvent.click(getByText(/Run on your own code/i));
-    fireEvent.keyDown(getByPlaceholderText(/github\.com\/owner\/repo\/pull/i), { key: ' ' });
+    fireEvent.keyDown(getByPlaceholderText(PR_FIELD), { key: ' ' });
     expect(closed).toBe(false);
   });
 });
