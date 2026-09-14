@@ -4,6 +4,18 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.4] - 2026-09-14
+
+### Fixed
+
+- **The living answer opens on a Claude key without paying for a rejected request first.** Building a living world asks the provider for a shape with many optional fields, and the Messages API refuses a response format that declares more than twenty-four of them. Every world on an Anthropic key therefore sent a request that came back refused before the real one went out, which read as a canvas that took twice as long or never came. Mavéa now knows that limit, sends no format where the API will not take one, and asks once.
+- **While a living answer builds, the wait says what is happening — on every provider.** When Gemini or the OpenAI path answered "busy" and Mavéa paused before asking again, the shell showed only "Building your living answer…" for the length of that pause, and when the retry also failed it looked like a hang. The provider's pause is now reported on the shell as it happens, a build that runs past twenty seconds says so and says that going back to the answer keeps the result on the card when it lands, and a failed build still offers Try again.
+- **Handwritten notes are written in the size of the line they annotate.** A margin note and a bracket's caption were drawn at one fixed size whatever they sat beside, so on a large display or a taller line they read as small, and on a document page they were too small to read. They now scale with the line, up to twice the base size; the space cleared around them scales the same way, so they cover nothing; they stay inside the card at every width; and they are re-measured whenever the window changes.
+
+### Changed
+
+- **A recorded example moves along a little quicker.** The pause after each step settles — the breath before the next one starts — was longer than a watcher needs. It is about a quarter shorter now; nothing in the walk, the voice or the choreography itself was sped up.
+
 ## [2.10.3] - 2026-09-14
 
 ### Changed
