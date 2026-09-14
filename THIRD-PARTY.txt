@@ -6517,7 +6517,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/expect@4.1.10
+@vitest/expect@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/expect
 
@@ -6544,7 +6544,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/mocker@4.1.10
+@vitest/mocker@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/mocker
 
@@ -6571,7 +6571,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/pretty-format@4.1.10
+@vitest/pretty-format@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/pretty-format
 
@@ -6598,7 +6598,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/runner@4.1.10
+@vitest/runner@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/runner
 
@@ -6625,7 +6625,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/snapshot@4.1.10
+@vitest/snapshot@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/snapshot
 
@@ -6652,7 +6652,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/spy@4.1.10
+@vitest/spy@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/spy
 
@@ -6679,7 +6679,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-@vitest/utils@4.1.10
+@vitest/utils@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/@vitest/utils
 
@@ -15085,7 +15085,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-js-yaml@4.3.1
+js-yaml@4.3.2
 Declared license: MIT
 Registry: https://www.npmjs.com/package/js-yaml
 
@@ -17047,7 +17047,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-maplibre-gl@6.3.0
+maplibre-gl@6.4.1
 Declared license: BSD-3-Clause
 Registry: https://www.npmjs.com/package/maplibre-gl
 
@@ -25405,7 +25405,7 @@ Repository: https://github.com/sveltejs/zimmerframe
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
 
-vitest@4.1.10
+vitest@4.1.11
 Declared license: MIT
 Registry: https://www.npmjs.com/package/vitest
 
