@@ -770,9 +770,12 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  /* ONE row at every width: the walk control, the scrolling chip strip, Next. The controls are fixed-size
-     (`flex: none`), the strip is the only thing allowed to shrink, and nothing may drop to a
-     second line — a wrapped transport strands its own primary action under the bar it belongs to. */
+  /* ONE row at every width the bar floats over the desk: the walk control, the scrolling chip
+     strip, Next. The controls are fixed-size (`flex: none`), the strip is the only thing allowed
+     to shrink, and nothing may drop to a second line — a wrapped transport strands its own
+     primary action under the bar it belongs to. The one exception is the phone column, where the
+     bar is a block in the flow rather than a strip over the desk (see the narrow container
+     block below). */
   flex-wrap: nowrap;
   gap: 8px;
   /* The bar is as wide as its beats need, up to the stage — a beat chip is the object's whole
@@ -2027,8 +2030,28 @@
     display: none;
   }
 
+  /* The stage is the flat column at this width (COMPACT_W is 940), so the bar is a block in the
+     column, not a strip floating over the desk: a second row is a taller bar, and no control is
+     stranded under it. The walk button, the mute and the notes toggle are fixed-size, and the
+     stepper — the one thing allowed to shrink — gave up its whole width at 320px while the toggle
+     ran 67px out of the stage. A half-width basis is what wraps the stepper: it cannot share a
+     row with the walk button on a phone, and on the row it takes it grows into whatever is left. */
+  .study-beats {
+    flex-wrap: wrap;
+  }
+
+  /* Ordered last so the toggle joins the walk button while that row has room for it (a 390px
+     phone) and heads the stepper's row when it does not (320px) — never a row of its own. */
   .study-stepper {
     display: flex;
+    flex: 1 1 50%;
+    order: 1;
+  }
+
+  /* The divider stood between the strip and the toggle on one row; across rows it is a stray
+     tick at a row's end. */
+  .study-beats-divider {
+    display: none;
   }
 }
 

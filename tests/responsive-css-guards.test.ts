@@ -170,6 +170,17 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(stepper).toMatch(/\.study-stepper\s*\{[^}]*display:\s*flex/);
   });
 
+  it('lets the phone bar wrap, with the stepper as the row that gives', () => {
+    // On the phone column the bar is a block in the flow, not a strip over the desk, so a second
+    // row costs height rather than stranding a control. The walk button, the mute and the notes
+    // toggle are fixed-size; a half-width basis is what wraps the stepper under them instead of
+    // letting it collapse to nothing while the toggle runs past the stage edge at 320px.
+    const phone = css.slice(css.indexOf('@container study (max-width: 700px)'));
+    expect(phone).toMatch(/\.study-beats\s*\{[^}]*flex-wrap:\s*wrap/);
+    expect(phone).toMatch(/\.study-stepper\s*\{[^}]*flex:\s*1 1 50%[^}]*order:\s*1/);
+    expect(phone).toMatch(/\.study-beats-divider\s*\{[^}]*display:\s*none/);
+  });
+
   it('quiets card transitions during a live window resize', () => {
     // The shallow flag and slot maths retune per RO tick; 0.9s eased moves compounding per
     // frame read as the layout falling apart while dragging the window edge.
