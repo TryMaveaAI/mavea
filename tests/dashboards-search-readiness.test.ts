@@ -3,7 +3,7 @@
 // memory, and a board built on that grounds nothing on every pass. searchReadiness is the ONE
 // judgement every create and refresh entry reads, so a surface cannot drift into offering a
 // tracker the loop would then refuse.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -12,6 +12,7 @@ import {
   searchBlockLine,
   searchReadiness,
 } from '../src/live/dashboards/searchReadiness';
+import { failureLine } from '../src/live/dashboards/trackerState';
 import type { LiveConfigV2 } from '../src/live/useLiveConfig';
 
 const cfg = (over: Partial<LiveConfigV2>): LiveConfigV2 =>
@@ -113,5 +114,33 @@ describe('every create and check entry reads the one judgement', () => {
       const src = readFileSync(join(dir, file), 'utf8');
       expect(src, file).toMatch(/href=\{searchBlockHref\(/);
     }
+  });
+});
+
+describe('the requirement is written in one place', () => {
+  const dir = join(__dirname, '..', 'src', 'live', 'dashboards');
+
+  // What this pins is the failure mode, not the wording: a surface that types its own version of
+  // the sentence types half of it, and the half it drops is always the model — the half a reader
+  // on a model that cannot search needs most, since the switch the other half names does nothing
+  // for them. So the sentence is borrowed wherever it is said, never retyped.
+  it('no other module writes its own blocked-search sentence', () => {
+    const files = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter(
+      (file) => /\.tsx?$/.test(file) && file !== 'searchBlock.ts',
+    );
+    expect(files.length).toBeGreaterThan(20);
+    for (const file of files) {
+      expect(readFileSync(join(dir, file), 'utf8'), file).not.toMatch(/Web search is off/);
+    }
+  });
+
+  // A tracker that failed its check says so on its tile and in the check log. It reads as a status
+  // rather than a gate, which is exactly how it came to carry its own half-sentence — so it takes
+  // the whole requirement and adds only its own promise to it.
+  it("a failed tracker's line borrows the requirement whole", () => {
+    const line = failureLine({ kind: 'search-off' });
+    expect(line).toContain(searchBlockLine('search-off'));
+    expect(line).toMatch(/model that can search/i);
+    expect(line).toMatch(/starts checking/);
   });
 });

@@ -8,6 +8,7 @@
 // The honesty invariant is unchanged and does not live here: values are only ever persisted from a
 // grounded pass, so a pending tracker shows empty cards, never invented ones. What changed is that
 // a tracker which cannot complete its first check is KEPT and labelled, instead of deleted.
+import { searchBlockLine } from './searchBlock';
 import type { Dashboard, TrackerFailure, TrackerState } from './types';
 
 /** The tracker's state — the stored one, or the equivalent derived from a pre-`state` record. */
@@ -77,7 +78,10 @@ export function failureLine(failure: TrackerFailure): string {
       // months-stale price). Naming both keeps the reader from rewording a question that was fine.
       return 'No live source backed this up — the model may not have searched. Try a stronger model in Settings, or reword what to track.';
     case 'search-off':
-      return 'Web search is off — set it to Real-time in Live’s settings and this starts checking.';
+      // Borrowed, never rewritten. This line named the setting and not the model, which is the
+      // half that a reader whose model cannot search needs — for them the switch it names does
+      // nothing on its own. Only the tracker's own promise is added to it.
+      return `${searchBlockLine('search-off')} Then this starts checking.`;
     case 'provider-unavailable':
       return 'Your model provider is unavailable right now. This retries itself shortly.';
   }

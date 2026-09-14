@@ -168,10 +168,11 @@ export function DashboardHome(): ReactElement {
         <div className="dash-home-main">
           {!isEmpty && !ready.ok && anyLiveContent && (
             <div className="dash-connect-banner">
+              {/* The lead is this banner's own; the requirement after it is not. Written here,
+                  it came out as half of one — the setting, with nothing about the model needing
+                  to be able to search at all. */}
               <span className="dash-connect-banner-text">
-                {ready.reason === 'no-model'
-                  ? 'These trackers can’t fetch anything yet — connect a model to start filling them.'
-                  : 'These trackers can’t fetch anything while Web search is off — set it to Real-time to start filling them.'}
+                These trackers can’t fetch anything yet. {searchBlockLine(ready.reason)}
               </span>
               <a className="dash-connect-banner-link" href={searchBlockHref(ready.reason)}>
                 {searchBlockCta(ready.reason)} →
