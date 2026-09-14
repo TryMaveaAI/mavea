@@ -360,6 +360,32 @@ describe('buildTileModel asOf', () => {
     expect(model.asOf).toBe('not yet refreshed');
     expect(model.everChecked).toBe(false);
   });
+
+  // The age belongs to the NUMBER on the tile, never to the last attempt to fetch it. A check
+  // that runs and grounds but parses nothing for this metric leaves the value untouched while
+  // still stamping the board as refreshed — so reading the board's clock printed "just now"
+  // beside a figure captured days earlier. For a tracker that is the one unforgivable reading:
+  // every other flaw shows a stale number, this one certifies it as current.
+  it('ages the value on the tile, not the last check of the board', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const d = dash({
+      lastRefreshedAt: 10 * day,
+      lastDataOutcome: 'updated',
+      metrics: [metric({ lastValue: 190, lastRaw: '$190', origin: 'search', asOf: 8 * day })],
+    });
+    expect(buildTileModel(d, 10 * day).asOf).toBe('2d ago');
+  });
+
+  it('falls back to the board clock only when no value carries its own stamp', () => {
+    // A card-only board, or a value written before asOf was recorded — the board's clock is then
+    // the best honest answer available, so behaviour is unchanged for it.
+    const d = dash({
+      lastRefreshedAt: 1000,
+      lastDataOutcome: 'updated',
+      metrics: [metric({ lastValue: 190, lastRaw: '$190', origin: 'search' })],
+    });
+    expect(buildTileModel(d, 1000).asOf).toBe('just now');
+  });
 });
 
 // A fixture that has not been played has no score. The chip was interpolating the two missing values

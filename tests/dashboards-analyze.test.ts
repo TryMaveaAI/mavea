@@ -157,3 +157,57 @@ describe('analyzeMove — failure honesty', () => {
     expect(v).toBeNull();
   });
 });
+
+// Reported from a live board: the tiles read WTI 103.25 / Brent 108.59 under "Strong evidence",
+// while the written take below them said "WTI is unchanged at $100.05, Brent about $104.61",
+// sourced from a days-old article the search happened to surface first. Two sets of numbers for
+// one metric on one screen is worse than either alone — the reader cannot tell which to believe,
+// and the one the product stands behind is the one it fetched and dated. The prompt used to hand
+// over a bare `label=value` list, which says nothing about whose number wins, so the model
+// treated its own search hits as the current level. Both halves of the fix are pinned here: the
+// tracked values are declared authoritative, and each one carries the age of the VALUE so a model
+// can say "as of two hours ago" instead of silently substituting something fresher-looking.
+describe('analyzeMove — the tracked values are the authority', () => {
+  it('tells the model not to restate a level from its own search results', async () => {
+    generateMock.mockResolvedValue({ raw: JSON.stringify({ verdict: 'ok' }) });
+    await analyzeMove(dash({ tripwires: [tw] }), tw, cfg, 5000);
+    const { system } = generateMock.mock.calls[0][0];
+    expect(system).toMatch(/AUTHORITY/);
+    expect(system).toMatch(/never quietly substitute/i);
+    // A disagreeing source is not suppressed — it is attributed and dated, which is the honest
+    // outcome and the only one that leaves the reader able to judge.
+    expect(system).toMatch(/disagrees/i);
+    expect(system).toMatch(/how old/i);
+  });
+
+  it('stamps each tracked reading with the age of the value, not of the check', async () => {
+    generateMock.mockResolvedValue({ raw: JSON.stringify({ verdict: 'ok' }) });
+    const d = dash({
+      tripwires: [tw],
+      metrics: [
+        { ...dash().metrics[0], asOf: 1_000_000 },
+        {
+          id: 'm2',
+          label: 'Brent',
+          query: 'brent crude price',
+          sourceQuote: { text: 'q', saidAt: 0 },
+          lastValue: null,
+          lastRaw: null,
+          origin: 'empty',
+        },
+      ],
+    } as Partial<Dashboard>);
+    await analyzeMove(d, tw, cfg, 1_000_000 + 2 * 60 * 60 * 1000);
+    const { user } = generateMock.mock.calls[0][0];
+    expect(user).toContain('US 10Y=4.6% (captured 2 hours ago)');
+    // A metric that has never filled in says so, rather than reading as an em dash the model can
+    // mistake for a value.
+    expect(user).toContain('Brent=(never fetched)');
+  });
+
+  it('says plainly when a board has nothing tracked yet', async () => {
+    generateMock.mockResolvedValue({ raw: JSON.stringify({ verdict: 'ok' }) });
+    await analyzeMove(dash({ metrics: [], tripwires: [] }), 'scheduled', cfg, 5000);
+    expect(generateMock.mock.calls[0][0].user).toContain('(no tracked values yet)');
+  });
+});

@@ -13,7 +13,18 @@ import type { Dashboard, Tripwire, Verdict } from './types';
 const SYSTEM =
   'You give a brief, honest read on the latest numbers a user is tracking: what they show now, what ' +
   'has materially changed since the last check, and — if a specific line was crossed — whether that ' +
-  'looks like a real move or noise. One or two plain sentences. Never invent data. CITE YOUR ' +
+  'looks like a real move or noise. One or two plain sentences. Never invent data. ' +
+  // The tracked values are already on the reader's screen, in tiles above whatever this call
+  // writes. Handed a bare list, a model treats its own search hits as the current level and states
+  // them as fact — observed on a crude board whose read said "WTI is unchanged at $100.05" under a
+  // tile reading $103.25, because the top search result was a days-old article. Two numbers for one
+  // metric on one screen is worse than either alone: the reader cannot tell which to believe.
+  'THE TRACKED VALUES BELOW ARE THE AUTHORITY — they are what the user is looking at right now. ' +
+  'Write about THOSE numbers. Use web search for what is driving them, not to restate the level. ' +
+  'Never state a different current level for a metric that already has a tracked value. If a source ' +
+  'you find disagrees materially, say so plainly and attribute it ("Reuters puts Brent at 104.61, ' +
+  'below the 108.59 here"), and say how old that source is — never quietly substitute its figure. ' +
+  'CITE YOUR ' +
   'SOURCES — whenever you used web search, include the exact source URLs you actually relied on as a ' +
   'top-level "sources": [{"title": string, "url": string}] array; only real URLs from the search ' +
   'results — never invent one, and omit "sources" entirely if you didn’t search. Return ONLY JSON: ' +
@@ -57,6 +68,36 @@ function extractJson(s: string): string {
   return a >= 0 && b > a ? s.slice(a, b + 1) : s;
 }
 
+/** The board's own values as the reader sees them, each stamped with how old it is. The age is the
+ *  half a bare `label=value` list leaves out, and it is the half that decides whether a search
+ *  result "disagrees" or simply post-dates the last check — without it the model has no way to tell
+ *  a stale tile from a moving market, and no way to say which. `lastRaw` carries the unit, so it is
+ *  preferred over the bare number; a metric never fetched says so rather than showing a dash the
+ *  model may read as zero. */
+function trackedReadings(d: Dashboard, now: number): string {
+  if (d.metrics.length === 0) return '(no tracked values yet)';
+  return d.metrics
+    .map((m) => {
+      const shown = m.lastRaw ?? (m.lastValue === null ? null : String(m.lastValue));
+      if (shown === null) return `${m.label}=(never fetched)`;
+      return m.asOf
+        ? `${m.label}=${shown} (captured ${minutesAgo(m.asOf, now)})`
+        : `${m.label}=${shown}`;
+    })
+    .join(', ');
+}
+
+/** Plain-words age for the prompt. Coarse on purpose — the model needs "days old" vs "minutes old",
+ *  not a precise duration it might quote back at the reader as a fact about the market. */
+function minutesAgo(at: number, now: number): string {
+  const mins = Math.max(0, Math.round((now - at) / 60000));
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}
+
 /** Run the gated verdict for a break (or a scheduled check). Returns the Verdict to store, or null. */
 export async function analyzeMove(
   d: Dashboard,
@@ -68,7 +109,7 @@ export async function analyzeMove(
     const adapter = getAdapter(cfg.provider);
     const tw = trigger === 'scheduled' ? null : trigger;
     const metric = tw ? d.metrics.find((m) => m.id === tw.metricId) : undefined;
-    const readings = d.metrics.map((m) => `${m.label}=${m.lastRaw ?? '—'}`).join(', ');
+    const readings = trackedReadings(d, now);
     const user = tw
       ? `A line the user set just crossed: "${tw.label}" — ${metric?.label ?? tw.label} is now ` +
         `${metric?.lastRaw ?? tw.brokenValue ?? 'past the threshold'}. Currently tracked: ${readings}. ` +

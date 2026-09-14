@@ -347,3 +347,88 @@ describe('refreshDashboards — batching + mapping', () => {
     expect(result.briefing).toBeUndefined();
   });
 });
+
+// Grounding is judged PER BOARD, and until now it was not. One call carries up to four trackers,
+// and a single call-wide flag meant a genuine search for one of them authorised every other
+// board's numbers in the same reply — including ones the model answered from memory. That is the
+// highest-stakes failure in the feature: a tracker's whole promise is that a value was fetched,
+// and a wrong one fires a real tripwire at the reader. The rule below is deliberately asymmetric.
+// A reply that cites per section is judged section by section; a reply that never splits its
+// citations falls back to the call-wide signal, so an older model degrades to exactly the old
+// behaviour rather than to "nothing is ever grounded".
+describe('refreshDashboards — one board’s search does not vouch for another', () => {
+  const two = () => [
+    dash({ id: 'a', title: 'Apple', metrics: [metricSpec('m1', 'AAPL price')] }),
+    dash({ id: 'b', title: 'Yankees', metrics: [metricSpec('m2', 'Yankees record')] }),
+  ];
+
+  it('keeps only the values from the board that actually cited something', async () => {
+    const [a, b] = two();
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'a',
+            values: { 'AAPL price': 313.62 },
+            sources: [{ title: 'src', url: 'https://example.com/aapl' }],
+          },
+          // No sources of its own: answered from memory while board "a" did the searching.
+          { id: 'b', values: { 'Yankees record': 87 } },
+        ],
+      }),
+    });
+    const result = await refreshDashboards(buildRefreshBatch([a, b]), cfg);
+    expect(result.perDashboard.a.values.m1?.value).toBe(313.62);
+    expect(result.perDashboard.b.values.m2).toBeUndefined();
+  });
+
+  it('still accepts both when both cite', async () => {
+    const [a, b] = two();
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          {
+            id: 'a',
+            values: { 'AAPL price': 313.62 },
+            sources: [{ title: 's', url: 'https://example.com/aapl' }],
+          },
+          {
+            id: 'b',
+            values: { 'Yankees record': 87 },
+            sources: [{ title: 's', url: 'https://example.com/nyy' }],
+          },
+        ],
+      }),
+    });
+    const result = await refreshDashboards(buildRefreshBatch([a, b]), cfg);
+    expect(result.perDashboard.a.values.m1?.value).toBe(313.62);
+    expect(result.perDashboard.b.values.m2?.value).toBe(87);
+  });
+
+  it('falls back to the call-wide signal when no section splits its citations', async () => {
+    // The older reply shape: one top-level "sources" for the whole call. Nothing here can be
+    // attributed per board, so the call-wide judgement stands and behaviour is unchanged.
+    const [a, b] = two();
+    generateMock.mockResolvedValue({
+      raw: JSON.stringify({
+        dashboards: [
+          { id: 'a', values: { 'AAPL price': 313.62 } },
+          { id: 'b', values: { 'Yankees record': 87 } },
+        ],
+      }),
+      sources: [{ title: 'src', url: 'https://example.com' }],
+    });
+    const result = await refreshDashboards(buildRefreshBatch([a, b]), cfg);
+    expect(result.perDashboard.a.values.m1?.value).toBe(313.62);
+    expect(result.perDashboard.b.values.m2?.value).toBe(87);
+  });
+
+  it('asks for the citations per dashboard, which is what makes the judgement possible', async () => {
+    const [a, b] = two();
+    generateMock.mockResolvedValue({ raw: JSON.stringify({ dashboards: [] }) });
+    await refreshDashboards(buildRefreshBatch([a, b]), cfg);
+    const { system } = generateMock.mock.calls[0][0];
+    expect(system).toMatch(/CITE SOURCES PER DASHBOARD/);
+    expect(system).toMatch(/values are then\s+discarded|discarded/);
+  });
+});

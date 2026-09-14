@@ -268,7 +268,15 @@ export function buildTileModel(d: Dashboard, now: number): TileModel {
   const isLiveWindow = window !== null && now >= window.startAt && now <= window.endAt;
 
   const everChecked = d.lastRefreshedAt !== null && d.lastRefreshedAt > 0;
-  const asOf = stripAgoPrefix(agoLine(d.lastRefreshedAt, now, d.lastDataOutcome));
+  // The age of the NUMBER on this tile, not of the last attempt to fetch it. A check that runs and
+  // grounds but comes back with nothing parseable for this metric leaves the value untouched while
+  // stamping the board as refreshed — so reading the board's clock puts "2m ago" beside a figure
+  // captured days earlier, which is the one thing a tracker must never do. Fall back to the board's
+  // clock only when no metric carries its own stamp (a card-only board, or a value from before
+  // asOf was recorded).
+  const asOf = stripAgoPrefix(
+    agoLine(headlineM?.asOf ?? d.lastRefreshedAt, now, d.lastDataOutcome),
+  );
 
   return {
     id: d.id,

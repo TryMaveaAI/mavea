@@ -650,7 +650,7 @@ export async function refreshDashboards(
       currentDateTimeLine() +
       ' You are checking several standing trackers at once. Return ONLY JSON: {"dashboards": ' +
       '[{"id": string, "values": {...}, "observations": [...], "blocks": [...], "expects"?: string, "grade"?: {...}, ' +
-      '"disagreement"?: {...}, "liveWindow"?: {...}}, ...], ' +
+      '"disagreement"?: {...}, "liveWindow"?: {...}, "sources": [{"title": string, "url": string}]}, ...], ' +
       (opts.briefingContext ? '"briefing": string, ' : '') +
       '"sources": [...]}. Use web search for every DASHBOARD section below — never invent a ' +
       'value or detail. ECHO each dashboard\'s exact "id" so results map back correctly. For a ' +
@@ -687,8 +687,11 @@ export async function refreshDashboards(
         : '') +
       'If search genuinely turns up nothing more specific than what is already shown, say so ' +
       'honestly rather than inventing new specifics or repeating the old ones as if just ' +
-      'confirmed. CITE SOURCES — every real URL actually relied on, in "sources"; omit it ' +
-      'entirely if you used no search.';
+      'confirmed. CITE SOURCES PER DASHBOARD — put the real URLs you actually relied on for THAT ' +
+      'dashboard in that dashboard\'s own "sources", not only in the top-level one. A dashboard ' +
+      'you answered without searching must have an empty or absent "sources": its values are then ' +
+      'discarded, which is the correct outcome. Omit the top-level "sources" entirely if you used ' +
+      'no search at all.';
     const user =
       `Use web search.\n\n${sections}` +
       (opts.briefingContext
@@ -737,6 +740,15 @@ export async function refreshDashboards(
     const parsedObj = obj(parseLooseJson(rr.raw));
     const grounded = isGrounded(rr, parsedObj);
     const sectionsById = extractSections(parsedObj, members);
+    // Grounding is judged PER BOARD. One call carries up to MAX_BATCH trackers, and a call-wide
+    // flag let a genuine search for one board authorise another board's recalled numbers — the
+    // highest-stakes failure here, since a wrong value fires a real tripwire. A reply that splits
+    // its citations per section is judged section by section; the call-wide signal stands in only
+    // for a reply that never split them, so an older model degrades to exactly today's behaviour
+    // rather than to "nothing is ever grounded".
+    const sectionsCite = members.some(
+      (m) => selfReportedSources(sectionsById[m.d.id] ?? {}).length > 0,
+    );
     // Declared before the per-member loop: an observation's receipts name the same sources the
     // pass reports, and reading them from one binding keeps those two from ever disagreeing.
     const sources = rr.sources && rr.sources.length ? rr.sources : selfReportedSources(parsedObj);
@@ -748,10 +760,11 @@ export async function refreshDashboards(
     for (const m of members) {
       const section = sectionsById[m.d.id] ?? {};
       const result = emptyDashboardResult();
+      const memberGrounded = sectionsCite ? selfReportedSources(section).length > 0 : grounded;
       // Same "NO SOURCE, NO NUMBER" rule as before: an ungrounded call earns zero trusted values —
       // a bad number here can flip a real tripwire alert, the highest-stakes failure mode this
       // engine has. Discard rather than pick through it.
-      if (grounded && m.metrics.length > 0) {
+      if (memberGrounded && m.metrics.length > 0) {
         const rawValues = obj(section.values);
         const byNorm = new Map(Object.entries(rawValues).map(([k, v]) => [normLabel(k), v]));
         for (const metric of m.metrics) {
@@ -761,7 +774,7 @@ export async function refreshDashboards(
           }
         }
       }
-      if (m.targets.length > 0 && grounded) {
+      if (m.targets.length > 0 && memberGrounded) {
         // Canonical targets come back as DATA and are projected here — the model never named a
         // prop. Indexed by the same position the prompt used, so a reply that echoes the order (the
         // only thing it was asked to do) maps back without needing an id to survive the round trip.
@@ -801,7 +814,7 @@ export async function refreshDashboards(
             { narration: '', title: 'x', sub: '', blocks: [rawBlock] },
             new Set(allowedTypesFor(target)),
             1,
-            grounded,
+            memberGrounded,
             // A standalone tile, not a canvas: composition-only floors (a list's two-item
             // minimum) don't apply — one sourced calendar entry is a complete, honest refresh.
             true,
@@ -811,7 +824,7 @@ export async function refreshDashboards(
           if (b && b.type === target.block.type) result.widgets[target.id] = b;
         });
       }
-      if (grounded) {
+      if (memberGrounded) {
         const expects = coerceExpects(section.expects);
         if (expects) result.expects = expects;
         if (m.d.prediction) {
