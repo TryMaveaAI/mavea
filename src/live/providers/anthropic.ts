@@ -201,6 +201,19 @@ export const anthropicAdapter: ProviderAdapter = {
     // Both breakpoints use the 1h TTL — a voice conversation pauses longer than the 5-minute
     // default all the time, and each such pause was repaying the full cold prompt.
     const stableBase = req.systemBase ?? req.system;
+    // Anthropic does NOT match the longest common prefix — it hashes the prefix up to each
+    // breakpoint exactly. So the session-invariant head of the base gets a mark of its own:
+    // without it, the first ask a reader types classified as brief and the next as rich wrote
+    // two full entries of several thousand tokens and read neither, which is a cache that is
+    // only ever paid for. With it, the invariant head hits from the second turn on however the
+    // depth moves, and only the keyed remainder is re-written.
+    const invariantBase =
+      req.systemBase && req.systemInvariant && stableBase.startsWith(req.systemInvariant)
+        ? req.systemInvariant
+        : '';
+    const keyedBase = invariantBase
+      ? stableBase.slice(invariantBase.length).trimStart()
+      : stableBase;
     const stablePrefix =
       req.systemStable?.startsWith(stableBase) && req.system.startsWith(req.systemStable)
         ? req.systemStable
@@ -221,8 +234,11 @@ export const anthropicAdapter: ProviderAdapter = {
     };
     // A caller without a systemBase split (Prism, mindshape, dashboards…) keeps the exact
     // wire shape it always had: one plain-ephemeral system block, untouched messages.
+    // Four marks is the API's ceiling, and these are the four worth having: the invariant head,
+    // the depth-keyed remainder, the session-stable menu, and the history delta.
     const systemBlocks = () => [
-      { type: 'text', text: stableBase, ...marked(!!req.systemBase) },
+      ...(invariantBase ? [{ type: 'text', text: invariantBase, ...marked(true) }] : []),
+      ...(keyedBase ? [{ type: 'text', text: keyedBase, ...marked(!!req.systemBase) }] : []),
       ...(req.systemBase && stableTail
         ? [{ type: 'text', text: stableTail, ...marked(true) }]
         : []),

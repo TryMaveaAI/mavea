@@ -12,10 +12,12 @@ import {
 // is a complete lesson (the user should never have to say "more in depth"), without changing the
 // ceiling or the lean/brief paths. Robust to the test environment's viewport (node off-DOM or jsdom).
 describe('targetBlockCount — teaching floor', () => {
-  it('raises the floor for a teaching ask (>= 11) without exceeding the ceiling (<= 18)', () => {
+  // Bounded by the exported constants rather than by literals, so retuning the band moves this
+  // test with it instead of leaving a number here that quietly contradicts the shipped one.
+  it('raises the floor for a teaching ask without exceeding the ceiling', () => {
     const teach = targetBlockCount('rich', { teaching: true });
-    expect(teach).toBeGreaterThanOrEqual(11);
-    expect(teach).toBeLessThanOrEqual(18);
+    expect(teach).toBeGreaterThan(targetBlockCount('lean'));
+    expect(teach).toBeLessThanOrEqual(MAX_BLOCKS);
   });
 
   it('a teaching ask never targets fewer blocks than a generic rich ask', () => {

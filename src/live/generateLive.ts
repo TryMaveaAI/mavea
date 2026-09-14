@@ -18,7 +18,8 @@ import type {
 import {
   validateLiveResponse,
   LIVE_SYSTEM_PROMPT,
-  liveSystemPrompt,
+  liveSystemPromptInvariant,
+  liveSystemPromptKeyed,
   blockTypesForTier,
   FRONTIER_BLOCK_TYPES,
   PHOTO_BLOCK_TYPE,
@@ -852,6 +853,9 @@ export function buildInkIntentContext(
 }
 
 export interface TurnSystemParts {
+  /** The longest prefix shared by every turn of the SESSION, whatever the ask's depth. Must be a
+   *  byte prefix of `base`; adapters that hash a cached prefix exactly mark it separately. */
+  invariant?: string;
   /** The longest prefix shared by every turn with the same prompt capability tuple. */
   base: string;
   /** Session-stable material that merits its own cache breakpoint. */
@@ -860,27 +864,40 @@ export interface TurnSystemParts {
   dynamic?: readonly string[];
 }
 
-/** The byte-identical foundation for a `(tier, complexity, generativeOn)` prompt cache key. */
+/** The part of the stable base keyed ONLY on `(tier, generativeOn)` — identical for every ask in
+ *  a session, however its depth is classified. Anthropic hashes a cached prefix exactly rather
+ *  than matching the longest common one, so without this split a session that mixed a brief ask
+ *  with a rich one wrote a second entry of several thousand tokens and read neither. */
+export function buildStableTurnInvariant(
+  tier: 'frontier' | 'mid' | 'small',
+  generativeOn = false,
+): string {
+  return `${liveSystemPromptInvariant(tier, generativeOn)}\n\n${[NARRATION_FIRST_LINE, documentLine()].join('\n\n')}`;
+}
+
+/** The byte-identical foundation for a `(tier, complexity, generativeOn)` prompt cache key.
+ *  `buildStableTurnInvariant(tier, generativeOn)` is always an exact byte prefix of this. */
 export function buildStableTurnBase(
   tier: 'frontier' | 'mid' | 'small',
   complexity: ReturnType<typeof classifyAsk>,
   generativeOn = false,
 ): string {
-  const stableDirectives = [
-    NARRATION_FIRST_LINE,
-    documentLine(),
+  const keyed = [
+    liveSystemPromptKeyed(tier, complexity),
     spokenLineDirective(complexity),
     complexity === 'rich' ? rhythmDirective() : '',
     complexity === 'rich' && tier !== 'small' ? conceptSectionsDirective() : '',
   ]
     .filter(Boolean)
     .join('\n\n');
-  return `${liveSystemPrompt(tier, complexity, generativeOn)}\n\n${stableDirectives}`;
+  const invariant = buildStableTurnInvariant(tier, generativeOn);
+  return keyed ? `${invariant}\n\n${keyed}` : invariant;
 }
 
 /** Preserve one canonical order while exposing the two cacheable prefixes to every adapter. */
 export function buildTurnSystem(parts: TurnSystemParts): {
   system: string;
+  systemInvariant?: string;
   systemBase: string;
   systemStable: string;
 } {
@@ -889,6 +906,11 @@ export function buildTurnSystem(parts: TurnSystemParts): {
   const systemStable = join([systemBase, ...(parts.stable ?? [])]);
   return {
     system: join([systemStable, ...(parts.dynamic ?? [])]),
+    // Only ever forwarded when it really is a prefix — a caller that drifts gets today's shape
+    // rather than a breakpoint on bytes the model is not actually sent first.
+    ...(parts.invariant && systemBase.startsWith(parts.invariant)
+      ? { systemInvariant: parts.invariant }
+      : {}),
     systemBase,
     systemStable,
   };
@@ -1052,6 +1074,7 @@ export async function generateLive(
   // and provider prefix-caching matches the longest common prefix — this order keeps every
   // complexity sharing the base prompt plus the first two directives before they diverge.
   const cachedBase = buildStableTurnBase(tier, complexity, generativeOn);
+  const cachedInvariant = buildStableTurnInvariant(tier, generativeOn);
   const codeAuditLine = codeReviewAccuracyDirective(userText, opts.selectedBlocks);
   // Density scales with the ask: a rich question fills THIS viewport (a big monitor needs
   // more than a laptop); a trivial one stays to a few focused blocks.
@@ -1282,6 +1305,7 @@ export async function generateLive(
   // open (see depth/deepen), so the eager turn no longer pays output tokens for drawers
   // nobody opens — this asks only for the grouping tags.
   const turnSystem = buildTurnSystem({
+    invariant: cachedInvariant,
     base: cachedBase,
     stable: [selection.stablePromptSnippet, explicitCountLine, memoryLine, correctsLine],
     dynamic: [
@@ -1603,6 +1627,7 @@ export async function generateLive(
     // A backoff is the one wait the reader should be told about by name: it is not the model.
     onWait: (ms) => opts.onActivity?.(ms == null ? null : 'rate-limited'),
     system,
+    systemInvariant: turnSystem.systemInvariant,
     systemBase: turnSystem.systemBase,
     systemStable: turnSystem.systemStable,
     // Keep every Live prompt variant on the same cache worker: the actual leading tokens still

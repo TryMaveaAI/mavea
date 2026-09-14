@@ -1513,7 +1513,9 @@ describe('provider registry — every provider is wired + carries picker metadat
 // everything behind it. Live exposes a fixed base, a session-stable extension, and the dynamic
 // turn tail. The first two stay ahead of replayed history; only the changing tail leads the user.
 describe('prompt-cache prefix split', () => {
-  const BASE = 'STABLE BASE PROMPT — the part that never changes.';
+  const INVARIANT = 'INVARIANT HEAD — shared by every ask in the session.';
+  const KEYED = 'DEPTH-KEYED — the part that moves with how deep the ask is.';
+  const BASE = `${INVARIANT}\n\n${KEYED}`;
   const SESSION = 'SESSION STABLE — core menu and enabled capabilities.';
   const STABLE_PREFIX = `${BASE}\n\n${SESSION}`;
   const PER_TURN = 'THIS TURN — the component menu and hero picks.';
@@ -1611,6 +1613,37 @@ describe('prompt-cache prefix split', () => {
     const userParts = messages[messages.length - 1].content as { text?: string }[];
     expect(userParts[0].text).toBe(PER_TURN);
     expect(userParts.some((p) => p.text === 'How should I budget?')).toBe(true);
+  });
+
+  // Anthropic hashes a cached prefix EXACTLY rather than matching the longest common one, so the
+  // session-invariant head needs a mark of its own: without it, one brief ask followed by a rich
+  // one wrote two full entries of several thousand tokens and read neither.
+  it('Anthropic gives the session-invariant head its own breakpoint so a change of depth still hits', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await anthropicAdapter.generate(
+      { ...splitReq, systemInvariant: INVARIANT },
+      { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' },
+    );
+
+    const system = bodyOf(fetchMock).system as { text: string; cache_control?: unknown }[];
+    expect(system.map((b) => b.text)).toEqual([INVARIANT, KEYED, SESSION]);
+    for (const block of system)
+      expect(block.cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+  });
+
+  // A prefix that is not actually a prefix would put a breakpoint on bytes the model is not sent
+  // first, which caches nothing and costs a write — so the split is only taken when it holds.
+  it('Anthropic ignores a systemInvariant that is not a prefix of the base', async () => {
+    const fetchMock = vi.fn(async () => streamResponse([], 'text/event-stream'));
+    vi.stubGlobal('fetch', fetchMock);
+    await anthropicAdapter.generate(
+      { ...splitReq, systemInvariant: 'NOT THE HEAD OF THIS PROMPT' },
+      { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' },
+    );
+
+    const system = bodyOf(fetchMock).system as { text: string }[];
+    expect(system.map((b) => b.text)).toEqual([BASE, SESSION]);
   });
 
   it('Anthropic leaves a caller without systemBase exactly as it was (plain ephemeral, untouched messages)', async () => {

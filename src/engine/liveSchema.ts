@@ -541,30 +541,58 @@ function relatedAnswerDirective(complexity: AskComplexity): string {
 }
 
 /**
+ * The half of the system prompt keyed ONLY on `(tier, generativeOn)` — the bytes every ask in a
+ * session shares, whatever its complexity. Most providers match a cache on the longest common
+ * prefix, so ordering the keyed text last was enough for them; Anthropic instead hashes the
+ * prefix up to a breakpoint EXACTLY, so a session that moves between a brief ask and a rich one
+ * wrote a second full entry and read neither. Exposing the shared half lets that adapter mark it
+ * on its own, and the several thousand tokens in here then hit on every turn of the session.
+ */
+export function liveSystemPromptInvariant(
+  tier: 'frontier' | 'mid' | 'small',
+  generativeOn = false,
+): string {
+  // The SVG contract is keyed on the user's generative setting, not on the ask, so it belongs
+  // ahead of the complexity-keyed text rather than after it — that is what keeps it inside the
+  // shared prefix instead of behind the one thing that moves turn to turn.
+  const addendum = `${STATIC_TURN_ADDENDUM}${generativeOn ? `\n\n${svgBlockMenu()}` : ''}`;
+  return tier === 'small'
+    ? `${LIVE_SYSTEM_PROMPT}${addendum}`
+    : `${LIVE_SYSTEM_PROMPT}${FRONTIER_BLOCKS_ADDENDUM}${addendum}`;
+}
+
+/** The remainder of the prompt, which DOES vary with the ask's depth: the related-answer mandate
+ *  and — for a rich canvas on a model strong enough to draw one — the spotlight-walk contract. A
+ *  brief or lean canvas is a couple of focused blocks, and paying ~1.4k input tokens to teach a
+ *  multi-stop walkthrough delays an answer the renderer would never walk; a small/local model
+ *  never gets it at all. Always appended after the invariant half. */
+export function liveSystemPromptKeyed(
+  tier: 'frontier' | 'mid' | 'small',
+  complexity: AskComplexity = 'rich',
+): string {
+  return [
+    relatedAnswerDirective(complexity),
+    complexity === 'rich' && tier !== 'small' ? TOUR_GESTURE_ADDENDUM.trimStart() : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/**
  * The system prompt for a model of the given capability tier. Small/local models
  * get the compact base prompt (the 8 core blocks); stronger models also get the
  * frontier cousins for richer canvases. The cache key is the full
- * `(tier, complexity, generativeOn)` tuple: related-answer guidance varies by complexity and the
- * sizeable SVG contract is present only when the user enabled generative visuals. The tour rides
- * last so adding it never breaks the shared prefix before it.
+ * `(tier, complexity, generativeOn)` tuple, assembled as the invariant half plus the keyed one —
+ * so `liveSystemPromptInvariant(tier, generativeOn)` is always an exact byte prefix of this.
  */
 export function liveSystemPrompt(
   tier: 'frontier' | 'mid' | 'small',
   complexity: AskComplexity = 'rich',
   generativeOn = false,
 ): string {
-  const stableAddendum = [
-    STATIC_TURN_ADDENDUM,
-    relatedAnswerDirective(complexity),
-    generativeOn ? svgBlockMenu() : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n');
-  if (tier === 'small') return `${LIVE_SYSTEM_PROMPT}${stableAddendum}`;
-  const base = `${LIVE_SYSTEM_PROMPT}${FRONTIER_BLOCKS_ADDENDUM}${stableAddendum}`;
-  // A brief or lean canvas is only a couple of focused blocks. Paying ~1.4k input tokens to teach
-  // a multi-stop walkthrough delays the answer for behavior that the renderer would not use.
-  return complexity === 'rich' ? base + TOUR_GESTURE_ADDENDUM : base;
+  const invariant = liveSystemPromptInvariant(tier, generativeOn);
+  const keyed = liveSystemPromptKeyed(tier, complexity);
+  return keyed ? `${invariant}\n\n${keyed}` : invariant;
 }
 
 /* ------------------------------------------------------------------ *

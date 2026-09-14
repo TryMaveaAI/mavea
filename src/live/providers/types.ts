@@ -58,6 +58,12 @@ export interface LiveRequest {
   usageLabel?: string;
   /** System prompt (LIVE_SYSTEM_PROMPT, possibly tier-tuned). Providers cache this. */
   system: string;
+  /** The leading slice of `systemBase` that is identical for EVERY ask in the session, whatever
+   *  its depth. Adapters that match a cached prefix by longest common prefix need nothing here;
+   *  Anthropic hashes the prefix up to a breakpoint exactly, so without its own mark this slice
+   *  was re-written (never read) the moment a session moved between a brief ask and a rich one.
+   *  Must be a byte prefix of `systemBase`; omit → one mark on `systemBase` as before. */
+  systemInvariant?: string;
   /** The stable, tier-invariant base of the system prompt (liveSystemPrompt(tier)).
    *  Anthropic uses it to split system into a cached first block + uncached per-turn
    *  suffix, so the large stable prefix gets the ~90% cache discount every turn after

@@ -25,7 +25,9 @@ describe('block-count band', () => {
       expect(targetBlockCount('rich')).toBeLessThanOrEqual(MAX_BLOCKS);
       expect(targetBlockCount('rich', { teaching: true })).toBeLessThanOrEqual(MAX_BLOCKS);
     }
-    expect(MAX_BLOCKS).toBeLessThanOrEqual(10);
+    // Nine, not a round ten: the recorded corpus medians at seven and only reads as "too much"
+    // from twelve, so the ceiling sits above the typical answer and below the overwhelming one.
+    expect(MAX_BLOCKS).toBe(9);
   });
 
   it('still fills a laptop rather than leaving it bare', () => {
@@ -35,7 +37,14 @@ describe('block-count band', () => {
 
   it('keeps a teaching ask a complete lesson', () => {
     sizeWindow(1280, 800);
-    expect(targetBlockCount('rich', { teaching: true })).toBeGreaterThanOrEqual(8);
+    expect(targetBlockCount('rich', { teaching: true })).toBeGreaterThanOrEqual(7);
+  });
+
+  // A trivial ask must never be inflated by the screen into the same canvas a substantive one
+  // gets — that is billed output the reader did not ask for.
+  it('keeps a simple ask clearly smaller than a substantive one, even on a big display', () => {
+    sizeWindow(3840, 2160);
+    expect(targetBlockCount('lean')).toBeLessThan(targetBlockCount('rich'));
   });
 
   it('holds a lean ask small and a brief ask tight, whatever the screen', () => {

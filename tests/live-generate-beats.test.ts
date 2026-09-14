@@ -95,7 +95,7 @@ describe('shouldRevealTour', () => {
     const beats = liveTourBeats(blocks, { opener: 'Here we go.', maxStops: TEACH_MAX_STOPS });
     // Stops plus the release beat that drops the spotlight.
     expect(beats).toHaveLength(TEACH_MAX_STOPS + 1);
-    expect(beats.at(-1)?.set.spot).toBeNull();
+    expect(beats.at(-1)?.set?.spot).toBeNull();
     const walkMs = beats.reduce((sum, beat) => sum + (beat.ms ?? 0), 0);
     expect(walkMs).toBeLessThan(15_000);
   });
