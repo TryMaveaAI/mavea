@@ -40,13 +40,61 @@ export function hasAnnotation(text: string): boolean {
   return text.includes('[[');
 }
 
-/** A parenthetical that is ONLY a citation — a markdown link and/or bare URL(s), e.g.
- *  "([fifa.com](https://…))" or "(https://…)". The real sources render in the answer's SOURCES
- *  footer, so this inline echo is redundant noise on the card and gibberish read aloud. The
- *  `(?<!\])` lookbehind keeps it from swallowing a *standalone* markdown link's own "(url)" parens
- *  (those follow a "]"), which MD_LINK converts to text instead. */
-const CITATION_PARENS =
-  /\s*(?<!\])\((?:\s*(?:\[[^\]]*\]\((?:https?:\/\/|www\.)[^)]*\)|https?:\/\/[^\s)]+)\s*[,;·|]*\s*)+\)/gi;
+/** One citation: a markdown link to a URL, or a bare URL. Sticky, so the scanner below asks "does a
+ *  citation start exactly here?" rather than searching. */
+const CITATION_LINK = /\[[^\]]*\]\((?:https?:\/\/|www\.)[^)]*\)|https?:\/\/[^\s)]+/iy;
+/** The punctuation and spacing models string several citations together with ("(a, b; c)"). One
+ *  class rather than a separator-then-space sequence, so a sloppy run like "; , " between two
+ *  citations is still read as a gap — a parenthetical holding nothing but citations and punctuation
+ *  is inline noise however badly it is punctuated, and leaving it in reads aloud as gibberish. */
+const CITATION_GAP = /[\s,;·|]*/y;
+/** Only whitespace may sit between the "(" and the first citation. */
+const LEADING_SPACE = /\s*/y;
+/** A single whitespace character, for the walk back over the space a citation was sitting behind. */
+const SPACE = /\s/;
+
+/** Measure a parenthetical that is ONLY a citation, starting at the "(" at `open`: returns the index
+ *  just past its ")", or -1 if the parens hold anything else. One left-to-right pass — every
+ *  citation is matched once, at a known position, so the cost is one walk of the text. That is the
+ *  reason this is a scanner and not one grammar-shaped regex: a parenthetical the model has not
+ *  closed yet is routine mid-stream, and asking a regex engine to re-split several URLs between its
+ *  repeats until it gives up on the missing ")" costs far more than the sentence is worth. */
+function citationParenEnd(text: string, open: number): number {
+  LEADING_SPACE.lastIndex = open + 1;
+  LEADING_SPACE.exec(text);
+  let i = LEADING_SPACE.lastIndex;
+  for (let seen = 0; ; seen++) {
+    // A ")" ends it, but an empty "()" or a lone "(the caveat)" is ordinary prose, not a citation.
+    if (text[i] === ')') return seen > 0 ? i + 1 : -1;
+    CITATION_LINK.lastIndex = i;
+    if (!CITATION_LINK.exec(text)) return -1;
+    CITATION_GAP.lastIndex = CITATION_LINK.lastIndex;
+    CITATION_GAP.exec(text);
+    i = CITATION_GAP.lastIndex;
+  }
+}
+
+/** Drop parentheticals that are ONLY citations, e.g. "([fifa.com](https://…))" or "(https://…)",
+ *  along with the whitespace they sat behind. The real sources render in the answer's SOURCES
+ *  footer, so this inline echo is redundant noise on the card and gibberish read aloud. A "(" that
+ *  follows a "]" is skipped: that is a *standalone* markdown link's own "(url)" parens, which
+ *  MD_LINK converts to text instead. */
+function stripCitationParens(text: string): string {
+  let out = '';
+  let kept = 0; // start of the run of text not yet copied across
+  for (let i = text.indexOf('('); i !== -1; i = text.indexOf('(', i + 1)) {
+    if (text[i - 1] === ']') continue;
+    const end = citationParenEnd(text, i);
+    if (end === -1) continue;
+    let start = i;
+    while (start > kept && SPACE.test(text[start - 1])) start--;
+    out += text.slice(kept, start);
+    kept = end;
+    i = end - 1; // the loop's own +1 resumes after the ")"
+  }
+  return out + text.slice(kept);
+}
+
 /** A markdown link — "[text](https://…)". Keeps the visible text, drops the URL. */
 const MD_LINK = /\[([^\]]*)\]\((?:https?:\/\/|www\.|mailto:)[^)]*\)/gi;
 /** A bare URL dropped into prose. */
@@ -60,8 +108,7 @@ const DANGLING_LINK = /\s*\(?\s*\[[^\]]*\]\((?:https?:\/\/|www\.|\/)[^)]*$/;
  *  surface in the answer's SOURCES footer. Remove citation parentheticals whole, keep the visible
  *  text of any other markdown link, drop stray bare URLs, then tidy the spacing left behind. */
 export function stripLinks(text: string): string {
-  return text
-    .replace(CITATION_PARENS, '')
+  return stripCitationParens(text)
     .replace(DANGLING_LINK, '') // before BARE_URL, which would otherwise eat the partial URL first
     .replace(MD_LINK, '$1')
     .replace(BARE_URL, '')

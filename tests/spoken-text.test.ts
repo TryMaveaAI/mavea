@@ -109,6 +109,21 @@ describe('spokenText — stripLinks', () => {
     );
   });
 
+  it('drops a parenthetical holding several citations at once', () => {
+    expect(
+      stripLinks('Both confirmed it (https://fifa.com/a, [uefa.com](https://uefa.com/b)).'),
+    ).toBe('Both confirmed it.');
+  });
+
+  it('stays fast on a long citation parenthetical the model has not closed yet', () => {
+    // Mid-stream this arrives one character at a time, so every keystroke re-parses it.
+    const streaming = 'Confirmed by all of them (' + 'https://fifa.com/a '.repeat(24);
+    const started = performance.now();
+    const out = stripLinks(streaming);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(out).toBe('Confirmed by all of them (');
+  });
+
   it('leaves ordinary parentheticals and link-free prose untouched', () => {
     expect(stripLinks('Half to needs (the non-negotiables), a third to wants.')).toBe(
       'Half to needs (the non-negotiables), a third to wants.',
@@ -149,5 +164,32 @@ describe('spokenText — collapseRepeatedValues', () => {
 
   it('leaves value-free text alone', () => {
     expect(collapseRepeatedValues('A calm sentence.')).toBe('A calm sentence.');
+  });
+});
+
+// A parenthetical holding only citations is inline noise no matter how the model punctuated the
+// gaps between them. Sloppy runs like "; , " or " | ·" turn up mid-stream and used to leave the
+// whole parenthetical on the card and in the spoken line, where it reads as gibberish.
+describe('citation parentheticals with sloppy punctuation', () => {
+  it('strips one whose single citation trails a mixed run', () => {
+    expect(stripLinks('Both confirmed it ([uefa.com](https://uefa.com/b); , ).')).toBe(
+      'Both confirmed it.',
+    );
+  });
+
+  it('strips one whose two citations are separated by a mixed run', () => {
+    expect(stripLinks('Settled (https://a.test; , https://b.test).')).toBe('Settled.');
+  });
+
+  it('strips one padded with a pipe and a middot', () => {
+    expect(stripLinks('Reported widely (https://x.test | ·).')).toBe('Reported widely.');
+  });
+
+  it('keeps it out of the spoken line too', () => {
+    expect(proseForSpeech('Reported widely (https://x.test | ·).')).toBe('Reported widely.');
+  });
+
+  it('still leaves ordinary prose parentheses alone', () => {
+    expect(stripLinks('It held (for now).')).toBe('It held (for now).');
   });
 });
