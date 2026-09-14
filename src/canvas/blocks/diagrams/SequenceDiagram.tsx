@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { SequenceDiagramProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { BlockEmpty } from '../../lib/BlockEmpty';
 
 type Props = SequenceDiagramProps & { delay?: number };
 
@@ -65,7 +66,7 @@ export function SequenceDiagram({
     return () => ro.disconnect();
   }, []);
 
-  const { lanes, width, height } = useMemo(() => {
+  const { lanes, drawn, width, height } = useMemo(() => {
     const n = Math.max(1, actors.length);
     // Spread the lanes to fill the measured card width, bounded by [LANE_MIN, LANE_MAX]. Before the
     // first measurement (SSR / first paint) fall back to LANE_MIN so the diagram is never blank.
@@ -74,12 +75,24 @@ export function SequenceDiagram({
     const laneX = actors.map((_, i) => (i + 0.5) * laneW);
     const map: Record<string, number> = {};
     actors.forEach((a, i) => (map[a.id] = laneX[i]));
+    // A message names its two lifelines, and a name that matches no actor is not a lifeline at
+    // x=0: falling back to the origin drew every arrow as a stub on the card's left edge with its
+    // label centred half outside the frame. Resolve both ends here and keep only the messages that
+    // land, so each drawn row sits on a lifeline that exists and the rows below close up after it.
+    const placed = messages.flatMap((m) => {
+      const x1 = map[m.from];
+      if (x1 === undefined) return [];
+      const x2 = m.self ? x1 : map[m.to];
+      if (x2 === undefined) return [];
+      return [{ m, x1, x2 }];
+    });
     return {
       lanes: { x: laneX, map },
+      drawn: placed,
       width: w,
-      height: TOP + HEAD_H + messages.length * ROW_H + 14,
+      height: TOP + HEAD_H + placed.length * ROW_H + 14,
     };
-  }, [actors, messages.length, hostW]);
+  }, [actors, messages, hostW]);
 
   return (
     <div
@@ -90,94 +103,103 @@ export function SequenceDiagram({
         <Ic className="ic" style={{ color: iconColor }} /> {title}
       </div>
       <div className="dg-seq" ref={hostRef}>
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="dg-seq-svg"
-          style={{ maxWidth: `${width}px` }}
-          preserveAspectRatio="xMidYMin meet"
-          role="img"
-          aria-label={title}
-        >
-          {/* lifelines */}
-          {actors.map((a, i) => (
-            <g key={`${a.id}-${i}`}>
-              <line
-                x1={lanes.x[i]}
-                y1={TOP + HEAD_H}
-                x2={lanes.x[i]}
-                y2={height - 8}
-                className="dg-seq-life"
-              />
-              <rect
-                x={lanes.x[i] - BOX_W / 2}
-                y={TOP}
-                width={BOX_W}
-                height={BOX_H}
-                rx={5}
-                className="dg-seq-actorbox"
-              />
-              <text
-                x={lanes.x[i]}
-                y={TOP + BOX_H / 2 + 4}
-                className="dg-seq-actor"
-                textAnchor="middle"
-              >
-                {a.label.length > ACTOR_MAX_CHARS && <title>{a.label}</title>}
-                {truncate(a.label, ACTOR_MAX_CHARS)}
-              </text>
-            </g>
-          ))}
-          {/* messages */}
-          {messages.map((m, i) => {
-            const y = TOP + HEAD_H + i * ROW_H + 20;
-            const x1 = lanes.map[m.from] ?? 0;
-            const x2 = lanes.map[m.to] ?? x1;
-            if (m.self) {
+        {drawn.length === 0 ? (
+          <BlockEmpty message="No messages to draw between these participants" />
+        ) : (
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="dg-seq-svg"
+            style={{ maxWidth: `${width}px` }}
+            preserveAspectRatio="xMidYMin meet"
+            role="img"
+            aria-label={title}
+          >
+            {/* lifelines */}
+            {actors.map((a, i) => (
+              <g key={`${a.id}-${i}`}>
+                <line
+                  x1={lanes.x[i]}
+                  y1={TOP + HEAD_H}
+                  x2={lanes.x[i]}
+                  y2={height - 8}
+                  className="dg-seq-life"
+                />
+                <rect
+                  x={lanes.x[i] - BOX_W / 2}
+                  y={TOP}
+                  width={BOX_W}
+                  height={BOX_H}
+                  rx={5}
+                  className="dg-seq-actorbox"
+                />
+                <text
+                  x={lanes.x[i]}
+                  y={TOP + BOX_H / 2 + 4}
+                  className="dg-seq-actor"
+                  textAnchor="middle"
+                >
+                  {a.label.length > ACTOR_MAX_CHARS && <title>{a.label}</title>}
+                  {truncate(a.label, ACTOR_MAX_CHARS)}
+                </text>
+              </g>
+            ))}
+            {/* messages */}
+            {drawn.map(({ m, x1, x2 }, i) => {
+              const y = TOP + HEAD_H + i * ROW_H + 20;
+              if (m.self) {
+                return (
+                  <g key={i}>
+                    <path
+                      d={`M ${x1} ${y} h 16 v 12 h -16`}
+                      className={'dg-seq-msg' + (m.reply ? ' reply' : '')}
+                      fill="none"
+                      markerEnd={arrow}
+                    />
+                    <text x={x1 + 22} y={y - 3} className="dg-seq-lbl" textAnchor="start">
+                      {m.label.length > SELF_LBL_MAX_CHARS && <title>{m.label}</title>}
+                      {truncate(m.label, SELF_LBL_MAX_CHARS)}
+                    </text>
+                  </g>
+                );
+              }
+              const dir = x2 >= x1 ? 1 : -1;
+              // Wider lane gaps (a message spanning several actors) get more room; adjacent
+              // lanes get the least — sized off the actual gap, not the fixed demo distance.
+              const msgMaxChars = Math.max(
+                MIN_LBL_CHARS,
+                Math.floor((Math.abs(x2 - x1) - 24) / PX_PER_CHAR_LBL),
+              );
               return (
                 <g key={i}>
-                  <path
-                    d={`M ${x1} ${y} h 16 v 12 h -16`}
+                  <line
+                    x1={x1}
+                    y1={y}
+                    x2={x2 - dir * 5}
+                    y2={y}
                     className={'dg-seq-msg' + (m.reply ? ' reply' : '')}
-                    fill="none"
                     markerEnd={arrow}
                   />
-                  <text x={x1 + 22} y={y - 3} className="dg-seq-lbl" textAnchor="start">
-                    {m.label.length > SELF_LBL_MAX_CHARS && <title>{m.label}</title>}
-                    {truncate(m.label, SELF_LBL_MAX_CHARS)}
+                  <text x={(x1 + x2) / 2} y={y - 5} className="dg-seq-lbl" textAnchor="middle">
+                    {m.label.length > msgMaxChars && <title>{m.label}</title>}
+                    {truncate(m.label, msgMaxChars)}
                   </text>
                 </g>
               );
-            }
-            const dir = x2 >= x1 ? 1 : -1;
-            // Wider lane gaps (a message spanning several actors) get more room; adjacent
-            // lanes get the least — sized off the actual gap, not the fixed demo distance.
-            const msgMaxChars = Math.max(
-              MIN_LBL_CHARS,
-              Math.floor((Math.abs(x2 - x1) - 24) / PX_PER_CHAR_LBL),
-            );
-            return (
-              <g key={i}>
-                <line
-                  x1={x1}
-                  y1={y}
-                  x2={x2 - dir * 5}
-                  y2={y}
-                  className={'dg-seq-msg' + (m.reply ? ' reply' : '')}
-                  markerEnd={arrow}
-                />
-                <text x={(x1 + x2) / 2} y={y - 5} className="dg-seq-lbl" textAnchor="middle">
-                  {m.label.length > msgMaxChars && <title>{m.label}</title>}
-                  {truncate(m.label, msgMaxChars)}
-                </text>
-              </g>
-            );
-          })}
-          <defs>
-            <marker id={arrowId} markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" className="dg-seq-arrowhead" />
-            </marker>
-          </defs>
-        </svg>
+            })}
+            <defs>
+              <marker
+                id={arrowId}
+                markerWidth="7"
+                markerHeight="7"
+                refX="5.5"
+                refY="3"
+                orient="auto"
+              >
+                <path d="M0,0 L6,3 L0,6 Z" className="dg-seq-arrowhead" />
+              </marker>
+            </defs>
+          </svg>
+        )}
       </div>
       {footer && (
         <div

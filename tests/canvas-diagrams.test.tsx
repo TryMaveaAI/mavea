@@ -1160,6 +1160,66 @@ describe('SequenceDiagram', () => {
     expect(container.querySelector('title')).toBeNull();
     expect(container.querySelector('text.dg-seq-lbl')?.textContent).toBe('ping');
   });
+
+  // Regression coverage for a real bug on live output: an endpoint naming no actor fell back to
+  // x=0, so every arrow of a diagram whose messages named their participants by label collapsed
+  // onto the card's left edge as identical stubs, each label centred half outside the frame.
+  const PAIR = [
+    { id: 'a', label: 'A' },
+    { id: 'b', label: 'B' },
+  ];
+
+  it('skips a message whose endpoint names no actor, and closes the rows up after it', () => {
+    const { container } = render(
+      <SequenceDiagram
+        title="Flow"
+        actors={PAIR}
+        messages={[
+          { from: 'a', to: 'nobody', label: 'lost' },
+          { from: 'a', to: 'b', label: 'kept' },
+        ]}
+      />,
+    );
+    const lines = Array.from(container.querySelectorAll('line.dg-seq-msg'));
+    expect(lines).toHaveLength(1);
+    // Two lanes, not the origin — and the surviving row took the first slot the dropped one left.
+    expect(Number(lines[0].getAttribute('x1'))).toBeGreaterThan(0);
+    expect(Number(lines[0].getAttribute('x2'))).toBeGreaterThan(
+      Number(lines[0].getAttribute('x1')),
+    );
+    const labels = Array.from(container.querySelectorAll('text.dg-seq-lbl'));
+    expect(labels.map((n) => n.textContent)).toEqual(['kept']);
+    expect(Number(labels[0].getAttribute('y'))).toBe(Number(lines[0].getAttribute('y1')) - 5);
+  });
+
+  it('draws a self-message on its own lane rather than at the origin', () => {
+    const { container } = render(
+      <SequenceDiagram
+        title="Flow"
+        actors={PAIR}
+        messages={[{ from: 'b', to: 'b', self: true, label: 'retry' }]}
+      />,
+    );
+    const path = container.querySelector('path.dg-seq-msg');
+    expect(path).toBeTruthy();
+    // The loop starts on b's lifeline, which is the second lane — never x=0.
+    expect(path!.getAttribute('d')).toMatch(/^M 198 /);
+  });
+
+  it('says so when no message names a participant, instead of drawing a pile of stubs', () => {
+    const { container } = render(
+      <SequenceDiagram
+        title="Flow"
+        actors={PAIR}
+        messages={[
+          { from: 'Client', to: 'Server', label: 'GET /orders' },
+          { from: 'Server', to: 'Client', label: '200 OK' },
+        ]}
+      />,
+    );
+    expect(container.querySelector('svg.dg-seq-svg')).toBeNull();
+    expect(container.textContent).toContain('No messages to draw');
+  });
 });
 
 // Regression coverage for a real bug: the per-bar value label (.dg-sv-val) rendered with
