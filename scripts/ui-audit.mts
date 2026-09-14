@@ -252,6 +252,19 @@ async function collide(page: Page): Promise<{ overlaps: Collision[]; tiny: TinyT
 
 const ALL_TEMPLATES = ['default', 'paper', 'daylight', 'ink', 'console', 'marquee'] as const;
 
+// Every face Mavéa renders is self-hosted; a request to one of these hosts means a template let a
+// webfont leak back out. Match on the host itself, so neither a lookalike domain nor an asset path
+// that merely spells one out is mistaken for the real thing.
+const REMOTE_FONT_HOSTS = new Set(['fonts.googleapis.com', 'fonts.gstatic.com']);
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
 async function auditLiveTemplates(
   baseUrl: string,
   widths: number[],
@@ -274,8 +287,7 @@ async function auditLiveTemplates(
           const page = await ctx.newPage();
           const remoteFonts: string[] = [];
           page.on('request', (request) => {
-            if (/fonts\.(googleapis|gstatic)\.com/.test(request.url()))
-              remoteFonts.push(request.url());
+            if (REMOTE_FONT_HOSTS.has(hostOf(request.url()))) remoteFonts.push(request.url());
           });
           await page.addInitScript(
             ({ initialTheme, initialTemplate, legalKey, legalVersion }) => {

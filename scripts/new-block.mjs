@@ -180,7 +180,9 @@ const snippets = [];
 }
 
 // ── apply (component + css are always safe new content; edits are pre-validated) ──
-writeFileSync(compPath, component);
+// `wx` creates or refuses: scaffolding must never overwrite a component someone wrote between
+// the name check above and this write.
+writeFileSync(compPath, component, { flag: 'wx' });
 ok(`created ${family}/${Comp}.tsx`);
 appendFileSync(stylesPath, `\n/* ${type} */\n.${cls}-summary {\n  color: var(--text);\n}\n`);
 ok(`appended a style stub to ${family}/styles.css`);

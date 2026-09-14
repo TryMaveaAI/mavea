@@ -206,6 +206,11 @@ const HOTLINKED_MEDIA_URL =
 const ASSET_CDN_URL =
   /https:\/\/(?:images\.unsplash\.com|images\.pexels\.com|cdn\.pixabay\.com|images-assets\.nasa\.gov|upload\.wikimedia\.org)\/[^\s"'`]+/gi;
 
+// The one tile service cleared for commercial use. Its host has to END where it ends:
+// "tiles.openfreemap.org.example.net" is somebody else's service wearing the prefix, and must not
+// satisfy the requirement that the approved one is the one in use.
+export const APPROVED_TILE_SOURCE = /https:\/\/tiles\.openfreemap\.org(?=[/"'`\s;)]|$)/;
+
 /** Remote media URLs in shipped fixture text that lack a reviewed license entry above. */
 export function unreviewedHotlinkedMedia(text) {
   const unreviewed = new Set();
@@ -388,7 +393,7 @@ export function commercialMediaPolicyFailures() {
   if (/basemaps\.cartocdn\.com|tile\.openstreetmap\.org/i.test(`${productSource}\n${mapSources}`)) {
     failures.push('map rendering: noncommercial/restricted public tile service');
   }
-  if (!mapSources.includes('https://tiles.openfreemap.org')) {
+  if (!APPROVED_TILE_SOURCE.test(mapSources)) {
     failures.push('map rendering: approved commercial-use tile service is missing');
   }
   return failures;

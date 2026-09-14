@@ -10,8 +10,10 @@
 //
 //   GEMINI_API_KEY=… npx vite-node scripts/build-tour-prism.mts
 //   ONLY=fomc,react-readme … to bake a subset
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mapClaims } from '../src/live/prism/mapClaims';
 import type { Attachment } from '../src/live/attachments';
 import type { ModelConfig } from '../src/types/mavea';
@@ -166,9 +168,16 @@ async function bakeOne(spec: DocSpec, cfg: ModelConfig): Promise<unknown | null>
     let pages: string[];
     if (spec.type === 'pdf') {
       if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('not a PDF');
-      const tmp = `/tmp/mavea-prism-${spec.id}.pdf`;
-      writeFileSync(tmp, bytes);
-      pages = extractPdf(tmp, MAXPAGES);
+      // pdftotext reads from disk, so the bytes get their own private scratch directory: cleaned
+      // up after the extraction, and never colliding with a parallel bake of the same document.
+      const scratch = mkdtempSync(join(tmpdir(), 'mavea-prism-'));
+      try {
+        const tmp = join(scratch, `${spec.id}.pdf`);
+        writeFileSync(tmp, bytes);
+        pages = extractPdf(tmp, MAXPAGES);
+      } finally {
+        rmSync(scratch, { recursive: true, force: true });
+      }
     } else {
       const text = bytes.toString('utf8');
       if (text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html')) {

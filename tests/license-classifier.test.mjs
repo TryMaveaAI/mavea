@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  APPROVED_TILE_SOURCE,
   classifyLicense,
   commercialMediaPolicyFailures,
   commercialSpeechPolicyFailures,
@@ -32,6 +33,16 @@ describe('third-party license classifier', () => {
 describe('commercial media policy', () => {
   it('keeps shipped media, generated codecs, Reel direction, voice, and maps on the allow-list', () => {
     expect(commercialMediaPolicyFailures()).toEqual([]);
+  });
+
+  it('counts the approved tile service only where its host name actually ends', () => {
+    expect(APPROVED_TILE_SOURCE.test('https://tiles.openfreemap.org/styles/positron')).toBe(true);
+    expect(
+      APPROVED_TILE_SOURCE.test("img-src 'self' https://tiles.openfreemap.org; media-src"),
+    ).toBe(true);
+    expect(APPROVED_TILE_SOURCE.test('https://tiles.openfreemap.org.example.net/styles/dark')).toBe(
+      false,
+    );
   });
 
   it('accepts only individually reviewed hotlinked media in shipped fixtures', () => {
