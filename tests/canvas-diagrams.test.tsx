@@ -7,6 +7,7 @@ import { BinaryTree } from '../src/canvas/blocks/diagrams/BinaryTree';
 import { CastMap } from '../src/canvas/blocks/diagrams/CastMap';
 import { CausationChain } from '../src/canvas/blocks/diagrams/CausationChain';
 import { CircuitDiagram } from '../src/canvas/blocks/diagrams/CircuitDiagram';
+import { ControlBlockDiagram } from '../src/canvas/blocks/diagrams/ControlBlockDiagram';
 import { DataStructure } from '../src/canvas/blocks/diagrams/DataStructure';
 import { FiveForces } from '../src/canvas/blocks/diagrams/FiveForces';
 import { FiveWhyChain } from '../src/canvas/blocks/diagrams/FiveWhyChain';
@@ -31,6 +32,8 @@ import type {
   CircuitComponent,
   CircuitKind,
   CircuitWire,
+  ControlBlockNode,
+  ControlWire,
   FiveForceEntry,
   GraphTraceEdge,
   GraphTraceNode,
@@ -1929,5 +1932,49 @@ describe('FiveWhyChain legibility', () => {
         }
       }
     }
+  });
+});
+
+describe('ControlBlockDiagram', () => {
+  const blocks: ControlBlockNode[] = [
+    { id: 'ctl', label: 'Controller', kind: 'block' },
+    { id: 'plant', label: 'Plant', kind: 'block' },
+  ];
+  const forward: ControlWire[] = [{ from: 'ctl', to: 'plant' }];
+
+  /** The drawing's own height, in the user units the loop tracks are measured in. */
+  function vbHeight(container: HTMLElement): number {
+    const box = container.querySelector('.dg-cbd-svg')?.getAttribute('viewBox') ?? '';
+    return Number(box.split(/\s+/)[3]);
+  }
+
+  it('reserves loop depth only for a feedback wire it can actually draw', () => {
+    const { container: plain } = render(
+      <ControlBlockDiagram title="Loop" blocks={blocks} wires={forward} />,
+    );
+    const { container: withGhost } = render(
+      <ControlBlockDiagram
+        title="Loop"
+        blocks={blocks}
+        wires={[...forward, { from: 'sensor', to: 'ctl', feedback: true }]}
+      />,
+    );
+    // 'sensor' names no block, so no return path is drawn — and a card sized around a track
+    // nothing draws is a card with an empty strip under it.
+    expect(vbHeight(withGhost)).toBe(vbHeight(plain));
+  });
+
+  it('still makes room for a feedback wire whose endpoints both resolve', () => {
+    const { container: plain } = render(
+      <ControlBlockDiagram title="Loop" blocks={blocks} wires={forward} />,
+    );
+    const { container: looped } = render(
+      <ControlBlockDiagram
+        title="Loop"
+        blocks={blocks}
+        wires={[...forward, { from: 'plant', to: 'ctl', feedback: true }]}
+      />,
+    );
+    expect(vbHeight(looped)).toBeGreaterThan(vbHeight(plain));
   });
 });

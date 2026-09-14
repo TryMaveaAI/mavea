@@ -135,7 +135,13 @@ function layoutBlocks(
     return { id: b.id, renderId: `${b.id || 'block'}:${index}`, label, kind, cx, cy, halfW, halfH };
   });
 
-  const feedbackCount = wires.filter((w) => w.feedback).length;
+  // Only a feedback wire that will actually be DRAWN earns a loop track below the row — the
+  // renderer skips one whose endpoints name no block, and depth reserved for a wire nothing
+  // draws is empty space the card is sized around.
+  const drawable = new Set(placed.map((p) => p.id).filter(Boolean));
+  const feedbackCount = wires.filter(
+    (w) => w.feedback && drawable.has(w.from) && drawable.has(w.to),
+  ).length;
   // A sum node's label sits ABOVE its circle (the "+"/"−" signs live at the sides/below), so
   // its effective top reaches further up than a block's own half-height.
   const topReach = (p: Placed) => p.cy - p.halfH - (p.kind === 'sum' ? 30 : 0);

@@ -454,7 +454,12 @@ export function MindShape({
   // offers to help tell the two apart. Picked by salience: the most central pair, ties broken
   // deterministically by id so the same map always surfaces the same one.
   const heroTension = useMemo(() => {
-    const real = links.filter((l) => l.kind === 'tensions' && !l.provisional && l.label);
+    // An endpoint that names no atom is required HERE, not after the pick: a single dangling
+    // tension ranked top would otherwise take the callout away from the whole map.
+    const real = links.filter(
+      (l) =>
+        l.kind === 'tensions' && !l.provisional && l.label && byId.has(l.from) && byId.has(l.to),
+    );
     if (real.length === 0) return null;
     const weightOf = (id: string): number => byId.get(id)?.weight ?? 1;
     const best = real

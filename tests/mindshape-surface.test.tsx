@@ -921,6 +921,40 @@ describe('MindShape — settled surface', () => {
     });
   });
 
+  it('keeps the callout on the tension it can draw when a dangling one outranks it', () => {
+    // Salience sums both endpoints' weights, and an endpoint naming no atom counts as 1 — so the
+    // phantom below (1 + 3) outranks the only drawable tension (1 + 1). Picked first, it used to
+    // resolve to nothing and take the callout away from the whole map.
+    const quiet: MindAtom = {
+      id: 'd',
+      kind: 'action',
+      label: 'pack the boxes',
+      quote: 'I should pack the boxes',
+      status: 'stable',
+      confidence: 'said',
+      weight: 1,
+    };
+    render(
+      <MindShape
+        asBlock={false}
+        phase="settled"
+        center="Is it the right time — or am I running?"
+        atoms={[...atoms, quiet]}
+        links={[
+          { from: 'ghost', to: 'a', kind: 'tensions', label: 'phantom' },
+          { from: 'c', to: 'd', kind: 'tensions', label: 'the real pull' },
+        ]}
+        onAction={vi.fn()}
+      />,
+    );
+    const callout = screen.getByRole('dialog', { name: 'The tension' });
+    expect(within(callout).getByText(/decide by spring/)).toBeTruthy();
+    expect(within(callout).getByText(/pack the boxes/)).toBeTruthy();
+    expect(document.querySelector('.ms-synthesis-line')?.textContent).toBe(
+      '2 tensions. The real pull: decide by spring vs pack the boxes.',
+    );
+  });
+
   it('shows the five post-settle actions in the mockup’s words', () => {
     renderSettled();
     expect(screen.getByRole('button', { name: 'Answer this' })).toBeTruthy();
