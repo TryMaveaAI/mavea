@@ -64,7 +64,6 @@ const registryPath = join(famDir, 'registry.tsx');
 const stylesPath = join(famDir, 'styles.css');
 const catalogPath = join(BLOCKS, 'catalog/catalog.data.ts');
 
-if (existsSync(compPath)) fail(`${Comp}.tsx already exists in ${family}/`);
 if (registersKey(readFileSync(registryPath, 'utf8'), type))
   fail(`block type "${type}" is already registered in ${family}/registry.tsx`);
 
@@ -191,9 +190,15 @@ const snippets = [];
 }
 
 // ── apply (component + css are always safe new content; edits are pre-validated) ──
-// `wx` creates or refuses: scaffolding must never overwrite a component someone wrote between
-// the name check above and this write.
-writeFileSync(compPath, component, { flag: 'wx' });
+// `wx` creates or refuses, and it is the ONLY existence check — a separate probe beforehand
+// would just be a wider window for someone else to write the same file. Nothing has touched the
+// disk yet at this point, so refusing here costs no cleanup.
+try {
+  writeFileSync(compPath, component, { flag: 'wx' });
+} catch (err) {
+  if (err?.code === 'EEXIST') fail(`${Comp}.tsx already exists in ${family}/`);
+  throw err;
+}
 ok(`created ${family}/${Comp}.tsx`);
 appendFileSync(stylesPath, `\n/* ${type} */\n.${cls}-summary {\n  color: var(--text);\n}\n`);
 ok(`appended a style stub to ${family}/styles.css`);

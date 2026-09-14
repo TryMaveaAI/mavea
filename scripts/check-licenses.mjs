@@ -211,6 +211,11 @@ const ASSET_CDN_URL =
 // satisfy the requirement that the approved one is the one in use.
 export const APPROVED_TILE_SOURCE = /https:\/\/tiles\.openfreemap\.org(?=[/"'`\s;)]|$)/;
 
+// Tile services whose terms rule out commercial use. Unlike the approved host above, these are
+// looked for as plain substrings: any mention at all is the violation, so there is no end-of-host
+// to pin — a subdomain wearing one of these names is still somebody serving these tiles.
+const RESTRICTED_TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
+
 /** Remote media URLs in shipped fixture text that lack a reviewed license entry above. */
 export function unreviewedHotlinkedMedia(text) {
   const unreviewed = new Set();
@@ -390,7 +395,10 @@ export function commercialMediaPolicyFailures() {
     .join('\n');
   // The negative scan covers ALL product source (a forbidden host anywhere is a violation);
   // index.html rides along inside mapSources, whose CSP allowlist is the load-bearing gate.
-  if (/basemaps\.cartocdn\.com|tile\.openstreetmap\.org/i.test(`${productSource}\n${mapSources}`)) {
+  const scanned = `${productSource}\n${mapSources}`.toLowerCase();
+  // Substring scan, deliberately: the host is a violation wherever it appears, so there is
+  // nothing to anchor to — and a plain includes() says that without looking like a host check.
+  if (RESTRICTED_TILE_HOSTS.some((host) => scanned.includes(host))) {
     failures.push('map rendering: noncommercial/restricted public tile service');
   }
   if (!APPROVED_TILE_SOURCE.test(mapSources)) {

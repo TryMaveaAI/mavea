@@ -172,7 +172,9 @@ async function bakeOne(spec: DocSpec, cfg: ModelConfig): Promise<unknown | null>
       // up after the extraction, and never colliding with a parallel bake of the same document.
       const scratch = mkdtempSync(join(tmpdir(), 'mavea-prism-'));
       try {
-        const tmp = join(scratch, `${spec.id}.pdf`);
+        // A fixed name inside the private directory: the scratch path is already unique, so the
+        // spec's id has no reason to reach the filesystem at all.
+        const tmp = join(scratch, 'document.pdf');
         writeFileSync(tmp, bytes);
         pages = extractPdf(tmp, MAXPAGES);
       } finally {
