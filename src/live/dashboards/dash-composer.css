@@ -4,15 +4,24 @@
    (scrim, modal, head, back, close, loading) rides dashboards.css's existing xt- and tpl- rules so
    both "track anything" entry points read as one surface, not two. Tokens only, light+dark auto. */
 
-.dash-composer-bar {
+/* The bar and its gate line stick together as one column: the bar floats at the bottom of a
+   long page, so a line left in the flow beneath it sits under the fold, where a phone reader who
+   just pressed Track sees nothing happen. */
+.dash-composer {
   position: sticky;
   bottom: 20px;
   z-index: 4;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   width: min(100%, 640px);
   margin: 24px auto 0;
+}
+.dash-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 8px 8px 8px 20px;
   border-radius: var(--r-full);
   border: 1px solid var(--line);
@@ -56,12 +65,32 @@
   color: var(--on-presence, #fff);
   background: var(--presence);
 }
+/* Why a submit did not plan — rises above the bar in its own column, so it reads as the bar's
+   answer rather than a page-level notice. Backed, because it floats over whatever the page has
+   scrolled under the bar. */
+.dash-composer-gate {
+  margin: 0 auto;
+  max-width: 100%;
+  padding: 6px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.dash-composer-gate a {
+  color: var(--presence);
+  font-weight: 600;
+}
 .dash-composer-submit:disabled {
   opacity: 0.5;
   cursor: default;
 }
 @media (width <= 640px) {
-  .dash-composer-bar {
+  .dash-composer {
     width: calc(100% - 32px);
     bottom: 12px;
   }

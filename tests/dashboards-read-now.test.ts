@@ -67,7 +67,7 @@ describe('readDashboardNow', () => {
   it('fires analyzeMove and persists the verdict even when the gate would never fire', async () => {
     const { readDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard());
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue(withKey);
     analyzeMove.mockResolvedValue(verdict);
 
@@ -100,7 +100,7 @@ describe('readDashboardNow', () => {
       sourceQuote: { text: '', saidAt: 0 },
     };
     getDashboard.mockReturnValue(dashboard({ tripwires: [tw] }));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue(withKey);
     analyzeMove.mockResolvedValue({ ...verdict, tripwireId: 't1' });
 
@@ -112,7 +112,7 @@ describe('readDashboardNow', () => {
   it('marks the attempt failed (never fabricates) when the read comes back empty', async () => {
     const { readDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard());
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue(withKey);
     analyzeMove.mockResolvedValue(null);
 
@@ -133,10 +133,21 @@ describe('readDashboardNow', () => {
     expect(analyzeMove).not.toHaveBeenCalled();
   });
 
+  it('returns search-off and never calls the model when Web search is not Real-time', async () => {
+    const { readDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
+    getDashboard.mockReturnValue(dashboard());
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'off' });
+    toModelConfig.mockReturnValue(withKey);
+
+    const result = await readDashboardNow('d1');
+    expect(result).toBe('search-off');
+    expect(analyzeMove).not.toHaveBeenCalled();
+  });
+
   it('never double-fires while a read is already in flight for the same dashboard', async () => {
     const { readDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard());
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue(withKey);
     let resolve: (v: Verdict | null) => void = () => {};
     analyzeMove.mockReturnValue(new Promise((r) => (resolve = r)));

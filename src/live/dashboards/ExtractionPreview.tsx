@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode
 import { loadSession } from '../session/store';
 import { getLibrary } from '../library/store';
 import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
+import { searchReadiness } from './searchReadiness';
 import type { ChatMessage } from '../providers/types';
 import type { TurnFrame } from '../history';
 import { addDashboard, ensureFirstCheck, getDashboards } from './store';
@@ -19,8 +20,15 @@ import {
   groundedDraft,
 } from './extract';
 import { relatedDashboard } from './relate';
-import { boardIds, confirmFailureMessage, confirmRealData, CONFIRM_WAIT_NOTE } from './confirmAdd';
+import {
+  boardIds,
+  confirmFailureMessage,
+  confirmRealData,
+  CONFIRM_WAIT_NOTE,
+  type ConfirmSubject,
+} from './confirmAdd';
 import { estimateSearchesPerMonth } from './cadence';
+import { hasLiveContent } from './format';
 import { dashHref } from './route';
 import type { Dashboard, DashboardDraft, DataCadenceMode } from './types';
 import { useFocusTrap } from '../useFocusTrap';
@@ -200,6 +208,17 @@ export function ExtractionPreview({
     [draft, dropMetric],
   );
 
+  // A draft with anything to fetch needs a model with Real-time search behind it before it can
+  // become a board: without one the add-time probe below can only ever refuse, so the reason is
+  // said up front and Build stays disabled instead of failing after a wait. Read once per open,
+  // like the palette — the setting can't change without leaving for Live.
+  const readiness = useMemo(() => searchReadiness(getLiveConfigV2()), []);
+  const blockedAs = (subject: ConfirmSubject): string | null =>
+    readiness.ok ? null : confirmFailureMessage(readiness.reason, false, subject);
+  const blocked = blockedAs('board');
+  const draftHasLiveParts = (d: DashboardDraft): boolean =>
+    d.metrics.some((m) => !m.userSupplied && m.query.trim() !== '');
+
   const keptDraft = (): DashboardDraft | null => {
     if (!draft) return null;
     return {
@@ -211,6 +230,12 @@ export function ExtractionPreview({
       ),
     };
   };
+
+  const liveBlocked = ((): boolean => {
+    if (!blocked) return false;
+    const kept = keptDraft();
+    return kept !== null && draftHasLiveParts(kept);
+  })();
 
   // The add-time reality gate: the first grounded read runs BEFORE the board is handed over,
   // and an addition whose probe can't ground is rolled back with an honest line.
@@ -237,6 +262,10 @@ export function ExtractionPreview({
       conversationTitle: current.title,
       cadence: { data: cadence, ai: 'manual' },
     });
+    if (blocked && hasLiveContent(dash)) {
+      setConfirmErr(blocked);
+      return;
+    }
     addDashboard(dash);
     setConfirming(true);
     setConfirmErr(null);
@@ -254,6 +283,10 @@ export function ExtractionPreview({
   const fold = async (target: Dashboard): Promise<void> => {
     const kept = keptDraft();
     if (!kept || !current || confirming) return;
+    if (blocked && draftHasLiveParts(kept)) {
+      setConfirmErr(blockedAs('tile'));
+      return;
+    }
     const before = boardIds(target);
     foldDraftIntoDashboard(target, kept, current.title);
     // foldDraftIntoDashboard doesn't arm a first-check itself, unlike a fresh build — a fold into
@@ -441,14 +474,19 @@ export function ExtractionPreview({
                     <button
                       type="button"
                       className="xt-build"
-                      disabled={confirming}
+                      disabled={confirming || liveBlocked}
                       onClick={() => void build()}
                     >
                       {confirming ? 'Confirming live data…' : 'Build dashboard →'}
                     </button>
                   </div>
+                  {liveBlocked && (
+                    <p className="xt-confirm-err">
+                      {blocked} <a href="#/live">Open Live</a>
+                    </p>
+                  )}
                   {confirming && <p className="xt-confirm-err">{CONFIRM_WAIT_NOTE}</p>}
-                  {confirmErr && <p className="xt-confirm-err">{confirmErr}</p>}
+                  {confirmErr && !liveBlocked && <p className="xt-confirm-err">{confirmErr}</p>}
 
                   {existing.length > 0 && (
                     <div className="xt-fold">
@@ -463,6 +501,7 @@ export function ExtractionPreview({
                               key={dd.id}
                               type="button"
                               className={'xt-fold-chip' + (armed ? ' xt-fold-armed' : '')}
+                              disabled={confirming || liveBlocked}
                               onClick={() => attemptFold(dd)}
                               onMouseLeave={() => armed && setFoldArmed(null)}
                               title={

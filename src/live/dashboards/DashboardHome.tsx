@@ -15,7 +15,8 @@ import { TrackerTile } from './tiles/TrackerTile';
 import { DashToast } from './DashToast';
 import { onTripwireToast, type TripwireToastDetail } from './dashboardEvents';
 import { hasLiveContent } from './format';
-import { useLiveConfig, hasModelConfigured } from '../useLiveConfig';
+import { useLiveConfig } from '../useLiveConfig';
+import { searchBlockLine, searchReadiness } from './searchReadiness';
 import { Icon } from '../../icons/icons';
 import { dashHref } from './route';
 import type { Dashboard } from './types';
@@ -95,7 +96,7 @@ export function DashboardHome(): ReactElement {
 
   const isEmpty = dashboards.length === 0;
   const anyLiveContent = useMemo(() => dashboards.some(hasLiveContent), [dashboards]);
-  const modelReady = hasModelConfigured(liveCfg);
+  const ready = searchReadiness(liveCfg);
 
   const [toast, setToast] = useState<TripwireToastDetail | null>(null);
   useEffect(() => onTripwireToast(setToast), []);
@@ -121,6 +122,8 @@ export function DashboardHome(): ReactElement {
         setCheckAllNote(
           'Your model provider stopped the run — usually its per-minute limit. Nothing was changed; try again in a minute.',
         );
+      } else if (outcome === 'no-model' || outcome === 'search-off') {
+        setCheckAllNote(searchBlockLine(outcome));
       }
     } finally {
       setCheckingAll(false);
@@ -158,13 +161,15 @@ export function DashboardHome(): ReactElement {
       )}
       <div className="dash-home-grid">
         <div className="dash-home-main">
-          {!isEmpty && !modelReady && anyLiveContent && (
+          {!isEmpty && !ready.ok && anyLiveContent && (
             <div className="dash-connect-banner">
               <span className="dash-connect-banner-text">
-                These trackers can't fetch anything yet — connect a model to start filling them.
+                {ready.reason === 'no-model'
+                  ? 'These trackers can’t fetch anything yet — connect a model to start filling them.'
+                  : 'These trackers can’t fetch anything while Web search is off — set it to Real-time to start filling them.'}
               </span>
               <a className="dash-connect-banner-link" href="#/live">
-                Connect a model in Live →
+                {ready.reason === 'no-model' ? 'Connect a model in Live →' : 'Open Live →'}
               </a>
             </div>
           )}
@@ -182,9 +187,9 @@ export function DashboardHome(): ReactElement {
                 <span className="dash-track-eyebrow">TRACKING · {dashboards.length}</span>
                 <div className="dash-track-head-right">
                   <span className="dash-track-honesty">
-                    NOT REAL-TIME — EVERY VALUE IS AS OF ITS LAST WEB SEARCH
+                    NOT A LIVE FEED — EVERY VALUE IS AS OF ITS LAST WEB SEARCH
                   </span>
-                  {modelReady && anyLiveContent && (
+                  {ready.ok && anyLiveContent && (
                     <button
                       type="button"
                       className="dash-check-all-btn"

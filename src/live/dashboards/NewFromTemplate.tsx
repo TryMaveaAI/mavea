@@ -8,7 +8,8 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useFocusTrap } from '../useFocusTrap';
 import { getDashboards } from './store';
 import { dashHref } from './route';
-import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { searchBlockLine, searchReadiness } from './searchReadiness';
 import { planTracker, type TrackerPlan } from './planTracker';
 import { PlanReview } from './PlanReview';
 import type { Dashboard } from './types';
@@ -38,14 +39,16 @@ export function NewFromTemplate({ onClose }: { onClose: () => void }): ReactElem
   // Read once, like ExtractionPreview does — this modal is a single, short-lived review, not a
   // live view that needs to track dashboards created elsewhere while it's open.
   const existing = useMemo<Dashboard[]>(() => getDashboards(), []);
-  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
+  const ready = useMemo(() => searchReadiness(getLiveConfigV2()), []);
 
   const runPlan = async (): Promise<void> => {
     const wish = ask.trim();
-    if (!wish || planning) return;
+    if (!wish || planning || !ready.ok) return;
     setPlanning(true);
-    // planTracker never throws — no model / a dead call degrades to a plain list tracker that
-    // re-asks the user's own words, so creation is never blocked on the planner.
+    // planTracker never throws — a dead call degrades to a plain list tracker that re-asks the
+    // user's own words, so creation is never blocked on the planner. (The readiness gate above is
+    // a different matter: a tracker is a standing web search, and one made under a model that
+    // cannot search would never fill in.)
     const p = await planTracker(wish, toModelConfig(getLiveConfigV2()));
     setPlan(p);
     setPlanning(false);
@@ -112,7 +115,11 @@ export function NewFromTemplate({ onClose }: { onClose: () => void }): ReactElem
                 aria-label="What do you want to track?"
                 disabled={planning}
               />
-              <button type="submit" className="tpl-create" disabled={!ask.trim() || planning}>
+              <button
+                type="submit"
+                className="tpl-create"
+                disabled={!ask.trim() || planning || !ready.ok}
+              >
                 {planning ? 'Planning…' : 'Plan it →'}
               </button>
             </form>
@@ -130,9 +137,14 @@ export function NewFromTemplate({ onClose }: { onClose: () => void }): ReactElem
               ))}
             </div>
             <p className="tpl-gate-note">
-              {hasModel
-                ? 'Mavéa plans the live cards — what to watch and how to fetch it — then keeps them current on a schedule you control.'
-                : 'No model connected — you can still create a basic tracker; connect a model in Live for a smarter plan.'}
+              {ready.ok ? (
+                'Mavéa plans the live cards — what to watch and how to fetch it — then keeps them current on a schedule you control.'
+              ) : (
+                <>
+                  A tracker is a standing web search on your own key.{' '}
+                  {searchBlockLine(ready.reason)} <a href="#/live">Open Live</a>
+                </>
+              )}
             </p>
           </div>
         )}

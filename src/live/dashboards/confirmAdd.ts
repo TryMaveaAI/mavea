@@ -31,7 +31,7 @@ import { refreshDashboardNow } from './useDashboardLoop';
 import { failureFromOutcome } from './trackerState';
 import type { Dashboard } from './types';
 
-export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'failed';
+export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'search-off' | 'failed';
 
 /** Shown only while the probe runs. A real web search is slow — tens of seconds is normal — and a
  *  button reading "Confirming live data…" for that long, with nothing else on screen, is
@@ -40,14 +40,32 @@ export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'failed';
 export const CONFIRM_WAIT_NOTE =
   'Checking a live source before this joins your board — a search can take up to a minute. You can close this; the result lands in your check log either way.';
 
+/** What a blocked, not-yet-made addition was about to be: a tile joining a board, or a whole
+ *  board built from a conversation. The line names it, so a reader building a board is not told
+ *  about a tile. */
+export type ConfirmSubject = 'tile' | 'board';
+
+const ONLY_ONCE_REAL: Record<ConfirmSubject, string> = {
+  tile: 'a tile only joins the board once a real search has confirmed it returns real data',
+  board: 'a board is only built once a real search has confirmed it returns real data',
+};
+
 /** The one honest line a blocked add shows. `kept` distinguishes the two shapes: a created board
  *  is still there (waiting on its first check), while an addition to an existing board was rolled
  *  back off it. Saying "it wasn't added" about a board sitting on screen is its own small lie. */
-export function confirmFailureMessage(outcome: ConfirmOutcome, kept = false): string {
+export function confirmFailureMessage(
+  outcome: ConfirmOutcome,
+  kept = false,
+  subject: ConfirmSubject = 'tile',
+): string {
   if (outcome === 'no-model')
     return kept
       ? 'Saved, but nothing can be checked until a model is connected — connect one in Live and this starts filling in.'
-      : 'Connect a model with an API key first — a tile only joins the board once a real search has confirmed it returns real data.';
+      : `Connect a model with an API key first — ${ONLY_ONCE_REAL[subject]}.`;
+  if (outcome === 'search-off')
+    return kept
+      ? 'Saved, but nothing can be checked while Web search is off — set it to Real-time in Live’s settings and this starts filling in.'
+      : `Set Web search to Real-time in Live’s settings first — ${ONLY_ONCE_REAL[subject]}.`;
   return kept
     ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. It keeps trying; you can also reword what to track.'
     : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";
@@ -115,6 +133,7 @@ function addedMetricsGrounded(id: string, before: BoardIds | null): boolean {
 const REFUSAL_REASON: Record<Exclude<ConfirmOutcome, 'confirmed'>, string> = {
   unverified: 'no live source could confirm it returns real data',
   'no-model': 'no model was connected to check it with',
+  'search-off': 'Web search was off, so nothing could check it',
   failed: 'the model could not be reached to check it',
 };
 
@@ -208,6 +227,8 @@ export async function confirmRealData(
     id,
     before,
     title,
-    outcome === 'no-model' || outcome === 'failed' ? outcome : 'unverified',
+    outcome === 'no-model' || outcome === 'search-off' || outcome === 'failed'
+      ? outcome
+      : 'unverified',
   );
 }

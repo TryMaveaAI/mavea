@@ -63,7 +63,7 @@ vi.mock('../src/live/dashboards/dashboardEvents', () => ({ announceTripwireToast
 vi.mock('../src/live/dashboards/ledger', () => ({ appendLedger: vi.fn(), getLedger: () => [] }));
 
 beforeEach(() => {
-  getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+  getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
   toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
   generateMock.mockReset();
   generateMock.mockReturnValue(new Promise((r) => (resolveGenerate = r)));

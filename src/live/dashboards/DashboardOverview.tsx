@@ -24,7 +24,7 @@ const STEPS = [
   {
     n: '4',
     title: 'It stays live',
-    body: 'While Mavéa is open it refreshes on the cadence you picked, shows only real fetched data, and flags anything that crosses a line you set. Dashboards due around the same time share a batch of searches rather than each firing its own, and your predictions, their grading, and the morning briefing all ride along on those same checks — no extra searches spent.',
+    body: 'It needs a model with Web search set to Real-time — every check is a real web search, never an answer from memory. While Mavéa is open it refreshes on the cadence you picked, shows only real fetched data, and flags anything that crosses a line you set. Dashboards due around the same time share a batch of searches rather than each firing its own, and your predictions, their grading, and the morning briefing all ride along on those same checks — no extra searches spent.',
   },
   {
     n: '5',

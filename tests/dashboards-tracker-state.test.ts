@@ -96,6 +96,7 @@ describe('state transitions', () => {
       'network',
       'no-model',
       'ungrounded',
+      'search-off',
       'provider-unavailable',
     ] as const) {
       expect(failureLine({ kind }).length).toBeGreaterThan(10);
@@ -104,6 +105,7 @@ describe('state transitions', () => {
 
   it('maps refresh outcomes to the failure that explains them', () => {
     expect(failureFromOutcome('no-model')).toEqual({ kind: 'no-model' });
+    expect(failureFromOutcome('search-off')).toEqual({ kind: 'search-off' });
     expect(failureFromOutcome('unverified')).toEqual({ kind: 'ungrounded' });
     expect(failureFromOutcome('failed')).toEqual({ kind: 'network' });
     expect(failureFromOutcome('done')).toBeNull();

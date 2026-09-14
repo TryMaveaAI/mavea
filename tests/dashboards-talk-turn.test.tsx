@@ -102,7 +102,8 @@ beforeEach(() => {
     provider: 'gemini',
     models: { gemini: 'gemini-3.1-flash-lite' },
     keys: { gemini: 'test-key' },
-  }); // "ready": key present
+    searchMode: 'realtime',
+  }); // "ready": key present, and the connection can search — what a pinned block needs
   capturedSignal = undefined;
   capturedCaps = undefined;
   resolveGenerate = null;
@@ -258,5 +259,36 @@ describe('useDashboardTurn — a dashboard question can reach live sources', () 
       result.current.run('what is NVDA trading at?');
     });
     expect(capturedCaps?.searchMode).toBe('realtime');
+  });
+});
+
+// A pinned block is a standing web search from then on, so an answer under a connection that
+// cannot search stays an answer — with the same line every other tracker entry uses, and a way
+// to Live. The ask itself only needed a model.
+describe('TalkToDashboard — an answer is pinned only where it can keep searching', () => {
+  it('says what to set instead of auto-adding when Web search is off', async () => {
+    setLiveConfigV2({ searchMode: 'off' });
+    render(<TalkToDashboard dashboard={dash('A')} />);
+    ask('add yankees scores');
+    await land(resultWithBlocks());
+
+    expect(screen.queryByText(/Auto-added/)).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Set Web search to Real-time/);
+    expect(screen.getByRole('link', { name: 'Open Live' })).toHaveAttribute('href', '#/live');
+  });
+
+  it('refuses the manual add the same way, read at the press', async () => {
+    render(<TalkToDashboard dashboard={dash('A')} />);
+    ask('is my thesis holding?');
+    await land(resultWithBlocks());
+
+    // The setting changed while the answer sat on screen.
+    setLiveConfigV2({ searchMode: 'off' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '+ Add this to the dashboard' }));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('Added to this dashboard ✓')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Set Web search to Real-time/);
   });
 });

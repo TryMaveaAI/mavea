@@ -78,7 +78,14 @@ import { ExtractionPreview } from '../src/live/dashboards/ExtractionPreview';
 
 beforeEach(() => {
   added.length = 0;
-  setLiveConfigV2({ provider: 'gemini', keys: {} });
+  // Building needs a model with Real-time search behind it — the binding under test sits after
+  // that gate, so the config is the ready shape.
+  setLiveConfigV2({
+    provider: 'gemini',
+    models: { gemini: 'gemini-3.1-flash-lite' },
+    keys: { gemini: 'test-key' },
+    searchMode: 'realtime',
+  });
 });
 
 afterEach(() => {

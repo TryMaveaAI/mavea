@@ -102,6 +102,17 @@ describe('TrackerTile — a check that got nowhere says so', () => {
     );
   });
 
+  it('says what to set when the connection cannot search, in the words Live uses', async () => {
+    // The home banner names it too, but a press that ends its spinner in silence reads as a
+    // check that found nothing new.
+    refreshDashboardNow.mockResolvedValue('search-off');
+    const { getByTitle, getByText } = render(<TrackerTile dashboard={dash()} now={1_000} />);
+
+    fireEvent.click(getByTitle('Check now'));
+
+    await waitFor(() => expect(getByText(/Set Web search to Real-time/)).toBeTruthy());
+  });
+
   it('a rejected check reads as failed instead of escaping as an unhandled rejection', async () => {
     refreshDashboardNow.mockRejectedValue(new Error('chunk load failed'));
     const { getByTitle, getByText } = render(<TrackerTile dashboard={dash()} now={1_000} />);

@@ -13,9 +13,20 @@ vi.mock('../src/live/providers/index', () => ({
   getAdapter: () => ({ generate: generateMock }),
 }));
 
+const connection = { model: 'gpt-5.4-nano', key: 'k' };
+// The key vault's hydration promise — resolved up front, or held open by the test that plays the
+// startup hydration out step by step.
+const hydration = { task: Promise.resolve() };
 vi.mock('../src/live/useLiveConfig', () => ({
-  getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: { openai: 'k' } }),
-  toModelConfig: () => ({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' }),
+  LIVE_V2_EVENT: 'mavea-live-v2',
+  getLiveConfigV2: () => ({
+    provider: 'openai',
+    models: { openai: connection.model },
+    keys: connection.key ? { openai: connection.key } : {},
+    searchMode: 'realtime',
+  }),
+  toModelConfig: () => ({ provider: 'openai', model: connection.model, apiKey: connection.key }),
+  secretsReady: () => hydration.task,
 }));
 
 import { DashboardLoopGate } from '../src/live/dashboards/DashboardLoopGate';
@@ -67,6 +78,9 @@ beforeEach(() => {
   localStorage.clear();
   clearDashboards();
   resetLegalAcceptance();
+  connection.model = 'gpt-5.4-nano';
+  connection.key = 'k';
+  hydration.task = Promise.resolve();
   generateMock.mockReset();
   generateMock.mockResolvedValue({
     raw: JSON.stringify({ dashboards: [{ id: 'd1', values: { Price: 42 } }] }),
@@ -121,6 +135,88 @@ describe('DashboardLoopGate', () => {
 
     act(() => addDashboard(makeDash()));
     await waitFor(() => expect(generateMock).toHaveBeenCalled());
+  });
+
+  it('re-checks a tracker stuck after a failed check when the connection changes', async () => {
+    // The report behind this: a board created under a model that could not search grounded
+    // nothing on its first check, was parked, and never checked again after the reader switched
+    // to a model that could. A connection change is the moment to try once more.
+    acceptLegalTerms();
+    addDashboard(
+      manualDash({
+        state: { status: 'pending', failure: { kind: 'ungrounded' }, lastAttemptAt: 1 },
+      }),
+    );
+    render(<DashboardLoopGate />);
+    // The loop takes its baseline once the key vault has hydrated (already resolved here).
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(generateMock).not.toHaveBeenCalled();
+
+    // Same provider, same key, a different model — the signature the loop watches.
+    connection.model = 'gpt-5.4';
+    act(() => {
+      window.dispatchEvent(new Event('mavea-live-v2'));
+    });
+    await waitFor(() => expect(generateMock).toHaveBeenCalled());
+    const asked = generateMock.mock.calls.map((c) => JSON.stringify(c)).join(' ');
+    expect(asked).toContain('Manual');
+  });
+
+  it('does not read the key hydration on load as a connection change', async () => {
+    // Remembered keys are decrypted after the first paint, and the vault broadcasts the config it
+    // rebuilt — a no-key → key transition on every load. Taken as a new chance, it would re-arm
+    // every parked tracker past its backoff each time the app opened.
+    acceptLegalTerms();
+    addDashboard(
+      manualDash({
+        state: { status: 'pending', failure: { kind: 'ungrounded' }, lastAttemptAt: 1 },
+      }),
+    );
+    let hydrated: () => void = () => {};
+    hydration.task = new Promise<void>((resolve) => {
+      hydrated = resolve;
+    });
+    connection.key = '';
+    render(<DashboardLoopGate />);
+
+    connection.key = 'k';
+    act(() => {
+      // The vault broadcasts before its promise settles, exactly as hydrateSecrets does.
+      window.dispatchEvent(new Event('mavea-live-v2'));
+      hydrated();
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(generateMock).not.toHaveBeenCalled();
+    expect(getDashboard('manual')?.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
+
+    // A real change after hydration still counts.
+    connection.model = 'gpt-5.4';
+    act(() => {
+      window.dispatchEvent(new Event('mavea-live-v2'));
+    });
+    await waitFor(() => expect(generateMock).toHaveBeenCalled());
+  });
+
+  it('ignores a config change that leaves the connection as it was', async () => {
+    acceptLegalTerms();
+    addDashboard(
+      manualDash({
+        state: { status: 'pending', failure: { kind: 'ungrounded' }, lastAttemptAt: 1 },
+      }),
+    );
+    render(<DashboardLoopGate />);
+    act(() => {
+      window.dispatchEvent(new Event('mavea-live-v2'));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(generateMock).not.toHaveBeenCalled();
+    expect(getDashboard('manual')?.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it('spends nothing before the legal terms are accepted', async () => {

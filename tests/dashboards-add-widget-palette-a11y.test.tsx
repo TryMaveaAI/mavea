@@ -9,12 +9,13 @@ import type { TrackerPlan } from '../src/live/dashboards/planTracker';
 
 const h = vi.hoisted(() => ({
   apiKey: 'k' as string | undefined,
+  searchMode: 'realtime' as 'realtime' | 'off',
   plan: vi.fn<() => Promise<unknown>>(),
   refresh: vi.fn((_id: string) => Promise.resolve('done' as const)),
 }));
 
 vi.mock('../src/live/useLiveConfig', () => ({
-  getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: {} }),
+  getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: {}, searchMode: h.searchMode }),
   hasModelConfigured: () => Boolean(h.apiKey),
   toModelConfig: () => ({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: h.apiKey }),
 }));
@@ -53,6 +54,7 @@ function seedDashboard(): Dashboard {
 
 beforeEach(() => {
   h.apiKey = 'k';
+  h.searchMode = 'realtime';
   h.plan.mockReset();
   h.refresh.mockClear();
 });
@@ -137,6 +139,19 @@ describe('AddWidgetPalette — Track a number', () => {
     expect(getByRole('link', { name: 'Connect a model in Live' }).getAttribute('href')).toBe(
       '#/live',
     );
+    expect(h.plan).not.toHaveBeenCalled();
+  });
+
+  it('is gated the same way with a key but Web search off — a tracker is a standing search', () => {
+    h.searchMode = 'off';
+    const { getByText, queryByLabelText, getByRole } = render(
+      <AddWidgetPalette dashboard={seedDashboard()} onClose={() => {}} />,
+    );
+    fireEvent.click(getByText('+ Track a number'));
+    expect(queryByLabelText('What number to track')).toBeNull();
+    expect(getByText(/on your own key/)).toBeInTheDocument();
+    expect(getByText(/Web search to Real-time in Live’s settings first/)).toBeInTheDocument();
+    expect(getByRole('link', { name: 'Open Live' }).getAttribute('href')).toBe('#/live');
     expect(h.plan).not.toHaveBeenCalled();
   });
 

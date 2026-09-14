@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import type { Block } from '../src/data/conversation';
+import { setLiveConfigV2 } from '../src/live/useLiveConfig';
 
 const refreshDashboardNow = vi.fn((_id: string) => Promise.resolve('done' as const));
 vi.mock('../src/live/dashboards/useDashboardLoop', () => ({
@@ -28,8 +29,18 @@ const block: Block = {
   props: { title: 'Signups this week', stat: '412' },
 } as Block;
 
+const readyConfig = {
+  provider: 'openai',
+  models: { openai: 'gpt-5.4-nano' },
+  keys: { openai: 'k' },
+  searchMode: 'realtime',
+} as const;
+
 beforeEach(() => {
   refreshDashboardNow.mockClear();
+  // A pin is a standing web search, so the sheet only offers boards behind a model with
+  // Real-time search — every flow test below runs on that footing.
+  setLiveConfigV2(readyConfig);
 });
 
 afterEach(() => {
@@ -146,5 +157,29 @@ describe('PinToDashboard single-step flow', () => {
     expect(queryByLabelText('Dashboard name')).not.toBeNull();
     fireEvent.click(getByText('← Back'));
     expect(getByRole('menu')).toBeInTheDocument();
+  });
+});
+
+describe('PinToDashboard — needs a model with Real-time web search', () => {
+  it('with Web search off, says what to change instead of offering boards', () => {
+    setLiveConfigV2({ ...readyConfig, searchMode: 'off' });
+    addDashboard(createBlankDashboard({ title: 'Rates watch', now: 1000 }));
+    const { getByText, queryByText, getByRole } = render(
+      <PinToDashboard block={block} onClose={() => {}} />,
+    );
+    expect(getByText(/Web search to Real-time/)).toBeTruthy();
+    expect(getByRole('link', { name: 'Open Live' }).getAttribute('href')).toBe('#/live');
+    expect(queryByText('New dashboard')).toBeNull();
+    expect(queryByText('Rates watch')).toBeNull();
+  });
+
+  it('with no model connected, points at Live rather than taking a card it can never fill', () => {
+    setLiveConfigV2({ ...readyConfig, keys: {} });
+    const { getByText, queryByLabelText } = render(
+      <PinToDashboard block={block} onClose={() => {}} />,
+    );
+    expect(getByText(/Connect a model in Live first/)).toBeTruthy();
+    expect(queryByLabelText('Dashboard name')).toBeNull();
+    expect(refreshDashboardNow).not.toHaveBeenCalled();
   });
 });

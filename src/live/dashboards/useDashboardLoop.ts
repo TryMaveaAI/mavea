@@ -12,11 +12,18 @@
 // which otherwise never has a due clock at all (see cadence.ts's MAX_SAFE_INTEGER parking).
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ModelConfig } from '../../types/mavea';
-import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import {
+  getLiveConfigV2,
+  LIVE_V2_EVENT,
+  secretsReady,
+  toModelConfig,
+  type LiveConfigV2,
+} from '../useLiveConfig';
+import { searchReadiness, type SearchBlock } from './searchReadiness';
 import { setDataPending } from './dataPending';
 import { withSchedulerLease } from './schedulerLease';
 import { type CheckRun, endCheckRun, recordStep, startCheckRun } from './checkRun';
-import { failureLine } from './trackerState';
+import { failureLine, trackerState } from './trackerState';
 import type { TrackerFailure } from './types';
 import {
   applyRefreshResult,
@@ -26,6 +33,7 @@ import {
   markDataRetry,
   markTrackerFailure,
   markVerdictFailed,
+  rearmAfterConnectionChange,
   setVerdict,
   updateTripwireStates,
 } from './store';
@@ -42,7 +50,7 @@ import type { Dashboard, Tripwire, Verdict } from './types';
 import { analyzeMove } from './analyze';
 import { notifyTriggered } from './notify';
 import { hasLiveContent, hostOf } from './format';
-import { isProviderSpendingBlocked, modelCanGenerate } from '../providers/spendPolicy';
+import { isProviderSpendingBlocked } from '../providers/spendPolicy';
 import { appendLedger, checksThisWeek, getLedger } from './ledger';
 import type { LedgerEntry } from './ledger';
 import { budgetState, getDashSettings } from './budget';
@@ -328,13 +336,6 @@ export async function runRefreshBatch(
   }
   if (members.length === 0) return outcomes;
 
-  // One flight recorder per member: a batched call is one provider request, but each tracker gets
-  // its own readable story of what that request did FOR IT.
-  const recorders = new Map(members.map((m) => [m.d.id, startCheckRun(m.d.id, now)]));
-  const eachRun = (fn: (run: CheckRun) => void): void => {
-    for (const run of recorders.values()) fn(run);
-  };
-
   if (!ready) {
     // No model connected — leave every live-content member fully DUE: no fetch attempted, so no
     // clock/one-shot/lastRefreshedAt is touched. The old behavior ran a fetch-free "no-change"
@@ -346,6 +347,15 @@ export async function runRefreshBatch(
     // for real instead of waiting out a cadence that was never earned.
     return outcomes;
   }
+
+  // One flight recorder per member: a batched call is one provider request, but each tracker gets
+  // its own readable story of what that request did FOR IT. Opened only past the readiness gate:
+  // a blocked tick attempts nothing, so a run it opened would never close, and twelve of those
+  // (the per-tracker ring) evict every real check the panel exists to show.
+  const recorders = new Map(members.map((m) => [m.d.id, startCheckRun(m.d.id, now)]));
+  const eachRun = (fn: (run: CheckRun) => void): void => {
+    for (const run of recorders.values()) fn(run);
+  };
 
   const memberIds = members.map((m) => m.d.id);
   setDataPending(memberIds, true);
@@ -501,13 +511,14 @@ async function runVerdictOnly(
  *  tapping "Check now" is never blocked by the daily automatic-spend cap. */
 export async function refreshDashboardNow(
   id: string,
-): Promise<'done' | 'busy' | 'no-model' | 'failed' | 'unverified'> {
+): Promise<'done' | 'busy' | SearchBlock | 'failed' | 'unverified'> {
   if (inFlight.has(id)) return 'busy';
   const target = getDashboard(id);
   if (!target) return 'busy';
   const liveConfig = getLiveConfigV2();
+  const readiness = searchReadiness(liveConfig);
+  if (!readiness.ok) return readiness.reason;
   const cfg = toModelConfig(liveConfig);
-  if (!modelCanGenerate(cfg)) return 'no-model';
   inFlight.add(id);
   try {
     const outcomes = await runRefreshBatch([target], cfg, true, { manual: true });
@@ -531,10 +542,11 @@ export async function refreshDashboardNow(
  *  simply didn't fit this call's token ceiling. Pre-chunking here means every round's `due` list
  *  is exactly what that round's batch covers, so nothing gets marked "checked" without a real
  *  attempt. Budget-exempt like every other manual action. */
-export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'busy' | 'failed'> {
+export async function checkAllDashboardsNow(): Promise<'done' | SearchBlock | 'busy' | 'failed'> {
   const liveConfig = getLiveConfigV2();
+  const readiness = searchReadiness(liveConfig);
+  if (!readiness.ok) return readiness.reason;
   const cfg = toModelConfig(liveConfig);
-  if (!modelCanGenerate(cfg)) return 'no-model';
   const liveContent = getDashboards().filter(hasLiveContent);
   let remaining = liveContent.filter((d) => !inFlight.has(d.id));
   // Nothing to do at all reads as 'done'; everything that COULD be checked already mid-flight
@@ -575,13 +587,17 @@ export async function checkAllDashboardsNow(): Promise<'done' | 'no-model' | 'bu
  *  `verdictPending` so a manual read and an automatic verdict can't run over each other. */
 export async function readDashboardNow(
   id: string,
-): Promise<'done' | 'busy' | 'no-model' | 'failed'> {
+): Promise<'done' | 'busy' | SearchBlock | 'failed'> {
   if (verdictPending.has(id)) return 'busy';
   const target = getDashboard(id);
   if (!target) return 'failed';
   const liveConfig = getLiveConfigV2();
+  // The read searches too (analyzeMove asks for the web-search tool), so it needs the same
+  // readiness a data check does — a verdict written from memory is the thing this surface exists
+  // to never show.
+  const readiness = searchReadiness(liveConfig);
+  if (!readiness.ok) return readiness.reason;
   const cfg = toModelConfig(liveConfig);
-  if (!modelCanGenerate(cfg)) return 'no-model';
   const now = Date.now();
   const breached = target.tripwires.find((t) => t.state === 'TRIGGERED');
   const trigger: Tripwire | 'scheduled' = breached ?? 'scheduled';
@@ -604,6 +620,26 @@ export async function readDashboardNow(
     ...(verdict?.sources?.length ? { sourceCount: verdict.sources.length } : {}),
   });
   return verdict ? 'done' : 'failed';
+}
+
+/** The part of the Live config a check depends on. Anything else changing (voice, theme, the
+ *  reasoning preference) is not a reason to re-check a failed tracker. */
+function connectionSignature(c: LiveConfigV2): string {
+  return `${c.provider}|${c.models[c.provider] ?? ''}|${c.keys[c.provider] ? 1 : 0}|${c.searchMode}`;
+}
+
+/** Say WHY nothing is being fetched on each due tracker with live content — the card then reads
+ *  "connect a model" or "turn Web search on" instead of sitting pending with no reason. The tick
+ *  runs every 15s, so this writes only when the reason is new to that tracker: each write is a
+ *  whole-blob re-encrypt. Clocks are untouched — the tracker stays fully due, so the moment the
+ *  connection is right the very next tick fetches for real. */
+function noteBlockedTrackers(due: Dashboard[], reason: SearchBlock, now: number): void {
+  for (const d of due) {
+    if (!hasLiveContent(d)) continue;
+    const state = trackerState(d);
+    if (state.status !== 'active' && state.failure?.kind === reason) continue;
+    markTrackerFailure(d.id, { kind: reason }, now);
+  }
 }
 
 export interface TickTargets {
@@ -661,7 +697,8 @@ export function useDashboardLoop(): void {
       if (isProviderSpendingBlocked()) return;
       const liveConfig = getLiveConfigV2();
       const cfg = toModelConfig(liveConfig);
-      const ready = modelCanGenerate(cfg);
+      const readiness = searchReadiness(liveConfig);
+      const ready = readiness.ok;
       const now = Date.now();
       const all = getDashboards();
       const settings = getDashSettings();
@@ -696,6 +733,7 @@ export function useDashboardLoop(): void {
         inFlight,
       );
       if (pausedAndBlocked) maybeAppendPauseEntry(now);
+      if (!readiness.ok) noteBlockedTrackers(dueData, readiness.reason, now);
 
       const wantsBriefing = ready && settings.briefingEnabled && briefingNeededToday(now);
 
@@ -761,12 +799,32 @@ export function useDashboardLoop(): void {
       if (document.visibilityState === 'visible') leasedTick();
     };
     document.addEventListener('visibilitychange', onVisible);
+    // A new provider, model, key or Web search setting is a new chance for every tracker whose
+    // last check could not complete — re-arm them and check at once, rather than leaving the
+    // reader to press Refresh on each board (or, on a manual board that spent its first check
+    // under the old model, never seeing it fill in at all). The config event fires on unrelated
+    // settings too, so only a change to what a check actually depends on counts — and it fires
+    // on the async key hydration at startup, a no-key → key transition that is no change at all,
+    // so the baseline is taken once the vault has hydrated and nothing before that counts.
+    let connection: string | null = null;
+    void secretsReady().then(() => {
+      if (alive) connection = connectionSignature(getLiveConfigV2());
+    });
+    const onConfig = (): void => {
+      if (connection === null) return;
+      const next = connectionSignature(getLiveConfigV2());
+      if (next === connection) return;
+      connection = next;
+      if (rearmAfterConnectionChange(Date.now()) > 0) leasedTick();
+    };
+    window.addEventListener(LIVE_V2_EVENT, onConfig);
     leasedTick(); // catch anything already due on open
 
     return () => {
       alive = false;
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(LIVE_V2_EVENT, onConfig);
     };
   }, []);
 }

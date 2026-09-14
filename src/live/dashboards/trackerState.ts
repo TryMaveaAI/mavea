@@ -76,6 +76,8 @@ export function failureLine(failure: TrackerFailure): string {
       // and the prompt insists (observed: two attempts, medium then high effort, zero citations, a
       // months-stale price). Naming both keeps the reader from rewording a question that was fine.
       return 'No live source backed this up — the model may not have searched. Try a stronger model in Settings, or reword what to track.';
+    case 'search-off':
+      return 'Web search is off — set it to Real-time in Live’s settings and this starts checking.';
     case 'provider-unavailable':
       return 'Your model provider is unavailable right now. This retries itself shortly.';
   }
@@ -83,11 +85,13 @@ export function failureLine(failure: TrackerFailure): string {
 
 /** Map a refresh outcome onto a failure kind. 'done' is not a failure and returns null. */
 export function failureFromOutcome(
-  outcome: 'done' | 'busy' | 'no-model' | 'failed' | 'unverified',
+  outcome: 'done' | 'busy' | 'no-model' | 'search-off' | 'failed' | 'unverified',
 ): TrackerFailure | null {
   switch (outcome) {
     case 'no-model':
       return { kind: 'no-model' };
+    case 'search-off':
+      return { kind: 'search-off' };
     case 'unverified':
       return { kind: 'ungrounded' };
     case 'failed':

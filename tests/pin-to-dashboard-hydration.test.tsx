@@ -17,7 +17,12 @@ vi.mock('../src/live/contentVault', () => ({
 }));
 
 vi.mock('../src/live/useLiveConfig', () => ({
-  getLiveConfigV2: () => ({ provider: 'openai', models: {}, keys: { openai: 'k' } }),
+  getLiveConfigV2: () => ({
+    provider: 'openai',
+    models: {},
+    keys: { openai: 'k' },
+    searchMode: 'realtime',
+  }),
   hasModelConfigured: () => true,
   toModelConfig: () => ({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' }),
 }));

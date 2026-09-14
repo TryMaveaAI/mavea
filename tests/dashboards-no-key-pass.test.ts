@@ -77,6 +77,16 @@ describe('runRefreshBatch — no model connected', () => {
     expect(refreshDashboards).not.toHaveBeenCalled();
   });
 
+  it('opens no check run for a tick that attempts nothing', async () => {
+    // A run opened here would never be closed, and the per-tracker ring keeps twelve: three
+    // minutes of blocked ticks used to evict every real check the panel exists to show, leaving
+    // a permanent "Running…" row for a check that never started.
+    const { runRefreshBatch } = await import('../src/live/dashboards/useDashboardLoop');
+    const { checkRunsFor } = await import('../src/live/dashboards/checkRun');
+    for (let i = 0; i < 3; i++) await runRefreshBatch([dashboard()], cfg, false);
+    expect(checkRunsFor('d1')).toHaveLength(0);
+  });
+
   it('a member with NOTHING live to fetch still gets its free tripwire/AI pass even when not ready', async () => {
     const { runRefreshBatch } = await import('../src/live/dashboards/useDashboardLoop');
     const d = dashboard({ metrics: [], widgets: [], oneShotAt: undefined });

@@ -100,11 +100,27 @@ describe('refreshDashboardNow', () => {
     expect(applyRefreshResult).not.toHaveBeenCalled();
   });
 
+  it('returns search-off and never fetches when Web search is not Real-time — a key alone cannot search', async () => {
+    const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
+    getDashboard.mockReturnValue(dashboard());
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'off' });
+    toModelConfig.mockReturnValue({
+      provider: 'openai',
+      model: 'gpt-5.4-mini',
+      apiKey: 'k',
+    } as ModelConfig);
+
+    const result = await refreshDashboardNow('d1');
+    expect(result).toBe('search-off');
+    expect(refreshDashboards).not.toHaveBeenCalled();
+    expect(applyRefreshResult).not.toHaveBeenCalled();
+  });
+
   it('fetches data and applies it in ONE persist, and ledgers a manual, budget-exempt check', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     const d = dashboard({ metrics: [metric()] });
     getDashboard.mockReturnValue(d);
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     const cfg: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' };
     toModelConfig.mockReturnValue(cfg);
     refreshDashboards.mockResolvedValue({
@@ -136,7 +152,7 @@ describe('refreshDashboardNow', () => {
   it('a DEAD call returns "failed", applies nothing, and schedules a soon retry', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard({ metrics: [metric()] }));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-nano', apiKey: 'k' });
     refreshDashboards.mockResolvedValue({
       ok: false,
@@ -159,7 +175,7 @@ describe('refreshDashboardNow', () => {
   it('records "unverified" (not "no-change") when a fetch runs but never grounded', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard({ metrics: [metric()] }));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
     refreshDashboards.mockResolvedValue({
       ok: true,
@@ -186,7 +202,7 @@ describe('refreshDashboardNow', () => {
   it('spends no model call (but still applies an honest no-change pass) when nothing is live to check', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard({ metrics: [], widgets: [] }));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
 
     const result = await refreshDashboardNow('d1');
@@ -211,7 +227,7 @@ describe('refreshDashboardNow', () => {
         nextAiAt: 0, // already due
       }),
     );
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
     const { analyzeMove } = await import('../src/live/dashboards/analyze');
     vi.mocked(analyzeMove).mockResolvedValue({
@@ -232,7 +248,7 @@ describe('refreshDashboardNow', () => {
   it('never double-fires for the same dashboard while one refresh is still in flight', async () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     getDashboard.mockReturnValue(dashboard({ metrics: [metric()] }));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
     let resolveFetch: (v: unknown) => void = () => {};
     refreshDashboards.mockReturnValue(new Promise((r) => (resolveFetch = r)));
@@ -278,7 +294,7 @@ describe('refreshDashboardNow', () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     const { notifyTriggered } = await import('../src/live/dashboards/notify');
     getDashboard.mockReturnValue(crossingDashboard(true));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
     refreshDashboards.mockResolvedValue(crossingResult);
 
@@ -294,7 +310,7 @@ describe('refreshDashboardNow', () => {
     const { refreshDashboardNow } = await import('../src/live/dashboards/useDashboardLoop');
     const { notifyTriggered } = await import('../src/live/dashboards/notify');
     getDashboard.mockReturnValue(crossingDashboard(false));
-    getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+    getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
     toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
     refreshDashboards.mockResolvedValue(crossingResult);
 

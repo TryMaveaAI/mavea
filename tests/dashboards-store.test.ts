@@ -21,6 +21,7 @@ import {
   markAiRefreshed,
   markDataRefreshed,
   markDataRetry,
+  rearmAfterConnectionChange,
   removeDashboard,
   removeWidget,
   reorderWidgets,
@@ -685,6 +686,38 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
       expect(getDashboard('d1')!.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
     });
 
+    it('a manual board whose FIRST check grounded nothing gets one bounded automatic retry', () => {
+      // The pass that consumed the one-shot is the board's only chance under a manual cadence: an
+      // ungrounded first check used to park it for good, whatever model came later.
+      addDashboard(
+        makeDash({
+          cadence: { data: 'manual', ai: 'manual' },
+          nextDataAt: Number.MAX_SAFE_INTEGER,
+          oneShotAt: 1_000_000,
+          oneShotLabel: 'first check',
+        }),
+      );
+      applyRefreshResult('d1', { outcome: 'unverified', consumedOneShot: true }, 1_000_000);
+      const d = getDashboard('d1')!;
+      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000);
+      expect(d.oneShotAt).toBeUndefined();
+      expect(d.oneShotLabel).toBeUndefined();
+
+      // The retry itself grounding nothing parks the board again — one retry, never a loop.
+      applyRefreshResult('d1', { outcome: 'unverified' }, 1_000_000 + 5 * 60_000);
+      expect(getDashboard('d1')!.nextDataAt).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('an auto cadence consuming its one-shot on an unverified pass still pulls the retry in', () => {
+      addDashboard(
+        makeDash({ cadence: { data: 'hourly', ai: 'on-change' }, oneShotAt: 1_000_000 }),
+      );
+      applyRefreshResult('d1', { outcome: 'unverified', consumedOneShot: true }, 1_000_000);
+      const d = getDashboard('d1')!;
+      expect(d.nextDataAt).toBe(1_000_000 + 5 * 60_000);
+      expect(d.oneShotAt).toBeUndefined();
+    });
+
     it('never pulls an unverified retry in before a not-yet-open live window starts', () => {
       addDashboard(
         makeDash({
@@ -699,6 +732,84 @@ describe('applyRefreshResult (the one-persist batched refresh setter)', () => {
       // The window hasn't opened yet — due date stays pinned to the window's own start, never
       // pulled earlier by the unverified-retry policy.
       expect(getDashboard('d1')!.nextDataAt).toBe(5_000_000);
+    });
+  });
+
+  describe('rearmAfterConnectionChange — a stuck tracker is due again when the connection changes', () => {
+    const parked = 9_000_000;
+
+    it('makes a pending board that failed its last check due now, leaving its one-shot alone', () => {
+      addDashboard(
+        makeDash({
+          cadence: { data: 'manual', ai: 'manual' },
+          nextDataAt: Number.MAX_SAFE_INTEGER,
+          oneShotAt: parked,
+          oneShotLabel: 'kickoff',
+          state: { status: 'pending', failure: { kind: 'ungrounded' }, lastAttemptAt: 500 },
+        }),
+      );
+      expect(rearmAfterConnectionChange(1_000)).toBe(1);
+      const d = getDashboard('d1')!;
+      expect(d.nextDataAt).toBe(1_000);
+      expect(d.oneShotAt).toBe(parked);
+      expect(d.oneShotLabel).toBe('kickoff');
+      expect(d.updatedAt).toBe(100); // a clock nudge is not an edit
+    });
+
+    it('makes a degraded board due now too', () => {
+      addDashboard(
+        makeDash({
+          nextDataAt: parked,
+          lastRefreshedAt: 400,
+          state: {
+            status: 'degraded',
+            lastSuccessAt: 400,
+            failure: { kind: 'no-model' },
+            lastAttemptAt: 500,
+          },
+        }),
+      );
+      expect(rearmAfterConnectionChange(1_000)).toBe(1);
+      expect(getDashboard('d1')!.nextDataAt).toBe(1_000);
+    });
+
+    it('leaves an active board, a board with nothing live, and an already-due board alone', () => {
+      addDashboard(
+        makeDash({
+          id: 'active',
+          nextDataAt: parked,
+          lastRefreshedAt: 400,
+          state: { status: 'active', lastSuccessAt: 400 },
+        }),
+      );
+      addDashboard(
+        makeDash({
+          id: 'blank',
+          metrics: [],
+          widgets: [],
+          nextDataAt: parked,
+          state: { status: 'pending', failure: { kind: 'no-model' }, lastAttemptAt: 500 },
+        }),
+      );
+      addDashboard(
+        makeDash({
+          id: 'due',
+          nextDataAt: 0,
+          state: { status: 'pending', failure: { kind: 'no-model' }, lastAttemptAt: 500 },
+        }),
+      );
+      addDashboard(
+        makeDash({
+          id: 'fresh',
+          nextDataAt: parked,
+          state: { status: 'pending' },
+        }),
+      );
+      expect(rearmAfterConnectionChange(1_000)).toBe(0);
+      expect(getDashboard('active')!.nextDataAt).toBe(parked);
+      expect(getDashboard('blank')!.nextDataAt).toBe(parked);
+      expect(getDashboard('due')!.nextDataAt).toBe(0);
+      expect(getDashboard('fresh')!.nextDataAt).toBe(parked);
     });
   });
 

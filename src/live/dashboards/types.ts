@@ -250,6 +250,7 @@ export type TrackerFailure =
   | { kind: 'network' }
   | { kind: 'no-model' }
   | { kind: 'ungrounded' }
+  | { kind: 'search-off' }
   | { kind: 'provider-unavailable' };
 
 /** A tracker's lifecycle, explicit. `pending` is a tracker that has never completed a successful

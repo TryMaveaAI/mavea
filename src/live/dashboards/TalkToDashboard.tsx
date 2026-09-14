@@ -4,8 +4,10 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { TopicCanvas } from '../../canvas';
 import type { Block } from '../../data/conversation';
+import { getLiveConfigV2 } from '../useLiveConfig';
 import { useDashboardTurn } from './useDashboardTurn';
 import { pinBlockToDashboard } from './pin';
+import { searchBlockLine, searchReadiness, type SearchBlock } from './searchReadiness';
 import { detectTalkIntent, type TalkIntent } from './talkIntent';
 import type { Dashboard } from './types';
 
@@ -27,9 +29,14 @@ function suggestions(d: Dashboard): string[] {
  *  right away and refines it ONCE in the background, so pinning is instant instead of waiting on
  *  a refine call. `firstCheck: false` because these blocks came out of a grounded turn seconds
  *  ago — re-searching the same answer immediately would spend a call to learn nothing. The raw
- *  `ask` still shows in the lineage row for an honest record of what you typed. */
-function pinAnswer(dashboardId: string, ask: string, blocks: Block[]): void {
-  if (blocks.length === 0) return;
+ *  `ask` still shows in the lineage row for an honest record of what you typed. A pinned block is
+ *  a standing web search from then on, so under a connection that cannot search nothing is
+ *  pinned and the reason comes back for the surface to say — the ask itself only needed a model.
+ *  Read at pin time, not mount: the setting can change while the answer sits on screen. */
+function pinAnswer(dashboardId: string, ask: string, blocks: Block[]): SearchBlock | null {
+  if (blocks.length === 0) return null;
+  const readiness = searchReadiness(getLiveConfigV2());
+  if (!readiness.ok) return readiness.reason;
   pinBlockToDashboard({
     block: blocks,
     question: ask,
@@ -44,17 +51,21 @@ function pinAnswer(dashboardId: string, ask: string, blocks: Block[]): void {
       at: Date.now(),
     },
   });
+  return null;
 }
 
 export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactElement {
   const turn = useDashboardTurn(dashboard);
   const [draft, setDraft] = useState('');
   const [pinned, setPinned] = useState(false);
+  // Why the answer stayed an answer: the connection cannot search, so it was not pinned.
+  const [pinBlock, setPinBlock] = useState<SearchBlock | null>(null);
   const [autoAddIntent, setAutoAddIntent] = useState<TalkIntent>('ask');
   const chips = useMemo(() => suggestions(dashboard), [dashboard]);
 
   const submit = (text: string): void => {
     setPinned(false);
+    setPinBlock(null);
     setAutoAddIntent(detectTalkIntent(text));
     turn.run(text);
     setDraft('');
@@ -65,7 +76,7 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
   // on `!turn.loading` so this can't fire against the PREVIOUS ask's still-resident result while a
   // new one is in flight (the hook doesn't null `result` the moment a new run starts). The pin
   // itself persists synchronously (pin.ts defers its one refine call), so `pinned` flips in the
-  // same pass and this effect can't double-fire.
+  // same pass and this effect can't double-fire; a refused pin sets `pinBlock` for the same reason.
   useEffect(() => {
     if (
       autoAddIntent === 'add' &&
@@ -74,12 +85,14 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
       !turn.result.error &&
       !turn.result.collapsed &&
       turn.result.spec.blocks.length > 0 &&
-      !pinned
+      !pinned &&
+      !pinBlock
     ) {
-      pinAnswer(dashboard.id, turn.lastAsk ?? '', turn.result.spec.blocks);
-      setPinned(true);
+      const block = pinAnswer(dashboard.id, turn.lastAsk ?? '', turn.result.spec.blocks);
+      if (block) setPinBlock(block);
+      else setPinned(true);
     }
-  }, [autoAddIntent, turn.loading, turn.result, turn.lastAsk, pinned, dashboard.id]);
+  }, [autoAddIntent, turn.loading, turn.result, turn.lastAsk, pinned, pinBlock, dashboard.id]);
 
   return (
     <section className="dash-talk">
@@ -147,7 +160,11 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
               )}
               <TopicCanvas data={turn.result.spec} spot={null} built={{}} onProve={() => {}} />
               {turn.result.spec.blocks.length > 0 &&
-                (pinned ? (
+                (pinBlock ? (
+                  <p className="dash-talk-gate" role="status">
+                    {searchBlockLine(pinBlock)} <a href="#/live">Open Live</a>
+                  </p>
+                ) : pinned ? (
                   <div className="dash-talk-pinned">
                     {autoAddIntent === 'add' ? (
                       <>
@@ -165,8 +182,13 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
                     type="button"
                     className="dash-talk-pin"
                     onClick={() => {
-                      pinAnswer(dashboard.id, turn.lastAsk ?? '', turn.result!.spec.blocks);
-                      setPinned(true);
+                      const block = pinAnswer(
+                        dashboard.id,
+                        turn.lastAsk ?? '',
+                        turn.result!.spec.blocks,
+                      );
+                      if (block) setPinBlock(block);
+                      else setPinned(true);
                     }}
                   >
                     + Add this to the dashboard

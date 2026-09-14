@@ -57,7 +57,7 @@ const readyConfig: ModelConfig = { provider: 'openai', model: 'gpt-5.4-mini', ap
 beforeEach(() => {
   localStorage.clear();
   refreshDashboard.mockResolvedValue({ values: {}, widgets: {} });
-  getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+  getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
   toModelConfig.mockReturnValue(readyConfig);
 });
 

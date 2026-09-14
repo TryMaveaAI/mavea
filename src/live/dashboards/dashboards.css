@@ -1315,6 +1315,11 @@
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
+.dash-refresh-hint a,
+.xt-confirm-err a {
+  color: var(--presence);
+  font-weight: 600;
+}
 .dash-edit-bar {
   position: relative;
   display: flex;

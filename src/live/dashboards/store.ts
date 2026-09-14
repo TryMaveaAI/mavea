@@ -20,6 +20,7 @@ import { AI_CADENCE_MIN, nextDue, nextDataDue } from './cadence';
 import { pruneDeadOpens } from './opens';
 import { clearCheckRuns } from './checkRun';
 import { clearObservations } from './observationStore';
+import { hasLiveContent } from './format';
 import { encryptContent, decryptContent } from '../contentVault';
 import { writeLocal } from '../../lib/localBudget';
 import type {
@@ -143,6 +144,7 @@ const FAILURE_KINDS = new Set([
   'network',
   'no-model',
   'ungrounded',
+  'search-off',
   'provider-unavailable',
 ]);
 
@@ -1006,6 +1008,44 @@ export function ensureFirstCheck(id: string, now = Date.now()): void {
   );
 }
 
+/** A connection change — provider, model, key or Web search — is a new chance for every tracker
+ *  that could not complete its last check. Make each one due NOW so the next tick re-checks it,
+ *  instead of waiting out a retry clock (or, on manual cadence, forever) that was wound against a
+ *  model that has since been replaced. Only trackers carrying a failure are touched: an active
+ *  board has nothing to recover from, a board with no live content has nothing to fetch, and one
+ *  already due needs no help. One-shots stay as they are — a time the user stated keeps its
+ *  meaning. Returns how many were re-armed; a single persist, since a settings change can touch
+ *  every board at once. Not a user touch: bookkeeping, not an edit. */
+export function rearmAfterConnectionChange(now = Date.now()): number {
+  const rearm = (d: Dashboard): Dashboard | null => {
+    if (!hasLiveContent(d)) return null;
+    const state = trackerState(d);
+    if (state.status === 'active' || !state.failure) return null;
+    if (d.nextDataAt <= now || (d.oneShotAt !== undefined && d.oneShotAt <= now)) return null;
+    return { ...d, nextDataAt: now };
+  };
+  let count = 0;
+  for (const [id, d] of temporaryDashboards) {
+    const next = rearm(d);
+    if (!next) continue;
+    temporaryDashboards.set(id, next);
+    count += 1;
+  }
+  if (count > 0) {
+    temporaryVersion += 1;
+    announceTemporaryChange();
+  }
+  let touched = 0;
+  const next = get().map((d) => {
+    const armed = rearm(d);
+    if (!armed) return d;
+    touched += 1;
+    return armed;
+  });
+  if (touched > 0) persist(next);
+  return count + touched;
+}
+
 /** An AI verdict ran — wind the AI clock. */
 export function markAiRefreshed(id: string, now = Date.now()): void {
   patchOne(id, (d) => ({ ...d, nextAiAt: nextDue(now, AI_CADENCE_MIN[d.cadence.ai]) }));
@@ -1096,15 +1136,27 @@ export function applyRefreshResult(id: string, patch: RefreshResultPatch, now = 
       // pass in a streak, on a cadence that would auto-check again anyway, pull that recheck in
       // to UNVERIFIED_RETRY_MS rather than making a user wait out a full hourly/daily cadence over
       // what might just be a bad turn. A SECOND consecutive unverified winds the full cadence like
-      // any other outcome — bounded, not a hot loop. Manual stays parked (Check Now IS the retry);
-      // a not-yet-open live window is never pulled earlier than its own start.
-      const nextDataAt =
+      // any other outcome — bounded, not a hot loop. A not-yet-open live window is never pulled
+      // earlier than its own start.
+      //
+      // Manual stays parked (Check Now IS the retry) — with ONE exception: the pass that consumed
+      // a one-shot. The durable first check every new board carries (ensureFirstCheck) is spent
+      // here, and an ungrounded first pass used to leave a manual board with no pending clock at
+      // all: never due again under any model, values never filled in, and nothing on screen to say
+      // so beyond a pending badge. That is the "created it under one model, switched, and it never
+      // updated" report. One automatic retry after a spent one-shot, bounded by the same
+      // first-in-streak rule, is the difference between a board that recovers and one that is dead.
+      const firstUnverified =
         patch.outcome === 'unverified' &&
         d.lastDataOutcome !== 'unverified' &&
-        dueBase !== Number.MAX_SAFE_INTEGER &&
-        (!cadence.window || now >= cadence.window.startAt)
+        (!cadence.window || now >= cadence.window.startAt);
+      const nextDataAt = !firstUnverified
+        ? dueBase
+        : dueBase !== Number.MAX_SAFE_INTEGER
           ? Math.min(dueBase, now + UNVERIFIED_RETRY_MS)
-          : dueBase;
+          : patch.consumedOneShot
+            ? now + UNVERIFIED_RETRY_MS
+            : dueBase;
       return {
         ...d,
         cadence,

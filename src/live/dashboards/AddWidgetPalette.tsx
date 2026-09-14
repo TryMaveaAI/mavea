@@ -9,7 +9,8 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { addWidget, ensureFirstCheck, foldInto, MAX_METRICS, MAX_WIDGETS } from './store';
 import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { planTracker } from './planTracker';
-import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
+import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
+import { searchReadiness } from './searchReadiness';
 import type { Block } from '../../data/conversation';
 import type { Dashboard, MetricSpec, Widget, WidgetSpan } from './types';
 import { useFocusTrap } from '../useFocusTrap';
@@ -95,9 +96,9 @@ export function AddWidgetPalette({
   const [trackErr, setTrackErr] = useState<string | null>(null);
   const options = paletteOptions(dashboard);
 
-  // Read once — the palette is a short-lived popover; a key can't change while it's open without
-  // going through Live settings anyway.
-  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
+  // Read once — the palette is a short-lived popover; a key or the search setting can't change
+  // while it's open without going through Live settings anyway.
+  const ready = useMemo(() => searchReadiness(getLiveConfigV2()), []);
 
   const add = (o: Addable): void => {
     const { block, span } = o.make();
@@ -285,7 +286,7 @@ export function AddWidgetPalette({
             </button>
             <span className="dash-ptrack-kicker">Track a number</span>
           </div>
-          {hasModel ? (
+          {ready.ok ? (
             <form
               className="dash-ptrack-form"
               onSubmit={(e) => {
@@ -310,7 +311,17 @@ export function AddWidgetPalette({
           ) : (
             <p className="dash-ptrack-gate">
               A tracked number is fetched by real web searches on your own key — nothing is ever
-              made up. <a href="#/live">Connect a model in Live</a> first.
+              made up.{' '}
+              {ready.reason === 'no-model' ? (
+                <>
+                  <a href="#/live">Connect a model in Live</a> first.
+                </>
+              ) : (
+                <>
+                  Set Web search to Real-time in Live’s settings first.{' '}
+                  <a href="#/live">Open Live</a>
+                </>
+              )}
             </p>
           )}
         </div>

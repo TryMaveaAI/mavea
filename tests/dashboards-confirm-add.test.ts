@@ -15,7 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Dashboard } from '../src/live/dashboards/types';
 
 const probe =
-  vi.fn<(id: string) => Promise<'done' | 'busy' | 'no-model' | 'failed' | 'unverified'>>();
+  vi.fn<
+    (id: string) => Promise<'done' | 'busy' | 'no-model' | 'search-off' | 'failed' | 'unverified'>
+  >();
 vi.mock('../src/live/dashboards/useDashboardLoop', () => ({
   refreshDashboardNow: (id: string) => probe(id),
 }));
@@ -124,6 +126,16 @@ describe('confirmRealData — create (whole board is the addition)', () => {
     expect(kept).not.toBeNull();
     const st = trackerState(kept!);
     expect(st.status === 'pending' && st.failure?.kind).toBe('no-model');
+  });
+
+  it('keeps a board when Web search is off, and the card says so', async () => {
+    addDashboard(dash({ metrics: [metric()] }));
+    probe.mockResolvedValue('search-off');
+    await expect(confirmRealData('d1', null)).resolves.toBe('search-off');
+    const kept = getDashboard('d1');
+    expect(kept).not.toBeNull();
+    const st = trackerState(kept!);
+    expect(st.status === 'pending' && st.failure?.kind).toBe('search-off');
   });
 
   it('confirms a STATIC board immediately — nothing to ground, no call spent', async () => {

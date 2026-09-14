@@ -96,6 +96,7 @@ beforeEach(() => {
     provider: 'gemini',
     models: { gemini: 'gemini-3.1-flash-lite' },
     keys: { gemini: 'test-key' },
+    searchMode: 'realtime',
   });
   resolveExtract = null;
 });

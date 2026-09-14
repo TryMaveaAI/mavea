@@ -11,7 +11,8 @@ import { blockLabel } from '../../canvas/blockLabel';
 import type { Block } from '../../data/conversation';
 import { getDashboards, whenDashboardsHydrated } from './store';
 import { estimateSearchesPerMonth } from './cadence';
-import { getLiveConfigV2, hasModelConfigured } from '../useLiveConfig';
+import { getLiveConfigV2 } from '../useLiveConfig';
+import { searchBlockLine, searchReadiness } from './searchReadiness';
 import { displayTitle } from './format';
 import { pinBlockToDashboard, type PinTarget } from './pin';
 import { useFocusTrap } from '../useFocusTrap';
@@ -114,7 +115,10 @@ export function PinToDashboard({
   };
 
   const searchesPerMonth = estimateSearchesPerMonth(cadence);
-  const hasModel = useMemo(() => hasModelConfigured(getLiveConfigV2()), []);
+  // Read once per open: a pin is a standing web search, so without a model that can search there
+  // is nothing honest to offer — the sheet says what to change instead of taking a card it can
+  // never fill.
+  const ready = useMemo(() => searchReadiness(getLiveConfigV2()), []);
 
   return (
     <div
@@ -146,7 +150,12 @@ export function PinToDashboard({
           <span className="pin-subject">{label}</span>
         </div>
 
-        {naming ? (
+        {!ready.ok ? (
+          <p className="dash-ptrack-gate pin-gate">
+            A pinned card is kept current by real web searches on your own key.{' '}
+            {searchBlockLine(ready.reason)} <a href="#/live">Open Live</a>
+          </p>
+        ) : naming ? (
           <form
             className="pin-new-step"
             onSubmit={(e) => {
@@ -183,12 +192,8 @@ export function PinToDashboard({
                 ))}
               </div>
               <p className="pin-plan-estimate">
-                {/* Keyless truth: nothing runs without a key, so no "on your key" claims — the
-                    schedule survives and checks start on their own once one is connected. */}
                 {searchesPerMonth > 0
-                  ? hasModel
-                    ? `≈ ${searchesPerMonth} searches/mo on your key, at this cadence.`
-                    : `≈ ${searchesPerMonth} searches/mo once a key is connected in Live — parked until then.`
+                  ? `≈ ${searchesPerMonth} searches/mo on your key, at this cadence.`
                   : 'No standing searches — this refreshes only when you ask.'}
               </p>
             </div>

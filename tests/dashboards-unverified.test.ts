@@ -71,7 +71,7 @@ vi.mock('../src/live/dashboards/ledger', () => ({
 }));
 
 beforeEach(() => {
-  getLiveConfigV2.mockReturnValue({ apiKey: 'k' });
+  getLiveConfigV2.mockReturnValue({ apiKey: 'k', searchMode: 'realtime' });
   toModelConfig.mockReturnValue({ provider: 'openai', model: 'gpt-5.4-mini', apiKey: 'k' });
 });
 afterEach(() => vi.clearAllMocks());
