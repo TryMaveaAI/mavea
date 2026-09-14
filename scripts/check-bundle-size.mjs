@@ -209,7 +209,12 @@ const ROUTE_BUDGETS = [
     // Measured at 343 kB over 98 requests, and the request count is the number to watch: the
     // surface fans out into ~50 lazily-mounted subsystems and every leaf shared between them
     // becomes a chunk, so a new seam here can buy a whole round trip for a couple of kB.
-    gzip: 355,
+    // 360 (was 355): measured at 355.0 kB over 103 requests once Watch Me Think kept a shaky
+    // utterance on the map (its provenance and the carried-thought merge ride LiveApp's own
+    // chunk), the dashboards learned to say what to set at every tracker entry, and the loop
+    // began waiting for the key vault before taking its connection baseline. Product behavior
+    // in the route's own shell, none of it deferrable; the request count is still under budget.
+    gzip: 360,
     files: 105,
   },
   // The shared feature icon catalog is intentionally no longer charged to every landing visit.
