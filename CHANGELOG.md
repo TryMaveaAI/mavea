@@ -4,6 +4,13 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-09-14
+
+### Changed
+
+- **An answer is sized to what a reader can take in, not just to the screen.** How much canvas a turn fills was derived from the window's area alone, so a large display asked for up to eighteen cards. Past about ten an answer stops being a canvas the eye holds and becomes a page to scroll: the spotlight visits a few lead blocks, so the rest is never pointed at or spoken about, and the narration — one paragraph however many cards there are — finishes while blocks are still arriving. The density still fills the viewport, a little more generously per card: a laptop now lands around seven blocks and a large display around ten, with a teaching ask keeping a complete lesson at eight or more. A simple question is unchanged at three to nine, an explicitly short one at one to three. What it aims for inside the range is still driven by the content — nothing padded to reach a number, nothing real cut to look tidy.
+- **A lesson's guided walk stays a walk.** On a teaching answer the spotlight stopped on every block in turn, and that walk is silent — it has only the blocks' own titles, so it moves on a fixed beat rather than on anything being said. A fourteen-block lesson therefore held a dimmed canvas for around twenty seconds after the voice had already finished. It takes six stops now, which keeps the emphasis on what matters and keeps the walk inside the time Mavéa is still speaking.
+
 ## [2.10.1] - 2026-09-14
 
 ### Fixed
