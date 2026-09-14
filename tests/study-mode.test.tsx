@@ -872,6 +872,44 @@ describe('"Guide me" is paced, not clocked — and never stalls', () => {
       vi.useRealTimers();
     }
   });
+
+  // On a slow machine the voice spends seconds RENDERING each line before a word is audible. That
+  // window is not silence: a pacer that read it as quiet stepped to the next object before the
+  // current one had been said, and the walk ran ahead of the voice.
+  it('waits through a line the voice is still preparing, not only one it is saying', () => {
+    vi.useFakeTimers();
+    try {
+      const bs = [block('live-1', 'A'), block('live-2', 'B')];
+      const narrated: string[] = [];
+      const view = (preparing: boolean) => (
+        <StudyStage
+          data={spec(bs, 'live')}
+          blocks={bs}
+          spot="live-1"
+          muted={false}
+          preparing={preparing}
+          onNarrate={(b) => {
+            if (b.id) narrated.push(b.id);
+          }}
+          renderBlock={(b) => <div>{(b.props as { title?: string }).title}</div>}
+        />
+      );
+      const { container, rerender } = render(view(false));
+      fireEvent.click(container.querySelector('.study-guide') as Element);
+      act(() => void vi.advanceTimersByTime(50));
+      expect(narrated).toEqual(['live-1']);
+      // Kokoro is rendering that line: nothing is audible yet, and nothing may move.
+      rerender(view(true));
+      act(() => void vi.advanceTimersByTime(8000));
+      expect(narrated).toEqual(['live-1']);
+      // Said and done: the gap runs from here.
+      rerender(view(false));
+      act(() => void vi.advanceTimersByTime(3000));
+      expect(narrated).toEqual(['live-1', 'live-2']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('a REPLACE is caught even when it opens with the same block type', () => {
@@ -1117,6 +1155,22 @@ describe('the spoken bubble stands down when the voice stops', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide what Mavéa said' }));
     expect(container.querySelector('.study-voice--said')).not.toBeNull();
+  });
+
+  it('says the voice is being prepared, instead of showing nothing until it sounds', () => {
+    const base = { data: spec(blocks), blocks, spot: 'a', renderBlock } as const;
+    const { container, rerender } = render(
+      <StudyStage {...base} voiceLine="First line." preparing speaking={false} />,
+    );
+    // The bubble is on the desk and live — not the collapsed "said" control.
+    expect(container.querySelector('.study-voice--said')).toBeNull();
+    expect(container.querySelector('.study-voice-status')?.textContent).toBe(
+      'Preparing the voice…',
+    );
+    // The moment it sounds, the status gives way to the equalizer.
+    rerender(<StudyStage {...base} voiceLine="First line." preparing={false} speaking />);
+    expect(container.querySelector('.study-voice-status')).toBeNull();
+    expect(container.querySelector('.study-voice-eq')).not.toBeNull();
   });
 
   it('reopens for a NEW line — Mavéa is talking about something else now', () => {

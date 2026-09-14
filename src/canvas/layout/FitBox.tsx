@@ -106,6 +106,12 @@ export function FitBox({
 
       const prevT = i.style.transform;
       i.style.transform = 'none';
+      // The stretch too: a scaled box is laid out at 100/k% so it fills the host after the
+      // transform, and measured at that width it reports host ÷ k as its own extent — which is
+      // exactly the overflow that produces k again. Left in place it was a ratchet: a card
+      // shrunk once in a short window kept its scale at every size the window grew to after.
+      const prevStretch = i.style.width;
+      i.style.width = '';
 
       // Read phase: decide which elements need clip-neutralizing (no writes yet).
       const toNeutralize: HTMLElement[] = [];
@@ -208,6 +214,7 @@ export function FitBox({
         r.el.style.webkitLineClamp = r.c;
       }
       i.style.transform = prevT;
+      i.style.width = prevStretch;
 
       // Early-out: already fits both ways. Stay at 1 — no transform, no cost. (1px tolerance
       // absorbs sub-pixel rounding so a block that exactly fits doesn't flutter.)

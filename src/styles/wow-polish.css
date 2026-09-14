@@ -461,17 +461,19 @@
    flow — the sheet is the reader's whole attention, so there is nothing here to avoid colliding
    with and nothing to reserve space against. */
 .lens-notes {
-  /* The notes yield before the card does: on a short phone the sheet's ceiling is reached by the
-     toolbar and four notes alone, and a block that cannot shrink was trapping its last lines
-     under the sheet's clip. Shrinkable and scrollable, the notes stay reachable at any height. */
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 28%;
+  /* The notes keep their lines; the card box above gives way first (it can scale its card, the
+     notes can only cut a line). Shrinking these in step with the card put a scrollbar under four
+     short notes on a 620px window that had the room for them whole. */
+  flex: none;
+  /* A slice of the WINDOW, not of the sheet, and generous: four notes run ~160–200px, so a
+     smaller cap cut the last one on a laptop while the sheet had room. Long notes scroll here
+     rather than pushing the card box under its floor. */
+  max-height: 30dvh;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 20px 32px 32px;
+  margin: 16px 32px 24px;
   padding: 14px 18px 16px;
   border-radius: var(--r-md);
   border: 1px solid var(--line);
@@ -696,10 +698,11 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  /* Clear of the dock, which floats over the page at the bottom. Without this the strip — the
-     lowest thing on the stage — sits underneath it on a short window, and the tiles nearest the
-     middle are the ones covered. */
-  padding: 28px 28px calc(28px + var(--dock-h, 76px));
+  /* An even inset all round. The scrim stacks above the dock and blurs it with the board (the
+     Lens is a modal dialog; Escape and the backdrop are the way out), so a bottom reserve for
+     the dock only shortened the stage: on a 620px window it was 150px of empty band under the
+     sheet while the card and the notes both scrolled. */
+  padding: 28px;
   background: color-mix(in oklab, var(--text-primary) 28%, transparent);
   backdrop-filter: var(--glass-blur, blur(2px));
 }
@@ -710,25 +713,39 @@
      clipped, never scrolled, so the toolbar and the notes are fixed whatever the card does. */
   display: flex;
   flex-direction: column;
-  max-height: 72dvh;
+  /* The sheet takes the whole of the room the scrim leaves it — beside the strip where there
+     is one, the full inset box where there is not. Content-sized, the card's scroll box stood
+     only as tall as the card it held, so a card fitted down for a short window could never be
+     fitted back up: the box it was measured against had shrunk with it, and an 87% card sat in
+     a half-empty sheet on a 1080px screen. Filled, the box IS the room, and the stage holds
+     still as the strip walks from card to card. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-modal);
 }
-/* Where the magnified card lives: the only scroll container on the stage. `min-height: 0` lets it
-   shrink inside the flex column so the notes below keep their place instead of pushing the sheet
-   past its ceiling. */
+/* Where the magnified card lives: the only scroll container on the stage. It is the box that
+   gives up height when the window is short — the card inside it is FITTED to the room it gets
+   (FitBox scales it down to the legibility floor before it ever scrolls), so a pixel taken here
+   shrinks the picture a hair, where a pixel taken from the notes cuts a line in half. */
 .zoom-sheet-scroll {
   flex: 1 1 auto;
-  /* The card is what the sheet exists to show, so it is the LAST thing to give up height: on a
-     short window (a laptop at 150% zoom is 413px tall) the scrim's dock reserve and the notes
-     had squeezed this box to 0px — a Lens with no card in it. Floored at a readable band; the
-     notes shrink and scroll first, and past that the sheet may run under the dock. */
+  /* Still floored: on a very short window (a laptop at 150% zoom is 413px tall) the toolbar and
+     the notes alone once squeezed this box to 0px — a Lens with no card in it. Below the floor
+     the notes are what shrinks. */
   min-height: 96px;
   overflow: auto;
-  padding: 0 32px;
+  /* A column so the body can centre itself in the room with auto margins: a card smaller than
+     the box sits mid-stage; one that overflows (zoomed in) starts at the top and scrolls. */
+  display: flex;
+  flex-direction: column;
+  /* The bottom breath is PADDING on the scroller, not a margin on the body: the fit reads the
+     scroller's padding and sizes the card inside it, while a margin was invisible to the fit and
+     put a scrollbar on a card that had already been sized to fit. */
+  padding: 0 32px 24px;
 }
 /* The close + zoom controls sit in their own sticky row so they stay reachable while a scaled-up
    block is scrolled/panned, instead of being absolutely positioned over content that can scroll
@@ -813,8 +830,14 @@
      text of a full-width chart or diagram while the drawing under it never moved: the one thing a
      reader opens this sheet to enlarge. Stating the length in the body's OWN box means zoom
      multiplies it like any other, and the sheet's `overflow: auto` pans what no longer fits. */
-  width: calc(var(--zoom-sheet-w) - 64px);
-  margin-bottom: 24px;
+  width: calc(var(--zoom-sheet-w) - 64px - 2px);
+  /* Centred both ways: below 1 the zoomed box is narrower than the sheet, and at 1 a short card
+     is shorter than the room. Auto margins fall to zero once the box overflows, so a magnified
+     card still starts at the top-left and pans. The 2px is the sheet's own border, which the
+     scroller's box sits inside: without it the body ran 2px past the scroller and every card
+     wore a horizontal scrollbar for two pixels. */
+  flex: none;
+  margin: auto;
 }
 .zoom-sheet-body .block-actions {
   display: none;
@@ -1005,21 +1028,43 @@
   }
 }
 
-/* On the stage, the sheet outranks the filmstrip beneath it. Both share the scrim's column, and on
-   a short window (a laptop at 150% zoom is 413px tall) the strip was keeping its full height while
-   the sheet — the card the reader asked to look closer at — was squeezed to 148px with its scroll
-   box at zero. The sheet takes what it needs up to its ceiling and the strip yields; below the
-   short-window step there is no room for a strip at all, so it goes rather than shrinks to a sliver. */
-.zoom-sheet {
-  flex: 1 1 auto;
-  min-height: 0;
-}
+/* On the stage, the card outranks everything beneath it. The strip keeps its own height and the
+   sheet takes what is left (its flex rules sit with it above) — a strip that shrank instead was a
+   row of clipped tiles, which reads as broken rather than as "there is more". On a short window
+   the strip is the first thing to go: a laptop's viewport is 650–800px tall once the browser has
+   its share, and there a full-size strip cost a chart its fit — the card scrolled inside a 200px
+   box so that a row of thumbnails could stay. Compact tiles up to 900px; at 820px and under
+   there is no room for a strip beside a card shown at its own size (measured at 1366×768: the
+   card box was left 247px for a 294px card while a 170px strip stayed), so it goes rather than
+   shrinks to a sliver. */
 .lens-strip {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: none;
 }
-@media (height <= 650px) {
+@media (height <= 900px) {
+  .lens-strip {
+    --lens-tile: 108;
+    padding: 8px 12px 10px;
+  }
+}
+@media (height <= 820px) {
   .lens-strip {
     display: none;
+  }
+}
+@media (height <= 700px) {
+  /* The stage's chrome tightens so the content does not: on a 620px window the inset, the
+     toolbar's gap, the breath under the card and the notes' margins summed to more than the
+     card was short by at the legibility floor. */
+  .zoom-scrim {
+    padding: 16px;
+  }
+  .zoom-sheet-toolbar {
+    margin-bottom: 10px;
+  }
+  .zoom-sheet-scroll {
+    padding-bottom: 16px;
+  }
+  .lens-notes {
+    margin: 10px 32px 16px;
   }
 }

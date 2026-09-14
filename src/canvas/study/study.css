@@ -1507,6 +1507,18 @@
   animation-play-state: var(--reactive-play, running);
 }
 
+/* The beat before a line is audible, said out loud. On a slow machine Kokoro takes seconds over a
+   line, and a bubble holding the words with nothing moving read as the voice having stopped. */
+.study-voice-status {
+  font-family: var(--font-data);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--study-ink-soft);
+  opacity: 0.75;
+}
+
 /* ── The intro: the answer arrives, then becomes the desk ────────────────────────────────── */
 
 .study-intro {

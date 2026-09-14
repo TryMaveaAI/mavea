@@ -609,6 +609,22 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     expect(sheet).toMatch(/overflow:\s*hidden/);
   });
 
+  it('gives the stage the whole window, so the card fits instead of scrolling', () => {
+    // The scrim stacks above the dock and blurs it with the board, so a bottom reserve for the
+    // dock was 150px of empty band under the sheet on a 620px window — while the card and the
+    // notes inside it both scrolled. The sheet may use all of the inset box; the strip beneath
+    // keeps its own height and goes entirely where a laptop window is too short for both.
+    const scrim = /\.zoom-scrim\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(scrim).not.toMatch(/--dock-h/);
+    // Filled, not content-sized: the card's scroll box is then the room the card may be fitted
+    // into, where a box as tall as the card it holds could never let a shrunk card grow back.
+    const sheet = /\.zoom-sheet\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(sheet).toMatch(/flex:\s*1 1 auto/);
+    expect(sheet).toMatch(/min-height:\s*0/);
+    expect(sheet).not.toMatch(/max-height:\s*[\d.]+dvh/);
+    expect(css).toMatch(/@media \(height <= 820px\)\s*\{\s*\.lens-strip\s*\{\s*display:\s*none/);
+  });
+
   it('keeps the controls out of the scroller altogether', () => {
     // They used to be pinned INSIDE it with position: sticky, sized to the sheet — and once the
     // zoomed card overflowed, the toolbar's right end and its close button went with the

@@ -104,6 +104,10 @@ interface Props {
   voiceLine?: string | null;
   /** Whether Mavéa is audibly speaking — runs the bubble's equalizer and caret. */
   speaking?: boolean;
+  /** Whether the voice is still rendering the line it is about to say — queued, not yet audible.
+   *  On a slow machine this is seconds long: the bubble owes the reader that beat, and the guided
+   *  walk waits through it exactly as it waits through the line itself. */
+  preparing?: boolean;
   /** The answer's lead line, spoken by the intro overlay's speech card. */
   lead?: string;
   /** 'full' plays the per-answer intro (THE ANSWER → the desk assembles); 'skip' — the default,
@@ -191,6 +195,7 @@ export function StudyStage({
   walkNotes,
   voiceLine,
   speaking,
+  preparing,
   lead,
   intro = 'skip',
   streaming,
@@ -221,7 +226,10 @@ export function StudyStage({
   // A new line is a new decision — Mavéa is talking about something else now.
   const [voiceHeld, setVoiceHeld] = useState(false);
   useEffect(() => setVoiceHeld(false), [voiceLine]);
-  const voiceOpen = speaking === true || voiceHeld;
+  // Live is audible OR being rendered: the bubble is on the desk for both. A reader on a slow
+  // machine otherwise saw nothing at all for the seconds a line took to synthesize.
+  const voiceLive = speaking === true || preparing === true;
+  const voiceOpen = voiceLive || voiceHeld;
   const renderedVoiceFit = useRef(voiceFit);
   renderedVoiceFit.current = voiceFit;
   useLayoutEffect(() => {
@@ -777,7 +785,10 @@ export function StudyStage({
       quiet.banked = 0;
       quiet.since = 0;
     }
-    if (speaking) {
+    // A line being rendered is not silence. On a slow machine Kokoro takes seconds over each
+    // line, and a pacer that read that wait as quiet stepped to the next object before the
+    // current one had said a word — the walk ran ahead of the voice and looked stuck.
+    if (speaking || preparing) {
       if (quiet.since) {
         quiet.banked += Date.now() - quiet.since;
         quiet.since = 0;
@@ -797,7 +808,7 @@ export function StudyStage({
       setGuideTick((tick) => tick + 1);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [guiding, speaking, foregroundId, guideStep, guideTick]);
+  }, [guiding, speaking, preparing, foregroundId, guideStep, guideTick]);
 
   if (!active) return null;
 
@@ -1104,8 +1115,8 @@ export function StudyStage({
         (voiceOpen ? (
           <div
             className="study-voice"
-            aria-hidden={speaking ? 'true' : undefined}
-            {...(speaking
+            aria-hidden={voiceLive ? 'true' : undefined}
+            {...(voiceLive
               ? {}
               : {
                   role: 'button',
@@ -1140,6 +1151,9 @@ export function StudyStage({
                 {voiceFit.text}
                 {speaking && <b className="study-voice-caret">▌</b>}
               </span>
+            )}
+            {preparing && !speaking && (
+              <span className="study-voice-status">Preparing the voice…</span>
             )}
           </div>
         ) : (

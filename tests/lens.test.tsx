@@ -130,6 +130,15 @@ describe('the Lens gesture', () => {
     expect(screen.getByRole('button', { name: 'Zoom in' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeTruthy();
   });
+
+  it('zooms out below the card\u2019s own size, so a tall card can be seen whole', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const out = screen.getByRole('button', { name: 'Zoom out' }) as HTMLButtonElement;
+    expect(out.disabled).toBe(false);
+    fireEvent.click(out);
+    expect(container.querySelector('.zoom-sheet-zoom-level')?.textContent).toBe('85%');
+  });
 });
 
 describe('clicks the Lens must not take', () => {

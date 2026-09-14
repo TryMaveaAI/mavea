@@ -103,8 +103,11 @@ const ReplayCard = lazy(() =>
   import('./ReplayCard').then((module) => ({ default: module.ReplayCard })),
 );
 
-// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls.
-const ZOOM_MIN = 1;
+// Bounds for the zoomed sheet's magnification, adjustable via its +/- controls. Below 1 as well
+// as above: the fit stops at the legibility floor, so a tall card on a short laptop window had
+// no way to come into view whole — past the floor it is the reader's own hand that trades type
+// size for the whole picture.
+const ZOOM_MIN = 0.55;
 const ZOOM_MAX = 1.75;
 const ZOOM_STEP = 0.15;
 // The Lens opens a card at its OWN size: the point is to see it alone and undistracted, not
@@ -348,6 +351,7 @@ interface Props {
    *  whether the per-answer intro plays — see StudyStage's props. */
   voiceLine?: string | null;
   speaking?: boolean;
+  preparing?: boolean;
   lead?: string;
   studyIntro?: 'full' | 'skip';
   /** Live-only: the answer's one draggable number (spec.bend) — renders a BendStrip under
@@ -409,6 +413,7 @@ export function TopicCanvas({
   walkNotes,
   voiceLine,
   speaking,
+  preparing,
   lead,
   studyIntro,
   bend,
@@ -1010,6 +1015,7 @@ export function TopicCanvas({
           walkNotes={walkNotes}
           voiceLine={voiceLine}
           speaking={speaking}
+          preparing={preparing}
           lead={lead}
           intro={studyIntro}
           streaming={studyStreaming}

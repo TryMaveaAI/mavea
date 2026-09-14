@@ -6596,6 +6596,7 @@ export function LiveApp(): ReactElement {
                   walkNotes={viewingLive ? walkNotes : undefined}
                   voiceLine={spokenNow ?? null}
                   speaking={speakingSticky && !voicePreparing}
+                  preparing={voicePreparing && !muted}
                   lead={turn.narration ?? undefined}
                   studyIntro={tourMode.current ? 'skip' : 'full'}
                   blankFill={
