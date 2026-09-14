@@ -12,7 +12,9 @@ import { join } from 'path';
 const css = readFileSync(join(__dirname, '..', 'src', 'canvas', 'focus', 'canvas.css'), 'utf8');
 
 function rule(selector: string): string {
-  const re = new RegExp(selector.replace(/[.#]/g, '\\$&') + '\\s*\\{([^}]*)\\}');
+  // A selector is CSS, not a pattern — escape the whole regex metacharacter set so every piece of
+  // its punctuation matches literally (`.`, and anything an attribute or :not() selector brings).
+  const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}');
   return css.match(re)?.[1] ?? '';
 }
 

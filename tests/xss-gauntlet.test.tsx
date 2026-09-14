@@ -52,7 +52,9 @@ describe('citation URLs — javascript:/data: never reach a clickable href', () 
     const hrefs = Array.from(container.querySelectorAll('a[href]')).map((a) =>
       a.getAttribute('href'),
     );
-    expect(hrefs.some((h) => h?.startsWith('javascript:'))).toBe(false);
+    // `javascript:` is only one of the schemes the gate refuses — assert what it actually
+    // promises: every href that reaches a click resolves to http(s).
+    expect(hrefs.filter((h) => !/^https?:$/.test(new URL(h!, location.href).protocol))).toEqual([]);
     expect(hrefs).toContain('https://example.com/real-source');
   });
 
@@ -73,7 +75,9 @@ describe('citation URLs — javascript:/data: never reach a clickable href', () 
     const hrefs = Array.from(container.querySelectorAll('a[href]')).map((a) =>
       a.getAttribute('href'),
     );
-    expect(hrefs.some((h) => h?.startsWith('javascript:'))).toBe(false);
+    // `javascript:` is only one of the schemes the gate refuses — assert what it actually
+    // promises: every href that reaches a click resolves to http(s).
+    expect(hrefs.filter((h) => !/^https?:$/.test(new URL(h!, location.href).protocol))).toEqual([]);
     expect(hrefs).toContain('https://example.com/real-source');
   });
 });

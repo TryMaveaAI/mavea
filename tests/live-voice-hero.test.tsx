@@ -19,7 +19,13 @@ describe('AnswerHero', () => {
     );
     expect(getByText(/tell me about AI datacenters/)).toBeTruthy();
     expect(container.querySelector('.hero-accent')?.textContent).toBe('50–100kW');
-    expect(getByText(/opencompute\.org/)).toBeTruthy();
+    // The host, derived from the url — never the url itself. Asserted as identity rather than as
+    // a copy freeze: the label and the separator are free to change without this claim becoming
+    // untrue, and a test that fails on either is pinning the wrong thing.
+    const srcRow = container.querySelector('.hero-sources')!;
+    expect(srcRow.textContent).toContain('opencompute.org');
+    expect(srcRow.textContent).not.toContain('https://');
+    expect(srcRow.textContent).not.toContain('/x');
     expect(getByText(/1 claim inferred/)).toBeTruthy();
   });
 
