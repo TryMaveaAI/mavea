@@ -58,6 +58,9 @@ export type MindAction =
 export interface MindActionDetail {
   /** For 'tell-apart': the two sides of the tension being separated, in the person's own words. */
   tension?: { a: string; b: string };
+  /** For 'commit-plan': the atoms of the steps the person unchecked. A step starts checked — wanted
+   *  until they say otherwise — and an unchecked one leaves the ask entirely. */
+  dropped?: string[];
 }
 
 export interface MindShapeProps extends Partial<MindShapeSpec> {
@@ -457,10 +460,15 @@ export function MindShape({
   // Which settled sub-view is open: the tension callout, the plan checklist, or the "kept" panel.
   // null = just the map. Only one at a time; opening one closes the others.
   const [panel, setPanel] = useState<'tension' | 'plan' | 'kept' | null>(null);
-  // Steps the user has checked off in the plan — it's a checklist they control, so the boxes are real.
-  const [doneSteps, setDoneSteps] = useState<ReadonlySet<string>>(() => new Set());
+  // Steps the user has unchecked in the plan — it's a checklist they control, so the boxes are real.
+  // Every step starts checked (wanted); unchecking strikes it and leaves it out of "Make it real".
+  const [droppedSteps, setDroppedSteps] = useState<ReadonlySet<string>>(() => new Set());
+  const keptSteps = useMemo(
+    () => planSteps.filter((s) => !droppedSteps.has(s.id)),
+    [planSteps, droppedSteps],
+  );
   const toggleStep = useCallback((id: string) => {
-    setDoneSteps((prev) => {
+    setDroppedSteps((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -802,18 +810,18 @@ export function MindShape({
           {planSteps.length > 0 ? (
             <ol className="ms-plan-steps">
               {planSteps.map((s) => {
-                const done = doneSteps.has(s.id);
+                const kept = !droppedSteps.has(s.id);
                 return (
-                  <li key={s.id} className="ms-plan-step" data-done={done ? 'true' : undefined}>
+                  <li key={s.id} className="ms-plan-step" data-dropped={kept ? undefined : 'true'}>
                     <button
                       type="button"
                       className="ms-plan-check"
                       role="checkbox"
-                      aria-checked={done}
-                      aria-label={`Mark “${s.label}” done`}
+                      aria-checked={kept}
+                      aria-label={`Keep “${s.label}” in the plan`}
                       onClick={() => toggleStep(s.id)}
                     >
-                      {done && (
+                      {kept && (
                         <span className="ms-plan-check-mark" aria-hidden="true">
                           ✓
                         </span>
@@ -840,7 +848,14 @@ export function MindShape({
               <button
                 type="button"
                 className="ms-action-btn ms-action-primary"
-                onClick={() => onAction('commit-plan')}
+                // A plan with every step unchecked is a plan of nothing — the button waits until
+                // at least one step is wanted rather than asking the model to plan around none.
+                disabled={keptSteps.length === 0}
+                onClick={() => {
+                  const dropped = planSteps.filter((s) => droppedSteps.has(s.id)).map((s) => s.id);
+                  if (dropped.length) onAction('commit-plan', { dropped });
+                  else onAction('commit-plan');
+                }}
               >
                 Make it real →
               </button>

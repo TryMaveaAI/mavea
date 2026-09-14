@@ -74,14 +74,35 @@ function contextBlock(spec: MindShapeSpec): string {
 
 export type MindPromptMode = 'answer' | 'plan';
 
+/** The map minus the steps the person unchecked in the plan. An unchecked step is one they do not
+ *  want, so it leaves the ask entirely rather than reaching the model as context to plan around —
+ *  and a tension on it goes with it, since naming the conflict would put the step back. */
+function withoutAtoms(spec: MindShapeSpec, ids: readonly string[]): MindShapeSpec {
+  const gone = new Set(ids);
+  return {
+    ...spec,
+    atoms: spec.atoms.filter((a) => !gone.has(a.id)),
+    links: spec.links.filter((l) => !gone.has(l.from) && !gone.has(l.to)),
+    clusters: spec.clusters?.map((c) => ({
+      ...c,
+      atomIds: c.atomIds.filter((id) => !gone.has(id)),
+    })),
+  };
+}
+
 /**
  * Turn the settled map into a single prompt. `answer` asks Mavéa to weigh everything and respond;
  * `plan` asks for concrete next steps. Both run as a normal turn, so the answer comes back as a
- * full visual canvas — exactly like asking out loud, but grounded in the whole map.
+ * full visual canvas — exactly like asking out loud, but grounded in the whole map. `dropped`
+ * names the plan steps the person unchecked; they are left out of the ask.
  */
-export function mindShapeToPrompt(spec: MindShapeSpec, mode: MindPromptMode): string {
+export function mindShapeToPrompt(
+  spec: MindShapeSpec,
+  mode: MindPromptMode,
+  dropped?: readonly string[],
+): string {
   const center = spec.center?.trim();
-  const context = contextBlock(spec);
+  const context = contextBlock(dropped?.length ? withoutAtoms(spec, dropped) : spec);
   const head = center
     ? `I've been thinking out loud and here's what it comes down to: ${center}`
     : `I've been thinking out loud. Here's the shape of it.`;

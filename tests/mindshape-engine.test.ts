@@ -857,6 +857,26 @@ describe('mindShapeToPrompt', () => {
     expect(p).toContain('Maya');
   });
 
+  it('leaves an unchecked step out of the ask, tension and all', () => {
+    const p = mindShapeToPrompt(SPEC, 'plan', ['w1']);
+    expect(p).not.toContain('More money');
+    expect(p).not.toContain('pulls against');
+    // the rest of the map is untouched
+    expect(p).toContain('Scared of staying still');
+    expect(p).toContain('Maya');
+    // a cluster that named it no longer lists it
+    const clustered: MindShapeSpec = {
+      ...SPEC,
+      clusters: [{ id: 'c1', label: 'The money side', atomIds: ['w1', 'f1'] }],
+    };
+    const q = mindShapeToPrompt(clustered, 'plan', ['w1']);
+    expect(q).toContain('The money side:');
+    expect(q).not.toContain('More money');
+    expect(q).toContain('Scared of staying still');
+    // nothing dropped → byte-identical to the plain call
+    expect(mindShapeToPrompt(SPEC, 'plan', [])).toBe(mindShapeToPrompt(SPEC, 'plan'));
+  });
+
   it('groups atoms under readable headings', () => {
     const p = mindShapeToPrompt(SPEC, 'answer');
     expect(p).toContain('Options on the table:');

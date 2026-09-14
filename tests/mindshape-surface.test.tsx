@@ -936,16 +936,56 @@ describe('MindShape — settled surface', () => {
     expect(onAction).toHaveBeenCalledWith('commit-plan');
   });
 
-  it('lets you check off plan steps — they are real checkboxes you control', () => {
+  it('starts every plan step checked — wanted — and strikes the ones you uncheck', () => {
     renderSettled();
     fireEvent.click(screen.getByRole('button', { name: 'Turn into a plan' }));
     const plan = screen.getByRole('dialog', { name: 'Turn into a plan' });
     const box = within(plan).getByRole('checkbox', { name: /decide by spring/i });
-    expect(box.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(box);
+    const step = box.closest('.ms-plan-step')!;
     expect(box.getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(box); // toggles back off
+    expect(step.getAttribute('data-dropped')).toBeNull();
+    fireEvent.click(box);
     expect(box.getAttribute('aria-checked')).toBe('false');
+    expect(step.getAttribute('data-dropped')).toBe('true');
+    fireEvent.click(box); // wanted again
+    expect(box.getAttribute('aria-checked')).toBe('true');
+    expect(step.getAttribute('data-dropped')).toBeNull();
+  });
+
+  it('"Make it real" leaves the unchecked steps out of the ask, and waits when none are wanted', () => {
+    const onAction = vi.fn();
+    render(
+      <MindShape
+        asBlock={false}
+        phase="settled"
+        center="Is it the right time — or am I running?"
+        atoms={[
+          ...atoms,
+          {
+            id: 'd',
+            kind: 'action',
+            label: 'call the recruiter',
+            quote: 'I should call the recruiter back',
+            status: 'stable',
+            confidence: 'said',
+          },
+        ]}
+        links={links}
+        onAction={onAction}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Turn into a plan' }));
+    const plan = screen.getByRole('dialog', { name: 'Turn into a plan' });
+    const spring = within(plan).getByRole('checkbox', { name: /decide by spring/i });
+    const recruiter = within(plan).getByRole('checkbox', { name: /call the recruiter/i });
+    const go = within(plan).getByRole('button', { name: /make it real/i }) as HTMLButtonElement;
+    fireEvent.click(spring);
+    fireEvent.click(recruiter);
+    expect(go.disabled).toBe(true);
+    fireEvent.click(spring); // wanted again
+    expect(go.disabled).toBe(false);
+    fireEvent.click(go);
+    expect(onAction).toHaveBeenCalledWith('commit-plan', { dropped: ['d'] });
   });
 
   it('"That’s it" keeps the shape — Replay/Share/Present + the memory reassurance', () => {

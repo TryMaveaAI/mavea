@@ -5563,7 +5563,9 @@ export function LiveApp(): ReactElement {
             // tension ("help me tell these two reasons apart"); 'answer'/'plan' weigh the whole map.
             const settled = mindShape.spec;
             const mode = action === 'commit-plan' || action === 'plan' ? 'plan' : 'answer';
-            let prompt = settled ? mindShapeToPrompt(settled, mode) : (heard ?? '');
+            let prompt = settled
+              ? mindShapeToPrompt(settled, mode, detail?.dropped)
+              : (heard ?? '');
             if (action === 'tell-apart' && detail?.tension) {
               // Lead with the specific conflict so the answer separates the two reasons, then ground
               // it in the rest of the map.

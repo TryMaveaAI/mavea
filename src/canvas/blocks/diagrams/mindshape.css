@@ -836,6 +836,12 @@
 .ms-action-primary:hover {
   background: color-mix(in oklab, var(--insight, #5b63e8) 85%, #000);
 }
+/* the plan's "Make it real" waits while no step is wanted — quiet, not gone */
+.ms-action-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
 
 .ms-action-btn.is-active {
   border-color: var(--insight, #5b63e8);
@@ -1000,8 +1006,9 @@
   line-height: 1;
   color: #fff;
 }
-/* a checked-off step recedes — done, but its trace stays visible */
-.ms-plan-step[data-done='true'] .ms-plan-step-label {
+/* an unchecked step is one the person does not want — struck, but its trace stays so one tap
+   brings it back */
+.ms-plan-step[data-dropped='true'] .ms-plan-step-label {
   text-decoration: line-through;
   color: var(--text-muted);
 }
