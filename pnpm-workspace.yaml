@@ -11,7 +11,7 @@ peerDependencyRules:
   allowedVersions:
     'eslint-plugin-jsx-a11y>eslint': '10'
 engineStrict: true
-nodeVersion: 24.11.0
+nodeVersion: 24.15.0
 minimumReleaseAge: 1440
 blockExoticSubdeps: true
 

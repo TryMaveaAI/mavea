@@ -26,7 +26,7 @@ pnpm install
 pnpm dev
 ```
 
-You need Node 24.11+ (what `package.json` enforces); Mavéa uses [pnpm](https://pnpm.io) (Corepack
+You need Node 24.15+ (what `package.json` enforces); Mavéa uses [pnpm](https://pnpm.io) (Corepack
 pins the version, so there's nothing to install globally). The dev server prints a local URL; open it and you're running the demo. A
 fresh browser (no `localStorage` from a prior visit) shows the landing page with a one-time,
 dismissible invite to play the ~2-minute guided walkthrough — it never launches on its own, and
@@ -332,7 +332,7 @@ reproduction is the fastest way to a fix.
 ## Troubleshooting
 
 **`pnpm install` fails — Node version mismatch**
-Mavéa requires Node ≥ 24.11 (the published `npx @mavea/mavea` CLI runs on Node ≥ 22.12). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
+Mavéa requires Node ≥ 24.15 (the published `npx @mavea/mavea` CLI runs on Node ≥ 22.12). Check `node --version`. Then `corepack enable` to get the pinned pnpm.
 
 **TypeScript errors after adding a block**
 Check that (a) the `Block` union or extended-block union includes the new type, (b) the canvas renderer handles the new `type` key, and (c) `canvas/blocks/index.ts` imports the new family.

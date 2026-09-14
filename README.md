@@ -54,7 +54,7 @@ find Mavéa.
 ## Get started
 
 All you need to run the published app is **Node 22.12+**; building Mavéa from this repo is stricter
-and wants **Node 24.11+**. That command above opens the tour and demo replays immediately
+and wants **Node 24.15+**. That command above opens the tour and demo replays immediately
 — nothing else to set up. Demo replays are fictional, curated prerecorded examples with scripted
 feature choreography; playback does not call a model provider.
 
@@ -164,7 +164,7 @@ Mavéa runs on your machine, not in a cloud.
 | **CPU**  | 4 cores                | 8 cores                    |
 | **RAM**  | 8 GB                   | 16 GB                      |
 | **Disk** | 3 GB                   | 10 GB                      |
-| **Node** | 22.12+ (published app) | 24.11+ (build from source) |
+| **Node** | 22.12+ (published app) | 24.15+ (build from source) |
 
 Any browser in [Baseline Widely Available](https://web.dev/baseline) — current Chrome, Edge,
 Safari, or Firefox — on macOS, Windows, or Linux. **Minimum** covers the app with voice off,

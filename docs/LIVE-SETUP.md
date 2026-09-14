@@ -15,7 +15,7 @@ provider accounts, usage charges, deployment security, and any action you confir
 
 ## Prerequisites
 
-**Node >= 24.11** (run `corepack enable` once to activate the pinned pnpm). That's enough for the app
+**Node >= 24.15** (run `corepack enable` once to activate the pinned pnpm). That's enough for the app
 and its local development proxies; Live requests still go onward to the provider you select.
 
 **Optional: a container runtime**, only if you want local speech — Kokoro TTS (the voice) and
