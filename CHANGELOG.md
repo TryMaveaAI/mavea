@@ -4,6 +4,14 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.5] - 2026-09-14
+
+### Fixed
+
+- **Looking closer fits the window.** On a laptop window the Lens cut off Mavéa's notes and the row of cards under the sheet, and the card itself scrolled inside a small box when it had the room to fit; on a large display a card once shown small stayed small. The sheet now takes the whole window: the card is fitted to the room it gets and grows back when the window does, the row of cards goes compact on a shorter window and steps aside on a short one, and the notes keep their lines.
+- **Looking closer zooms out as well as in.** The zoom control now goes down to 55%, so a diagram wider than the sheet can be seen whole.
+- **Guide me waits for the voice.** While a line was still being prepared, the walk read it as silence and moved on to the next card; it now waits until the line has been said, and the bubble shows that the voice is being prepared in the meantime.
+
 ## [2.10.4] - 2026-09-14
 
 ### Fixed
