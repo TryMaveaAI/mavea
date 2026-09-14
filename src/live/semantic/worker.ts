@@ -40,19 +40,41 @@ function decodeVec(hex: string, dim: number, scale: number): Float32Array {
 // "loading."
 const LOAD_TIMEOUT_MS = 45_000;
 
+/** The asset base arrives as a string on the init message, and `index.json` then names the matrix
+ *  file — so both sides of the path are data. The only base that ever makes sense is this build's
+ *  own `semantic/` directory, so resolve against the worker's own location and refuse anything that
+ *  lands off-origin or outside that directory; the three loads can then only reach files this build
+ *  shipped, whatever the message or the index said. */
+function assetDir(base: string): URL {
+  const dir = new URL(base, self.location.href);
+  if (dir.origin !== self.location.origin || !dir.pathname.endsWith('/semantic/')) {
+    throw new Error(`semantic asset base ${base} is not this build's asset directory`);
+  }
+  return dir;
+}
+
+function assetUrl(dir: URL, file: string): URL {
+  const url = new URL(file, dir);
+  if (url.origin !== dir.origin || !url.pathname.startsWith(dir.pathname)) {
+    throw new Error(`semantic asset ${file} is outside ${dir.pathname}`);
+  }
+  return url;
+}
+
 async function load(base: string, expectedModelId: string): Promise<Loaded> {
+  const dir = assetDir(base);
   const index: IndexFile = await (
-    await fetch(`${base}index.json`, { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) })
+    await fetch(assetUrl(dir, 'index.json'), { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) })
   ).json();
   if (index.modelId !== expectedModelId) {
     // Stale/mismatched assets would score in the wrong space — refuse rather than mislead.
     throw new Error(`semantic asset model ${index.modelId} != expected ${expectedModelId}`);
   }
   const [matrixBuf, vocabText] = await Promise.all([
-    fetch(`${base}${index.matrix.file}`, { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) }).then(
-      (r) => r.arrayBuffer(),
-    ),
-    fetch(`${base}vocab.txt`, { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) }).then((r) =>
+    fetch(assetUrl(dir, index.matrix.file), {
+      signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
+    }).then((r) => r.arrayBuffer()),
+    fetch(assetUrl(dir, 'vocab.txt'), { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) }).then((r) =>
       r.text(),
     ),
   ]);
@@ -90,11 +112,32 @@ function fit(query: string): [string, number][] {
   return scored.slice(0, TOP_K);
 }
 
+type Request =
+  | { type: 'init'; base: string; modelId: string }
+  | { type: 'fit'; id: number; query: string }
+  | { type: 'embed'; id: number; text: string };
+
+/** A dedicated worker's messages carry no origin, so the shape IS the contract: anything that isn't
+ *  one of the three requests is ignored rather than half-handled — the handler answers by id and
+ *  turns `base` into asset URLs, neither of which has a sane meaning for an unexpected payload. */
+function asRequest(data: unknown): Request | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const msg = data as Record<string, unknown>;
+  if (msg.type === 'init' && typeof msg.base === 'string' && typeof msg.modelId === 'string') {
+    return { type: 'init', base: msg.base, modelId: msg.modelId };
+  }
+  if (msg.type === 'fit' && typeof msg.id === 'number' && typeof msg.query === 'string') {
+    return { type: 'fit', id: msg.id, query: msg.query };
+  }
+  if (msg.type === 'embed' && typeof msg.id === 'number' && typeof msg.text === 'string') {
+    return { type: 'embed', id: msg.id, text: msg.text };
+  }
+  return null;
+}
+
 self.onmessage = async (e: MessageEvent) => {
-  const msg = e.data as
-    | { type: 'init'; base: string; modelId: string }
-    | { type: 'fit'; id: number; query: string }
-    | { type: 'embed'; id: number; text: string };
+  const msg = asRequest(e.data);
+  if (!msg) return;
   if (msg.type === 'init') {
     try {
       loaded = await load(msg.base, msg.modelId);
