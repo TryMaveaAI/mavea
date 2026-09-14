@@ -199,6 +199,18 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
   });
 });
 
+describe('the mic-mode menu — sized against the window, never the mic it hangs off', () => {
+  const css = read('src/live/livedock.css');
+
+  it('never bounds the menu by a share of its containing block', () => {
+    // The menu is positioned inside the mic button's 44px circle, so a percentage width is a
+    // share of the button: min(220px, 100%) squeezed the listening modes to one word per line.
+    const pop = /\n\.mic-mode-pop\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(pop).toMatch(/width:\s*min\(220px,\s*calc\(100vw - 28px\)\)/);
+    expect(pop).not.toMatch(/width:[^;]*100%/);
+  });
+});
+
 describe('tour transport — 21 chapter dots must not blow out the panel on a phone', () => {
   const css = read('src/tour/tour.css');
 

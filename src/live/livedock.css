@@ -453,7 +453,12 @@
   left: 0;
   bottom: calc(100% + 10px);
   z-index: 60;
-  width: min(220px, 100%);
+  /* The containing block is the mic BUTTON (the root above is inset: 0 on its 44px circle), so a
+     percentage here is a share of the button, not of the dock: min(220px, 100%) squeezed the menu
+     to a one-word-per-line column. The floor that matters is the window's — the mic is the
+     composer's leftmost control and the menu opens into the composer, so 28px is the dock's
+     own inset, the same floor the feature menus use. */
+  width: min(220px, calc(100vw - 28px));
   padding: 6px;
   border-radius: var(--r-md);
   background: var(--surface-elevated);
