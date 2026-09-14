@@ -9,12 +9,14 @@
 // tool_choice stays at its default 'auto' and Claude is free to run a web_search loop
 // (server-side; results arrive as server_tool_use / web_search_tool_result blocks)
 // before emitting the answer.
-// Caching is prefix-based, so the request is shaped so the whole system + history prefix
-// caches: the stable tier base is the lone system block (cache_control → ~90% cheaper on
-// turns 2+), the per-turn section (hero picks, count, freshness — changes every turn) rides
-// at the head of the USER turn, and a second breakpoint on the last history message caches
-// the replayed conversation too — both on a 1h TTL, since a voice session pauses longer
-// than the 5-min default all the time. Extended thinking fires for medium/high-effort
+// Caching is prefix-based and this API hashes a marked prefix EXACTLY, so the request is
+// shaped to put the widest shared run first and mark it: the system slot carries the
+// session-invariant head, then the depth-keyed remainder, then the session-stable menu, and a
+// fourth breakpoint on the last history message caches the replayed conversation — Anthropic's
+// four-breakpoint ceiling, all four spent. The per-turn section (hero picks, count, freshness —
+// changes every turn) rides at the head of the USER turn so it never sits inside a marked
+// prefix. All on a 1h TTL, since a voice session pauses longer than the 5-min default all the
+// time. A caller that passes no split keeps the single-block shape it always had. Extended thinking fires for medium/high-effort
 // turns (hard questions with balanced/thorough quality): adaptive mode lets Claude
 // decide whether to think, display:summarized keeps thinking output lean — thinking only
 // composes with 'auto' tool_choice, which this adapter always uses now, so thinking +

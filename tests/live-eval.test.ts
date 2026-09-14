@@ -9,7 +9,11 @@
 //   EVAL_LIVE=1 EVAL_PROVIDER=gemini    EVAL_KEY=AIza...     npm run eval
 import { select as selectComponents } from './helpers/select';
 import { blockTypesForTier } from '../src/engine/liveSchema';
-import { buildStableTurnBase, buildTurnSystem } from '../src/live/generateLive';
+import {
+  buildStableTurnBase,
+  buildStableTurnInvariant,
+  buildTurnSystem,
+} from '../src/live/generateLive';
 import { runEval } from '../src/live/eval/run';
 import { GOLDEN } from '../src/live/eval/golden';
 import { formatScorecard } from '../src/live/eval/score';
@@ -66,6 +70,9 @@ describe.skipIf(!RUN)('live accuracy + speed eval', () => {
         const selection = selectComponents({ userText: ask, tier, complexity });
         const target = targetBlockCount(complexity, { teaching: isTeachingAsk(ask) });
         const turnSystem = buildTurnSystem({
+          // Pass the invariant head too, so the eval exercises the SAME breakpoint layout
+          // production sends — a shape the provider can reject is one the eval should meet first.
+          invariant: buildStableTurnInvariant(tier),
           base: buildStableTurnBase(tier, complexity),
           stable: [selection.stablePromptSnippet],
           dynamic: [selection.heroPromptSnippet, countDirective(complexity, target)],

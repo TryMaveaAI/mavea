@@ -210,8 +210,8 @@ export const GOLDEN: GoldenCase[] = [
     domain: 'learn',
     expectBlock: ['teachdiagram', 'workedexample', 'quiz'],
     estimateOnly: false,
-    minBlocks: 11,
-    maxBlocks: 22,
+    minBlocks: 7,
+    maxBlocks: 9,
   },
   {
     id: 'teach-transformer',
@@ -219,8 +219,8 @@ export const GOLDEN: GoldenCase[] = [
     domain: 'learn',
     expectBlock: ['teachdiagram', 'workedexample', 'quiz'],
     estimateOnly: false,
-    minBlocks: 11,
-    maxBlocks: 22,
+    minBlocks: 7,
+    maxBlocks: 9,
   },
   {
     id: 'crash-course-tcp',
@@ -228,8 +228,8 @@ export const GOLDEN: GoldenCase[] = [
     domain: 'learn',
     expectBlock: ['teachdiagram', 'workedexample', 'quiz'],
     estimateOnly: false,
-    minBlocks: 11,
-    maxBlocks: 22,
+    minBlocks: 7,
+    maxBlocks: 9,
   },
 
   /* ---- ambiguous / short asks: should still produce something valid ---- */
