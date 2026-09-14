@@ -4,7 +4,23 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.9.0] - 2026-09-13
+
+### Added
+
+- **Every step of a plan starts checked, and unchecking one means you don't want it.** MindShape's "Turn into a plan" listed the open loops with a box each, and the box meant nothing the reader could predict: it started empty, ticking it changed nothing, and "Make it real" sent every step regardless. A step now starts checked — wanted until you say otherwise. Unchecking one strikes it through and leaves it out of the ask that follows, links and all; ticking it again brings it back; and "Make it real" waits while no step is wanted, and says so.
+
+### Fixed
+
+- **The Study's beat bar wraps on a phone, so the notes toggle stays inside the stage.** The bar was one row at every width, right wherever it floats over the desk, but in the phone column it is a block in the flow, and at 320px the fixed controls alone ran past the stage's edge — the notes toggle sat 67px outside it, unreachable. The bar may wrap there now, with the stepper as the row that gives, so every control keeps a finger-sized hit area inside the stage.
+- **The listening-mode menu opens at its own width.** Tap · Always on · Hold ⌥ was rendering as a column a few dozen pixels wide with one word per line: the menu's root sits inside the 44px mic button, so its "100% of the container" floor resolved to the mic, not the window. It is sized against the window now, so each mode sits on one line with its blurb under it.
+- **A tracker built under a model that could not search is checked again, and again whenever the connection changes.** A board on a manual cadence took its first check with the one-shot it was given, came back with nothing it could verify, and parked; switching Live to a model with real-time search never reached it, while the same board built under the searching model first filled in fine. A first check that spends a one-shot and comes back unverified now buys one more attempt five minutes on, and changing the provider, model, key or Web search setting in Live re-checks every board stuck after a failed check.
+- **Watch Me Think keeps up with the microphone.** Each utterance the mic banks stays its own thought — they were joined with a space, so two thoughts said in a row read as one clause under one quote. An utterance that transcribed unclearly stays on the map with a "?" instead of being diverted to the composer, where it vanished behind the map. The quiet after the very first utterance now settles the map, and a typed thought re-arms that quiet. Words spoken while the model was still answering are held and asked about the moment it returns, rather than waiting for you to speak again. The face turns over the moment you stop speaking — "Catching that…", then "Making sense of it…" — instead of holding a listening pose until the settled map appears, and an empty map says whether no model is connected or the model would not answer, rather than that you said too little. A settled map keeps every thought the model's summary left out, each as a card of its own, and an unclear utterance marks only the thoughts it brought — one heard clearly a moment earlier stays as it was.
+
+### Changed
+
+- **The development Node floor is 24.15.** Dependabot resolves a grouped update against the versions the project's `engines` field admits, and jsdom's floor moved to 24.15, so the weekly update could not resolve. The published package's own floor is unchanged.
+- **Creating or checking a tracker needs a model with Web search set to Real-time.** A tracker is a standing web search, so every place one is born — the composer, the templates, the widget palette, pin-to-dashboard, the extraction preview and an answer added from Talk to this dashboard — and every check, Check now on a tile included, say what to set and link to Live when the connection cannot search. A board saved while Web search is off says so on its card, and the dashboards home says what to set until it is.
 
 ## [2.8.0] - 2026-09-13
 
