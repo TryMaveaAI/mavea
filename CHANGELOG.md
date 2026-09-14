@@ -4,6 +4,24 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-09-14
+
+### Fixed
+
+- **A mind map's callout lands on a tension it can actually draw.** The one tension a settled map calls out is picked by the weight sitting at either end of it — and an end naming nothing on the map counted toward that weight too, so a tension pointing at something never drawn could outrank every real one, win the pick, resolve to nothing, and leave the whole map with no callout at all. Only a tension with both ends on the map is ranked now, and the sentence above the map counts the same set, so "1 tension" sits over one drawn arc rather than counting one the map never drew.
+- **A control diagram reserves room under the row for the feedback loops it draws, and no others.** Each feedback wire gets a track of its own below the blocks, and a wire naming a block the diagram does not have was counted for a track and then never drawn — so the card was sized around a band of empty space nothing was in.
+- **Ripple's provenance note stays readable on a phone.** The note and its button shared one line at every width, and the button cannot shrink, so at 320px the note was milled into a 95px column of two-word lines — taller than the change it was there to explain. The button takes its own row now and the note keeps the full width.
+
+### Changed
+
+- **An answer is asked for a range of visuals, not just a target.** Every turn tells the model how much canvas to fill, and it named a target and a floor of three. Three was below anything observed — no recorded answer here has come back under four — and below the five the same flow demands when it has to ask a second time. The count is also where models diverge most on an identical question: one fills the screen, another stops well short, and a target alone leaves that to habit. A substantive question now asks for five to eighteen blocks, a simple one for three to nine, and an explicitly short one is unchanged at one to three. What it aims for inside that range is still sized to the screen and driven by the content — nothing is padded to reach the number, and nothing real is cut to look tidy.
+- **Transcription no longer asks for more threads than the machine has cores.** whisper.cpp takes its thread count literally and nothing had ever set it, so a two-core laptop ran four transcription threads across the same two cores the browser was drawing on. `pnpm dev` and `npx mavea` bound the request by the cores that actually exist; four remains the ceiling, and a count you set yourself is left alone by both.
+
+### Security
+
+- The CLI's cache check reads an asset once and answers both questions from that read — its size and its digest — so nothing can swap the file between a probe and the read that trusts it. A remembered verification still confirms the file is there.
+- The block scaffold's create-or-refuse write is its only existence check, rather than one of two with a gap between them; the Prism baker keeps a document's id out of the filenames it writes; and the restricted-tile-host scan compares plain text, which is what it was always doing.
+
 ## [2.10.0] - 2026-09-14
 
 ### Fixed
