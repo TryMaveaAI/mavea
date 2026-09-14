@@ -31,6 +31,28 @@ function validateProps(type: string, props: Record<string, unknown>) {
   return res?.blocks[0]?.props as Record<string, unknown> | undefined;
 }
 
+/** Where the validated output holds fewer items than the example it was projected from, as
+ *  `.path[]: 5 -> 4` lines. Walks arrays and objects together, so a shortfall is reported at the
+ *  exact field rather than as a missing key. */
+function itemsLost(example: unknown, out: unknown, path: string): string[] {
+  if (Array.isArray(example)) {
+    if (!Array.isArray(out)) return [`${path}: dropped`];
+    const lost = out.length < example.length ? [`${path}: ${example.length} -> ${out.length}`] : [];
+    return [
+      ...lost,
+      ...example.flatMap((item, index) =>
+        index < out.length ? itemsLost(item, out[index], `${path}[${index}]`) : [],
+      ),
+    ];
+  }
+  if (!example || typeof example !== 'object' || !out || typeof out !== 'object') return [];
+  return Object.entries(example as Record<string, unknown>).flatMap(([key, value]) =>
+    key in (out as Record<string, unknown>)
+      ? itemsLost(value, (out as Record<string, unknown>)[key], `${path}.${key}`)
+      : [],
+  );
+}
+
 describe('generic coercion — the props a block is allowed to keep', () => {
   it('keeps the polarplot curve the prompt’s own example teaches', () => {
     const out = validateProps('polarplot', {
@@ -60,6 +82,11 @@ describe('generic coercion — the props a block is allowed to keep', () => {
       }
       const missing = Object.keys(example).filter((key) => out[key] === undefined);
       if (missing.length) lost.push(`${type}: ${missing.join(', ')}`);
+      // …and whole means every ITEM too, not just the top-level keys. A key can survive a element
+      // short: `graphtrace`'s first step has visited nothing, the empty `visited: []` read as a
+      // broken field rather than a truthful one, and the step it belonged to was dropped — so the
+      // BFS walk the card exists to show opened on its second frame. Counting keys could not see it.
+      for (const shortfall of itemsLost(example, out, '')) lost.push(`${type}${shortfall}`);
     }
     // A component's example is the one prop shape the model is shown verbatim. Losing a key of it
     // means the menu teaches something the validator then throws away.

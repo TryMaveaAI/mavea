@@ -73,8 +73,19 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
     coercer: 'generic',
     blurb:
       'UML-style sequence diagram; actors exchange labelled messages with optional return arrows.',
-    itemShapes: [{ prop: 'actors', text: 'label', textAliases: ['name', 'participant', 'title'] }],
+    itemShapes: [
+      { prop: 'actors', text: 'label', textAliases: ['name', 'participant', 'title'] },
+      {
+        prop: 'messages',
+        text: 'label',
+        textAliases: ['text', 'name', 'message', 'action'],
+        requiredFields: ['from'],
+        refs: { to: 'actors', fields: ['from', 'to'] },
+      },
+    ],
     propHints: {
+      'messages[].from': "the sending actor's id",
+      'messages[].to': "the receiving actor's id",
       'messages[].reply': 'true for a dashed return arrow',
       'messages[].self': 'true for a self-call loop',
     },
@@ -99,7 +110,11 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         textAliases: ['name', 'state', 'title'],
         requiredFields: ['id'],
       },
-      { prop: 'transitions', requiredFields: ['from', 'to', 'label'] },
+      {
+        prop: 'transitions',
+        requiredFields: ['from', 'to', 'label'],
+        refs: { to: 'states', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'states[].id': 'unique nonblank id within this block',
@@ -802,7 +817,11 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         requiredFields: ['id', 'kind'],
         closedVocabFields: ['kind'],
       },
-      { prop: 'wires', requiredFields: ['from', 'to'] },
+      {
+        prop: 'wires',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'nodes', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'nodes[].id': 'unique nonblank id within this block',
@@ -839,7 +858,11 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         requiredFields: ['id', 'kind'],
         closedVocabFields: ['kind'],
       },
-      { prop: 'lines', requiredFields: ['from', 'to'] },
+      {
+        prop: 'lines',
+        requiredFields: ['from', 'to'],
+        refs: { to: 'components', fields: ['from', 'to'] },
+      },
     ],
     propHints: {
       'components[].id': 'unique nonblank id within this block',
@@ -869,6 +892,9 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
       'Digital-logic circuit of standard gate symbols (AND/OR/NOT/NAND/NOR/XOR/XNOR) wired input to output; signal values are shown on wires (green=1, muted=0) and an optional adjacent truth table highlights the live input row. Gate outputs are evaluated from the inputs. Use for a half-adder, a multiplexer from gates, explaining XOR/NAND.',
     itemShapes: [
       { prop: 'inputs', text: 'label', textAliases: ['name', 'id', 'signal'], idField: 'id' },
+      // A gate's inputs address BOTH id spaces — an input pin or an upstream gate — so the
+      // reference names both arrays and an exact id in either is taken before a label match.
+      { prop: 'gates', refs: { to: ['inputs', 'gates'], fields: ['inputs'] } },
     ],
     propHints: {
       'inputs[].value': '0|1 — current logic level on this input (default 0)',
@@ -1062,6 +1088,17 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
       'A binary tree with optional interactive step-through traversal: nodes are laid out via inorder x-position + depth y (tidy-tree geometry, never overlapping). An optional steps array drives a Prev/Next stepper that re-colours nodes — visiting (presence), visited (muted), found (insight) — and shows a BFS queue / DFS stack plus an accumulating traversal result. Use for "trace BST search", "show inorder/preorder traversal", "walk me through BFS on a tree", heap diagrams, and FAANG tree interview walkthroughs. Never for a general graph — use graphtrace; for a node-link diagram use datastructure.',
     // `value` is numeric and `id` is a structural reference, not interchangeable visible-text
     // aliases. The concrete example + prop hint teach the full node contract instead.
+    itemShapes: [
+      // Every node is addressed by id twice over — by its parent's left/right and by `root` — so
+      // a near-miss id has to land on the node it names. A root the renderer cannot find is a
+      // titled card with nothing under it; a child it cannot find silently loses a subtree.
+      {
+        prop: 'nodes',
+        idField: 'id',
+        refs: { to: 'nodes', fields: ['left', 'right'] },
+        refProps: ['root'],
+      },
+    ],
     propHints: {
       nodes: '{ id, value, left?, right? } — left/right are node ids; order does not matter',
       root: 'id of the root node',

@@ -346,8 +346,11 @@ export type CoercerKind = 'generic' | 'custom';
 
 /** Which array an item's reference fields point into, and which fields those are. */
 export interface ItemRefSpec {
-  /** The item array being referenced — commonly the spec's own `prop` (a tree's children). */
-  to: string;
+  /** The item array being referenced — commonly the spec's own `prop` (a tree's children). A
+   *  field that addresses two id spaces at once (a logic gate's inputs name an input pin OR an
+   *  upstream gate) names both arrays; an exact id in either is taken before a lenient match in
+   *  the first. */
+  to: string | string[];
   /** The referencing fields. A field holding an array of ids is resolved element by element. */
   fields: string[];
 }

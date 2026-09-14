@@ -74,6 +74,13 @@ export function deriveItemIds(
   });
 }
 
+/** One candidate a reference can land on: the id it resolves TO, and the item's own visible text
+ *  already lowercased, which is the last thing a reference is matched against. */
+interface RefEntry {
+  id: string;
+  text: string;
+}
+
 /**
  * Resolve an authored reference onto one of the ids that were settled: the id itself, then
  * case/whitespace drift, then an unambiguous item TEXT — models routinely write
@@ -82,22 +89,23 @@ export function deriveItemIds(
  * resolves to nothing rather than to whichever item came first — and that holds even when one of
  * those items had its id DERIVED from that very text, so the loose lookup would otherwise find
  * `yes` and quietly pick the first of them.
+ *
+ * The candidates can come from more than one array, because a field can address more than one id
+ * space (a logic gate's inputs name an input pin or an upstream gate). Each phase runs across the
+ * whole set, so an exact id in the second array beats a label collision in the first; within a
+ * phase the earlier array wins.
  */
-function refResolver(
-  items: readonly unknown[],
-  ids: readonly string[],
-  textOf: (item: Record<string, unknown>) => string,
-): (raw: unknown) => string | null {
-  const exact = new Set(ids);
+function refResolver(entries: readonly RefEntry[]): (raw: unknown) => string | null {
+  const exact = new Set<string>();
   const loose = new Map<string, string>();
   const byText = new Map<string, string | null>();
-  ids.forEach((id, index) => {
+  for (const { id, text } of entries) {
+    if (!id) continue;
+    exact.add(id);
     const key = id.toLowerCase();
     if (!loose.has(key)) loose.set(key, id);
-    const item = items[index];
-    const text = isRecord(item) ? textOf(item).trim().toLowerCase() : '';
     if (text) byText.set(text, byText.has(text) ? null : id);
-  });
+  }
   return (raw: unknown): string | null => {
     const key = asKey(raw);
     if (!key) return null;
@@ -161,29 +169,50 @@ export function resolveItemIdentity(
   props: Record<string, unknown>,
   shapes: readonly ItemSpec[],
 ): void {
-  const resolvers = new Map<string, (raw: unknown) => string | null>();
+  const targetsOf = new Map<string, RefEntry[]>();
   for (const spec of shapes) {
     const items = props[spec.prop];
-    if (!spec.idField || !Array.isArray(items)) continue;
+    if (!Array.isArray(items)) continue;
     const textOf = itemText(spec);
-    const ids = deriveItemIds(items, spec.idField, textOf);
-    props[spec.prop] = items.map((item, index) =>
-      isRecord(item) ? { ...item, [spec.idField as string]: ids[index] } : item,
-    );
-    resolvers.set(spec.prop, refResolver(items, ids, textOf));
+    const textAt = (item: unknown): string =>
+      isRecord(item) ? textOf(item).trim().toLowerCase() : '';
+    if (spec.idField) {
+      const ids = deriveItemIds(items, spec.idField, textOf);
+      props[spec.prop] = items.map((item, index) =>
+        isRecord(item) ? { ...item, [spec.idField as string]: ids[index] } : item,
+      );
+      targetsOf.set(
+        spec.prop,
+        items.map((item, index) => ({ id: ids[index], text: textAt(item) })),
+      );
+    } else if (spec.idIsContent) {
+      // A content id is the reader's own — a commit hash printed beside the message — so there
+      // is nothing to derive and nothing to write back: an invented hash would be a wrong fact
+      // on the card. The array is still a TARGET, against exactly the ids that were authored, so
+      // a merge drawn from a parent under a near-miss hash still lands.
+      targetsOf.set(
+        spec.prop,
+        items.map((item) => ({ id: isRecord(item) ? asKey(item.id) : '', text: textAt(item) })),
+      );
+    }
   }
   for (const spec of shapes) {
-    const resolve = spec.idField && resolvers.get(spec.prop);
-    if (!resolve) continue;
-    for (const prop of spec.refProps ?? []) {
+    const entries = targetsOf.get(spec.prop);
+    if (!entries || !spec.refProps?.length) continue;
+    const resolve = refResolver(entries);
+    for (const prop of spec.refProps) {
       if (props[prop] !== undefined) props[prop] = resolve(props[prop]) ?? props[prop];
     }
   }
   for (const spec of shapes) {
     const refs = spec.refs;
     const items = props[spec.prop];
-    const resolve = refs && resolvers.get(refs.to);
-    if (!refs || !resolve || !Array.isArray(items)) continue;
+    if (!refs || !Array.isArray(items)) continue;
+    const entries = (typeof refs.to === 'string' ? [refs.to] : refs.to).flatMap(
+      (target) => targetsOf.get(target) ?? [],
+    );
+    if (entries.length === 0) continue;
+    const resolve = refResolver(entries);
     props[spec.prop] = items.map((item) => {
       if (!isRecord(item)) return item;
       const out = { ...item };

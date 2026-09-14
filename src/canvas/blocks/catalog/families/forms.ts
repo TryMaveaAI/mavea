@@ -41,7 +41,16 @@ export const CATALOG_FORMS: ComponentCatalog = [
     colDefault: 8,
     colMin: 6,
     coercer: 'generic',
-    itemShapes: [{ prop: 'buttons', text: 'label', textAliases: ['name', 'title', 'text'] }],
+    itemShapes: [
+      // An icon button carries its meaning in the glyph, and every other variant falls back to its
+      // own word, so a missing label is not a blank row here — it is the shape the gallery ships.
+      {
+        prop: 'buttons',
+        text: 'label',
+        textAliases: ['name', 'title', 'text'],
+        textOptional: true,
+      },
+    ],
     blurb: 'Gallery of button variants with ripple feedback and state tracking.',
   }),
   createMeta('textfield', {

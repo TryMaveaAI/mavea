@@ -149,6 +149,11 @@ export const CATALOG_CODE: ComponentCatalog = [
         // read an invented one as wrong, so a commit without one is dropped, never named.
         idIsContent: true,
         requiredFields: ['id'],
+        // A merge is drawn from the parents, so a parent written as a near-miss hash — or as the
+        // message it belongs to — still has to land on the commit it names, or the card loses the
+        // one line it exists to show. History from before the window is legitimately unresolvable
+        // and stays exactly as authored.
+        refs: { to: 'commits', fields: ['parents'] },
       },
     ],
     propHints: {

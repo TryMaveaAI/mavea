@@ -1037,7 +1037,14 @@ export const CATALOG_EVERYDAY: ComponentCatalog = [
       'An event floor plan — round or rectangular tables auto-arranged on a grid, each seat plotted around its table and filled with the assigned guest\'s initials. Use for "seat my wedding guests", "table plan for the gala", "who\'s sitting where".',
     itemShapes: [
       { prop: 'tables', text: 'label', textAliases: ['name'] },
-      { prop: 'assignments', text: 'guest', textAliases: ['name'] },
+      // A seat is plotted around the table its assignment names, so an unresolved tableId puts
+      // a real guest at no table at all.
+      {
+        prop: 'assignments',
+        text: 'guest',
+        textAliases: ['name'],
+        refs: { to: 'tables', fields: ['tableId'] },
+      },
     ],
     propHints: {
       'tables[].shape': "'round'|'rect', default 'round'",
@@ -1065,6 +1072,7 @@ export const CATALOG_EVERYDAY: ComponentCatalog = [
         prop: 'ties',
         requiredFields: ['source', 'target', 'kind'],
         closedVocabFields: ['kind'],
+        refs: { to: 'people', fields: ['source', 'target'] },
       },
     ],
     propHints: {

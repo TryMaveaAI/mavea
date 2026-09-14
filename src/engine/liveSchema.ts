@@ -1597,11 +1597,16 @@ function toPlainString(item: Json): string {
  *  and drop blanks. A renderer maps these straight into text nodes, so anything else — an
  *  objectified step list, a numbered object per line — would throw at render and vanish the
  *  whole card. A lone string still yields one item rather than dropping the block. */
-function normalizeStringItems(value: Json): string[] {
+/** Flatten a `stringItems` prop to plain strings. A POSITIONAL list keeps its gaps: a heat
+ *  calendar labels two of its seven weekday rows and a mechanism hangs its conditions on the arrow
+ *  between two steps, so closing a blank slides every later label onto the wrong row and every
+ *  later condition onto the wrong arrow. A list of nothing but blanks is still nothing, whichever
+ *  kind it is. The component's own fixture is what says which kind this is. */
+function normalizeStringItems(value: Json, positional = false): string[] {
   if (typeof value === 'string' && value.trim()) return [value.trim()];
-  return asArr(value)
-    .map(toPlainString)
-    .filter((s) => s !== '');
+  const items = asArr(value).map(toPlainString);
+  if (positional && items.some((s) => s !== '')) return items;
+  return items.filter((s) => s !== '');
 }
 
 const INVALID_STRUCTURE = Symbol('invalid generated component structure');
@@ -1612,6 +1617,65 @@ const INVALID_STRUCTURE = Symbol('invalid generated component structure');
 interface NestedEnum {
   values: ReadonlySet<string>;
   strict: boolean;
+}
+
+/** Everything the reference projection needs beyond the value and its reference: contracts derived
+ *  once per component and threaded unchanged through the whole walk. */
+interface ShapeContract {
+  canonicalItemFields: ReadonlyMap<string, ReadonlySet<string>>;
+  optionalFields: ReadonlySet<string>;
+  requiredPaths: ReadonlySet<string>;
+  openRecordPaths: ReadonlySet<string>;
+  nestedEnums: ReadonlyMap<string, NestedEnum>;
+  /** Array paths whose own shipping fixture holds a GAP at some index, and the gap it holds. */
+  slots: ReadonlyMap<string, Json>;
+  /** Array paths whose own shipping fixture is EMPTY at some variant. */
+  empties: ReadonlySet<string>;
+}
+
+/** A gap is `null` or a blank string sitting in a fixture's array — the only evidence available
+ *  that the array is read BY INDEX rather than as a list of things. */
+function gapIn(reference: readonly unknown[]): Json | undefined {
+  const gap = reference.find(
+    (item) => item === null || (typeof item === 'string' && item.trim() === ''),
+  );
+  return gap === undefined ? undefined : (gap as Json);
+}
+
+/** Which arrays a component's own fixture writes with a gap, and which it writes empty — the two
+ *  shapes the projection must not read as damage. Keyed the same `[]`/`.key` way
+ *  coerceToReferenceShape builds its paths, and unioned across an array's item variants, so a
+ *  single step written `visited: []` speaks for the whole `steps[].visited` path. Derived from the
+ *  fixture, never hand-kept: the fixture is what the model is shown, so it is the only honest
+ *  evidence of which shapes the component means. */
+interface ReferenceShapes {
+  slots: Map<string, Json>;
+  empties: Set<string>;
+}
+
+function collectShapes(reference: unknown, path: string, found: ReferenceShapes): void {
+  if (Array.isArray(reference)) {
+    if (reference.length === 0) found.empties.add(path);
+    const gap = gapIn(reference);
+    if (gap !== undefined && !found.slots.has(path)) found.slots.set(path, gap);
+    for (const item of reference) collectShapes(item, `${path}[]`, found);
+    return;
+  }
+  if (!reference || typeof reference !== 'object') return;
+  for (const [key, field] of Object.entries(reference)) {
+    collectShapes(field, path ? `${path}.${key}` : key, found);
+  }
+}
+
+const SHAPES_BY_TYPE = new Map<string, ReferenceShapes>();
+
+function referenceShapes(type: string, reference: Record<string, unknown>): ReferenceShapes {
+  const cached = SHAPES_BY_TYPE.get(type);
+  if (cached) return cached;
+  const found: ReferenceShapes = { slots: new Map(), empties: new Set() };
+  collectShapes(reference, '', found);
+  SHAPES_BY_TYPE.set(type, found);
+  return found;
 }
 
 function referenceWeight(value: unknown): number {
@@ -1638,11 +1702,7 @@ function referenceWeight(value: unknown): number {
 function coerceToReferenceShape(
   value: Json,
   reference: unknown,
-  canonicalItemFields: ReadonlyMap<string, ReadonlySet<string>>,
-  optionalFields: ReadonlySet<string>,
-  requiredPaths: ReadonlySet<string>,
-  openRecordPaths: ReadonlySet<string>,
-  nestedEnums: ReadonlyMap<string, NestedEnum>,
+  contract: ShapeContract,
   path: string,
   depth = 0,
 ): Json | typeof INVALID_STRUCTURE {
@@ -1671,37 +1731,49 @@ function coerceToReferenceShape(
   }
   if (Array.isArray(reference)) {
     if (!Array.isArray(value) || reference.length === 0) return INVALID_STRUCTURE;
-    const out = value
-      .slice(0, 64)
-      .map((item) => {
-        // Try every shipping shape and keep the richest one that this item genuinely satisfies.
-        // This accepts valid heterogeneity without merging fixture values or arbitrary fields.
-        const matches = reference
-          .map((itemReference) => ({
-            weight: referenceWeight(itemReference),
-            value: coerceToReferenceShape(
-              item,
-              itemReference,
-              canonicalItemFields,
-              optionalFields,
-              requiredPaths,
-              openRecordPaths,
-              nestedEnums,
-              `${path}[]`,
-              depth + 1,
-            ),
-          }))
-          .filter((match) => match.value !== INVALID_STRUCTURE)
-          .sort((a, b) => b.weight - a.weight);
-        const best = matches[0]?.value;
-        return best === undefined ? INVALID_STRUCTURE : best;
-      })
+    // An array whose own fixture ships a GAP is read BY INDEX, against a sibling: a chord's silent
+    // strings carry no finger, a calendar labels two of its seven weekday rows, a reaction hangs
+    // its conditions on the arrow between two steps, a cohort has not reached month four yet.
+    // Closing a gap in one of those does not lose a value — it slides every value after it onto
+    // the wrong string, the wrong row, the wrong arrow, the wrong month, which is a wrong fact
+    // stated confidently. So where the fixture holds a gap, an element that cannot be coerced is
+    // written back AS that gap and the indices hold. The gap is an absence, not a fixture value
+    // copied into the answer, and the renderer demonstrably draws it: its own example ships one.
+    const slot = contract.slots.get(path);
+    const out: Json[] = [];
+    let filled = 0;
+    for (const item of value.slice(0, 64)) {
+      // Try every shipping shape and keep the richest one that this item genuinely satisfies.
+      // This accepts valid heterogeneity without merging fixture values or arbitrary fields.
+      const matches = reference
+        .map((itemReference) => ({
+          weight: referenceWeight(itemReference),
+          value: coerceToReferenceShape(item, itemReference, contract, `${path}[]`, depth + 1),
+        }))
+        .filter((match) => match.value !== INVALID_STRUCTURE)
+        .sort((a, b) => b.weight - a.weight);
+      const best = matches[0]?.value;
       // A blank string is not an item — a renderer maps these into visible text, so keeping
       // "" would draw an empty chip/row and a list of nothing but blanks would read as data.
-      .filter(
-        (item) => item !== INVALID_STRUCTURE && (typeof item !== 'string' || item.trim() !== ''),
-      );
-    return out.length ? out : INVALID_STRUCTURE;
+      if (best === undefined || (typeof best === 'string' && best.trim() === '')) {
+        if (slot !== undefined) out.push(slot);
+        continue;
+      }
+      out.push(best);
+      filled++;
+    }
+    // An array the model sent EMPTY is a truthful value where the component's own fixture writes
+    // one, not a broken one — a traversal's first step has visited nothing, a tier can hold no one
+    // — and refusing the field took the whole step, or the whole tier, down with it. The shape
+    // being refused was the shape being taught. Everywhere else an empty array is still invalid:
+    // a requirement group whose every item was REJECTED is a shape the renderer cannot read rather
+    // than an absence, and it must not survive as a priority heading over nothing. So is a slotted
+    // array of nothing but gaps, which states no finger on any string. At the top level the
+    // distinction costs nothing — the prop is simply dropped, and `requires` still refuses an empty
+    // one — so the lenient reading starts where an item's life depends on it.
+    if (filled === 0 && (value.length > 0 || depth === 0 || !contract.empties.has(path)))
+      return INVALID_STRUCTURE;
+    return out;
   }
   if (reference && typeof reference === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return INVALID_STRUCTURE;
@@ -1711,21 +1783,11 @@ function coerceToReferenceShape(
     // (built from one authored example) can't enumerate. Keep the model's OWN keys, coercing each
     // value to the reference's value type, instead of projecting onto the example's keys (which
     // discards every real key and empties the row).
-    if (openRecordPaths.has(path)) {
+    if (contract.openRecordPaths.has(path)) {
       const sample = Object.values(reference as Record<string, unknown>)[0] ?? '';
       const openOut: Record<string, Json> = {};
       for (const [k, cell] of Object.entries(input).slice(0, 200)) {
-        const coerced = coerceToReferenceShape(
-          cell,
-          sample,
-          canonicalItemFields,
-          optionalFields,
-          requiredPaths,
-          openRecordPaths,
-          nestedEnums,
-          `${path}.${k}`,
-          depth + 1,
-        );
+        const coerced = coerceToReferenceShape(cell, sample, contract, `${path}.${k}`, depth + 1);
         if (coerced !== INVALID_STRUCTURE) openOut[k] = coerced;
       }
       return Object.keys(openOut).length ? openOut : INVALID_STRUCTURE;
@@ -1733,30 +1795,26 @@ function coerceToReferenceShape(
     const out: Record<string, Json> = {};
     const fields = Object.entries(reference as Record<string, unknown>).slice(0, 64);
     if (!fields.length) return INVALID_STRUCTURE;
-    const requiredCanonicalFields = canonicalItemFields.get(path) ?? new Set<string>();
+    const requiredCanonicalFields = contract.canonicalItemFields.get(path) ?? new Set<string>();
     for (const [key, fieldReference] of fields) {
       if (!(key in input)) {
         const optionalScalar =
-          !requiredPaths.has(`${path}.${key}`) &&
+          !contract.requiredPaths.has(`${path}.${key}`) &&
           !requiredCanonicalFields.has(key) &&
           (typeof fieldReference === 'string' || typeof fieldReference === 'boolean');
-        if (optionalScalar || optionalFields.has(`${path}.${key}`)) continue;
+        if (optionalScalar || contract.optionalFields.has(`${path}.${key}`)) continue;
         return INVALID_STRUCTURE;
       }
       const coerced = coerceToReferenceShape(
         input[key],
         fieldReference,
-        canonicalItemFields,
-        optionalFields,
-        requiredPaths,
-        openRecordPaths,
-        nestedEnums,
+        contract,
         `${path}.${key}`,
         depth + 1,
       );
       if (coerced === INVALID_STRUCTURE) return INVALID_STRUCTURE;
       if (
-        (requiredCanonicalFields.has(key) || requiredPaths.has(`${path}.${key}`)) &&
+        (requiredCanonicalFields.has(key) || contract.requiredPaths.has(`${path}.${key}`)) &&
         typeof coerced === 'string' &&
         !coerced.trim()
       )
@@ -1778,7 +1836,8 @@ function coerceToReferenceShape(
       // the item is invalid here instead; on a tolerant one, a canonical/required field keeps
       // the model's own words (renderers display them, gracefully) while a union-typed
       // enrichment field falls away so the renderer's default applies.
-      const nested = typeof coerced === 'string' ? nestedEnums.get(`${path}.${key}`) : undefined;
+      const nested =
+        typeof coerced === 'string' ? contract.nestedEnums.get(`${path}.${key}`) : undefined;
       if (nested) {
         const snapped = snapToEnum(coerced as string, nested.values);
         if (snapped !== null) {
@@ -1870,6 +1929,12 @@ function coerceGeneric(
   meta: ComponentMeta,
   props: Record<string, Json>,
 ): Record<string, Json> | null {
+  // `requires`/`optional` describe only the top level. The reference is the nested contract from
+  // the same real fixture printed in the model's prompt and rendered in the gallery. Enforce it
+  // before the shallow required check so malformed nested arrays never reach React.
+  const reference = STRUCTURAL_REFERENCES[meta.type];
+  if (!reference || typeof reference !== 'object' || Array.isArray(reference)) return null;
+  const { slots, empties } = referenceShapes(meta.type, reference as Record<string, unknown>);
   // Repair item arrays first, so a required `items` that only LOOKED present (4 objects,
   // all missing their text) collapses to empty here and the requires-check then drops it.
   const repaired: Record<string, Json> = { ...props };
@@ -1878,13 +1943,9 @@ function coerceGeneric(
       repaired[spec.prop] = normalizeItems(repaired[spec.prop], spec);
   }
   for (const prop of meta.stringItems ?? []) {
-    if (repaired[prop] !== undefined) repaired[prop] = normalizeStringItems(repaired[prop]);
+    if (repaired[prop] !== undefined)
+      repaired[prop] = normalizeStringItems(repaired[prop], slots.has(prop));
   }
-  // `requires`/`optional` describe only the top level. The reference is the nested contract from
-  // the same real fixture printed in the model's prompt and rendered in the gallery. Enforce it
-  // before the shallow required check so malformed nested arrays never reach React.
-  const reference = STRUCTURAL_REFERENCES[meta.type];
-  if (!reference || typeof reference !== 'object' || Array.isArray(reference)) return null;
   // Settle ids and the references that name them BEFORE the reference projection, which requires
   // an item's declared fields: the id an edge points at is derivable from the item's own text, so
   // an item is repaired rather than dropped for lacking one. The reference says which arrays are
@@ -1926,6 +1987,15 @@ function coerceGeneric(
     const values = enumValuesFromHint(hint);
     if (values) nestedEnums.set(hintPath, { values, strict: strictVocabPaths.has(hintPath) });
   }
+  const contract: ShapeContract = {
+    canonicalItemFields,
+    optionalFields,
+    requiredPaths,
+    openRecordPaths,
+    nestedEnums,
+    slots,
+    empties,
+  };
   const declared = declaredProps(meta, reference as Record<string, unknown>);
   for (const key of declared) {
     if (repaired[key] === undefined) continue;
@@ -1937,11 +2007,7 @@ function coerceGeneric(
     const coerced = coerceToReferenceShape(
       repaired[key],
       (reference as Record<string, unknown>)[key],
-      canonicalItemFields,
-      optionalFields,
-      requiredPaths,
-      openRecordPaths,
-      nestedEnums,
+      contract,
       key,
     );
     if (coerced === INVALID_STRUCTURE) delete repaired[key];
