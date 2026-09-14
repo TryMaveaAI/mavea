@@ -60,8 +60,10 @@ describe('docker-compose voice service', () => {
     // overridable, and something has to override it.
     expect(compose).toMatch(/MAVEA_STT_THREADS:\s*\$\{MAVEA_STT_THREADS:-\d+\}/);
     expect(whisperStart).toContain('--threads "${MAVEA_STT_THREADS:-4}"');
-    expect(devScript).toContain('MAVEA_STT_THREADS: String(sttThreads())');
     expect(devScript).toContain('availableParallelism');
+    // `${VAR:-4}` is an invitation to set the variable, so the launcher fills it in only when
+    // nobody has — writing over an exported value would answer that invitation by ignoring it.
+    expect(devScript).toContain('if (!env.MAVEA_STT_THREADS)');
   });
 
   it('sets no CPU quota — a quota starves the thread pool instead of shrinking it', () => {

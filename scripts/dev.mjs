@@ -82,8 +82,11 @@ function installedRuntimeHint() {
  *  already has. Compose builds when the image is MISSING and reuses it otherwise, and the whisper
  *  tag carries its version, so a bump still builds. Same verbs on Docker and Podman alike. */
 function startVoice(runtime, threads) {
-  const env = { ...process.env, MAVEA_STT_THREADS: String(sttThreads()) };
-  if (threads) env.MAVEA_VOICE_THREADS = String(threads);
+  // Both defer to a value already exported: the compose file offers them as `${VAR:-4}` so an
+  // operator can choose, and overwriting that here would ignore them without saying so.
+  const env = { ...process.env };
+  if (!env.MAVEA_STT_THREADS) env.MAVEA_STT_THREADS = String(sttThreads());
+  if (threads && !env.MAVEA_VOICE_THREADS) env.MAVEA_VOICE_THREADS = String(threads);
   const args = [...runtime.prefix, 'up', '-d'];
   if (spawnSync(runtime.command, args, { stdio: 'inherit', env }).status === 0) return true;
   if (runtime.command !== 'docker') return false;

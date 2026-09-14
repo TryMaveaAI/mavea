@@ -1063,10 +1063,14 @@ export function sttThreadsFor(cores = availableParallelism()) {
   return Math.max(1, Math.min(STT_MAX_THREADS, Number.isInteger(cores) ? cores : STT_MAX_THREADS));
 }
 
-/** The environment a compose spawn runs with: the tuned thread count, or the compose default. */
+/** The environment a compose spawn runs with: the tuned thread count, or the compose default.
+ *  Both variables defer to one already in the environment — the compose file offers them as
+ *  `${VAR:-4}` precisely so an operator can raise or lower them, and a launcher that overwrote
+ *  what they exported would take that away while appearing to honour it. */
 export function voiceThreadEnv(threads, env = process.env) {
-  const next = { ...env, MAVEA_STT_THREADS: String(sttThreadsFor()) };
-  if (threads) next.MAVEA_VOICE_THREADS = String(threads);
+  const next = { ...env };
+  if (!next.MAVEA_STT_THREADS) next.MAVEA_STT_THREADS = String(sttThreadsFor());
+  if (threads && !next.MAVEA_VOICE_THREADS) next.MAVEA_VOICE_THREADS = String(threads);
   return next;
 }
 

@@ -88,6 +88,19 @@ describe('CLI voice thread tuning', () => {
     expect(base.MAVEA_STT_THREADS).toBeUndefined();
   });
 
+  it('lets a thread count the operator exported through to the container', () => {
+    // docker-compose.yml offers both as `${VAR:-4}`, which is an invitation to set them. A
+    // launcher that computed its own number and wrote it over the top would answer that
+    // invitation with silence — the command runs, and the value chosen is quietly not the one
+    // asked for. On a big box the bound is below what an operator might reasonably want.
+    const chosen = { PATH: '/usr/bin', MAVEA_STT_THREADS: '8', MAVEA_VOICE_THREADS: '6' };
+    expect(voiceThreadEnv(2, chosen).MAVEA_STT_THREADS).toBe('8');
+    expect(voiceThreadEnv(2, chosen).MAVEA_VOICE_THREADS).toBe('6');
+    // Unset is still filled in, so the bound holds for everyone who has not chosen.
+    const bare = { PATH: '/usr/bin' } as NodeJS.ProcessEnv;
+    expect(voiceThreadEnv(null, bare).MAVEA_STT_THREADS).toBe(String(sttThreadsFor()));
+  });
+
   it('never asks whisper for more threads than the box has cores', () => {
     // Transcription cannot be probed the way synthesis is — there is no playhead to outrun — so
     // the only fact worth acting on is the one the compose file cannot see. A flat 4 is 4 threads
