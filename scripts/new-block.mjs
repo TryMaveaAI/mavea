@@ -28,6 +28,17 @@ const fail = (msg) => {
 const ok = (msg) => console.log(`\x1b[32m✓\x1b[0m ${msg}`);
 const note = (msg) => console.log(`  ${msg}`);
 
+/** Does `source` already register `key:` as a whole word? A literal scan rather than a pattern
+ *  built from the argument — the discriminant is one lowercase word, so the two would match the
+ *  same text, and a needle that is never compiled cannot be read as a pattern at all. */
+const registersKey = (source, key) => {
+  const needle = `${key}:`;
+  for (let at = source.indexOf(needle); at !== -1; at = source.indexOf(needle, at + 1)) {
+    if (at === 0 || !/[A-Za-z0-9]/.test(source[at - 1])) return true;
+  }
+  return false;
+};
+
 // ── parse + validate args ───────────────────────────────────────────────────
 const [family, type, nameArg] = process.argv.slice(2);
 if (!family || !type) fail('usage: pnpm new:block <family> <type> [ComponentName]');
@@ -54,7 +65,7 @@ const stylesPath = join(famDir, 'styles.css');
 const catalogPath = join(BLOCKS, 'catalog/catalog.data.ts');
 
 if (existsSync(compPath)) fail(`${Comp}.tsx already exists in ${family}/`);
-if (new RegExp(`(^|[^A-Za-z0-9])${type}:`, 'm').test(readFileSync(registryPath, 'utf8')))
+if (registersKey(readFileSync(registryPath, 'utf8'), type))
   fail(`block type "${type}" is already registered in ${family}/registry.tsx`);
 
 const Props = `${Comp}Props`;

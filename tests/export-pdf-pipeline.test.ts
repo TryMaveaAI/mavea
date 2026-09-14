@@ -805,10 +805,10 @@ describe('document skin fonts.hrefs — self-hosted, never a live Google Fonts C
     for (const id of SKIN_ORDER) {
       const hrefs = SKINS[id].fonts.hrefs;
       expect(hrefs.length).toBeGreaterThan(0);
-      for (const href of hrefs) {
-        expect(href.startsWith('/fonts/')).toBe(true);
-        expect(href.includes('fonts.googleapis.com')).toBe(false);
-      }
+      // Same-origin, whole shape: a stylesheet under the app's own /fonts/ and nothing else. An
+      // anchored path says what a "does it mention a CDN host" substring test cannot — that there
+      // is no host, no scheme and no query for a capture to reach out through.
+      for (const href of hrefs) expect(href).toMatch(/^\/fonts\/[\w./-]+\.css$/);
       // Each skin declares at least one face — an empty list would silently warm nothing.
       expect(SKINS[id].fonts.faces.length).toBeGreaterThan(0);
     }

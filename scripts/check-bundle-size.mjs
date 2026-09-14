@@ -306,7 +306,12 @@ const ROUTE_BUDGETS = [
   // at the moment speech starts, which is the one shape that cannot be a dynamic import. The
   // synthesizer, by contrast, moved out on its own seam (reel/audioPlayback): playing a rendered
   // buffer needs no speech stack, and a first preview is silent.
-  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 51, files: 19 },
+  // 52 (was 51): +0.5 for the shared markup strip. A reel's captions come from `forDisplay`, which
+  // took one pass over a tag-shaped regex — and one pass is not a strip, so nested or split markup
+  // survived it as visible text on the card. It reads lib/plainText's `stripTags` now, the same
+  // repeat-until-stable strip every other text path uses; the entity table beside it is tree-shaken
+  // out, since captions must keep an escaped entity written rather than decode it back to markup.
+  { label: 'Reel first preview', roots: ['src/clip/ShareModal.tsx'], gzip: 52, files: 19 },
   { label: 'Gallery', roots: ['src/gallery/GalleryApp.tsx'], gzip: 130, files: 15 },
 ];
 

@@ -698,9 +698,12 @@ describe.skipIf(!RUN_JUDGE)('live quality eval (structural + LLM judge)', () => 
       for (const w of worst) log(`    ${w.overall.toFixed(1)}  ${w.id.padEnd(24)} ${w.why}`);
     }
 
-    // Persist the whole report so a piped/CI run never loses it (vitest swallows console).
+    // Persist the whole report so a piped/CI run never loses it (vitest swallows console). It
+    // lands beside the JSON artifact below rather than in the machine's shared temp directory,
+    // where a fixed name is another process's to create first.
     try {
-      writeFileSync('/tmp/mavea-eval-judge.txt', report.join('\n'));
+      mkdirSync('eval-out', { recursive: true });
+      writeFileSync('eval-out/judge-report.txt', report.join('\n'));
     } catch {
       /* best-effort — the stdout copy above is the primary output */
     }

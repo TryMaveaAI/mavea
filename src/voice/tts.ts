@@ -19,6 +19,7 @@ import {
   type KokoroLine,
 } from './kokoro';
 import { forSpeech } from '../lib/spokenText';
+import { stripTags } from '../lib/plainText';
 
 /** Whose line this is — selects the voice profile. */
 export type Speaker = 'mavea' | 'user';
@@ -46,8 +47,7 @@ export function sayable(text: string): string {
     // whose WHOLE content survives — the voice then says the value twice, shown side then said
     // side, back to back. Resolving here (idempotent on already-resolved text) fixes every
     // caller regardless of how it composes sayable with pronounceForSpeech.
-    forSpeech(String(text))
-      .replace(/<[^>]*>/g, ' ')
+    stripTags(forSpeech(String(text)), ' ')
       .replace(/&[a-z]+;/gi, ' ')
       .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks — never read source aloud
       .replace(/`([^`]+)`/g, '$1') // inline code — keep the words, drop the backticks

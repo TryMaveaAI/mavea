@@ -17,6 +17,7 @@
 // inside forSpeech below, where the said side is chosen.
 
 import { guardAnnotations } from './annotationGuard';
+import { stripTags } from './plainText';
 
 /** [[shown|said]] — the said side wins for speech, the shown side for display. The said side may
  *  itself carry ONE level of single brackets: some models write the reading as IPA in its own
@@ -152,11 +153,12 @@ function saidSide(_m: string, shown: string, said: string): string {
 }
 
 /** What the screen shows: keep the shown (left) side of every annotation, drop the markers.
- *  Also strips any HTML tags the model accidentally emits — display text is always plain. */
+ *  Also strips any HTML tags the model accidentally emits — display text is always plain. The
+ *  strip is the shared one (`plainText.stripTags`, which repeats until the string holds still),
+ *  because one pass of a tag-shaped regex turns `<<b>b>bold<</b>b>` back into markup. Tags
+ *  only: entities stay written, so an escaped `&lt;script&gt;` is shown, never re-opened. */
 export function forDisplay(text: string): string {
-  return resolveAnnotations(text)
-    .replace(/<[^>]*>/g, '')
-    .trimEnd();
+  return stripTags(resolveAnnotations(text)).trimEnd();
 }
 
 /** What the voice says: keep the said (right) side of every annotation, drop the markers.

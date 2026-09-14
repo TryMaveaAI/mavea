@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { mapCorpus } from '../src/live/prism/synthesis/mapCorpus';
 import { isClaimGrounded } from '../src/live/prism/grounding';
 import type { Attachment } from '../src/live/attachments';
@@ -30,6 +30,14 @@ describe.skipIf(!KEY || !DIR)('Synthesis World — LIVE gemini-3.1-flash-lite on
       // Node harness has no proxy, so point baseUrl straight at Google and let keyHeader send the key.
       baseUrl: 'https://generativelanguage.googleapis.com',
     });
+
+    // Repo-local by default: a fixed name in the machine's shared temp directory is another
+    // process's to create first. RESULT_FILE still points a CI run wherever it collects from.
+    const resultFile = process.env.RESULT_FILE ?? 'eval-out/synthesis-live.txt';
+    const writeResult = (lines: string[]): void => {
+      mkdirSync(dirname(resultFile), { recursive: true });
+      writeFileSync(resultFile, lines.join('\n'));
+    };
 
     const lines: string[] = [];
     const log = (...a: unknown[]): void => {
@@ -76,12 +84,12 @@ describe.skipIf(!KEY || !DIR)('Synthesis World — LIVE gemini-3.1-flash-lite on
           ungrounded.map((c) => `${c.id}:"${c.quote.slice(0, 40)}"`),
         );
       log(`ungrounded claims (must be 0): ${ungrounded.length}`);
-      writeFileSync(process.env.RESULT_FILE ?? '/tmp/synth-live-result.txt', lines.join('\n'));
+      writeResult(lines);
       expect(ungrounded.length).toBe(0);
       expect(s.claims.length).toBeGreaterThan(5);
       expect(s.themes.length).toBeGreaterThanOrEqual(2);
     } else {
-      writeFileSync(process.env.RESULT_FILE ?? '/tmp/synth-live-result.txt', lines.join('\n'));
+      writeResult(lines);
     }
     expect(res.spec).not.toBeNull();
   }, 240_000);

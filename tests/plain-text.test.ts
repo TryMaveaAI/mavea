@@ -96,15 +96,14 @@ describe('plain text from markup', () => {
 });
 
 describe('the callers that took a local regex read the one seam', () => {
-  // Each of these once carried its own `replace(/<[^>]*>/g, '')`, and nothing else pins them
-  // here — so reverting one to a local regex would be invisible, and a local regex is precisely
-  // the incompleteness the cases above are about.
+  // Each of these once carried its own single-pass tag regex, and nothing else pins them here —
+  // so reverting one would be invisible, and one pass is precisely the incompleteness the cases
+  // above are about.
   //
-  // Three markup strips are deliberately NOT on this list, because they are not this seam:
-  // spokenText's `forDisplay` and voice/tts's `sayable` strip as a SAFETY measure on text already
-  // headed for a reader or a synthesizer — decoding entities there would turn an escaped
-  // `&lt;script&gt;` back into live markup — and live/content/notableIn strips inside a scorer
-  // that wants no entity decoding either. Adding one to this list means changing what it does.
+  // The last three take `stripTags` ALONE, never `plainFromMarkup`: they hand text to a reader or
+  // a synthesizer, and decoding entities there would turn an escaped `&lt;script&gt;` back into
+  // live markup. That is why the seam exports the strip and the decode separately — the objection
+  // at those sites was only ever to decoding, never to repeating the strip.
   const callers = [
     'canvas/blocks/compose/MessageDraft.tsx',
     'canvas/blocks/layout/Deflist.tsx',
@@ -117,12 +116,15 @@ describe('the callers that took a local regex read the one seam', () => {
     'live/search/wikipedia.ts',
     'live/srs/extractCards.ts',
     'live/srs/suggestCards.ts',
+    'lib/spokenText.ts',
+    'voice/tts.ts',
+    'live/content/notableIn.ts',
   ];
 
   it.each(callers)('%s takes its plain text from lib/plainText', (file) => {
     const src = readFileSync(join(__dirname, '..', 'src', file), 'utf8');
     expect(src).toMatch(
-      /import \{[^}]*(?:stripTags|decodeEntities|plainFromMarkup)[^}]*\} from '[./]*lib\/plainText'/,
+      /import \{[^}]*(?:stripTags|decodeEntities|plainFromMarkup)[^}]*\} from '[./]*(?:lib\/)?plainText'/,
     );
     expect(src).not.toMatch(/<\[\^>\]\*>/);
   });

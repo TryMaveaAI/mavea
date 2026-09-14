@@ -15,6 +15,7 @@
 // diagram. Silence is the honest answer there — a remark invented about a paragraph is exactly
 // the noise this file exists to replace.
 import type { Block } from '../../data/conversation';
+import { stripTags } from '../../lib/plainText';
 
 export interface Notable {
   /** The remark, in Mavéa's voice. Never contains a figure the block does not itself display. */
@@ -35,12 +36,7 @@ function firstFigure(text: string | undefined): string | null {
 }
 
 function plainText(value: unknown): string {
-  return typeof value === 'string'
-    ? value
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-    : '';
+  return typeof value === 'string' ? stripTags(value, ' ').replace(/\s+/g, ' ').trim() : '';
 }
 
 export function notableIn(block: Block): Notable | null {
