@@ -1,6 +1,7 @@
 // Sparse/empty data guards for the canvas blocks (pure logic; the placeholder
 // component lives in BlockEmpty.tsx). A chart given an empty or all-invalid
 // dataset should render a calm placeholder instead of an axis around nothing.
+import { decodeEntities, stripTags } from '../../lib/plainText';
 
 /**
  * True when at least one finite number is present. Use to gate a chart: if `!hasData(values)`,
@@ -48,17 +49,16 @@ const KEYED_ROW_TYPES: Record<
 };
 
 /**
- * True when `html` would paint words. Three things have to go, in this order: tags (an
- * `<b></b>` is present, non-empty, and paints nothing), then format and control characters
- * (a zero-width space survives every trim — the lesson `readableLabel` already carries), then
- * whitespace. A card that counts an item it cannot show is the defect this exists to stop.
+ * True when `html` would paint words. Three things have to go, in this order: markup (an
+ * `<b></b>` is present, non-empty, and paints nothing) and the entities behind it (`&nbsp;` is
+ * a space), then format and control characters (a zero-width space survives every trim — the
+ * lesson `readableLabel` already carries), then whitespace. A card that counts an item it cannot
+ * show is the defect this exists to stop.
  */
 export function readableText(html: unknown): boolean {
   if (typeof html !== 'string') return false;
   return (
-    html
-      .replace(/<[^>]*>/g, '')
-      .replace(/&nbsp;/g, ' ')
+    decodeEntities(stripTags(html))
       .replace(/[\p{Cf}\p{Cc}]/gu, '')
       .trim() !== ''
   );

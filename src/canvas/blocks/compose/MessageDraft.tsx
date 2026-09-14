@@ -3,6 +3,7 @@ import { Icon } from '../../../icons/icons';
 import type { MessageDraftProps } from './types';
 import { CopyButton } from '../../lib';
 import { richInnerHtml } from '../../../lib/richText';
+import { stripTags } from '../../../lib/plainText';
 
 type Props = MessageDraftProps & { delay?: number };
 
@@ -20,7 +21,7 @@ function buildCopyText(props: MessageDraftProps): string {
   if (props.greeting) parts.push(props.greeting);
   parts.push('');
   // Strip HTML tags for clipboard text so the user gets clean plain text.
-  const bodyPlain = props.body.replace(/<[^>]+>/g, '');
+  const bodyPlain = stripTags(props.body);
   parts.push(bodyPlain);
   if (props.closing || props.signature) {
     parts.push('');

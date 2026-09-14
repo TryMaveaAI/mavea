@@ -11,6 +11,7 @@
 // no real data is simply omitted.
 import type { Block, ConversationSpec } from '../../data/conversation';
 import { archetypeFor } from './mapping';
+import { plainFromMarkup } from '../../lib/plainText';
 import { catalogFacts, type ComponentFacts } from '../../canvas/blocks/catalog/facts';
 import { embedClass } from '../../canvas/embed/embedClass';
 import type { PdfMetadata } from '../pipeline/raster';
@@ -28,17 +29,7 @@ import type {
 /** Strip HTML tags, decode the few entities our content uses, and collapse whitespace. */
 export function plain(value: unknown): string {
   if (typeof value !== 'string') return '';
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&rsquo;|&lsquo;/g, "'")
-    .replace(/&mdash;/g, '—')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return plainFromMarkup(value);
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));

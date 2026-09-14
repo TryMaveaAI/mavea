@@ -5,6 +5,8 @@
 // broadcasts that drift apart. Courses are the first real listener (see live/course/mastery.ts),
 // but nothing about the event is course-specific.
 
+import { stripTags } from '../../../lib/plainText';
+
 export const QUIZ_RESULT_EVENT = 'mavea-quiz-result';
 
 export interface QuizResultDetail {
@@ -15,15 +17,15 @@ export interface QuizResultDetail {
   at: number;
 }
 
-function plainText(html: string): string {
-  return html.replace(/<[^>]+>/g, '').trim();
-}
-
 /** Fire-and-forget. Best-effort telemetry must never break the quiz UI that produced it. */
 export function reportQuizResult(question: string, correct: boolean): void {
   try {
     if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
-    const detail: QuizResultDetail = { question: plainText(question), correct, at: Date.now() };
+    const detail: QuizResultDetail = {
+      question: stripTags(question).trim(),
+      correct,
+      at: Date.now(),
+    };
     window.dispatchEvent(new CustomEvent<QuizResultDetail>(QUIZ_RESULT_EVENT, { detail }));
   } catch {
     /* best-effort telemetry — must never break the quiz UI itself */

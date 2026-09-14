@@ -5,7 +5,7 @@
 // cross-origin. Results feed the SAME retrieve-then-read pipeline as Wikipedia.
 import type { SearchProvider, SearchResult, SearchOpts } from './types';
 import { timedFetch } from './net';
-import { stripHtml } from './wikipedia';
+import { plainFromMarkup } from '../../lib/plainText';
 import { resultLimit } from './limit';
 
 const PROXY_BASE = '/search/brave';
@@ -33,7 +33,11 @@ export function parseBrave(body: unknown): SearchResult[] {
     const url = typeof h.url === 'string' ? h.url : '';
     const title = typeof h.title === 'string' ? h.title : '';
     if (!url || !title) continue;
-    out.push({ title: stripHtml(title), url, snippet: stripHtml(String(h.description ?? '')) });
+    out.push({
+      title: plainFromMarkup(title),
+      url,
+      snippet: plainFromMarkup(String(h.description ?? '')),
+    });
   }
   return out;
 }

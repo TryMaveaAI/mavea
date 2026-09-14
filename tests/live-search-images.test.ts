@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   wikipediaSearchUrl,
-  stripHtml,
   parseWikipedia,
   wikipediaProvider,
 } from '../src/live/search/wikipedia';
+import { plainFromMarkup } from '../src/lib/plainText';
 import {
   needsFreshInfo,
   needsLiveData,
@@ -40,7 +40,7 @@ describe('wikipedia search provider (keyless, browser-direct)', () => {
 
   it('strips the HTML the API wraps snippets in', () => {
     const raw = 'Mount <span class="searchmatch">Fuji</span> is 3,776' + '&nbsp;' + 'm';
-    expect(stripHtml(raw)).toBe('Mount Fuji is 3,776 m');
+    expect(plainFromMarkup(raw)).toBe('Mount Fuji is 3,776 m');
   });
 
   it('parses hits into normalized results with wiki URLs', () => {

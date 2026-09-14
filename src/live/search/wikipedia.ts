@@ -6,6 +6,7 @@
 // (Brave/Tavily) is wired later.
 import type { SearchProvider, SearchResult, SearchOpts } from './types';
 import { resultLimit } from './limit';
+import { plainFromMarkup } from '../../lib/plainText';
 
 const ENDPOINT = 'https://en.wikipedia.org/w/api.php';
 const TIMEOUT_MS = 6_000;
@@ -24,20 +25,6 @@ export function wikipediaSearchUrl(query: string, limit = 5): string {
   return `${ENDPOINT}?${params.toString()}`;
 }
 
-/** Strip the HTML the API returns in snippets (it wraps matches in <span> tags). */
-export function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 interface WikiSearchHit {
   title?: unknown;
   snippet?: unknown;
@@ -54,7 +41,7 @@ export function parseWikipedia(body: unknown): SearchResult[] {
     out.push({
       title,
       url: `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`,
-      snippet: typeof h.snippet === 'string' ? stripHtml(h.snippet) : '',
+      snippet: typeof h.snippet === 'string' ? plainFromMarkup(h.snippet) : '',
     });
   }
   return out;

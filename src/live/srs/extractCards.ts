@@ -2,6 +2,7 @@
 // fed into the SRS store. Strips HTML tags from front/back so the store sees plain
 // text (the card viewer re-renders with formatting; the SRS key is the text itself).
 import type { Block } from '../../data/conversation';
+import { stripTags } from '../../lib/plainText';
 
 /** A flashcard block as it arrives from the canvas — narrow just enough to read props. */
 type FlashcardBlock = {
@@ -16,9 +17,9 @@ function isFlashcardBlock(b: Block): b is Block & FlashcardBlock {
   );
 }
 
-export function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, '').trim();
-}
+/** Plain text for the store: tags out, then trimmed so a card that is nothing but markup and
+ *  whitespace reads as empty below. */
+const plain = (html: string): string => stripTags(html).trim();
 
 /**
  * Extract all flashcard front/back pairs from a block list as plain text.
@@ -32,13 +33,13 @@ export function extractFlashcards(
     if (!isFlashcardBlock(block)) continue;
     const raw = block as unknown as FlashcardBlock;
     for (const card of raw.props.cards) {
-      const front = stripHtml(card.front ?? '');
-      const back = stripHtml(card.back ?? '');
+      const front = plain(card.front ?? '');
+      const back = plain(card.back ?? '');
       if (!front || !back) continue;
       result.push({
         front,
         back,
-        tag: card.tag ? stripHtml(card.tag) : undefined,
+        tag: card.tag ? plain(card.tag) : undefined,
       });
     }
   }

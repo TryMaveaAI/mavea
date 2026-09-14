@@ -11,20 +11,13 @@
 import { attachmentBytes, type Attachment } from '../attachments';
 import { base64ToBytes, readZip, decodeXml } from './ooxml';
 import { extractWorkbookSheets } from './sheetModel';
+import { plainFromMarkup } from '../../lib/plainText';
 
 export { base64ToBytes, readZip, decodeXml };
 
 /** Strip XML tags, turning a run of OOXML into plain text. Paragraph/line breaks become spaces. */
 function xmlToText(xml: string): string {
-  return xml
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+  return plainFromMarkup(xml, ' ');
 }
 
 /** Word: word/document.xml holds the body. We split into paragraphs (<w:p>) and group them into

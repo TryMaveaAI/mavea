@@ -3,13 +3,9 @@ import type { CSSProperties } from 'react';
 import { Icon } from '../../../icons/icons';
 import type { DeflistProps } from './types';
 import { richInnerHtml } from '../../../lib/richText';
+import { stripTags } from '../../../lib/plainText';
 
 type Props = DeflistProps & { delay?: number };
-
-/** strip simple html tags so the search matches visible text, not markup */
-function plain(s: string) {
-  return s.replace(/<[^>]*>/g, '');
-}
 
 export function Deflist({
   title,
@@ -29,7 +25,7 @@ export function Deflist({
     return items
       .map((it, i) => ({ it, i }))
       .filter(({ it }) =>
-        (it.term + ' ' + plain(it.def) + ' ' + (it.tag || '')).toLowerCase().includes(needle),
+        (it.term + ' ' + stripTags(it.def) + ' ' + (it.tag || '')).toLowerCase().includes(needle),
       );
   }, [q, items]);
 

@@ -4,7 +4,7 @@
 // /search/tavily proxy, which forwards the Bearer key. Feeds retrieve-then-read.
 import type { SearchProvider, SearchResult, SearchOpts } from './types';
 import { timedFetch } from './net';
-import { stripHtml } from './wikipedia';
+import { plainFromMarkup } from '../../lib/plainText';
 import { resultLimit } from './limit';
 
 const PROXY_BASE = '/search/tavily';
@@ -27,7 +27,11 @@ export function parseTavily(body: unknown): SearchResult[] {
     const url = typeof h.url === 'string' ? h.url : '';
     const title = typeof h.title === 'string' ? h.title : '';
     if (!url || !title) continue;
-    out.push({ title: stripHtml(title), url, snippet: stripHtml(String(h.content ?? '')) });
+    out.push({
+      title: plainFromMarkup(title),
+      url,
+      snippet: plainFromMarkup(String(h.content ?? '')),
+    });
   }
   return out;
 }

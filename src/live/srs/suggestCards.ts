@@ -13,7 +13,7 @@ import { blockLabel } from '../../canvas/blockLabel';
 import { getAdapter } from '../providers/index';
 import { speedTierFor } from '../speed';
 import type { ModelConfig } from '../../types/mavea';
-import { stripHtml } from './extractCards';
+import { stripTags } from '../../lib/plainText';
 
 export interface DraftCard {
   front: string;
@@ -24,7 +24,7 @@ export interface DraftCard {
 // ── reading real cards out of question/answer blocks ──────────────────────────────────
 
 function clean(s: string | undefined): string {
-  return stripHtml(s ?? '').trim();
+  return stripTags(s ?? '').trim();
 }
 
 /**
