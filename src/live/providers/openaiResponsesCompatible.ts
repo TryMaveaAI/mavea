@@ -106,6 +106,26 @@ export interface OpenAIResponsesOptions {
 }
 
 /** Build an OpenAI-Responses-compatible ProviderAdapter from a small config. */
+/** Models that refuse the `text.format` we asked for — a model with no structured-output
+ *  support, or one whose dialect rejects a construct the schema uses. Learned rather than
+ *  listed, for the reason gemini.ts learns its thinking tiers: the model field is free text and
+ *  a hand-kept set of ids rots into the outage it was added to fix. */
+const noResponseFormat = new Set<string>();
+/** Models that refuse the caller-selected cache fields — an id can look newer than its endpoint. */
+const noPromptCache = new Set<string>();
+
+/** Whether a 400 is about the output format we asked for, rather than any other bad argument.
+ *  Only consulted on a request that carried one. */
+function rejectsPromptCache(status: number, detail: string): boolean {
+  return status === 400 && /prompt_cache|cache_breakpoint|cache breakpoint/i.test(detail);
+}
+
+function rejectsResponseFormat(status: number, detail: string): boolean {
+  return (
+    status === 400 && /text\.format|response_format|json_schema|json_object|json mode/i.test(detail)
+  );
+}
+
 export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): ProviderAdapter {
   const {
     id,
@@ -244,25 +264,27 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
       // means the next turn cannot reuse the large stable system prefix. Put that prefix in a
       // developer input block where OpenAI permits an explicit breakpoint. Earlier OpenAI models
       // and xAI keep the compatible top-level instructions field and their implicit cache path.
-      const explicitPromptCache =
+      const explicitPromptCache = () =>
         id === 'openai' &&
         !!req.promptCacheKey &&
         !!sysBase &&
-        supportsExplicitPromptCaching(cfg.model);
-      const stableInput = explicitPromptCache
-        ? [
-            {
-              role: 'developer' as const,
-              content: [
-                {
-                  type: 'input_text' as const,
-                  text: stableSystem,
-                  prompt_cache_breakpoint: { mode: 'explicit' as const },
-                },
-              ],
-            },
-          ]
-        : [];
+        supportsExplicitPromptCaching(cfg.model) &&
+        !noPromptCache.has(cfg.model);
+      const stableInput = () =>
+        explicitPromptCache()
+          ? [
+              {
+                role: 'developer' as const,
+                content: [
+                  {
+                    type: 'input_text' as const,
+                    text: stableSystem,
+                    prompt_cache_breakpoint: { mode: 'explicit' as const },
+                  },
+                ],
+              },
+            ]
+          : [];
 
       // An ordinary canvas the shared classifier marks `minimal` skips the hidden pass on models
       // that document the `none` tier; hard or thorough asks stay at `low`. Glimpses use the same
@@ -284,7 +306,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
             ? NO_THINKING_EFFORT
             : 'low';
 
-      const requestInit = {
+      const buildInit = (): RequestInit => ({
         method: 'POST',
         headers: headers(cfg),
         body: JSON.stringify({
@@ -293,16 +315,18 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           // provider-side response object after this stream ends, so opt out explicitly. xAI's
           // compatible endpoint does not document this field and must not receive it.
           ...(id === 'openai' ? { store: false } : {}),
-          ...(!explicitPromptCache ? { instructions: stableSystem } : {}),
+          ...(!explicitPromptCache() ? { instructions: stableSystem } : {}),
           input: [
-            ...stableInput,
+            ...stableInput(),
             ...jsonNudge,
             ...historyInput,
             { role: 'user', content: userContent },
           ],
-          text: { format: textFormat },
-          ...(req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
-          ...(explicitPromptCache
+          ...(noResponseFormat.has(cfg.model) ? {} : { text: { format: textFormat } }),
+          ...(req.promptCacheKey && !noPromptCache.has(cfg.model)
+            ? { prompt_cache_key: req.promptCacheKey }
+            : {}),
+          ...(explicitPromptCache()
             ? { prompt_cache_options: { mode: 'explicit', ttl: '30m' } }
             : {}),
           // A reasoning model meters hidden thinking tokens out of THIS budget, so a small cap
@@ -356,7 +380,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
             ? { tool_choice: forceSearchToolChoice() }
             : {}),
         }),
-      };
+      });
       // A 429 (rate limit) is transient — a burst of dashboard refreshes, or a bumped-effort search
       // turn, can briefly exceed the org's tokens-per-minute. Retry a few times (honoring Retry-After)
       // so the turn rides out the spike instead of failing; any other non-OK status is a real error.
@@ -364,7 +388,7 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
       for (let rlAttempt = 0; ; rlAttempt++) {
         res = await fetchWithTimeout(
           `${base}${RESPONSES}`,
-          requestInit,
+          buildInit(),
           GEN_TIMEOUT_MS,
           req.signal,
         );
@@ -374,7 +398,21 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
           await sleepAbortable(retryAfterMs(res, rlAttempt), req.signal);
           continue;
         }
-        throw new Error(`${id} ${res.status}${await errorDetail(res)}`);
+        const detail = await errorDetail(res);
+        // A declared output format is an accuracy aid, never the answer's only guarantee — the
+        // prompt asks for JSON and the validator reads what comes back either way. A model that
+        // won't take ours answers without it rather than losing the turn.
+        if (rejectsResponseFormat(res.status, detail) && !noResponseFormat.has(cfg.model)) {
+          noResponseFormat.add(cfg.model);
+          continue;
+        }
+        // A cache breakpoint only decides the price of the answer, so a model that refuses one is
+        // asked again without it rather than losing the turn.
+        if (rejectsPromptCache(res.status, detail) && !noPromptCache.has(cfg.model)) {
+          noPromptCache.add(cfg.model);
+          continue;
+        }
+        throw new Error(`${id} ${res.status}${detail}`);
       }
 
       let acc = '';

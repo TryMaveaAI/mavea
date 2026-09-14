@@ -1,12 +1,14 @@
-// anthropic.ts — Claude adapter. Strongest accuracy posture: schema-constrained
-// output via native STRUCTURED OUTPUTS (output_config.format → json_schema), so the
-// model's final text always matches liveJsonSchema(). This replaced an older
-// tool-forcing trick (tool_choice pinned to a custom emit_canvas tool) that guaranteed
-// the same shape but made web_search unreachable — forcing a specific tool stops the
-// model from calling any OTHER tool first. Structured Outputs validates the FINAL
-// response instead, so tool_choice stays at its default 'auto' and Claude is free to
-// run a web_search loop (server-side; results arrive as server_tool_use /
-// web_search_tool_result blocks) before emitting the schema-shaped answer.
+// anthropic.ts — Claude adapter. Schema-constrained output via native STRUCTURED
+// OUTPUTS (output_config.format → json_schema) wherever the schema can be said in the
+// dialect this API accepts — anthropicFormat.ts renders it and reports when it cannot,
+// and a schema it cannot render is sent as no output_config at all rather than as a
+// request the API refuses outright. This replaced an older tool-forcing trick
+// (tool_choice pinned to a custom emit_canvas tool) that guaranteed the same shape but
+// made web_search unreachable — forcing a specific tool stops the model from calling any
+// OTHER tool first. Structured Outputs validates the FINAL response instead, so
+// tool_choice stays at its default 'auto' and Claude is free to run a web_search loop
+// (server-side; results arrive as server_tool_use / web_search_tool_result blocks)
+// before emitting the answer.
 // Caching is prefix-based, so the request is shaped so the whole system + history prefix
 // caches: the stable tier base is the lone system block (cache_control → ~90% cheaper on
 // turns 2+), the per-turn section (hero picks, count, freshness — changes every turn) rides
@@ -22,6 +24,7 @@ import type { ModelConfig } from '../../types/mavea';
 import type { ProviderAdapter, LiveRequest, LiveProbe, DeltaFn, RawResult } from './types';
 import { fetchWithTimeout, providerErrorDetail, readSSE, obj, str, num } from './http';
 import { liveJsonSchema } from './schema';
+import { anthropicOutputFormat } from './anthropicFormat';
 import { anthropicUserContent } from './parts';
 import type { GroundingSource, TokenUsage } from './types';
 
@@ -60,6 +63,13 @@ function headers(cfg: ModelConfig): Record<string, string> {
  *  the outage it was added to fix. The first rejection is remembered and the turn is re-asked. */
 const noAdaptiveThinking = new Set<string>();
 const noCustomTemperature = new Set<string>();
+/** Models that refuse the output_config schema — an older or gateway-fronted model with no
+ *  structured-output support at all, or one whose dialect rejects a construct this schema
+ *  uses. Learned for the same reason as the two above: the model field is free text. */
+const noStructuredOutput = new Set<string>();
+/** Models that refuse the extended cache TTL, and models that refuse cache breakpoints at all. */
+const noExtendedCacheTtl = new Set<string>();
+const noCacheControl = new Set<string>();
 
 /** Anthropic's floor for an extended-thinking budget; it must also leave room for the answer. */
 const MIN_THINKING_BUDGET = 1024;
@@ -75,6 +85,20 @@ function rejectsAdaptive(status: number, detail: string): boolean {
  *  non-default `temperature`/`top_p`/`top_k`), rather than any other bad argument. */
 function rejectsTemperature(status: number, detail: string): boolean {
   return status === 400 && /temperature/i.test(detail);
+}
+
+/** Whether a 400 is about the schema we sent. Only consulted on a request that carried one, so a
+ *  400 naming the schema or the field it rides in is that refusal and nothing else. */
+function rejectsOutputFormat(status: number, detail: string): boolean {
+  return status === 400 && /output_config|json_schema|schema/i.test(detail);
+}
+
+/** Which cache knob a refusal names: the extended TTL alone, or breakpoints altogether. */
+function rejectsCacheControl(status: number, detail: string): 'ttl' | 'all' | null {
+  if (status !== 400 || !/cache_control|cache control|cache breakpoint|\bttl\b/i.test(detail)) {
+    return null;
+  }
+  return /\bttl\b|1h|one hour|duration/i.test(detail) ? 'ttl' : 'all';
 }
 
 /** Dynamic-filtering web search (`web_search_20260209`) isn't available on Haiku —
@@ -183,25 +207,33 @@ export const anthropicAdapter: ProviderAdapter = {
         : stableBase;
     const stableTail = stablePrefix.slice(stableBase.length).trimStart();
     const perTurn = req.systemBase ? req.system.slice(stablePrefix.length).trimStart() : '';
-    const cacheHour = { type: 'ephemeral', ttl: '1h' };
+    // A breakpoint is a price lever, never part of the answer, so the mark is whatever this
+    // model has been shown to accept: the 1h TTL, else the default 5-minute one, else none.
+    const cacheMark = (extended: boolean): Record<string, string> | undefined =>
+      noCacheControl.has(cfg.model)
+        ? undefined
+        : extended && !noExtendedCacheTtl.has(cfg.model)
+          ? { type: 'ephemeral', ttl: '1h' }
+          : { type: 'ephemeral' };
+    const marked = (extended: boolean) => {
+      const control = cacheMark(extended);
+      return control ? { cache_control: control } : {};
+    };
     // A caller without a systemBase split (Prism, mindshape, dashboards…) keeps the exact
     // wire shape it always had: one plain-ephemeral system block, untouched messages.
-    const systemBlocks = [
-      {
-        type: 'text',
-        text: stableBase,
-        cache_control: req.systemBase ? cacheHour : { type: 'ephemeral' },
-      },
+    const systemBlocks = () => [
+      { type: 'text', text: stableBase, ...marked(!!req.systemBase) },
       ...(req.systemBase && stableTail
-        ? [{ type: 'text', text: stableTail, cache_control: cacheHour }]
+        ? [{ type: 'text', text: stableTail, ...marked(true) }]
         : []),
     ];
     const lastTurn = req.history.length - 1;
-    const history = req.history.map((h, i) =>
-      req.systemBase && i === lastTurn
-        ? { role: h.role, content: [{ type: 'text', text: h.content, cache_control: cacheHour }] }
-        : h,
-    );
+    const history = () =>
+      req.history.map((h, i) =>
+        req.systemBase && i === lastTurn
+          ? { role: h.role, content: [{ type: 'text', text: h.content, ...marked(true) }] }
+          : h,
+      );
     const baseUserContent = anthropicUserContent(req.user, req.attachments);
     const userContent = perTurn
       ? [
@@ -232,6 +264,9 @@ export const anthropicAdapter: ProviderAdapter = {
         : isCanvasTurn
           ? liveJsonSchema(req.blockTypes, req.complexity)
           : null;
+    // The canvas schema holds an open `props` object, which this API has no way to express,
+    // so a canvas turn goes out unconstrained and leans on the prompt plus the validator.
+    const outputFormat = schema ? anthropicOutputFormat(schema) : null;
 
     const useNativeSearch = !!req.tools?.webSearch;
 
@@ -266,12 +301,14 @@ export const anthropicAdapter: ProviderAdapter = {
             ? { temperature: 1 }
             : { temperature: req.temperature ?? 0.3 }),
           ...thinkingConfig(),
-          system: systemBlocks,
-          messages: [...history, { role: 'user', content: userContent }],
+          system: systemBlocks(),
+          messages: [...history(), { role: 'user', content: userContent }],
           // Structured Outputs validates the FINAL text response against the schema —
           // tool_choice is left at its default 'auto' (never forced), which is what lets
           // Claude call web_search first when it's offered below.
-          ...(schema ? { output_config: { format: { type: 'json_schema', schema } } } : {}),
+          ...(outputFormat && !noStructuredOutput.has(cfg.model)
+            ? { output_config: { format: { type: 'json_schema', schema: outputFormat } } }
+            : {}),
           ...(useNativeSearch
             ? {
                 tools: [{ type: webSearchToolType(cfg.model), name: 'web_search', max_uses: 5 }],
@@ -303,11 +340,33 @@ export const anthropicAdapter: ProviderAdapter = {
           noCustomTemperature.add(cfg.model);
           continue;
         }
+        // A schema is an accuracy aid, never the answer's only guarantee — validateLiveResponse
+        // reads whatever comes back either way. A model that won't take ours answers without it.
+        if (
+          outputFormat &&
+          rejectsOutputFormat(res.status, detail) &&
+          !noStructuredOutput.has(cfg.model)
+        ) {
+          noStructuredOutput.add(cfg.model);
+          continue;
+        }
+        // Same reasoning for the cache breakpoints: refuse the extended TTL and the turn re-asks
+        // on the default one; refuse breakpoints outright and it re-asks with none, paying full
+        // price for an answer rather than not answering.
+        const cacheKnob = rejectsCacheControl(res.status, detail);
+        if (cacheKnob === 'ttl' && !noExtendedCacheTtl.has(cfg.model)) {
+          noExtendedCacheTtl.add(cfg.model);
+          continue;
+        }
+        if (cacheKnob && !noCacheControl.has(cfg.model)) {
+          noCacheControl.add(cfg.model);
+          continue;
+        }
         throw new Error(`anthropic ${res.status}${detail}`);
       }
 
-      // The schema-validated answer arrives as ordinary text_delta fragments on a `text`
-      // content block — Structured Outputs constrains the FINAL text, it doesn't reroute it
+      // The answer arrives as ordinary text_delta fragments on a `text` content
+      // block — Structured Outputs constrains the FINAL text, it doesn't reroute it
       // through a tool_use block the way the old tool-forcing trick did. Any preceding
       // server_tool_use / web_search_tool_result blocks carry no `delta.text`, so they fall
       // out of `acc` for free. Citations ride alongside as citations_delta events; collected

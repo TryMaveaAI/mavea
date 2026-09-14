@@ -162,8 +162,11 @@ describe('anthropic adapter — the lineup is split on thinking and on temperatu
   });
 });
 
-describe('anthropic adapter — minItems relaxes for a brief ask', () => {
-  it('defaults the Structured Outputs schema blocks minItems to 3', async () => {
+describe('anthropic adapter — the canvas turn carries no schema', () => {
+  // The canvas schema's `props` bag is open by design, and this API accepts only sealed objects,
+  // so it goes out unconstrained: the block-count range is stated in the prompt and the answer is
+  // checked by validateLiveResponse. See anthropicFormat.ts.
+  it('asks without output_config, and never forces a tool', async () => {
     const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
       Promise.resolve(streamResponse([], 'text/event-stream')),
     );
@@ -172,11 +175,11 @@ describe('anthropic adapter — minItems relaxes for a brief ask', () => {
     await anthropicAdapter.generate(canvasReq, cfg);
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(init!.body as string);
-    expect(body.output_config.format.schema.properties.blocks.minItems).toBe(3);
+    expect(body.output_config).toBeUndefined();
     expect(body.tool_choice).toBeUndefined(); // never forced — that's what blocked web_search
   });
 
-  it('drops the schema blocks minItems to 1 for a brief ask', async () => {
+  it('asks the same way for a brief ask', async () => {
     const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
       Promise.resolve(streamResponse([], 'text/event-stream')),
     );
@@ -184,8 +187,7 @@ describe('anthropic adapter — minItems relaxes for a brief ask', () => {
     const cfg: ModelConfig = { provider: 'anthropic', model: 'claude-haiku-4-5', apiKey: 'k' };
     await anthropicAdapter.generate({ ...canvasReq, complexity: 'brief' }, cfg);
     const [, init] = fetchMock.mock.calls[0];
-    const body = JSON.parse(init!.body as string);
-    expect(body.output_config.format.schema.properties.blocks.minItems).toBe(1);
+    expect(JSON.parse(init!.body as string).output_config).toBeUndefined();
   });
 });
 

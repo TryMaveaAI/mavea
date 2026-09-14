@@ -273,7 +273,12 @@ const ROUTE_BUDGETS = [
     // from the stage's own geometry (study.css) and the appearance picker keeps Tab inside its
     // sheet — both ride TopicCanvas's static closure, so a lesson pays for them whether or not the
     // reader ever opens the desk. Real fixes, ~200 bytes; the old line had 0.1 kB of room.
-    gzip: 160,
+    //
+    // 161 (was 160): measured at 160.3. The provider adapters now render a schema into the dialect
+    // each API accepts and remember which request knobs a model refused, so a turn re-asks without
+    // the knob instead of failing. That state sits in the closure every canvas route shares —
+    // ~250 bytes, against asks that returned nothing at all before.
+    gzip: 161,
     files: 58,
   },
   { label: 'Prism intake', roots: ['src/live/prism/PrismApp.tsx'], gzip: 25, files: 16 },

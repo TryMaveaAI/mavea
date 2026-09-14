@@ -175,6 +175,25 @@ export function inBandErrorMessage(id: string, err: Record<string, unknown>): st
 }
 
 /** Build an OpenAI-compatible ProviderAdapter from a small config. */
+/** Models that refuse `response_format: json_object`. This adapter fronts a gateway, so the model
+ *  field can name anything any upstream serves and some of them don't take JSON mode at all.
+ *  Learned rather than listed, for the reason gemini.ts learns its thinking tiers: a hand-kept set
+ *  of ids rots into the outage it was added to fix. */
+const noJsonMode = new Set<string>();
+/** Models that refuse the cache breakpoint fields — a gateway can front a model that has none. */
+const noPromptCache = new Set<string>();
+
+/** Whether a 400 is the upstream refusing JSON mode, rather than any other bad argument. */
+function rejectsPromptCache(status: number, detail: string): boolean {
+  return (
+    status === 400 && /cache_control|cache control|prompt_cache|cache breakpoint/i.test(detail)
+  );
+}
+
+function rejectsJsonMode(status: number, detail: string): boolean {
+  return status === 400 && /response_format|json_object|json mode/i.test(detail);
+}
+
 export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter {
   const {
     id,
@@ -268,8 +287,8 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
       // Prism, Ripple, dashboards, mindshape, SRS — whose system prompts are a few dozen tokens,
       // far below any provider's minimum cacheable prefix. Marking those would change their request
       // shape for zero benefit, so they keep the plain string they have always sent.
-      const systemMessage =
-        cacheSystemPrefix && split
+      const systemMessage = () =>
+        cacheSystemPrefix && split && !noPromptCache.has(cfg.model)
           ? {
               role: 'system' as const,
               content: [
@@ -296,78 +315,96 @@ export function openaiCompatible(opts: OpenAICompatibleOptions): ProviderAdapter
       );
       const signal = req.signal ? AbortSignal.any([req.signal, capCtrl.signal]) : capCtrl.signal;
       try {
-        const res = await fetchWithTimeout(
-          `${base}${CHAT}`,
-          {
-            method: 'POST',
-            headers: headers(cfg),
-            body: JSON.stringify({
-              // Provider-specific extras first (e.g. OpenRouter transforms) so core
-              // params below always win on key collision.
-              ...(extraBody ?? {}),
-              model: cfg.model,
-              // Reasoning models (OpenAI gpt-5.x / o-series) reject max_tokens AND a custom
-              // temperature, and meter hidden reasoning tokens from the completion budget — so
-              // use max_completion_tokens, omit temperature (fixed at 1), and map our adaptive
-              // thinkingLevel onto reasoning_effort. Classic models keep max_tokens + temperature.
-              ...(reasoning
-                ? {
-                    // Reasoning meters hidden thinking tokens from THIS budget, so a small cap can
-                    // be spent entirely on thinking → empty answer. Floor to 1500 (the tiny
-                    // on-demand callers pass 150–500) so a low-effort think still leaves room to
-                    // write; the big canvas turn already passes far more, so max() is a no-op there.
-                    // A no-thinking call has nothing to reserve, so its own budget stands. Floor
-                    // and tier move together: dropping the floor while still asking for `low`
-                    // reasoning is how a small caller gets billed for thought and no answer.
-                    max_completion_tokens: noThinking
-                      ? (req.maxTokens ?? 1024)
-                      : Math.max(req.maxTokens ?? 1024, 1500),
-                    // reasoning_effort takes low|medium|high across OpenAI-compatible reasoning
-                    // models (o-series, Grok). Pin 'low' by default — sending nothing lets the API
-                    // default ('medium') apply, and at medium a reasoning model spends its whole
-                    // output budget thinking about the large canvas prompt and returns an empty
-                    // answer (see the measured note in openaiResponsesCompatible). The rung below
-                    // it is NOT universally accepted, so it goes out only where the model family
-                    // documents it and the caller classified the work as minimal — never on a
-                    // search turn, whose reasoning-gated tool wants a higher tier.
-                    reasoning_effort: noThinking ? NO_THINKING_EFFORT : 'low',
-                  }
-                : { max_tokens: req.maxTokens ?? 1024, temperature: req.temperature ?? 0.3 }),
-              ...(routedReasoning ? { reasoning: routedReasoning } : {}),
-              // json_object mode coexists with the search tool — the model still emits JSON;
-              // citations come back as separate delta.annotations entries.
-              response_format: { type: 'json_object' },
-              // OpenRouter accepts this OpenAI-compatible field as a sticky routing key. The
-              // explicit system breakpoint above then lands on the same cache across turns.
-              ...(split && req.promptCacheKey ? { prompt_cache_key: req.promptCacheKey } : {}),
-              stream: true,
-              // Ask for the token-usage summary frame (input/output/cached counts) — the only way
-              // Chat Completions reports usage while streaming. It arrives after the finish frame;
-              // the read loop below stays one extra frame to catch it.
-              stream_options: { include_usage: true },
-              // Inject the provider's hosted web-search tool only when the turn needs fresh data.
-              ...(searchTool ? { tools: [searchTool] } : {}),
-              messages: [
-                systemMessage,
-                ...req.history,
-                {
-                  role: 'user',
-                  // Only a vision-capable model gets image parts; otherwise the attachment
-                  // degrades to a text note so a non-vision OpenAI-compatible model still
-                  // knows something was attached rather than receiving an unreadable part.
-                  content: capabilities.vision
-                    ? withPerTurn(openaiUserContent(req.user, req.attachments))
-                    : withPerTurn(textOnlyUser(req.user, req.attachments)),
-                },
-              ],
-            }),
-          },
-          GEN_TIMEOUT_MS,
-          signal,
-        );
-        // The body says WHY: an out-of-credit 429 and a per-minute 429 are the same status, and the
-        // in-band error path below already folds the same shape (see inBandErrorMessage).
-        if (!res.ok) throw new Error(`${id} ${res.status}${await providerErrorDetail(res)}`);
+        const buildBody = (): string =>
+          JSON.stringify({
+            // Provider-specific extras first (e.g. OpenRouter transforms) so core
+            // params below always win on key collision.
+            ...(extraBody ?? {}),
+            model: cfg.model,
+            // Reasoning models (OpenAI gpt-5.x / o-series) reject max_tokens AND a custom
+            // temperature, and meter hidden reasoning tokens from the completion budget — so
+            // use max_completion_tokens, omit temperature (fixed at 1), and map our adaptive
+            // thinkingLevel onto reasoning_effort. Classic models keep max_tokens + temperature.
+            ...(reasoning
+              ? {
+                  // Reasoning meters hidden thinking tokens from THIS budget, so a small cap can
+                  // be spent entirely on thinking → empty answer. Floor to 1500 (the tiny
+                  // on-demand callers pass 150–500) so a low-effort think still leaves room to
+                  // write; the big canvas turn already passes far more, so max() is a no-op there.
+                  // A no-thinking call has nothing to reserve, so its own budget stands. Floor
+                  // and tier move together: dropping the floor while still asking for `low`
+                  // reasoning is how a small caller gets billed for thought and no answer.
+                  max_completion_tokens: noThinking
+                    ? (req.maxTokens ?? 1024)
+                    : Math.max(req.maxTokens ?? 1024, 1500),
+                  // reasoning_effort takes low|medium|high across OpenAI-compatible reasoning
+                  // models (o-series, Grok). Pin 'low' by default — sending nothing lets the API
+                  // default ('medium') apply, and at medium a reasoning model spends its whole
+                  // output budget thinking about the large canvas prompt and returns an empty
+                  // answer (see the measured note in openaiResponsesCompatible). The rung below
+                  // it is NOT universally accepted, so it goes out only where the model family
+                  // documents it and the caller classified the work as minimal — never on a
+                  // search turn, whose reasoning-gated tool wants a higher tier.
+                  reasoning_effort: noThinking ? NO_THINKING_EFFORT : 'low',
+                }
+              : { max_tokens: req.maxTokens ?? 1024, temperature: req.temperature ?? 0.3 }),
+            ...(routedReasoning ? { reasoning: routedReasoning } : {}),
+            // json_object mode coexists with the search tool — the model still emits JSON;
+            // citations come back as separate delta.annotations entries.
+            ...(noJsonMode.has(cfg.model) ? {} : { response_format: { type: 'json_object' } }),
+            // OpenRouter accepts this OpenAI-compatible field as a sticky routing key. The
+            // explicit system breakpoint above then lands on the same cache across turns.
+            ...(split && req.promptCacheKey && !noPromptCache.has(cfg.model)
+              ? { prompt_cache_key: req.promptCacheKey }
+              : {}),
+            stream: true,
+            // Ask for the token-usage summary frame (input/output/cached counts) — the only way
+            // Chat Completions reports usage while streaming. It arrives after the finish frame;
+            // the read loop below stays one extra frame to catch it.
+            stream_options: { include_usage: true },
+            // Inject the provider's hosted web-search tool only when the turn needs fresh data.
+            ...(searchTool ? { tools: [searchTool] } : {}),
+            messages: [
+              systemMessage(),
+              ...req.history,
+              {
+                role: 'user',
+                // Only a vision-capable model gets image parts; otherwise the attachment
+                // degrades to a text note so a non-vision OpenAI-compatible model still
+                // knows something was attached rather than receiving an unreadable part.
+                content: capabilities.vision
+                  ? withPerTurn(openaiUserContent(req.user, req.attachments))
+                  : withPerTurn(textOnlyUser(req.user, req.attachments)),
+              },
+            ],
+          });
+
+        let res: Response;
+        for (;;) {
+          res = await fetchWithTimeout(
+            `${base}${CHAT}`,
+            { method: 'POST', headers: headers(cfg), body: buildBody() },
+            GEN_TIMEOUT_MS,
+            signal,
+          );
+          if (res.ok) break;
+          // The body says WHY: an out-of-credit 429 and a per-minute 429 are the same status, and
+          // the in-band error path below already folds the same shape (see inBandErrorMessage).
+          const detail = await providerErrorDetail(res);
+          // JSON mode is an aid, never the answer's only guarantee — the prompt asks for JSON and
+          // the validator reads what comes back either way. A model that won't take it still answers.
+          if (rejectsJsonMode(res.status, detail) && !noJsonMode.has(cfg.model)) {
+            noJsonMode.add(cfg.model);
+            continue;
+          }
+          // A cache breakpoint only decides the price of the answer, so a model that refuses one
+          // is asked again without it rather than losing the turn.
+          if (rejectsPromptCache(res.status, detail) && !noPromptCache.has(cfg.model)) {
+            noPromptCache.add(cfg.model);
+            continue;
+          }
+          throw new Error(`${id} ${res.status}${detail}`);
+        }
 
         let acc = '';
         let usage: TokenUsage | undefined;
