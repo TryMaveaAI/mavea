@@ -9,10 +9,12 @@ import {
   createReadStream,
   existsSync,
   readFileSync,
+  readdirSync,
   statSync,
   mkdirSync,
+  mkdtempSync,
   renameSync,
-  unlinkSync,
+  rmSync,
   realpathSync,
   writeFileSync,
 } from 'node:fs';
@@ -22,7 +24,7 @@ import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { spawn, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { constants, createBrotliCompress, createGzip } from 'node:zlib';
-import { homedir, platform, tmpdir } from 'node:os';
+import { homedir, platform } from 'node:os';
 import readline from 'node:readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +96,36 @@ function lazyCacheDir() {
   return join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'mavea');
 }
 
+// A download killed mid-flight (SIGKILL, a lost power cord) leaves its staging directory behind,
+// and nothing sweeps this cache the way the OS sweeps its temp directory — so every kill would park
+// up to 13MB there for good. Sweeping at startup, before the server accepts a request, means no
+// staging directory this process owns can exist yet; the age check leaves a second mavea's live
+// download alone, since the fetch below gives up after 30s.
+const STALE_STAGING_MS = 5 * 60_000;
+
+export function sweepStaleDownloads(dir = lazyCacheDir(), now = Date.now()) {
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    // A cache directory that does not exist yet, or that this user cannot read, is the ordinary
+    // first-run case.
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith('.download-')) continue;
+    try {
+      const staging = join(dir, entry);
+      if (now - statSync(staging).mtimeMs < STALE_STAGING_MS) continue;
+      rmSync(staging, { recursive: true, force: true });
+    } catch {
+      // One entry this user cannot stat or remove — another process's live download, most
+      // likely — must not end the sweep, or a single such entry leaves every later one on disk
+      // forever. A directory is read in no useful order, so "every later one" is arbitrary.
+    }
+  }
+}
+
 // In-flight downloads by cache path, so two requests racing for the same missing asset (e.g. the
 // .wasm and its already-loaded .mjs glue both kicking off near-simultaneously) share one fetch
 // instead of downloading twice.
@@ -103,14 +135,13 @@ const verifiedLazyAssets = new Set();
 function cachedAssetIsValid(cachePath, checksumPath, expectedBytes, expectedSha256) {
   const cacheKey = `${cachePath}:${expectedSha256}`;
   try {
-    if (!existsSync(cachePath) || !existsSync(checksumPath)) return false;
+    // Read the entry straight through rather than probing for it first: a cache file that is
+    // missing — or that another process clears away mid-check — throws here, which is the same
+    // answer as "not cached".
+    const cachedBytes = statSync(cachePath).size;
+    const recordedSha256 = readFileSync(checksumPath, 'utf8').trim();
     if (verifiedLazyAssets.has(cacheKey)) return true;
-    if (
-      statSync(cachePath).size !== expectedBytes ||
-      readFileSync(checksumPath, 'utf8').trim() !== expectedSha256
-    ) {
-      return false;
-    }
+    if (cachedBytes !== expectedBytes || recordedSha256 !== expectedSha256) return false;
     const actualSha256 = createHash('sha256').update(readFileSync(cachePath)).digest('hex');
     if (actualSha256 !== expectedSha256) return false;
     verifiedLazyAssets.add(cacheKey);
@@ -154,11 +185,15 @@ async function fetchToCache(url, cachePath, expectedBytes, expectedSha256) {
   if (existing) return existing;
   const task = (async () => {
     mkdirSync(dirname(cachePath), { recursive: true });
+    // Download into a private directory beside the cache entry, then rename — a request that
+    // arrives mid-download (or a process killed mid-download) never sees or leaves behind a
+    // truncated cache file, and staging on the cache's own filesystem keeps the swap atomic.
+    const stagingDir = mkdtempSync(join(dirname(cachePath), '.download-'));
+    const tmpPath = join(stagingDir, 'asset');
+    // Armed after staging, which throws outright on a read-only or full cache directory: a timer
+    // armed above that throw is never cleared and holds the event loop open for its full 30s.
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30_000);
-    // Download to a per-process tmp file, then rename — a request that arrives mid-download (or a
-    // process killed mid-download) never sees or leaves behind a truncated cache file.
-    const tmpPath = join(tmpdir(), `mavea-dl-${process.pid}-${Date.now()}.tmp`);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`fetch ${url} -> ${res.status}`);
@@ -166,13 +201,13 @@ async function fetchToCache(url, cachePath, expectedBytes, expectedSha256) {
       const actualSha256 = createHash('sha256').update(bytes).digest('hex');
       if (actualSha256 !== expectedSha256) throw new Error(`checksum mismatch for ${url}`);
       await writeFile(tmpPath, bytes);
-      if (existsSync(cachePath)) unlinkSync(cachePath);
+      rmSync(cachePath, { force: true });
       renameSync(tmpPath, cachePath);
       await writeFile(checksumPath, `${expectedSha256}\n`);
       verifiedLazyAssets.add(`${cachePath}:${expectedSha256}`);
     } finally {
       clearTimeout(timer);
-      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      rmSync(stagingDir, { recursive: true, force: true });
     }
   })();
   inFlightDownloads.set(cachePath, task);
@@ -1243,6 +1278,8 @@ Podman is the recommended free/open-source container runtime. Docker Desktop has
     process.exitCode = 1;
     return;
   }
+
+  sweepStaleDownloads();
 
   const server = createMaveaServer();
   let address;
