@@ -1310,12 +1310,29 @@
     transform: rotate(360deg);
   }
 }
-.dash-refresh-hint {
+/* Why an action can't run belongs UNDER the toolbar, never between the two buttons it is about:
+   basis 100% takes the whole line of the wrapping header, and being last in the header keeps the
+   controls together above it. It also gave the question back the width the hints were eating. */
+.dash-detail-notices {
   flex: none;
+  flex-basis: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: -4px;
+}
+.dash-detail-notice {
+  margin: 0;
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
-.dash-refresh-hint a,
+/* A press that worked reads in the verified colour, so "it went through" is legible at a glance
+   without the row shouting — the failures beside it stay in the muted voice. */
+.dash-detail-notice.is-good {
+  color: var(--presence);
+}
+.dash-detail-notice a,
 .xt-confirm-err a {
   color: var(--presence);
   font-weight: 600;

@@ -11,7 +11,13 @@ import { useWidgetReorder } from './useWidgetReorder';
 import { removeWidget, setWidgetOrder, setWidgetSpan } from './store';
 import { readDashboardNow, refreshDashboardNow, useDataPending } from './useDashboardLoop';
 import { useLiveConfig } from '../useLiveConfig';
-import { searchBlockLine, searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+  type SearchBlock,
+} from './searchReadiness';
 import { preloadBlockFamilies } from '../../canvas/blocks/loader';
 import { WidgetTile } from './WidgetTile';
 import { AddWidgetPalette } from './AddWidgetPalette';
@@ -32,6 +38,12 @@ import type { WidgetSpan } from './types';
 import './dashboards.css';
 
 const SPAN_LABEL: Record<WidgetSpan, string> = { 1: 'S', 2: 'M', 3: 'L' };
+
+/** What the last press of a header action did. `running` is this page's own press still in
+ *  flight; every other value is the routine's own terminal answer, kept verbatim rather than
+ *  collapsed into `idle`. A press whose outcome resolves to nothing on screen is exactly the
+ *  "the buttons don't do anything" report — 'done' and 'busy' used to land there. */
+type ActionState = 'idle' | 'running' | 'done' | 'busy' | SearchBlock | 'failed' | 'unverified';
 
 export function DashboardDetail({ id }: { id: string }): ReactElement {
   const dashboards = useDashboards();
@@ -81,26 +93,18 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
   // Manual refresh: the only way to update a dashboard on 'manual' cadence (its clock never
   // comes due on its own), and a way to force a fresher read on any other cadence without
   // waiting it out. Shares the exact same routine + billing gate as the automatic loop.
-  const [refreshState, setRefreshState] = useState<
-    'idle' | 'busy' | 'no-model' | 'search-off' | 'failed' | 'unverified'
-  >('idle');
+  const [refreshState, setRefreshState] = useState<ActionState>('idle');
   const handleRefresh = async (dashboardId: string): Promise<void> => {
-    setRefreshState('busy');
-    const result = await refreshDashboardNow(dashboardId);
-    // 'unverified' is a real outcome, not a success: the pass ran but no sourced data came
-    // back, the previous values were kept, and the user deserves to hear that plainly.
-    setRefreshState(result === 'done' || result === 'busy' ? 'idle' : result);
+    setRefreshState('running');
+    setRefreshState(await refreshDashboardNow(dashboardId));
   };
 
   // On-demand AI read: fires analyzeMove directly (bypassing the automatic gate) so the user can
   // always see Mavéa's take on the latest numbers land in the card below — no thesis required.
-  const [readState, setReadState] = useState<
-    'idle' | 'busy' | 'no-model' | 'search-off' | 'failed'
-  >('idle');
+  const [readState, setReadState] = useState<ActionState>('idle');
   const handleRead = async (dashboardId: string): Promise<void> => {
-    setReadState('busy');
-    const result = await readDashboardNow(dashboardId);
-    setReadState(result === 'done' || result === 'busy' ? 'idle' : result);
+    setReadState('running');
+    setReadState(await readDashboardNow(dashboardId));
   };
 
   if (!dashboard) {
@@ -116,15 +120,64 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
     );
   }
 
-  // What stands between this board and a check: the last Refresh's own answer, or — before any
-  // press — the current connection, judged the same way the loop judges it.
+  // What stands between this board and a check: either button's own last answer, or — before any
+  // press — the current connection, judged the same way the loop judges it. Both buttons gate on
+  // the SAME readiness, so this is one reason for the pair, not one each: printing it twice was
+  // what made a sentence about the toolbar read as a label on whichever button it landed beside.
   const readiness = searchReadiness(liveCfg);
-  const refreshBlock =
-    refreshState === 'no-model' || refreshState === 'search-off'
-      ? refreshState
-      : !readiness.ok && hasLiveContent(dashboard)
-        ? readiness.reason
-        : null;
+  const lastBlock = [refreshState, readState].find(
+    (state): state is SearchBlock => state === 'no-model' || state === 'search-off',
+  );
+  const blocked =
+    lastBlock ??
+    (!readiness.ok && (hasLiveContent(dashboard) || dashboard.metrics.length > 0)
+      ? readiness.reason
+      : null);
+  // Everything the toolbar has to say, in one place under the buttons instead of wedged between
+  // them. A press that cannot go through changes nothing else on screen, so the row is a live
+  // region: "nothing happened" is exactly the report this is here to prevent.
+  const notices: ReactNode[] = [];
+  if (blocked)
+    notices.push(
+      <p className="dash-detail-notice" key="blocked">
+        {searchBlockLine(blocked)} <a href={searchBlockHref(blocked)}>{searchBlockCta(blocked)}</a>
+      </p>,
+    );
+  if (refreshState === 'failed' || readState === 'failed')
+    notices.push(
+      <p className="dash-detail-notice" key="failed">
+        Couldn’t reach your model — check its key or quota, then try again.
+      </p>,
+    );
+  if (refreshState === 'unverified')
+    notices.push(
+      <p className="dash-detail-notice" key="unverified">
+        Checked, but no source could verify new values — keeping the last real ones.
+      </p>,
+    );
+  // A press that WORKED has to say so too. Both actions can finish without moving a pixel — a
+  // check whose values came back unchanged, a read that lands in a card below the fold — and
+  // silence after a deliberate press is indistinguishable from a dead button.
+  if (refreshState === 'done')
+    notices.push(
+      <p className="dash-detail-notice is-good" key="refreshed">
+        Checked. Anything that moved is updated below.
+      </p>,
+    );
+  if (readState === 'done')
+    notices.push(
+      <p className="dash-detail-notice is-good" key="read">
+        Mavéa’s take on the latest values is below.
+      </p>,
+    );
+  // 'busy' is the routine refusing because this board is ALREADY mid-check — the background loop
+  // holds it, or the other button does. Nothing is lost and nothing needs pressing again.
+  if (refreshState === 'busy' || readState === 'busy')
+    notices.push(
+      <p className="dash-detail-notice" key="held">
+        This board is already being checked — the result will land on its own.
+      </p>,
+    );
 
   const cycleSpan = (widgetId: string, span: WidgetSpan): void => {
     setWidgetSpan(dashboard.id, widgetId, (span >= 3 ? 1 : span + 1) as WidgetSpan);
@@ -200,51 +253,31 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
           type="button"
           className="dash-edit-btn dash-refresh-btn"
           onClick={() => void handleRefresh(dashboard.id)}
-          disabled={refreshState === 'busy'}
-          title="Fetch current values now, regardless of cadence"
+          disabled={refreshState === 'running' || blocked !== null}
+          title={
+            blocked
+              ? searchBlockLine(blocked)
+              : 'Search the web for today’s values and update the tiles, regardless of cadence'
+          }
         >
-          <Icon.refresh className={refreshState === 'busy' ? 'dash-refresh-spin' : undefined} />
-          {refreshState === 'busy' ? 'Refreshing…' : 'Refresh now'}
+          <Icon.refresh className={refreshState === 'running' ? 'dash-refresh-spin' : undefined} />
+          {refreshState === 'running' ? 'Checking…' : 'Check for new values'}
         </button>
-        {/* One combined hint, not click-gated: shows the moment there's live content and no way
-            to check it (so a fresh dashboard explains itself immediately), and keeps showing after
-            the button's own post-attempt result — one span fed by both, so it never doubles up. */}
-        {refreshBlock && (
-          <span className="dash-refresh-hint">
-            {searchBlockLine(refreshBlock)} <a href="#/live">Open Live</a>
-          </span>
-        )}
-        {refreshState === 'failed' && (
-          <span className="dash-refresh-hint">
-            Couldn’t reach your model — check its key or quota, then try again.
-          </span>
-        )}
-        {refreshState === 'unverified' && (
-          <span className="dash-refresh-hint">
-            Checked, but no source could verify new values — keeping the last real ones.
-          </span>
-        )}
         {dashboard.metrics.length > 0 && (
           <button
             type="button"
             className="dash-edit-btn dash-read-btn"
             onClick={() => void handleRead(dashboard.id)}
-            disabled={readState === 'busy'}
-            title="Ask Mavéa to read the latest numbers now"
+            disabled={readState === 'running' || blocked !== null}
+            title={
+              blocked
+                ? searchBlockLine(blocked)
+                : 'Ask Mavéa what the latest values mean — a written take, not new numbers'
+            }
           >
-            <Icon.sparkle className={readState === 'busy' ? 'dash-refresh-spin' : undefined} />
-            {readState === 'busy' ? 'Reading…' : 'Read the numbers now'}
+            <Icon.sparkle className={readState === 'running' ? 'dash-refresh-spin' : undefined} />
+            {readState === 'running' ? 'Thinking…' : 'Ask what it means'}
           </button>
-        )}
-        {(readState === 'no-model' || readState === 'search-off') && (
-          <span className="dash-refresh-hint">
-            {searchBlockLine(readState)} <a href="#/live">Open Live</a>
-          </span>
-        )}
-        {readState === 'failed' && (
-          <span className="dash-refresh-hint">
-            Couldn’t reach your model — check its key or quota, then try again.
-          </span>
         )}
         <button
           type="button"
@@ -264,6 +297,11 @@ export function DashboardDetail({ id }: { id: string }): ReactElement {
         >
           ⚙
         </a>
+        {notices.length > 0 && (
+          <div className="dash-detail-notices" role="status">
+            {notices}
+          </div>
+        )}
       </header>
 
       {!editing && <RememberKeyNudge dashboard={dashboard} />}
