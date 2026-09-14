@@ -113,6 +113,14 @@ export function liveTourBeats(blocks: Block[], opts: TourOptions = {}): Beat[] {
  *  a calm, fully-visible canvas reads better than a one-stop spotlight. */
 export const REVEAL_TOUR_MIN = 5;
 
+/** Stops a TEACH turn's derived walk may take. A lesson earns more than the generic three — its
+ *  later blocks carry the worked example and the pitfalls — but a stop per block is not a walk,
+ *  it is a crawl: the derived walk has only block titles, so it is SILENT on a fixed dwell, and
+ *  an uncapped one held a dimmed canvas for `blocks.length * ~1.5s` with nothing being said,
+ *  well after the narration had ended. Six keeps the emphasis and keeps the walk inside the
+ *  time the voice is still speaking. */
+export const TEACH_MAX_STOPS = 6;
+
 /**
  * Whether a freshly-landed canvas should run a reveal-tour walk (vs. sitting fully visible at
  * rest). A model-authored tour always walks; otherwise only a substantial canvas, an augment

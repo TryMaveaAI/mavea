@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { liveTourBeats, shouldRevealTour, REVEAL_TOUR_MIN } from '../src/live/generateBeats';
+import {
+  liveTourBeats,
+  shouldRevealTour,
+  REVEAL_TOUR_MIN,
+  TEACH_MAX_STOPS,
+} from '../src/live/generateBeats';
 import type { Block } from '../src/data/conversation';
 
 const blk = (id?: string, title = 'T'): Block =>
@@ -79,6 +84,20 @@ describe('shouldRevealTour', () => {
         teach: false,
       }),
     ).toBe(true);
+  });
+
+  // The derived walk is silent on a fixed dwell, so its length is time the reader spends
+  // watching a dimmed canvas with nothing being said. A lesson's walk is capped for that
+  // reason — it used to take one stop per block, which on a 14-block lesson held the spotlight
+  // for ~20s after the narration had already finished.
+  it('caps a teach walk so a long lesson never crawls', () => {
+    const blocks = Array.from({ length: 14 }, (_, i) => blk(`b${i}`, `Block ${i}`));
+    const beats = liveTourBeats(blocks, { opener: 'Here we go.', maxStops: TEACH_MAX_STOPS });
+    // Stops plus the release beat that drops the spotlight.
+    expect(beats).toHaveLength(TEACH_MAX_STOPS + 1);
+    expect(beats.at(-1)?.set.spot).toBeNull();
+    const walkMs = beats.reduce((sum, beat) => sum + (beat.ms ?? 0), 0);
+    expect(walkMs).toBeLessThan(15_000);
   });
 
   it('always walks a model-authored tour, an augment, or a teach turn — even when small', () => {

@@ -1,23 +1,30 @@
 // screen.ts — how many blocks an answer should produce.
 //
 // A RICH answer fills the screen: a fixed count leaves a big monitor half-empty and crams a
-// laptop, so the density is derived from the actual viewport — roughly one card per ~150k
-// px² of viewport area, calibrated so a typical laptop fills with ~9-10 blocks and a large
-// display with up to ~18. Used at conversation start (the opening seed) and on every wipe
-// (a replace turn) so a fresh canvas always reaches the bottom of the screen.
+// laptop, so the density is derived from the actual viewport — roughly one card per ~175k
+// px² of viewport area, so a typical laptop lands ~7 blocks and a large display ~10. Used at
+// conversation start (the opening seed) and on every wipe (a replace turn) so a fresh canvas
+// always reaches the bottom of the screen.
+//
+// The ceiling is a READING limit, not a screen one. Past ~10 cards an answer stops being a
+// canvas the eye can hold and becomes a page to scroll: the spotlight walk visits a handful of
+// leads, so the tail is never pointed at or spoken about, and the narration — one paragraph,
+// however many cards — finishes while blocks are still arriving. Every extra card is also
+// billed output the reader pays for on their own key. So the density fills the viewport up to
+// the point a person can still take the whole answer in, and stops there.
 //
 // A LEAN answer is the exception: a genuinely trivial ask ("what is 1+1") deserves a couple
 // of focused blocks, not a wall of charts — so its count is small and viewport-independent.
 import type { AskComplexity } from './select';
 
-const PX_PER_CARD = 150_000;
-const MIN_BLOCKS = 8;
-export const MAX_BLOCKS = 18;
+const PX_PER_CARD = 175_000;
+const MIN_BLOCKS = 5;
+export const MAX_BLOCKS = 10;
 /** A teaching/learning ask lands a COMPLETE first lesson (definition → mechanism → worked example
  *  → variants → pitfalls), so its floor is higher than a generic rich ask — the learner should
  *  never have to say "more in depth". Only the floor is lifted; a big monitor already exceeds it
  *  from the viewport and the MAX_BLOCKS ceiling still caps it. */
-const TEACH_MIN_BLOCKS = 11;
+const TEACH_MIN_BLOCKS = 8;
 /** A trivial ask still gets a small, complete spread — never a lone card. We give it the
  *  direct answer PLUS a couple of related/adjacent visuals (like a demo answer), so "1+1"
  *  shows the result and a beat of context, not one number floating in space. Viewport-aware
@@ -55,7 +62,7 @@ export function targetBlockCount(
   }
   // A teaching ask raises only the floor — a big viewport already aims higher, and MAX_BLOCKS caps it.
   const floor = opts.teaching ? TEACH_MIN_BLOCKS : MIN_BLOCKS;
-  if (typeof window === 'undefined') return opts.teaching ? TEACH_MIN_BLOCKS : 10;
+  if (typeof window === 'undefined') return opts.teaching ? TEACH_MIN_BLOCKS : 7;
   const n = Math.round((w * h) / PX_PER_CARD);
   return Math.max(floor, Math.min(MAX_BLOCKS, n));
 }

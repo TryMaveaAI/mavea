@@ -116,7 +116,7 @@ import { Overview, deriveChapters } from './scrubber';
 import type { Chapter } from './scrubber';
 import { composeThread } from './composeThread';
 import './livedock.css';
-import { liveTourBeats, shouldRevealTour } from './generateBeats';
+import { liveTourBeats, shouldRevealTour, TEACH_MAX_STOPS } from './generateBeats';
 import { revealInkPlan } from './mutedReveal';
 import { claim as claimStepper } from '../canvas/focus/stepDriver';
 import { runDiagramWalk, STEP_DWELL_MS } from './diagramWalk';
@@ -2716,10 +2716,14 @@ export function LiveApp(): ReactElement {
       // Spotlight only the FEW lead blocks (the most important ones come first), then release
       // so the whole canvas sits visible. Highlighting every block would flatten the emphasis —
       // the point is to draw the eye to what matters, not narrate the entire page.
-      // In teach mode every block is worth calling out, so walk the full canvas.
+      // A teach turn earns MORE stops (a lesson's later blocks carry the worked example and the
+      // pitfalls), but not one per block: this walk is SILENT — it has only block titles, so it
+      // paces on a fixed dwell — and an uncapped one crawled a spotlight across a whole lesson
+      // for ~1.5s a card with nothing being said, long after the narration had finished. That
+      // dimmed, wordless crawl was the "voice and canvas out of step" on a big answer.
       beats = liveTourBeats(spec.blocks, {
         opener: turn.narration,
-        maxStops: teachTurn ? spec.blocks.length : 3,
+        maxStops: teachTurn ? TEACH_MAX_STOPS : 3,
         startId: turn.spot ?? undefined,
       });
     }
