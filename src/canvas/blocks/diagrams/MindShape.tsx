@@ -338,10 +338,19 @@ function SignalChip({ signal }: { signal: { id: string; content: string; kind: s
 // One-line summary that fades in during the settle reveal, before the action bar appears.
 // Pure client-side from the spec — no model call.
 function synthesisLine(
-  spec: { atoms: { kind: string }[]; links: { kind: string }[] },
+  spec: {
+    atoms: { id: string; kind: string }[];
+    links: { kind: string; from: string; to: string }[];
+  },
   heroTension: { a: { label: string }; b: { label: string } } | null,
 ): string {
-  const tensions = spec.links.filter((l) => l.kind === 'tensions').length;
+  // Counted with the same both-ends-present test the renderer draws by and the callout picks by.
+  // A tension pointing at nothing on the map is never drawn, so counting it puts a figure over the
+  // picture that the picture contradicts — and this line sits directly above that picture.
+  const onMap = new Set(spec.atoms.map((a) => a.id));
+  const tensions = spec.links.filter(
+    (l) => l.kind === 'tensions' && onMap.has(l.from) && onMap.has(l.to),
+  ).length;
   const questions = spec.atoms.filter((a) => a.kind === 'question').length;
   const options = spec.atoms.filter((a) => a.kind === 'option').length;
   const total = spec.atoms.length;

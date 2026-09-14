@@ -950,8 +950,10 @@ describe('MindShape — settled surface', () => {
     const callout = screen.getByRole('dialog', { name: 'The tension' });
     expect(within(callout).getByText(/decide by spring/)).toBeTruthy();
     expect(within(callout).getByText(/pack the boxes/)).toBeTruthy();
+    // One arc is drawn, so the line above it says one. The dangling tension is not drawn and is
+    // not counted — the sentence and the picture are built from the same set.
     expect(document.querySelector('.ms-synthesis-line')?.textContent).toBe(
-      '2 tensions. The real pull: decide by spring vs pack the boxes.',
+      '1 tension. decide by spring vs pack the boxes.',
     );
   });
 
