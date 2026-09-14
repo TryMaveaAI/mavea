@@ -32,6 +32,9 @@ function asRequest(id: number, payload: Record<string, unknown>): GroundRequest 
 }
 
 self.onmessage = (event: MessageEvent<unknown>) => {
+  // A dedicated worker is reachable only from the page that constructed it, and those
+  // messages carry an empty origin — anything else was opened by somebody else.
+  if (event.origin && event.origin !== self.location.origin) return;
   const payload = event.data;
   // The main thread matches every reply by id, so a payload carrying none has no caller to answer
   // and is dropped. Worth being careful about: this worker is shared, so throwing out of the handler

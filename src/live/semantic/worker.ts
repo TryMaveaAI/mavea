@@ -136,6 +136,9 @@ function asRequest(data: unknown): Request | null {
 }
 
 self.onmessage = async (e: MessageEvent) => {
+  // A dedicated worker is reachable only from the page that constructed it, and those
+  // messages carry an empty origin — anything else was opened by somebody else.
+  if (e.origin && e.origin !== self.location.origin) return;
   const msg = asRequest(e.data);
   if (!msg) return;
   if (msg.type === 'init') {
