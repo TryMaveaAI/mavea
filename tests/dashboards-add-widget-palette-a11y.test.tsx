@@ -136,8 +136,10 @@ describe('AddWidgetPalette — Track a number', () => {
     fireEvent.click(getByText('+ Track a number'));
     expect(queryByLabelText('What number to track')).toBeNull();
     expect(getByText(/on your own key/)).toBeInTheDocument();
-    expect(getByRole('link', { name: 'Connect a model in Live' }).getAttribute('href')).toBe(
-      '#/live',
+    // The link names the CONTROL it opens and lands on it, rather than dropping the reader at
+    // Live's front door to go looking for a setting they have never seen.
+    expect(getByRole('link', { name: 'Connect a model' }).getAttribute('href')).toBe(
+      '#/live?settings=model',
     );
     expect(h.plan).not.toHaveBeenCalled();
   });
@@ -150,8 +152,12 @@ describe('AddWidgetPalette — Track a number', () => {
     fireEvent.click(getByText('+ Track a number'));
     expect(queryByLabelText('What number to track')).toBeNull();
     expect(getByText(/on your own key/)).toBeInTheDocument();
-    expect(getByText(/Web search to Real-time in Live’s settings first/)).toBeInTheDocument();
-    expect(getByRole('link', { name: 'Open Live' }).getAttribute('href')).toBe('#/live');
+    // Both halves of the requirement: the setting, and that it needs a model that can search.
+    expect(getByText(/Web search is off/)).toBeInTheDocument();
+    expect(getByText(/model that can search the web/)).toBeInTheDocument();
+    expect(getByRole('link', { name: 'Open Web search settings' }).getAttribute('href')).toBe(
+      '#/live?settings=web-search',
+    );
     expect(h.plan).not.toHaveBeenCalled();
   });
 

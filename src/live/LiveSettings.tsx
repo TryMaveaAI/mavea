@@ -250,7 +250,12 @@ function applyVoice(id: string): void {
 
 /** The tab strip, in visual order — also the order the arrow keys walk. */
 const TABS = ['model', 'settings', 'you', 'data'] as const;
-type SettingsTab = (typeof TABS)[number];
+export type SettingsTab = (typeof TABS)[number];
+
+/** Settings a surface elsewhere can send a reader straight to. Each id is the `id` of the row
+ *  in this panel, so `#ls-<id>` is the whole lookup — adding one means adding the id to the
+ *  markup, not a mapping table. */
+export type RevealableSetting = 'quiet-hours' | 'morning-brief' | 'web-search';
 
 /** A labelled on/off row with a one-line note (used for the capability toggles). */
 function ToggleRow({
@@ -473,16 +478,17 @@ const WALKTHROUGH_KEY = 'walkthrough-sample-key-not-a-real-credential-0000';
 export function LiveSettings({
   onClose,
   initialTab,
-  revealYouSetting,
+  revealSetting,
   sampleKey = false,
 }: {
   onClose?: () => void;
   /** Open on a specific tab. */
   initialTab?: SettingsTab;
-  /** A setting under You → More options to open the group for AND scroll to. The palette rows
-   *  that promise one ("Whisper mode" → Quiet hours) otherwise landed the reader at the top of a
-   *  480px scroller with the promised switch a couple of hundred pixels below the fold. */
-  revealYouSetting?: 'quiet-hours' | 'morning-brief' | null;
+  /** One setting to scroll to (and, under You, to expand More options for). The palette rows that
+   *  promise one ("Whisper mode" → Quiet hours) otherwise landed the reader at the top of a 480px
+   *  scroller with the promised switch a couple of hundred pixels below the fold — and the
+   *  dashboards send readers here for Web search, a row most of them have never seen. */
+  revealSetting?: RevealableSetting | null;
   /** The walkthrough opens this panel to show the connect step. It shows a stand-in key there —
    *  the field is otherwise bound to the reader's own vault, and a tour that is recorded, screen-
    *  shared or watched over a shoulder must never put the real key on screen, masked or not. */
@@ -545,15 +551,15 @@ export function LiveSettings({
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
   useEffect(() => {
-    if (!revealYouSetting) return;
+    if (!revealSetting) return;
     // A frame later: "More options" expands in the same commit that sets this.
     const frame = requestAnimationFrame(() => {
       dialogRef.current
-        ?.querySelector(`#ls-${revealYouSetting}`)
+        ?.querySelector(`#ls-${revealSetting}`)
         ?.scrollIntoView?.({ block: 'center' });
     });
     return () => cancelAnimationFrame(frame);
-  }, [revealYouSetting]);
+  }, [revealSetting]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1046,7 +1052,7 @@ export function LiveSettings({
             {/* Web search — Real-time is always pickable (never disabled for a non-native
             provider — that reads as broken); the helper line carries the model-dependent
             caveat instead. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div id="ls-web-search" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>Web search</span>
               <SegRow
                 label="Web search"
@@ -1407,7 +1413,9 @@ export function LiveSettings({
               </div>
             )}
 
-            <AdvancedGroup defaultOpen={!!revealYouSetting}>
+            <AdvancedGroup
+              defaultOpen={revealSetting === 'quiet-hours' || revealSetting === 'morning-brief'}
+            >
               {/* Push-to-talk key — only read while the mic is in Hold mode; Tap and Always on
                   never listen for it. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

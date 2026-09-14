@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode
 import { loadSession } from '../session/store';
 import { getLibrary } from '../library/store';
 import { getLiveConfigV2, hasModelConfigured, toModelConfig } from '../useLiveConfig';
-import { searchReadiness } from './searchReadiness';
+import { searchBlockCta, searchBlockHref, searchReadiness } from './searchReadiness';
 import type { ChatMessage } from '../providers/types';
 import type { TurnFrame } from '../history';
 import { addDashboard, ensureFirstCheck, getDashboards } from './store';
@@ -482,7 +482,12 @@ export function ExtractionPreview({
                   </div>
                   {liveBlocked && (
                     <p className="xt-confirm-err">
-                      {blocked} <a href="#/live">Open Live</a>
+                      {blocked}{' '}
+                      {!readiness.ok && (
+                        <a href={searchBlockHref(readiness.reason)}>
+                          {searchBlockCta(readiness.reason)}
+                        </a>
+                      )}
                     </p>
                   )}
                   {confirming && <p className="xt-confirm-err">{CONFIRM_WAIT_NOTE}</p>}

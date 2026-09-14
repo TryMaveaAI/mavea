@@ -10,7 +10,12 @@ import { addWidget, ensureFirstCheck, foldInto, MAX_METRICS, MAX_WIDGETS } from 
 import { boardIds, confirmFailureMessage, confirmRealData } from './confirmAdd';
 import { planTracker } from './planTracker';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
-import { searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+} from './searchReadiness';
 import type { Block } from '../../data/conversation';
 import type { Dashboard, MetricSpec, Widget, WidgetSpan } from './types';
 import { useFocusTrap } from '../useFocusTrap';
@@ -311,17 +316,8 @@ export function AddWidgetPalette({
           ) : (
             <p className="dash-ptrack-gate">
               A tracked number is fetched by real web searches on your own key — nothing is ever
-              made up.{' '}
-              {ready.reason === 'no-model' ? (
-                <>
-                  <a href="#/live">Connect a model in Live</a> first.
-                </>
-              ) : (
-                <>
-                  Set Web search to Real-time in Live’s settings first.{' '}
-                  <a href="#/live">Open Live</a>
-                </>
-              )}
+              made up. {searchBlockLine(ready.reason)}{' '}
+              <a href={searchBlockHref(ready.reason)}>{searchBlockCta(ready.reason)}</a>
             </p>
           )}
         </div>

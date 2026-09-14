@@ -273,8 +273,11 @@ describe('TalkToDashboard — an answer is pinned only where it can keep searchi
     await land(resultWithBlocks());
 
     expect(screen.queryByText(/Auto-added/)).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/Set Web search to Real-time/);
-    expect(screen.getByRole('link', { name: 'Open Live' })).toHaveAttribute('href', '#/live');
+    expect(screen.getByRole('status')).toHaveTextContent(/Web search is off/);
+    expect(screen.getByRole('link', { name: 'Open Web search settings' })).toHaveAttribute(
+      'href',
+      '#/live?settings=web-search',
+    );
   });
 
   it('refuses the manual add the same way, read at the press', async () => {
@@ -289,6 +292,6 @@ describe('TalkToDashboard — an answer is pinned only where it can keep searchi
       await Promise.resolve();
     });
     expect(screen.queryByText('Added to this dashboard ✓')).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/Set Web search to Real-time/);
+    expect(screen.getByRole('status')).toHaveTextContent(/Web search is off/);
   });
 });

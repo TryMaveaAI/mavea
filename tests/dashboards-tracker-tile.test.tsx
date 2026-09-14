@@ -110,7 +110,7 @@ describe('TrackerTile — a check that got nowhere says so', () => {
 
     fireEvent.click(getByTitle('Check now'));
 
-    await waitFor(() => expect(getByText(/Set Web search to Real-time/)).toBeTruthy());
+    await waitFor(() => expect(getByText(/Web search is off/)).toBeTruthy());
   });
 
   it('a rejected check reads as failed instead of escaping as an unhandled rejection', async () => {

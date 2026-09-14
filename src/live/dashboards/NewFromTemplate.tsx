@@ -9,7 +9,12 @@ import { useFocusTrap } from '../useFocusTrap';
 import { getDashboards } from './store';
 import { dashHref } from './route';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
-import { searchBlockLine, searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+} from './searchReadiness';
 import { planTracker, type TrackerPlan } from './planTracker';
 import { PlanReview } from './PlanReview';
 import type { Dashboard } from './types';
@@ -142,7 +147,8 @@ export function NewFromTemplate({ onClose }: { onClose: () => void }): ReactElem
               ) : (
                 <>
                   A tracker is a standing web search on your own key.{' '}
-                  {searchBlockLine(ready.reason)} <a href="#/live">Open Live</a>
+                  {searchBlockLine(ready.reason)}{' '}
+                  <a href={searchBlockHref(ready.reason)}>{searchBlockCta(ready.reason)}</a>
                 </>
               )}
             </p>

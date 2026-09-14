@@ -10,7 +10,13 @@ import { useFocusTrap } from '../useFocusTrap';
 import { getDashboards } from './store';
 import { dashHref } from './route';
 import { getLiveConfigV2, toModelConfig } from '../useLiveConfig';
-import { searchBlockLine, searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+  type SearchBlock,
+} from './searchReadiness';
 import type { TrackerPlan, StaticAnswer } from './planTracker';
 import { AnswerCard } from './AnswerCard';
 import './dashboards.css';
@@ -47,7 +53,7 @@ export function TrackComposer({
   // Why the last submit did not plan: a tracker is a standing web search, so nothing is planned
   // under a model that cannot search. Read at submit, not mount — the setting can change in
   // another tab while this bar sits open.
-  const [gate, setGate] = useState<string | null>(null);
+  const [gate, setGate] = useState<SearchBlock | null>(null);
   // Bumped on every submit and on dismiss/unmount — an in-flight answerOnce (or a slow planTracker)
   // only lands if it's still the newest request; a fast second query, a closed sheet, or navigating
   // away must not let a stale call's result appear after the fact.
@@ -84,7 +90,7 @@ export function TrackComposer({
     if (!wish || planning) return;
     const readiness = searchReadiness(getLiveConfigV2());
     if (!readiness.ok) {
-      setGate(searchBlockLine(readiness.reason));
+      setGate(readiness.reason);
       return;
     }
     setGate(null);
@@ -120,7 +126,7 @@ export function TrackComposer({
       <div className="dash-composer">
         {gate && (
           <p className="dash-composer-gate" role="status">
-            {gate} <a href="#/live">Open Live</a>
+            {searchBlockLine(gate)} <a href={searchBlockHref(gate)}>{searchBlockCta(gate)}</a>
           </p>
         )}
         <form

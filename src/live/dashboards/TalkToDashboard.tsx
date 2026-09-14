@@ -7,7 +7,13 @@ import type { Block } from '../../data/conversation';
 import { getLiveConfigV2 } from '../useLiveConfig';
 import { useDashboardTurn } from './useDashboardTurn';
 import { pinBlockToDashboard } from './pin';
-import { searchBlockLine, searchReadiness, type SearchBlock } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+  type SearchBlock,
+} from './searchReadiness';
 import { detectTalkIntent, type TalkIntent } from './talkIntent';
 import type { Dashboard } from './types';
 
@@ -162,7 +168,8 @@ export function TalkToDashboard({ dashboard }: { dashboard: Dashboard }): ReactE
               {turn.result.spec.blocks.length > 0 &&
                 (pinBlock ? (
                   <p className="dash-talk-gate" role="status">
-                    {searchBlockLine(pinBlock)} <a href="#/live">Open Live</a>
+                    {searchBlockLine(pinBlock)}{' '}
+                    <a href={searchBlockHref(pinBlock)}>{searchBlockCta(pinBlock)}</a>
                   </p>
                 ) : pinned ? (
                   <div className="dash-talk-pinned">

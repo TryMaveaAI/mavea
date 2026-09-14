@@ -30,6 +30,7 @@ import { appendLedger } from './ledger';
 import { refreshDashboardNow } from './useDashboardLoop';
 import { failureFromOutcome } from './trackerState';
 import type { Dashboard } from './types';
+import { searchBlockLine } from './searchReadiness';
 
 export type ConfirmOutcome = 'confirmed' | 'unverified' | 'no-model' | 'search-off' | 'failed';
 
@@ -64,8 +65,8 @@ export function confirmFailureMessage(
       : `Connect a model with an API key first — ${ONLY_ONCE_REAL[subject]}.`;
   if (outcome === 'search-off')
     return kept
-      ? 'Saved, but nothing can be checked while Web search is off — set it to Real-time in Live’s settings and this starts filling in.'
-      : `Set Web search to Real-time in Live’s settings first — ${ONLY_ONCE_REAL[subject]}.`;
+      ? `Saved, but nothing can be checked yet. ${searchBlockLine('search-off')} Then this starts filling in.`
+      : `${searchBlockLine('search-off')} ${ONLY_ONCE_REAL[subject]}.`;
   return kept
     ? 'Saved, but no live source could confirm it yet — nothing is shown until real data lands. It keeps trying; you can also reword what to track.'
     : "Couldn't confirm this with a live source, so it wasn't added — a tile only joins the board once a real search returns real data. Try again in a moment, or reword what to track.";

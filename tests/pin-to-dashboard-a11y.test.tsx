@@ -167,8 +167,11 @@ describe('PinToDashboard — needs a model with Real-time web search', () => {
     const { getByText, queryByText, getByRole } = render(
       <PinToDashboard block={block} onClose={() => {}} />,
     );
-    expect(getByText(/Web search to Real-time/)).toBeTruthy();
-    expect(getByRole('link', { name: 'Open Live' }).getAttribute('href')).toBe('#/live');
+    expect(getByText(/Web search is off/)).toBeTruthy();
+    expect(getByText(/model that can search the web/)).toBeTruthy();
+    expect(getByRole('link', { name: 'Open Web search settings' }).getAttribute('href')).toBe(
+      '#/live?settings=web-search',
+    );
     expect(queryByText('New dashboard')).toBeNull();
     expect(queryByText('Rates watch')).toBeNull();
   });

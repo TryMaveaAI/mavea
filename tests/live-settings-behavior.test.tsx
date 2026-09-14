@@ -99,13 +99,13 @@ describe('LiveSettings — lifecycle and truthful status', () => {
     const { rerender } = render(<LiveSettings initialTab="model" />);
     expect(screen.getByRole('tab', { name: 'Model' })).toHaveAttribute('aria-selected', 'true');
 
-    rerender(<LiveSettings initialTab="you" revealYouSetting="quiet-hours" />);
+    rerender(<LiveSettings initialTab="you" revealSetting="quiet-hours" />);
     expect(screen.getByRole('tab', { name: 'You' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('switch', { name: 'Quiet hours' })).toBeInTheDocument();
   });
 
   it('describes quiet hours without promising inaudibility', () => {
-    render(<LiveSettings initialTab="you" revealYouSetting="quiet-hours" />);
+    render(<LiveSettings initialTab="you" revealSetting="quiet-hours" />);
     expect(screen.getByText(/Audibility still depends on your device volume/i)).toBeInTheDocument();
     expect(screen.queryByText(/won't wake anyone/i)).not.toBeInTheDocument();
   });

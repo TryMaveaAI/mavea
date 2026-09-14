@@ -373,6 +373,9 @@ const libraryLoad = createPreloadableLazy(() =>
   import('./Library').then((m) => ({ default: m.Library })),
 );
 const Library = libraryLoad.Component;
+// Types only — erased at build, so the lazy LiveSettings chunk stays lazy.
+import type { RevealableSetting, SettingsTab } from './LiveSettings';
+
 const liveSettingsLoad = createPreloadableLazy(() =>
   import('./LiveSettings').then((m) => ({ default: m.LiveSettings })),
 );
@@ -546,6 +549,26 @@ function viewFromHash(): ViewMode | null {
       asked === 'world'
       ? asked
       : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A settings row asked for in the URL — `#/live?settings=web-search`. The dashboards send readers
+ * here when a tracker is blocked, and "turn on Web search" is otherwise a control behind the model
+ * chip, on the Settings tab, below the fold: a reader who did not know the setting existed had no
+ * route from the sentence to the switch. SHOWN, never saved — it opens a panel, it is not a
+ * preference, and the hash keeps it so a reload lands in the same place.
+ */
+function settingsFromHash(): { tab: SettingsTab; reveal: RevealableSetting | null } | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const asked = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('settings');
+    if (asked === 'web-search') return { tab: 'settings', reveal: 'web-search' };
+    if (asked === 'model' || asked === 'settings' || asked === 'you')
+      return { tab: asked, reveal: null };
+    return null;
   } catch {
     return null;
   }
@@ -924,20 +947,27 @@ export function LiveApp(): ReactElement {
   const [showSettings, setShowSettings] = useState(false);
   // Which tab the settings modal opens on — the palette's "Connect apps" jumps straight to
   // Actions (the tab is otherwise hidden until something is connected).
-  const [settingsTab, setSettingsTab] = useState<'model' | 'settings' | 'you'>();
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>();
   // Which You-tab setting a palette row promised ("Whisper mode" → Quiet hours): the panel opens
   // More options and scrolls there. Both this and the tab are cleared whenever settings closes
   // (any path — backdrop click, Escape, the panel's own close) so a later, unrelated visit
   // inherits neither, and so the NEXT request is a real prop change the open panel can act on.
-  const [revealYouSetting, setRevealYouSetting] = useState<'quiet-hours' | 'morning-brief' | null>(
-    null,
-  );
+  const [revealSetting, setRevealSetting] = useState<RevealableSetting | null>(null);
   useEffect(() => {
     if (!showSettings) {
-      setRevealYouSetting(null);
+      setRevealSetting(null);
       setSettingsTab(undefined);
     }
   }, [showSettings]);
+  // A deep link opens the panel on the row it names. Once, on mount: the hash is rewritten while
+  // Live runs (view pins, demo sync), and re-reading it would reopen settings over the reader's work.
+  useEffect(() => {
+    const asked = settingsFromHash();
+    if (!asked) return;
+    setSettingsTab(asked.tab);
+    setRevealSetting(asked.reveal);
+    setShowSettings(true);
+  }, []);
   // The ⌘K command palette — the product's discoverable feature registry, searchable. Open-state +
   // the global ⌘K hotkey come from the shared hook (the same one the landing uses), so the two
   // surfaces can't drift into two hand-rolled copies of the toggle.
@@ -5040,7 +5070,7 @@ export function LiveApp(): ReactElement {
       // last left open, so the click actually goes somewhere connected to what it promised.
       run: () => {
         setSettingsTab('you');
-        setRevealYouSetting('quiet-hours');
+        setRevealSetting('quiet-hours');
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
@@ -5102,7 +5132,7 @@ export function LiveApp(): ReactElement {
       // options), the same way Whisper resolves to its own setting.
       run: () => {
         setSettingsTab('you');
-        setRevealYouSetting('morning-brief');
+        setRevealSetting('morning-brief');
         setShowSettings(true);
       },
       preload: liveSettingsLoad.preload,
@@ -6922,7 +6952,7 @@ export function LiveApp(): ReactElement {
             <LiveSettings
               onClose={() => setShowSettings(false)}
               initialTab={settingsTab}
-              revealYouSetting={revealYouSetting}
+              revealSetting={revealSetting}
               sampleKey={tourMode.current}
             />
           </LazyOverlay>

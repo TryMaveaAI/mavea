@@ -25,10 +25,26 @@ export function searchReadiness(cfg: LiveConfigV2 = getLiveConfigV2()): SearchRe
   return { ok: true };
 }
 
-/** The one line a blocked surface shows, in the words the Live settings use — the reader should
- *  be able to find the control from the sentence alone. Short enough to follow a lead-in. */
+/** The one line a blocked surface shows. It has to carry BOTH halves of the requirement, because
+ *  a reader who has never opened the settings panel knows neither: Web search is a setting, and it
+ *  only grounds anything on a model that can search the web (every direct provider can; on
+ *  OpenRouter it depends on the model, which is why this says it out loud rather than gating on a
+ *  capability flag nothing here can read per-model). Also the `title` of the blocked buttons, so it
+ *  stands alone with no link beside it. */
 export function searchBlockLine(reason: SearchBlock): string {
   return reason === 'no-model'
     ? 'Connect a model in Live first.'
-    : 'Set Web search to Real-time in Live’s settings first.';
+    : 'Web search is off. Turn it on in Live’s settings, on a model that can search the web.';
+}
+
+/** Where that control actually is. The Web search row sits behind Live's model chip on the
+ *  Settings tab — two clicks and a scroll from the sentence asking for it, which is a long way to
+ *  send someone who did not know the setting existed. This link lands on the row itself. */
+export function searchBlockHref(reason: SearchBlock): string {
+  return reason === 'no-model' ? '#/live?settings=model' : '#/live?settings=web-search';
+}
+
+/** What that link says — the control it opens, never the surface it lands on. */
+export function searchBlockCta(reason: SearchBlock): string {
+  return reason === 'no-model' ? 'Connect a model' : 'Open Web search settings';
 }

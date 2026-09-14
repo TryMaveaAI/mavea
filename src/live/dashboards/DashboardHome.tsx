@@ -16,7 +16,12 @@ import { DashToast } from './DashToast';
 import { onTripwireToast, type TripwireToastDetail } from './dashboardEvents';
 import { hasLiveContent } from './format';
 import { useLiveConfig } from '../useLiveConfig';
-import { searchBlockLine, searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+} from './searchReadiness';
 import { Icon } from '../../icons/icons';
 import { dashHref } from './route';
 import type { Dashboard } from './types';
@@ -168,8 +173,8 @@ export function DashboardHome(): ReactElement {
                   ? 'These trackers can’t fetch anything yet — connect a model to start filling them.'
                   : 'These trackers can’t fetch anything while Web search is off — set it to Real-time to start filling them.'}
               </span>
-              <a className="dash-connect-banner-link" href="#/live">
-                {ready.reason === 'no-model' ? 'Connect a model in Live →' : 'Open Live →'}
+              <a className="dash-connect-banner-link" href={searchBlockHref(ready.reason)}>
+                {searchBlockCta(ready.reason)} →
               </a>
             </div>
           )}

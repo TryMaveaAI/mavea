@@ -12,7 +12,12 @@ import type { Block } from '../../data/conversation';
 import { getDashboards, whenDashboardsHydrated } from './store';
 import { estimateSearchesPerMonth } from './cadence';
 import { getLiveConfigV2 } from '../useLiveConfig';
-import { searchBlockLine, searchReadiness } from './searchReadiness';
+import {
+  searchBlockCta,
+  searchBlockHref,
+  searchBlockLine,
+  searchReadiness,
+} from './searchReadiness';
 import { displayTitle } from './format';
 import { pinBlockToDashboard, type PinTarget } from './pin';
 import { useFocusTrap } from '../useFocusTrap';
@@ -153,7 +158,8 @@ export function PinToDashboard({
         {!ready.ok ? (
           <p className="dash-ptrack-gate pin-gate">
             A pinned card is kept current by real web searches on your own key.{' '}
-            {searchBlockLine(ready.reason)} <a href="#/live">Open Live</a>
+            {searchBlockLine(ready.reason)}{' '}
+            <a href={searchBlockHref(ready.reason)}>{searchBlockCta(ready.reason)}</a>
           </p>
         ) : naming ? (
           <form
