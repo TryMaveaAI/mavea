@@ -166,6 +166,11 @@
 .ripple-example {
   display: flex;
   align-items: center;
+  /* The note and the action share a line only while both fit on one. The action cannot shrink (it
+     is a single nowrap term), so without this the note absorbs every pixel the button refuses —
+     measured at 320px it ran 95px wide and 150px tall, a column of two-word lines taller than the
+     diff it annotates. Wrapped, the note keeps the full width and the button takes its own row. */
+  flex-wrap: wrap;
   gap: 9px;
   padding: 8px var(--s-lg);
   font-size: var(--fs-sm);
@@ -868,7 +873,10 @@
 
 /* ── the "run on your diff" banner + paste intake ── */
 .ripple-example-text {
-  flex: 1;
+  /* ~28 characters is where a line of prose stops being a line and starts being a column; below
+     that the row wraps rather than milling the note any finer. `min-width: 0` keeps one long
+     unbroken token (a branch name, a URL) from widening the row past its container. */
+  flex: 1 1 28ch;
   min-width: 0;
 }
 .ripple-example[data-real='true'] {

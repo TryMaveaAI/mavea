@@ -1014,3 +1014,21 @@ describe('coarse-pointer hit rescue — chrome is rescued, canvas content is lef
     for (const [host, file] of Object.entries(HOSTS)) expect(read(file)).toContain(host);
   });
 });
+
+describe('Ripple — the provenance banner keeps a readable measure at phone width', () => {
+  const css = read('src/live/ripple/ripple.css');
+
+  it('drops the action to its own row rather than milling the note into a column', () => {
+    // The action is a single nowrap term and cannot shrink, so on one line the note absorbs only
+    // what the button refuses: measured at 320px it ran 95px wide and 150px tall — a banner taller
+    // than the diff it annotates. Both halves of the fix matter, so both are pinned.
+    const row = /\.ripple-example\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(row).toBeTruthy();
+    expect(row).toMatch(/flex-wrap:\s*wrap/);
+    const text = /\.ripple-example-text\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+    expect(text).toBeTruthy();
+    // A character-relative basis, not a px one: what makes a line unreadable is how few words fit.
+    expect(text).toMatch(/flex:\s*1\s+1\s+\d+ch/);
+    expect(text).toMatch(/min-width:\s*0/);
+  });
+});
