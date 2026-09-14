@@ -5,7 +5,15 @@
 // theme exists (live, or an older block with no clusters) atoms simply orbit the listening
 // face. The settled block view is identical to the live view so replay and library are
 // pixel-identical to the moment of capture.
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { Presence } from '../../../presence/Presence';
 import { useVoiceEnergySink } from '../../../voice/voiceEnergy';
 import { useSpatialCanvas } from '../../spatial/useSpatialCanvas';
@@ -487,6 +495,8 @@ export function MindShape({
     () => planSteps.filter((s) => !droppedSteps.has(s.id)),
     [planSteps, droppedSteps],
   );
+  // The plan footer's note doubles as the reason "Make it real" is waiting (aria-describedby).
+  const planNoteId = useId();
   const toggleStep = useCallback((id: string) => {
     setDroppedSteps((prev) => {
       const next = new Set(prev);
@@ -891,8 +901,12 @@ export function MindShape({
             </p>
           )}
           <footer className="ms-plan-foot">
-            <span className="ms-plan-note">
-              Every step traces back to something you said — nothing invented.
+            {/* The note is the button's stated reason while it waits: a control that is disabled
+                with no cause reads as broken, on screen and to a screen reader alike. */}
+            <span className="ms-plan-note" id={planNoteId} aria-live="polite">
+              {planSteps.length > 0 && keptSteps.length === 0
+                ? 'Keep at least one step to make it real.'
+                : 'Every step traces back to something you said — nothing invented.'}
             </span>
             {onAction && planSteps.length > 0 && (
               <button
@@ -901,6 +915,7 @@ export function MindShape({
                 // A plan with every step unchecked is a plan of nothing — the button waits until
                 // at least one step is wanted rather than asking the model to plan around none.
                 disabled={keptSteps.length === 0}
+                aria-describedby={planNoteId}
                 onClick={() => {
                   const dropped = planSteps.filter((s) => droppedSteps.has(s.id)).map((s) => s.id);
                   if (dropped.length) onAction('commit-plan', { dropped });

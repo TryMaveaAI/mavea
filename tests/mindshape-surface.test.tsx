@@ -1013,8 +1013,12 @@ describe('MindShape — settled surface', () => {
     fireEvent.click(spring);
     fireEvent.click(recruiter);
     expect(go.disabled).toBe(true);
+    // A button that waits says why, and the reason is wired to it for a screen reader too.
+    const reason = within(plan).getByText('Keep at least one step to make it real.');
+    expect(go.getAttribute('aria-describedby')).toBe(reason.id);
     fireEvent.click(spring); // wanted again
     expect(go.disabled).toBe(false);
+    expect(within(plan).queryByText('Keep at least one step to make it real.')).toBeNull();
     fireEvent.click(go);
     expect(onAction).toHaveBeenCalledWith('commit-plan', { dropped: ['d'] });
   });
