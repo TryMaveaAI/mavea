@@ -250,8 +250,7 @@ describe('template persona and local-font manifest', () => {
       expect(provenance, file).toContain(`\`${digest}\``);
     }
 
-    // Substring assertions, not patterns: "this host appears nowhere" is what is meant, and a
-    // bare regex over a hostname reads to a scanner as an unanchored host check.
+    // Substring assertions, not patterns: "this host appears nowhere" is exactly what is meant.
     const templatesTs = readFileSync(join(__dirname, '../src/live/templates.ts'), 'utf8');
     for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com']) {
       expect(fontsCss).not.toContain(host);

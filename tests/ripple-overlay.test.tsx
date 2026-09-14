@@ -102,9 +102,8 @@ import type { CourseLesson, ShipCourse, ShipModel } from '../src/live/ripple/mod
 // appears and, once opted in, actually talks — Ripple stays silent-by-default (narration starts
 // off), but the affordance must not be a dead end once someone turns it on.
 
-// The PR-link field, found by its whole placeholder. A substring regex over a URL-shaped string
-// reads to a scanner as a host check that forgot its anchors; pinning the entire hint is exact,
-// and it fails loudly if the copy is ever reworded.
+// The PR-link field, found by its whole placeholder. Pinning the entire hint is exact, and it
+// fails loudly the day the copy is reworded — where a fragment would keep matching different text.
 const PR_FIELD = 'github.com/owner/repo/pull/482 · owner/repo · a compare URL';
 
 describe('RippleApp', () => {

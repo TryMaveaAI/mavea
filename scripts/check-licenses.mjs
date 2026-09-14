@@ -396,8 +396,8 @@ export function commercialMediaPolicyFailures() {
   // The negative scan covers ALL product source (a forbidden host anywhere is a violation);
   // index.html rides along inside mapSources, whose CSP allowlist is the load-bearing gate.
   const scanned = `${productSource}\n${mapSources}`.toLowerCase();
-  // Substring scan, deliberately: the host is a violation wherever it appears, so there is
-  // nothing to anchor to — and a plain includes() says that without looking like a host check.
+  // Substring scan, deliberately: the host is a violation wherever it appears — in a URL, a
+  // comment or a config string — so there is no end-of-host to anchor to.
   if (RESTRICTED_TILE_HOSTS.some((host) => scanned.includes(host))) {
     failures.push('map rendering: noncommercial/restricted public tile service');
   }

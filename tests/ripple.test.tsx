@@ -17,9 +17,8 @@ import type { NodeStatus, RiskLevel, ShipNode } from '../src/live/ripple/model';
 
 afterEach(() => cleanup());
 
-// The PR-link field, found by its whole placeholder. A substring regex over a URL-shaped string
-// reads to a scanner as a host check that forgot its anchors; pinning the entire hint is exact,
-// and it fails loudly if the copy is ever reworded.
+// The PR-link field, found by its whole placeholder. Pinning the entire hint is exact, and it
+// fails loudly the day the copy is reworded — where a fragment would keep matching different text.
 const PR_FIELD = 'github.com/owner/repo/pull/482 · owner/repo · a compare URL';
 
 describe('Ripple seed model integrity', () => {
