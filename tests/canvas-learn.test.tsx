@@ -1702,6 +1702,96 @@ describe('PhyloTree', () => {
     ]);
     expect(container.querySelector('text.phy-tip-lbl title')).toBeNull();
   });
+
+  // A cladogram names its tips and leaves the internal nodes anonymous — the shipped reference
+  // example for this component is that exact shape. The branch renderer used to re-find each
+  // child by name, so every unnamed child was simply not found: an internal node's riser spanned
+  // only the named children it happened to match, and a node whose children were ALL unnamed
+  // spanned Math.min() to Math.max() of nothing — Infinity to -Infinity, straight into the SVG.
+  function risers(container: HTMLElement) {
+    return Array.from(container.querySelectorAll('line.phy-branch'))
+      .map((l) => ({
+        x1: Number(l.getAttribute('x1')),
+        y1: Number(l.getAttribute('y1')),
+        x2: Number(l.getAttribute('x2')),
+        y2: Number(l.getAttribute('y2')),
+      }))
+      .filter((l) => l.x1 === l.x2);
+  }
+
+  it('spans a riser across unnamed children, the shape a cladogram actually has', () => {
+    const root: PhyloNode = {
+      children: [
+        { name: 'Orangutan' },
+        {
+          children: [
+            { name: 'Gorilla' },
+            {
+              children: [
+                { name: 'Human' },
+                { children: [{ name: 'Chimpanzee' }, { name: 'Bonobo' }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { container } = render(<PhyloTree title="Great apes" root={root} />);
+    const tipY = new Map(
+      Array.from(container.querySelectorAll('line.phy-branch'))
+        .filter((l) => l.getAttribute('x1') !== l.getAttribute('x2'))
+        .map((l) => [Number(l.getAttribute('y1')), true]),
+    );
+    expect(tipY.size).toBeGreaterThan(0);
+    // Five tips, four internal nodes, so four risers — and not one of them is degenerate.
+    const rs = risers(container);
+    expect(rs).toHaveLength(4);
+    for (const r of rs) {
+      expect(Number.isFinite(r.y1) && Number.isFinite(r.y2)).toBe(true);
+      expect(r.y2 - r.y1).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws a finite riser when every child of a node is unnamed', () => {
+    const root: PhyloNode = {
+      children: [
+        { children: [{ name: 'a' }, { name: 'b' }] },
+        { children: [{ name: 'c' }, { name: 'd' }] },
+      ],
+    };
+    const { container } = render(<PhyloTree title="Anonymous clades" root={root} />);
+    const rs = risers(container);
+    expect(rs).toHaveLength(3);
+    for (const r of rs) {
+      expect(Number.isFinite(r.y1) && Number.isFinite(r.y2)).toBe(true);
+      expect(r.y2 - r.y1).toBeGreaterThan(0);
+    }
+  });
+
+  it('still resolves clade brackets and traits by name, which are true references', () => {
+    const root: PhyloNode = {
+      children: [{ name: 'Gorilla' }, { children: [{ name: 'Human' }, { name: 'Bonobo' }] }],
+    };
+    const { container } = render(
+      <PhyloTree
+        title="Named lookups"
+        root={root}
+        clades={[
+          { label: 'Hominini', tips: ['Human', 'Bonobo'], color: 'var(--presence)' },
+          { label: 'Ghosts', tips: ['Nobody'], color: 'var(--warning)' },
+        ]}
+        traits={[
+          { on: 'Human', label: 'bipedal' },
+          { on: 'Nobody', label: 'never drawn' },
+        ]}
+      />,
+    );
+    const cladeLabels = Array.from(container.querySelectorAll('text.phy-clade-lbl')).map(
+      (n) => n.textContent,
+    );
+    expect(cladeLabels).toEqual(['Hominini']);
+    expect(container.textContent).not.toContain('never drawn');
+  });
 });
 
 // Regression coverage for a real bug: key labels are plain SVG text painted at a fixed 6px

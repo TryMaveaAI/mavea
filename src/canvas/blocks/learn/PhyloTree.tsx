@@ -42,6 +42,12 @@ interface Placed {
   px: number; // SVG x of the parent (branch starts here); equals x at the root
   depth: number; // node depth in branch-length units from the root
   isTip: boolean;
+  // The children's own placements, kept from the walk that made them. A cladogram names its
+  // TIPS and leaves its internal nodes anonymous — that is the normal shape, and the shipped
+  // reference example is exactly it — so re-finding a child by name afterwards silently loses
+  // every unnamed one: a riser then spans only the named children it happened to find, or
+  // none at all. The walk already holds them; keep them rather than look them up again.
+  kids: Placed[];
 }
 
 /** Count the leaves (tips) under a node — drives even tip spacing. */
@@ -86,7 +92,7 @@ function layout(
     if (isTip) {
       const y = rowY(nextRow);
       nextRow += 1;
-      const p: Placed = { node, x, y, px: parentX, depth, isTip: true };
+      const p: Placed = { node, x, y, px: parentX, depth, isTip: true, kids: [] };
       placed.push(p);
       return p;
     }
@@ -94,7 +100,7 @@ function layout(
     const kids = node.children!.map((c) => walk(c, depth, x));
     // Internal node centers on the span of its children (tidy-tree convention).
     const y = (kids[0].y + kids[kids.length - 1].y) / 2;
-    const p: Placed = { node, x, y, px: parentX, depth, isTip: false };
+    const p: Placed = { node, x, y, px: parentX, depth, isTip: false, kids };
     placed.push(p);
     return p;
   }
@@ -305,11 +311,8 @@ export function PhyloTree({
                 />
               );
             }
-            const kids = p.node.children
-              .map((c) => (c.name ? byName.get(c.name) : undefined))
-              .filter((c): c is Placed => !!c);
-            const yTop = Math.min(...kids.map((k) => k.y));
-            const yBot = Math.max(...kids.map((k) => k.y));
+            const yTop = Math.min(...p.kids.map((k) => k.y));
+            const yBot = Math.max(...p.kids.map((k) => k.y));
             return (
               <g key={`b${i}`}>
                 {/* Vertical riser spanning this node's children */}

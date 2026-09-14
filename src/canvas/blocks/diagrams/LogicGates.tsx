@@ -25,15 +25,26 @@ interface Placed {
   /** Pin centre where wires leave this source. */
   x: number;
   y: number;
-  /** Current logic level on the source's output. */
-  value: 0 | 1;
+  /** Current logic level on the source's output; null when a source it needs is not on the
+   *  board, so no level can be computed. A gate is only ever as certain as its inputs. */
+  value: Level;
 }
 
-/** Evaluate one gate from its already-resolved input values. NOT/buffers read the first input. */
-function evalGate(kind: LogicGateKind, vals: (0 | 1)[]): 0 | 1 {
-  const all1 = vals.length > 0 && vals.every((v) => v === 1);
-  const any1 = vals.some((v) => v === 1);
-  const ones = vals.reduce<number>((a, v) => a + v, 0);
+/** A logic level, or null for "not knowable from what was drawn". */
+type Level = 0 | 1 | null;
+
+/** Evaluate one gate from its already-resolved input values. NOT/buffers read the first input.
+ *  A gate naming a source that is not on the board has no level: the unresolved reference is
+ *  reported as unknown rather than read as a 0, which would be a bit the diagram invented. A
+ *  fabricated 0 propagates — it colours this gate's wire, prints on the output pin, and feeds
+ *  every gate downstream — so one dangling name could put a confident Y=0 on a card whose own
+ *  truth table highlights the row saying 1. */
+function evalGate(kind: LogicGateKind, vals: Level[]): Level {
+  if (!vals.length || vals.some((v) => v === null)) return null;
+  const bits = vals as (0 | 1)[];
+  const all1 = bits.every((v) => v === 1);
+  const any1 = bits.some((v) => v === 1);
+  const ones = bits.reduce<number>((a, v) => a + v, 0);
   const odd = ones % 2 === 1;
   switch (kind) {
     case 'AND':
@@ -95,7 +106,7 @@ function gateBody(kind: LogicGateKind): ReactNode {
   );
 }
 
-const wireClass = (v: 0 | 1): string => (v === 1 ? 'dg-lg-wire on' : 'dg-lg-wire');
+const wireClass = (v: Level): string => (v === 1 ? 'dg-lg-wire on' : 'dg-lg-wire');
 
 // The output pin label (e.g. "Y", but the model can send anything up to "CARRY_OUT") sits
 // centred on the pin at the SVG's right edge. A fixed slack only ever fit a 1-2 char label —
@@ -143,7 +154,7 @@ export function LogicGates({
     const depthOf = (id: string): number => {
       if (depthCache.has(id)) return depthCache.get(id)!;
       const g = gateById.get(id);
-      if (!g) return 0; // an input
+      if (!g) return 0; // an input pin, or a name matching nothing — neither adds depth
       if (inStack.has(id)) return 0; // cycle guard
       inStack.add(id);
       const d = 1 + Math.max(0, ...g.inputs.map((s) => depthOf(s)));
@@ -167,7 +178,12 @@ export function LogicGates({
     for (let rank = 1; rank <= maxDepth; rank++) {
       const col = byRank.get(rank) ?? [];
       col.forEach((g, i) => {
-        const srcVals = g.inputs.map((s) => byId.get(s)?.value ?? 0);
+        // `undefined` here is a source the gate names that nothing on the board provides; it
+        // becomes an unknown level, never a 0. The wire for it is already skipped below.
+        const srcVals: Level[] = g.inputs.map((s) => {
+          const src = byId.get(s);
+          return src ? src.value : null;
+        });
         const value = evalGate(g.kind, srcVals);
         byId.set(g.id, {
           id: g.id,
@@ -195,7 +211,7 @@ export function LogicGates({
       placed: byId,
       viewW,
       viewH,
-      outValue: (outFrom?.value ?? 0) as 0 | 1,
+      outValue: outFrom ? outFrom.value : null,
       outY: outFrom?.y ?? PAD_Y,
       outLabel,
       outX,
@@ -276,14 +292,16 @@ export function LogicGates({
                     <text x={ox} y={outY - 4} className="dg-lg-pin" textAnchor="middle">
                       {outLabel}
                     </text>
-                    <text
-                      x={ox}
-                      y={outY + 9}
-                      className={'dg-lg-bit' + (outValue ? ' on' : '')}
-                      textAnchor="middle"
-                    >
-                      {outValue}
-                    </text>
+                    {outValue !== null && (
+                      <text
+                        x={ox}
+                        y={outY + 9}
+                        className={'dg-lg-bit' + (outValue ? ' on' : '')}
+                        textAnchor="middle"
+                      >
+                        {outValue}
+                      </text>
+                    )}
                   </g>
                 );
               })()}

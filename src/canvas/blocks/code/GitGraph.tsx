@@ -62,10 +62,21 @@ export function GitGraph({
   const rows = all.slice(0, MAX_ROWS);
   const hidden = all.length - rows.length;
 
-  // Lane order: explicit `branches`, else first-seen order in the commits.
+  // Lane order: explicit `branches` first, then any branch the drawn commits actually sit on
+  // that the list left out — appended in first-seen order, exactly as a list-free graph derives
+  // its own. An authored list is a legend, not a whitelist: a commit on a branch missing from it
+  // (a new branch, or a near-miss spelling like "origin/main" against "main") used to clamp to
+  // lane 0 and be drawn in the first branch's position and colour, so the reader saw a clean
+  // linear history on main and nothing on the card said otherwise. Widening the lane list states
+  // what the commits say instead; graphW and the legend below both size off it.
+  const usedBranches = rows.reduce<string[]>(
+    (acc, c) => (!c.branch || acc.includes(c.branch) ? acc : [...acc, c.branch]),
+    [],
+  );
   const lanes = branches?.length
-    ? branches
-    : rows.reduce<string[]>((acc, c) => (acc.includes(c.branch) ? acc : [...acc, c.branch]), []);
+    ? [...branches, ...usedBranches.filter((b) => !branches.includes(b))]
+    : usedBranches;
+  // Total over every drawn commit by construction; the clamp only covers a blank branch name.
   const laneOf = (b: string) => Math.max(0, lanes.indexOf(b));
   const colorOf = (b: string) => LANE_COLORS[laneOf(b) % LANE_COLORS.length];
 

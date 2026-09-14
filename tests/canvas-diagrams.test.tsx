@@ -36,6 +36,7 @@ import type {
   GraphTraceNode,
   LogicGate,
   LogicInput,
+  LogicTruthRow,
   PlasmidSite,
   ProbabilityBranch,
   ProtocolLayer,
@@ -779,6 +780,93 @@ describe('LogicGates', () => {
     const x = Number(pin.getAttribute('x'));
     const halfW = (pin.textContent!.length * 3.1) / 2;
     expect(x + halfW).toBeLessThanOrEqual(viewW);
+  });
+
+  // A gate names its sources, and the tolerant reference seam leaves a name it cannot resolve
+  // exactly as authored — for the renderer to skip. The wire was skipped correctly, so the
+  // missing pin was invisible; the VALUE was not. `byId.get(s)?.value ?? 0` read the absent
+  // source as logic 0 and evaluated the gate from it, and the invented bit then propagated:
+  // it coloured the outgoing wire, printed on the output pin, and fed every gate downstream.
+  // With A=1 and B=1 the card asserted Y=0 while its own truth table highlighted the row
+  // saying 1 — one card contradicting itself. A level the drawing cannot derive is now no
+  // level at all, and nothing is printed for it.
+  const bothHigh: LogicInput[] = [
+    { id: 'a', label: 'A', value: 1 },
+    { id: 'b', label: 'B', value: 1 },
+  ];
+  const andTruth: LogicTruthRow[] = [
+    { row: [0, 0], out: 0 },
+    { row: [0, 1], out: 0 },
+    { row: [1, 0], out: 0 },
+    { row: [1, 1], out: 1 },
+  ];
+
+  // .dg-lg-bit is worn by the input rail's pads as well, so read the OUTPUT pin's own bit: it is
+  // the one sitting in the group that carries the output label.
+  function outputBit(container: HTMLElement): string | null {
+    const pin = container.querySelector('text.dg-lg-pin');
+    const bit = pin?.parentElement?.querySelector('text.dg-lg-bit');
+    return bit ? bit.textContent : null;
+  }
+
+  it('prints no output bit when a gate names a source that is not on the board', () => {
+    const { container } = render(
+      <LogicGates
+        inputs={bothHigh}
+        gates={[{ id: 'g1', kind: 'AND', inputs: ['a', 'b-missing'] }]}
+        output={{ from: 'g1', label: 'Y' }}
+        truth={andTruth}
+      />,
+    );
+    expect(outputBit(container)).toBeNull();
+    // The gate and its one resolvable wire still draw — a skip costs the picture an element,
+    // not the whole diagram.
+    expect(container.querySelectorAll('polyline.dg-lg-wire').length).toBeGreaterThan(0);
+  });
+
+  it('never contradicts its own truth table', () => {
+    const { container } = render(
+      <LogicGates
+        inputs={bothHigh}
+        gates={[{ id: 'g1', kind: 'AND', inputs: ['a', 'b-missing'] }]}
+        output={{ from: 'g1', label: 'Y' }}
+        truth={andTruth}
+      />,
+    );
+    const active = container.querySelector('tr.on');
+    expect(active?.textContent).toContain('1');
+    // Either the pin states the same level the highlighted row does, or it states nothing.
+    const bit = outputBit(container);
+    if (bit !== null) expect(bit).toBe('1');
+  });
+
+  it('still states a level the whole way down a chain it can resolve', () => {
+    const { container } = render(
+      <LogicGates
+        inputs={bothHigh}
+        gates={[
+          { id: 'g1', kind: 'AND', inputs: ['a', 'b'] },
+          { id: 'g2', kind: 'NOT', inputs: ['g1'] },
+        ]}
+        output={{ from: 'g2', label: 'Y' }}
+      />,
+    );
+    expect(outputBit(container)).toBe('0');
+  });
+
+  it('withholds the level from every gate downstream of an unresolvable source', () => {
+    const { container } = render(
+      <LogicGates
+        inputs={bothHigh}
+        gates={[
+          { id: 'g1', kind: 'AND', inputs: ['a', 'ghost'] },
+          { id: 'g2', kind: 'NOT', inputs: ['g1'] },
+        ]}
+        output={{ from: 'g2', label: 'Y' }}
+      />,
+    );
+    // A NOT of an unknown is unknown — not the confident 1 that inverting a fabricated 0 gives.
+    expect(outputBit(container)).toBeNull();
   });
 });
 

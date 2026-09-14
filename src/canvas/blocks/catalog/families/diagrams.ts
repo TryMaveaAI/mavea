@@ -1214,6 +1214,7 @@ export const CATALOG_DIAGRAMS: ComponentCatalog = [
         idField: 'id',
         requiredFields: ['id'],
         refs: { to: 'steps', fields: ['from'] },
+        refProps: ['conclusionId'],
       },
     ],
     propHints: {
