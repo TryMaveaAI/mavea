@@ -20,6 +20,7 @@ import type {
   MindAtomKind,
   MindIntent,
   MindLink,
+  MindModelStatus,
   MindShapeSpec,
   MindSignal,
   MindUnsaid,
@@ -40,6 +41,11 @@ import {
 } from './mindShapeLayout';
 
 export type MindPhase = 'idle' | 'listening' | 'pausing' | 'settled';
+/** What the map is DOING right now, which the phase cannot say on its own: the phase stays
+ *  'listening' from the first word to the settle, so the beat between the speaker stopping and
+ *  the shape changing had nothing to show for itself. 'transcribing' is the provisional
+ *  speech-end (~300ms after the last word); 'asking' is a model call in flight. */
+export type MindActivity = 'idle' | 'transcribing' | 'asking';
 // 'plan' opens the in-canvas traced-step checklist; 'commit-plan' runs it as a real turn.
 // 'tell-apart' fires a focused turn on a specific tension ("help me tell them apart").
 // 'keep' shows the "kept this shape" panel; 'share'/'present' route from there.
@@ -72,9 +78,12 @@ export interface MindShapeProps extends Partial<MindShapeSpec> {
   intent?: MindIntent;
   /** Whether the 1.8s settle reveal sequence is currently playing. Gates cascade animations. */
   isRevealing?: boolean;
-  /** The last model call for this map came back empty-handed — so an empty map says so, rather
-   *  than blaming the speaker for not saying enough. */
-  modelUnavailable?: boolean;
+  /** Where the map's model calls stand. An empty map has a different honest explanation when the
+   *  model refused, when none is connected, and when the speaker really did say very little. */
+  modelStatus?: MindModelStatus;
+  /** Live only: what the map is doing between phase changes, so the face turns over the moment the
+   *  speaker stops rather than at the end of the settle. */
+  activity?: MindActivity;
   /** Current transient signal chip — Mavéa noticing a pattern during listening. */
   currentSignal?: MindSignal | null;
   /** Post-settle action. `detail` carries the focus for actions that target a specific thing —
@@ -87,8 +96,6 @@ export interface MindShapeProps extends Partial<MindShapeSpec> {
   onConfirmUnsaid?: () => void;
   /** Live only: user dismissed the unsaid card ("not quite"). */
   onDismissUnsaid?: () => void;
-  /** Interim speech text from the VAD — shown as a live ticker so user knows mic is active. */
-  liveTranscript?: string;
   /** Number of distinct thoughts heard so far — shown under the face as a count. */
   thoughtCount?: number;
   delay?: number;
@@ -186,6 +193,7 @@ function AtomCard({
     <div
       className="ms-card"
       data-status={atom.status}
+      data-uncertain={atom.uncertain ? 'true' : undefined}
       data-open={open ? 'true' : undefined}
       style={
         {
@@ -218,6 +226,18 @@ function AtomCard({
       <div className="ms-card-header">
         <span className="ms-kind-dot" aria-hidden="true" />
         <span className="ms-kind-label">{KIND_LABEL[atom.kind]}</span>
+        {atom.uncertain && (
+          // The words came through unclearly, so the card is shown and the doubt is shown with it.
+          // Dropping it instead is what reads as "it didn't hear me".
+          <span
+            className="ms-card-unsure"
+            role="img"
+            aria-label="Heard unclearly — check the wording"
+            title="Heard unclearly — check the wording"
+          >
+            ?
+          </span>
+        )}
       </div>
       <div className="ms-atom-label">{atom.label}</div>
       {isStable && (
@@ -340,13 +360,13 @@ export function MindShape({
   phase = 'settled',
   intent = 'general',
   isRevealing = false,
-  modelUnavailable = false,
+  modelStatus = 'ok',
+  activity = 'idle',
   currentSignal,
   onAction,
   onRemoveAtom,
   onConfirmUnsaid,
   onDismissUnsaid,
-  liveTranscript,
   thoughtCount,
   delay = 0,
   asBlock = true,
@@ -501,8 +521,31 @@ export function MindShape({
       setPanel(null);
     }
   }, [phase, heroTension, intent]);
+  // Activity outranks phase: 'listening' spans the whole session, so without this the face held a
+  // listening pose from the last word until the settled map appeared — several seconds in which
+  // Mavéa was transcribing and asking and looked like she had not noticed the speaker stop.
+  // The one line under the face that says the map is keeping up. It states what Mavéa is doing the
+  // moment there is something to say, and falls back to the running count between utterances.
+  const hearingLine: string | null =
+    activity === 'transcribing'
+      ? 'Catching that…'
+      : activity === 'asking'
+        ? 'Making sense of it…'
+        : thoughtCount === undefined || thoughtCount < 0
+          ? null
+          : (() => {
+              const n = Math.max(thoughtCount, atoms.length);
+              return n === 0 ? 'Listening…' : `${n} thought${n === 1 ? '' : 's'}`;
+            })();
+
   const presenceState =
-    phase === 'listening' ? 'listening' : phase === 'pausing' ? 'thinking' : 'idle';
+    activity !== 'idle'
+      ? 'thinking'
+      : phase === 'listening'
+        ? 'listening'
+        : phase === 'pausing'
+          ? 'thinking'
+          : 'idle';
 
   // Intent-aware settled center label — what kind of thinking this turned out to be.
   const settledCenterLabel =
@@ -721,16 +764,32 @@ export function MindShape({
             leaving a bare face with no explanation and no way forward but the exit button. */}
         {phase === 'settled' &&
           (atoms.length > 0 ? (
-            <div className="ms-synthesis-line" aria-live="polite">
-              {synthesisLine({ atoms, links }, heroTension)}
-            </div>
-          ) : modelUnavailable ? (
+            <>
+              <div className="ms-synthesis-line" aria-live="polite">
+                {synthesisLine({ atoms, links }, heroTension)}
+              </div>
+              {modelStatus === 'not-connected' && (
+                // The map is real — it just came from the local pass alone. Say which, so the
+                // shape of it is read for what it is instead of as Mavéa's full reading.
+                <div className="ms-synthesis-note">
+                  Grouped here without a model — connect one for the reading.
+                </div>
+              )}
+            </>
+          ) : modelStatus === 'unavailable' ? (
             // Not the same failure at all: the words were there, the model would not answer
             // (rate-limited, refused, unreachable). Telling someone who just typed six thoughts
             // that they were too quiet sends them to re-say everything for nothing.
             <div className="ms-synthesis-line" aria-live="polite">
               I couldn't reach the model just now — nothing you said was lost. Try again in a
               moment.
+            </div>
+          ) : modelStatus === 'not-connected' ? (
+            // Nothing was ever asked, so nothing could come back. The speaker is owed that fact
+            // rather than a note about how much they said.
+            <div className="ms-synthesis-line" aria-live="polite">
+              No model connected — this is the local map only. Connect one and I'll make sense of
+              it.
             </div>
           ) : (
             <div className="ms-synthesis-line" aria-live="polite">
@@ -740,19 +799,10 @@ export function MindShape({
         {/* Thought count + pulsing mic dot — confirms voice is registering. Counts what's ON THE MAP
             (the atoms) once any exist, falling back to the spoken-thought count while still listening:
             a short prompt the model expands into several atoms must read as "N thoughts", not "1". */}
-        {thoughtCount !== undefined && thoughtCount >= 0 && phase !== 'settled' && (
-          <div className="ms-thought-count" aria-live="polite">
+        {hearingLine !== null && phase !== 'settled' && (
+          <div className="ms-thought-count" data-activity={activity} aria-live="polite">
             <span className="ms-mic-dot" aria-hidden="true" />
-            {(() => {
-              const n = Math.max(thoughtCount, atoms.length);
-              return n === 0 ? 'Listening…' : `${n} thought${n === 1 ? '' : 's'}`;
-            })()}
-          </div>
-        )}
-        {/* Live speech ticker — shows the current spoken words as they arrive */}
-        {liveTranscript && (
-          <div className="ms-live-text" aria-live="polite" aria-label="Currently hearing">
-            {liveTranscript}
+            {hearingLine}
           </div>
         )}
       </div>

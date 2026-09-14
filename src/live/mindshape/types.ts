@@ -30,6 +30,10 @@ export interface MindAtom {
   confidence: MindAtomConfidence;
   /** Salience 1–3 (1 = mentioned once; 3 = central). */
   weight?: number;
+  /** The utterance this came from transcribed with low confidence, so the words may not be what
+   *  was said. Rendered faint with a "?" so the map shows it and admits the doubt — in a thinking
+   *  session a shaky card costs one ✕, while dropping the utterance reads as not being heard. */
+  uncertain?: boolean;
 }
 
 export type MindLinkKind = 'supports' | 'tensions' | 'depends_on' | 'same_thread' | 'blocks';
@@ -70,6 +74,14 @@ export interface MindCluster {
 
 /** Detected intent of a thinking session — drives adaptive labels and action copy. */
 export type MindIntent = 'decision' | 'planning' | 'exploration' | 'processing' | 'general';
+
+/** Where the map's model calls stand. Three cases the surface must be able to tell apart:
+ *  'ok' — the model answered, or has not been needed yet.
+ *  'not-connected' — no model is configured, so the map is whatever the local pass found and
+ *    nothing is being asked. Saying "didn't catch enough" here blames someone who spoke plenty.
+ *  'unavailable' — the model was asked and came back empty-handed (refused, rate-limited,
+ *    unreachable). The words were heard; the answer never arrived. */
+export type MindModelStatus = 'ok' | 'not-connected' | 'unavailable';
 
 /** A transient signal chip shown near the face while listening — Mavéa noticing a pattern.
  *  Silent (never spoken), auto-dismissed after 5 seconds, max one at a time. */

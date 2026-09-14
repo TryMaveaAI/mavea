@@ -3,8 +3,13 @@
 // fires the settle TTS line once, manages the reveal animation window, drives
 // signal chips via useSignals, and exposes the four post-settle actions.
 import { useEffect, useRef, useState } from 'react';
-import type { MindAction, MindActionDetail } from '../../canvas/blocks/diagrams/MindShape';
+import type {
+  MindAction,
+  MindActionDetail,
+  MindActivity,
+} from '../../canvas/blocks/diagrams/MindShape';
 import { MindShape } from '../../canvas/blocks/diagrams/MindShape';
+import type { VoicePhase } from '../../voice/types';
 import type { UseMindShapeReturn } from './useMindShape';
 import { useSignals } from './useSignals';
 
@@ -14,10 +19,15 @@ export interface MindShapeCanvasProps {
    *  the narration line: "I think this is the shape of it." */
   onSettled?: () => void;
   onAction?: (action: MindAction, detail?: MindActionDetail) => void;
-  /** Interim speech text — shown as a live ticker in the canvas so the user knows the mic is active. */
-  liveTranscript?: string;
   /** Number of distinct thoughts heard — shown under the face during listening. */
   thoughtCount?: number;
+  /** What the microphone is doing. The map's own phase stays 'listening' for the whole session, so
+   *  this is the only thing that knows the speaker has stopped. */
+  voicePhase?: VoicePhase;
+  /** The VAD's provisional end-of-speech guess (~300ms after the last word, visual only). It lands
+   *  well before the 1.6s redemption window closes, which is the whole point: the map reacts while
+   *  the speaker is still looking at it. */
+  speechEnding?: boolean;
   /** Called when the user confirms the unsaid observation ("yes, that's it"). */
   onConfirmUnsaid?: () => void;
   /** Called when the user dismisses the unsaid card ("not quite"). */
@@ -28,8 +38,9 @@ export function MindShapeCanvas({
   mindShape,
   onSettled,
   onAction,
-  liveTranscript,
   thoughtCount,
+  voicePhase,
+  speechEnding = false,
   onConfirmUnsaid,
   onDismissUnsaid,
 }: MindShapeCanvasProps) {
@@ -70,6 +81,17 @@ export function MindShapeCanvas({
 
   const { currentSignal } = useSignals(spec, phase);
 
+  // Speech in progress outranks a call in flight: the mic being open is what the face should show
+  // then, and a patch fired two utterances ago must not make a talking speaker look unheard.
+  const activity: MindActivity =
+    speechEnding || voicePhase === 'transcribing'
+      ? 'transcribing'
+      : voicePhase === 'listening'
+        ? 'idle'
+        : mindShape.refining
+          ? 'asking'
+          : 'idle';
+
   return (
     <MindShape
       asBlock={false}
@@ -77,7 +99,8 @@ export function MindShapeCanvas({
       center={spec?.center ?? ''}
       atoms={spec?.atoms ?? []}
       links={spec?.links ?? []}
-      modelUnavailable={mindShape.modelUnavailable}
+      modelStatus={mindShape.modelStatus}
+      activity={phase !== 'settled' ? activity : 'idle'}
       clusters={spec?.clusters}
       unsaid={spec?.unsaid}
       intent={intent}
@@ -87,8 +110,7 @@ export function MindShapeCanvas({
       onRemoveAtom={mindShape.removeAtom}
       onConfirmUnsaid={onConfirmUnsaid}
       onDismissUnsaid={onDismissUnsaid}
-      liveTranscript={phase !== 'settled' ? liveTranscript : undefined}
-      thoughtCount={phase !== 'settled' ? thoughtCount : undefined}
+      thoughtCount={thoughtCount}
     />
   );
 }

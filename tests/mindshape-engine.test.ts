@@ -8,6 +8,7 @@ import {
   localExtract,
   looksLikeThinkingAloud,
 } from '../src/live/mindshape/localExtract';
+import { joinRamble } from '../src/live/mindshape/joinRamble';
 import { detectIntent } from '../src/live/mindshape/intentDetect';
 import { mindShapeToPrompt } from '../src/live/mindshape/mindShapeToPrompt';
 import { validateMindShape, validateMindShapePatch } from '../src/live/mindshape/validate';
@@ -171,6 +172,58 @@ describe('countThoughts', () => {
 
   it('empty text counts as zero', () => {
     expect(countThoughts('   ')).toBe(0);
+  });
+});
+
+// ── joinRamble + segmentText: separate utterances stay separate ──────────────
+// M3. Whisper rarely returns terminal punctuation, so banked utterances joined by a bare space
+// arrived as one run-on clause: two thoughts counted as one, and the quote on the card spanned
+// both. The microphone already found that boundary — the join is where it was being thrown away.
+describe('utterances banked from the microphone stay distinct thoughts', () => {
+  // Real shapes: unpunctuated, no pivot word to split on, each a complete thought on its own.
+  const corpus: string[][] = [
+    ['i want to move to seattle', 'my dad is getting older'],
+    ['the offer is more money', 'the team is much smaller'],
+    ['i keep putting off the conversation', 'it has been three weeks now'],
+    ['maybe i should just take the consulting work', 'it would buy me another year'],
+  ];
+
+  it.each(corpus)('keeps "%s" and "%s" apart', (a, b) => {
+    expect(countThoughts(joinRamble([a, b]))).toBe(2);
+    // …where the old bare-space join fused them into one.
+    expect(countThoughts([a, b].join(' '))).toBe(1);
+  });
+
+  it('gives each utterance its own quote rather than one spanning both', () => {
+    const atoms = localExtract(
+      joinRamble(['i could take the new role', 'i am scared it is the wrong move']),
+    );
+    expect(atoms.length).toBeGreaterThan(0);
+    for (const a of atoms) {
+      expect(a.quote).not.toContain('i could take the new role i am scared');
+    }
+  });
+
+  it('drops blank and whitespace-only entries instead of emitting empty lines', () => {
+    expect(joinRamble(['  ', 'i want to move to seattle', '', '   '])).toBe(
+      'i want to move to seattle',
+    );
+    expect(joinRamble([])).toBe('');
+  });
+
+  // The ≥8-char clause filter predates the newline split and still applies. A short utterance was
+  // already dropped when it stood alone, and it must not now take a long neighbour down with it.
+  it('a too-short utterance costs only itself', () => {
+    expect(countThoughts('yeah')).toBe(1); // alone, the floor still reports the speech
+    expect(countThoughts(joinRamble(['yeah', 'i think i should take the new role']))).toBe(1);
+    expect(countThoughts(joinRamble(['i think i should take the new role', 'yeah']))).toBe(1);
+  });
+
+  it('still splits on punctuation and pivots within a single utterance', () => {
+    // The newline is an ADDITIONAL boundary, not a replacement for the two that were there.
+    expect(
+      countThoughts(joinRamble(['i want the role. i am scared of it', 'and my dad is ill'])),
+    ).toBe(3);
   });
 });
 

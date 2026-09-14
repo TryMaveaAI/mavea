@@ -30,10 +30,12 @@ export function completeWordsOnly(partial: string): string {
 }
 
 /** Light clause segmentation for raw STT text (punctuation not guaranteed).
- *  Splits on explicit punctuation first, then common discourse pivot words
- *  that typically start a new clause in spoken English. */
+ *  Splits on utterance boundaries (the newlines joinRamble writes — the microphone already found
+ *  those), then explicit punctuation, then common discourse pivot words that typically start a new
+ *  clause in spoken English. */
 function segmentText(text: string): string[] {
   return text
+    .replace(/\s*\n+\s*/g, '\x00')
     .replace(/([.!?])\s+/g, '$1\x00')
     .replace(
       /\s+(?=\b(?:but |and i |and she |and he |and they |and dad|and mom|and my |so i |so she |so he |honestly |actually |i keep |i also |i've |i just |the thing is |i mean |i don't know)\b)/gi,

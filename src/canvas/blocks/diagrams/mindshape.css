@@ -446,28 +446,6 @@
   opacity: 1;
 }
 
-/* ── Live transcript ticker — shows what the mic is hearing right now ─────── */
-.ms-live-text {
-  max-width: 220px;
-  font-size: var(--fs-2xs);
-  font-weight: 400;
-  font-style: italic;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  pointer-events: none;
-}
-.ms-canvas[data-phase='listening'] .ms-live-text,
-.ms-canvas[data-phase='pausing'] .ms-live-text {
-  opacity: 1;
-}
-
 /* banked thought count + mic-active dot */
 .ms-thought-count {
   display: flex;
@@ -496,6 +474,21 @@
 .ms-canvas[data-phase='pausing'] .ms-mic-dot {
   animation: none;
   background: var(--text-muted);
+}
+/* The moment the speaker stops, the row stops claiming to be listening. Transcribing keeps a beat
+   (something is arriving); asking holds steady on the insight hue (the wait is Mavéa's, not the
+   microphone's). Both outrank the phase rules above, which cannot see either. */
+.ms-thought-count[data-activity='transcribing'] .ms-mic-dot {
+  animation-duration: 0.7s;
+  background: var(--insight);
+}
+.ms-thought-count[data-activity='asking'] .ms-mic-dot {
+  animation: none;
+  background: var(--presence);
+}
+.ms-thought-count[data-activity='transcribing'],
+.ms-thought-count[data-activity='asking'] {
+  color: var(--text-secondary);
 }
 @keyframes ms-mic-pulse {
   0%,
@@ -676,6 +669,24 @@
   border-radius: 50%;
   background: var(--ms-kind-color, var(--text-muted));
   flex-shrink: 0;
+}
+
+/* Heard unclearly. The card stays — a shaky card costs one ✕ and the speaker can see what was
+   caught, where dropping the utterance reads as not being heard at all — and the "?" plus the
+   softened border say not to trust the wording. Never dimmed past reading: the point is to be
+   checked, so the type keeps its contrast and only the frame gives way. */
+.ms-card[data-uncertain] {
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--ms-kind-color, var(--grid-line)) 45%, transparent);
+}
+
+.ms-card-unsure {
+  margin-left: auto;
+  font-size: max(9px, calc(9px * var(--ms-card-scale, 1)));
+  line-height: 1;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: help;
 }
 
 .ms-kind-label {
@@ -1208,6 +1219,30 @@
 .ms-canvas[data-phase='settled'] .ms-synthesis-line {
   opacity: 1;
   transition-delay: 0.9s;
+}
+
+/* A footnote to the synthesis line, not a second sentence competing with it: the map is real,
+   this only says where it came from. */
+.ms-synthesis-note {
+  max-width: 220px;
+  /* Follows the camera in the type itself, floored at the legibility line: this is the smallest
+     text on the map, and the box scale the line above rides would carry it under 9px on a busy
+     map. Backed and stepped up like the line, for the same threads running through it. */
+  font-size: max(9px, calc(var(--fs-2xs) * clamp(0.8, var(--ms-cam-scale, 1), 1)));
+  font-weight: 400;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--surface-elevated) 90%, transparent);
+  padding: 2px 8px;
+  border-radius: 9px;
+  text-align: center;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+.ms-canvas[data-phase='settled'] .ms-synthesis-note {
+  opacity: 1;
+  transition-delay: 1.1s;
 }
 
 /* ── Settle reveal: center question rises in with more presence ────────────────

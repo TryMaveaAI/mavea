@@ -12,10 +12,15 @@ import {
   act,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useMindShape, mergeDelta, keepUnaccountedAtoms } from '../src/live/mindshape/useMindShape';
+import {
+  useMindShape,
+  mergeDelta,
+  keepUnaccountedAtoms,
+  markUncertain,
+} from '../src/live/mindshape/useMindShape';
 import { useSignals } from '../src/live/mindshape/useSignals';
 import { mindShapeToSpec } from '../src/live/mindshape/mindShapeToSpec';
-import { settleMindShape } from '../src/live/mindshape/modelRefine';
+import { settleMindShape, patchMindShape } from '../src/live/mindshape/modelRefine';
 import {
   computeLayout,
   CARD_HH,
@@ -95,10 +100,36 @@ describe('useMindShape', () => {
 
   it('transitions to pausing on onSpeechEnd', async () => {
     const { result } = renderHook(() => useMindShape(FAKE_CFG));
+    const said = 'i want to take the new role but my partner is against it';
     await act(async () => {
-      result.current.onSpeechEnd('i want to take the new role but my partner is against it');
+      result.current.onTranscript(said);
+    });
+    await act(async () => {
+      result.current.onSpeechEnd(said);
     });
     // Phase moves to pausing immediately on speechEnd (settle call is async, mocked to null)
+    expect(['pausing', 'settled']).toContain(result.current.phase);
+  });
+
+  // S1: the surface reads the map through a ref assigned during render, so a speech-end arriving in
+  // the same synchronous batch as the first transcript sees a render-old phase. The hook's own ref
+  // is the only copy that can be right, and it is what decides whether there is a session to end.
+  it('ignores a speech-end that arrives before anything was ever heard', async () => {
+    const { result } = renderHook(() => useMindShape(FAKE_CFG));
+    await act(async () => {
+      result.current.onSpeechEnd('i want to take the new role');
+    });
+    expect(result.current.phase).toBe('idle');
+  });
+
+  it('settles on the first utterance, whose transcript and speech-end land in one batch', async () => {
+    const { result } = renderHook(() => useMindShape(FAKE_CFG));
+    const said = 'i want to take the new role but my partner is against it';
+    // One act() — exactly how VadVoice emits result → idle, with no render in between.
+    await act(async () => {
+      result.current.onTranscript(said);
+      result.current.onSpeechEnd(said);
+    });
     expect(['pausing', 'settled']).toContain(result.current.phase);
   });
 
@@ -1347,14 +1378,48 @@ describe('an empty map says which failure it was', () => {
   };
 
   it('blames nobody when the model would not answer', () => {
-    render(<MindShape {...empty} phase="settled" modelUnavailable />);
+    render(<MindShape {...empty} phase="settled" modelStatus="unavailable" />);
     expect(screen.getByText(/couldn't reach the model/i)).toBeInTheDocument();
     expect(screen.queryByText(/didn't catch enough/i)).not.toBeInTheDocument();
+  });
+
+  // M2: nothing was ever asked, so "didn't catch enough" is a lie about the speaker. The empty map
+  // has to name the actual reason, and the reason is fixable in one step.
+  it('says no model is connected rather than blaming the speaker', () => {
+    render(<MindShape {...empty} phase="settled" modelStatus="not-connected" />);
+    expect(screen.getByText(/no model connected/i)).toBeInTheDocument();
+    expect(screen.queryByText(/didn't catch enough/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/couldn't reach the model/i)).not.toBeInTheDocument();
   });
 
   it('still says so plainly when there really was too little to map', () => {
     render(<MindShape {...empty} phase="settled" />);
     expect(screen.getByText(/didn't catch enough/i)).toBeInTheDocument();
+  });
+
+  // A map DID form, from the local pass alone. The shape is real, so the synthesis line stands —
+  // it just says where it came from instead of passing local grouping off as Mavéa's reading.
+  it('marks a local-only map as local without replacing its synthesis line', () => {
+    render(
+      <MindShape
+        center="What are we deciding?"
+        atoms={[
+          {
+            id: 'a1',
+            kind: 'option',
+            label: 'Move to Seattle',
+            quote: 'i could move to seattle',
+            status: 'stable',
+            confidence: 'said',
+          },
+        ]}
+        links={[]}
+        phase="settled"
+        modelStatus="not-connected"
+      />,
+    );
+    expect(screen.getByText(/without a model/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no model connected/i)).not.toBeInTheDocument();
   });
 });
 
@@ -1397,6 +1462,81 @@ describe('keepUnaccountedAtoms', () => {
     expect(keepUnaccountedAtoms(prior, settled)).toBe(settled);
   });
 
+  it('carries a dropped thought even when the settle came back the same size', () => {
+    // The settle is a fresh composition of the whole transcript, so equal membership is not
+    // implied by an equal count: three in, three out, one of them brand new, means one spoken
+    // thought was deleted. Counting atoms cannot see that; coverage can.
+    const prior = [
+      atom('a1', 'dev wants a hackathon'),
+      atom('a2', 'design wants a beach'),
+      atom('a3', 'the budget resets in April'),
+    ];
+    const settled = settledWith([
+      atom('s1', 'dev wants a hackathon'),
+      atom('s2', 'design wants a beach'),
+      atom('s3', 'nobody has booked anything yet'),
+    ]);
+    const merged = keepUnaccountedAtoms(prior, settled);
+    expect(merged.atoms.map((a) => a.quote)).toEqual([
+      'dev wants a hackathon',
+      'design wants a beach',
+      'nobody has booked anything yet',
+      'the budget resets in April',
+    ]);
+  });
+
+  it('treats a settle that widened the same quote as the same thought', () => {
+    // A settle routinely re-quotes a span longer or shorter than the live pass took. Exact-match
+    // coverage reads the wider quote as a different thought and ships the person the same
+    // sentence twice.
+    const prior = [atom('a1', 'the budget resets in April')];
+    const settled = settledWith([
+      atom('s1', 'the budget resets in April and nobody has booked anything'),
+    ]);
+    expect(keepUnaccountedAtoms(prior, settled)).toBe(settled);
+  });
+
+  it('does not let one terse settled quote cover several distinct thoughts', () => {
+    // "the job" sits inside all three. Containment with no floor read them as one thought, and
+    // the settle deleted two things the person said.
+    const prior = [
+      atom('a1', 'the job pays more'),
+      atom('a2', 'the job is in Denver'),
+      atom('a3', 'the job starts Monday'),
+    ];
+    const settled = settledWith([atom('s1', 'the job')]);
+    const merged = keepUnaccountedAtoms(prior, settled);
+    expect(merged.atoms.map((a) => a.quote)).toEqual([
+      'the job',
+      'the job pays more',
+      'the job is in Denver',
+      'the job starts Monday',
+    ]);
+  });
+
+  it('matches a contained quote at word boundaries only', () => {
+    const prior = [atom('a1', 'the plan is set')];
+    const settled = settledWith([atom('s1', 'the plan is settled for good')]);
+    expect(keepUnaccountedAtoms(prior, settled).atoms).toHaveLength(2);
+  });
+
+  it('gives a carried thought a name of its own when the settle reused its id', () => {
+    // Ids are the model's numbering and a settle starts over from a1 — a carried a2 beside the
+    // settle's a2 was two cards on one point, and one ✕ that removed both.
+    const prior = [atom('a1', 'dev wants a hackathon'), atom('a2', 'the budget resets in April')];
+    const settled = settledWith([
+      atom('a1', 'dev wants a hackathon'),
+      atom('a2', 'half the team is remote'),
+    ]);
+    const merged = keepUnaccountedAtoms(prior, settled);
+    expect(merged.atoms.map((a) => a.quote)).toEqual([
+      'dev wants a hackathon',
+      'half the team is remote',
+      'the budget resets in April',
+    ]);
+    expect(new Set(merged.atoms.map((a) => a.id)).size).toBe(3);
+  });
+
   it('does not duplicate a thought the settle rephrased but kept quoted', () => {
     const prior = [atom('a1', 'The budget resets in April'), atom('a2', 'dev wants a hackathon')];
     const settled = settledWith([
@@ -1405,5 +1545,273 @@ describe('keepUnaccountedAtoms', () => {
     const merged = keepUnaccountedAtoms(prior, settled);
     expect(merged.atoms).toHaveLength(2);
     expect(merged.atoms.map((a) => a.id)).toEqual(['s1', 'a2']);
+  });
+});
+
+describe('markUncertain', () => {
+  const atom = (id: string, quote: string): MindAtom => ({
+    id,
+    kind: 'want',
+    label: quote,
+    quote,
+    status: 'forming',
+    confidence: 'said',
+  });
+
+  it('flags only the thoughts the shaky utterance introduced', () => {
+    // The extractor runs over the whole ramble, so a thought heard clearly earlier comes back in
+    // the same pass — and its words can sit inside the shaky span too. It stays as it was.
+    const existing = [atom('wan_0', 'i want to be closer to him')];
+    const now = [
+      atom('wan_0', 'i want to be closer to him'),
+      atom('per_0', 'my dad is getting older'),
+    ];
+    const marked = markUncertain(
+      now,
+      'my dad is getting older and i want to be closer to him',
+      existing,
+    );
+    expect(marked.find((a) => a.id === 'per_0')?.uncertain).toBe(true);
+    expect(marked.find((a) => a.id === 'wan_0')?.uncertain).toBeUndefined();
+  });
+
+  it('leaves a new thought outside the span alone', () => {
+    const now = [atom('opt_0', 'take the new role'), atom('per_0', 'my dad is getting older')];
+    const marked = markUncertain(now, 'my dad is getting older', []);
+    expect(marked.map((a) => a.uncertain ?? false)).toEqual([false, true]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// S6 — the refine debounce is a gap between model answers, not between requests.
+// REFINE_DEBOUNCE_MS was measured from the moment a call was SENT, so a 10s call plus the 6s gap
+// left the map 16s behind the speaker; and words spoken during a call were dropped outright, so
+// the map then waited for the person to say something ELSE before it caught up at all.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useMindShape — a slow model call does not make the map fall further behind', () => {
+  const CFG: ModelConfig = {
+    provider: 'gemini',
+    model: 'gemini-3.1-flash-lite',
+    apiKey: 'test-key',
+  };
+  const settleMock = vi.mocked(settleMindShape);
+  const patchMock = vi.mocked(patchMindShape);
+
+  // Every model call the hook makes, whichever door it went through (seed, patch or settle), with
+  // the full transcript it carried. The gate holds the first one open for as long as a test wants.
+  let asked: string[] = [];
+  let release: (v: null) => void = () => {};
+  let gate: Promise<null>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    asked = [];
+    gate = new Promise<null>((r) => (release = r));
+    const record = (transcript: string): Promise<null> => {
+      asked.push(transcript);
+      return gate;
+    };
+    settleMock.mockImplementation(((t: string) => record(t)) as never);
+    patchMock.mockImplementation(((_delta: string, _prior: MindShapeSpec, t: string) =>
+      record(t)) as never);
+  });
+
+  // An intellectual ramble: the local heuristics find nothing in it, which is exactly the case the
+  // model seed exists for — so every utterance here reaches the gate rather than being answered
+  // for nothing by a local atom.
+  const SAID_1 = 'a roadmap for learning linear algebra';
+  const SAID_2 = `${SAID_1}\nand how to actually stick with it`;
+  const SAID_3 = `${SAID_2}\nand whether the money is worse`;
+
+  it('exposes the wait, so asking never looks like listening', async () => {
+    const { result } = renderHook(() => useMindShape(CFG));
+    expect(result.current.refining).toBe(false);
+
+    await act(async () => {
+      result.current.onTranscript(SAID_1);
+    });
+    expect(asked).toHaveLength(1);
+    expect(result.current.refining).toBe(true);
+
+    await act(async () => {
+      release(null);
+      await Promise.resolve();
+    });
+    expect(result.current.refining).toBe(false);
+  });
+
+  it('asks about the words spoken during a call once the call comes back', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMindShape(CFG));
+
+    await act(async () => {
+      result.current.onTranscript(SAID_1);
+    });
+    expect(asked).toHaveLength(1);
+
+    // Said while the first call is still out. Before the pending slot this simply vanished, and
+    // the map waited for the person to speak AGAIN before it asked about any of it.
+    await act(async () => {
+      result.current.onTranscript(SAID_2);
+    });
+    expect(asked).toHaveLength(1);
+
+    await act(async () => {
+      release(null);
+      await Promise.resolve();
+    });
+
+    // The debounce runs from the ANSWER, so the held words wait out the gap and then go on their
+    // own. Stamped from the request instead, a slow call and the gap would add up to nearly double.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(asked).toHaveLength(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toContain('actually stick with it');
+  });
+
+  it('measures the gap from the answer, not from the request', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMindShape(CFG));
+
+    await act(async () => {
+      result.current.onTranscript(SAID_1);
+    });
+    await act(async () => {
+      result.current.onTranscript(SAID_2);
+    });
+    // A genuinely slow provider — measured at up to 16s on a real key.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9_000);
+    });
+    await act(async () => {
+      release(null);
+      await Promise.resolve();
+    });
+
+    // Stamped from the request, nine seconds of waiting would have already spent the gap and the
+    // catch-up call would go out back to back with the one that just landed — no pause between
+    // model calls at all on exactly the providers where each one costs the most.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(asked).toHaveLength(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(asked).toHaveLength(2);
+  });
+
+  it('holds only the latest thing said while a call is out', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMindShape(CFG));
+
+    await act(async () => {
+      result.current.onTranscript(SAID_1);
+    });
+    await act(async () => {
+      result.current.onTranscript(SAID_2);
+      result.current.onTranscript(SAID_3);
+    });
+    await act(async () => {
+      release(null);
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_500);
+    });
+    // One catch-up call, carrying everything — never a queue of stale transcripts to pay for.
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toContain('whether the money is worse');
+  });
+
+  it('drops the held words when the session is reset, rather than firing into the next one', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useMindShape(CFG));
+
+    await act(async () => {
+      result.current.onTranscript(SAID_1);
+    });
+    await act(async () => {
+      result.current.onTranscript(SAID_2);
+    });
+    await act(async () => {
+      result.current.reset();
+      release(null);
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(asked).toHaveLength(1);
+    expect(result.current.phase).toBe('idle');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M2/M4 — an empty map has three honest explanations, and the hook has to know which.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('useMindShape — model status is the reason the map is empty', () => {
+  const CFG: ModelConfig = {
+    provider: 'gemini',
+    model: 'gemini-3.1-flash-lite',
+    apiKey: 'test-key',
+  };
+  const settleMock = vi.mocked(settleMindShape);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    settleMock.mockResolvedValue(null);
+  });
+
+  it('starts with no verdict on a model it has not needed yet', () => {
+    const { result } = renderHook(() => useMindShape(null));
+    expect(result.current.modelStatus).toBe('ok');
+  });
+
+  it('says nothing was asked when there is nothing to ask', async () => {
+    const { result } = renderHook(() => useMindShape(null));
+    await act(async () => {
+      result.current.onTranscript('i could take the new role or stay where i am');
+    });
+    expect(result.current.modelStatus).toBe('not-connected');
+    expect(settleMock).not.toHaveBeenCalled();
+  });
+
+  // M4: the typed path settles through the same call, so it must reach the same verdict — and the
+  // verdict must not outlive its session.
+  it('separates a model that would not answer from one that was never there', async () => {
+    const { result } = renderHook(() => useMindShape(CFG));
+    const said = 'i could take the new role but my partner is against it';
+    await act(async () => {
+      result.current.onTranscript(said);
+      result.current.onSpeechEnd(said);
+    });
+    await flush();
+    expect(result.current.modelStatus).toBe('unavailable');
+
+    await act(async () => {
+      result.current.resume(true);
+    });
+    expect(result.current.modelStatus).toBe('ok');
+  });
+
+  it('clears the verdict on reset so the next session starts clean', async () => {
+    const { result } = renderHook(() => useMindShape(CFG));
+    const said = 'i could take the new role but my partner is against it';
+    await act(async () => {
+      result.current.onTranscript(said);
+      result.current.onSpeechEnd(said);
+    });
+    await flush();
+    expect(result.current.modelStatus).toBe('unavailable');
+    await act(async () => {
+      result.current.reset();
+    });
+    expect(result.current.modelStatus).toBe('ok');
   });
 });

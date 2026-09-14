@@ -273,6 +273,7 @@ import { registerWorldOpener } from './world/openWorld';
 import './world/worldChip.css';
 import { mindShapeToPrompt } from './mindshape/mindShapeToPrompt';
 import { completeWordsOnly, countThoughts } from './mindshape/localExtract';
+import { joinRamble } from './mindshape/joinRamble';
 import type { MindShapeSpec } from './mindshape/types';
 import './whisper/whisper.css';
 import { setVoiceGain, setOutputMuted } from '../voice/streamTts';
@@ -878,11 +879,24 @@ export function LiveApp(): ReactElement {
   const finishWatchPendingRef = useRef(false);
   const voicePhaseRef = useRef<VoicePhase>('idle');
   const settleWatchThinkingNow = useCallback((): void => {
-    const ramble = mindShapeRambleRef.current.join(' ').trim();
-    if (ramble && mindShapeRef.current.phase === 'listening') {
-      mindShapeRef.current.onSpeechEnd(ramble);
-    }
+    const ramble = joinRamble(mindShapeRambleRef.current);
+    // No phase check here: `mindShape` is a fresh object per render and a speech-end lands in the
+    // same synchronous batch as the transcript that opened the session, so this ref's `phase` is a
+    // render-old snapshot — reading it dropped the first utterance's settle entirely. onSpeechEnd
+    // checks its own live phase ref instead, which is the only copy that can be right.
+    if (ramble) mindShapeRef.current.onSpeechEnd(ramble);
   }, []);
+  // Watch Me Think settles itself after a long enough quiet. Both the mic's end-of-utterance and a
+  // typed thought re-arm it — a thought typed while the map was open used to cancel the timer and
+  // leave nothing to bring it back, so the map sat unsettled until the user pressed Done thinking.
+  const armWatchSettle = useCallback((): void => {
+    if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = window.setTimeout(() => {
+      settleTimerRef.current = null;
+      voiceRef.current?.stop();
+      settleWatchThinkingNow();
+    }, SETTLE_SILENCE_MS);
+  }, [settleWatchThinkingNow]);
   // Whisper mode: quiet hours dim the room and drop the voice to a murmur.
   const whisper = useWhisper();
   // Small screens only: the conversation rail collapses into a bottom sheet; this opens it.
@@ -2277,7 +2291,7 @@ export function LiveApp(): ReactElement {
     // thought and re-feed the whole ramble, so the map merges rather than restarts.
     bankThought: (text) => {
       mindShapeRambleRef.current = [...mindShapeRambleRef.current, text];
-      mindShape.onTranscript(mindShapeRambleRef.current.join(' '));
+      mindShape.onTranscript(joinRamble(mindShapeRambleRef.current));
     },
     openAtlas: () => {
       // Seed a few explored topics into the Library (which feeds the Atlas) so the map shows real
@@ -3380,7 +3394,9 @@ export function LiveApp(): ReactElement {
           settleTimerRef.current = null;
         }
         mindShapeRambleRef.current = [...mindShapeRambleRef.current, t];
-        mindShape.onTranscript(mindShapeRambleRef.current.join(' '));
+        mindShape.onTranscript(joinRamble(mindShapeRambleRef.current));
+        // …and start the clock again, or a session that ended on a typed thought never settles.
+        armWatchSettle();
         return;
       }
       // A pasted diff isn't a question — route it straight to Ripple (the code/ship companion)
@@ -3453,6 +3469,7 @@ export function LiveApp(): ReactElement {
       pinned,
       userInk,
       mindShape,
+      armWatchSettle,
       cfg,
       setHeard,
       setAttached,
@@ -3846,6 +3863,22 @@ export function LiveApp(): ReactElement {
       // silently dropped the way an ordinary submission would be while busy.
       const wasBargeIn = bargedInRef.current;
 
+      // Watch Me Think keeps a shaky utterance instead of routing it to the composer as a draft.
+      // The map is a record of what was said, and diverting the words there — with the mic still
+      // open and the composer hidden behind the map — is precisely the "it didn't understand me"
+      // report: the thought vanished. It lands marked, so the card admits the doubt.
+      if (r.lowConfidence && text && watchThinkingRef.current) {
+        bargedInRef.current = false;
+        setHeard(null);
+        mindShapeRambleRef.current = [...mindShapeRambleRef.current, text];
+        mindShape.onTranscript(joinRamble(mindShapeRambleRef.current), text);
+        if (finishWatchPendingRef.current) {
+          finishWatchPendingRef.current = false;
+          settleWatchThinkingNow();
+        }
+        return;
+      }
+
       if (r.lowConfidence && text) {
         bargedInRef.current = false;
         // A probable-question draft while the walk is parked: end the walk loudly rather than
@@ -3859,19 +3892,6 @@ export function LiveApp(): ReactElement {
         setValue(text);
         setVoiceNotice(LOW_CONFIDENCE_VOICE_MSG);
         setComposerFocus((n) => n + 1);
-        // Done thinking may have been pressed while this final transcript was resolving. Preserve
-        // the uncertain words as a draft, but still honor the explicit completion action instead
-        // of leaving Watch stuck open with a pending flag that can never bank this utterance.
-        if (finishWatchPendingRef.current && watchThinkingRef.current) {
-          finishWatchPendingRef.current = false;
-          voiceRef.current?.stop();
-          if (mindShapeRambleRef.current.length > 0) {
-            settleWatchThinkingNow();
-          } else {
-            watchThinkingRef.current = false;
-            setWatchThinking(false);
-          }
-        }
         return;
       }
 
@@ -3918,8 +3938,7 @@ export function LiveApp(): ReactElement {
       if (watchThinkingRef.current) {
         mindShapeRambleRef.current = [...mindShapeRambleRef.current, text];
         setHeard(null);
-        const ramble = mindShapeRambleRef.current.join(' ');
-        mindShape.onTranscript(ramble);
+        mindShape.onTranscript(joinRamble(mindShapeRambleRef.current));
         if (finishWatchPendingRef.current) {
           finishWatchPendingRef.current = false;
           settleWatchThinkingNow();
@@ -4011,7 +4030,11 @@ export function LiveApp(): ReactElement {
       } else if (
         e.phase === 'idle' &&
         watchThinkingRef.current &&
-        mindShapeRef.current.phase === 'listening'
+        // Something banked is the predicate, not the map's rendered phase: this event arrives in
+        // the same batch as the utterance that banked it, so the phase in hand is a render behind
+        // and on the FIRST utterance still reads 'idle'. That is how a whole session could go by
+        // with the settle timer never armed once.
+        mindShapeRambleRef.current.length > 0
       ) {
         if (finishWatchPendingRef.current) {
           finishWatchPendingRef.current = false;
@@ -4021,12 +4044,7 @@ export function LiveApp(): ReactElement {
         // The VAD just ended an utterance (~1.6s of silence) while Watch Me Think is live. If the
         // quiet holds to eight seconds total, settle as a fallback. Done thinking below is the
         // deterministic path for loud rooms and users who do not want to wait.
-        if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
-        settleTimerRef.current = window.setTimeout(() => {
-          settleTimerRef.current = null;
-          voiceRef.current?.stop();
-          settleWatchThinkingNow();
-        }, SETTLE_SILENCE_MS);
+        armWatchSettle();
       }
       // Surface controller errors that were previously invisible (the controller settles back
       // to idle, so without this the mic just… does nothing). 'no-speech' and 'aborted' are
@@ -4153,10 +4171,7 @@ export function LiveApp(): ReactElement {
       // "India" as "Ind" mid-utterance), or the live map tags it as "IND". The completed utterances in
       // the ramble are already whole; the partial `heard` is the one that needs guarding.
       const partial = completeWordsOnly(heard);
-      const full =
-        mindShapeRambleRef.current.length > 0
-          ? [...mindShapeRambleRef.current, partial].join(' ').trim()
-          : partial;
+      const full = joinRamble([...mindShapeRambleRef.current, partial]);
       if (full) mindShape.onTranscript(full);
     }
   }, [heard, listening, watchThinking]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -5611,10 +5626,11 @@ export function LiveApp(): ReactElement {
             }
           }
         }}
-        liveTranscript={heard || undefined}
         // Count distinct thoughts across everything said so far (one utterance can hold
         // several), not the number of VAD segments banked.
-        thoughtCount={countThoughts([mindShapeRambleRef.current.join(' '), heard ?? ''].join(' '))}
+        thoughtCount={countThoughts(joinRamble([...mindShapeRambleRef.current, heard ?? '']))}
+        voicePhase={voicePhase}
+        speechEnding={speechEnding}
       />
     </div>
   ) : null;
