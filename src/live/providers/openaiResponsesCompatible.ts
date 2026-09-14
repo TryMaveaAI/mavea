@@ -395,7 +395,15 @@ export function openaiResponsesCompatible(opts: OpenAIResponsesOptions): Provide
         if (res.ok) break;
         noteRateLimited(res.status);
         if (res.status === 429 && rlAttempt < RATE_LIMIT_RETRIES && !req.signal?.aborted) {
-          await sleepAbortable(retryAfterMs(res, rlAttempt), req.signal);
+          // Say so: this sleep runs to 10s an attempt, and under "Composing" or "Building" it
+          // reads as the model being slow when the model has not been asked yet.
+          const wait = retryAfterMs(res, rlAttempt);
+          req.onWait?.(wait);
+          try {
+            await sleepAbortable(wait, req.signal);
+          } finally {
+            req.onWait?.(null);
+          }
           continue;
         }
         const detail = await errorDetail(res);

@@ -35,7 +35,7 @@ import { bounded } from '../lib/bounded';
 import { SHOWFRAME_REVEAL_CAP_MS } from './walkSync';
 import type { InkIntent } from './annotate/inkIntent';
 import type { MindShapeSpec } from './mindshape/types';
-import { explodeWorld } from './world/explode';
+import { explodeWorld, type WorldWait } from './world/explode';
 import { expandWorldNode } from './world/expand';
 import { cacheGet, cachePut, fnv1a, rippleCacheKey } from './ripple/cache';
 import { providerGenerationAllowed } from './providers/spendPolicy';
@@ -816,7 +816,8 @@ export interface UseLiveTurn extends LiveTurnState {
    *  reader opens it. Resolves with the world (already written back onto the card and every frame
    *  that carries it) or null when the build failed. A card that already carries a world, or a
    *  turn the legal gate refuses, calls nothing. */
-  generateWorld: (blockId: string) => Promise<WorldSpec | null>;
+  /** `onWait` carries the provider's "busy, retrying" signal so the wait can say so. */
+  generateWorld: (blockId: string, onWait?: WorldWait) => Promise<WorldSpec | null>;
   /** Break ONE cause of a standing world into its parts — a second, smaller call, made only when
    *  the reader presses for it. Resolves with the world plus that breakdown, or null when there is
    *  nothing honest to add (an atomic cause, a failed call, a node that already has one). The
@@ -1641,7 +1642,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
   }, []);
 
   const generateWorld = useCallback(
-    async (blockId: string): Promise<WorldSpec | null> => {
+    async (blockId: string, onWait?: WorldWait): Promise<WorldSpec | null> => {
       const { canRun: gate, getConfig: readConfig } = argsRef.current;
       if (gate && !gate()) return null;
       const block = findBlock(blockId);
@@ -1650,7 +1651,13 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
       const question = block.props.title;
       try {
         // Only the grounding the offering turn already had — a world never opens a fresh search.
-        const world = await explodeWorld(question, await turnCorpus(question), readConfig());
+        const world = await explodeWorld(
+          question,
+          await turnCorpus(question),
+          readConfig(),
+          undefined,
+          onWait,
+        );
         if (world) dispatch({ type: 'world', blockId, question, world });
         return world;
       } catch {

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { anthropicOutputFormat } from '../src/live/providers/anthropicFormat';
+import {
+  ANTHROPIC_OPTIONAL_LIMIT,
+  anthropicOutputFormat,
+} from '../src/live/providers/anthropicFormat';
+import { WORLD_FORMAT } from '../src/live/world/explode';
 import { liveJsonSchema } from '../src/live/providers/schema';
 import { anthropicAdapter } from '../src/live/providers/anthropic';
 import { openaiAdapter } from '../src/live/providers/openai';
@@ -56,6 +60,33 @@ describe('anthropicOutputFormat', () => {
   it('cannot express the canvas schema, because a block props bag has to stay open', () => {
     expect(anthropicOutputFormat(liveJsonSchema(['insight', 'chart']))).toBeNull();
     expect(anthropicOutputFormat(liveJsonSchema(['insight'], 'brief'))).toBeNull();
+  });
+
+  // The API refuses a schema with more optional properties than it will compile, and it says so
+  // with a 400 — which the adapter learns from, but only after the request has failed once. The
+  // living world's schema is over that limit, so it must go out unconstrained the FIRST time; on a
+  // Claude key every world otherwise paid a failed round-trip before it started.
+  it('cannot express a schema over the optional-property limit — the living world included', () => {
+    const withOptionals = (n: number): object => ({
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        ...Object.fromEntries(
+          Array.from({ length: n }, (_, i) => [`f${i}`, { type: 'string' }] as const),
+        ),
+      },
+      required: ['id'],
+    });
+    expect(anthropicOutputFormat(withOptionals(ANTHROPIC_OPTIONAL_LIMIT))).not.toBeNull();
+    expect(anthropicOutputFormat(withOptionals(ANTHROPIC_OPTIONAL_LIMIT + 1))).toBeNull();
+    // Counted through array items too — the world's optionals live on its node item.
+    const nested = {
+      type: 'object',
+      properties: { nodes: { type: 'array', items: withOptionals(ANTHROPIC_OPTIONAL_LIMIT + 1) } },
+      required: ['nodes'],
+    };
+    expect(anthropicOutputFormat(nested)).toBeNull();
+    expect(anthropicOutputFormat(WORLD_FORMAT)).toBeNull();
   });
 
   it('seals every object and keeps only the array floor the API understands', () => {

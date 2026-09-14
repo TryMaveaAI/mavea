@@ -201,6 +201,10 @@ interface WorldOverlayProps {
   question?: string;
   /** The build came back with nothing. An honest dead end — never a stand-in world. */
   failed?: boolean;
+  /** The provider answered "busy" and the call is backing off before it asks again. */
+  busy?: boolean;
+  /** The build has run past what one usually takes — still going, and said so. */
+  slow?: boolean;
   onRetry?: () => void;
   onClose?: () => void;
   /** Open on this representation, for a follow-up the world could already answer. */
@@ -234,6 +238,8 @@ export function WorldOverlay({
   spec,
   question,
   failed,
+  busy,
+  slow,
   onRetry,
   onClose,
   view,
@@ -256,6 +262,8 @@ export function WorldOverlay({
     <WorldShell
       title={question ? sentenceCase(question) : ''}
       failed={failed === true}
+      busy={busy === true}
+      slow={slow === true}
       onRetry={onRetry}
       onClose={onClose}
     />
@@ -268,11 +276,15 @@ export function WorldOverlay({
 function WorldShell({
   title,
   failed,
+  busy,
+  slow,
   onRetry,
   onClose,
 }: {
   title: string;
   failed: boolean;
+  busy: boolean;
+  slow: boolean;
   onRetry?: () => void;
   onClose?: () => void;
 }): ReactElement {
@@ -319,10 +331,19 @@ function WorldShell({
                   ground the built stage stands on. */}
               <div className="wo-shell-ground" aria-hidden="true" />
               <span className="wo-shell-pulse" aria-hidden="true" />
-              <p className="wo-shell-line">Building your living answer…</p>
+              {/* The wait's own states, said once and quietly: a provider that answered "busy"
+                  is backing off before the ask goes out again (that pause is not the model
+                  thinking), and a build past the usual time is still a build — the adapters'
+                  ceilings end it, and a closed overlay keeps whatever lands. */}
+              <p className="wo-shell-line">
+                {busy
+                  ? 'The provider is busy — asking again shortly.'
+                  : 'Building your living answer…'}
+              </p>
               <p className="wo-shell-note">
-                One model call, grounded in what this answer already found. Once it is built it is
-                kept — re-opening it, and replaying this turn, costs nothing.
+                {slow
+                  ? 'This one is taking longer than usual. It keeps going for as long as the provider allows, and you can go back to the answer meanwhile — the world is kept on this card when it lands.'
+                  : 'One model call, grounded in what this answer already found. Once it is built it is kept — re-opening it, and replaying this turn, costs nothing.'}
               </p>
             </>
           )}

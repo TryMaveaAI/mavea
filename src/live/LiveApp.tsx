@@ -192,6 +192,10 @@ import { studyVoices } from './content/studyVoices';
 /** How far apart the study's opening marks land — a quick cascade that reads as a hand
  *  moving across the board, not a batch that appears all at once. CSS delay, not a wait. */
 const STUDY_INK_STEP_MS = 190;
+/** How long a living world may take before the wait says so. Measured on the fastest tiers a
+ *  build lands in ~4s and on the slower ones in ~12s, so twenty seconds is past any normal build
+ *  and well inside the adapters' own ceilings, which are what end the wait. */
+const WORLD_SLOW_MS = 20_000;
 import { UserInkLayer } from './annotate/UserInkLayer';
 import { useInkIntent } from './annotate/useInkIntent';
 import { InkBar } from './annotate/InkBar';
@@ -4825,6 +4829,12 @@ export function LiveApp(): ReactElement {
   const [worldPick, setWorldPick] = useState<string | null>(null);
   const [worldFailed, setWorldFailed] = useState(false);
   const [worldAttempt, setWorldAttempt] = useState(0);
+  // Two honest states of the wait, so "Building…" is never the only thing a long build shows:
+  // the provider said it is busy and the adapter is backing off (Gemini answers 429/503 that way
+  // on a loaded key, silently for up to ten seconds an attempt), or the build has simply run past
+  // what one usually takes. Both are quiet copy changes, never a countdown.
+  const [worldBusy, setWorldBusy] = useState(false);
+  const [worldSlow, setWorldSlow] = useState(false);
   // Resolved against the canvas being LOOKED AT every render: a turn that evolves the world keeps
   // the view open on the updated spec, and a turn that replaces the canvas leaves nothing to show —
   // which is what sends the reader back out below, rather than leaving a stale world on screen.
@@ -4878,11 +4888,19 @@ export function LiveApp(): ReactElement {
     if (!openWorldId || !worldUnbuilt) return;
     let live = true;
     setWorldFailed(false);
-    void generateWorld(openWorldId).then((world) => {
+    setWorldBusy(false);
+    setWorldSlow(false);
+    const slowTimer = setTimeout(() => {
+      if (live) setWorldSlow(true);
+    }, WORLD_SLOW_MS);
+    void generateWorld(openWorldId, (ms) => {
+      if (live) setWorldBusy(ms !== null);
+    }).then((world) => {
       if (live && !world) setWorldFailed(true);
     });
     return () => {
       live = false;
+      clearTimeout(slowTimer);
     };
   }, [openWorldId, worldUnbuilt, worldAttempt, generateWorld]);
   // Breaking one cause down, bound to the card the reader has open. Identity-stable off the block
@@ -6899,6 +6917,8 @@ export function LiveApp(): ReactElement {
             spec={worldBlock.props.world ?? null}
             question={worldBlock.props.title}
             failed={worldFailed}
+            busy={worldBusy}
+            slow={worldSlow}
             onRetry={() => setWorldAttempt((n) => n + 1)}
             onClose={leaveWorldView}
             view={worldBlock.props.view}

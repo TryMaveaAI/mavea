@@ -24,7 +24,7 @@ import { naturalGuidedCopy, naturalizeGuidedFrame } from '../tour/guidedCopy';
 import { savedViewMode } from '../canvas/focus/useFocusMode';
 
 /** Default breath a turn step holds after its walk + beats before auto-advance. */
-const STEP_HOLD_MS = 4500;
+const STEP_HOLD_MS = 3000;
 /** Grace after the reveal fires before the quiet-watch starts. This used to be 8s of blind
  *  margin for TTS spin-up; the walk now spans its own readiness barrier and real audio waits
  *  (walkActive holds isBusy true from reveal to last line), so the watch can start almost

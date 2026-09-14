@@ -1,7 +1,7 @@
 import { liesFlat } from '../src/live/annotate/measure';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
-import { gestureOf, relativeRect, strokeFor } from '../src/live/annotate/gesture';
+import { gestureOf, labelPlacements, relativeRect, strokeFor } from '../src/live/annotate/gesture';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
 import { BarChart } from '../src/canvas/BarChart';
 import { KpiGrid } from '../src/canvas/KpiGrid';
@@ -284,6 +284,32 @@ describe('gesture geometry — hand strokes, not machine arcs', () => {
   it('connect returns null without a resolved far end — never a lone circle standing in for it', () => {
     const grid = rect(0, 0, 800, 800);
     expect(strokeFor('connect', rect(100, 100, 40, 20), grid, 'seed')).toBeNull();
+  });
+
+  // A note is written in the hand's size for the line it sits beside — the same rule the strokes
+  // follow — so it reads the same on a laptop, on a large display whose type is bigger, and on a
+  // PDF page at canvas-pixel scale. Its cleared box grows with it (the box checked is the box
+  // drawn), it stays inside the host, and a tall target (a KPI figure) does not make the hand
+  // write twice as big.
+  it('a note scales with the line it annotates, and its cleared box scales with it', () => {
+    const host = rect(0, 0, 900, 600);
+    const words = 'worth a look';
+    const onLine = strokeFor('note', rect(40, 100, 120, 18), host, 'seed', { label: words })!;
+    const onBigLine = strokeFor('note', rect(40, 100, 120, 27), host, 'seed', { label: words })!;
+    const onFigure = strokeFor('note', rect(40, 100, 120, 80), host, 'seed', { label: words })!;
+    expect(onLine.label?.size).toBe(16);
+    expect(onBigLine.label?.size).toBe(24);
+    expect(onFigure.label?.size).toBe(32);
+    const boxOn = labelPlacements('note', rect(40, 100, 120, 18), host, words)[0].box;
+    const boxBig = labelPlacements('note', rect(40, 100, 120, 27), host, words)[0].box;
+    expect(boxBig.width / boxOn.width).toBeCloseTo(1.5, 5);
+    expect(boxBig.height / boxOn.height).toBeCloseTo(1.5, 5);
+    // A big note near the host's edge is clamped inside it, never cut off.
+    const nearEdge = strokeFor('note', rect(700, 560, 120, 27), host, 'seed', { label: words })!;
+    const { w, h } = { w: (words.length * 8 + 10) * 1.5, h: 17 * 1.5 };
+    expect(nearEdge.label!.x + w).toBeLessThanOrEqual(host.width);
+    expect(nearEdge.label!.y).toBeLessThanOrEqual(host.height - 8);
+    expect(nearEdge.label!.y - h).toBeGreaterThanOrEqual(0);
   });
 });
 

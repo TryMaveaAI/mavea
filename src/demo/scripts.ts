@@ -77,17 +77,17 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         beats: [{ kind: 'export', atMs: 500, format: 'presentation' }],
         note: 'One tap: the whole review becomes a leadership deck.',
-        holdMs: 6500,
+        holdMs: 5000,
       },
       {
         beats: [{ kind: 'dashboard', atMs: 500, settings: true }],
         note: 'A living dashboard keeps a review like this up to date.',
-        holdMs: 6500,
+        holdMs: 5000,
       },
       {
         beats: [{ kind: 'present', atMs: 500 }],
         note: '…or presents itself, full screen.',
-        holdMs: 6000,
+        holdMs: 4500,
       },
     ],
   },
@@ -116,7 +116,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         beats: [{ kind: 'flashcards', atMs: 600 }],
         note: 'Any card can become a flashcard and join her study deck.',
-        holdMs: 6000,
+        holdMs: 4500,
       },
     ],
   },
@@ -141,12 +141,12 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         beats: [{ kind: 'palette', atMs: 600 }],
         note: 'Command K opens the feature index. Every feature is a keystroke away.',
-        holdMs: 5000,
+        holdMs: 4000,
       },
       {
         beats: [{ kind: 'export', atMs: 500, format: 'presentation' }],
         note: 'The whole session becomes a polished presentation.',
-        holdMs: 7500,
+        holdMs: 6000,
       },
     ],
   },
@@ -168,7 +168,7 @@ export const DEMO_SCRIPTS: readonly DemoScript[] = [
       {
         beats: [{ kind: 'export', atMs: 500, format: 'document' }],
         note: 'The plan is ready to print for the plane.',
-        holdMs: 7500,
+        holdMs: 6000,
       },
     ],
   },

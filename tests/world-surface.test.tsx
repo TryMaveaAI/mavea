@@ -273,6 +273,16 @@ describe('WorldOverlay before there is a world', () => {
     expect(screen.queryAllByRole('slider')).toHaveLength(0);
   });
 
+  it('says when the provider is busy, and when a build has run long — never a bare "Building…"', () => {
+    const { rerender } = render(<WorldOverlay spec={null} question={WORLD_SEED.title} />);
+    expect(screen.getByRole('status').textContent).toMatch(/building your living answer/i);
+    rerender(<WorldOverlay spec={null} question={WORLD_SEED.title} busy />);
+    expect(screen.getByRole('status').textContent).toMatch(/provider is busy/i);
+    rerender(<WorldOverlay spec={null} question={WORLD_SEED.title} slow />);
+    expect(screen.getByRole('status').textContent).toMatch(/taking longer than usual/i);
+    expect(screen.queryByRole('button', { name: /try again/i })).toBeNull();
+  });
+
   it('states the failure and offers a retry, never a stand-in world', () => {
     const onRetry = vi.fn();
     const { container } = render(

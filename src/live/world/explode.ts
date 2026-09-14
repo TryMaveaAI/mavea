@@ -123,7 +123,7 @@ const EDGE_ITEM = {
   },
   required: ['from', 'to', 'sign'],
 };
-const WORLD_FORMAT = {
+export const WORLD_FORMAT = {
   type: 'object',
   properties: {
     title: { type: 'string' },
@@ -233,6 +233,11 @@ ${sourcesBlock(corpus)}
 Answer the follow-up on THIS world with a DELTA — only the nodes it changes (${nodeCap} nodes max, existing ids echoed), never the whole web again. Quote SOURCES verbatim for any number, series point or weight; otherwise T0 with no numbers. DATE every cause you can place in time — a year is enough, and this is not a number needing a source. Reply as compact JSON on one line.`;
 }
 
+/** The provider's own "busy, retrying in `ms`" signal (null when the retry goes out), so the
+ *  surface waiting on a world can say so. A rate-limited or overloaded provider backs off for up to
+ *  ten seconds per attempt, and that used to pass under "Building…" as if the model were slow. */
+export type WorldWait = (ms: number | null) => void;
+
 /** One format-constrained call, coerced against the corpus. Null on any failure — a world is
  *  always optional garnish on a turn, never the turn itself. */
 async function callWorld(
@@ -242,6 +247,7 @@ async function callWorld(
   maxTokens: number,
   corpus: EvidenceCorpus,
   signal?: AbortSignal,
+  onWait?: WorldWait,
 ): Promise<WorldSpec | null> {
   let raw: string | object;
   try {
@@ -255,6 +261,7 @@ async function callWorld(
         thinkingLevel: 'minimal',
         format: WORLD_FORMAT,
         ...(signal ? { signal } : {}),
+        ...(onWait ? { onWait } : {}),
       },
       cfg,
     );
@@ -297,11 +304,12 @@ export function explodeWorld(
   corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
+  onWait?: WorldWait,
 ): Promise<WorldSpec | null> {
   const key = worldKey(question, corpus, cfg);
   const already = built.get(key);
   if (already) return already;
-  const run = buildWorld(key, question, corpus, cfg, signal);
+  const run = buildWorld(key, question, corpus, cfg, signal, onWait);
   built.set(key, run);
   while (built.size > BUILT_CAP) {
     const oldest = built.keys().next().value;
@@ -323,6 +331,7 @@ async function buildWorld(
   corpus: EvidenceCorpus,
   cfg: ModelConfig,
   signal?: AbortSignal,
+  onWait?: WorldWait,
 ): Promise<WorldSpec | null> {
   try {
     const cached = await cacheGet<WorldSpec>(key);
@@ -339,6 +348,7 @@ async function buildWorld(
     maxTokens,
     corpus,
     signal,
+    onWait,
   );
   if (world) {
     try {

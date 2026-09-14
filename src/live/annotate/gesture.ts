@@ -428,21 +428,41 @@ function bracket(
   pts.push({ x: xb, y });
   pts.push({ x: xb, y: y + tick });
   const stroke: InkStroke = { d: penPath(pts), kind: 'bracket' };
-  if (label) stroke.label = { text: label, x: (xa + xb) / 2, y: y - 6, anchor: 'middle' };
+  if (label)
+    stroke.label = {
+      text: label,
+      x: (xa + xb) / 2,
+      y: y - 6,
+      anchor: 'middle',
+      size: round(NOTE_FS * noteUnit(r)),
+    };
   return stroke;
 }
 
-/** The size a written label will draw at — 14px condensed italic ≈ 7px/char, 17px line pitch.
- *  Shared by the placement geometry below AND `labelPlacements` (the clear-space candidates),
- *  so the box that was checked for collisions is the box that actually gets drawn. */
-function labelSize(text: string): { w: number; lineH: number; h: number } {
+/** The hand's size for written words, in host units at a card's own line (`.ink-note`'s CSS size
+ *  in annotate.css is this same number, for a label that carries none). */
+const NOTE_FS = 16;
+/** A written label scales with the line it is written beside — the same rule every stroke
+ *  follows (`unitOf`), and the reason a note reads as the same hand on a laptop, a large display
+ *  whose type ramp is bigger, and a PDF page at canvas-pixel scale. A fixed 16px note beside a
+ *  22px line was the "marks too small" report; beside a page's line bar it was unreadable.
+ *  Capped lower than the strokes' own unit, because a note on a KPI figure or a bar hangs off a
+ *  box two or three lines tall and the hand does not write bigger for it. */
+const NOTE_UNIT_MAX = 2;
+const noteUnit = (r: Rect): number => Math.min(unitOf(r), NOTE_UNIT_MAX);
+
+/** The size a written label will draw at, in host units: ~8/char at the card's line, 17 line
+ *  pitch, both scaled by `u` (the note's unit for its target). Shared by the placement geometry
+ *  below AND `labelPlacements` (the clear-space candidates), so the box that was checked for
+ *  collisions is the box that actually gets drawn. */
+function labelSize(text: string, u = 1): { w: number; lineH: number; h: number } {
   const lines = text.split('\n');
   const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
   // 8px/char over-estimates the average hand-font glyph on purpose: the clear-space check
   // clears THIS box, so the drawn words must never be wider than what was cleared. Paired with
-  // `.ink-note`'s font-size in annotate.css — at its 16px, Caveat's average lowercase advance is
-  // 0.359em ≈ 5.7px, so the budget still has room. Change either and re-check the other.
-  return { w: longest * 8 + 10, lineH: 17, h: (lines.length - 1) * 17 + 17 };
+  // `NOTE_FS` — at 16, Caveat's average lowercase advance is 0.359em ≈ 5.7px, so the budget still
+  // has room. Change either and re-check the other.
+  return { w: (longest * 8 + 10) * u, lineH: 17 * u, h: ((lines.length - 1) * 17 + 17) * u };
 }
 
 /** A handwritten margin note tethered to an item by a short curved connector — the aside a hand
@@ -450,9 +470,12 @@ function labelSize(text: string): { w: number; lineH: number; h: number } {
  *  without one it parks to the right when there's room, else just below the item. */
 function note(r: Rect, host: Rect, rnd: () => number, text: string, place?: LabelPlace): InkStroke {
   // A note may carry several wrapped lines (newline-separated); geometry sizes off the LONGEST
-  // line and clamps vertically so the last line stays in-card.
-  const { w: labelW, h } = labelSize(text);
-  const blockH = h - 17;
+  // line and clamps vertically so the last line stays in-card. `u` is the hand's size here, and
+  // the first line's ascent (14u) is what the top clamps keep inside the host.
+  const u = noteUnit(r);
+  const { w: labelW, lineH, h } = labelSize(text, u);
+  const blockH = h - lineH;
+  const ascent = 14 * u;
   const side: LabelPlace =
     place ?? (host.width - (r.left + r.width) > labelW + 22 ? 'right' : 'below');
   const lx =
@@ -463,10 +486,10 @@ function note(r: Rect, host: Rect, rnd: () => number, text: string, place?: Labe
         : Math.max(8, Math.min(r.left, host.width - 8 - labelW));
   const ly =
     side === 'right' || side === 'left'
-      ? Math.min(host.height - 8 - blockH, Math.max(14, r.top + r.height / 2))
+      ? Math.min(host.height - 8 - blockH, Math.max(ascent, r.top + r.height / 2))
       : side === 'above'
-        ? Math.max(14, r.top - blockH - 14)
-        : Math.min(host.height - 8 - blockH, r.top + r.height + 18);
+        ? Math.max(ascent, r.top - blockH - 14)
+        : Math.min(host.height - 8 - blockH, r.top + r.height + ascent + 4);
   const from: Pt =
     side === 'right'
       ? { x: lx - 7, y: ly - 4 }
@@ -474,7 +497,7 @@ function note(r: Rect, host: Rect, rnd: () => number, text: string, place?: Labe
         ? { x: lx + labelW - 3, y: ly - 4 }
         : side === 'above'
           ? { x: lx + 6, y: ly + blockH + 4 }
-          : { x: lx + 6, y: ly - 13 };
+          : { x: lx + 6, y: ly - ascent + 1 };
   const to: Pt =
     side === 'right'
       ? { x: r.left + r.width + 2, y: r.top + r.height / 2 }
@@ -490,7 +513,7 @@ function note(r: Rect, host: Rect, rnd: () => number, text: string, place?: Labe
   return {
     d: penPath([from, mid, to]),
     kind: 'note',
-    label: { text, x: lx, y: ly, anchor: 'start' },
+    label: { text, x: lx, y: ly, anchor: 'start', size: round(NOTE_FS * u) },
   };
 }
 
@@ -820,8 +843,9 @@ export function labelPlacements(
   toR?: Rect,
 ): { place: LabelPlace; box: Rect }[] {
   if (!text) return [];
-  const { w, h } = labelSize(text);
-  const midY = Math.max(14, r.top + r.height / 2) - 14;
+  const un = noteUnit(r);
+  const { w, h } = labelSize(text, un);
+  const midY = Math.max(14 * un, r.top + r.height / 2) - 14 * un;
   const fits = (box: Rect): boolean =>
     box.left >= 2 &&
     box.top >= 2 &&
@@ -895,7 +919,7 @@ export function labelPlacements(
     const y = Math.max(12, Math.min(r.top, toR ? toR.top : r.top) - 8);
     // Deliberately unclamped: a bracket hugging the card's top has nowhere honest to write —
     // fits() then rejects the candidate and the bracket keeps its stroke without the words.
-    const box: Rect = { left: (xa + xb) / 2 - w / 2, top: y - 6 - 15, width: w, height: 16 };
+    const box: Rect = { left: (xa + xb) / 2 - w / 2, top: y - 6 - 15 * un, width: w, height: h };
     return fits(box) ? [{ place: 'above', box }] : [];
   }
   if (kind === 'brace') {
