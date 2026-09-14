@@ -25,7 +25,7 @@ import { dirname, join, extname, normalize, resolve, sep } from 'node:path';
 import { spawn, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { constants, createBrotliCompress, createGzip } from 'node:zlib';
-import { homedir, platform } from 'node:os';
+import { availableParallelism, homedir, platform } from 'node:os';
 import readline from 'node:readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1007,6 +1007,8 @@ const VOICE_TARGET_REALTIME = 2;
 /** The measured peak of Kokoro's thread-scaling curve; past this it gets slower AND hungrier. It
  *  is also the compose default, so a tuned machine only ever comes DOWN from it. */
 const VOICE_MAX_THREADS = 4;
+/** whisper.cpp's own default, and the compose default — a ceiling, never a floor. */
+const STT_MAX_THREADS = 4;
 const VOICE_PROBE_TEXT =
   'Mavéa is a voice first thinking companion that draws what it means as it speaks.';
 /** Kokoro emits 24kHz mono 16-bit PCM, so byte length converts straight to seconds of audio. */
@@ -1052,9 +1054,20 @@ export function voiceThreadsFor(realtimePerThread) {
   );
 }
 
+/** Whisper's thread count, which cannot be probed the way synthesis is: transcription has no
+ *  playhead to outrun, so "fast enough" is only ever "as fast as this box goes". What the compose
+ *  file cannot see is how many cores it is asking for — it asks for four whatever the host has, so
+ *  a two-core laptop transcribes on four threads across the same cores the browser renders on.
+ *  Bound it by the cores that exist; there is nothing to measure beyond that. */
+export function sttThreadsFor(cores = availableParallelism()) {
+  return Math.max(1, Math.min(STT_MAX_THREADS, Number.isInteger(cores) ? cores : STT_MAX_THREADS));
+}
+
 /** The environment a compose spawn runs with: the tuned thread count, or the compose default. */
 export function voiceThreadEnv(threads, env = process.env) {
-  return threads ? { ...env, MAVEA_VOICE_THREADS: String(threads) } : env;
+  const next = { ...env, MAVEA_STT_THREADS: String(sttThreadsFor()) };
+  if (threads) next.MAVEA_VOICE_THREADS = String(threads);
+  return next;
 }
 
 /** Synthesize one clause and return how many seconds of audio came back per second of wall clock. */

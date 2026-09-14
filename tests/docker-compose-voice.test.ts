@@ -14,6 +14,7 @@ const whisperDockerfile = readFileSync(
   join(import.meta.dirname, '..', 'voice', 'whisper.Dockerfile'),
   'utf8',
 );
+const devScript = readFileSync(join(import.meta.dirname, '..', 'scripts', 'dev.mjs'), 'utf8');
 
 describe('docker-compose voice service', () => {
   it('pins reviewed speech implementations and binds both services to loopback', () => {
@@ -51,6 +52,16 @@ describe('docker-compose voice service', () => {
     // scripts/dev.mjs probes this box and exports MAVEA_VOICE_THREADS. A literal here would pin
     // every machine to whatever was true on the one this line was written on.
     expect(compose).toMatch(/\$\{MAVEA_VOICE_THREADS:-\d+\}/);
+  });
+
+  it('bounds transcription by the cores the host has rather than a flat four', () => {
+    // whisper.cpp takes --threads literally, so the compose default is 4 threads on a two-core
+    // laptop too — on the same cores the browser is rendering on. The number has to stay
+    // overridable, and something has to override it.
+    expect(compose).toMatch(/MAVEA_STT_THREADS:\s*\$\{MAVEA_STT_THREADS:-\d+\}/);
+    expect(whisperStart).toContain('--threads "${MAVEA_STT_THREADS:-4}"');
+    expect(devScript).toContain('MAVEA_STT_THREADS: String(sttThreads())');
+    expect(devScript).toContain('availableParallelism');
   });
 
   it('sets no CPU quota — a quota starves the thread pool instead of shrinking it', () => {

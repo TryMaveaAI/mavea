@@ -23,6 +23,7 @@ const {
   composeUpArgs,
   settleStartup,
   speechHealthUrl,
+  sttThreadsFor,
 } = cli as {
   readCachedVoiceThreads: (file?: string) => number | null;
   rememberVoiceThreads: (threads: number, realtimePerThread: number, file?: string) => boolean;
@@ -37,6 +38,7 @@ const {
     steps: { offerVoice: () => Promise<void> | void; openApp: () => void },
   ) => Promise<void>;
   speechHealthUrl: (base: string) => string;
+  sttThreadsFor: (cores?: number) => number;
 };
 
 const dirs: string[] = [];
@@ -81,8 +83,27 @@ describe('CLI voice thread tuning', () => {
     expect(voiceThreadEnv(2, base).PATH).toBe('/usr/bin'); // the rest of the environment survives
     expect(base.MAVEA_VOICE_THREADS).toBeUndefined(); // …and is not mutated
     // Nothing measured yet: the variable stays unset so docker-compose.yml's own default (4) wins.
-    expect(voiceThreadEnv(null, base)).toBe(base);
+    expect(voiceThreadEnv(null, base).MAVEA_VOICE_THREADS).toBeUndefined();
     expect(voiceThreadEnv(undefined, base).MAVEA_VOICE_THREADS).toBeUndefined();
+    expect(base.MAVEA_STT_THREADS).toBeUndefined();
+  });
+
+  it('never asks whisper for more threads than the box has cores', () => {
+    // Transcription cannot be probed the way synthesis is — there is no playhead to outrun — so
+    // the only fact worth acting on is the one the compose file cannot see. A flat 4 is 4 threads
+    // on a two-core laptop, across the same cores the browser is rendering on.
+    expect(sttThreadsFor(2)).toBe(2);
+    expect(sttThreadsFor(1)).toBe(1);
+    expect(sttThreadsFor(4)).toBe(4);
+    expect(sttThreadsFor(16)).toBe(4); // a ceiling, never a floor
+    // A thread count below one is not a thread count; a non-number is no answer at all, and
+    // assuming one core there would start whisper single-threaded on a box with cores to spare.
+    expect(sttThreadsFor(0)).toBe(1);
+    expect(sttThreadsFor(Number.NaN)).toBe(4);
+    // Every spawn carries it, measured voice or not.
+    expect(voiceThreadEnv(null, {} as NodeJS.ProcessEnv).MAVEA_STT_THREADS).toBe(
+      String(sttThreadsFor()),
+    );
   });
 });
 

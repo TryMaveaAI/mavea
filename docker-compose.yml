@@ -56,6 +56,11 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
+      # whisper.cpp takes --threads literally: 4 here is 4 threads on a two-core laptop as surely
+      # as on a sixteen-core desktop, and transcription competes for the same cores the browser is
+      # rendering on. There is nothing to measure the way synthesis is measured — transcription has
+      # no playhead to outrun — so `pnpm dev` (and `npx mavea`) simply bound it by the cores this
+      # box actually has; see scripts/dev.mjs.
       MAVEA_STT_THREADS: ${MAVEA_STT_THREADS:-4}
     volumes:
       - whisper-models:/models

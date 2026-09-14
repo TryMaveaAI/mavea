@@ -10,6 +10,7 @@
 // comes up and says plainly which local speech capabilities are unavailable.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +29,8 @@ const VOICE_POLL_MS = 1_000;
 const VOICE_TARGET_REALTIME = 2;
 /** The measured peak of Kokoro's thread-scaling curve; past this it gets slower AND hungrier. */
 const VOICE_MAX_THREADS = 4;
+/** whisper.cpp's own default, and the compose default — a ceiling, never a floor. */
+const STT_MAX_THREADS = 4;
 const VOICE_PROBE_TEXT =
   'Mavéa is a voice first thinking companion that draws what it means as it speaks.';
 /** Kokoro emits 24kHz mono 16-bit PCM, so byte length converts straight to seconds of audio. */
@@ -79,7 +82,8 @@ function installedRuntimeHint() {
  *  already has. Compose builds when the image is MISSING and reuses it otherwise, and the whisper
  *  tag carries its version, so a bump still builds. Same verbs on Docker and Podman alike. */
 function startVoice(runtime, threads) {
-  const env = threads ? { ...process.env, MAVEA_VOICE_THREADS: String(threads) } : process.env;
+  const env = { ...process.env, MAVEA_STT_THREADS: String(sttThreads()) };
+  if (threads) env.MAVEA_VOICE_THREADS = String(threads);
   const args = [...runtime.prefix, 'up', '-d'];
   if (spawnSync(runtime.command, args, { stdio: 'inherit', env }).status === 0) return true;
   if (runtime.command !== 'docker') return false;
@@ -89,6 +93,15 @@ function startVoice(runtime, threads) {
       env,
     }).status === 0
   );
+}
+
+/** Whisper's thread count, which cannot be probed the way synthesis is: transcription has no
+ *  playhead to outrun, so "fast enough" is only ever "as fast as this box goes". What the compose
+ *  file cannot see is how many cores it is asking for — it asks for four whatever the host has, so
+ *  a two-core laptop transcribes on four threads across the same cores the browser renders on.
+ *  Bound it by the cores that exist; there is nothing to measure beyond that. */
+function sttThreads() {
+  return Math.max(1, Math.min(STT_MAX_THREADS, availableParallelism()));
 }
 
 /** The thread count this machine settled on last time, or null on a first run. */
