@@ -7,6 +7,7 @@ import http from 'node:http';
 import https from 'node:https';
 import {
   createReadStream,
+  accessSync,
   existsSync,
   readFileSync,
   readdirSync,
@@ -137,13 +138,18 @@ function cachedAssetIsValid(cachePath, checksumPath, expectedBytes, expectedSha2
   try {
     // Read the entry straight through rather than probing for it first: a cache file that is
     // missing — or that another process clears away mid-check — throws here, which is the same
-    // answer as "not cached".
-    const cachedBytes = statSync(cachePath).size;
+    // answer as "not cached". The one read answers both questions, size and digest, so nothing
+    // can swap the file between a probe and the read that trusts it.
     const recordedSha256 = readFileSync(checksumPath, 'utf8').trim();
-    if (verifiedLazyAssets.has(cacheKey)) return true;
-    if (cachedBytes !== expectedBytes || recordedSha256 !== expectedSha256) return false;
-    const actualSha256 = createHash('sha256').update(readFileSync(cachePath)).digest('hex');
-    if (actualSha256 !== expectedSha256) return false;
+    if (recordedSha256 !== expectedSha256) return false;
+    if (verifiedLazyAssets.has(cacheKey)) {
+      // The memo remembers a verified digest, not a file — the asset still has to be there.
+      accessSync(cachePath);
+      return true;
+    }
+    const cached = readFileSync(cachePath);
+    if (cached.length !== expectedBytes) return false;
+    if (createHash('sha256').update(cached).digest('hex') !== expectedSha256) return false;
     verifiedLazyAssets.add(cacheKey);
     return true;
   } catch {
