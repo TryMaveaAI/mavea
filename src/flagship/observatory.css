@@ -1,7 +1,12 @@
 /* The home is a field notebook: paper, ink, and animated diagrams. All palettes are scoped
    here so entering Live restores the product's own canvas and presence colors. */
 .ob-host {
-  --ob-page-gutter: max(clamp(1.25rem, 4vw, 5rem), calc((100% - 100rem) / 2));
+  /* The measure grows with the viewport's type scale, so a large monitor gets a wider page for
+     its larger type rather than the laptop's column marooned in the middle. */
+  --ob-page-gutter: max(
+    clamp(1.25rem, 4vw, 5rem),
+    calc((100% - 100rem * var(--vp-type-scale, 1)) / 2)
+  );
   --ob-paper: #f3f1e9;
   --ob-ink: #242a28;
   --ob-muted: #626b65;
@@ -216,7 +221,9 @@
 }
 .ob-hero-copy .fl-hero-title {
   font-family: var(--font);
-  font-size: clamp(3.5rem, 6.6vw, 8rem);
+  /* Bounded by the window's HEIGHT as well as its width: on a short laptop a width-only size
+     pushed the hero's actions under the fold. */
+  font-size: clamp(3.5rem, min(6.6vw, 11dvh), calc(8rem * var(--vp-type-scale, 1)));
   line-height: 0.95;
   font-weight: 500;
   letter-spacing: -0.075em;
@@ -289,6 +296,11 @@
   background: var(--ob-art);
   border-radius: 50% 50% 1.5rem 1.5rem / 35% 35% 1.5rem 1.5rem;
   min-width: 0;
+  /* The diagram is about 1.37x as tall as it is wide, so a width-only size ran it past the fold
+     on a short laptop and the copy centred against it went with it. Held to the window's height
+     under the top bar, it and the copy's actions share the first screen. */
+  justify-self: center;
+  width: min(100%, calc((100dvh - 9.5rem) / 1.37));
   color: var(--ob-art-ink);
 }
 .ob-observatory-top {
