@@ -29,11 +29,14 @@ describe('LiveSettings — the tab strip is a real tablist', () => {
     expect(tabs.map((t) => t.tabIndex)).toEqual([0, -1, -1, -1]);
 
     fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Answers & display' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(screen.getByRole('tab', { name: 'Model' })).toHaveAttribute('aria-selected', 'false');
 
     // …and wraps backwards off the first tab rather than dead-ending.
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Settings' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Answers & display' }), { key: 'ArrowLeft' });
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Model' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Your data' })).toHaveAttribute('aria-selected', 'true');
   });

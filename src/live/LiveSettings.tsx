@@ -876,7 +876,8 @@ export function LiveSettings({
             {t === 'model'
               ? 'Model'
               : t === 'settings'
-                ? 'Settings'
+                ? // Named for what is in it: "Settings" inside Settings named nothing.
+                  'Answers & display'
                 : t === 'you'
                   ? 'You'
                   : 'Your data'}
@@ -1069,7 +1070,9 @@ export function LiveSettings({
         )}
 
         {tab === 'settings' && (
-          <>
+          // Its own flow box, not the scroller: two columns on a scroll container whose height is
+          // capped spill into a third, sideways, instead of scrolling.
+          <div className="ls-cols">
             <AppearanceSettings />
 
             {/* Web search — Real-time is always pickable (never disabled for a non-native
@@ -1200,7 +1203,7 @@ export function LiveSettings({
                 </div>
               )}
             </AdvancedGroup>
-          </>
+          </div>
         )}
 
         {tab === 'you' && (

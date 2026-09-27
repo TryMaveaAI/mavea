@@ -133,8 +133,26 @@
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
-  max-height: min(480px, calc(100dvh - 220px));
+  max-height: min(680px, calc(100dvh - 200px));
   padding-right: 2px;
+}
+/* The Answers & display tab is a stack of independent settings, so a card wide enough for two
+   reads them side by side instead of scrolling one narrow column three screens deep. */
+.ls-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@container ls-card (inline-size >= 640px) {
+  .ls-cols {
+    display: block;
+    columns: 2;
+    column-gap: var(--s-xl);
+  }
+  .ls-cols > * {
+    break-inside: avoid;
+    margin-block-end: 14px;
+  }
 }
 
 /* The Settings dialog and the scrim it floats on (LiveApp). A floating card on a roomy window. */
@@ -145,14 +163,16 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 80px;
+  padding-top: min(80px, 8dvh);
   background: rgba(var(--scrim-rgb), 0.45);
 }
 .ls-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(460px, calc(100vw - 32px));
+  /* Wide enough for the Answers & display tab to set in two columns on any laptop. */
+  width: min(720px, calc(100vw - 32px));
+  container: ls-card / inline-size;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 16px;
