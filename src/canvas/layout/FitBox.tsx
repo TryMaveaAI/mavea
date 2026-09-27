@@ -48,6 +48,46 @@ function unitPx(el: Element, rendered: number): number {
   return rendered;
 }
 
+const GEOMETRY = new Set([
+  'transform',
+  'translate',
+  'scale',
+  'rotate',
+  'left',
+  'top',
+  'right',
+  'bottom',
+  'inset',
+  'width',
+  'height',
+  'zoom',
+]);
+
+/** Does this animation move or resize what it runs on? */
+function movesGeometry(a: Animation): boolean {
+  if ('transitionProperty' in a) return GEOMETRY.has((a as CSSTransition).transitionProperty);
+  const effect = a.effect as KeyframeEffect | null;
+  if (typeof effect?.getKeyframes !== 'function') return false;
+  return effect.getKeyframes().some((f) => Object.keys(f).some((p) => GEOMETRY.has(p)));
+}
+
+/** The finite, running geometry animations on `el`'s ancestors. A read taken while one runs
+ *  measures a frame of the flight (the Study's card sweeping forward scales the host by an amount
+ *  that is still moving), not where the host lands. A paused animation is excluded: the video
+ *  export pauses every animation and seeks it, and its `finished` would never come. */
+function ancestorFlights(el: HTMLElement): Animation[] {
+  const out: Animation[] = [];
+  for (let a = el.parentElement; a; a = a.parentElement) {
+    if (typeof a.getAnimations !== 'function') break;
+    for (const anim of a.getAnimations()) {
+      if (anim.playState !== 'running') continue;
+      if (!Number.isFinite(anim.effect?.getComputedTiming().endTime)) continue;
+      if (movesGeometry(anim)) out.push(anim);
+    }
+  }
+  return out;
+}
+
 /** How many characters of text `el` holds DIRECTLY — its own text nodes, not its children's. A
  *  label set as `Revenue <b>up</b>` carries its own words beside an element, and a walk that
  *  only read elements with no children never saw them. */
@@ -205,9 +245,31 @@ export function FitBox({
       return;
     }
 
+    // A height fit reads the scale the host PAINTS at, and mid-flight that is a scale the host is
+    // only passing through: the Study's card sweeping in from the gathered pile paints its type
+    // small, so the fit grew it 1.25x, and 0.9s later nothing resized to correct it (a transform
+    // never resizes anything) until an unrelated re-measure — after the pen had anchored, which
+    // then moved. So a height fit takes no read while an ancestor moves, and takes one when it
+    // lands. A width fit reads layout px alone, which no transform changes, and keeps its reads.
+    let dead = false;
+    let awaitingLanding = false;
+    const inFlight = (): boolean => {
+      if (!fitHeight) return false;
+      const flights = ancestorFlights(h);
+      if (!flights.length) return false;
+      if (!awaitingLanding) {
+        awaitingLanding = true;
+        void Promise.allSettled(flights.map((f) => f.finished)).then(() => {
+          awaitingLanding = false;
+          if (!dead) measure();
+        });
+      }
+      return true;
+    };
+
     const measure = (): void => {
       const availW = h.clientWidth;
-      if (!availW) return;
+      if (!availW || inFlight()) return;
 
       // Read the content's TRUE width: neutralize our own transform and momentarily reveal
       // any internal clipping, so a child that clips itself still reports its real extent.
@@ -377,6 +439,7 @@ export function FitBox({
     const room = box ? capOf(box)?.room : null;
     const stopRoom = room ? observeResize(room, measure) : undefined;
     return () => {
+      dead = true;
       stopHost();
       stopBox?.();
       stopRoom?.();
