@@ -4,6 +4,25 @@ All notable changes to Mavéa are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-09-26
+
+### Added
+
+- **The public showcase now demonstrates a real Mavéa conversation instead of a single staged card.** The landing experience moves through multiple answer surfaces, including Guide me, ink, evidence, and Ripple, with aligned scenes that show how a conversation changes shape as the reader explores it.
+- **Recorded demonstrations can ship with narration.** The demo corpus now carries prepared voice tracks for the product, developer, student, and traveler examples, with build tooling and runtime guards that keep the public showcase self-contained.
+- **Ripple can explain the path from a repository change to its downstream effects.** Its ingest model now retains a grounded impact trace and presents the relevant files, relationships, rollout course, and verdict as one navigable investigation.
+
+### Changed
+
+- **The landing page is a clearer invitation into the product.** Its feature index, answer theatre, observatory, README language, package description, and project links now describe the same visual, local-first experience and point people to the public site.
+- **A guided answer moves with the conversation more naturally.** Voice preparation, spoken limits, reveal barriers, diagram walks, demo playback, and interruption handling now share tighter timing so the canvas does not race ahead of — or linger behind — what Mavéa is saying.
+- **Recorded conversation exports preserve the authored scene more faithfully.** The studio timeline, captions, narration, stage geometry, and alternate finishes now use the same pacing rules as the experience being recorded.
+
+### Fixed
+
+- **Provider retries keep the original request shape and spending policy intact.** Anthropic, Gemini, and OpenAI-compatible paths now agree on retryable failures, response limits, and cached prompt boundaries instead of quietly changing a turn when a provider asks to try again.
+- **Charts, study cards, plans, and annotated bends hold their alignment across dynamic content.** Axis spacing, optional values, compact layouts, and note anchors now adapt to the data and available room rather than the dimensions of one fixture.
+
 ## [2.10.5] - 2026-09-14
 
 ### Fixed

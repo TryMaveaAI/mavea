@@ -1,6 +1,6 @@
 {
   "name": "@mavea/mavea",
-  "version": "2.10.5",
+  "version": "2.11.0",
   "type": "module",
   "description": "Mavéa is a local-first visual AI workspace that turns conversations into charts, diagrams, maps, evidence, and explorable canvases.",
   "keywords": [
