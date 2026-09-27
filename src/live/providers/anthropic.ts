@@ -36,6 +36,7 @@ import {
   forgetVerified,
   isVerified,
   readinessFingerprint,
+  rememberAnswered,
   sharedPaidCheck,
 } from './readiness';
 import {
@@ -530,6 +531,9 @@ export const anthropicAdapter: ProviderAdapter = {
         }
       });
 
+      // Answered in full: whatever readiness check failed for this combination is out of date, so
+      // Settings must not keep saying it cannot answer.
+      rememberAnswered(await readinessFingerprint(base, cfg));
       const sources = grounding.size ? [...grounding.values()] : undefined;
       // Resolve as the parsed object when possible; else hand the raw string to the
       // validator (it tolerates partial/embedded JSON).

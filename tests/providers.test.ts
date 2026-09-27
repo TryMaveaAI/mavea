@@ -426,6 +426,35 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     expect(messages()).toBe(3);
   });
 
+  it('clears a failed verdict once a real turn on the same key is answered', async () => {
+    let checks = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).includes('/v1/models')) return new Response('{}', { status: 200 });
+        if (!String(init?.body).includes('"stream":true')) {
+          checks++;
+          return new Response('{"error":{"message":"invalid x-api-key"}}', { status: 401 });
+        }
+        return streamResponse(
+          [
+            'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{}"}}\n',
+            'data: {"type":"message_stop"}\n',
+          ],
+          'text/event-stream',
+        );
+      }),
+    );
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
+    await getAdapter('anthropic').generate(req, cfg);
+    // The turn is the stronger evidence: Settings reads Ready, with no second paid check.
+    expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(true);
+    expect(checks).toBe(1);
+    // A different key has earned nothing from that turn.
+    expect((await getAdapter('anthropic').probe({ ...cfg, apiKey: 'k2' })).ok).toBe(false);
+    expect(checks).toBe(2);
+  });
+
   it('keeps a paid pass that never answered as a failure, not a reason to ask again', async () => {
     let messages = 0;
     vi.stubGlobal(

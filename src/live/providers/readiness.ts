@@ -4,7 +4,8 @@
 // the Connect step re-check every time they open. So a combination of endpoint + model + key that
 // has been checked is remembered for the session, pass or fail, and later checks run only the free
 // models request. An explicit Recheck asks again; a turn refused for its key or credit forgets the
-// pass, so a verdict of "Ready" can never outlive the evidence behind it. A failed verdict is kept
+// pass, so a verdict of "Ready" can never outlive the evidence behind it, and a turn that was
+// answered clears a failure the same way. A failed verdict is kept
 // because asking again on its own would bill the same doomed request every time a panel opens.
 //
 // A leaf with no imports from the adapters, so the device sweep can clear it without pulling a
@@ -103,6 +104,17 @@ export function forgetVerified(fingerprint: string | null): void {
   if (!fingerprint) return;
   verified.delete(fingerprint);
   inFlight.delete(fingerprint);
+  fingerprintEpochs.set(fingerprint, (fingerprintEpochs.get(fingerprint) ?? 0) + 1);
+}
+
+/** A real turn on this combination was answered, which proves the key, model and credit more
+ *  surely than a one-token check: a failed verdict it outlived no longer describes it, and the
+ *  next check can be the free one. A check still in flight started on older evidence, so it no
+ *  longer writes its verdict. */
+export function rememberAnswered(fingerprint: string | null): void {
+  if (!fingerprint) return;
+  failed.delete(fingerprint);
+  verified.add(fingerprint);
   fingerprintEpochs.set(fingerprint, (fingerprintEpochs.get(fingerprint) ?? 0) + 1);
 }
 
