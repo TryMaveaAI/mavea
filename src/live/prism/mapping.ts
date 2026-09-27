@@ -8,7 +8,7 @@
 import {
   isClaimGrounded,
   groundedPageOf,
-  snapQuoteToPage,
+  makePageSnapper,
   type GroundableClaim,
 } from './grounding';
 
@@ -127,6 +127,7 @@ export function groundClaims<T extends GroundableClaim>(
   pages: readonly string[],
 ): T[] {
   const out: T[] = [];
+  const snap = makePageSnapper(pages);
   for (const c of candidates) {
     const page = groundedPageOf(c.quote, pages, c.page);
     if (page > 0) {
@@ -141,7 +142,7 @@ export function groundClaims<T extends GroundableClaim>(
       (n) => n >= 1 && n <= pages.length,
     );
     for (const p of order) {
-      const snapped = snapQuoteToPage(c.quote, pages[p - 1]);
+      const snapped = snap(c.quote, p - 1);
       if (snapped) {
         out.push({ ...c, quote: snapped, page: p });
         break;
