@@ -655,7 +655,7 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
 
   it('states the body width in the body’s own box, so `zoom` has a length to multiply', () => {
     const body = /\.zoom-sheet-body\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(body).toMatch(/width:\s*calc\(var\(--zoom-sheet-w\)/);
+    expect(body).toMatch(/width:\s*calc\(\(var\(--zoom-sheet-w\)/);
   });
 
   it('drives every width on the stage from one custom property, so they cannot drift', () => {
@@ -682,10 +682,11 @@ describe('the zoom sheet magnifies the whole block, not only its text', () => {
     // keeps its own height and goes entirely where a laptop window is too short for both.
     const scrim = /\.zoom-scrim\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
     expect(scrim).not.toMatch(/--dock-h/);
-    // Filled, not content-sized: the card's scroll box is then the room the card may be fitted
-    // into, where a box as tall as the card it holds could never let a shrunk card grow back.
+    // The sheet hugs its card and states the room as a percentage cap, which is what FitBox fits
+    // a tall card to (tests/lens-stage-hugs.test.tsx mounts the stage and checks the fit).
     const sheet = /\.zoom-sheet\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
-    expect(sheet).toMatch(/flex:\s*1 1 auto/);
+    expect(sheet).toMatch(/flex:\s*0 1 auto/);
+    expect(sheet).toMatch(/max-height:\s*100%/);
     expect(sheet).toMatch(/min-height:\s*0/);
     expect(sheet).not.toMatch(/max-height:\s*[\d.]+dvh/);
     expect(css).toMatch(/@media \(height <= 820px\)\s*\{\s*\.lens-strip\s*\{\s*display:\s*none/);

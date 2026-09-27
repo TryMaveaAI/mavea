@@ -329,3 +329,47 @@ describe('the stage while a narration spotlights another card', () => {
     expect(cell('a').querySelector('.card')?.classList.contains('dimmed')).toBe(true);
   });
 });
+
+describe('getting back to the fit', () => {
+  const reset = () =>
+    screen.getByRole('button', { name: /Reset zoom to fit/ }) as HTMLButtonElement;
+
+  it('makes the readout the reset, idle while the card is already fitted', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    expect(reset().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(reset().textContent).toBe('115%');
+    expect(reset().disabled).toBe(false);
+    fireEvent.click(reset());
+    expect(reset().disabled).toBe(true);
+    expect(reset().textContent).toBe('100%');
+    // Fitted, the body carries no magnification of its own.
+    expect((container.querySelector('.zoom-sheet-body') as HTMLElement).style.zoom).toBe('');
+  });
+
+  it('resets on ⌘0 and Ctrl+0, but not while the reader is typing', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    fireEvent.keyDown(window, { key: '0', metaKey: true });
+    expect(reset().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    fireEvent.keyDown(window, { key: '0', ctrlKey: true });
+    expect(reset().disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const input = document.createElement('input');
+    container.appendChild(input);
+    fireEvent.keyDown(input, { key: '0', metaKey: true });
+    expect(reset().disabled).toBe(false);
+  });
+
+  it('puts the notes straight under the card, not at the foot of the window', () => {
+    const notes = [{ text: 'a note', kind: 'insight' as const }];
+    const { container } = mount({ studyAsides: { a: notes } });
+    cleanClick(cell0(container, 'a'));
+    const scroll = container.querySelector('.zoom-sheet-scroll');
+    expect(scroll?.nextElementSibling?.classList.contains('lens-notes')).toBe(true);
+  });
+});

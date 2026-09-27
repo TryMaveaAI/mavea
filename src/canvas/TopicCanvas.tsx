@@ -111,14 +111,18 @@ const ReplayCard = lazy(() =>
 const ZOOM_MIN = 0.55;
 const ZOOM_MAX = 1.75;
 const ZOOM_STEP = 0.15;
-// The Lens opens a card at its OWN size: the point is to see it alone and undistracted, not
-// bigger. Magnification is a control on the stage for when the reader wants it — and starting
-// above 1 also pushed the body wider than the sheet, which clipped the card's right edge and
-// carried the toolbar's close button off with it.
-const ZOOM_DEFAULT = 1;
-/** The body size the Lens grows a card toward on a large monitor, in rendered px: the board's
- *  body step there is ~16px, and a card opened to be looked at closer should read larger than
- *  the board it came from. FitBox caps the growth at 1.5x and never past the sheet. */
+/** The Lens opens a card FITTED to its stage (`'fit'`), the way a viewer opens a picture: a short
+ *  card is grown toward a reading size, a tall one is fitted down to the room, and neither ever
+ *  runs wider than the sheet. At its board size a one-row stat card floated in a sheet five
+ *  times its height, which is not looking closer. A number is the reader's own magnification,
+ *  stepped from wherever the fit left the card; the readout (or ⌘0) returns to the fit. */
+type LensZoom = 'fit' | number;
+/** The body size the fit grows a card toward, in rendered px. The board's body type is ~14–16px
+ *  on a laptop, so this is a visible step closer without a paragraph ballooning; FitBox caps the
+ *  growth at 1.5x and never past the room. */
+const LENS_READING_PX = 20;
+/** …and past a 1920px window, where the sheet grows with the type scale and the board's body step
+ *  is ~16px. */
 const LENS_WIDE_READING_PX = 24;
 
 // The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
@@ -443,10 +447,19 @@ export function TopicCanvas({
   // How far the zoomed sheet's content is magnified, adjustable via the sheet's +/- controls.
   // Uses the CSS `zoom` property (not `transform: scale`) so the enlarged content participates in
   // layout — the sheet's scroll area grows to match, instead of clipping the painted overflow.
-  const [zoomLevel, setZoomLevel] = useState(ZOOM_DEFAULT);
-  // Past a 1920px window the Lens sheet grows with the type scale, and a card fitted at its board
-  // size read as a small card floating in a big empty sheet. There the fit may grow the card
-  // toward a reading size for that distance; the box still wins, so a tall card is left as is.
+  const [zoomLevel, setZoomLevel] = useState<LensZoom>('fit');
+  // The scale the fit settled on, reported by the stage's FitBox: the readout states it, and a
+  // magnification starts from it rather than jumping back to the card's board size.
+  const [fitScale, setFitScale] = useState(1);
+  const fitted = zoomLevel === 'fit';
+  const shownZoom = fitted ? fitScale : zoomLevel;
+  const zoomBy = (d: number): void =>
+    setZoomLevel((z) => {
+      const from = z === 'fit' ? fitScale : z;
+      return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(from + d).toFixed(2)));
+    });
+  // Past a 1920px window the Lens sheet grows with the type scale, so the reading size the fit
+  // grows a card toward grows with it.
   const lensGrows = useMediaQuery('(width > 1920px)');
   useEffect(() => {
     if (!zoomedBlock) return;
@@ -464,6 +477,12 @@ export function TopicCanvas({
         t instanceof Element &&
         t.closest('input, textarea, select, [contenteditable="true"], [role="slider"]')
       ) {
+        return;
+      }
+      // ⌘0 / Ctrl+0 is "actual size" everywhere else; here the size the Lens opens at is the fit.
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        setZoomLevel('fit');
         return;
       }
       if (e.key === 'ArrowRight') stepLens(1);
@@ -664,7 +683,7 @@ export function TopicCanvas({
   /** Open the Lens on a block: its own stage, over a board faded back behind it. */
   const openLens = (b: Block): void => {
     setZoomedBlock(b);
-    setZoomLevel(ZOOM_DEFAULT);
+    setZoomLevel('fit');
   };
   // Every card the Lens can step to, in reading order: one object at a time, and the others still
   // within reach without leaving the stage.
@@ -1201,22 +1220,29 @@ export function TopicCanvas({
                       type="button"
                       className="zoom-sheet-zoom-btn"
                       aria-label="Zoom out"
-                      disabled={zoomLevel <= ZOOM_MIN}
-                      onClick={() =>
-                        setZoomLevel((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))
-                      }
+                      disabled={shownZoom <= ZOOM_MIN}
+                      onClick={() => zoomBy(-ZOOM_STEP)}
                     >
                       <Icon.zoomOut />
                     </button>
-                    <span className="zoom-sheet-zoom-level">{Math.round(zoomLevel * 100)}%</span>
+                    {/* The readout is the way back: it reads as a number until it is hovered
+                        or focused, and it has nothing to do while the card is already fitted. */}
+                    <button
+                      type="button"
+                      className="zoom-sheet-zoom-level"
+                      aria-label={`Zoom ${Math.round(shownZoom * 100)}%. Reset zoom to fit`}
+                      title={fitted ? 'Fitted to the stage' : 'Reset zoom to fit (⌘0)'}
+                      disabled={fitted}
+                      onClick={() => setZoomLevel('fit')}
+                    >
+                      {Math.round(shownZoom * 100)}%
+                    </button>
                     <button
                       type="button"
                       className="zoom-sheet-zoom-btn"
                       aria-label="Zoom in"
-                      disabled={zoomLevel >= ZOOM_MAX}
-                      onClick={() =>
-                        setZoomLevel((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))
-                      }
+                      disabled={shownZoom >= ZOOM_MAX}
+                      onClick={() => zoomBy(ZOOM_STEP)}
                     >
                       <Icon.zoomIn />
                     </button>
@@ -1235,12 +1261,25 @@ export function TopicCanvas({
                     controls — a sticky toolbar inside the scroller was sized to the sheet and, once
                     the zoomed card overflowed, its right end (and the close button) went with it. */}
                 <div className="zoom-sheet-scroll">
-                  <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
-                    {/* At the card's own size the sheet fits the card to its height before it
-                        scrolls; once the reader magnifies, scrolling is the point. */}
+                  <div
+                    className="zoom-sheet-body"
+                    // A magnification keeps the width the fit laid the card out at (--lens-fit),
+                    // so the first step in or out moves on from the fitted picture instead of
+                    // re-flowing the card at its board size first.
+                    style={
+                      fitted
+                        ? undefined
+                        : ({ zoom: zoomLevel, '--lens-fit': fitScale } as CSSProperties)
+                    }
+                  >
+                    {/* Fitted, the card is grown toward a reading size or shrunk to the room
+                        before it scrolls; once the reader magnifies, scrolling is the point. */}
                     <FitBox
-                      fitHeight={zoomLevel === 1}
-                      readingPx={lensGrows ? LENS_WIDE_READING_PX : undefined}
+                      fitHeight={fitted}
+                      readingPx={
+                        fitted ? (lensGrows ? LENS_WIDE_READING_PX : LENS_READING_PX) : undefined
+                      }
+                      onScale={fitted ? setFitScale : undefined}
                     >
                       {renderOnStage(zoomedBlock)}
                     </FitBox>

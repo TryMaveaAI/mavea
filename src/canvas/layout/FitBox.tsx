@@ -15,7 +15,7 @@
 //     entirely until it nears the viewport.
 //   • A fits-already early-out: when the content is already within the card, scale stays
 //     1 and no transform is applied, so the common case pays nothing.
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { observeResize } from './sharedResize';
 
 const CLIP = new Set(['hidden', 'clip', 'auto', 'scroll']);
@@ -38,6 +38,39 @@ function boundedAncestor(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** The ancestor from `box` up that caps its height, and that cap in px. A PERCENTAGE cap is a
+ *  share of the parent's content box — how a sheet that hugs a short card still states the whole
+ *  room a tall one may fill — so it is resolved there; read with parseFloat, `100%` was a 100px
+ *  cap. In a flex column the siblings stacked with it (the Lens's strip) take their share first,
+ *  exactly as the layout will. `room` is that parent, whose resize moves the cap. Null when
+ *  nothing states one. */
+function capOf(box: HTMLElement): { el: HTMLElement; px: number; room: HTMLElement | null } | null {
+  for (let a: HTMLElement | null = box; a && a !== document.body; a = a.parentElement) {
+    const raw = getComputedStyle(a).maxHeight;
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) continue;
+    if (!raw.endsWith('%')) return { el: a, px: n, room: null };
+    const room = a.parentElement;
+    if (!room) return null;
+    const rs = getComputedStyle(room);
+    const inner =
+      room.clientHeight - parseFloat(rs.paddingTop || '0') - parseFloat(rs.paddingBottom || '0');
+    let px = (inner * n) / 100;
+    if (/flex/.test(rs.display) && rs.flexDirection.startsWith('column')) {
+      const stacked = Array.from(room.children).filter((k): k is HTMLElement => {
+        if (k === a || !(k instanceof HTMLElement)) return false;
+        const ks = getComputedStyle(k);
+        return ks.display !== 'none' && ks.position !== 'absolute' && ks.position !== 'fixed';
+      });
+      const gaps = stacked.length * (parseFloat(rs.rowGap) || 0);
+      const taken = stacked.reduce((sum, k) => sum + k.getBoundingClientRect().height, gaps);
+      px = Math.min(px, inner - taken);
+    }
+    return { el: a, px, room };
+  }
+  return null;
+}
+
 export interface FitBoxProps {
   children: ReactNode;
   /** Also bound the scaled height to this many times the natural card width (so an
@@ -56,6 +89,9 @@ export interface FitBoxProps {
    *  size. The box wins: a block that cannot grow and still fit is left as it is. Omit to only
    *  ever shrink. */
   readingPx?: number;
+  /** Told the scale the fit settled on, whenever it changes — for a host that states it (the
+   *  Lens's zoom readout) or carries it on (a magnification that starts where the fit left off). */
+  onScale?: (k: number) => void;
   className?: string;
 }
 
@@ -73,6 +109,7 @@ export function FitBox({
   maxAspect,
   fitHeight = false,
   readingPx,
+  onScale,
   className,
 }: FitBoxProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -82,6 +119,9 @@ export function FitBox({
   // exact rather than a share of the width.
   const [fit, setFit] = useState({ k: 1, needH: 0 });
   const k = fit.k;
+  useEffect(() => {
+    onScale?.(k);
+  }, [k, onScale]);
 
   useLayoutEffect(() => {
     const h = host.current;
@@ -164,17 +204,15 @@ export function FitBox({
           // holds, so its client height says how tall the block IS, not how tall it MAY be.
           // The cap is on the ancestor that states one; the room is that cap less the chrome
           // between the two boxes. Without it a block that fits could never grow into the room.
-          for (let a: HTMLElement | null = box; a && a !== document.body; a = a.parentElement) {
-            const cap = parseFloat(getComputedStyle(a).maxHeight);
-            if (!Number.isFinite(cap)) continue;
+          const cap = capOf(box);
+          if (cap) {
             const chrome =
-              (a.getBoundingClientRect().height - box.getBoundingClientRect().height) /
+              (cap.el.getBoundingClientRect().height - box.getBoundingClientRect().height) /
               (rendered || 1);
             availH = Math.max(
               availH,
-              cap - chrome - above / (rendered || 1) - parseFloat(bs.paddingBottom || '0'),
+              cap.px - chrome - above / (rendered || 1) - parseFloat(bs.paddingBottom || '0'),
             );
-            break;
           }
         }
       }
@@ -250,9 +288,14 @@ export function FitBox({
     // box is watched as well, or a card fitted as scenery is never refitted once it comes forward.
     const box = fitHeight ? boundedAncestor(h) : null;
     const stopBox = box ? observeResize(box, measure) : undefined;
+    // A percentage cap moves with its room, and a sheet hugging its card does not resize when the
+    // window grows — so the room is watched too, or a card shrunk once never grows back.
+    const room = box ? capOf(box)?.room : null;
+    const stopRoom = room ? observeResize(room, measure) : undefined;
     return () => {
       stopHost();
       stopBox?.();
+      stopRoom?.();
     };
   }, [children, fitHeight, readingPx]);
 

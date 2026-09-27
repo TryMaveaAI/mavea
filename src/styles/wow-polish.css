@@ -942,27 +942,21 @@
      clipped, never scrolled, so the toolbar and the notes are fixed whatever the card does. */
   display: flex;
   flex-direction: column;
-  /* The sheet takes the whole of the room the scrim leaves it — beside the strip where there
-     is one, the full inset box where there is not. Content-sized, the card's scroll box stood
-     only as tall as the card it held, so a card fitted down for a short window could never be
-     fitted back up: the box it was measured against had shrunk with it, and an 87% card sat in
-     a half-empty sheet on a 1080px screen. Filled, the box IS the room, and the stage holds
-     still as the strip walks from card to card. */
-  flex: 1 1 auto;
+  /* Sized to what it holds, so toolbar, card, notes and the strip below read as ONE block centred
+     on the scrim, shrinking to the room when the card is taller. Filled, a one-row stat card sat
+     in a window-tall frame with 240px of blank above it and the notes pinned to the floor. The
+     cap is stated as a PERCENTAGE on purpose: it is how FitBox learns the room a card may be
+     fitted into (the scrim's box, less the strip), where the scroll box alone — as tall as the
+     card it holds — would never let a card fitted down for a short window grow back. The same
+     reason retired the old 4K cap: a hugging sheet is only as tall as its card needs. */
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: 100%;
   overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-modal);
-}
-/* A large monitor's full height is far more than any card needs: filled, the sheet stood 1700px
-   tall around a card a fifth of that. Past 1920px the sheet keeps the landscape proportion of its
-   own width instead, still inside the room the scrim leaves it. */
-@media (width > 1920px) {
-  .zoom-sheet {
-    max-height: calc(var(--zoom-sheet-w) * 0.72);
-  }
 }
 /* Where the magnified card lives: the only scroll container on the stage. It is the box that
    gives up height when the window is short — the card inside it is FITTED to the room it gets
@@ -1047,12 +1041,33 @@
   width: 15px;
   height: 15px;
 }
+/* The readout is also the reset. At rest it is the same quiet number it always was; hovered or
+   focused it shows it can be pressed. Its box matches the round buttons beside it. */
 .zoom-sheet-zoom-level {
-  min-width: 3.5ch;
+  min-width: 5ch;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: transparent;
   text-align: center;
+  font: inherit;
   font-variant-numeric: tabular-nums;
   font-size: 0.8rem;
   color: var(--text-secondary);
+  cursor: pointer;
+}
+.zoom-sheet-zoom-level:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface-glass-strong);
+  color: var(--text-primary);
+}
+.zoom-sheet-zoom-level:focus-visible {
+  outline: 2px solid var(--presence);
+  outline-offset: 2px;
+}
+.zoom-sheet-zoom-level:disabled {
+  cursor: default;
 }
 .zoom-sheet-body {
   /* Magnify with the `zoom` property, not `transform: scale` — `zoom` affects layout, so the
@@ -1066,8 +1081,10 @@
      every zoom level. Fixed lengths (icons, font sizes) still multiplied, so magnifying grew the
      text of a full-width chart or diagram while the drawing under it never moved: the one thing a
      reader opens this sheet to enlarge. Stating the length in the body's OWN box means zoom
-     multiplies it like any other, and the sheet's `overflow: auto` pans what no longer fits. */
-  width: calc(var(--zoom-sheet-w) - 64px - 2px);
+     multiplies it like any other, and the sheet's `overflow: auto` pans what no longer fits.
+     Divided by the fit's scale (--lens-fit, set only while magnified) so a magnification lays the
+     card out at the width the fit did: at z = fit the picture is the fitted one exactly. */
+  width: calc((var(--zoom-sheet-w) - 64px - 2px) / var(--lens-fit, 1));
   /* Centred both ways: below 1 the zoomed box is narrower than the sheet, and at 1 a short card
      is shorter than the room. Auto margins fall to zero once the box overflows, so a magnified
      card still starts at the top-left and pans. The 2px is the sheet's own border, which the
@@ -1259,7 +1276,8 @@
     gap: 8px;
   }
   .block-action-pill,
-  .zoom-sheet-zoom-btn {
+  .zoom-sheet-zoom-btn,
+  .zoom-sheet-zoom-level {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
