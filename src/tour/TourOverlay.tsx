@@ -2,7 +2,7 @@
 // coach caption, and a full transport (back / play-pause / next / chapter dots / skip). It renders
 // OVER the real Live surface (which keeps running underneath), reads everything from the driver,
 // and is pointer-transparent except for its own controls so it never blocks the app it's teaching.
-import { useEffect, useRef, type ReactElement, type WheelEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactElement, type WheelEvent } from 'react';
 import { Icon } from '../icons/icons';
 import { IS_SHOWCASE } from '../lib/runtimeMode';
 import { useFocusTrap } from '../live/useFocusTrap';
@@ -51,6 +51,32 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
       delete document.body.dataset.tourChapter;
     };
   }, [chapterId]);
+
+  // The multi-card Ask scene uses the grounding rail directly above the composer. Dock its coach
+  // at the top so it never covers the two selected-card chips it is trying to teach.
+  const panelAtTop =
+    chapterId === 'ask' || (!!rect && rect.top + rect.height / 2 > window.innerHeight * 0.58);
+  const panelShown = driver.active && !driver.done && !driver.corpusError && driver.started;
+
+  // The caption is chrome the column has to make ROOM for, the way the replay transport does
+  // (DemoOverlay's --demo-h): parked over the content it covered the Study's active beat chip and
+  // the notice above the composer at every size. Publish the band it claims above the dock and the
+  // column adds it to the reserve it already keeps. Docked at the top it claims nothing below.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const app = panel?.closest<HTMLElement>('.mavea-app');
+    if (!panelShown || panelAtTop || !panel || !app) return;
+    const apply = (): void =>
+      app.style.setProperty('--tour-h', `${Math.round(panel.offsetHeight) + 12}px`);
+    apply();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
+    observer?.observe(panel);
+    return () => {
+      observer?.disconnect();
+      app.style.removeProperty('--tour-h');
+    };
+  }, [panelShown, panelAtTop]);
 
   if (!driver.active || driver.done) return null;
 
@@ -112,10 +138,6 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
   }
 
   const pad = 8;
-  // The multi-card Ask scene uses the grounding rail directly above the composer. Dock its coach
-  // at the top so it never covers the two selected-card chips it is trying to teach.
-  const panelAtTop =
-    chapterId === 'ask' || (!!rect && rect.top + rect.height / 2 > window.innerHeight * 0.58);
 
   return (
     <div className="tourx" aria-live="polite">
@@ -136,6 +158,7 @@ export function TourOverlay({ driver }: { driver: TourDriver }): ReactElement | 
       {/* Coach caption + transport, docked bottom-center above the composer. The head + coach are
           keyed by chapter so each one enters with a soft rise — a cut reads as a scene change. */}
       <div
+        ref={panelRef}
         className={'tourx-panel' + (driver.solo ? ' is-solo' : '') + (panelAtTop ? ' is-top' : '')}
         role="group"
         aria-label={driver.solo ? 'Mini-demo controls' : 'Walkthrough controls'}
