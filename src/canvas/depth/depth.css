@@ -8,27 +8,6 @@
   grid-column: 1 / -1;
 }
 
-/* On an ultrawide window a sectioned answer was one 1640px column with a third of the screen
-   empty either side. Sections go two abreast there, in reading order — left to right, then down —
-   which is also DOM, tab and walk order, so the narration and the spotlight step through them in
-   the order the eye does. Each half is about the desktop measure the blocks are built for. A last
-   section with no partner sits centred rather than hugging the left half. */
-@media (width >= 2560px) {
-  .card-grid:has(> .depth-section) {
-    max-width: var(--board-wide-max);
-    column-gap: var(--board-col-gap);
-    align-items: start;
-  }
-
-  .card-grid > .depth-section {
-    grid-column: span 6;
-  }
-
-  .card-grid > .depth-section:nth-child(odd):not(:has(~ .depth-section)) {
-    grid-column: 4 / span 6;
-  }
-}
-
 .depth-section {
   display: flex;
   flex-direction: column;

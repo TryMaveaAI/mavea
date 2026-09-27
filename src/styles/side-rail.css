@@ -108,11 +108,35 @@
   margin-inline: auto;
   width: 100%;
 }
-/* An ultrawide board sets its sections two abreast (depth.css), so the column around it widens to
-   hold both; any other content in the column keeps the answer measure. */
+/* On an ultrawide window a sectioned answer was one 1640px column with a third of the screen
+   empty either side. From the 2560 rung its sections go two abreast, in reading order — left to
+   right, then down — which is also DOM, tab and walk order, so the narration and the spotlight
+   step through them in the order the eye does. Each half is about the desktop measure the blocks
+   are built for, so the column holds two of it plus the gutter; a last section with no partner
+   sits centred. Only the board's own sectioned grid widens — the dock, the Study and every other
+   surface keep --canvas-col-max — and it lives in Live's sheet so no other route carries it. */
 @media (width >= 2560px) {
+  .with-rail {
+    --board-col-gap: clamp(32px, 1.6vw, 64px);
+    --board-wide-max: calc(2 * 1640px + var(--board-col-gap));
+  }
+
   .with-rail .canvas-scroll:has(.card-grid > .depth-section) {
     max-width: calc(var(--board-wide-max) + 52px * var(--vp-scale));
+  }
+
+  .with-rail .card-grid:has(> .depth-section) {
+    max-width: var(--board-wide-max);
+    column-gap: var(--board-col-gap);
+    align-items: start;
+  }
+
+  .with-rail .card-grid > .depth-section {
+    grid-column: span 6;
+  }
+
+  .with-rail .card-grid > .depth-section:nth-child(odd):not(:has(~ .depth-section)) {
+    grid-column: 4 / span 6;
   }
 }
 .with-rail .presence-stage {

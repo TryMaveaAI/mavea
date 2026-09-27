@@ -1091,27 +1091,26 @@ describe('a collapsed feature notice reads as one bar', () => {
 // empty either side. Sections go two abreast from the 2560 rung only, in row-major (reading, tab
 // and walk) order, and below it nothing about the board changes.
 describe('board — an ultrawide window sets a sectioned answer two abreast', () => {
-  const depth = read('src/canvas/depth/depth.css');
-  const wide = /@media \(width >= 2560px\)\s*\{[\s\S]*?\n\}/.exec(depth)?.[0] ?? '';
+  const rail = read('src/styles/side-rail.css');
+  const wide = /@media \(width >= 2560px\)\s*\{[\s\S]*?\n\}/.exec(rail)?.[0] ?? '';
 
   it('pairs sections only from the 2560 rung, as grid cells in DOM order', () => {
     expect(BREAKPOINT_WIDTHS).toContain(2560);
-    expect(wide).toMatch(/\.card-grid > \.depth-section\s*\{\s*grid-column:\s*span 6;/);
+    expect(wide).toMatch(/\.with-rail \.card-grid > \.depth-section\s*\{\s*grid-column:\s*span 6;/);
     // Row-major grid placement keeps reading order; a multi-column flow would read DOWN each
     // column and walk the spotlight out of the order the narration speaks it.
-    expect(depth).not.toMatch(/column-count|columns:/);
+    expect(wide).not.toMatch(/column-count|columns:/);
     // Outside the rung a section still spans the whole grid.
-    const base = depth.replace(wide, '');
-    expect(base).toMatch(/\.card-grid > \.depth-section\s*\{\s*grid-column:\s*1 \/ -1;/);
+    expect(read('src/canvas/depth/depth.css')).toMatch(
+      /\.card-grid > \.depth-section\s*\{\s*grid-column:\s*1 \/ -1;/,
+    );
   });
 
   it('widens only the sectioned board, never the shared answer measure', () => {
     expect(wide).toMatch(
-      /\.card-grid:has\(> \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
+      /\.with-rail \.card-grid:has\(> \.depth-section\)\s*\{[^}]*max-width:\s*var\(--board-wide-max\)/,
     );
-    expect(read('src/styles/side-rail.css')).toMatch(
-      /@media \(width >= 2560px\)\s*\{\s*\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section\)/,
-    );
+    expect(wide).toMatch(/\.with-rail \.canvas-scroll:has\(\.card-grid > \.depth-section\)/);
     expect(read('src/styles/tokens-base.css')).toMatch(
       /--canvas-col-max: clamp\(1280px, 84vw, 1640px\)/,
     );

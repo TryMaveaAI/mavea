@@ -239,13 +239,6 @@
      and reaches the 1640 ceiling at ~1953px — bounded short of a full ultrawide so cards
      stay readable rather than sprawling with content stranded against one edge. */
   --canvas-col-max: clamp(1280px, 84vw, 1640px);
-  /* A sectioned answer on an ultrawide window (2560 and up) sets its sections two abreast rather
-     than stranding one 1640px column between two empty margins; each half is then about the
-     desktop measure above, which every block is already built to read at. Two of that ceiling
-     plus the gutter between them. Only the board uses it — the dock, the Study and every other
-     surface keep --canvas-col-max. */
-  --board-col-gap: clamp(32px, 1.6vw, 64px);
-  --board-wide-max: calc(2 * 1640px + var(--board-col-gap));
 
   /* --- motion --- */
   --m-instant: 80ms;
