@@ -110,6 +110,24 @@ export function settleTurn(
   return { frame, mode, spot, snap, delta: merge.delta };
 }
 
+/**
+ * Where a replayed frame opens its spotlight: the same answer `settleTurn` gave when it was live.
+ * An augment or refine keeps the board the reader has scrolled down, so opening on its first
+ * card lights something far above the view, and the walk then has to fly back down to the
+ * cards the turn actually added. Frames baked before `revision` existed carry no record of
+ * what was added, but a merge only ever appends, so the first new card sits just past the
+ * prior board.
+ */
+export function arrivalSpot(
+  frame: Pick<TurnFrame, 'mode' | 'spec' | 'revision'>,
+  priorCount: number,
+): string | null {
+  const blocks = frame.spec.blocks;
+  if (frame.mode === 'replace') return blocks.find((b) => b.id)?.id ?? null;
+  if (frame.revision) return frame.revision.addedIds[0] ?? null;
+  return blocks[priorCount]?.id ?? null;
+}
+
 /** The one call both the settle and the early board cue make, so the cue can never decide
  *  differently from the canvas it announces. */
 function naturalModeOf(

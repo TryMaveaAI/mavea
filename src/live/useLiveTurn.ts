@@ -18,7 +18,7 @@ import type { LiveActivity, LiveCaps, LiveError, LiveResult } from './generateLi
 const turnEngine = () => import('./generateLive');
 import type { TourMark } from '../engine/liveSchema';
 import { likelyFollowUp, type Mode, type TurnSnapshot } from './lifecycle';
-import { boardCueFor, settleTurn, type BoardCue } from './settleTurn';
+import { arrivalSpot, boardCueFor, settleTurn, type BoardCue } from './settleTurn';
 import { mergeNodes } from './memory/store';
 import { extractUserFacts } from './memory/extract';
 import { memoryRelevant } from './memory/relevance';
@@ -1702,7 +1702,7 @@ export function useLiveTurn(args: UseLiveTurnArgs): UseLiveTurn {
         blockTypes: frame.spec.blocks.map((b) => b.type),
       };
       const priorSpec = specRef.current;
-      const spot = frame.spec.blocks.find((b) => b.id)?.id ?? null;
+      const spot = arrivalSpot(frame, priorSpec?.blocks.length ?? 0);
       // A newer showFrame (or a real turn — see run()) supersedes whatever the previous one was
       // waiting to reveal; only ever one of these beats should be in flight at a time.
       showFrameCancelRef.current?.();
