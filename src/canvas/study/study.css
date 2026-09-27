@@ -2032,6 +2032,31 @@
   margin: 0 0 14px;
 }
 
+/* A flat column on a laptop is still a wide box — 1066px on a 1366 window — and stacking the note
+   under a full-width card sent Mavéa's note below the fold, away from the object it annotates.
+   Where the column can hold both at a reading measure, the note keeps its place BESIDE the card,
+   as it does on the desk, and stays in view (sticky) while a tall card is read. */
+@container study (width >= 860px) {
+  .study-stage[data-compact] .study-scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 30%);
+    column-gap: 14px;
+    align-items: start;
+  }
+
+  .study-stage[data-compact] .study-card.is-front {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .study-stage[data-compact] .study-note-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 14px;
+  }
+}
+
 /* The 3-D stage has stood down to the flat column, so there is no back arc left to collide
    with and no reason to hold the spoken line to a few lines — it flows in full. */
 .study-stage[data-compact] .study-voice-text {

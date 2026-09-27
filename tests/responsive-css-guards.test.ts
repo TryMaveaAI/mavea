@@ -61,6 +61,17 @@ describe('The Study — a compact lesson stays inside the viewport', () => {
     expect(css).toMatch(/height:\s*100dvh/);
   });
 
+  it('keeps the note beside the card when the flat column is laptop-wide', () => {
+    // Stacked under a full-width card, Mavéa's note fell below the fold on a 1366px window. A
+    // wide flat column is a two-track grid with the note in its own track, held in view.
+    const wide = /@container study \(width >= 860px\) \{[\s\S]*?\n\}/.exec(css)?.[0] ?? '';
+    expect(wide).toMatch(/\.study-stage\[data-compact\] \.study-scene\s*\{[^}]*display:\s*grid/);
+    const note =
+      /\.study-stage\[data-compact\] \.study-note-wrap\s*\{[^}]*\}/.exec(wide)?.[0] ?? '';
+    expect(note).toMatch(/grid-column:\s*2/);
+    expect(note).toMatch(/position:\s*sticky/);
+  });
+
   it('lets the beat bar take the width its beats need before the strip scrolls', () => {
     // A chip is an object's whole name, and the strip fades a chip it cannot show whole. With a
     // fixed cap the third of three chips sat cut mid-word under the fade on a 1680px window that
