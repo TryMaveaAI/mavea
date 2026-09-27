@@ -321,6 +321,10 @@
   /* min(400px, 100%) so the 400px floor never exceeds the content box on tablets/phones
      narrower than 400px (which would overflow + clip). */
   grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
+  /* Wide and full tiles span two tracks or all of them; in plain row order a wide tile after a
+     one-track tile could not fit the remaining track and left it empty — row after row, half the
+     library ran as one column. Dense packing backfills those holes with the next small tile. */
+  grid-auto-flow: row dense;
   gap: var(--s-xl);
 }
 /* Wide-by-design blocks get more room so their content doesn't squish. */
