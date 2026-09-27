@@ -1422,7 +1422,7 @@
   letter-spacing: 0;
   border-radius: var(--r-full);
   background: var(--presence);
-  color: var(--surface-default);
+  color: var(--on-presence);
 }
 .nf-markall {
   margin-left: auto;

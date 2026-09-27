@@ -141,7 +141,7 @@
   padding: 2px 9px;
   border-radius: var(--r-full, 999px);
   background: var(--insight);
-  color: #fff;
+  color: var(--on-insight);
   font-family: var(--font-data, monospace);
   font-size: var(--fs-2xs);
   font-weight: 700;

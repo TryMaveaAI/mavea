@@ -499,7 +499,7 @@
 }
 .brf-approval-step--done .brf-step-node {
   background: var(--insight);
-  color: var(--surface-default);
+  color: var(--on-insight);
 }
 .brf-approval-step p {
   margin: 3px 0;

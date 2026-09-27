@@ -311,6 +311,14 @@
   background: var(--presence-soft);
   border: 1px solid var(--presence-soft);
 }
+/* A soft fill can land between the two inks' ranges, so its lightness is held on the accent's
+   side of the ink bounds (--accent-side) and it carries the accent's ink. */
+@supports (color: oklch(from red l c h)) {
+  .live-badge {
+    background: oklch(from var(--presence-soft) var(--accent-side));
+    color: var(--on-presence);
+  }
+}
 .live-badge .live-dot {
   width: 7px;
   height: 7px;

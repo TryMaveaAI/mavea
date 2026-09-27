@@ -40,7 +40,7 @@
   border: none;
   border-radius: 999px;
   background: var(--presence);
-  color: var(--surface-default);
+  color: var(--on-presence);
   font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;

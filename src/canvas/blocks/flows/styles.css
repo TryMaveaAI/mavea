@@ -853,6 +853,13 @@
   color: var(--surface-deep);
   box-shadow: 0 0 0 5px color-mix(in oklab, var(--c, var(--presence)) 18%, transparent);
 }
+/* The ink is derived from this fill itself, which is not the accent (the plain ink stays where
+   relative colour is unsupported). */
+@supports (color: oklch(from red l c h)) {
+  .fl-ms-point.is-on .fl-ms-dot {
+    color: oklch(from var(--c, var(--presence)) var(--ink-on-fill));
+  }
+}
 .fl-ms-cap {
   display: flex;
   flex-direction: column;
@@ -991,7 +998,7 @@
   place-items: center;
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: var(--surface-deep);
+  color: var(--on-presence);
   background: var(--presence);
 }
 .fl-pf-ico {

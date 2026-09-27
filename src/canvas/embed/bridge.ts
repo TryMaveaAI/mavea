@@ -75,6 +75,7 @@ export function bridgeVars(p: FigurePalette): Record<string, string> {
     '--presence-deep': accentInk,
     '--accent-ink': accentInk,
     '--insight': second,
+    '--on-insight': 'oklch(from var(--insight) var(--ink-on-fill))',
     '--insight-soft': mix(second, 60, p.paper),
     '--warning': mix(p.accent, 42, p.ink),
     '--warning-soft': mix(p.accent, 30, p.paper),

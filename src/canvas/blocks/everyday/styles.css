@@ -3529,7 +3529,7 @@
 .mn-action.done .mn-action-check {
   background: var(--presence);
   border-color: var(--presence);
-  color: var(--surface-elevated);
+  color: var(--on-presence);
 }
 .mn-action.done .mn-action-check .ic {
   width: 11px;
@@ -4657,6 +4657,14 @@
   color: var(--surface-elevated);
   background: var(--presence-soft);
   flex-shrink: 0;
+}
+/* A soft fill can land between the two inks' ranges, so its lightness is held on the accent's
+   side of the ink bounds (--accent-side) and it carries the accent's ink. */
+@supports (color: oklch(from red l c h)) {
+  .ro-owner-chip {
+    background: oklch(from var(--presence-soft) var(--accent-side));
+    color: var(--on-presence);
+  }
 }
 
 /* done: quiet, struck-through */

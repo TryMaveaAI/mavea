@@ -850,7 +850,7 @@
 .ms-action-primary {
   background: var(--insight, #5b63e8);
   border-color: var(--insight, #5b63e8);
-  color: #fff;
+  color: var(--on-insight);
 }
 
 .ms-action-primary:hover {

@@ -2272,7 +2272,7 @@
   place-items: center;
   border-radius: 50%;
   background: var(--presence);
-  color: var(--surface-deep);
+  color: var(--on-presence);
   font-size: var(--fs-xs);
   font-weight: 900;
   opacity: 0;

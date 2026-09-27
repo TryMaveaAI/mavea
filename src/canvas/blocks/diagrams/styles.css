@@ -2807,7 +2807,7 @@
 .gt2-end {
   background: var(--insight);
   border-color: color-mix(in oklab, var(--insight) 60%, transparent);
-  color: #fff;
+  color: var(--on-insight);
 }
 .gt2-current {
   background: color-mix(in oklab, var(--presence) 28%, var(--surface-elevated));

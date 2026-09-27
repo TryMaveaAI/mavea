@@ -271,7 +271,7 @@
 }
 .lr-qz-opt.is-correct .lr-qz-mark {
   background: var(--insight);
-  color: #fff;
+  color: var(--on-insight);
 }
 .lr-qz-opt.is-wrong {
   border-color: color-mix(in oklab, var(--danger) 55%, transparent);

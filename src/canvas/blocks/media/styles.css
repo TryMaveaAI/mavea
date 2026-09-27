@@ -3714,7 +3714,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--surface-deep);
+  color: var(--on-insight);
   background: var(--insight);
   box-shadow: 0 0 14px var(--glow-insight);
 }

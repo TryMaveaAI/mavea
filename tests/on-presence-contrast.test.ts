@@ -150,10 +150,14 @@ describe('text on a --presence fill', () => {
     // landing's presence colour) is exempt, since the root's derivation already reads it.
     for (const f of sourceFiles('src')) {
       const src = read(f);
-      if (!/['"`]--presence['"`]\s*[:\]]/.test(src)) continue;
-      expect(src, f).toMatch(
-        /['"`]--on-presence['"`]\s*:\s*['"`]oklch\(from var\(--presence\) var\(--ink-on-fill\)\)['"`]/,
-      );
+      for (const accent of ['presence', 'insight']) {
+        if (!new RegExp(`['"\`]--${accent}['"\`]\\s*[:\\]]`).test(src)) continue;
+        expect(src, `${f} --${accent}`).toMatch(
+          new RegExp(
+            `['"\`]--on-${accent}['"\`]\\s*:\\s*['"\`]oklch\\(from var\\(--${accent}\\) var\\(--ink-on-fill\\)\\)['"\`]`,
+          ),
+        );
+      }
     }
   });
 

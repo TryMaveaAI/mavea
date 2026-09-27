@@ -1019,7 +1019,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--on-presence);
 }
 .fl-dock-mic {
   background: linear-gradient(120deg, var(--presence), var(--fl-blue));

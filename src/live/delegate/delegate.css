@@ -868,7 +868,7 @@
   height: 28px;
   flex: none;
   border-radius: var(--r-full);
-  color: var(--text-on-accent, #fff);
+  color: var(--on-insight);
   background: var(--insight);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--insight) 18%, transparent);
 }
@@ -999,7 +999,7 @@
   font: inherit;
   font-weight: 600;
   font-size: var(--fs-md);
-  color: var(--text-on-accent, #fff);
+  color: var(--on-insight);
   background: var(--insight);
   border: none;
   border-radius: var(--r-full);
@@ -1012,7 +1012,7 @@
   inset: 0;
   transform: scaleX(0);
   transform-origin: left;
-  background: color-mix(in oklab, var(--text-on-accent, #fff) 26%, transparent);
+  background: color-mix(in oklab, var(--on-insight) 26%, transparent);
 }
 .dlg-hold.holding .dlg-hold-fill {
   transform: scaleX(1);
