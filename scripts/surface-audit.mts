@@ -637,8 +637,12 @@ const MEASURE_SCRIPT = (
         if (escaped && !holdsFixed(acs)) continue;
         escaped = acs.position === 'fixed';
         const ar = a.getBoundingClientRect();
-        if (/(auto|scroll)/.test(acs.overflowX) && a.scrollWidth > a.clientWidth + 2) rescuedX = true;
-        if (/(auto|scroll)/.test(acs.overflowY) && a.scrollHeight > a.clientHeight + 2) rescuedY = true;
+        // A scroll container reaches all it holds on its scrolling axis, however little it
+        // overflows (a sub-pixel overhang in a row that scrolls is still scrolled to), and a camera
+        // the reader drags (a map declares one with a grab cursor) brings back either axis.
+        const pans = acs.cursor === 'grab' || acs.cursor === 'grabbing';
+        if (pans || /(auto|scroll)/.test(acs.overflowX)) rescuedX = true;
+        if (pans || /(auto|scroll)/.test(acs.overflowY)) rescuedY = true;
         if (!rescuedX && acs.overflowX !== 'visible' && (r.left < ar.left - 1 || r.right > ar.right + 1)) cutX = true;
         if (!rescuedY && acs.overflowY !== 'visible' && (r.top < ar.top - 1 || r.bottom > ar.bottom + 1)) cutY = true;
       }
