@@ -744,10 +744,17 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       expect(document.querySelector('.clr-canvas')).toBeNull();
       expect(screen.queryByText(/Building lesson/)).toBeNull();
       expect(mockGenerateLive).not.toHaveBeenCalled();
+      // Build is the page's one primary action while the lesson is held; Next steps back.
+      const next = screen.getByRole('button', { name: /^Next/ });
+      expect(screen.getByRole('button', { name: /Build this lesson/i })).toHaveClass(
+        'clr-btn-primary',
+      );
+      expect(next).not.toHaveClass('cx-btn-primary');
 
       // The reader's own press is what builds it — once.
       fireEvent.click(screen.getByRole('button', { name: /Build this lesson/i }));
       await waitFor(() => expect(document.querySelector('.clr-canvas')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /^Next/ })).toHaveClass('cx-btn-primary');
       expect(mockGenerateLive).toHaveBeenCalledTimes(1);
       expect(mockGenerateLive.mock.calls[0][0]).toContain('Lesson 2');
       expect(screen.queryByRole('button', { name: /Build this lesson/i })).toBeNull();

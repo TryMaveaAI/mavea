@@ -430,6 +430,7 @@ export function CourseLessonReader(): ReactElement {
             onCheckpoint={onCheckpoint}
             busy={busy}
             showBack={false}
+            nextIsPrimary={phase !== 'held'}
           />
 
           {phase === 'held' && (
@@ -484,12 +485,12 @@ function HeldStage({
       </div>
       <div className="clr-state-head">Lesson {lessonNumber} isn’t built yet</div>
       {lesson && <div className="clr-state-sub">{lesson.goal}</div>}
-      <p className="clr-state-sub" role="status">
-        Opened from a link — build it when you are ready.
-      </p>
       <button type="button" className="clr-btn clr-btn-primary" onClick={onBuild}>
         <Icon.sparkle /> Build this lesson
       </button>
+      <p className="clr-state-sub" role="status">
+        Opened from a link — build it when you are ready.
+      </p>
     </div>
   );
 }

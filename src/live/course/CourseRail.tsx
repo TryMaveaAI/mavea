@@ -48,6 +48,10 @@ export interface CourseRailProps {
   /** Whether the rail carries its own "Courses" back link. The lesson reader puts it in its top
    *  bar instead, so the surface's way out sits where every other surface puts it. */
   showBack?: boolean;
+  /** Whether Next is the rail's primary action. The lesson reader turns it off while the lesson
+   *  is not built yet: the page's one real action is then "Build this lesson", and a full-width
+   *  accent Next above it pulled the eye to leaving instead. Defaults on. */
+  nextIsPrimary?: boolean;
 }
 
 function CheckpointPanel({
@@ -140,6 +144,7 @@ export function CourseRail({
   onNext,
   onCheckpoint,
   busy,
+  nextIsPrimary = true,
   showBack = true,
 }: CourseRailProps): ReactElement | null {
   const lesson = course.lessons[lessonIdx];
@@ -300,7 +305,7 @@ export function CourseRail({
         </button>
         <button
           type="button"
-          className="cx-btn cx-btn-primary"
+          className={nextIsPrimary ? 'cx-btn cx-btn-primary' : 'cx-btn'}
           onClick={onNext}
           disabled={!!busy || lessonIdx >= total - 1}
         >

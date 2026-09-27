@@ -75,7 +75,9 @@
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: clamp(40px, 9dvh, 96px) 24px;
+  /* Tracks the window's height: on a short laptop the rail above already takes half the screen,
+     and a fixed 40px floor was enough to push the state's one action under the fold. */
+  padding: clamp(20px, 6dvh, 96px) 24px;
 }
 .clr-state-head {
   font: 700 var(--fs-lg)/1.3 var(--font);
