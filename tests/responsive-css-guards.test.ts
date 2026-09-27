@@ -1077,3 +1077,50 @@ describe('Ripple — the provenance banner keeps a readable measure at phone wid
     expect(text).toMatch(/min-width:\s*0/);
   });
 });
+
+describe('Onboarding on a phone — the primary action and its targets stay reachable', () => {
+  it('turns Settings into a full-height sheet on a phone or a short window', () => {
+    // A floating card with a fixed-height body left dead space under it at 390x844 and a 170px
+    // body in landscape. Below the breakpoint the body flexes into every pixel the sheet has.
+    const css = read('src/styles/wow-polish.css');
+    const sheet =
+      /@media \(width <= 560px\), \(height <= 650px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(sheet).toMatch(/\.ls-card\s*\{[^}]*height:\s*100dvh/);
+    expect(sheet).toMatch(/\.ls-body\s*\{[^}]*flex:\s*1[^}]*max-height:\s*none/);
+    expect(sheet).toMatch(/\.ls-close\s*\{[^}]*width:\s*var\(--tap-min\)/);
+    expect(sheet).toMatch(/\.ls-tab\s*\{[^}]*min-height:\s*var\(--tap-min\)/);
+    // And the card's box is a class, not an inline style an @media rule could never outrank.
+    expect(read('src/live/LiveSettings.tsx')).toMatch(/className="ls-card"/);
+  });
+
+  it('sizes the Deep Zoom start column to the row, not to its widest line', () => {
+    // margin-inline:auto in a flex column made the column content-sized, so the notice's single
+    // clamped line set its width and pushed the hero off a 320px screen.
+    const css = read('src/live/deepzoom/deepzoom.css');
+    expect(/\.dz-start-body\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(/width:\s*100%/);
+    expect(/\.dz-start-body > \.feature-use-notice\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(
+      /min-width:\s*0/,
+    );
+    expect(css).toMatch(/@media \(height <= 650px\)\s*\{\s*\.dz-start-body\s*\{/);
+  });
+
+  it('pins the wizard step footer outside the scrolling stage, at thumb size', () => {
+    const css = read('src/styles/setup-wizard.css');
+    expect(/\n\.setup-done\s*\{[^}]*\}/.exec(css)?.[0]).toMatch(/min-height:\s*var\(--tap-min\)/);
+    // The provider choice is one compact row of pills on a phone, with the company kept in the
+    // accessible name rather than removed.
+    const phone = /@media \(width <= 560px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(phone).toMatch(/\.provider-tiles\s*\{[^}]*display:\s*flex/);
+    expect(phone).toMatch(/\.provider-sub\s*\{[^}]*clip-path/);
+    expect(phone).not.toMatch(/\.provider-sub\s*\{[^}]*display:\s*none/);
+  });
+
+  it('gives the course rail’s text actions a full tap target under a thumb', () => {
+    const css = read('src/live/course/courseRail.css');
+    const touch = /@media \(pointer: coarse\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    for (const cls of ['.cx-link', '.cx-zoom-link', '.cx-deck-link', '.cx-back']) {
+      expect(touch).toContain(cls);
+    }
+    expect(touch).toMatch(/min-height:\s*var\(--tap-min\)/);
+  });
+});

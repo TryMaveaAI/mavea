@@ -565,6 +565,12 @@ describe('CourseLessonReader — the dedicated #/course reader', () => {
       expect(within(rail).getByText('Course a')).toBeInTheDocument();
       expect(within(rail).getByText('master idea 1')).toBeInTheDocument();
 
+      // The way back to the courses lives in the surface's top bar (beside Appearance), once —
+      // the bar used to hold Appearance alone, and the rail kept a second copy of the link.
+      const bar = document.querySelector('.clr-top') as HTMLElement;
+      expect(within(bar).getByRole('button', { name: /Courses/ })).toBeInTheDocument();
+      expect(within(rail).queryByRole('button', { name: /^Courses$/ })).toBeNull();
+
       // The lesson canvas rendered its real blocks.
       const canvas = document.querySelector('.clr-canvas') as HTMLElement;
       expect(

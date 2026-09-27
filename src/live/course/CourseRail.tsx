@@ -45,6 +45,9 @@ export interface CourseRailProps {
   onCheckpoint: (result: CheckpointResult) => void;
   /** Disable Prev/Next while a lesson turn is generating. */
   busy?: boolean;
+  /** Whether the rail carries its own "Courses" back link. The lesson reader puts it in its top
+   *  bar instead, so the surface's way out sits where every other surface puts it. */
+  showBack?: boolean;
 }
 
 function CheckpointPanel({
@@ -137,6 +140,7 @@ export function CourseRail({
   onNext,
   onCheckpoint,
   busy,
+  showBack = true,
 }: CourseRailProps): ReactElement | null {
   const lesson = course.lessons[lessonIdx];
 
@@ -195,15 +199,17 @@ export function CourseRail({
   return (
     <aside className="course-rail" aria-label={`Course: ${course.title}`}>
       <div className="cx-top">
-        <button
-          type="button"
-          className="cx-back"
-          onClick={() => {
-            window.location.hash = '#/courses';
-          }}
-        >
-          <Icon.chevL /> Courses
-        </button>
+        {showBack && (
+          <button
+            type="button"
+            className="cx-back"
+            onClick={() => {
+              window.location.hash = '#/courses';
+            }}
+          >
+            <Icon.chevL /> Courses
+          </button>
+        )}
         <span className="cx-position">
           Lesson {lessonIdx + 1} of {total}
         </span>

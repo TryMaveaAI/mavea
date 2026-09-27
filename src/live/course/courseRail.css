@@ -287,3 +287,24 @@
 .cx-nav .cx-btn {
   flex: 1;
 }
+
+/* Under a thumb the rail's text actions are still text, but each is a full tap target: they were
+   12-13px tall, the height of their own line. */
+@media (pointer: coarse) {
+  .cx-back,
+  .cx-link,
+  .cx-deck-link,
+  .cx-zoom-link {
+    min-height: var(--tap-min);
+  }
+  .cx-link {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* The taller hit boxes keep the rows' visual rhythm: they overlap the rail's gap, not add to it. */
+  .cx-checkpoint-status,
+  .cx-secondary-links {
+    row-gap: 0;
+    margin-block: -8px;
+  }
+}

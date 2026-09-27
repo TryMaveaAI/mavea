@@ -400,12 +400,15 @@ export function CourseLessonReader(): ReactElement {
     <div className="mavea-app clr-app">
       <main className="clr-stage">
         <div className="clr-col">
-          {/* Appearance is chrome for the SURFACE, not for the lesson — inside the rail card it read
-              as one more lesson control and crowded the notice above it. Its own row keeps the rail
-              about the lesson and matches where #/courses puts the same control. */}
-          <div className="clr-top">
+          {/* The surface's own chrome — the way back to the courses and Appearance — on one row
+              above the lesson. Appearance alone up here read as an empty bar; inside the rail card
+              it read as one more lesson control and crowded the notice above it. */}
+          <nav className="clr-top" aria-label="Lesson">
+            <button type="button" className="clr-back" onClick={goToCourses}>
+              <Icon.chevL /> Courses
+            </button>
             <TemplatePicker triggerClassName="ctrl" />
-          </div>
+          </nav>
           <FeatureUseNotice kind="learning" />
           <CourseRail
             // Keyed by course+lesson so a mid-checkpoint self-check never survives into the next
@@ -426,6 +429,7 @@ export function CourseLessonReader(): ReactElement {
             }}
             onCheckpoint={onCheckpoint}
             busy={busy}
+            showBack={false}
           />
 
           {phase === 'held' && (

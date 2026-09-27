@@ -34,11 +34,34 @@
   margin-inline: auto;
 }
 
-/* The reader's only surface chrome: one right-aligned row above the reading column. */
+/* The reader's surface chrome: the way back on the left, Appearance on the right. */
 .clr-top {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 8px;
+}
+.clr-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: var(--tap-min);
+  padding: 0 10px 0 4px;
+  border: none;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-secondary);
+  font: 600 var(--fs-sm)/1 var(--font);
+  cursor: pointer;
+}
+.clr-back svg {
+  width: 15px;
+  height: 15px;
+}
+.clr-back:hover {
+  color: var(--text-primary);
+  background: var(--surface-glass);
 }
 
 .clr-canvas {
