@@ -201,19 +201,6 @@ function pttBtnStyle(active: boolean): CSSProperties {
   };
 }
 
-// Design tokens only (these adapt to light/dark); the old `var(--card/--bg/--border)`
-// fallbacks were undefined, so their dark hex always won and looked wrong in light mode.
-const card: CSSProperties = {
-  background: 'var(--surface-elevated)',
-  border: '1px solid var(--line)',
-  borderRadius: 16,
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  width: 'min(460px, calc(100vw - 32px))',
-  boxShadow: 'var(--shadow-modal)',
-};
 const labelStyle: CSSProperties = {
   fontSize: 12,
   color: 'var(--text-muted)',
@@ -340,8 +327,9 @@ function ArmedActionButton({
   confirmLabel: string;
   onConfirm: () => void;
   /** 'link' wears the surrounding text's look — for an armed action that lives in a row of
-   *  links rather than beside the other controls. */
-  variant?: 'pill' | 'link';
+   *  links rather than beside the other controls. 'danger' is a full-width destructive button
+   *  (`.ls-danger`), for an action that cannot be undone. */
+  variant?: 'pill' | 'link' | 'danger';
   /** While the confirmed action is still running. */
   disabled?: boolean;
 }): ReactElement {
@@ -371,6 +359,8 @@ function ArmedActionButton({
     <button
       type="button"
       disabled={disabled}
+      className={variant === 'danger' ? 'ls-danger' : undefined}
+      data-armed={armed || undefined}
       onClick={() => {
         if (!armed) {
           setArmed(true);
@@ -379,11 +369,15 @@ function ArmedActionButton({
         setArmed(false);
         onConfirm();
       }}
-      style={{
-        cursor: disabled ? 'default' : 'pointer',
-        font: 'inherit',
-        ...(variant === 'link' ? link : pill),
-      }}
+      style={
+        variant === 'danger'
+          ? undefined
+          : {
+              cursor: disabled ? 'default' : 'pointer',
+              font: 'inherit',
+              ...(variant === 'link' ? link : pill),
+            }
+      }
     >
       {armed ? confirmLabel : label}
     </button>
@@ -824,7 +818,15 @@ export function LiveSettings({
                     : 'Not reachable';
 
   return (
-    <div ref={dialogRef} style={card} role="dialog" aria-modal="true" aria-label="Mavéa settings">
+    // The card's box lives in wow-polish.css (`.ls-card`), not inline, because a phone or a short
+    // window turns it into a full-height sheet and an inline style would outrank that media query.
+    <div
+      ref={dialogRef}
+      className="ls-card"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Mavéa settings"
+    >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span
@@ -837,22 +839,11 @@ export function LiveSettings({
         </span>
         {onClose && (
           <button
+            type="button"
+            className="ls-close"
             onClick={onClose}
             title="Close"
             aria-label="Close settings"
-            style={{
-              display: 'inline-grid',
-              placeItems: 'center',
-              width: 28,
-              height: 28,
-              padding: 0,
-              border: 'none',
-              borderRadius: 6,
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
           >
             <Icon.x style={{ width: 16, height: 16 }} />
           </button>
@@ -1608,10 +1599,11 @@ export function LiveSettings({
             </div>
             <div
               className="settings-transfer-row"
-              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--s-sm)' }}
+              style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--s-sm)' }}
               aria-busy={forgetBusy}
             >
               <ArmedActionButton
+                variant="danger"
                 label={forgetBusy ? 'Forgetting…' : 'Forget everything on this device'}
                 confirmLabel="Confirm: forget everything on this device"
                 disabled={forgetBusy}

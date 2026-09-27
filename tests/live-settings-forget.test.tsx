@@ -40,8 +40,13 @@ describe('LiveSettings — Forget everything on this device', () => {
       screen.getByText(/Removes saved keys, the encryption key that sealed them/),
     ).toBeInTheDocument();
 
+    // It reads as what it is — the one destructive control in Settings — and says when it is armed.
+    expect(button).toHaveClass('ls-danger');
+    expect(button).not.toHaveAttribute('data-armed');
+
     fireEvent.click(button);
     expect(button).toHaveTextContent('Confirm: forget everything on this device');
+    expect(button).toHaveAttribute('data-armed');
     expect(mocks.forgetDevice).not.toHaveBeenCalled();
 
     fireEvent.click(button);
