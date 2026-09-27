@@ -82,9 +82,13 @@ describe('buildDemoPaletteItems', () => {
 describe('the landing palette has no dead rows', () => {
   it('resolves every registry feature to an action, not an "Opens in Live" teaser', async () => {
     const { FEATURES } = await import('../src/live/features/registry');
-    // The two the landing opens in place (see FlagshipCommandPalette); everything else must name
+    // The ones the landing opens in place (see FlagshipCommandPalette); everything else must name
     // a walkthrough chapter to earn its row.
-    const direct: Record<string, () => void> = { dashboards: vi.fn(), how: vi.fn() };
+    const direct: Record<string, () => void> = {
+      dashboards: vi.fn(),
+      gallery: vi.fn(),
+      how: vi.fn(),
+    };
     const built = buildDemoPaletteItems(
       FEATURES.filter((f) => f.surface !== 'demo'),
       { direct, watchInLive: () => vi.fn(), enterLive: vi.fn() },

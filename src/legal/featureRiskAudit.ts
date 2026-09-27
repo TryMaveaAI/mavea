@@ -112,6 +112,7 @@ export const FEATURE_RISK_AUDIT: Record<string, FeatureRiskReview> = {
     notice: 'monitoring',
     reviewed: ['missed refreshes', 'not an alerting service'],
   },
+  gallery: { notice: 'global', reviewed: ['demonstration fixtures'] },
   how: { notice: 'global', reviewed: ['demonstration data', 'AI limitations'] },
 };
 

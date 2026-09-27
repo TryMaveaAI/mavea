@@ -479,6 +479,15 @@ export const FEATURES: Feature[] = [
     keywords: ['brief', 'briefing', 'morning', 'daily', 'catch up', 'start of day'],
   },
   {
+    // Its own route, so it opens in place on and off Live and needs no chapter for a working row.
+    id: 'gallery',
+    label: 'Component gallery',
+    blurb: 'Every chart, diagram and card Mavéa can draw, each on sample data',
+    group: 'Setup',
+    surface: 'both',
+    keywords: ['gallery', 'components', 'catalog', 'examples', 'charts', 'blocks', 'visual'],
+  },
+  {
     id: 'how',
     label: 'How Mavéa works',
     blurb: 'A quick tour of the basics',

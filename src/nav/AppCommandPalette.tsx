@@ -25,11 +25,15 @@ export function AppCommandPalette({
   enterLive,
 }: Props): ReactElement {
   const items = useMemo<PaletteItem[]>(() => {
-    // The only rows that open in place off-Live: Dashboards is its own surface, and "How Mavéa
-    // works" IS the tour. Everything else names a chapter (→ a mini-demo) or hands off to Live.
+    // The only rows that open in place off-Live: Dashboards and the gallery are their own
+    // surfaces, and "How Mavéa works" IS the tour. Everything else names a chapter (→ a
+    // mini-demo) or hands off to Live.
     const direct: Record<string, () => void> = {
       dashboards: () => {
         window.location.hash = '#/dashboards';
+      },
+      gallery: () => {
+        window.location.hash = '#/gallery';
       },
       how: startTour,
     };
@@ -40,8 +44,8 @@ export function AppCommandPalette({
       // carries a demo — none sits without one.
       watch: item.feature.id === 'how' ? startTour : item.watch,
       preload:
-        item.feature.id === 'dashboards'
-          ? () => preloadRoute('#/dashboards') ?? Promise.resolve()
+        item.feature.id === 'dashboards' || item.feature.id === 'gallery'
+          ? () => preloadRoute(`#/${item.feature.id}`) ?? Promise.resolve()
           : () => preloadRoute('#/live') ?? Promise.resolve(),
     }));
   }, [enterLive, startTour, watchInLive]);

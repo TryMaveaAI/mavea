@@ -21,11 +21,12 @@ export function FlagshipCommandPalette({
   const items = useMemo<PaletteItem[]>(() => {
     // Only surfaces that truly open in place stay "direct"; everything else (Ripple included) names
     // a walkthrough chapter, so it gets a uniform "See how" mini-demo rather than a bespoke opener.
-    // (The visual gallery is deliberately absent everywhere here: it's an internal QA surface,
-    // reachable by URL, not a feature to search for.)
     const direct: Record<string, () => void> = {
       dashboards: () => {
         window.location.hash = '#/dashboards';
+      },
+      gallery: () => {
+        window.location.hash = '#/gallery';
       },
       how: startTour,
     };
@@ -36,8 +37,8 @@ export function FlagshipCommandPalette({
       // carries a demo, none excepted.
       watch: item.feature.id === 'how' ? startTour : item.watch,
       preload:
-        item.feature.id === 'dashboards'
-          ? () => preloadRoute('#/dashboards') ?? Promise.resolve()
+        item.feature.id === 'dashboards' || item.feature.id === 'gallery'
+          ? () => preloadRoute(`#/${item.feature.id}`) ?? Promise.resolve()
           : () => preloadRoute('#/live') ?? Promise.resolve(),
     }));
   }, [enterLive, startTour, watchInLive]);
