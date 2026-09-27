@@ -870,7 +870,9 @@
   z-index: 80;
   /* Two stacked things now — the sheet, and the strip of the rest of the answer beneath it. The
      width lives here rather than on the sheet so both can measure against the same number. */
-  --zoom-sheet-w: min(1120px, 92vw);
+  /* Grows with the viewport's type scale, so on a large monitor the sheet keeps its proportion
+     to the page rather than shrinking to a laptop-sized island. */
+  --zoom-sheet-w: min(calc(1120px * var(--vp-type-scale, 1)), 92vw);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -909,6 +911,14 @@
   background: var(--surface-elevated);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-modal);
+}
+/* A large monitor's full height is far more than any card needs: filled, the sheet stood 1700px
+   tall around a card a fifth of that. Past 1920px the sheet keeps the landscape proportion of its
+   own width instead, still inside the room the scrim leaves it. */
+@media (width > 1920px) {
+  .zoom-sheet {
+    max-height: calc(var(--zoom-sheet-w) * 0.72);
+  }
 }
 /* Where the magnified card lives: the only scroll container on the stage. It is the box that
    gives up height when the window is short — the card inside it is FITTED to the room it gets

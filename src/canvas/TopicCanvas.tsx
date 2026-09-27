@@ -15,6 +15,7 @@ import './lib/empty.css';
 import './lib/motion.css';
 import './controls/controls.css';
 import { FitBox } from './layout/FitBox';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { FIT_TYPES } from './layout/fitPolicy';
 import { useBloomMode } from './reveal/useBloomMode';
 import { CanvasTakeover } from './focus/CanvasView';
@@ -116,6 +117,10 @@ const ZOOM_STEP = 0.15;
 // above 1 also pushed the body wider than the sheet, which clipped the card's right edge and
 // carried the toolbar's close button off with it.
 const ZOOM_DEFAULT = 1;
+/** The body size the Lens grows a card toward on a large monitor, in rendered px: the board's
+ *  body step there is ~16px, and a card opened to be looked at closer should read larger than
+ *  the board it came from. FitBox caps the growth at 1.5x and never past the sheet. */
+const LENS_WIDE_READING_PX = 24;
 
 // The Lens: click a card and it comes forward, the rest of the board dimming behind it. The
 // gesture rides the cell, not the card, because the cell is what carries `.spotlit`/`.dimmed`.
@@ -444,6 +449,10 @@ export function TopicCanvas({
   // Uses the CSS `zoom` property (not `transform: scale`) so the enlarged content participates in
   // layout — the sheet's scroll area grows to match, instead of clipping the painted overflow.
   const [zoomLevel, setZoomLevel] = useState(ZOOM_DEFAULT);
+  // Past a 1920px window the Lens sheet grows with the type scale, and a card fitted at its board
+  // size read as a small card floating in a big empty sheet. There the fit may grow the card
+  // toward a reading size for that distance; the box still wins, so a tall card is left as is.
+  const lensGrows = useMediaQuery('(width > 1920px)');
   useEffect(() => {
     if (!zoomedBlock) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1279,7 +1288,12 @@ export function TopicCanvas({
                   <div className="zoom-sheet-body" style={{ zoom: zoomLevel }}>
                     {/* At the card's own size the sheet fits the card to its height before it
                         scrolls; once the reader magnifies, scrolling is the point. */}
-                    <FitBox fitHeight={zoomLevel === 1}>{renderOnStage(zoomedBlock)}</FitBox>
+                    <FitBox
+                      fitHeight={zoomLevel === 1}
+                      readingPx={lensGrows ? LENS_WIDE_READING_PX : undefined}
+                    >
+                      {renderOnStage(zoomedBlock)}
+                    </FitBox>
                   </div>
                 </div>
                 {lensNotes.length > 0 && (
