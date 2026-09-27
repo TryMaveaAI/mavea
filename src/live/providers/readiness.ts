@@ -19,6 +19,9 @@ const inFlight = new Map<string, Promise<LiveProbe>>();
 /** Bumped by forgetReadiness, so a check still in flight when everything is forgotten cannot
  *  write its verdict back afterwards. */
 let epoch = 0;
+/** The same, per combination: bumped by forgetVerified, so a check that started before a turn was
+ *  refused cannot record a pass the refusal has already disproved. */
+const fingerprintEpochs = new Map<string, number>();
 
 /** Hash of the three things a verdict depends on, or null without WebCrypto (then every check is
  *  a real one rather than a trust in an unverified pairing). */
@@ -55,8 +58,11 @@ export function sharedPaidCheck(
   const pending = inFlight.get(fingerprint);
   if (pending) return pending.then(withoutUsage);
   const started = epoch;
+  const startedFor = fingerprintEpochs.get(fingerprint) ?? 0;
+  const current = (): boolean =>
+    started === epoch && startedFor === (fingerprintEpochs.get(fingerprint) ?? 0);
   const record = (verdict: LiveProbe): void => {
-    if (started !== epoch) return;
+    if (!current()) return;
     if (verdict.ok) {
       verified.add(fingerprint);
       failed.delete(fingerprint);
@@ -89,9 +95,13 @@ function withoutUsage(verdict: LiveProbe): LiveProbe {
   return shared;
 }
 
-/** A turn was refused for this combination's key or credit: the next check must really check. */
+/** A turn was refused for this combination's key or credit: the next check must really check, and
+ *  a check already in flight must not write a pass back over the refusal. */
 export function forgetVerified(fingerprint: string | null): void {
-  if (fingerprint) verified.delete(fingerprint);
+  if (!fingerprint) return;
+  verified.delete(fingerprint);
+  inFlight.delete(fingerprint);
+  fingerprintEpochs.set(fingerprint, (fingerprintEpochs.get(fingerprint) ?? 0) + 1);
 }
 
 /** Forget every verdict and every check in flight: the device sweep, and tests starting cold. */
@@ -100,4 +110,5 @@ export function forgetReadiness(): void {
   verified.clear();
   failed.clear();
   inFlight.clear();
+  fingerprintEpochs.clear();
 }

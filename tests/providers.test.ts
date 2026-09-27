@@ -3,7 +3,9 @@ import { anthropicAdapter } from '../src/live/providers/anthropic';
 import {
   failedVerdict,
   forgetReadiness,
+  forgetVerified,
   isVerified,
+  readinessFingerprint,
   sharedPaidCheck,
 } from '../src/live/providers/readiness';
 import { openaiAdapter } from '../src/live/providers/openai';
@@ -436,6 +438,32 @@ describe('anthropic probe — readiness comes from the REAL generation endpoint'
     expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
     expect((await getAdapter('anthropic').probe(cfg)).ok).toBe(false);
     expect(messages).toBe(1);
+  });
+
+  it('never lets a check in flight record a pass once a turn has been refused', async () => {
+    // The proxy path every probe here runs through (no baseUrl on cfg).
+    const fingerprint = await readinessFingerprint('/llm/anthropic', cfg);
+    let held = holdMessages(200);
+    const stale = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    // A real turn is refused for the key while the readiness check is still out.
+    forgetVerified(fingerprint);
+    held.release();
+    expect((await stale).ok).toBe(true);
+    expect(isVerified(fingerprint!)).toBe(false);
+
+    // And a check started after the refusal makes its own request rather than joining one begun
+    // before it.
+    forgetReadiness();
+    held = holdMessages(200);
+    const before = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 1);
+    forgetVerified(fingerprint);
+    const after = getAdapter('anthropic').probe(cfg);
+    await until(held.messages, 2);
+    held.release();
+    await Promise.all([before, after]);
+    expect(isVerified(fingerprint!)).toBe(true);
   });
 
   it('re-runs the paid pass when the reader asks for a fresh check', async () => {
