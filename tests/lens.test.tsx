@@ -134,6 +134,23 @@ describe('the Lens gesture', () => {
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
   });
 
+  it('leaves the arrows to a focused region in the card that pans', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const card = document.querySelector('.zoom-sheet .card')!;
+    const pan = document.createElement('div');
+    pan.tabIndex = 0;
+    card.append(pan);
+    Object.defineProperty(pan, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 650 });
+    fireEvent.keyDown(pan, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+    // With nothing past its edge it is not a pan, and the arrows walk the board again.
+    Object.defineProperty(pan, 'scrollWidth', { configurable: true, value: 300 });
+    fireEvent.keyDown(pan, { key: 'ArrowRight' });
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+  });
+
   it('keeps magnification as a control ON the stage, not a second pill beside it', () => {
     const { container } = mount();
     expect(container.querySelector('.block-zoom')).toBeNull();
