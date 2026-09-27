@@ -337,15 +337,32 @@ describe('stepping through the answer from the stage', () => {
     const { container } = mount();
     cleanClick(cell0(container, 'a'));
     expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('1 of 2');
-    const prev = screen.getByRole('button', { name: 'Previous card' }) as HTMLButtonElement;
-    expect(prev.disabled).toBe(true);
+    const prev = screen.getByRole('button', { name: 'Previous card' });
+    expect(prev.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
     expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
     expect(container.querySelector('.zoom-sheet-step-at')?.textContent).toBe('2 of 2');
-    const next = screen.getByRole('button', { name: 'Next card' }) as HTMLButtonElement;
-    expect(next.disabled).toBe(true);
+    const next = screen.getByRole('button', { name: 'Next card' });
+    expect(next.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Previous card' }));
     expect(screen.getByRole('dialog', { name: 'Alpha' })).toBeTruthy();
+  });
+
+  it('keeps focus on Next when it reaches the last card, and announces where it is', () => {
+    const { container } = mount();
+    cleanClick(cell0(container, 'a'));
+    const next = screen.getByRole('button', { name: 'Next card' }) as HTMLButtonElement;
+    next.focus();
+    fireEvent.click(next);
+    // Still a focusable button at the end — a `disabled` one would have dropped focus to <body>.
+    expect(next.disabled).toBe(false);
+    expect(document.activeElement).toBe(next);
+    // A press at the end is a no-op, not a wrap.
+    fireEvent.click(next);
+    expect(screen.getByRole('dialog', { name: 'Beta' })).toBeTruthy();
+    expect(container.querySelector('.zoom-sheet-step-at')?.getAttribute('aria-live')).toBe(
+      'polite',
+    );
   });
 
   it('shows no stepper for an answer of one card', () => {

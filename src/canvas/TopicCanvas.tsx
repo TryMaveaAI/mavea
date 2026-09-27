@@ -1235,24 +1235,27 @@ export function TopicCanvas({
                         short window has no room for it; arrow keys alone are no way at all for
                         a reader who does not know they exist. */}
                     {lensSteps.length > 1 && (
+                      // At either end the button says so rather than going `disabled`: a
+                      // disabled button drops the focus it holds to the page, and a keyboard
+                      // reader pressing Next to the last card would land back on the board.
                       <div className="zoom-sheet-stepper" role="group" aria-label="Cards">
                         <button
                           type="button"
-                          className="zoom-sheet-zoom-btn"
+                          className="zoom-sheet-step-btn"
                           aria-label="Previous card"
-                          disabled={lensAt <= 0}
+                          aria-disabled={lensAt <= 0}
                           onClick={() => stepLens(-1)}
                         >
                           <Icon.chevL />
                         </button>
-                        <span className="zoom-sheet-step-at">
+                        <span className="zoom-sheet-step-at" aria-live="polite">
                           {lensAt + 1} of {lensSteps.length}
                         </span>
                         <button
                           type="button"
-                          className="zoom-sheet-zoom-btn"
+                          className="zoom-sheet-step-btn"
                           aria-label="Next card"
-                          disabled={lensAt >= lensSteps.length - 1}
+                          aria-disabled={lensAt >= lensSteps.length - 1}
                           onClick={() => stepLens(1)}
                         >
                           <Icon.chevR />
