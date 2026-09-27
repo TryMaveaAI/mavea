@@ -45,7 +45,7 @@ export function clampToClippingAncestors(rect: DOMRect, el: HTMLElement): DOMRec
 }
 
 /** How long a ring waits for a target that keeps moving before it rings it where it is. */
-const MAX_HOLD_MS = 900;
+export const MAX_HOLD_MS = 900;
 
 export function useElementRect(selector: string | undefined, active: boolean): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(null);
