@@ -68,6 +68,9 @@ export function bridgeVars(p: FigurePalette): Record<string, string> {
     // accents — a monochrome category ramp anchored on the brand accent, so a multi-series
     // chart stays distinguishable AND on-brand; a genuine second hue is used when the skin has one.
     '--presence': p.accent,
+    // A custom property resolves where it is declared, so the ink the root derived from the app's
+    // accent would sit on this skin's accent unchanged; the wrapper derives its own.
+    '--on-presence': 'oklch(from var(--presence) var(--ink-on-fill))',
     '--presence-soft': mix(p.accent, 72, p.paper),
     '--presence-deep': accentInk,
     '--accent-ink': accentInk,

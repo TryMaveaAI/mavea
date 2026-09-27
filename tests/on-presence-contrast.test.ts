@@ -72,6 +72,13 @@ function cssFiles(dir: string): string[] {
 
 const sheets = cssFiles('src').map((f) => ({ f, css: read(f) }));
 
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    return statSync(p).isDirectory() ? sourceFiles(p) : /\.tsx?$/.test(p) ? [p] : [];
+  });
+}
+
 /** Every value any stylesheet gives a custom property. */
 const declared = new Map<string, string[]>();
 for (const { css } of sheets) {
@@ -138,6 +145,15 @@ describe('text on a --presence fill', () => {
         expect(css, f).toMatch(DERIVED);
         void body;
       }
+    }
+    // Markup rebinds it too, through inline style objects; the root's own inline value (the
+    // landing's presence colour) is exempt, since the root's derivation already reads it.
+    for (const f of sourceFiles('src')) {
+      const src = read(f);
+      if (!/['"`]--presence['"`]\s*[:\]]/.test(src)) continue;
+      expect(src, f).toMatch(
+        /['"`]--on-presence['"`]\s*:\s*['"`]oklch\(from var\(--presence\) var\(--ink-on-fill\)\)['"`]/,
+      );
     }
   });
 
