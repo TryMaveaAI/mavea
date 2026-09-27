@@ -2,7 +2,9 @@
 // Pack exactly what npm would receive, then enforce the public CLI artifact boundary. This catches
 // regressions that a dist/ scan cannot: accidental source/test publication, production dependency
 // creep, and large optional voice models leaking back into every `npx @mavea/mavea` install.
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+// `--keep <path>` saves the verified tarball so the release publishes these exact bytes: `npm
+// publish` from the directory would ignore `publishConfig.engines` and ship the build-time engines.
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -13,6 +15,12 @@ const MAX_TARBALL_BYTES = 15 * 1024 * 1024;
 const temp = mkdtempSync(join(tmpdir(), 'mavea-pack-'));
 const archive = join(temp, 'mavea.tgz');
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const keepAt = process.argv.indexOf('--keep');
+const keep = keepAt >= 0 ? process.argv[keepAt + 1] : undefined;
+if (keepAt >= 0 && !keep) {
+  console.error('--keep needs a path for the verified tarball');
+  process.exit(1);
+}
 
 function fail(messages) {
   for (const message of messages) console.error(`✖ ${message}`);
@@ -143,6 +151,7 @@ try {
   }
   if (errors.length) fail(errors);
   else {
+    if (keep) copyFileSync(archive, resolve(keep));
     console.log(
       `✓ npm artifact: ${paths.length} files, ${(size / 1024 / 1024).toFixed(2)} MB, zero runtime dependencies, no source/maps, optional voice models excluded.`,
     );

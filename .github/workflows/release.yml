@@ -145,13 +145,18 @@ jobs:
       - name: Public artifact boundary
         run: pnpm check:artifact
 
-      - name: Package artifact shape (packs exactly what npm would receive)
-        run: pnpm check:package
+      - name: Dependency licences
+        run: pnpm check:licenses
+
+      - name: Package artifact shape (packs exactly what npm will receive)
+        run: pnpm check:package --keep "$RUNNER_TEMP/mavea.tgz"
 
       - name: Publish to npm
         # Public scoped packages are available on npm's free plan. npm 11.5.1+ exchanges this
         # GitHub-hosted job's short-lived OIDC identity through the configured trusted publisher;
         # no standing publish token exists. Trusted publishing adds provenance automatically.
-        run: npm publish --access public
+        # Publishing the tarball check:package verified, not the directory: npm does not apply
+        # publishConfig.engines, so a directory publish would advertise the build-time Node floor.
+        run: npm publish "$RUNNER_TEMP/mavea.tgz" --access public
         env:
           MAVEA_LEGAL_RELEASE_APPROVED: ${{ vars.MAVEA_LEGAL_RELEASE_APPROVED }}
