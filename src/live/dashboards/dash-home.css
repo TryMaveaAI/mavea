@@ -275,6 +275,17 @@
 .dash-connect-banner-link:hover {
   text-decoration: underline;
 }
+button.dash-connect-banner-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.dash-connect-banner-link:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 
 /* ── tracking grid ───────────────────────────────────────────────────────────────────────── */
 .dash-track {

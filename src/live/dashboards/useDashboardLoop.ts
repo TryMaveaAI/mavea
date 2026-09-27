@@ -56,7 +56,12 @@ import { budgetState, getDashSettings } from './budget';
 import { opensSince } from './opens';
 import { runOptimizerOnce } from './optimizer';
 import { disagreementInsight, runInsights } from './insights';
-import { briefingNeededToday, buildBriefingContext, recordBriefing } from './briefing';
+import {
+  briefingDueToday,
+  buildBriefingContext,
+  markBriefingMissed,
+  recordBriefing,
+} from './briefing';
 import { announceTripwireToast } from './dashboardEvents';
 
 const TICK_MS = 15_000;
@@ -341,6 +346,9 @@ export async function runRefreshBatch(
       cfg,
       opts.briefing ? { briefingContext: opts.briefing.context } : {},
     );
+    // A briefing asked for and not returned is missed for the day, whatever became of the data:
+    // the next pass must not carry the same request again.
+    if (opts.briefing && !batchResult.briefing) markBriefingMissed(now);
 
     if (!batchResult.ok) {
       // The CALL died (network/quota/auth). Don't stamp lastRefreshedAt — no member was checked —
@@ -617,6 +625,37 @@ function noteBlockedTrackers(due: Dashboard[], reason: SearchBlock, now: number)
   }
 }
 
+/** One standalone briefing call over every board's stored values. Records the briefing, or marks
+ *  the day missed so nothing asks again on its own. Returns false when there was nothing to brief
+ *  on, or the call returned no briefing. */
+async function composeBriefing(all: Dashboard[], cfg: ModelConfig, now: number): Promise<boolean> {
+  const context = buildBriefingContext(all, new Set());
+  if (!context) return false;
+  const result = await refreshDashboards([], cfg, { briefingContext: context });
+  if (!result.briefing) {
+    markBriefingMissed(now);
+    return false;
+  }
+  recordBriefing(result.briefing, all, now);
+  appendLedger({
+    kind: 'briefing',
+    text: 'Morning briefing compiled.',
+    dashboardIds: [],
+    searches: 1,
+  });
+  return true;
+}
+
+/** The reader's Try again on a missed briefing: one call, now, from that press. Budget-exempt like
+ *  every other manual action. */
+export async function composeBriefingNow(): Promise<'done' | 'failed' | SearchBlock> {
+  const liveConfig = getLiveConfigV2();
+  const readiness = searchReadiness(liveConfig);
+  if (!readiness.ok) return readiness.reason;
+  const ok = await composeBriefing(getDashboards(), toModelConfig(liveConfig), Date.now());
+  return ok ? 'done' : 'failed';
+}
+
 export interface TickTargets {
   dueData: Dashboard[];
   dueAi: Dashboard | null;
@@ -710,26 +749,14 @@ export function useDashboardLoop(): void {
       if (pausedAndBlocked) maybeAppendPauseEntry(now);
       if (!readiness.ok) noteBlockedTrackers(dueData, readiness.reason, now);
 
-      const wantsBriefing = ready && settings.briefingEnabled && briefingNeededToday(now);
+      const wantsBriefing = ready && settings.briefingEnabled && briefingDueToday(now);
 
       if (dueData.length === 0 && !dueAi) {
         // Nothing due at all this tick — the ONE case worth a narrow standalone briefing call:
         // when NO dashboard has live content, a batch will never happen to fold into, so the
         // briefing would otherwise never compose. Real cost, honestly ledgered.
         if (wantsBriefing && !all.some(hasLiveContent)) {
-          const context = buildBriefingContext(all, new Set());
-          if (context) {
-            const result = await refreshDashboards([], cfg, { briefingContext: context });
-            if (result.briefing) {
-              recordBriefing(result.briefing, all, now);
-              appendLedger({
-                kind: 'briefing',
-                text: 'Morning briefing compiled.',
-                dashboardIds: [],
-                searches: 1,
-              });
-            }
-          }
+          await composeBriefing(all, cfg, now);
         }
         return;
       }
