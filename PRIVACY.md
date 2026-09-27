@@ -122,6 +122,10 @@ You can reduce or remove data by:
 
 Depending on where you live, you may have legal rights to access, correct, delete, restrict, object to, or obtain a copy of personal information held by a deployment operator. The Maintainers cannot retrieve browser-local or provider-held data they do not possess. Everything else Mavéa stores is on your own device, so access and deletion are in your hands: use Forget everything on this device in Settings, or clear this site's data in your browser. You may also complain to your local data-protection authority.
 
+### California residents
+
+The Maintainers do not sell or share personal information, as those terms are defined in the California Consumer Privacy Act, and do not collect personal information through the application. For that reason there is no "Do Not Sell or Share My Personal Information" choice to offer. Mavéa does not track you across websites, so it responds to Do Not Track and Global Privacy Control signals the same way it treats every visit: nothing is tracked either way. California residents may exercise the rights described above, and may ask about correspondence the Maintainers hold at trymavea@gmail.com.
+
 ## 10. Sensitive, confidential, and regulated information
 
 Mavéa is not designed as a system of record for health, financial, student, employment, government-identifier, biometric, trade-secret, or other regulated information. Do not submit such information unless you have authority, have assessed every recipient, and have put any legally required contracts and safeguards in place. A disclaimer does not make a deployment compliant with HIPAA, FERPA, GDPR, financial-services rules, workplace duties, or another regulatory regime.

@@ -26,7 +26,7 @@ const digest = (file: string): string =>
  *  reviewed at. Update a line only together with the review that earned it. */
 const REVIEWED: Record<string, string> = {
   'TERMS.md': 'f121b37a5bb7446a',
-  'PRIVACY.md': '037dbfd85309832a',
+  'PRIVACY.md': '70bf168ec57ab295',
   'DISCLAIMER.md': '1331da4b98ee7d90',
 };
 
