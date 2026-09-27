@@ -17,7 +17,6 @@ import './controls/controls.css';
 import { FitBox } from './layout/FitBox';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { FIT_TYPES } from './layout/fitPolicy';
-import { useBloomMode } from './reveal/useBloomMode';
 import { CanvasTakeover } from './focus/CanvasView';
 import { boardCapable } from './focus/canvasGate';
 import type { StudyAside } from './study/types';
@@ -487,8 +486,6 @@ export function TopicCanvas({
   }, [zoomedBlock, onLens]);
 
   const gridRef = useRef<HTMLDivElement>(null);
-  // The "answers bloom" reveal choreography (off == today's plain .reveal entrance).
-  const [bloomOn] = useBloomMode();
   // Responsive layout: re-runs the adaptive-cols algorithm at the actual container width
   // so rows are always full and blocks scale proportionally at every viewport size.
   // displayBlocks defaults to data.blocks as a safety net — the hook always returns
@@ -512,8 +509,8 @@ export function TopicCanvas({
   }, [answerSig, studyStreaming]);
 
   // The bloom's hidden FROM frames — a retracted trend line, an unwiped bar, a number resolving
-  // out of a blur — are only safe while their animations are actually running. `bloom-on` is a
-  // remembered preference, so on its own it holds those frames for the life of the grid, and a
+  // out of a blur — are only safe while their animations are actually running. `bloom-on` sits on
+  // the grid for its whole life, so on its own it holds those frames indefinitely, and a
   // `backwards` fill keeps showing the 0% frame for as long as its animation has not started. An
   // animation that never starts therefore hides its content for good: a chart paints its axes,
   // gridlines and legend around a line retracted out of view. Scope them to the window the
@@ -526,11 +523,10 @@ export function TopicCanvas({
   const BLOOM_WINDOW_MS = 4000;
   const [blooming, setBlooming] = useState(false);
   useEffect(() => {
-    if (!bloomOn) return;
     setBlooming(true);
     const timer = setTimeout(() => setBlooming(false), BLOOM_WINDOW_MS);
     return () => clearTimeout(timer);
-  }, [answerSig, bloomOn]);
+  }, [answerSig]);
   const markUnrenderable = useCallback((id: string) => {
     setDroppedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
@@ -1033,9 +1029,8 @@ export function TopicCanvas({
         // width never jumps when cards land.
         <div
           className={
-            'card-grid' +
-            (bloomOn ? ' bloom-on' : '') +
-            (bloomOn && blooming ? ' blooming' : '') +
+            'card-grid bloom-on' +
+            (blooming ? ' blooming' : '') +
             (noteGutter ? ' note-gutter' : '')
           }
           ref={gridRef}
