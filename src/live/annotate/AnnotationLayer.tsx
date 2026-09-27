@@ -24,7 +24,7 @@ import {
   type Rect,
 } from './gesture';
 import { firstClearPlace, intersects, occupiedRects } from './clearSpace';
-import { measuredLabel, liesFlat } from './measure';
+import { measuredLabel, liesFlat, layoutSize } from './measure';
 import {
   saidTokens,
   findSaidMatch,
@@ -319,25 +319,6 @@ function priorInkRects(container: HTMLElement, stepNumber: number): DOMRect[] {
     }
   }
   return out;
-}
-
-/** An element's border-box size in LAYOUT px, unrounded. `offsetWidth`/`offsetHeight` round to
- *  whole pixels, so a scale derived from them is off by up to half a pixel over the card's width —
- *  enough that the same mark re-measured on a card a fraction wider or narrower (a lift easing
- *  out, a neighbour dimming) landed a pixel from where it had been drawn: visible jitter. */
-function layoutSize(el: HTMLElement): { w: number; h: number } {
-  const cs = getComputedStyle(el);
-  let w = parseFloat(cs.width);
-  let h = parseFloat(cs.height);
-  if (!Number.isFinite(w) || !Number.isFinite(h)) return { w: el.offsetWidth, h: el.offsetHeight };
-  if (cs.boxSizing !== 'border-box') {
-    const px = (v: string): number => parseFloat(v) || 0;
-    w +=
-      px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
-    h +=
-      px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
-  }
-  return { w, h };
 }
 
 function measure(
@@ -664,7 +645,9 @@ function SpotInk({
       className={'ink-layer' + (residue ? ' is-residue' : '')}
       aria-hidden="true"
       style={inkStyle}
-      viewBox={`0 0 ${Math.max(1, Math.round(view.w))} ${Math.max(1, Math.round(view.h))}`}
+      // Unrounded: the SVG fills the card at its fractional layout size, and a rounded viewBox
+      // would stretch every stroke by that fraction.
+      viewBox={`0 0 ${Math.max(1, view.w)} ${Math.max(1, view.h)}`}
       preserveAspectRatio="none"
     >
       {stroke.fill ? (

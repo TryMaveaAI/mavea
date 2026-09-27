@@ -1,6 +1,6 @@
-import { liesFlat } from '../src/live/annotate/measure';
+import { layoutSize, liesFlat } from '../src/live/annotate/measure';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, cleanup } from '@testing-library/react';
 import { gestureOf, labelPlacements, relativeRect, strokeFor } from '../src/live/annotate/gesture';
 import { AnnotationLayer } from '../src/live/annotate/AnnotationLayer';
 import { inkPending } from '../src/live/annotate/settle';
@@ -491,6 +491,52 @@ describe('AnnotationLayer', () => {
       walker.mockRestore();
       restore();
     }
+  });
+
+  it('plots a card in its unrounded layout space, so its scale cannot move a mark', () => {
+    // A card 400.4 x 200.6 layout px: offsetWidth would round that to 400 x 201.
+    const W = 400.4;
+    const H = 200.6;
+    const draw = (scale: number): { d: string; viewBox: string } => {
+      const restore = mockRangeRects({
+        'Order Book': domRect(20 * scale, 30 * scale, 60 * scale, 16 * scale),
+      });
+      try {
+        const wrap = document.createElement('div');
+        wrap.setAttribute('data-spot-id', 'scaled');
+        wrap.style.boxSizing = 'border-box';
+        wrap.style.width = `${W}px`;
+        wrap.style.height = `${H}px`;
+        const label = document.createElement('span');
+        label.textContent = 'Order Book';
+        wrap.appendChild(label);
+        document.body.appendChild(wrap);
+        wrap.getBoundingClientRect = () => domRect(0, 0, W * scale, H * scale);
+        expect(layoutSize(wrap)).toEqual({ w: W, h: H });
+        render(
+          <AnnotationLayer
+            spots={[{ spot: 'scaled', mark: { kind: 'underline', at: 'Order Book' } }]}
+          />,
+        );
+        act(() => vi.advanceTimersByTime(300));
+        const svg = wrap.querySelector('svg.ink-layer');
+        const out = {
+          d: svg?.querySelector('.ink-stroke')?.getAttribute('d') ?? '',
+          viewBox: svg?.getAttribute('viewBox') ?? '',
+        };
+        cleanup();
+        wrap.remove();
+        return out;
+      } finally {
+        restore();
+      }
+    };
+    const flat = draw(1);
+    const lifted = draw(1.03); // the spotlight's lift
+    expect(flat.d).toBeTruthy();
+    expect(lifted.d).toBe(flat.d);
+    expect(flat.viewBox).toBe(`0 0 ${W} ${H}`);
+    expect(lifted.viewBox).toBe(flat.viewBox);
   });
 
   it('publishes a mark as pending until it lands, or until its poll gives up', () => {

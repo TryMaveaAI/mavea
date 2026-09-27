@@ -97,3 +97,22 @@ export function liesFlat(el: Element, root: Element): boolean {
   }
   return true;
 }
+
+/** An element's border-box size in LAYOUT px, unrounded. `offsetWidth`/`offsetHeight` round to
+ *  whole pixels, so a scale derived from them is off by up to half a pixel over the card's width —
+ *  enough that the same mark re-measured on a card a fraction wider or narrower (a lift easing
+ *  out, a neighbour dimming) landed a pixel from where it had been drawn: visible jitter. */
+export function layoutSize(el: HTMLElement): { w: number; h: number } {
+  const cs = getComputedStyle(el);
+  let w = parseFloat(cs.width);
+  let h = parseFloat(cs.height);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return { w: el.offsetWidth, h: el.offsetHeight };
+  if (cs.boxSizing !== 'border-box') {
+    const px = (v: string): number => parseFloat(v) || 0;
+    w +=
+      px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth);
+    h +=
+      px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+  }
+  return { w, h };
+}
