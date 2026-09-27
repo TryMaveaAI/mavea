@@ -122,6 +122,16 @@
   }
 }
 
+/* At 320 the square actions still left the row 16px too long, and it was the appearance control —
+   last on the row — that went off the edge. The narrowest phones tighten the row's spacing, not its
+   targets. */
+@media (width <= 360px) {
+  .dash-topbar {
+    gap: var(--s-sm);
+    padding-inline: var(--s-md);
+  }
+}
+
 /* ── "N on watch" pill ───────────────────────────────────────────────────────────────────── */
 .dash-watch-pill {
   flex: none;
